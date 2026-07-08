@@ -124,6 +124,12 @@
     onattachmentremove,
     onattachmentfailure,
     oncomposerinput,
+    oncomposerkeydown,
+    composerRole,
+    composerAriaExpanded,
+    composerAriaControls,
+    composerAriaActiveDescendant,
+    composerAriaAutocomplete,
     ...rest
   }: ChatProps = $props();
 
@@ -140,6 +146,7 @@
         addFiles: (files: File[]) => void;
         getAttachments: () => ChatAttachment[];
         getValue: () => string;
+        getEditorElement: () => HTMLTextAreaElement | null;
       }
     | undefined;
   let searchBarRef = $state<{ focusInput: () => void } | undefined>(undefined);
@@ -1369,6 +1376,11 @@
     return inputRef?.getValue() ?? '';
   }
 
+  /** Read the composer textarea element. Returns null until mounted. */
+  export function getEditorElement(): HTMLTextAreaElement | null {
+    return inputRef?.getEditorElement() ?? null;
+  }
+
   /**
    * Begin streaming content for a specific message.
    * The message should already exist in the conversation.
@@ -1720,6 +1732,12 @@
         {allowAttachments}
         onstop={streaming ? handleStopGenerating : undefined}
         {oncomposerinput}
+        {oncomposerkeydown}
+        {composerRole}
+        {composerAriaExpanded}
+        {composerAriaControls}
+        {composerAriaActiveDescendant}
+        {composerAriaAutocomplete}
         {onattachmentadd}
         {onattachmentremove}
         {onattachmentfailure}

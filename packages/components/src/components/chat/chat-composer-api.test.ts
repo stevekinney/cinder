@@ -20,7 +20,7 @@
 
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
-import { flushSync, mount, unmount } from 'svelte';
+import { flushSync, mount, tick, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -52,6 +52,7 @@ afterAll(() => {
 
 const { fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Chat } = await import('./chat.svelte');
+const { default: ChatContainer } = await import('./container/chat.svelte');
 
 afterEach(() => {
   cleanup();
@@ -79,6 +80,7 @@ function createConversation(id?: string): TestConversation {
 type ComposerApi = {
   clearInput: () => void;
   getComposerValue: () => string;
+  getEditorElement: () => HTMLTextAreaElement | null;
 };
 
 function mountChat(
@@ -94,6 +96,50 @@ function mountChat(
 }
 
 describe('Chat — composer API', () => {
+  test('getEditorElement() returns the public Chat composer textarea', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const { instance, api } = mountChat(target);
+
+    await tick();
+    const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
+
+    expect(api.getEditorElement()).toBe(composer);
+
+    unmount(instance);
+    target.remove();
+  });
+
+  test('getEditorElement() returns null after public Chat unmount', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const { instance, api } = mountChat(target);
+
+    unmount(instance);
+    target.remove();
+
+    expect(() => api.getEditorElement()).not.toThrow();
+    expect(api.getEditorElement()).toBeNull();
+  });
+
+  test('getEditorElement() is forwarded by the container layer', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const conversation = createConversation();
+    const instance = mount(ChatContainer, {
+      target,
+      props: { id: 'chat-composer-api-container', conversation },
+    }) as Record<string, unknown>;
+    const api = instance as unknown as ComposerApi;
+    await tick();
+    const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
+
+    expect(api.getEditorElement()).toBe(composer);
+
+    unmount(instance);
+    target.remove();
+  });
+
   test('getComposerValue() reflects text typed into the composer', async () => {
     const target = document.createElement('div');
     document.body.append(target);

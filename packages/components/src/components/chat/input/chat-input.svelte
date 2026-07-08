@@ -16,6 +16,16 @@
     placeholder?: string;
     /** Accessible label passed to the inner message editor */
     composerLabel?: string;
+    /** Explicit role for the inner message editor, for overlay patterns such as ARIA comboboxes. */
+    composerRole?: string | undefined;
+    /** `aria-expanded` passed to the inner message editor for composer overlays. */
+    composerAriaExpanded?: boolean | 'true' | 'false' | undefined;
+    /** `aria-controls` passed to the inner message editor for composer overlays. */
+    composerAriaControls?: string | undefined;
+    /** `aria-activedescendant` passed to the inner message editor for composer overlays. */
+    composerAriaActiveDescendant?: string | undefined;
+    /** `aria-autocomplete` passed to the inner message editor for composer overlays. */
+    composerAriaAutocomplete?: 'none' | 'inline' | 'list' | 'both' | undefined;
     /** Whether the input is disabled */
     disabled?: boolean;
     /** Whether a submission is in progress */
@@ -50,6 +60,12 @@
     onstop?: (() => void) | undefined;
     /** Called with the composer's current plain-text value on every input event. */
     oncomposerinput?: ((value: string) => void) | undefined;
+    /**
+     * Called before ChatInput's internal Enter-to-send handling when a keydown
+     * originates from the composer textarea. Calling `preventDefault()` skips
+     * the internal key handling for that event.
+     */
+    oncomposerkeydown?: ((event: KeyboardEvent) => void) | undefined;
     /** Called when an attachment is added */
     onattachmentadd?: ((attachment: ChatAttachment) => void) | undefined;
     /** Called when an attachment is removed */
@@ -109,6 +125,11 @@
     value = $bindable(''),
     placeholder = 'Type a message...',
     composerLabel = 'Message',
+    composerRole,
+    composerAriaExpanded,
+    composerAriaControls,
+    composerAriaActiveDescendant,
+    composerAriaAutocomplete,
     disabled = false,
     sending = false,
     error,
@@ -136,6 +157,7 @@
     onsubmit,
     onstop,
     oncomposerinput,
+    oncomposerkeydown,
     onattachmentadd,
     onattachmentremove,
     onattachmentfailure,
@@ -402,6 +424,13 @@
       return;
     }
 
+    if (event.target === editorElement) {
+      oncomposerkeydown?.(event);
+      if (event.defaultPrevented) {
+        return;
+      }
+    }
+
     // Shift+Enter: Newline (let editor handle it)
     if (event.key === 'Enter' && event.shiftKey) {
       return;
@@ -453,6 +482,10 @@
     return value;
   }
 
+  export function getEditorElement(): HTMLTextAreaElement | null {
+    return editorElement;
+  }
+
   export function addFiles(files: File[]): void {
     if (!allowAttachments) return;
     files.forEach(addAttachment);
@@ -473,7 +506,6 @@
   method="POST"
   {action}
   onsubmit={handleSubmit}
-  onkeydown={handleKeyDown}
   onpaste={handlePaste}
   ondrop={handleDrop}
   ondragover={handleDragOver}
@@ -514,9 +546,15 @@
       bind:this={editorElement}
       id={`${id}-editor`}
       bind:value
+      onkeydown={handleKeyDown}
       oninput={handleInput}
       {placeholder}
+      role={composerRole}
       aria-label={resolvedComposerLabel}
+      aria-expanded={composerAriaExpanded}
+      aria-controls={composerAriaControls}
+      aria-activedescendant={composerAriaActiveDescendant}
+      aria-autocomplete={composerAriaAutocomplete}
       {disabled}
       readonly={sending}
       class="chat-input-editor"

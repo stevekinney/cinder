@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mount, unmount } from 'svelte';
+import { mount, tick, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 
@@ -81,6 +81,35 @@ describe('ChatInput', () => {
     });
   });
 
+  describe('getEditorElement()', () => {
+    test('returns the rendered composer textarea', async () => {
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, { target, props: { id: 'get-editor-element-composer' } });
+      const api = instance as unknown as { getEditorElement: () => HTMLTextAreaElement | null };
+
+      await tick();
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
+
+      expect(api.getEditorElement()).toBe(composer);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('returns null after unmount', () => {
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, { target, props: { id: 'get-editor-element-unmount' } });
+      const api = instance as unknown as { getEditorElement: () => HTMLTextAreaElement | null };
+
+      unmount(instance);
+      target.remove();
+
+      expect(api.getEditorElement()).toBeNull();
+    });
+  });
+
   describe('oncomposerinput', () => {
     test('fires with the current composer value on every input event', async () => {
       const values: string[] = [];
@@ -117,6 +146,184 @@ describe('ChatInput', () => {
 
       unmount(instance);
       target.remove();
+    });
+  });
+
+  describe('oncomposerkeydown', () => {
+    test('fires before Enter-to-send internal handling', async () => {
+      const calls: string[] = [];
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-keydown-order',
+          oncomposerkeydown: () => calls.push('keydown'),
+          onsubmit: () => calls.push('submit'),
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'send this' } });
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+
+      expect(calls).toEqual(['keydown', 'submit']);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('skips Enter-to-send when the consumer prevents default', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-keydown-prevent-default',
+          oncomposerkeydown: (event: KeyboardEvent) => event.preventDefault(),
+          onsubmit: () => {
+            submitCount += 1;
+          },
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'overlay choice' } });
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+
+      expect(submitCount).toBe(0);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('keeps Enter-to-send working when the hook is omitted', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-keydown-omitted',
+          onsubmit: () => {
+            submitCount += 1;
+          },
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'plain send' } });
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+
+      expect(submitCount).toBe(1);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('does not submit Enter while IME composition is active', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-keydown-ime',
+          onsubmit: () => {
+            submitCount += 1;
+          },
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'かな' } });
+      await fireEvent.compositionStart(composer);
+      await fireEvent.keyDown(composer, { key: 'Enter', isComposing: true });
+
+      expect(submitCount).toBe(0);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('does not call the consumer hook during IME composition', async () => {
+      let keydownCount = 0;
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'composer-keydown-ime-hook',
+          oncomposerkeydown: (event: KeyboardEvent) => {
+            keydownCount += 1;
+            event.preventDefault();
+          },
+          onsubmit: () => {
+            submitCount += 1;
+          },
+        },
+      });
+
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'かな' } });
+      await fireEvent.compositionStart(composer);
+      await fireEvent.keyDown(composer, { key: 'Enter', isComposing: true });
+
+      expect(keydownCount).toBe(0);
+      expect(submitCount).toBe(0);
+
+      unmount(instance);
+      target.remove();
+    });
+  });
+
+  describe('composer ARIA pass-through', () => {
+    test('renders overlay ARIA attributes on the composer textarea', () => {
+      const { container } = render(ChatInput, {
+        id: 'composer-aria',
+        composerRole: 'combobox',
+        composerAriaExpanded: 'true',
+        composerAriaControls: 'slash-command-listbox',
+        composerAriaActiveDescendant: 'slash-command-option-2',
+        composerAriaAutocomplete: 'list',
+      });
+
+      const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
+
+      expect(composer?.getAttribute('role')).toBe('combobox');
+      expect(composer?.getAttribute('aria-expanded')).toBe('true');
+      expect(composer?.getAttribute('aria-controls')).toBe('slash-command-listbox');
+      expect(composer?.getAttribute('aria-activedescendant')).toBe('slash-command-option-2');
+      expect(composer?.getAttribute('aria-autocomplete')).toBe('list');
+    });
+
+    test('updates overlay ARIA attributes reactively', async () => {
+      const view = render(ChatInput, {
+        id: 'composer-aria-reactive',
+        composerRole: 'combobox',
+        composerAriaExpanded: 'false',
+        composerAriaControls: 'slash-command-listbox',
+        composerAriaActiveDescendant: undefined,
+        composerAriaAutocomplete: 'list',
+      });
+      const composer = view.container.querySelector<HTMLTextAreaElement>(
+        'textarea.chat-input-editor',
+      );
+
+      await view.rerender({
+        id: 'composer-aria-reactive',
+        composerRole: 'combobox',
+        composerAriaExpanded: 'true',
+        composerAriaControls: 'slash-command-listbox',
+        composerAriaActiveDescendant: 'slash-command-option-1',
+        composerAriaAutocomplete: 'both',
+      });
+
+      expect(composer?.getAttribute('aria-expanded')).toBe('true');
+      expect(composer?.getAttribute('aria-activedescendant')).toBe('slash-command-option-1');
+      expect(composer?.getAttribute('aria-autocomplete')).toBe('both');
     });
   });
 });
