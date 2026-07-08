@@ -84,10 +84,14 @@ describe('fullSuiteTestPathGroups', () => {
   it('keeps full-suite package tests in the first chunk', () => {
     const groups = fullSuiteTestPathGroups([]);
     expect(groups[0]).toContain('scripts');
+    expect(groups[0]).toContain('src/cli');
     expect(groups[0]).toContain('src/test');
     expect(groups[0]).toContain('src/exports-drift.test.ts');
     expect(groups[0]).toContain('src/root-type-exports.test.ts');
     expect(groups[0]).toContain('src/components/svg-data-uri-color-literals.test.ts');
+    expect(groups[0]).toContain(
+      'src/components/_internal/create-command-list-state.svelte.test.ts',
+    );
     expect(groups[0]).toContain('src/components/_internal/create-sliding-dialog-state.test.ts');
     expect(groups[0]).toContain('src/components/_radio/radio.test.ts');
     expect(groups[0]).toContain('src/components/_timeline-item/timeline-item.test.ts');
