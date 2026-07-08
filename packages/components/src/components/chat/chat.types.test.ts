@@ -17,7 +17,13 @@ import { expect, test } from 'bun:test';
 import type { ComponentProps } from 'svelte';
 
 import Chat from './chat.svelte';
-import type { ChatAttachment, ChatProps, ChatSubmitEvent, ConversationHistory } from './index.ts';
+import type {
+  ChatAnnounceLevel,
+  ChatAttachment,
+  ChatProps,
+  ChatSubmitEvent,
+  ConversationHistory,
+} from './index.ts';
 
 type Assignable<A, B> = A extends B ? true : false;
 
@@ -95,4 +101,12 @@ test('ChatAttachment is directly importable from the public chat barrel', () => 
   } satisfies ChatAttachment;
 
   expect(attachment.id).toBe('attachment-1');
+});
+
+test('ChatAnnounceLevel is directly importable from the public chat barrel', () => {
+  const polite = 'polite' satisfies ChatAnnounceLevel;
+  const assertive = 'assertive' satisfies ChatAnnounceLevel;
+
+  expect(polite).toBe('polite');
+  expect(assertive).toBe('assertive');
 });

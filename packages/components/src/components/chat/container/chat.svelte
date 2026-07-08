@@ -7,9 +7,9 @@
   // `ChatProps` is owned by `../chat.types.ts` (the analyzer + schema generator
   // read that symbol). The implementation imports it from there rather than
   // redeclaring it, so the public type and the `$props()` shape can never drift.
-  import type { ChatProps } from '../chat.types.ts';
+  import type { ChatAnnounceLevel, ChatProps } from '../chat.types.ts';
 
-  export type { ChatProps };
+  export type { ChatAnnounceLevel, ChatProps };
   export type {
     ChatScrollStateChangeEvent,
     ChatStopGeneratingEvent,
@@ -57,6 +57,7 @@
   import ChatReadReceipt from '../message/chat-read-receipt.svelte';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
+  const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
   type ChatMessageRenderRow = Extract<ChatRenderRow, { type: 'message' }>;
   type PendingHistoryScroll = {
     previousFirstMessageId: string | null;
@@ -207,11 +208,16 @@
     toolCallState.reset();
     typingIndicatorState.reset();
     readReceiptsState.reset();
+    clearConsumerAnnouncements();
   });
 
   let isLoadingHistory = $state(false);
   let adapterHasMoreHistory = $state<boolean | undefined>(undefined);
   let historyAnnouncement = $state('');
+  let consumerPoliteAnnouncement = $state('');
+  let consumerAssertiveAnnouncement = $state('');
+  let consumerPoliteAnnouncementTimeout: ReturnType<typeof setTimeout> | undefined;
+  let consumerAssertiveAnnouncementTimeout: ReturnType<typeof setTimeout> | undefined;
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
   let deferredAdapterHasMoreHistory: boolean | null = null;
   let historyAnchorMessageId = $state<string | null>(null);
@@ -491,6 +497,18 @@
     }
     return '';
   });
+  const assertiveAnnouncement = $derived(
+    toolApprovalAssertiveMessage || consumerAssertiveAnnouncement,
+  );
+  const politeAnnouncement = $derived(
+    consumerPoliteAnnouncement || historyAnnouncement || unreadState.announcerMessage,
+  );
+
+  $effect(() => {
+    if (toolApprovalAssertiveMessage && consumerAssertiveAnnouncement) {
+      clearConsumerAssertiveAnnouncement();
+    }
+  });
 
   // ==========================================================================
   // Scroll Anchoring via $effect.pre
@@ -720,6 +738,7 @@
         cancelAnimationFrame(streamingScrollRaf);
         streamingScrollRaf = undefined;
       }
+      clearConsumerAnnouncements();
     };
   });
 
@@ -800,6 +819,54 @@
   // ==========================================================================
   // Actions
   // ==========================================================================
+
+  export function announce(message: string, level: ChatAnnounceLevel = 'polite'): void {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) return;
+
+    if (level === 'assertive') {
+      if (toolApprovalAssertiveMessage) return;
+      setConsumerAssertiveAnnouncement(trimmedMessage);
+      return;
+    }
+
+    setConsumerPoliteAnnouncement(trimmedMessage);
+  }
+
+  function setConsumerPoliteAnnouncement(message: string): void {
+    clearTimeout(consumerPoliteAnnouncementTimeout);
+    consumerPoliteAnnouncement = message;
+    consumerPoliteAnnouncementTimeout = setTimeout(() => {
+      if (consumerPoliteAnnouncement === message) consumerPoliteAnnouncement = '';
+      consumerPoliteAnnouncementTimeout = undefined;
+    }, CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS);
+  }
+
+  function setConsumerAssertiveAnnouncement(message: string): void {
+    clearTimeout(consumerAssertiveAnnouncementTimeout);
+    consumerAssertiveAnnouncement = message;
+    consumerAssertiveAnnouncementTimeout = setTimeout(() => {
+      if (consumerAssertiveAnnouncement === message) consumerAssertiveAnnouncement = '';
+      consumerAssertiveAnnouncementTimeout = undefined;
+    }, CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS);
+  }
+
+  function clearConsumerPoliteAnnouncement(): void {
+    clearTimeout(consumerPoliteAnnouncementTimeout);
+    consumerPoliteAnnouncementTimeout = undefined;
+    consumerPoliteAnnouncement = '';
+  }
+
+  function clearConsumerAssertiveAnnouncement(): void {
+    clearTimeout(consumerAssertiveAnnouncementTimeout);
+    consumerAssertiveAnnouncementTimeout = undefined;
+    consumerAssertiveAnnouncement = '';
+  }
+
+  function clearConsumerAnnouncements(): void {
+    clearConsumerPoliteAnnouncement();
+    clearConsumerAssertiveAnnouncement();
+  }
 
   function handleJumpToLatest(): void {
     if (isVirtualized) {
@@ -1748,8 +1815,8 @@
   <ChatStatusAnnouncer
     {statusId}
     messageCount={messages.length}
-    announcerMessage={historyAnnouncement || unreadState.announcerMessage}
-    assertiveMessage={toolApprovalAssertiveMessage}
+    announcerMessage={politeAnnouncement}
+    assertiveMessage={assertiveAnnouncement}
   />
 
   <!-- Typing-participant live region: outside role="log" to avoid double announcement.
