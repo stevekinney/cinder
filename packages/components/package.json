@@ -6532,12 +6532,10 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@tanstack/virtual-core": "^3.17.1",
     "ajv": "^8",
-    "conversationalist": "^0.2.1",
     "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
     "libphonenumber-js": "^1.13.3",
-    "qrcode": "^1.5.4",
-    "zod": "4.4.1"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@changesets/parse": "0.4.3",
@@ -6554,6 +6552,7 @@
     "@types/qrcode": "^1.5.6",
     "chalk": "^5.6.2",
     "change-case": "^5.4.4",
+    "conversationalist": "^0.2.1",
     "happy-dom": "^15.11.7",
     "js-yaml": "^4.1.0",
     "lucide-svelte": "^0.503.0",
@@ -6569,7 +6568,8 @@
     "svelte-check": "^4.0.0",
     "svelte2tsx": "^0.7.33",
     "ts-morph": "^28.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "zod": "4.4.1"
   },
   "peerDependencies": {
     "@milkdown/ctx": "^7.17.3",
@@ -6583,6 +6583,7 @@
     "@types/mdast": "^4.0.4",
     "@types/unist": "^3.0.0",
     "comlink": "^4.4.2",
+    "conversationalist": "^0.2.1",
     "hast-util-sanitize": "^5.0.0",
     "js-yaml": "^4.1.0",
     "lucide-svelte": ">=0.400.0 <1",
@@ -6603,7 +6604,8 @@
     "svelte": ">=5.56.0 <6",
     "unified": "^11.0.5",
     "unist-util-remove": "^4.0.0",
-    "unist-util-visit": "^5.0.0"
+    "unist-util-visit": "^5.0.0",
+    "zod": "4.4.1"
   },
   "peerDependenciesMeta": {
     "@milkdown/ctx": {

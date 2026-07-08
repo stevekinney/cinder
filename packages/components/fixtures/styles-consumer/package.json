@@ -6,6 +6,8 @@
     "build": "bun build ./src/styles-entry.ts ./src/root-entry.ts --outdir ./dist --target browser"
   },
   "dependencies": {
-    "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz"
+    "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz",
+    "conversationalist": "^0.2.1",
+    "zod": "4.4.1"
   }
 }
