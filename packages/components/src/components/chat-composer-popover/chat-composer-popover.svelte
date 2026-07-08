@@ -279,7 +279,7 @@
   {label}
   {listboxId}
   onselect={handleSelect}
-  ondismiss={dismiss}
+  ondismiss={() => dismiss({ restoreFocus: false })}
   onstatechange={handleStateChange}
 >
   {#snippet items()}

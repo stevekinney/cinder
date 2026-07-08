@@ -172,17 +172,21 @@ describe('ChatComposerPopover', () => {
     const onDismissed = mock(() => {});
     const { getByTestId } = render(ChatComposerPopoverFixture, { onDismissed });
     const composer = await typeComposer('/h');
+    const outside = getByTestId('outside');
 
     await waitFor(() => expect(queryListbox()).not.toBeNull());
 
-    await fireEvent.pointerDown(getByTestId('outside'));
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    await fireEvent.pointerDown(outside);
 
     await waitFor(() => expect(queryListbox()).toBeNull());
     expect(onDismissed).toHaveBeenCalledTimes(1);
     expect(composer.getAttribute('aria-expanded')).toBe('false');
     expect(composer.getAttribute('aria-controls')).toBeNull();
     expect(composer.getAttribute('aria-activedescendant')).toBeNull();
-    expect(document.activeElement).toBe(composer);
+    expect(document.activeElement).toBe(outside);
   });
 
   test('dismisses when caret-only movement leaves the active trigger token', async () => {
