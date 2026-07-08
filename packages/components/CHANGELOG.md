@@ -1,5 +1,14 @@
 # @lostgradient/cinder
 
+## 0.9.0
+
+### Minor Changes
+
+- [#693](https://github.com/stevekinney/cinder/pull/693) [`124e7b2`](https://github.com/stevekinney/cinder/commit/124e7b2740d8243e434c1eb831e2c760dab6265a) Thanks [@stevekinney](https://github.com/stevekinney)! - Move `conversationalist` from a transitive dependency to a required peer
+  dependency. Consumers that use Chat or Cinder's conversation helpers must
+  install `conversationalist@^0.2.1` and `zod@4.4.1` directly so the application
+  and Cinder share one conversation type/schema instance.
+
 ## 0.8.0
 
 ### Minor Changes
