@@ -510,10 +510,14 @@ export { default as InvocationRuleBuilder } from './components/invocation-rule-b
 export type {
   InvocationRule,
   InvocationRuleAction,
+  InvocationRuleBuilderMode,
   InvocationRuleBuilderProps,
   InvocationRuleChange,
   InvocationRuleCondition,
+  InvocationRuleConditionsOnlyOperator,
+  InvocationRuleFieldType,
   InvocationRuleOption,
+  InvocationRuleValueChoice,
 } from './components/invocation-rule-builder/index.ts';
 
 export { default as JsonViewer } from './components/json-viewer/index.ts';

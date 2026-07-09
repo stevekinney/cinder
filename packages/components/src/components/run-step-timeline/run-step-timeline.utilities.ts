@@ -179,11 +179,6 @@ export function branchStartsCollapsed(
   return laneCount >= threshold;
 }
 
-/**
- * Normalize a step link href to a safe value, or `undefined` when the href is
- * empty, control-character-laden, backslash-bearing, protocol-relative, or a
- * non-http(s) scheme.
- */
 /** Whether the string contains an ASCII control character (0x00-0x1F or 0x7F). */
 function hasControlCharacter(value: string): boolean {
   for (let index = 0; index < value.length; index += 1) {
@@ -193,6 +188,11 @@ function hasControlCharacter(value: string): boolean {
   return false;
 }
 
+/**
+ * Normalize a step link href to a safe value, or `undefined` when the href is
+ * empty, control-character-laden, backslash-bearing, protocol-relative, or a
+ * non-http(s) scheme.
+ */
 export function safeStepLinkHref(href: string): string | undefined {
   const trimmedHref = href.trim();
   if (trimmedHref === '') return undefined;

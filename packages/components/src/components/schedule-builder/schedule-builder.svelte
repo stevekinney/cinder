@@ -98,8 +98,24 @@
   }: ScheduleBuilderProps = $props();
 
   const baseId = $props.id();
+
+  // Normalize ARIA label props: an empty string `aria-label=""` (or
+  // `aria-labelledby=""`) suppresses the accessible-name fallback (ARIA spec
+  // §4.3) without actually providing a name. Convert empty strings to
+  // `undefined` so the DOM attribute is omitted and the `label` default
+  // remains the accessible name. Matches button.svelte's normalization.
+  const normalizedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
+  const normalizedAriaLabelledby = $derived(
+    typeof ariaLabelledby === 'string' && ariaLabelledby.trim().length > 0
+      ? ariaLabelledby
+      : undefined,
+  );
   const resolvedAriaLabel = $derived(
-    ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
+    normalizedAriaLabelledby === undefined && normalizedAriaLabel === undefined
+      ? label
+      : normalizedAriaLabel,
   );
 
   // ---------------------------------------------------------------------------
@@ -115,7 +131,25 @@
     seedInterval !== undefined &&
     (seedInterval.unit === 'minutes' || seedInterval.unit === 'hours');
 
-  let authoringMode = $state<ScheduleAuthoringMode>('presets');
+  /**
+   * The authoring mode to open on first render. A minutes/hours interval (or
+   * no `value` at all) cleanly matches the "every N" preset — and is already
+   * seeded correctly there via `seedIsMinutesOrHours` below — so those start
+   * in `presets`. Any other `interval` (days/weeks, which presets cannot
+   * represent) opens directly in `interval` mode; any `cron` value opens
+   * directly in `cron` mode. Either way the destination mode's fields are
+   * seeded from `seedValue` below, so the summary and preview are correct
+   * from the very first render instead of showing the presets default.
+   */
+  function initialAuthoringMode(initialValue: ScheduleValue | undefined): ScheduleAuthoringMode {
+    if (initialValue === undefined) return 'presets';
+    if (initialValue.mode === 'cron') return 'cron';
+    return initialValue.unit === 'minutes' || initialValue.unit === 'hours'
+      ? 'presets'
+      : 'interval';
+  }
+
+  let authoringMode = $state<ScheduleAuthoringMode>(initialAuthoringMode(value));
   let presetKind = $state<PresetKind>('every');
 
   let cronFields = $state<string[]>(valueToCronFields(seedValue));
@@ -160,9 +194,37 @@
    */
   const currentValue = $derived(valueForMode(authoringMode));
 
-  const fires = $derived.by((): ScheduleFire[] | undefined =>
-    computeNextFires ? computeNextFires(currentValue, previewCount) : undefined,
-  );
+  /**
+   * Whether `currentValue` is safe to hand to the consumer's `computeNextFires`.
+   * In cron mode a mid-edit field can make the joined expression invalid (e.g.
+   * an out-of-range hour); a real cron-parsing callback would likely throw on
+   * that. Presets and interval mode always produce a structurally valid value.
+   */
+  const currentValueIsValid = $derived(authoringMode !== 'cron' || cronFieldsValid(cronFields));
+
+  type PreviewResult =
+    | { status: 'hidden' }
+    | { status: 'invalid' }
+    | { status: 'error' }
+    | { status: 'ok'; fires: ScheduleFire[] };
+
+  /**
+   * Guards the next-fires preview two ways: (1) `computeNextFires` is only
+   * ever called with a value that has passed `cronFieldsValid` — never an
+   * in-progress, invalid cron edit (`status: 'invalid'`) — and (2) the call is
+   * wrapped in a try/catch so a consumer callback that throws for any other
+   * reason degrades to a generic unavailable state (`status: 'error'`)
+   * instead of crashing the component.
+   */
+  const previewResult = $derived.by((): PreviewResult => {
+    if (!computeNextFires) return { status: 'hidden' };
+    if (!currentValueIsValid) return { status: 'invalid' };
+    try {
+      return { status: 'ok', fires: computeNextFires(currentValue, previewCount) };
+    } catch {
+      return { status: 'error' };
+    }
+  });
 
   /**
    * The last value the user actually committed (starting from the initial
@@ -204,8 +266,18 @@
     }
   }
 
+  /**
+   * Unlike the top-level authoring-mode tabs, switching the preset KIND
+   * (Every N / Daily / Weekly / Monthly) changes what `currentValue` computes
+   * to immediately — each kind lowers its own already-filled-in fields to a
+   * value right away, there is no "browsing, not yet committed" state the way
+   * there is for an empty cron/interval panel. So this commits like any other
+   * field edit: it emits the newly derived value to a controlled parent.
+   */
   function handlePresetKindChange(nextKind: PresetKind): void {
+    if (nextKind === presetKind) return;
     presetKind = nextKind;
+    emitChange();
   }
 
   function handleCronFieldChange(index: number, raw: string): void {
@@ -271,7 +343,7 @@
   class={classNames('cinder-schedule-builder', className)}
   role="group"
   aria-label={resolvedAriaLabel}
-  aria-labelledby={ariaLabelledby}
+  aria-labelledby={normalizedAriaLabelledby}
   data-sb-mode={authoringMode}
 >
   <SegmentedControl
@@ -425,17 +497,23 @@
     <dd class="cinder-schedule-builder__summary-text">{describeValue(currentValue)}</dd>
   </dl>
 
-  {#if computeNextFires}
+  {#if previewResult.status !== 'hidden'}
     <div class="cinder-schedule-builder__preview">
       <span class="cinder-schedule-builder__section-label" id={`${baseId}-preview-label`}>
         Upcoming fires
       </span>
-      {#if fires && fires.length > 0}
+      {#if previewResult.status === 'invalid'}
+        <p class="cinder-schedule-builder__empty">
+          Preview unavailable — fix the cron expression above.
+        </p>
+      {:else if previewResult.status === 'error'}
+        <p class="cinder-schedule-builder__empty">Preview unavailable.</p>
+      {:else if previewResult.fires.length > 0}
         <ul
           class="cinder-schedule-builder__preview-list"
           aria-labelledby={`${baseId}-preview-label`}
         >
-          {#each fires as fire (fire.id)}
+          {#each previewResult.fires as fire (fire.id)}
             <li class="cinder-schedule-builder__preview-item">{fire.label}</li>
           {/each}
         </ul>

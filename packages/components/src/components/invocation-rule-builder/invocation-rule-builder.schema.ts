@@ -163,7 +163,7 @@ const schema = {
         required: ['label', 'value'],
       },
       description:
-        'Options for the condition operator selector. Consumer-provided list\nof operators, e.g. "matches", "is", "is-not", "contains". Not used\nwhen `mode` is `\'conditions\'`, since cinder supplies a fixed operator\nset in that mode.',
+        'Options for the condition operator selector. Consumer-provided list\nof operators, e.g. "matches", "is", "is-not", "contains". Required in\nfull mode; optional (and ignored) when `mode` is `\'conditions\'`, since\ncinder supplies a fixed operator set in that mode — so a conditions-only\nconfiguration validates without it.',
     },
     actionOptions: {
       type: 'array',
@@ -208,7 +208,7 @@ const schema = {
         required: ['label', 'value'],
       },
       description:
-        "Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers. Not used when\n`mode` is `'conditions'`, since actions are not rendered.",
+        "Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers. Required in full\nmode; optional (and ignored) when `mode` is `'conditions'`, since actions\nare not rendered — so a conditions-only configuration validates without it.",
     },
     readonly: {
       const: true,
@@ -237,7 +237,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['actionOptions', 'fieldOptions', 'operatorOptions', 'readonly', 'rules'],
+  required: ['fieldOptions', 'readonly', 'rules'],
   metadata: {
     unsupportedProps: [
       {

@@ -172,7 +172,36 @@
       }
     }
     flushRun();
-    return result;
+
+    // `flattenSteps` computes `aria-current` within each contiguous run; on the
+    // outer rail, keep a SINGLE deepest current row across the whole timeline so
+    // a branch group between two active runs doesn't produce two current rows.
+    return applyGlobalRailAriaCurrent(result);
+  }
+
+  // The "current depth" of a rail row: deeper is more current. A depth-limit row
+  // that hides a current descendant counts one level below its own depth.
+  function rowCurrentDepth(row: RenderedEntry): number {
+    if (row.kind === 'depth-limit') return row.hiddenCurrent ? row.depth + 1 : -1;
+    if (row.kind === 'step') return isCurrent(row.step.status) ? row.depth : -1;
+    return -1;
+  }
+
+  // Reduce the rail to a single `aria-current="step"` row: the deepest current
+  // step across all top-level runs. Branch groups do not participate.
+  function applyGlobalRailAriaCurrent(rows: RenderedEntry[]): RenderedEntry[] {
+    let deepestRow: RenderedEntry | undefined;
+    let deepestDepth = -1;
+    for (const row of rows) {
+      const depth = rowCurrentDepth(row);
+      if (depth > deepestDepth) {
+        deepestDepth = depth;
+        deepestRow = row;
+      }
+    }
+    return rows.map((row) =>
+      row.kind === 'branch' ? row : { ...row, ariaCurrent: row === deepestRow },
+    );
   }
 
   // Flatten a RunStep[] (with nested children) into rendered rows, computing the

@@ -36,6 +36,7 @@
     InvocationRuleCondition,
     InvocationRuleFieldType,
     InvocationRuleOption,
+    InvocationRuleValueChoice,
   } from './invocation-rule-builder.types.ts';
 
   /**
@@ -91,8 +92,64 @@
   }
 
   /** Enum choices declared on a field option, or an empty list. */
-  function fieldEnumOptions(fieldValue: string): InvocationRuleOption[] {
+  function fieldEnumOptions(fieldValue: string): InvocationRuleValueChoice[] {
     return fieldOptions.find((option) => option.value === fieldValue)?.options ?? [];
+  }
+
+  /**
+   * The type-appropriate default `value` for a field in conditions-only mode —
+   * used both when a condition is first added and when its `field` changes to
+   * one of a different (or enum-incompatible) type, so the stored value always
+   * matches what the typed control actually renders.
+   */
+  function defaultConditionValue(fieldValue: string): string {
+    const type = fieldValueType(fieldValue);
+    switch (type) {
+      case 'boolean':
+        // Matches the checkbox's own read: `checked={condition.value === 'true'}`.
+        return 'false';
+      case 'enum':
+        return fieldEnumOptions(fieldValue)[0]?.value ?? '';
+      case 'number':
+      case 'string':
+        return '';
+    }
+  }
+
+  /**
+   * Whether a stored condition value is still a faithful representation of
+   * what the typed control for `type` would render — i.e. whether it's safe
+   * to keep across a field change instead of resetting to the type's default.
+   */
+  function isValueValidForFieldType(
+    value: string,
+    type: InvocationRuleFieldType,
+    fieldValue: string,
+  ): boolean {
+    switch (type) {
+      case 'boolean':
+        return value === 'true' || value === 'false';
+      case 'enum':
+        return fieldEnumOptions(fieldValue).some((option) => option.value === value);
+      case 'number':
+        return value === '' || Number.isFinite(Number(value));
+      case 'string':
+        return true;
+    }
+  }
+
+  /**
+   * Emits `onchange`. In conditions-only mode, strips `actions` from every
+   * emitted rule first — conditions-only rules never carry an action target,
+   * even when the incoming `rules` prop arrived with actions already set (a
+   * consumer switching an existing full-mode rule set into conditions-only
+   * mode, for example).
+   */
+  function emitChange(nextRules: InvocationRule[], change: InvocationRuleChange): void {
+    const rulesToEmit = conditionsOnly
+      ? nextRules.map((rule) => (rule.actions.length === 0 ? rule : { ...rule, actions: [] }))
+      : nextRules;
+    onchange?.(rulesToEmit, change);
   }
 
   /** Announcement text for the live region. */
@@ -134,14 +191,14 @@
       { id: ruleId, label: `Rule ${rules.length + 1}`, conditions: [], actions: [] },
     ];
     const change: InvocationRuleChange = { type: 'add-rule', ruleId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce('Rule added.');
   }
 
   function handleRemoveRule(ruleId: string, ruleLabel: string, ruleIndex: number): void {
     const nextRules = rules.filter((rule) => rule.id !== ruleId);
     const change: InvocationRuleChange = { type: 'remove-rule', ruleId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce(`${ruleLabel} removed.`);
 
     // Move focus to the previous rule's remove button, or the add-rule button.
@@ -164,7 +221,7 @@
     const [moved] = nextRules.splice(fromIndex, 1);
     nextRules.splice(toIndex, 0, moved!);
     const change: InvocationRuleChange = { type: 'move-rule', ruleId, fromIndex, toIndex };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce(`${moved!.label} moved to position ${toIndex + 1} of ${nextRules.length}.`);
   }
 
@@ -176,7 +233,7 @@
     if (currentLabel === nextLabel) return;
     const nextRules = updateRules(ruleId, (rule) => ({ ...rule, label: nextLabel }));
     const change: InvocationRuleChange = { type: 'rename-rule', ruleId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
   }
 
   function ruleLabelDraft(rule: InvocationRule): string {
@@ -192,15 +249,19 @@
     const conditionId = generateId();
     const firstField = fieldOptions[0]?.value ?? '';
     const firstOperator = resolvedOperatorOptions[0]?.value ?? '';
+    // In conditions-only mode, seed a type-appropriate default (e.g. 'false'
+    // for a boolean field, the first choice for an enum field) so the stored
+    // value matches what the typed control renders immediately on add.
+    const initialValue = conditionsOnly ? defaultConditionValue(firstField) : '';
     const nextRules = updateRules(ruleId, (rule) => ({
       ...rule,
       conditions: [
         ...rule.conditions,
-        { id: conditionId, field: firstField, operator: firstOperator, value: '' },
+        { id: conditionId, field: firstField, operator: firstOperator, value: initialValue },
       ],
     }));
     const change: InvocationRuleChange = { type: 'add-condition', ruleId, conditionId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce('Condition added.');
   }
 
@@ -215,7 +276,7 @@
       conditions: rule.conditions.filter((condition) => condition.id !== conditionId),
     }));
     const change: InvocationRuleChange = { type: 'remove-condition', ruleId, conditionId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce('Condition removed.');
 
     tick().then(() => {
@@ -238,9 +299,24 @@
   ): void {
     const nextRules = updateRules(ruleId, (rule) => ({
       ...rule,
-      conditions: rule.conditions.map((condition) =>
-        condition.id === conditionId ? { ...condition, [field]: value } : condition,
-      ),
+      conditions: rule.conditions.map((condition) => {
+        if (condition.id !== conditionId) return condition;
+        // Changing which field a condition tests, in conditions-only mode: if
+        // the current value is no longer a faithful representation of the new
+        // field's type (e.g. an arbitrary string against a field that's now
+        // boolean, or a value outside a new enum field's choices), reset it to
+        // that type's default so the stored value matches the typed control
+        // that's about to render. Same-type (and enum-with-matching-value)
+        // field changes keep the value the user already entered.
+        if (field === 'field' && conditionsOnly) {
+          const nextType = fieldValueType(value);
+          const nextValue = isValueValidForFieldType(condition.value, nextType, value)
+            ? condition.value
+            : defaultConditionValue(value);
+          return { ...condition, field: value, value: nextValue };
+        }
+        return { ...condition, [field]: value };
+      }),
     }));
     const change: InvocationRuleChange = {
       type: 'update-condition',
@@ -248,7 +324,7 @@
       conditionId,
       field,
     };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
   }
 
   // ---------------------------------------------------------------------------
@@ -263,7 +339,7 @@
       actions: [...rule.actions, { id: actionId, target: firstTarget }],
     }));
     const change: InvocationRuleChange = { type: 'add-action', ruleId, actionId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce('Action added.');
   }
 
@@ -278,7 +354,7 @@
       actions: rule.actions.filter((action) => action.id !== actionId),
     }));
     const change: InvocationRuleChange = { type: 'remove-action', ruleId, actionId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
     announce('Action removed.');
 
     tick().then(() => {
@@ -301,7 +377,7 @@
       ),
     }));
     const change: InvocationRuleChange = { type: 'update-action', ruleId, actionId };
-    onchange?.(nextRules, change);
+    emitChange(nextRules, change);
   }
 
   // ---------------------------------------------------------------------------

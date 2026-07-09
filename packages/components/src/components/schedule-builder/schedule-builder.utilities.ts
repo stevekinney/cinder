@@ -146,7 +146,12 @@ export function lowerDailyAt(time: string): ScheduleValue {
 /** "weekly on [days] at HH:MM" → a cron value. Empty days falls back to every day. */
 export function lowerWeeklyAt(days: number[], time: string): ScheduleValue {
   const { hour, minute } = parseTime(time);
-  const dow = days.length > 0 ? days.toSorted((a, b) => a - b).join(',') : '*';
+  // Don't use `Array.prototype.toSorted()` — it is ES2023 and the package
+  // targets ES2022, so it crashes runtimes that follow the target. Sort a
+  // caller-owned copy in place instead of mutating the input.
+  const sortedDays = [...days];
+  sortedDays.sort((a, b) => a - b);
+  const dow = sortedDays.length > 0 ? sortedDays.join(',') : '*';
   return { mode: 'cron', expression: `${minute} ${hour} * * ${dow}` };
 }
 
@@ -161,7 +166,18 @@ export function lowerMonthlyOnDay(day: number, time: string): ScheduleValue {
 // Cross-mode conversion — preserve intent losslessly where representable.
 // ---------------------------------------------------------------------------
 
-/** Convert any value into cron fields, so switching into cron mode is lossless. */
+/**
+ * Convert any value into cron fields, so switching into cron mode always has
+ * something sensible to show. Only `minutes` and `hours` intervals are
+ * losslessly representable as a cron step wildcard on the minute or hour
+ * field. `days` and `weeks` are NOT: a step wildcard on the day-of-month
+ * field resets at the start of every month rather than repeating every N
+ * days, and cron has no field for "every N weeks" at all. Silently emitting
+ * a step expression for those units would change the schedule's actual
+ * cadence the moment a user merely LOOKED at the Cron tab. Seed an honest
+ * neutral default (daily at midnight) instead — see `valueToInterval` below,
+ * which mirrors this by refusing to recover `days`/`weeks` from cron.
+ */
 export function valueToCronFields(value: ScheduleValue): string[] {
   if (value.mode === 'cron') return splitCron(value.expression);
   switch (value.unit) {
@@ -170,17 +186,19 @@ export function valueToCronFields(value: ScheduleValue): string[] {
     case 'hours':
       return ['0', `*/${value.every}`, '*', '*', '*'];
     case 'days':
-      return ['0', '0', `*/${value.every}`, '*', '*'];
     case 'weeks':
-      // Cron has no "every N weeks"; approximate as weekly on Sunday.
-      return ['0', '0', '*', '*', '0'];
+      return ['0', '0', '*', '*', '*'];
   }
 }
 
 /**
  * Recover an interval `{ every, unit }` from a value when representable, so
- * switching into interval mode is lossless for simple step patterns. Returns
- * `undefined` when the cron expression is not a pure interval.
+ * switching into interval mode is lossless for simple step patterns. Only
+ * `minutes` and `hours` steps are recovered — a day-of-month step wildcard
+ * is deliberately NOT read back as `{ unit: 'days' }`: cron's day-of-month
+ * step resets every month, so it is not equivalent to "every N days" and
+ * `valueToCronFields` never produces one for an interval value. Returns
+ * `undefined` when the cron expression is not a pure minute/hour interval.
  */
 export function valueToInterval(
   value: ScheduleValue,
@@ -192,8 +210,6 @@ export function valueToInterval(
   if (minuteStep && hour === '*' && dom === '*') return { every: minuteStep, unit: 'minutes' };
   const hourStep = cronFieldStep(hour);
   if (hourStep && minute === '0' && dom === '*') return { every: hourStep, unit: 'hours' };
-  const domStep = cronFieldStep(dom);
-  if (domStep && minute === '0' && hour === '0') return { every: domStep, unit: 'days' };
   return undefined;
 }
 
@@ -227,11 +243,18 @@ export function describeValue(value: ScheduleValue): string {
 
   // Weekly: fixed day-of-week, wildcards elsewhere.
   if (dom === '*' && month === '*' && dow !== '*' && /^[\d,]+$/.test(dow)) {
-    const names = dow
-      .split(',')
-      .map((d) => DOW_NAMES[Number(d) % 7])
-      .join(', ');
-    return `Weekly on ${names}${at}`;
+    const dayNumbers = dow.split(',').map(Number);
+    // Day-of-week is declared 0–6 (Sun–Sat) by CRON_FIELDS, and
+    // validateCronField already rejects a user-typed 7 for that reason — this
+    // component does NOT treat 7 as a Sunday alias (some cron dialects do).
+    // An out-of-range day here can only come from a consumer-supplied value
+    // that bypassed field validation; fall through to the raw cron fallback
+    // below rather than silently wrap it into a misleading weekday via `% 7`.
+    const allDaysInRange = dayNumbers.every((day) => Number.isInteger(day) && day >= 0 && day <= 6);
+    if (allDaysInRange) {
+      const names = dayNumbers.map((day) => DOW_NAMES[day] ?? '').join(', ');
+      return `Weekly on ${names}${at}`;
+    }
   }
   // Monthly: fixed day-of-month.
   if (/^\d+$/.test(dom) && month === '*' && dow === '*') {

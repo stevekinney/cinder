@@ -14,15 +14,13 @@
  * ======================================== */
 
   .cinder-connection-indicator {
-    --cinder-connection-indicator-color: var(--cinder-text-muted);
-
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1-5);
     padding: var(--cinder-space-0-5) var(--cinder-space-2-5);
     border-radius: var(--cinder-radius-full);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-connection-indicator-color);
+    color: var(--cinder-text-muted);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1.25;
@@ -112,27 +110,27 @@
  * ---------------------------------------- */
 
   .cinder-connection-indicator[data-cinder-status='connecting'] {
-    --cinder-connection-indicator-color: var(--cinder-warning);
+    color: var(--cinder-warning);
   }
 
   .cinder-connection-indicator[data-cinder-status='live'] {
-    --cinder-connection-indicator-color: var(--cinder-success);
+    color: var(--cinder-success);
   }
 
   .cinder-connection-indicator[data-cinder-status='reconnecting'] {
-    --cinder-connection-indicator-color: var(--cinder-warning);
+    color: var(--cinder-warning);
   }
 
   .cinder-connection-indicator[data-cinder-status='polling'] {
-    --cinder-connection-indicator-color: var(--cinder-text-muted);
+    color: var(--cinder-text-muted);
     font-weight: var(--cinder-font-normal);
   }
 
   .cinder-connection-indicator[data-cinder-status='stale'] {
-    --cinder-connection-indicator-color: var(--cinder-info);
+    color: var(--cinder-info);
   }
 
   .cinder-connection-indicator[data-cinder-status='closed'] {
-    --cinder-connection-indicator-color: var(--cinder-text-muted);
+    color: var(--cinder-text-muted);
   }
 }

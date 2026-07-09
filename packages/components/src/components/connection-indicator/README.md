@@ -55,7 +55,8 @@ Use `ConnectionIndicator` for a compact, self-contained pill that reports transp
 
 <!-- generated:variables:start -->
 
-- `--cinder-connection-indicator-color`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

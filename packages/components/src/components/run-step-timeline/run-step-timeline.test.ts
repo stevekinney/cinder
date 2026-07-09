@@ -1175,6 +1175,23 @@ describe('branch groups', () => {
     expect(items[1]?.getAttribute('data-cinder-status')).toBe('branch');
   });
 
+  test('keeps a single aria-current on the rail when active steps flank a branch group', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'before', label: 'Before', status: 'running' },
+      branchGroup,
+      { id: 'after', label: 'After', status: 'running' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const currentRows = [...(rootList?.children ?? [])].filter(
+      (el) =>
+        el.classList.contains('cinder-run-step-timeline__item') &&
+        el.getAttribute('aria-current') === 'step',
+    );
+    // Exactly one current row across the whole outer rail, not one per run.
+    expect(currentRows.length).toBe(1);
+  });
+
   test('accepts a branch group through the generated schema', () => {
     const ajv = new Ajv2020({ strict: false });
     const validate = ajv.compile(runStepTimelineSchema);

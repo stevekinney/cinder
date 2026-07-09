@@ -303,18 +303,20 @@ export type InvocationRuleBuilderSchemaProps = {
 
   /**
    * Options for the condition operator selector. Consumer-provided list
-   * of operators, e.g. "matches", "is", "is-not", "contains". Not used
-   * when `mode` is `'conditions'`, since cinder supplies a fixed operator
-   * set in that mode.
+   * of operators, e.g. "matches", "is", "is-not", "contains". Required in
+   * full mode; optional (and ignored) when `mode` is `'conditions'`, since
+   * cinder supplies a fixed operator set in that mode — so a conditions-only
+   * configuration validates without it.
    */
-  operatorOptions: InvocationRuleOption[];
+  operatorOptions?: InvocationRuleOption[];
 
   /**
    * Options for the action target selector. Consumer-provided list of
-   * targets, e.g. review-agent slugs or step identifiers. Not used when
-   * `mode` is `'conditions'`, since actions are not rendered.
+   * targets, e.g. review-agent slugs or step identifiers. Required in full
+   * mode; optional (and ignored) when `mode` is `'conditions'`, since actions
+   * are not rendered — so a conditions-only configuration validates without it.
    */
-  actionOptions: InvocationRuleOption[];
+  actionOptions?: InvocationRuleOption[];
 
   /**
    * Must be true for schema-driven usage because editable mode requires

@@ -114,13 +114,10 @@ describe('InvocationRuleBuilder', () => {
       const ajv = new Ajv2020({ strict: false });
       const validate = ajv.compile(invocationRuleBuilderSchema);
 
-      expect(invocationRuleBuilderSchema.required).toEqual([
-        'actionOptions',
-        'fieldOptions',
-        'operatorOptions',
-        'readonly',
-        'rules',
-      ]);
+      // `operatorOptions`/`actionOptions` are optional: they are ignored in
+      // conditions-only mode, so a conditions-only configuration validates
+      // without them. They remain declared properties for full-mode usage.
+      expect(invocationRuleBuilderSchema.required).toEqual(['fieldOptions', 'readonly', 'rules']);
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('rules');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('fieldOptions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('operatorOptions');
@@ -923,6 +920,219 @@ describe('InvocationRuleBuilder', () => {
       expect(container.textContent).toContain('Label');
       expect(container.textContent).toContain('foo');
       expect(container.textContent).not.toContain('Actions');
+    });
+
+    describe('typed default value on add', () => {
+      test('seeds a boolean field with "false" (matches the unchecked checkbox)', async () => {
+        const rule = makeRule({ conditions: [] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+          fieldOptions: [{ value: 'enabled', label: 'Enabled', type: 'boolean' }],
+        });
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('false');
+      });
+
+      test('seeds an enum field with its first choice (matches the pre-selected select option)', async () => {
+        const rule = makeRule({ conditions: [] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+          fieldOptions: [
+            {
+              value: 'severity',
+              label: 'Severity',
+              type: 'enum',
+              options: [
+                { value: 'low', label: 'Low' },
+                { value: 'high', label: 'High' },
+              ],
+            },
+          ],
+        });
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('low');
+      });
+
+      test('seeds a number field with an empty value', async () => {
+        const rule = makeRule({ conditions: [] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+          fieldOptions: [{ value: 'retries', label: 'Retries', type: 'number' }],
+        });
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('');
+      });
+
+      test('seeds a string (or untyped) field with an empty value', async () => {
+        const rule = makeRule({ conditions: [] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+          fieldOptions: [{ value: 'label', label: 'Label' }],
+        });
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('');
+      });
+    });
+
+    describe('typed value reset on field change', () => {
+      test('resets a stale value to "false" when the field changes to boolean', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'enabled' } });
+
+        expect(onchange).toHaveBeenCalledTimes(1);
+        const [nextRules, change] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].field).toBe('enabled');
+        expect(nextRules[0].conditions[0].value).toBe('false');
+        expect(change.type).toBe('update-condition');
+        expect(change.field).toBe('field');
+      });
+
+      test('resets a value outside the new choices to the first choice when the field changes to enum', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'severity' } });
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('low');
+      });
+
+      test('keeps the existing value when the field changes to an enum field whose choices already include it', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'high' })] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'severity' } });
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('high');
+      });
+
+      test('resets a non-numeric value to empty when the field changes to number', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'retries' } });
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('');
+      });
+
+      test('keeps an existing numeric-looking value when the field changes to number', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: '7' })] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'retries' } });
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('7');
+      });
+
+      test('keeps the existing value when the field changes between two fields of the same (string) type', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule], {
+          fieldOptions: [...typedFieldOptions, { value: 'owner', label: 'Owner' }],
+        });
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'owner' } });
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('foobar');
+      });
+
+      test('full mode never resets the condition value when the field changes (conditions-only-only behavior)', async () => {
+        const rule = makeRule({ conditions: [makeCondition({ field: 'path', value: 'src/**' })] });
+        const { container, onchange } = renderBuilder([rule]);
+        const fieldSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Field for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.change(fieldSelect, { target: { value: 'label' } });
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('src/**');
+      });
+    });
+
+    describe('stripping hidden actions', () => {
+      test('emits actions: [] for a rule that arrives with actions and is then edited in conditions-only mode', async () => {
+        const ruleWithActions = makeRule({
+          conditions: [makeCondition({ field: 'label', value: 'foo' })],
+          actions: [makeAction()],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([ruleWithActions]);
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        expect(onchange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].actions).toEqual([]);
+      });
+
+      test('strips actions from every rule in the emitted array, not only the edited one', async () => {
+        const editedRule = makeRule({
+          id: 'r1',
+          conditions: [makeCondition({ field: 'label', value: 'foo' })],
+          actions: [makeAction()],
+        });
+        const untouchedRule = makeRule({
+          id: 'r2',
+          label: 'Second Rule',
+          conditions: [makeCondition({ id: 'c2', field: 'label', value: 'bar' })],
+          actions: [makeAction({ id: 'a2' })],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([editedRule, untouchedRule]);
+        const addCondBtn = container.querySelectorAll<HTMLElement>('[data-irb-add-condition]')[0]!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].actions).toEqual([]);
+        expect(nextRules[1].actions).toEqual([]);
+      });
+
+      test('full mode still preserves actions on edit (does not strip them)', async () => {
+        const rule = makeRule({ actions: [makeAction()] });
+        const { container, onchange } = renderBuilder([rule]);
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].actions).toEqual([makeAction()]);
+      });
     });
   });
 

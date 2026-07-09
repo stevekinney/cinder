@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-connection-indicator-color'];
+const variables: readonly string[] = [];
 
 export default variables;

@@ -336,23 +336,25 @@ describe('schedule-builder utilities', () => {
       ]);
     });
 
-    test('lowers an interval of days to a day-of-month-step wildcard', () => {
+    test('seeds an honest neutral default (daily at midnight) for a days interval, not a misleading day-of-month step', () => {
+      // A day-of-month `*/3` resets every month, so it is NOT "every 3 days" —
+      // producing it here would silently change the schedule's cadence.
       expect(valueToCronFields({ mode: 'interval', every: 3, unit: 'days' })).toEqual([
         '0',
         '0',
-        '*/3',
+        '*',
         '*',
         '*',
       ]);
     });
 
-    test('approximates an interval of weeks as weekly on Sunday (no native cron equivalent)', () => {
+    test('seeds an honest neutral default (daily at midnight) for a weeks interval (no native cron equivalent)', () => {
       expect(valueToCronFields({ mode: 'interval', every: 2, unit: 'weeks' })).toEqual([
         '0',
         '0',
         '*',
         '*',
-        '0',
+        '*',
       ]);
     });
   });
@@ -377,11 +379,11 @@ describe('schedule-builder utilities', () => {
       });
     });
 
-    test('recovers a days interval from a day-of-month-step cron expression', () => {
-      expect(valueToInterval({ mode: 'cron', expression: '0 0 */3 * *' })).toEqual({
-        every: 3,
-        unit: 'days',
-      });
+    test('does NOT recover a "days" unit from a day-of-month-step cron expression', () => {
+      // A day-of-month `*/3` resets every month — it is not equivalent to "every
+      // 3 days", and `valueToCronFields` never produces one for an interval
+      // value, so recovering it here would be a lossy, misleading round-trip.
+      expect(valueToInterval({ mode: 'cron', expression: '0 0 */3 * *' })).toBeUndefined();
     });
 
     test('returns undefined when month is fixed (not a pure interval)', () => {
@@ -396,7 +398,7 @@ describe('schedule-builder utilities', () => {
       expect(valueToInterval({ mode: 'cron', expression: '5 */2 * * *' })).toBeUndefined();
     });
 
-    test('returns undefined for a day-step expression whose time is not midnight', () => {
+    test('returns undefined for a day-of-month-step expression regardless of its time', () => {
       expect(valueToInterval({ mode: 'cron', expression: '0 9 */3 * *' })).toBeUndefined();
     });
 
@@ -452,6 +454,19 @@ describe('schedule-builder utilities', () => {
 
     test('falls back to a raw cron description when both day-of-month and day-of-week are fixed', () => {
       expect(describeValue({ mode: 'cron', expression: '0 9 15 * 1' })).toBe('Cron: 0 9 15 * 1');
+    });
+
+    test('falls back to a raw cron description for an out-of-range day-of-week (does not alias 7 to Sunday)', () => {
+      // CRON_FIELDS declares day-of-week as 0–6; this component does not treat
+      // 7 as a Sunday alias the way some cron dialects do. A user-typed field
+      // can never reach describeValue with a 7 (validateCronField rejects it),
+      // but a consumer-supplied value can bypass that — describeValue must not
+      // index DOW_NAMES with a wrapped, misleading weekday (`7 % 7` -> Sunday).
+      expect(describeValue({ mode: 'cron', expression: '0 9 * * 7' })).toBe('Cron: 0 9 * * 7');
+    });
+
+    test('falls back to a raw cron description when any day in a multi-day list is out of range', () => {
+      expect(describeValue({ mode: 'cron', expression: '0 9 * * 1,7' })).toBe('Cron: 0 9 * * 1,7');
     });
   });
 });
