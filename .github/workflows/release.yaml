@@ -14,8 +14,9 @@ name: release
 # The publish path validates the package artifact it is about to publish
 # (`validate:consumer` + package weight), but it does not rerun the full
 # source-validation suite. Source validation is owned by PR CI and main-green;
-# duplicating it here makes the release job timeout-prone and turns publish
-# into another full test runner instead of an artifact gate.
+# the publish path waits for the same-SHA main-green run before publishing.
+# Duplicating those checks here makes the release job timeout-prone and turns
+# publish into another full test runner instead of an artifact gate.
 #
 # `workflow_dispatch` exists for manual dry-runs of the same artifact path.
 
@@ -30,6 +31,8 @@ on:
   workflow_dispatch: {}
 
 permissions:
+  actions: read
+  checks: read
   contents: write
   pull-requests: write
   id-token: write
@@ -126,6 +129,38 @@ jobs:
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for main-green source validation
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          main_green_run_id=''
+          for attempt in 1 2 3 4 5; do
+            main_green_run_id="$(gh run list \
+              --workflow main-green.yaml \
+              --commit "$GITHUB_SHA" \
+              --event push \
+              --json databaseId \
+              --limit 1 \
+              --jq '.[0].databaseId // ""')"
+
+            if [ -n "$main_green_run_id" ]; then
+              break
+            fi
+
+            echo "main-green run for $GITHUB_SHA is not visible yet (attempt $attempt/5)."
+            sleep 30
+          done
+
+          if [ -z "$main_green_run_id" ]; then
+            echo "::error::No main-green push run found for $GITHUB_SHA; refusing to publish without source validation."
+            exit 1
+          fi
+
+          gh run watch "$main_green_run_id" --exit-status --interval 30
 
       - name: Check validated package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'

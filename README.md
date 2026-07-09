@@ -215,7 +215,6 @@ The npm artifact has one source of truth: `packages/components/scripts/pack-for-
 Before a release, run:
 
 ```bash
-bun run validate
 bun run --filter=@lostgradient/cinder validate:consumer
 bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 ```

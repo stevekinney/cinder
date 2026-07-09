@@ -178,6 +178,39 @@ function runValidation(): void {
   }
   pass('id-token: write is present');
 
+  const hasActionsRead = lines.some((line) => !isComment(line) && /actions\s*:\s*read/.test(line));
+  if (!hasActionsRead) {
+    fail(
+      'release.yaml is missing `actions: read`. The publish path must be able to inspect ' +
+        'the same-SHA main-green workflow run before publishing.',
+    );
+  }
+  pass('actions: read is present');
+
+  const hasChecksRead = lines.some((line) => !isComment(line) && /checks\s*:\s*read/.test(line));
+  if (!hasChecksRead) {
+    fail(
+      'release.yaml is missing `checks: read`. `gh run watch` needs read access to follow ' +
+        'the same-SHA main-green workflow run before publishing.',
+    );
+  }
+  pass('checks: read is present');
+
+  const hasMainGreenPublishGate =
+    workflowContent.includes('Wait for main-green source validation') &&
+    workflowContent.includes("steps.changesets.outputs.hasChangesets == 'false'") &&
+    workflowContent.includes('--workflow main-green.yaml') &&
+    workflowContent.includes('gh run watch "$main_green_run_id" --exit-status');
+
+  if (!hasMainGreenPublishGate) {
+    fail(
+      'release.yaml must wait for the same-SHA main-green run before publishing. ' +
+        'Keep source validation centralized in main-green, but do not let release publish ' +
+        'when that source gate is absent, pending forever, or failed.',
+    );
+  }
+  pass('Publish path waits for same-SHA main-green source validation');
+
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.
   // We scan for the step boundary and extract its env: block, then check for tokens.
