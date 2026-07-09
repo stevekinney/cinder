@@ -2,12 +2,12 @@ name: changeset-guard
 
 # Fast PR gate for the pre-1.0 changeset bump policy.
 #
-# `check:changeset-prerelease-bumps` also runs inside `bun run validate` (release
-# workflow, push to main), but the heavyweight PR suites (unit-tests, browser-tests)
-# exclude `.changeset/**` from their path filters — so a PR that ONLY edits a
-# changeset to a `major` bump would not trigger them, and the policy violation would
-# surface as a red `release` job on `main` instead of failing on the branch that
-# introduced it. This workflow runs the guard directly on exactly those changes.
+# `check:changeset-prerelease-bumps` also runs in main-green and release, but the
+# heavyweight PR suites (unit-tests, browser-tests) exclude `.changeset/**` from
+# their path filters — so a PR that ONLY edits a changeset to a `major` bump would
+# not trigger them, and the policy violation would otherwise surface on `main`
+# instead of failing on the branch that introduced it. This workflow runs the guard
+# directly on exactly those changes.
 #
 # The guard parses changesets with `@changesets/parse` (the same parser Changesets
 # uses), so the job installs dependencies before running. Edits to this workflow

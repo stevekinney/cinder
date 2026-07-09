@@ -6,16 +6,18 @@ name: release
 #   - If unreleased changesets exist, the action opens (or updates) a
 #     "Version Packages" pull request that bumps `packages/components/package.json`
 #     and updates the changelog. Merging that PR re-triggers this workflow,
-#     which then publishes to npm with provenance.
-#   - If no changesets are pending, the workflow is a no-op.
+#     which then publishes to npm through npm Trusted Publishing.
+#   - If no changesets are pending, the action enters the publish path. The
+#     publish script skips cleanly when the package version already exists on
+#     npm.
 #
-# The full `bun run validate` (lint + typecheck + full coverage suite +
-# validate:consumer) only runs on the publish path (no pending changesets).
-# The pending-changesets path just opens/updates the Version Packages PR — that
-# PR's own commits already passed PR CI and main-green, so re-validating here
-# would just burn minutes re-checking code this workflow isn't publishing yet.
+# The publish path validates the package artifact it is about to publish
+# (`validate:consumer` + package weight), but it does not rerun the full
+# source-validation suite. Source validation is owned by PR CI and main-green;
+# duplicating it here makes the release job timeout-prone and turns publish
+# into another full test runner instead of an artifact gate.
 #
-# `workflow_dispatch` exists for manual dry-runs — see the `dry-run` input.
+# `workflow_dispatch` exists for manual dry-runs of the same artifact path.
 
 on:
   push:
@@ -75,10 +77,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # Cheap pre-check so the expensive `bun run validate` below only runs on
-      # the publish path. Pending changesets mean this push will just open/
+      # Cheap pre-check so artifact validation only runs on the publish path.
+      # Pending changesets mean this push will just open/
       # update the Version Packages PR (no publish) — that PR's own commits
-      # already passed PR CI and main-green, so there is nothing new to
+      # already passed PR CI and main-green, so there is no package artifact to
       # validate here. Excludes .changeset/README.md, which is not a changeset.
       - name: Detect pending changesets
         id: pending-changesets
@@ -89,27 +91,29 @@ jobs:
             echo "pending=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # Runs on EVERY push, independent of the validate-skip decision below.
-      # The full `bun run validate` (which contains this same guard via
-      # `validate:workflow`) is skipped on the pending-changesets path, but the
-      # ignored-package changeset check must not be: an illegal changeset for an
-      # ignored package (e.g. @cinder/playground) would otherwise sit unconsumed
-      # while `changesets/action` keeps re-opening the Version Packages PR,
-      # instead of failing here with the actionable error.
+      # Runs on EVERY push, independent of the artifact-validation decision
+      # below. The ignored-package changeset check must not wait for the publish
+      # path: an illegal changeset for an ignored package (e.g.
+      # @cinder/playground) would otherwise sit unconsumed while
+      # `changesets/action` keeps re-opening the Version Packages PR, instead
+      # of failing here with the actionable error.
       - name: Guard against ignored-package changesets
         if: github.event_name == 'push'
         run: bun run --filter=@lostgradient/cinder validate:release-workflow
 
-      # Chromium is only needed by validate:consumer, which runs inside
-      # `bun run validate` — gate it identically so the no-publish path
-      # skips the browser download too.
+      - name: Guard changeset bump policy
+        if: github.event_name == 'push'
+        run: bun run --filter=@lostgradient/cinder check:changeset-prerelease-bumps
+
+      # Chromium is only needed by validate:consumer — gate it identically so
+      # the no-publish path skips the browser download too.
       - name: Install Chromium for consumer validation
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bunx playwright install --with-deps chromium
 
-      - name: Validate workspace
+      - name: Validate package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
-        run: bun run validate
+        run: bun run --filter=@lostgradient/cinder validate:consumer
 
       - name: Create Release Pull Request or publish to npm
         id: changesets
@@ -124,7 +128,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check validated package artifact budget
-        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
       # Primary publish path: npm Trusted Publishing (OIDC). No long-lived token.
@@ -151,4 +155,4 @@ jobs:
       # validate:consumer installs into the fixture apps.
       - name: Publish (dry-run)
         if: github.event_name == 'workflow_dispatch'
-        run: bun run changeset:publish:dry
+        run: bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation

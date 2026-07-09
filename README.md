@@ -216,7 +216,8 @@ Before a release, run:
 
 ```bash
 bun run validate
-bun run --filter=@lostgradient/cinder package:weight:check
+bun run --filter=@lostgradient/cinder validate:consumer
+bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 ```
 
 ## Repository
