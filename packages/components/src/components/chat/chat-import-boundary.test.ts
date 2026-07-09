@@ -1,9 +1,8 @@
 /**
  * Conversationalist boundary regression test for the Chat component.
  *
- * Chat should get transcript types from the published package, while keeping
- * runtime Conversationalist imports isolated to the small bridge modules that
- * intentionally delegate builder/query behavior.
+ * Chat should get transcript types from the published package without pulling
+ * the Conversationalist runtime into Cinder's browser graph.
  */
 
 import { describe, expect, it } from 'bun:test';
@@ -13,11 +12,7 @@ const CHAT_ROOT = import.meta.dir;
 const CONVERSATIONALIST_PACKAGE = 'conversationalist';
 const CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN =
   /(?:from\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*\(\s*['"]conversationalist(?:\/[^'"]*)?['"])/;
-const RUNTIME_IMPORT_ALLOWLIST = new Set([
-  'builders.ts',
-  'utilities/conversation.ts',
-  'chat-import-boundary.test.ts',
-]);
+const RUNTIME_IMPORT_ALLOWLIST = new Set(['chat-import-boundary.test.ts']);
 
 type ModuleSpecifier = {
   specifier: string;
@@ -149,7 +144,7 @@ describe('chat import boundary', () => {
     ]);
   });
 
-  it('runtime Conversationalist imports stay isolated to bridge modules', async () => {
+  it('runtime Conversationalist imports stay out of the chat package', async () => {
     const glob = new Bun.Glob('**/*.{ts,svelte}');
     const relativePaths = await Array.fromAsync(glob.scan({ cwd: CHAT_ROOT }));
     const checkedPaths = await Promise.all(

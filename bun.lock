@@ -43,7 +43,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.8.0",
+      "version": "0.9.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -52,6 +52,7 @@
         "@modelcontextprotocol/sdk": "^1.29.0",
         "@tanstack/virtual-core": "^3.17.1",
         "ajv": "^8",
+        "conversationalist": "^0.2.1",
         "diff-match-patch": "^1.0.5",
         "esm-env": "^1.2.0",
         "libphonenumber-js": "^1.13.3",
@@ -103,7 +104,6 @@
         "@types/mdast": "^4.0.4",
         "@types/unist": "^3.0.0",
         "comlink": "^4.4.2",
-        "conversationalist": "^0.2.1",
         "hast-util-sanitize": "^5.0.0",
         "js-yaml": "^4.1.0",
         "lucide-svelte": ">=0.400.0 <1",
