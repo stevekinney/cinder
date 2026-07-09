@@ -26,7 +26,16 @@ type CreateConversationOptions = {
 type ConversationEnvironmentInput = Partial<ConversationEnvironment>;
 type MessageContentInput = MessageInput['content'] | MultiModalContent;
 type LooseMessageInput = Omit<MessageInput, 'content'> & { content: MessageContentInput };
-type MessageInputOrEnvironment = LooseMessageInput | ConversationEnvironmentInput | undefined;
+
+const MESSAGE_ROLES = new Set([
+  'user',
+  'assistant',
+  'system',
+  'developer',
+  'tool-call',
+  'tool-result',
+  'snapshot',
+]);
 
 function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `message-${Date.now()}-${Math.random()}`;
@@ -47,8 +56,25 @@ function isConversationEnvironmentParameter(value: unknown): value is Conversati
   );
 }
 
+function isMessageContentInput(value: unknown): value is MessageContentInput {
+  return (
+    typeof value === 'string' ||
+    Array.isArray(value) ||
+    (isRecord(value) && typeof value['type'] === 'string')
+  );
+}
+
 function isLooseMessageInput(value: unknown): value is LooseMessageInput {
-  return isRecord(value) && typeof value['role'] === 'string' && 'content' in value;
+  return (
+    isRecord(value) &&
+    typeof value['role'] === 'string' &&
+    MESSAGE_ROLES.has(value['role']) &&
+    isMessageContentInput(value['content'])
+  );
+}
+
+function isMetadataRecord(value: unknown): value is Record<string, JSONValue> {
+  return isRecord(value);
 }
 
 function resolveEnvironment(environment?: ConversationEnvironmentInput): {
@@ -65,6 +91,10 @@ function resolveEnvironment(environment?: ConversationEnvironmentInput): {
 
 function cloneStructuredValue<T>(value: T): T {
   return structuredClone(value);
+}
+
+function cloneMetadata(metadata: Record<string, JSONValue> | undefined): Record<string, JSONValue> {
+  return metadata === undefined ? {} : cloneStructuredValue(metadata);
 }
 
 function normalizeContent(content: MessageContentInput): MessageInput['content'] {
@@ -117,7 +147,7 @@ function createConversation(
     id: options.id ?? resolvedEnvironment.randomId(),
     ...(options.title !== undefined ? { title: options.title } : {}),
     status: options.status ?? 'active',
-    metadata: { ...options.metadata },
+    metadata: cloneMetadata(options.metadata),
     ids: [],
     messages: {},
     createdAt,
@@ -137,7 +167,7 @@ function materializeMessage(
     content: normalizeContent(input.content),
     position,
     createdAt,
-    metadata: { ...input.metadata },
+    metadata: cloneMetadata(input.metadata),
     hidden: input.hidden ?? false,
     ...(input.toolCall !== undefined ? { toolCall: cloneStructuredValue(input.toolCall) } : {}),
     ...(input.toolResult !== undefined
@@ -148,7 +178,7 @@ function materializeMessage(
   };
 }
 
-function partitionAppendArguments(args: MessageInputOrEnvironment[]): {
+function partitionAppendArguments(args: unknown[]): {
   inputs: LooseMessageInput[];
   environment?: ConversationEnvironmentInput;
 } {
@@ -159,7 +189,12 @@ function partitionAppendArguments(args: MessageInputOrEnvironment[]): {
     : filteredArguments;
   const inputs: LooseMessageInput[] = [];
   for (const argument of inputArguments) {
-    if (isLooseMessageInput(argument)) inputs.push(argument);
+    if (!isLooseMessageInput(argument)) {
+      throw new Error(
+        'appendMessages expected MessageInput arguments before the optional environment',
+      );
+    }
+    inputs.push(argument);
   }
   if (isConversationEnvironmentParameter(lastArgument)) {
     return { inputs, environment: lastArgument };
@@ -178,7 +213,7 @@ function appendMessages(
 ): ConversationHistory;
 function appendMessages(
   conversation: ConversationHistory,
-  ...args: MessageInputOrEnvironment[]
+  ...args: unknown[]
 ): ConversationHistory {
   const { inputs, environment } = partitionAppendArguments(args);
   if (inputs.length === 0) return conversation;
@@ -195,11 +230,15 @@ function appendMessages(
       normalizedInput,
     );
     assertValidToolMessage(processedInput, toolCallIds);
+    const messageId = resolvedEnvironment.randomId();
+    if (nextMessages[messageId] !== undefined || nextIds.includes(messageId)) {
+      throw new Error(`duplicate message id in conversation: ${messageId}`);
+    }
     const message = materializeMessage(
       processedInput,
       conversation.ids.length + index,
       updatedAt,
-      resolvedEnvironment.randomId(),
+      messageId,
     );
     nextIds.push(message.id);
     nextMessages[message.id] = message;
@@ -230,12 +269,15 @@ function appendUserMessage(
   metadataOrEnvironment?: Record<string, JSONValue> | ConversationEnvironmentInput,
   environment?: ConversationEnvironmentInput,
 ): ConversationHistory {
-  const metadata = isConversationEnvironmentParameter(metadataOrEnvironment)
-    ? undefined
-    : metadataOrEnvironment;
-  const resolvedEnvironment = isConversationEnvironmentParameter(metadataOrEnvironment)
-    ? metadataOrEnvironment
-    : environment;
+  const metadata =
+    environment === undefined && isConversationEnvironmentParameter(metadataOrEnvironment)
+      ? undefined
+      : isMetadataRecord(metadataOrEnvironment)
+        ? metadataOrEnvironment
+        : undefined;
+  const resolvedEnvironment =
+    environment ??
+    (isConversationEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
   return appendMessages(conversation, { role: 'user', content, metadata }, resolvedEnvironment);
 }
 
@@ -256,12 +298,15 @@ function appendAssistantMessage(
   metadataOrEnvironment?: Record<string, JSONValue> | ConversationEnvironmentInput,
   environment?: ConversationEnvironmentInput,
 ): ConversationHistory {
-  const metadata = isConversationEnvironmentParameter(metadataOrEnvironment)
-    ? undefined
-    : metadataOrEnvironment;
-  const resolvedEnvironment = isConversationEnvironmentParameter(metadataOrEnvironment)
-    ? metadataOrEnvironment
-    : environment;
+  const metadata =
+    environment === undefined && isConversationEnvironmentParameter(metadataOrEnvironment)
+      ? undefined
+      : isMetadataRecord(metadataOrEnvironment)
+        ? metadataOrEnvironment
+        : undefined;
+  const resolvedEnvironment =
+    environment ??
+    (isConversationEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
   return appendMessages(
     conversation,
     { role: 'assistant', content, metadata },

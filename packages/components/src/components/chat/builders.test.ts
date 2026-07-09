@@ -33,6 +33,21 @@ describe('chat conversation builders', () => {
     expect(conversation.updatedAt).toBe(conversation.createdAt);
   });
 
+  test('createConversation copies nested metadata before storing it', () => {
+    const metadata = {
+      steps: [{ title: 'Draft' }],
+    };
+    const conversation = createConversation({
+      id: 'conversation-metadata-copy',
+      metadata,
+    });
+
+    metadata.steps[0]!.title = 'Mutated';
+    metadata.steps.push({ title: 'Added later' });
+
+    expect(conversation.metadata).toEqual({ steps: [{ title: 'Draft' }] });
+  });
+
   test('appendMessages is immutable and preserves the original snapshot when no inputs are given', () => {
     const conversation = createConversation({ id: 'conversation-noop' });
 
@@ -82,6 +97,23 @@ describe('chat conversation builders', () => {
     expect(message.toolCall?.id).toBe('call-1');
     expect(message.tokenUsage?.total).toBe(18);
     expect(message.hidden).toBe(false);
+  });
+
+  test('appendMessages copies nested message metadata before storing it', () => {
+    const metadata = {
+      steps: [{ title: 'Draft' }],
+    };
+    const conversation = appendMessages(createConversation({ id: 'conversation-message-copy' }), {
+      role: 'assistant',
+      content: 'Here is the draft',
+      metadata,
+    });
+    const message = conversation.messages[conversation.ids[0]!]!;
+
+    metadata.steps[0]!.title = 'Mutated';
+    metadata.steps.push({ title: 'Added later' });
+
+    expect(message.metadata).toEqual({ steps: [{ title: 'Draft' }] });
   });
 
   test('appendMessages copies appended tool payloads before storing them', () => {
@@ -189,6 +221,40 @@ describe('chat conversation builders', () => {
     ).toThrow('duplicate toolCall.id in conversation: duplicate-call');
   });
 
+  test('appendMessages rejects malformed inputs instead of silently dropping them', () => {
+    const conversation = createConversation({ id: 'conversation-malformed-inputs' });
+
+    expect(() => appendMessages(conversation, { role: 'user' } as unknown as MessageInput)).toThrow(
+      'appendMessages expected MessageInput arguments before the optional environment',
+    );
+  });
+
+  test('appendMessages rejects generated message identifier collisions', () => {
+    const conversation = createConversation({ id: 'conversation-duplicate-message-ids' });
+    const environment = {
+      randomId: () => 'duplicate-message',
+    } satisfies Partial<ConversationEnvironment>;
+
+    expect(() =>
+      appendMessages(
+        conversation,
+        { role: 'user', content: 'First' },
+        { role: 'assistant', content: 'Second' },
+        environment,
+      ),
+    ).toThrow('duplicate message id in conversation: duplicate-message');
+
+    const firstConversation = appendMessages(
+      conversation,
+      { role: 'user', content: 'First' },
+      environment,
+    );
+
+    expect(() =>
+      appendMessages(firstConversation, { role: 'assistant', content: 'Second' }, environment),
+    ).toThrow('duplicate message id in conversation: duplicate-message');
+  });
+
   test('role-specific append helpers preserve order and assign positions', () => {
     const conversation = appendAssistantMessage(
       appendUserMessage(createConversation({ id: 'conversation-roles' }), 'Hi'),
@@ -237,5 +303,28 @@ describe('chat conversation builders', () => {
     expect(firstMessage.metadata).toEqual({ redacted: true });
     expect(secondMessage.id).toBe('fixed-2');
     expect(secondMessage.metadata).toEqual({ visible: true, redacted: true });
+  });
+
+  test('role-specific append helpers keep environment-shaped metadata when a fourth argument is supplied', () => {
+    const environmentShapedMetadata = {
+      plugins: ['ui'],
+      persistence: { mode: 'local' },
+    };
+    const environment = {
+      now: () => '2026-07-09T00:00:00.000Z',
+      randomId: () => 'fixed-message',
+    } satisfies Partial<ConversationEnvironment>;
+
+    const conversation = appendUserMessage(
+      createConversation({ id: 'conversation-metadata-environment' }),
+      'Hello',
+      environmentShapedMetadata,
+      environment,
+    );
+    const message = conversation.messages[conversation.ids[0]!]!;
+
+    expect(message.id).toBe('fixed-message');
+    expect(message.createdAt).toBe('2026-07-09T00:00:00.000Z');
+    expect(message.metadata).toEqual(environmentShapedMetadata);
   });
 });
