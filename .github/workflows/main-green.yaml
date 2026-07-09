@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: main-green-${{ github.ref }}
-  cancel-in-progress: true
+  group: main-green-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 env:
   BUN_VERSION: 1.3.13
@@ -54,6 +54,8 @@ jobs:
 
       - name: Source audits (cinder)
         run: |
+          bun run --filter=@lostgradient/cinder aggregator:check
+          bun run --filter=@lostgradient/cinder components:check
           bun run --filter=@lostgradient/cinder check:changeset-prerelease-bumps
           bun run --filter=@lostgradient/cinder check:placeholder-docs
           bun run --filter=@lostgradient/cinder validate:workflow

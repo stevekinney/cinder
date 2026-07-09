@@ -180,18 +180,19 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason: 'Source audit owned by main-green; release validates only the publish artifact.',
   },
   'aggregator:check': {
-    layers: ['unit-tests'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'Direct step in unit-tests.yaml (unconditional whole-repo invariant — a CSS-only change can ' +
       'desync the aggregator without touching the checker itself, so scoped test:changed would ' +
-      'miss it). Release validates only the publish artifact.',
+      'miss it) and in main-green so the release-blocking source gate covers generated styles.',
   },
   'components:check': {
-    layers: ['unit-tests'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'Direct step in unit-tests.yaml (unconditional — a *.example.svelte edit can desync a ' +
       'committed manifest without the generator itself changing). This is the exact command whose ' +
-      'CI-layer absence was issue #411.',
+      'CI-layer absence was issue #411. Also runs in main-green so the release-blocking source ' +
+      'gate covers generated component metadata.',
   },
   'validate:workflow': {
     layers: ['main-green'],
