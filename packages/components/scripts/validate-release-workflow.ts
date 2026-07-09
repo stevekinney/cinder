@@ -154,6 +154,32 @@ export function findIgnoredPackageChangesets(
     });
 }
 
+function permissionsDeclare(
+  permissions: unknown,
+  permissionName: string,
+  expectedAccess: string,
+): boolean {
+  return isObjectRecord(permissions) && permissions[permissionName] === expectedAccess;
+}
+
+export function workflowDeclaresPermission(
+  workflow: unknown,
+  permissionName: string,
+  expectedAccess: string,
+): boolean {
+  if (!isObjectRecord(workflow)) return false;
+
+  if (permissionsDeclare(workflow['permissions'], permissionName, expectedAccess)) return true;
+
+  const jobs = workflow['jobs'];
+  if (!isObjectRecord(jobs)) return false;
+
+  return Object.values(jobs).some(
+    (job) =>
+      isObjectRecord(job) && permissionsDeclare(job['permissions'], permissionName, expectedAccess),
+  );
+}
+
 function runValidation(): void {
   const workflowContent = (() => {
     try {
@@ -164,19 +190,52 @@ function runValidation(): void {
   })();
 
   const lines = workflowContent.split('\n');
+  let parsedWorkflow: unknown;
+  try {
+    parsedWorkflow = loadYaml(workflowContent);
+  } catch (error) {
+    fail(`release.yaml is not valid YAML: ${errorMessageFrom(error)}`);
+  }
 
   // ── Guard 1: id-token: write must be present ────────────────────────────────
-  // Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
-  const hasIdTokenWrite = lines.some(
-    (line) => !isComment(line) && /id-token\s*:\s*write/.test(line),
-  );
-  if (!hasIdTokenWrite) {
+  if (!workflowDeclaresPermission(parsedWorkflow, 'id-token', 'write')) {
     fail(
       'release.yaml is missing `id-token: write`. The primary publish path requires this ' +
         'OIDC permission for npm Trusted Publishing.',
     );
   }
   pass('id-token: write is present');
+
+  if (!workflowDeclaresPermission(parsedWorkflow, 'actions', 'read')) {
+    fail(
+      'release.yaml is missing `actions: read`. The publish path must be able to inspect ' +
+        'the same-SHA main-green workflow run before publishing.',
+    );
+  }
+  pass('actions: read is present');
+
+  if (!workflowDeclaresPermission(parsedWorkflow, 'checks', 'read')) {
+    fail(
+      'release.yaml is missing `checks: read`. `gh run watch` needs read access to follow ' +
+        'the same-SHA main-green workflow run before publishing.',
+    );
+  }
+  pass('checks: read is present');
+
+  const hasMainGreenPublishGate =
+    workflowContent.includes('Wait for main-green source validation') &&
+    workflowContent.includes("steps.changesets.outputs.hasChangesets == 'false'") &&
+    workflowContent.includes('--workflow main-green.yaml') &&
+    workflowContent.includes('gh run watch "$main_green_run_id" --exit-status');
+
+  if (!hasMainGreenPublishGate) {
+    fail(
+      'release.yaml must wait for the same-SHA main-green run before publishing. ' +
+        'Keep source validation centralized in main-green, but do not let release publish ' +
+        'when that source gate is absent, pending forever, or failed.',
+    );
+  }
+  pass('Publish path waits for same-SHA main-green source validation');
 
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.

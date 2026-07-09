@@ -5,7 +5,12 @@ import Ajv2020 from 'ajv/dist/2020';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
-import { isApprovalActionable, resolveEffectiveApprovalState } from './approval-card-state.ts';
+import {
+  formatEditableArguments,
+  isApprovalActionable,
+  prepareArgumentsPreview,
+  resolveEffectiveApprovalState,
+} from './approval-card-state.ts';
 import type { ApprovalCardProps } from './approval-card.types.ts';
 
 setupHappyDom();
@@ -191,6 +196,22 @@ describe('ApprovalCard', () => {
       'expired',
     );
     expect(isApprovalActionable('pending', expirationTimestamp, expirationTimestamp)).toBe(false);
+  });
+
+  test('keeps unserializable argument previews visible without truncation metadata', () => {
+    const circularPreview: Record<string, unknown> = { command: 'deploy' };
+    circularPreview['self'] = circularPreview;
+
+    const preview = prepareArgumentsPreview(circularPreview);
+    expect(preview.value).toBe(circularPreview);
+    expect(preview.truncated).toBe(false);
+  });
+
+  test('falls back to an empty editable JSON object for unserializable argument previews', () => {
+    const circularPreview: Record<string, unknown> = { command: 'deploy' };
+    circularPreview['self'] = circularPreview;
+
+    expect(formatEditableArguments(circularPreview)).toBe('{}');
   });
 
   test('renders as an article without nested region landmarks', () => {

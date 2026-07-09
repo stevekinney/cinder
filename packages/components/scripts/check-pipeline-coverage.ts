@@ -20,12 +20,10 @@
  * Discovery resolves package.json script chains TRANSITIVELY: a command
  * doesn't have to be a literal workflow step to run in that layer — it can be
  * reached by following `&&`-joined `bun run <script>` chains from whatever the
- * layer's real entry points are (e.g. `release.yaml`'s "Validate workspace"
- * step runs bare `bun run validate`, which chains through `lint:invariants`,
- * `check:changeset-prerelease-bumps`, `components:check`, `validate:consumer`,
- * and a dozen others — none of which appear as literal text in the workflow
- * file). A naive text search over the raw YAML would report all of those as
- * "missing from release" and the gate would be decorative, not real.
+ * layer's real entry points are (e.g. `main-green.yaml`'s `bun run lint`
+ * reaches the root `lint` script, which in turn runs every package `lint`
+ * script plus `stylelint`). A naive text search over the raw YAML would miss
+ * those transitive gates and the map would be decorative, not real.
  *
  * Command matching is token-aware, not substring-aware: searching for `lint`
  * inside a hook script must not match `lint-staged`, and `test` must not match
@@ -87,28 +85,28 @@ export type DeclarationRow = {
  */
 export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   lint: {
-    layers: ['pre-push', 'unit-tests', 'main-green', 'release'],
+    layers: ['pre-push', 'unit-tests', 'main-green'],
     reason:
       'oxlint. pre-commit runs lint-staged (oxlint invoked directly on staged files, not the ' +
       '`lint` script by name) so it is NOT counted here. The package-level `lint` script itself is ' +
       "invoked by pre-push (scoped), unit-tests.yaml (`--filter='*' lint`, unconditional), " +
-      'main-green (`bun run lint`), and release (`bun run validate` → `lint`).',
+      'and main-green (`bun run lint`). Release deliberately does not rerun source lint.',
   },
   'lint:invariants': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       "cinder's 7 custom tree-walk invariant checks. Explicitly called out in unit-tests.yaml " +
-      'and main-green (not folded into the `lint` sweep), and reached via `validate` on release. ' +
+      'and main-green (not folded into the `lint` sweep). ' +
       'Not run at commit/push time by name — pre-commit/pre-push scope to typecheck/test, not this chain.',
   },
   typecheck: {
-    layers: ['pre-commit', 'pre-push', 'browser-tests', 'main-green', 'release'],
+    layers: ['pre-commit', 'pre-push', 'browser-tests', 'main-green'],
     reason:
       'Per-package typecheck. pre-commit escalates to full workspace typecheck on root-config ' +
       'changes (else scoped per touched package); pre-push includes it in the scoped/full job set; ' +
       'browser-tests.yaml has a dedicated `typecheck` job running `bun run typecheck` against a ' +
-      'fresh checkout (independent of the scope decision); main-green runs the workspace typecheck; ' +
-      'release reaches it via `validate`. unit-tests.yaml deliberately does NOT run typecheck (that ' +
+      'fresh checkout (independent of the scope decision); main-green runs the workspace typecheck. ' +
+      'unit-tests.yaml deliberately does NOT run typecheck (that ' +
       'job is lint + aggregator + components:check + test).',
   },
   stylelint: {
@@ -126,96 +124,101 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       '`validate`, none of which invoke stylelint) or browser-tests/changeset-guard.',
   },
   'check:no-cycle-imports': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
   'check:no-bare-console-warn': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
   'check:no-inline-match-media': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
   'check:svelte-ts-runtime-types': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
   'check:data-cinder-boolean-attributes': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
   'check:test-cleanup': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
   'tokens:literals': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants (invoked with `-- --strict`) — same layer set.',
   },
   'check:pipeline-coverage': {
-    layers: ['unit-tests', 'main-green', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason: 'This script. Appended to lint:invariants so it runs everywhere the invariants run.',
   },
   'check:changeset-prerelease-bumps': {
-    layers: ['changeset-guard', 'release'],
+    layers: ['changeset-guard', 'main-green', 'release'],
     reason:
-      'Direct step in changeset-guard.yaml (fast PR gate for changeset-only edits), and reached ' +
-      'via `validate` on release. NOT a member of lint:invariants and NOT run by unit-tests.yaml ' +
-      '(that workflow excludes `.changeset/**` from its path filters by design).',
+      'Direct step in changeset-guard.yaml (fast PR gate for changeset-only edits), in main-green ' +
+      'source audits, and in release before Changesets opens/updates the Version Packages PR. ' +
+      'NOT a member of lint:invariants and NOT run by unit-tests.yaml (that workflow excludes ' +
+      '`.changeset/**` from its path filters by design).',
   },
   'check:placeholder-docs': {
-    layers: ['release'],
-    reason:
-      'Direct member of the components-package `validate` script, reached only when release runs ' +
-      '`bun run validate`. Not a member of lint:invariants; no other layer invokes it.',
+    layers: ['main-green'],
+    reason: 'Source audit owned by main-green; release validates only the publish artifact.',
   },
   'platform:audit': {
-    layers: ['release'],
-    reason: 'Member of `validate` (invoked with `-- --strict`), reached only via release.',
+    layers: ['main-green'],
+    reason: 'Source audit owned by main-green; release validates only the publish artifact.',
   },
   'colors:audit': {
-    layers: ['release'],
-    reason: 'Member of `validate` (invoked with `-- --strict`), reached only via release.',
+    layers: ['main-green'],
+    reason: 'Source audit owned by main-green; release validates only the publish artifact.',
   },
   'tokens:audit': {
-    layers: ['release'],
-    reason: 'Member of `validate` (invoked with `-- --strict`), reached only via release.',
+    layers: ['main-green'],
+    reason: 'Source audit owned by main-green; release validates only the publish artifact.',
   },
   'aggregator:check': {
-    layers: ['unit-tests', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'Direct step in unit-tests.yaml (unconditional whole-repo invariant — a CSS-only change can ' +
       'desync the aggregator without touching the checker itself, so scoped test:changed would ' +
-      'miss it), and reached via `validate` on release.',
+      'miss it) and in main-green so the release-blocking source gate covers generated styles.',
   },
   'components:check': {
-    layers: ['unit-tests', 'release'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'Direct step in unit-tests.yaml (unconditional — a *.example.svelte edit can desync a ' +
-      'committed manifest without the generator itself changing), and reached via `validate` on ' +
-      'release. This is the exact command whose CI-layer absence was issue #411.',
+      'committed manifest without the generator itself changing). This is the exact command whose ' +
+      'CI-layer absence was issue #411. Also runs in main-green so the release-blocking source ' +
+      'gate covers generated component metadata.',
   },
   'validate:workflow': {
+    layers: ['main-green'],
+    reason: 'Source audit owned by main-green; release runs the release-workflow guard directly.',
+  },
+  'validate:release-workflow': {
     layers: ['release'],
-    reason: 'Member of `validate`, reached only via release.',
+    reason:
+      'Called directly in release so the tokenless OIDC publish path plus ignored-package ' +
+      'changeset guard are checked on every push. main-green owns the broader `validate:workflow` contract.',
   },
   'validate:svelte-peer': {
-    layers: ['release'],
-    reason: 'Member of `validate`, reached only via release.',
+    layers: ['main-green'],
+    reason: 'Source/package metadata audit owned by main-green; release validates the tarball.',
   },
   'validate:consumer': {
     layers: ['release'],
     reason:
-      'Member of `validate` (components-package) and also chained directly from the root ' +
-      '`validate` script; both paths only execute when release runs `bun run validate`.',
+      'Direct release artifact gate. It builds the staged tarball and installs it into consumer ' +
+      'fixtures immediately before package weight and publish.',
   },
   'package:weight:check': {
     layers: ['release'],
     reason:
-      'Member of `validate` (invoked with `-- --existing-tarball`), and also a direct release.yaml ' +
-      'step ("Check validated package artifact budget", invoked with the same flag) on the no-' +
-      'pending-changesets publish path.',
+      'Direct release artifact gate after `validate:consumer`, invoked with `-- --existing-tarball` ' +
+      'on the publish and dry-run paths.',
   },
   test: {
     layers: ['pre-push'],
@@ -224,7 +227,7 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'explicit that tests are deferred to pre-push (which owns a scoped, dependency-closure-aware ' +
       'run). main-green must NOT call this bare full-suite script because it serializes the whole ' +
       'workspace test graph into one timeout-prone step; it runs the chunkable `test:changed` full ' +
-      'suite instead. release reaches coverage via `test:coverage`, and unit-tests.yaml runs the ' +
+      'suite instead. main-green reaches coverage via `test:coverage`, and unit-tests.yaml runs the ' +
       'scoped `test:changed` variant, not this literal script name.',
   },
   'test:changed': {
@@ -236,8 +239,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'suite stays authoritative without reintroducing a single long-running workspace test step.',
   },
   'test:coverage': {
-    layers: ['release'],
-    reason: 'Member of `validate` (full-suite coverage + ratchet), reached only via release.',
+    layers: ['main-green'],
+    reason:
+      'Full-suite coverage + ratchet. Runs as its own main-green job so coverage remains a source ' +
+      'gate without making release rerun the entire validation suite before publish.',
   },
 };
 
