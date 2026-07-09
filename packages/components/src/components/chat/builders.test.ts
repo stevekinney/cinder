@@ -6,7 +6,11 @@ import {
   appendUserMessage,
   createConversation,
 } from './builders.ts';
-import type { MultiModalContent } from './conversation-model.ts';
+import type {
+  ConversationEnvironment,
+  MessageInput,
+  MultiModalContent,
+} from './conversation-model.ts';
 
 describe('chat conversation builders', () => {
   test('createConversation builds an empty compatible conversation snapshot', () => {
@@ -80,6 +84,58 @@ describe('chat conversation builders', () => {
     expect(message.hidden).toBe(false);
   });
 
+  test('appendMessages copies appended tool payloads before storing them', () => {
+    const toolCall = {
+      id: 'call-copy',
+      name: 'lookup',
+      arguments: { package: '@lostgradient/cinder' },
+    };
+    const toolResult = {
+      callId: 'call-copy',
+      outcome: 'success' as const,
+      content: { found: true },
+    };
+    const tokenUsage = {
+      prompt: 1,
+      completion: 2,
+      total: 3,
+    };
+
+    const conversation = appendMessages(
+      createConversation({ id: 'conversation-copy-payloads' }),
+      { role: 'tool-call', content: '', toolCall, tokenUsage },
+      { role: 'tool-result', content: '', toolResult },
+    );
+
+    toolCall.arguments.package = 'mutated';
+    toolResult.content.found = false;
+    tokenUsage.total = 99;
+
+    const [callMessageId, resultMessageId] = conversation.ids;
+    const callMessage = conversation.messages[callMessageId!]!;
+    const resultMessage = conversation.messages[resultMessageId!]!;
+
+    expect(callMessage.toolCall?.arguments).toEqual({ package: '@lostgradient/cinder' });
+    expect(callMessage.tokenUsage?.total).toBe(3);
+    expect(resultMessage.toolResult?.content).toEqual({ found: true });
+  });
+
+  test('appendMessages normalizes a single content part before storing it', () => {
+    const content = { type: 'text', text: 'Single content part' } satisfies MultiModalContent;
+    const input = {
+      role: 'assistant',
+      content,
+    } as unknown as MessageInput;
+
+    const conversation = appendMessages(
+      createConversation({ id: 'conversation-single-part' }),
+      input,
+    );
+    const message = conversation.messages[conversation.ids[0]!]!;
+
+    expect(message.content).toEqual([{ type: 'text', text: 'Single content part' }]);
+  });
+
   test('appendMessages accepts Cinder-style tool-call and tool-result transcripts', () => {
     const conversation = appendMessages(
       createConversation({ id: 'conversation-tool-transcript' }),
@@ -105,6 +161,34 @@ describe('chat conversation builders', () => {
     expect(resultMessage.toolResult?.callId).toBe('call-1');
   });
 
+  test('appendMessages rejects invalid tool transcripts before appending', () => {
+    const conversation = createConversation({ id: 'conversation-invalid-tools' });
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'tool-result',
+        content: '',
+        toolResult: { callId: 'missing-call', outcome: 'success', content: null },
+      }),
+    ).toThrow('tool result references non-existent tool-call: missing-call');
+
+    expect(() =>
+      appendMessages(
+        conversation,
+        {
+          role: 'tool-call',
+          content: '',
+          toolCall: { id: 'duplicate-call', name: 'lookup', arguments: {} },
+        },
+        {
+          role: 'tool-call',
+          content: '',
+          toolCall: { id: 'duplicate-call', name: 'lookup_again', arguments: {} },
+        },
+      ),
+    ).toThrow('duplicate toolCall.id in conversation: duplicate-call');
+  });
+
   test('role-specific append helpers preserve order and assign positions', () => {
     const conversation = appendAssistantMessage(
       appendUserMessage(createConversation({ id: 'conversation-roles' }), 'Hi'),
@@ -120,5 +204,38 @@ describe('chat conversation builders', () => {
     expect(secondMessage.role).toBe('assistant');
     expect(secondMessage.position).toBe(1);
     expect(firstMessage.id).not.toBe(secondMessage.id);
+  });
+
+  test('role-specific append helpers preserve Conversationalist environment overloads', () => {
+    let nextId = 0;
+    const environment = {
+      now: () => '2026-07-09T00:00:00.000Z',
+      randomId: () => `fixed-${(nextId += 1)}`,
+      plugins: [
+        (input) => ({
+          ...input,
+          metadata: { ...input.metadata, redacted: true },
+        }),
+      ],
+    } satisfies Partial<ConversationEnvironment>;
+    let conversation = createConversation({ id: 'conversation-environment' });
+
+    conversation = appendUserMessage(conversation, 'Sensitive', environment);
+    conversation = appendAssistantMessage(
+      conversation,
+      'Acknowledged',
+      { visible: true },
+      environment,
+    );
+
+    const [firstMessageId, secondMessageId] = conversation.ids;
+    const firstMessage = conversation.messages[firstMessageId!]!;
+    const secondMessage = conversation.messages[secondMessageId!]!;
+
+    expect(firstMessage.id).toBe('fixed-1');
+    expect(firstMessage.createdAt).toBe('2026-07-09T00:00:00.000Z');
+    expect(firstMessage.metadata).toEqual({ redacted: true });
+    expect(secondMessage.id).toBe('fixed-2');
+    expect(secondMessage.metadata).toEqual({ visible: true, redacted: true });
   });
 });

@@ -1536,17 +1536,27 @@ async function assertSvelteKitClientHydrates(
       );
     }
   } finally {
-    await promiseWithTimeout(page.close(), 5_000, 'closing SvelteKit hydration validation page');
-    await promiseWithTimeout(
-      context.close(),
-      5_000,
-      'closing SvelteKit hydration validation context',
-    );
-    await promiseWithTimeout(
-      browser.close(),
-      5_000,
-      'closing Chromium after SvelteKit hydration validation',
-    );
+    try {
+      try {
+        await promiseWithTimeout(
+          page.close(),
+          5_000,
+          'closing SvelteKit hydration validation page',
+        );
+      } finally {
+        await promiseWithTimeout(
+          context.close(),
+          5_000,
+          'closing SvelteKit hydration validation context',
+        );
+      }
+    } finally {
+      await promiseWithTimeout(
+        browser.close(),
+        5_000,
+        'closing Chromium after SvelteKit hydration validation',
+      );
+    }
   }
 }
 
