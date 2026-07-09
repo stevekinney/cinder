@@ -13,6 +13,7 @@ import { createServer } from 'node:net';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type { BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
 import { waitForReadyHtml } from './consumer-readiness.ts';
@@ -1510,21 +1511,24 @@ async function assertSvelteKitClientHydrates(
     15_000,
     'launching Chromium for SvelteKit hydration validation',
   );
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  let context: BrowserContext | undefined;
+  let page: Page | undefined;
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => {
-    const text = message.text();
-    if (
-      message.type() === 'error' ||
-      (message.type() === 'warning' && isHydrationConsoleWarning(text))
-    ) {
-      errors.push(text);
-    }
-  });
 
   try {
+    context = await browser.newContext();
+    page = await context.newPage();
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      const text = message.text();
+      if (
+        message.type() === 'error' ||
+        (message.type() === 'warning' && isHydrationConsoleWarning(text))
+      ) {
+        errors.push(text);
+      }
+    });
+
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('load', { timeout: 5_000 });
     await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
@@ -1538,17 +1542,21 @@ async function assertSvelteKitClientHydrates(
   } finally {
     try {
       try {
-        await promiseWithTimeout(
-          page.close(),
-          5_000,
-          'closing SvelteKit hydration validation page',
-        );
+        if (page !== undefined) {
+          await promiseWithTimeout(
+            page.close(),
+            5_000,
+            'closing SvelteKit hydration validation page',
+          );
+        }
       } finally {
-        await promiseWithTimeout(
-          context.close(),
-          5_000,
-          'closing SvelteKit hydration validation context',
-        );
+        if (context !== undefined) {
+          await promiseWithTimeout(
+            context.close(),
+            5_000,
+            'closing SvelteKit hydration validation context',
+          );
+        }
       }
     } finally {
       await promiseWithTimeout(

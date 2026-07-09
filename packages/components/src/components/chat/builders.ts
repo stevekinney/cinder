@@ -45,13 +45,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isJsonObject(value: unknown): value is Record<string, JSONValue> {
+  if (!isRecord(value) || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function isJsonValue(value: unknown): value is JSONValue {
+  if (value === null) return true;
+  switch (typeof value) {
+    case 'string':
+    case 'boolean':
+      return true;
+    case 'number':
+      return Number.isFinite(value);
+    case 'object':
+      if (Array.isArray(value)) return value.every(isJsonValue);
+      return isJsonObject(value) && Object.values(value).every(isJsonValue);
+    default:
+      return false;
+  }
+}
+
+function assertJsonValue(value: unknown, label: string): asserts value is JSONValue {
+  if (!isJsonValue(value)) {
+    throw new Error(`${label} must be JSON-compatible`);
+  }
+}
+
 function isConversationEnvironmentParameter(value: unknown): value is ConversationEnvironmentInput {
   if (!isRecord(value) || 'role' in value) return false;
   return (
     typeof value['now'] === 'function' ||
     typeof value['randomId'] === 'function' ||
     typeof value['estimateTokens'] === 'function' ||
-    (Array.isArray(value['plugins']) && value['plugins'].length > 0) ||
+    (Array.isArray(value['plugins']) &&
+      value['plugins'].length > 0 &&
+      value['plugins'].every((plugin) => typeof plugin === 'function')) ||
     isRecord(value['persistence'])
   );
 }
@@ -74,7 +104,7 @@ function isLooseMessageInput(value: unknown): value is LooseMessageInput {
 }
 
 function isMetadataRecord(value: unknown): value is Record<string, JSONValue> {
-  return isRecord(value);
+  return isJsonObject(value);
 }
 
 function resolveEnvironment(environment?: ConversationEnvironmentInput): {
@@ -82,10 +112,14 @@ function resolveEnvironment(environment?: ConversationEnvironmentInput): {
   randomId: () => string;
   plugins: NonNullable<ConversationEnvironmentInput['plugins']>;
 } {
+  const plugins = environment?.plugins ?? [];
+  if (!Array.isArray(plugins) || plugins.some((plugin) => typeof plugin !== 'function')) {
+    throw new Error('conversation environment plugins must be functions');
+  }
   return {
     now: environment?.now ?? (() => new Date().toISOString()),
     randomId: environment?.randomId ?? createId,
-    plugins: [...(environment?.plugins ?? [])],
+    plugins: [...plugins],
   };
 }
 
@@ -94,12 +128,20 @@ function cloneStructuredValue<T>(value: T): T {
 }
 
 function cloneMetadata(metadata: Record<string, JSONValue> | undefined): Record<string, JSONValue> {
-  return metadata === undefined ? {} : cloneStructuredValue(metadata);
+  if (metadata === undefined) return {};
+  assertJsonValue(metadata, 'metadata');
+  return cloneStructuredValue(metadata);
 }
 
 function normalizeContent(content: MessageContentInput): MessageInput['content'] {
   if (typeof content === 'string') return content;
+  assertJsonValue(content, 'message content');
   return Array.isArray(content) ? cloneStructuredValue(content) : [cloneStructuredValue(content)];
+}
+
+function cloneJsonPayload<T>(payload: T, label: string): T {
+  assertJsonValue(payload, label);
+  return cloneStructuredValue(payload);
 }
 
 function getOrderedMessages(conversation: ConversationHistory): Message[] {
@@ -169,9 +211,11 @@ function materializeMessage(
     createdAt,
     metadata: cloneMetadata(input.metadata),
     hidden: input.hidden ?? false,
-    ...(input.toolCall !== undefined ? { toolCall: cloneStructuredValue(input.toolCall) } : {}),
+    ...(input.toolCall !== undefined
+      ? { toolCall: cloneJsonPayload(input.toolCall, 'toolCall') }
+      : {}),
     ...(input.toolResult !== undefined
-      ? { toolResult: cloneStructuredValue(input.toolResult) }
+      ? { toolResult: cloneJsonPayload(input.toolResult, 'toolResult') }
       : {}),
     ...(input.tokenUsage !== undefined ? { tokenUsage: { ...input.tokenUsage } } : {}),
     ...(input.goalCompleted !== undefined ? { goalCompleted: input.goalCompleted } : {}),

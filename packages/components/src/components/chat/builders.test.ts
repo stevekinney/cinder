@@ -8,6 +8,7 @@ import {
 } from './builders.ts';
 import type {
   ConversationEnvironment,
+  JSONValue,
   MessageInput,
   MultiModalContent,
 } from './conversation-model.ts';
@@ -114,6 +115,40 @@ describe('chat conversation builders', () => {
     metadata.steps.push({ title: 'Added later' });
 
     expect(message.metadata).toEqual({ steps: [{ title: 'Draft' }] });
+  });
+
+  test('appendMessages rejects non-JSON transcript payloads before storing them', () => {
+    const conversation = createConversation({ id: 'conversation-json-boundary' });
+
+    expect(() =>
+      createConversation({
+        id: 'conversation-invalid-metadata',
+        metadata: { cost: 1n } as unknown as Record<string, JSONValue>,
+      }),
+    ).toThrow('metadata must be JSON-compatible');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: {
+          type: 'text',
+          text: 'Invalid',
+          createdAt: new Date(),
+        } as unknown as MessageInput['content'],
+      }),
+    ).toThrow('message content must be JSON-compatible');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'tool-call',
+        content: '',
+        toolCall: {
+          id: 'call-invalid',
+          name: 'lookup',
+          arguments: new Map([['package', '@lostgradient/cinder']]),
+        } as unknown as MessageInput['toolCall'],
+      }),
+    ).toThrow('toolCall must be JSON-compatible');
   });
 
   test('appendMessages copies appended tool payloads before storing them', () => {
@@ -305,6 +340,21 @@ describe('chat conversation builders', () => {
     expect(secondMessage.metadata).toEqual({ visible: true, redacted: true });
   });
 
+  test('role-specific append helpers keep plugin-shaped metadata in the three-argument overload', () => {
+    const metadata = {
+      plugins: ['ui'],
+    };
+
+    const conversation = appendUserMessage(
+      createConversation({ id: 'conversation-plugin-metadata' }),
+      'Hello',
+      metadata,
+    );
+    const message = conversation.messages[conversation.ids[0]!]!;
+
+    expect(message.metadata).toEqual(metadata);
+  });
+
   test('role-specific append helpers keep environment-shaped metadata when a fourth argument is supplied', () => {
     const environmentShapedMetadata = {
       plugins: ['ui'],
@@ -326,5 +376,17 @@ describe('chat conversation builders', () => {
     expect(message.id).toBe('fixed-message');
     expect(message.createdAt).toBe('2026-07-09T00:00:00.000Z');
     expect(message.metadata).toEqual(environmentShapedMetadata);
+  });
+
+  test('appendMessages rejects environment plugin entries that are not functions', () => {
+    const conversation = createConversation({ id: 'conversation-invalid-plugin' });
+    const environment = {
+      now: () => '2026-07-09T00:00:00.000Z',
+      plugins: ['ui'],
+    } as unknown as Partial<ConversationEnvironment>;
+
+    expect(() =>
+      appendMessages(conversation, { role: 'user', content: 'Hello' }, environment),
+    ).toThrow('conversation environment plugins must be functions');
   });
 });
