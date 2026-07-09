@@ -14,6 +14,8 @@
    * @avoidWhen Showing a flat timestamp-first event log without structured step state — use timeline instead.
    * @related timeline, steps, status-dot, progress, badge, collapsible
    */
+  import type { RunStep, RunStepBranchGroup } from './run-step-timeline.types.ts';
+
   export type {
     RunStep,
     RunStepBranchGroup,
@@ -25,41 +27,10 @@
     RunStepTimelineEntry,
     RunStepTimelineProps,
   } from './run-step-timeline.types.ts';
-</script>
 
-<script lang="ts">
-  import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '../badge/badge.svelte';
-  import Collapsible from '../collapsible/collapsible.svelte';
-  import Link from '../link/link.svelte';
-  import Progress from '../progress/progress.svelte';
-  import StatusDot from '../status-dot/status-dot.svelte';
-  import type {
-    RunStep,
-    RunStepBranchGroup,
-    RunStepBranchLane,
-    RunStepTimelineEntry,
-    RunStepTimelineProps,
-  } from './run-step-timeline.types.ts';
-  import {
-    actionsCountLabel,
-    badgeVariant,
-    branchOutcomeSummary,
-    branchStartsCollapsed,
-    hasProgress,
-    hiddenNestedStepLabel,
-    isCurrent,
-    isTerminal,
-    laneOutcomeBadgeVariant,
-    laneOutcomeLabel,
-    metadataItems,
-    safeStepLinkHref,
-    statusDotStatus,
-    statusLabel,
-  } from './run-step-timeline.utilities.ts';
-
-  const MAX_NESTED_STEP_DEPTH = 3;
-
+  // View-model row types for the render pipeline. Defined in the module script
+  // so snippet parameter annotations below can resolve them (svelte-check does
+  // not reliably see instance-<script> local types from snippet signatures).
   type RenderedStepRow = {
     kind: 'step';
     step: RunStep;
@@ -99,6 +70,38 @@
         hiddenStepCount: number;
         hiddenCurrent: boolean;
       };
+</script>
+
+<script lang="ts">
+  import { classNames } from '../../utilities/class-names.ts';
+  import Badge from '../badge/badge.svelte';
+  import Collapsible from '../collapsible/collapsible.svelte';
+  import Link from '../link/link.svelte';
+  import Progress from '../progress/progress.svelte';
+  import StatusDot from '../status-dot/status-dot.svelte';
+  import type {
+    RunStepBranchLane,
+    RunStepTimelineEntry,
+    RunStepTimelineProps,
+  } from './run-step-timeline.types.ts';
+  import {
+    actionsCountLabel,
+    badgeVariant,
+    branchOutcomeSummary,
+    branchStartsCollapsed,
+    hasProgress,
+    hiddenNestedStepLabel,
+    isCurrent,
+    isTerminal,
+    laneOutcomeBadgeVariant,
+    laneOutcomeLabel,
+    metadataItems,
+    safeStepLinkHref,
+    statusDotStatus,
+    statusLabel,
+  } from './run-step-timeline.utilities.ts';
+
+  const MAX_NESTED_STEP_DEPTH = 3;
 
   let {
     steps,
