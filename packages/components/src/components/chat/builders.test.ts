@@ -125,7 +125,15 @@ describe('chat conversation builders', () => {
         id: 'conversation-invalid-metadata',
         metadata: { cost: 1n } as unknown as Record<string, JSONValue>,
       }),
-    ).toThrow('metadata must be JSON-compatible');
+    ).toThrow('metadata must be a JSON-compatible object');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: 'Invalid metadata',
+        metadata: ['not', 'an', 'object'] as unknown as Record<string, JSONValue>,
+      }),
+    ).toThrow('metadata must be a JSON-compatible object');
 
     expect(() =>
       appendMessages(conversation, {
@@ -149,6 +157,26 @@ describe('chat conversation builders', () => {
         } as unknown as MessageInput['toolCall'],
       }),
     ).toThrow('toolCall must be JSON-compatible');
+  });
+
+  test('appendMessages rejects invalid token usage before storing it', () => {
+    const conversation = createConversation({ id: 'conversation-invalid-token-usage' });
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: 'Invalid token usage',
+        tokenUsage: { prompt: Number.NaN, completion: 1, total: 1 } as MessageInput['tokenUsage'],
+      }),
+    ).toThrow('tokenUsage must be a JSON-compatible object');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: 'Invalid token usage',
+        tokenUsage: { total: 1n } as unknown as MessageInput['tokenUsage'],
+      }),
+    ).toThrow('tokenUsage must be a JSON-compatible object');
   });
 
   test('appendMessages copies appended tool payloads before storing them', () => {
@@ -355,6 +383,21 @@ describe('chat conversation builders', () => {
     expect(message.metadata).toEqual(metadata);
   });
 
+  test('role-specific append helpers keep persistence metadata in the three-argument overload', () => {
+    const metadata = {
+      persistence: { mode: 'local' },
+    };
+
+    const conversation = appendUserMessage(
+      createConversation({ id: 'conversation-persistence-metadata' }),
+      'Hello',
+      metadata,
+    );
+    const message = conversation.messages[conversation.ids[0]!]!;
+
+    expect(message.metadata).toEqual(metadata);
+  });
+
   test('role-specific append helpers keep environment-shaped metadata when a fourth argument is supplied', () => {
     const environmentShapedMetadata = {
       plugins: ['ui'],
@@ -376,6 +419,28 @@ describe('chat conversation builders', () => {
     expect(message.id).toBe('fixed-message');
     expect(message.createdAt).toBe('2026-07-09T00:00:00.000Z');
     expect(message.metadata).toEqual(environmentShapedMetadata);
+  });
+
+  test('appendMessages only preserves goal completion on assistant messages', () => {
+    const conversation = appendMessages(
+      createConversation({ id: 'conversation-goal-completion' }),
+      {
+        role: 'user',
+        content: 'Can you do this?',
+        goalCompleted: true,
+      } as unknown as MessageInput,
+      {
+        role: 'assistant',
+        content: 'Done.',
+        goalCompleted: true,
+      },
+    );
+    const [userMessageId, assistantMessageId] = conversation.ids;
+    const userMessage = conversation.messages[userMessageId!]!;
+    const assistantMessage = conversation.messages[assistantMessageId!]!;
+
+    expect('goalCompleted' in userMessage).toBe(false);
+    expect(assistantMessage).toMatchObject({ role: 'assistant', goalCompleted: true });
   });
 
   test('appendMessages rejects environment plugin entries that are not functions', () => {

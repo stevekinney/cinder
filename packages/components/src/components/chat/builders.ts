@@ -14,6 +14,7 @@ import type {
   Message,
   MessageInput,
   MultiModalContent,
+  TokenUsage,
 } from './conversation-model.ts';
 
 type CreateConversationOptions = {
@@ -73,6 +74,15 @@ function assertJsonValue(value: unknown, label: string): asserts value is JSONVa
   }
 }
 
+function assertJsonObject(
+  value: unknown,
+  label: string,
+): asserts value is Record<string, JSONValue> {
+  if (!isJsonObject(value) || !Object.values(value).every(isJsonValue)) {
+    throw new Error(`${label} must be a JSON-compatible object`);
+  }
+}
+
 function isConversationEnvironmentParameter(value: unknown): value is ConversationEnvironmentInput {
   if (!isRecord(value) || 'role' in value) return false;
   return (
@@ -81,8 +91,7 @@ function isConversationEnvironmentParameter(value: unknown): value is Conversati
     typeof value['estimateTokens'] === 'function' ||
     (Array.isArray(value['plugins']) &&
       value['plugins'].length > 0 &&
-      value['plugins'].every((plugin) => typeof plugin === 'function')) ||
-    isRecord(value['persistence'])
+      value['plugins'].every((plugin) => typeof plugin === 'function'))
   );
 }
 
@@ -129,7 +138,7 @@ function cloneStructuredValue<T>(value: T): T {
 
 function cloneMetadata(metadata: Record<string, JSONValue> | undefined): Record<string, JSONValue> {
   if (metadata === undefined) return {};
-  assertJsonValue(metadata, 'metadata');
+  assertJsonObject(metadata, 'metadata');
   return cloneStructuredValue(metadata);
 }
 
@@ -142,6 +151,14 @@ function normalizeContent(content: MessageContentInput): MessageInput['content']
 function cloneJsonPayload<T>(payload: T, label: string): T {
   assertJsonValue(payload, label);
   return cloneStructuredValue(payload);
+}
+
+function cloneTokenUsage(tokenUsage: TokenUsage): TokenUsage {
+  assertJsonObject(tokenUsage, 'tokenUsage');
+  if (Object.values(tokenUsage).some((value) => typeof value !== 'number')) {
+    throw new Error('tokenUsage values must be finite numbers');
+  }
+  return cloneStructuredValue(tokenUsage);
 }
 
 function getOrderedMessages(conversation: ConversationHistory): Message[] {
@@ -217,8 +234,10 @@ function materializeMessage(
     ...(input.toolResult !== undefined
       ? { toolResult: cloneJsonPayload(input.toolResult, 'toolResult') }
       : {}),
-    ...(input.tokenUsage !== undefined ? { tokenUsage: { ...input.tokenUsage } } : {}),
-    ...(input.goalCompleted !== undefined ? { goalCompleted: input.goalCompleted } : {}),
+    ...(input.tokenUsage !== undefined ? { tokenUsage: cloneTokenUsage(input.tokenUsage) } : {}),
+    ...(input.role === 'assistant' && input.goalCompleted !== undefined
+      ? { goalCompleted: input.goalCompleted }
+      : {}),
   };
 }
 
