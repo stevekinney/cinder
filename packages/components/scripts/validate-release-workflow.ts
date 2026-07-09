@@ -154,6 +154,32 @@ export function findIgnoredPackageChangesets(
     });
 }
 
+function permissionsDeclare(
+  permissions: unknown,
+  permissionName: string,
+  expectedAccess: string,
+): boolean {
+  return isObjectRecord(permissions) && permissions[permissionName] === expectedAccess;
+}
+
+export function workflowDeclaresPermission(
+  workflow: unknown,
+  permissionName: string,
+  expectedAccess: string,
+): boolean {
+  if (!isObjectRecord(workflow)) return false;
+
+  if (permissionsDeclare(workflow['permissions'], permissionName, expectedAccess)) return true;
+
+  const jobs = workflow['jobs'];
+  if (!isObjectRecord(jobs)) return false;
+
+  return Object.values(jobs).some(
+    (job) =>
+      isObjectRecord(job) && permissionsDeclare(job['permissions'], permissionName, expectedAccess),
+  );
+}
+
 function runValidation(): void {
   const workflowContent = (() => {
     try {
@@ -164,13 +190,15 @@ function runValidation(): void {
   })();
 
   const lines = workflowContent.split('\n');
+  let parsedWorkflow: unknown;
+  try {
+    parsedWorkflow = loadYaml(workflowContent);
+  } catch (error) {
+    fail(`release.yaml is not valid YAML: ${errorMessageFrom(error)}`);
+  }
 
   // ── Guard 1: id-token: write must be present ────────────────────────────────
-  // Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
-  const hasIdTokenWrite = lines.some(
-    (line) => !isComment(line) && /^\s*id-token\s*:\s*write(?:\s|$)/.test(line),
-  );
-  if (!hasIdTokenWrite) {
+  if (!workflowDeclaresPermission(parsedWorkflow, 'id-token', 'write')) {
     fail(
       'release.yaml is missing `id-token: write`. The primary publish path requires this ' +
         'OIDC permission for npm Trusted Publishing.',
@@ -178,10 +206,7 @@ function runValidation(): void {
   }
   pass('id-token: write is present');
 
-  const hasActionsRead = lines.some(
-    (line) => !isComment(line) && /^\s*actions\s*:\s*read(?:\s|$)/.test(line),
-  );
-  if (!hasActionsRead) {
+  if (!workflowDeclaresPermission(parsedWorkflow, 'actions', 'read')) {
     fail(
       'release.yaml is missing `actions: read`. The publish path must be able to inspect ' +
         'the same-SHA main-green workflow run before publishing.',
@@ -189,10 +214,7 @@ function runValidation(): void {
   }
   pass('actions: read is present');
 
-  const hasChecksRead = lines.some(
-    (line) => !isComment(line) && /^\s*checks\s*:\s*read(?:\s|$)/.test(line),
-  );
-  if (!hasChecksRead) {
+  if (!workflowDeclaresPermission(parsedWorkflow, 'checks', 'read')) {
     fail(
       'release.yaml is missing `checks: read`. `gh run watch` needs read access to follow ' +
         'the same-SHA main-green workflow run before publishing.',

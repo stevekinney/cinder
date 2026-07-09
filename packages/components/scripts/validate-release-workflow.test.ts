@@ -6,9 +6,57 @@ import { basename, join } from 'node:path';
 import {
   findIgnoredPackageChangesets,
   parseChangesetPackageNames,
+  workflowDeclaresPermission,
 } from './validate-release-workflow.ts';
 
 describe('validate-release-workflow changeset guards', () => {
+  test('finds permissions only in workflow or job permission blocks', () => {
+    expect(
+      workflowDeclaresPermission(
+        {
+          permissions: {
+            actions: 'read',
+          },
+        },
+        'actions',
+        'read',
+      ),
+    ).toBe(true);
+
+    expect(
+      workflowDeclaresPermission(
+        {
+          jobs: {
+            release: {
+              permissions: {
+                checks: 'read',
+              },
+            },
+          },
+        },
+        'checks',
+        'read',
+      ),
+    ).toBe(true);
+
+    expect(
+      workflowDeclaresPermission(
+        {
+          reactions: 'read',
+          jobs: {
+            release: {
+              permissions: {
+                contents: 'read',
+              },
+            },
+          },
+        },
+        'actions',
+        'read',
+      ),
+    ).toBe(false);
+  });
+
   test('parses package names from changeset front matter', () => {
     expect(
       parseChangesetPackageNames(`---
