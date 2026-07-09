@@ -144,7 +144,14 @@ describe('chat conversation builders', () => {
           createdAt: new Date(),
         } as unknown as MessageInput['content'],
       }),
-    ).toThrow('message content must be JSON-compatible');
+    ).toThrow('appendMessages expected MessageInput arguments before the optional environment');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: [null] as unknown as MessageInput['content'],
+      }),
+    ).toThrow('appendMessages expected MessageInput arguments before the optional environment');
 
     expect(() =>
       appendMessages(conversation, {
@@ -156,7 +163,7 @@ describe('chat conversation builders', () => {
           arguments: new Map([['package', '@lostgradient/cinder']]),
         } as unknown as MessageInput['toolCall'],
       }),
-    ).toThrow('toolCall must be JSON-compatible');
+    ).toThrow('toolCall must be a JSON-compatible object');
   });
 
   test('appendMessages rejects invalid token usage before storing it', () => {
@@ -282,6 +289,32 @@ describe('chat conversation builders', () => {
         },
       ),
     ).toThrow('duplicate toolCall.id in conversation: duplicate-call');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'tool-call',
+        content: '',
+        toolCall: { name: 'missing_id', arguments: {} } as unknown as MessageInput['toolCall'],
+      }),
+    ).toThrow('toolCall must include string id, string name, and JSON arguments');
+
+    const validToolCallConversation = appendMessages(conversation, {
+      role: 'tool-call',
+      content: '',
+      toolCall: { id: 'call-with-invalid-result', name: 'lookup', arguments: {} },
+    });
+
+    expect(() =>
+      appendMessages(validToolCallConversation, {
+        role: 'tool-result',
+        content: '',
+        toolResult: {
+          callId: 'call-with-invalid-result',
+          outcome: 'invalid',
+          content: null,
+        } as unknown as MessageInput['toolResult'],
+      }),
+    ).toThrow('toolResult must include string callId, valid outcome, and JSON content');
   });
 
   test('appendMessages rejects malformed inputs instead of silently dropping them', () => {
@@ -290,6 +323,21 @@ describe('chat conversation builders', () => {
     expect(() => appendMessages(conversation, { role: 'user' } as unknown as MessageInput)).toThrow(
       'appendMessages expected MessageInput arguments before the optional environment',
     );
+
+    expect(() =>
+      appendMessages(conversation, undefined as unknown as MessageInput, {
+        role: 'assistant',
+        content: 'Still invalid',
+      }),
+    ).toThrow('appendMessages expected MessageInput arguments before the optional environment');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: 'Invalid hidden flag',
+        hidden: 'false',
+      } as unknown as MessageInput),
+    ).toThrow('appendMessages expected MessageInput arguments before the optional environment');
   });
 
   test('appendMessages rejects generated message identifier collisions', () => {
@@ -316,6 +364,29 @@ describe('chat conversation builders', () => {
     expect(() =>
       appendMessages(firstConversation, { role: 'assistant', content: 'Second' }, environment),
     ).toThrow('duplicate message id in conversation: duplicate-message');
+
+    expect(() =>
+      appendMessages(conversation, { role: 'user', content: 'Bad id' }, {
+        randomId: () => 1,
+      } as unknown as Partial<ConversationEnvironment>),
+    ).toThrow('generated message id must be a string');
+  });
+
+  test('appendMessages validates plugin output before storing it', () => {
+    const conversation = createConversation({ id: 'conversation-invalid-plugin-output' });
+    const environment = {
+      plugins: [
+        (input) =>
+          ({
+            ...input,
+            hidden: 'false',
+          }) as unknown as MessageInput,
+      ],
+    } satisfies Partial<ConversationEnvironment>;
+
+    expect(() =>
+      appendMessages(conversation, { role: 'assistant', content: 'Hello' }, environment),
+    ).toThrow('conversation plugin returned an invalid MessageInput');
   });
 
   test('role-specific append helpers preserve order and assign positions', () => {
@@ -366,6 +437,17 @@ describe('chat conversation builders', () => {
     expect(firstMessage.metadata).toEqual({ redacted: true });
     expect(secondMessage.id).toBe('fixed-2');
     expect(secondMessage.metadata).toEqual({ visible: true, redacted: true });
+  });
+
+  test('appendMessages preserves explicitly empty plugin environments', () => {
+    const conversation = appendMessages(
+      createConversation({ id: 'conversation-empty-plugins-environment' }),
+      { role: 'assistant', content: 'Hello' },
+      { plugins: [] },
+    );
+    const message = conversation.messages[conversation.ids[0]!]!;
+
+    expect(message.content).toBe('Hello');
   });
 
   test('role-specific append helpers keep plugin-shaped metadata in the three-argument overload', () => {
@@ -419,6 +501,25 @@ describe('chat conversation builders', () => {
     expect(message.id).toBe('fixed-message');
     expect(message.createdAt).toBe('2026-07-09T00:00:00.000Z');
     expect(message.metadata).toEqual(environmentShapedMetadata);
+  });
+
+  test('role-specific append helpers reject malformed metadata', () => {
+    const conversation = createConversation({ id: 'conversation-invalid-helper-metadata' });
+
+    expect(() =>
+      appendUserMessage(conversation, 'Hello', ['not', 'metadata'] as unknown as Record<
+        string,
+        JSONValue
+      >),
+    ).toThrow('metadata must be a JSON-compatible object');
+
+    expect(() =>
+      appendAssistantMessage(
+        conversation,
+        'Hello',
+        new Date() as unknown as Record<string, JSONValue>,
+      ),
+    ).toThrow('metadata must be a JSON-compatible object');
   });
 
   test('appendMessages only preserves goal completion on assistant messages', () => {

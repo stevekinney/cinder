@@ -15,6 +15,8 @@ import type {
   MessageInput,
   MultiModalContent,
   TokenUsage,
+  ToolCall,
+  ToolResult,
 } from './conversation-model.ts';
 
 type CreateConversationOptions = {
@@ -68,12 +70,6 @@ function isJsonValue(value: unknown): value is JSONValue {
   }
 }
 
-function assertJsonValue(value: unknown, label: string): asserts value is JSONValue {
-  if (!isJsonValue(value)) {
-    throw new Error(`${label} must be JSON-compatible`);
-  }
-}
-
 function assertJsonObject(
   value: unknown,
   label: string,
@@ -90,16 +86,38 @@ function isConversationEnvironmentParameter(value: unknown): value is Conversati
     typeof value['randomId'] === 'function' ||
     typeof value['estimateTokens'] === 'function' ||
     (Array.isArray(value['plugins']) &&
-      value['plugins'].length > 0 &&
       value['plugins'].every((plugin) => typeof plugin === 'function'))
   );
+}
+
+function isMultiModalContentPart(value: unknown): value is MultiModalContent {
+  if (!isJsonObject(value) || typeof value['type'] !== 'string') return false;
+  if (!Object.values(value).every(isJsonValue)) return false;
+  switch (value['type']) {
+    case 'text':
+      return typeof value['text'] === 'string';
+    case 'image':
+      return typeof value['url'] === 'string';
+    case 'thinking':
+      return typeof value['thinking'] === 'string';
+    case 'redacted_thinking':
+      return typeof value['data'] === 'string';
+    case 'server_tool_use':
+      return typeof value['id'] === 'string' && typeof value['name'] === 'string';
+    case 'web_search_tool_result':
+      return typeof value['tool_use_id'] === 'string' && 'content' in value;
+    case 'container_upload':
+      return typeof value['file_id'] === 'string';
+    default:
+      return false;
+  }
 }
 
 function isMessageContentInput(value: unknown): value is MessageContentInput {
   return (
     typeof value === 'string' ||
-    Array.isArray(value) ||
-    (isRecord(value) && typeof value['type'] === 'string')
+    (Array.isArray(value) && value.every(isMultiModalContentPart)) ||
+    isMultiModalContentPart(value)
   );
 }
 
@@ -108,7 +126,8 @@ function isLooseMessageInput(value: unknown): value is LooseMessageInput {
     isRecord(value) &&
     typeof value['role'] === 'string' &&
     MESSAGE_ROLES.has(value['role']) &&
-    isMessageContentInput(value['content'])
+    isMessageContentInput(value['content']) &&
+    (value['hidden'] === undefined || typeof value['hidden'] === 'boolean')
   );
 }
 
@@ -144,21 +163,44 @@ function cloneMetadata(metadata: Record<string, JSONValue> | undefined): Record<
 
 function normalizeContent(content: MessageContentInput): MessageInput['content'] {
   if (typeof content === 'string') return content;
-  assertJsonValue(content, 'message content');
+  if (!isMessageContentInput(content)) {
+    throw new Error('message content must be a known multi-modal content part');
+  }
   return Array.isArray(content) ? cloneStructuredValue(content) : [cloneStructuredValue(content)];
-}
-
-function cloneJsonPayload<T>(payload: T, label: string): T {
-  assertJsonValue(payload, label);
-  return cloneStructuredValue(payload);
 }
 
 function cloneTokenUsage(tokenUsage: TokenUsage): TokenUsage {
   assertJsonObject(tokenUsage, 'tokenUsage');
   if (Object.values(tokenUsage).some((value) => typeof value !== 'number')) {
-    throw new Error('tokenUsage values must be finite numbers');
+    throw new Error('tokenUsage values must be numbers');
   }
   return cloneStructuredValue(tokenUsage);
+}
+
+function cloneToolCall(toolCall: ToolCall): ToolCall {
+  assertJsonObject(toolCall, 'toolCall');
+  if (
+    typeof toolCall.id !== 'string' ||
+    typeof toolCall.name !== 'string' ||
+    !('arguments' in toolCall) ||
+    !isJsonValue(toolCall.arguments)
+  ) {
+    throw new Error('toolCall must include string id, string name, and JSON arguments');
+  }
+  return cloneStructuredValue(toolCall);
+}
+
+function cloneToolResult(toolResult: ToolResult): ToolResult {
+  assertJsonObject(toolResult, 'toolResult');
+  if (
+    typeof toolResult.callId !== 'string' ||
+    !['success', 'error', 'action_required'].includes(String(toolResult.outcome)) ||
+    !('content' in toolResult) ||
+    !isJsonValue(toolResult.content)
+  ) {
+    throw new Error('toolResult must include string callId, valid outcome, and JSON content');
+  }
+  return cloneStructuredValue(toolResult);
 }
 
 function getOrderedMessages(conversation: ConversationHistory): Message[] {
@@ -228,12 +270,8 @@ function materializeMessage(
     createdAt,
     metadata: cloneMetadata(input.metadata),
     hidden: input.hidden ?? false,
-    ...(input.toolCall !== undefined
-      ? { toolCall: cloneJsonPayload(input.toolCall, 'toolCall') }
-      : {}),
-    ...(input.toolResult !== undefined
-      ? { toolResult: cloneJsonPayload(input.toolResult, 'toolResult') }
-      : {}),
+    ...(input.toolCall !== undefined ? { toolCall: cloneToolCall(input.toolCall) } : {}),
+    ...(input.toolResult !== undefined ? { toolResult: cloneToolResult(input.toolResult) } : {}),
     ...(input.tokenUsage !== undefined ? { tokenUsage: cloneTokenUsage(input.tokenUsage) } : {}),
     ...(input.role === 'assistant' && input.goalCompleted !== undefined
       ? { goalCompleted: input.goalCompleted }
@@ -245,7 +283,12 @@ function partitionAppendArguments(args: unknown[]): {
   inputs: LooseMessageInput[];
   environment?: ConversationEnvironmentInput;
 } {
-  const filteredArguments = args.filter((argument) => argument !== undefined);
+  const filteredArguments = args.at(-1) === undefined ? args.slice(0, -1) : args;
+  if (filteredArguments.some((argument) => argument === undefined)) {
+    throw new Error(
+      'appendMessages expected MessageInput arguments before the optional environment',
+    );
+  }
   const lastArgument = filteredArguments.at(-1);
   const inputArguments = isConversationEnvironmentParameter(lastArgument)
     ? filteredArguments.slice(0, -1)
@@ -292,8 +335,14 @@ function appendMessages(
       (current, plugin) => plugin(current),
       normalizedInput,
     );
+    if (!isLooseMessageInput(processedInput)) {
+      throw new Error('conversation plugin returned an invalid MessageInput');
+    }
     assertValidToolMessage(processedInput, toolCallIds);
     const messageId = resolvedEnvironment.randomId();
+    if (typeof messageId !== 'string') {
+      throw new Error('generated message id must be a string');
+    }
     if (nextMessages[messageId] !== undefined || nextIds.includes(messageId)) {
       throw new Error(`duplicate message id in conversation: ${messageId}`);
     }
@@ -332,12 +381,7 @@ function appendUserMessage(
   metadataOrEnvironment?: Record<string, JSONValue> | ConversationEnvironmentInput,
   environment?: ConversationEnvironmentInput,
 ): ConversationHistory {
-  const metadata =
-    environment === undefined && isConversationEnvironmentParameter(metadataOrEnvironment)
-      ? undefined
-      : isMetadataRecord(metadataOrEnvironment)
-        ? metadataOrEnvironment
-        : undefined;
+  const metadata = resolveRoleHelperMetadata(metadataOrEnvironment, environment);
   const resolvedEnvironment =
     environment ??
     (isConversationEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
@@ -361,12 +405,7 @@ function appendAssistantMessage(
   metadataOrEnvironment?: Record<string, JSONValue> | ConversationEnvironmentInput,
   environment?: ConversationEnvironmentInput,
 ): ConversationHistory {
-  const metadata =
-    environment === undefined && isConversationEnvironmentParameter(metadataOrEnvironment)
-      ? undefined
-      : isMetadataRecord(metadataOrEnvironment)
-        ? metadataOrEnvironment
-        : undefined;
+  const metadata = resolveRoleHelperMetadata(metadataOrEnvironment, environment);
   const resolvedEnvironment =
     environment ??
     (isConversationEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
@@ -375,6 +414,18 @@ function appendAssistantMessage(
     { role: 'assistant', content, metadata },
     resolvedEnvironment,
   );
+}
+
+function resolveRoleHelperMetadata(
+  metadataOrEnvironment: Record<string, JSONValue> | ConversationEnvironmentInput | undefined,
+  environment: ConversationEnvironmentInput | undefined,
+): Record<string, JSONValue> | undefined {
+  if (metadataOrEnvironment === undefined) return undefined;
+  if (environment === undefined && isConversationEnvironmentParameter(metadataOrEnvironment)) {
+    return undefined;
+  }
+  if (isMetadataRecord(metadataOrEnvironment)) return metadataOrEnvironment;
+  throw new Error('metadata must be a JSON-compatible object');
 }
 
 export { appendAssistantMessage, appendMessages, appendUserMessage, createConversation };
