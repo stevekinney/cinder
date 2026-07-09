@@ -83,12 +83,42 @@ const schema = {
             type: 'string',
             description: 'The human-readable label shown in the select.',
           },
+          type: {
+            enum: ['string', 'number', 'boolean', 'enum'],
+            description:
+              'The value type this option represents when used as a field option in\nconditions-only mode (`mode="conditions"`). Defaults to `\'string\'` when\nomitted. Ignored for operator and action-target options, and ignored\nentirely in full mode.',
+          },
+          options: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                value: {
+                  type: 'string',
+                  description: 'The value stored on the condition.',
+                },
+                label: {
+                  type: 'string',
+                  description: 'The human-readable label shown in the select.',
+                },
+              },
+              additionalProperties: false,
+              required: ['label', 'value'],
+            },
+            description:
+              "Enum choices for this field's value, rendered as a select in\nconditions-only mode. Required when `type` is `'enum'`; ignored\notherwise.",
+          },
         },
         additionalProperties: false,
         required: ['label', 'value'],
       },
       description:
         'Options for the condition field selector. Consumer-provided list of\nfields that a condition can test, e.g. "path", "label", "author".',
+    },
+    mode: {
+      enum: ['full', 'conditions'],
+      description:
+        "Rendering mode. Omit or pass `'full'` for the original conditions +\nactions behavior; pass `'conditions'` to render conditions only. Not\nexpressible as a schema-driven discriminant here because JSON Schema\nvalidation of this component is documented, not enforced at runtime\nagainst `operatorOptions`/`actionOptions` presence; see the component\ntypes for the full mode-discriminated prop shape.",
     },
     operatorOptions: {
       type: 'array',
@@ -103,12 +133,37 @@ const schema = {
             type: 'string',
             description: 'The human-readable label shown in the select.',
           },
+          type: {
+            enum: ['string', 'number', 'boolean', 'enum'],
+            description:
+              'The value type this option represents when used as a field option in\nconditions-only mode (`mode="conditions"`). Defaults to `\'string\'` when\nomitted. Ignored for operator and action-target options, and ignored\nentirely in full mode.',
+          },
+          options: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                value: {
+                  type: 'string',
+                  description: 'The value stored on the condition.',
+                },
+                label: {
+                  type: 'string',
+                  description: 'The human-readable label shown in the select.',
+                },
+              },
+              additionalProperties: false,
+              required: ['label', 'value'],
+            },
+            description:
+              "Enum choices for this field's value, rendered as a select in\nconditions-only mode. Required when `type` is `'enum'`; ignored\notherwise.",
+          },
         },
         additionalProperties: false,
         required: ['label', 'value'],
       },
       description:
-        'Options for the condition operator selector. Consumer-provided list\nof operators, e.g. "matches", "is", "is-not", "contains".',
+        'Options for the condition operator selector. Consumer-provided list\nof operators, e.g. "matches", "is", "is-not", "contains". Not used\nwhen `mode` is `\'conditions\'`, since cinder supplies a fixed operator\nset in that mode.',
     },
     actionOptions: {
       type: 'array',
@@ -123,12 +178,37 @@ const schema = {
             type: 'string',
             description: 'The human-readable label shown in the select.',
           },
+          type: {
+            enum: ['string', 'number', 'boolean', 'enum'],
+            description:
+              'The value type this option represents when used as a field option in\nconditions-only mode (`mode="conditions"`). Defaults to `\'string\'` when\nomitted. Ignored for operator and action-target options, and ignored\nentirely in full mode.',
+          },
+          options: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                value: {
+                  type: 'string',
+                  description: 'The value stored on the condition.',
+                },
+                label: {
+                  type: 'string',
+                  description: 'The human-readable label shown in the select.',
+                },
+              },
+              additionalProperties: false,
+              required: ['label', 'value'],
+            },
+            description:
+              "Enum choices for this field's value, rendered as a select in\nconditions-only mode. Required when `type` is `'enum'`; ignored\notherwise.",
+          },
         },
         additionalProperties: false,
         required: ['label', 'value'],
       },
       description:
-        'Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers.',
+        "Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers. Not used when\n`mode` is `'conditions'`, since actions are not rendered.",
     },
     readonly: {
       const: true,

@@ -104,10 +104,94 @@ export type RunStep = {
    */
   link?: RunStepLink | undefined;
   /**
+   * Marks a step that was speculatively executed and then unwound (rolled
+   * back). Orthogonal to `status`: the step keeps its real terminal status
+   * underneath, but renders struck-through and de-emphasized while staying
+   * inspectable. A rewound step announces its unwound state to assistive
+   * technology in addition to its status.
+   */
+  rewound?: boolean | undefined;
+  /**
+   * Id of the forward step that this step compensates (reverses), as in a
+   * saga rollback. When set, the step renders inset beneath its forward step
+   * with a dashed reversal connector. The referenced id should be a sibling
+   * step's `id`; an unmatched id renders the step in place without inset.
+   */
+  compensates?: string | undefined;
+  /**
    * Nested child-workflow steps rendered as indented lanes.
    */
   children?: RunStep[] | undefined;
 };
+
+/**
+ * Outcome of a single sub-lane within a {@link RunStepBranchGroup}.
+ *
+ * - `won`     — this lane produced the committed result; emphasized.
+ * - `lost`    — this lane was superseded by the winner; muted.
+ * - `settled` — this lane completed without a competitive winner/loser
+ *               distinction (e.g. all lanes were kept). Neutral emphasis.
+ *
+ * Omit the outcome entirely while a race is still in flight.
+ */
+export type RunStepBranchLaneOutcome = 'won' | 'lost' | 'settled';
+
+/**
+ * One parallel sub-lane inside a {@link RunStepBranchGroup}. Each lane is an
+ * ordered sequence of steps that executed concurrently with its siblings.
+ */
+export type RunStepBranchLane = {
+  /** Stable identity; used as the keyed list identity within the group. */
+  id: string;
+  /** Optional display label for the lane (e.g. the candidate or strategy name). */
+  label?: string | undefined;
+  /**
+   * Competitive outcome for the lane. Drives winner emphasis / loser muting.
+   * Omit while the branch is still racing.
+   */
+  outcome?: RunStepBranchLaneOutcome | undefined;
+  /** Ordered steps that ran within this lane. */
+  steps: RunStep[];
+};
+
+/**
+ * A branch/coordination group: a single timeline entry that fans out into N
+ * parallel sub-lanes (e.g. a speculative race or a scatter/gather). Rendered
+ * with the lanes side by side conceptually — the winning lane emphasized and
+ * the losers muted — and collapsible. Distinguished from a plain {@link RunStep}
+ * by its `kind` discriminator, mirroring the additive-entry pattern used by
+ * other cinder timelines.
+ *
+ * @schemaObject
+ */
+export type RunStepBranchGroup = {
+  /** Discriminator identifying a branch-group entry. */
+  kind: 'branch';
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for the branch group (e.g. "Race deploy candidates"). */
+  label: string;
+  /** The parallel sub-lanes. Order is presentational only. */
+  lanes: RunStepBranchLane[];
+  /**
+   * Collapse the group by default once the lane count reaches this threshold.
+   * Defaults to 3. Set to a large number to effectively disable auto-collapse.
+   */
+  collapseThreshold?: number | undefined;
+  /**
+   * Force the initial collapsed (`true`) or expanded (`false`) state,
+   * overriding `collapseThreshold`. The group remains user-togglable.
+   */
+  collapsed?: boolean | undefined;
+};
+
+/**
+ * A single top-level entry in a RunStepTimeline: either a normal step or a
+ * branch/coordination group. Existing `RunStep[]` arrays remain valid because
+ * the union is additive and branch groups are opt-in via the `kind`
+ * discriminator.
+ */
+export type RunStepTimelineEntry = RunStep | RunStepBranchGroup;
 
 /**
  * Schema generator surface for one top-level step.
@@ -163,6 +247,10 @@ export type RunStepTimelineSchemaStep = {
    * Optional link to logs, traces, or a step detail route.
    */
   link?: RunStepLink | undefined;
+  /** Marks a step that was speculatively executed and then unwound (rolled back). */
+  rewound?: boolean | undefined;
+  /** Id of the forward step that this step compensates (reverses). */
+  compensates?: string | undefined;
   /**
    * Schema-bounded nested child-workflow steps.
    */
@@ -198,6 +286,10 @@ export type RunStepTimelineSchemaChildStep = {
   details?: RunStepDetail[] | undefined;
   /** Optional link to logs, traces, or a step detail route. */
   link?: RunStepLink | undefined;
+  /** Marks a step that was speculatively executed and then unwound (rolled back). */
+  rewound?: boolean | undefined;
+  /** Id of the forward step that this step compensates (reverses). */
+  compensates?: string | undefined;
   /**
    * Nested child-workflow steps rendered at depth 2.
    */
@@ -271,6 +363,88 @@ export type RunStepTimelineSchemaGreatGrandchildStep = {
 };
 
 /**
+ * Schema-bounded leaf step used for branch-lane sequences. Deliberately has no
+ * `children` so the branch-group → lane → step chain stays within the schema
+ * generator's depth budget. The public {@link RunStepBranchLane} still accepts
+ * fully-recursive {@link RunStep}s at runtime; this is only the finite JSON
+ * Schema surface.
+ * @schemaObject
+ */
+export type RunStepTimelineSchemaLaneStep = {
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for this step. */
+  label: string;
+  /** Generic execution state. */
+  status: RunStepStatus;
+  /** ISO datetime string for when this step started. */
+  startTime?: string | undefined;
+  /** ISO datetime string for when this step ended. */
+  endTime?: string | undefined;
+  /** Human-readable duration string, e.g. "1m 23s". */
+  duration?: string | undefined;
+  /** Number of attempts made so far, including any retries. */
+  attemptCount?: number | undefined;
+  /** Number of actions associated with this step. */
+  actionsCount?: number | undefined;
+  /** Optional determinate progress value between 0 and `progressMax`. */
+  progress?: number | undefined;
+  /** Maximum value for the progress bar. Defaults to 100. */
+  progressMax?: number | undefined;
+  /** Expandable detail panels (logs, payloads, errors) shown inline. */
+  details?: RunStepDetail[] | undefined;
+  /** Optional link to logs, traces, or a step detail route. */
+  link?: RunStepLink | undefined;
+  /** Marks a step that was speculatively executed and then unwound (rolled back). */
+  rewound?: boolean | undefined;
+  /** Id of the forward step that this step compensates (reverses). */
+  compensates?: string | undefined;
+};
+
+/**
+ * Schema-bounded sub-lane inside a {@link RunStepTimelineSchemaBranchGroup}.
+ * Lane steps are bounded to a leaf surface so JSON Schema generation stays
+ * finite.
+ * @schemaObject
+ */
+export type RunStepTimelineSchemaBranchLane = {
+  /** Stable identity; used as the keyed list identity within the group. */
+  id: string;
+  /** Optional display label for the lane. */
+  label?: string | undefined;
+  /** Competitive outcome for the lane. Omit while the branch is still racing. */
+  outcome?: RunStepBranchLaneOutcome | undefined;
+  /** Ordered steps that ran within this lane. */
+  steps: RunStepTimelineSchemaLaneStep[];
+};
+
+/**
+ * Schema generator surface for one top-level branch/coordination group.
+ * @schemaObject
+ */
+export type RunStepTimelineSchemaBranchGroup = {
+  /** Discriminator identifying a branch-group entry. */
+  kind: 'branch';
+  /** Stable identity; used as the keyed list identity. */
+  id: string;
+  /** Display label for the branch group. */
+  label: string;
+  /** The parallel sub-lanes. */
+  lanes: RunStepTimelineSchemaBranchLane[];
+  /** Collapse the group by default once the lane count reaches this threshold. Defaults to 3. */
+  collapseThreshold?: number | undefined;
+  /** Force the initial collapsed (`true`) or expanded (`false`) state. */
+  collapsed?: boolean | undefined;
+};
+
+/**
+ * A single schema-bounded top-level entry: either a step or a branch group.
+ */
+export type RunStepTimelineSchemaEntry =
+  | RunStepTimelineSchemaStep
+  | RunStepTimelineSchemaBranchGroup;
+
+/**
  * Props for the RunStepTimeline component.
  *
  * Renders an ordered list of execution steps with per-step status,
@@ -279,10 +453,12 @@ export type RunStepTimelineSchemaGreatGrandchildStep = {
  */
 export type RunStepTimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class' | 'children'> & {
   /**
-   * Ordered list of steps to render.
+   * Ordered list of timeline entries to render. Each entry is either a
+   * {@link RunStep} or a {@link RunStepBranchGroup}. Plain `RunStep[]` arrays
+   * remain valid — branch groups are opt-in via the `kind` discriminator.
    * @schemaObject
    */
-  steps: RunStep[];
+  steps: RunStepTimelineEntry[];
   /**
    * Accessible label for the timeline list.
    * Used as `aria-label` when `aria-labelledby` is absent.
@@ -299,10 +475,9 @@ export type RunStepTimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class
 /** Schema generator surface for RunStepTimeline — excludes snippet props. */
 export interface RunStepTimelineSchemaProps {
   /**
-   * Ordered list of steps to render.
-   * @schemaObject
+   * Ordered list of timeline entries to render — either steps or branch groups.
    */
-  steps: RunStepTimelineSchemaStep[];
+  steps: RunStepTimelineSchemaEntry[];
   /** Accessible label for the timeline list. */
   label?: string | undefined;
   /** Additional CSS classes applied to the root element. */

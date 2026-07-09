@@ -1,0 +1,138 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /* ========================================
+ * CONNECTION INDICATOR
+ *
+ * Small standalone status pill for a live connection. Color is driven
+ * exclusively from the `data-cinder-status` attribute via the existing
+ * semantic status tokens (`--cinder-success`, `--cinder-warning`,
+ * `--cinder-text-muted`) — never hard-code hex values when consuming this
+ * component. `polling` is deliberately quieter than `live`: it carries no
+ * motion and a lighter font-weight so it can never be mistaken for push,
+ * even under grayscale or forced-colors rendering where the color
+ * difference disappears.
+ * ======================================== */
+
+  .cinder-connection-indicator {
+    --cinder-connection-indicator-color: var(--cinder-text-muted);
+
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1-5);
+    padding: var(--cinder-space-0-5) var(--cinder-space-2-5);
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-connection-indicator-color);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    line-height: 1.25;
+    vertical-align: middle;
+  }
+
+  .cinder-connection-indicator__dot {
+    display: inline-block;
+    flex-shrink: 0;
+    inline-size: 0.375rem;
+    block-size: 0.375rem;
+    border-radius: var(--cinder-radius-full);
+    background: currentColor;
+  }
+
+  .cinder-connection-indicator[data-cinder-status='live'] .cinder-connection-indicator__dot {
+    animation: cinder-connection-indicator-pulse 1.4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-connection-indicator[data-cinder-status='live'] .cinder-connection-indicator__dot {
+      animation: none;
+    }
+  }
+
+  @keyframes cinder-connection-indicator-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  .cinder-connection-indicator__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    inline-size: 0.8125rem;
+    block-size: 0.8125rem;
+    color: currentColor;
+  }
+
+  /* connecting and reconnecting both spin the icon wrapper to signal in-progress work. This
+ * targets the wrapper span (not the inner svg with a :global() selector) because this file is
+ * a plain CSS asset imported from index.ts — the Svelte compiler never processes it, so
+ * :global() has no effect here and browsers drop the whole rule as an unknown pseudo-class.
+ * Rotating the wrapper rotates its svg child identically. */
+  .cinder-connection-indicator[data-cinder-status='connecting'] .cinder-connection-indicator__icon,
+  .cinder-connection-indicator[data-cinder-status='reconnecting']
+    .cinder-connection-indicator__icon {
+    animation: cinder-connection-indicator-spin var(--cinder-duration-spin) linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-connection-indicator[data-cinder-status='connecting']
+      .cinder-connection-indicator__icon,
+    .cinder-connection-indicator[data-cinder-status='reconnecting']
+      .cinder-connection-indicator__icon {
+      animation: none;
+    }
+  }
+
+  @keyframes cinder-connection-indicator-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .cinder-connection-indicator__label {
+    color: inherit;
+  }
+
+  .cinder-connection-indicator__attempt {
+    color: var(--cinder-text-muted);
+    font-weight: var(--cinder-font-normal);
+  }
+
+  /* ----------------------------------------
+ * Status → semantic token mapping
+ *
+ * `polling` reuses the same muted tone as `closed` but is disambiguated by
+ * its icon, its lack of motion (see above), and its label text — color is
+ * never the sole signal (WCAG 1.4.1).
+ * ---------------------------------------- */
+
+  .cinder-connection-indicator[data-cinder-status='connecting'] {
+    --cinder-connection-indicator-color: var(--cinder-warning);
+  }
+
+  .cinder-connection-indicator[data-cinder-status='live'] {
+    --cinder-connection-indicator-color: var(--cinder-success);
+  }
+
+  .cinder-connection-indicator[data-cinder-status='reconnecting'] {
+    --cinder-connection-indicator-color: var(--cinder-warning);
+  }
+
+  .cinder-connection-indicator[data-cinder-status='polling'] {
+    --cinder-connection-indicator-color: var(--cinder-text-muted);
+    font-weight: var(--cinder-font-normal);
+  }
+
+  .cinder-connection-indicator[data-cinder-status='stale'] {
+    --cinder-connection-indicator-color: var(--cinder-info);
+  }
+
+  .cinder-connection-indicator[data-cinder-status='closed'] {
+    --cinder-connection-indicator-color: var(--cinder-text-muted);
+  }
+}

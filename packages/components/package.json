@@ -1563,6 +1563,38 @@
       "import": "./src/components/confirm-dialog/confirm-dialog.examples.json",
       "default": "./src/components/confirm-dialog/confirm-dialog.examples.json"
     },
+    "./connection-indicator": {
+      "types": "./dist/components/connection-indicator/index.d.ts",
+      "browser": "./src/components/connection-indicator/index.ts",
+      "node": "./dist/server/components/connection-indicator/index.js",
+      "svelte": "./src/components/connection-indicator/index.ts",
+      "import": "./src/components/connection-indicator/index.ts",
+      "default": "./dist/components/connection-indicator/index.js"
+    },
+    "./connection-indicator/schema": {
+      "types": "./dist/components/connection-indicator/connection-indicator.schema.d.ts",
+      "browser": "./src/components/connection-indicator/connection-indicator.schema.ts",
+      "node": "./dist/server/components/connection-indicator/connection-indicator.schema.js",
+      "svelte": "./src/components/connection-indicator/connection-indicator.schema.ts",
+      "import": "./src/components/connection-indicator/connection-indicator.schema.ts",
+      "default": "./dist/components/connection-indicator/connection-indicator.schema.js"
+    },
+    "./connection-indicator/variables": {
+      "types": "./dist/components/connection-indicator/connection-indicator.variables.d.ts",
+      "browser": "./src/components/connection-indicator/connection-indicator.variables.ts",
+      "node": "./dist/server/components/connection-indicator/connection-indicator.variables.js",
+      "svelte": "./src/components/connection-indicator/connection-indicator.variables.ts",
+      "import": "./src/components/connection-indicator/connection-indicator.variables.ts",
+      "default": "./dist/components/connection-indicator/connection-indicator.variables.js"
+    },
+    "./connection-indicator/styles": {
+      "types": "./dist/components/connection-indicator/connection-indicator.css.d.ts",
+      "default": "./dist/components/connection-indicator/connection-indicator.css"
+    },
+    "./connection-indicator/examples": {
+      "import": "./src/components/connection-indicator/connection-indicator.examples.json",
+      "default": "./src/components/connection-indicator/connection-indicator.examples.json"
+    },
     "./container": {
       "types": "./dist/components/container/index.d.ts",
       "browser": "./src/components/container/index.ts",
@@ -4274,6 +4306,38 @@
     "./run-step-timeline/examples": {
       "import": "./src/components/run-step-timeline/run-step-timeline.examples.json",
       "default": "./src/components/run-step-timeline/run-step-timeline.examples.json"
+    },
+    "./schedule-builder": {
+      "types": "./dist/components/schedule-builder/index.d.ts",
+      "browser": "./src/components/schedule-builder/index.ts",
+      "node": "./dist/server/components/schedule-builder/index.js",
+      "svelte": "./src/components/schedule-builder/index.ts",
+      "import": "./src/components/schedule-builder/index.ts",
+      "default": "./dist/components/schedule-builder/index.js"
+    },
+    "./schedule-builder/schema": {
+      "types": "./dist/components/schedule-builder/schedule-builder.schema.d.ts",
+      "browser": "./src/components/schedule-builder/schedule-builder.schema.ts",
+      "node": "./dist/server/components/schedule-builder/schedule-builder.schema.js",
+      "svelte": "./src/components/schedule-builder/schedule-builder.schema.ts",
+      "import": "./src/components/schedule-builder/schedule-builder.schema.ts",
+      "default": "./dist/components/schedule-builder/schedule-builder.schema.js"
+    },
+    "./schedule-builder/variables": {
+      "types": "./dist/components/schedule-builder/schedule-builder.variables.d.ts",
+      "browser": "./src/components/schedule-builder/schedule-builder.variables.ts",
+      "node": "./dist/server/components/schedule-builder/schedule-builder.variables.js",
+      "svelte": "./src/components/schedule-builder/schedule-builder.variables.ts",
+      "import": "./src/components/schedule-builder/schedule-builder.variables.ts",
+      "default": "./dist/components/schedule-builder/schedule-builder.variables.js"
+    },
+    "./schedule-builder/styles": {
+      "types": "./dist/components/schedule-builder/schedule-builder.css.d.ts",
+      "default": "./dist/components/schedule-builder/schedule-builder.css"
+    },
+    "./schedule-builder/examples": {
+      "import": "./src/components/schedule-builder/schedule-builder.examples.json",
+      "default": "./src/components/schedule-builder/schedule-builder.examples.json"
     },
     "./schema-form": {
       "types": "./dist/components/schema-form/index.d.ts",

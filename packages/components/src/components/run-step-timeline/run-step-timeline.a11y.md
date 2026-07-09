@@ -24,6 +24,20 @@ Step metadata (start time, end time, duration, attempt count) is rendered in a `
 
 Nested `children` steps are flattened into the same ordered list and identified with stable path attributes. Visual indentation creates child-workflow lanes without adding nested interactive regions or extra list containers.
 
+### Branch / coordination groups
+
+A branch-group entry renders as a single `li` on the main rail containing a `Collapsible` disclosure (button + region — see `collapsible.a11y.md`). The disclosure trigger carries an accessible name of the form `"Branch group: {label}. {outcome summary}."`, where the outcome summary (e.g. "1 won, 2 lost" or "3 lanes racing") is also rendered as visible badge text so the group outcome is never conveyed by color alone (WCAG 1.4.1).
+
+The parallel sub-lanes render as a `ul` of `li`s. Each lane `li` has an `aria-label` of the form `"Branch {lane}: {won|lost|settled|racing}"` and carries its outcome as a visible `Won` / `Lost` / `Settled` / `Racing` badge. Winner emphasis and loser muting are driven by tokens on `data-cinder-outcome`, never by color alone — the badge text is authoritative. Each lane hosts its own nested ordered list of steps, so a lane's active step gets its own `aria-current="step"` (lanes are genuinely parallel, so a single active position across the whole component does not apply).
+
+### Rewound steps
+
+A step with `rewound: true` keeps its real status badge and adds a visible `Rewound` badge whose accessible label is `"State: rewound — speculatively executed, then unwound"`. The struck-through / de-emphasized styling is purely visual; the rewound state is announced as text, and the step's detail panels stay expandable and inspectable. `data-cinder-rewound` drives the styling but never the meaning.
+
+### Compensation steps
+
+A step with `compensates: "<forward-step-id>"` that resolves to a known step renders inset with a dashed reversal connector and adds a visible `Compensates {forward label}` badge whose accessible label is `"Compensates {forward label} — reverses the forward step"`. An unresolved `compensates` id renders the step in place with no inset and no badge. `data-cinder-compensation` drives the inset/connector styling only.
+
 ## Keyboard
 
 | Key   | Action                                                                                   |

@@ -7,16 +7,20 @@
    * @tag automation
    * @tag rules
    * @useWhen Building a UI for configuring which agents or services run based on event conditions.
+   * @useWhen You only need conditions (no actions) — pass mode="conditions" for a constrained operator set and typed value inputs.
    * @avoidWhen You need to execute, validate, or persist rules — cinder owns none of that logic.
    * @related capability-gate, steps, review-editor
    */
   export type {
     InvocationRule,
     InvocationRuleAction,
+    InvocationRuleBuilderMode,
     InvocationRuleBuilderProps,
     InvocationRuleBuilderSchemaProps,
     InvocationRuleChange,
     InvocationRuleCondition,
+    InvocationRuleConditionsOnlyOperator,
+    InvocationRuleFieldType,
     InvocationRuleOption,
   } from './invocation-rule-builder.types.ts';
 </script>
@@ -30,7 +34,22 @@
     InvocationRuleBuilderProps,
     InvocationRuleChange,
     InvocationRuleCondition,
+    InvocationRuleFieldType,
+    InvocationRuleOption,
   } from './invocation-rule-builder.types.ts';
+
+  /**
+   * Fixed operator vocabulary for conditions-only mode (`mode="conditions"`).
+   * Cinder supplies these with default labels; the `operatorOptions` prop is
+   * not accepted in this mode.
+   */
+  const CONDITIONS_ONLY_OPERATOR_OPTIONS: InvocationRuleOption[] = [
+    { value: 'eq', label: 'equals' },
+    { value: 'gt', label: 'greater than' },
+    { value: 'lt', label: 'less than' },
+    { value: 'gte', label: 'greater than or equal' },
+    { value: 'lte', label: 'less than or equal' },
+  ];
 
   let {
     rules,
@@ -38,6 +57,7 @@
     fieldOptions,
     operatorOptions,
     actionOptions,
+    mode = 'full',
     readonly = false,
     addRuleLabel = 'Add rule',
     addConditionLabel = 'Add condition',
@@ -54,6 +74,26 @@
     ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
   );
   const effectiveReadonly = $derived(readonly || onchange === undefined);
+  const conditionsOnly = $derived(mode === 'conditions');
+
+  /**
+   * The operator options actually rendered and used for new conditions.
+   * Fixed in conditions-only mode; consumer-supplied in full mode.
+   */
+  const resolvedOperatorOptions = $derived(
+    conditionsOnly ? CONDITIONS_ONLY_OPERATOR_OPTIONS : (operatorOptions ?? []),
+  );
+  const resolvedActionOptions = $derived(actionOptions ?? []);
+
+  /** The declared value type for a field, defaulting to `'string'`. */
+  function fieldValueType(fieldValue: string): InvocationRuleFieldType {
+    return fieldOptions.find((option) => option.value === fieldValue)?.type ?? 'string';
+  }
+
+  /** Enum choices declared on a field option, or an empty list. */
+  function fieldEnumOptions(fieldValue: string): InvocationRuleOption[] {
+    return fieldOptions.find((option) => option.value === fieldValue)?.options ?? [];
+  }
 
   /** Announcement text for the live region. */
   let announcement = $state('');
@@ -151,7 +191,7 @@
   function handleAddCondition(ruleId: string): void {
     const conditionId = generateId();
     const firstField = fieldOptions[0]?.value ?? '';
-    const firstOperator = operatorOptions[0]?.value ?? '';
+    const firstOperator = resolvedOperatorOptions[0]?.value ?? '';
     const nextRules = updateRules(ruleId, (rule) => ({
       ...rule,
       conditions: [
@@ -217,7 +257,7 @@
 
   function handleAddAction(ruleId: string): void {
     const actionId = generateId();
-    const firstTarget = actionOptions[0]?.value ?? '';
+    const firstTarget = resolvedActionOptions[0]?.value ?? '';
     const nextRules = updateRules(ruleId, (rule) => ({
       ...rule,
       actions: [...rule.actions, { id: actionId, target: firstTarget }],
@@ -273,11 +313,11 @@
   }
 
   function operatorLabel(value: string): string {
-    return operatorOptions.find((option) => option.value === value)?.label ?? value;
+    return resolvedOperatorOptions.find((option) => option.value === value)?.label ?? value;
   }
 
   function actionTargetLabel(value: string): string {
-    return actionOptions.find((option) => option.value === value)?.label ?? value;
+    return resolvedActionOptions.find((option) => option.value === value)?.label ?? value;
   }
 
   function conditionSummary(condition: InvocationRuleCondition): string {
@@ -435,25 +475,73 @@
                       (event.target as HTMLSelectElement).value,
                     )}
                 >
-                  {#each operatorOptions as option (option.value)}
+                  {#each resolvedOperatorOptions as option (option.value)}
                     <option value={option.value}>{option.label}</option>
                   {/each}
                 </select>
 
-                <input
-                  type="text"
-                  class="cinder-invocation-rule-builder__condition-value"
-                  aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
-                  placeholder="Value to compare"
-                  value={condition.value}
-                  oninput={(event) =>
-                    handleUpdateCondition(
-                      rule.id,
-                      condition.id,
-                      'value',
-                      (event.target as HTMLInputElement).value,
-                    )}
-                />
+                {#if conditionsOnly && fieldValueType(condition.field) === 'number'}
+                  <input
+                    type="number"
+                    class="cinder-invocation-rule-builder__condition-value"
+                    aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
+                    placeholder="Value to compare"
+                    value={condition.value}
+                    oninput={(event) =>
+                      handleUpdateCondition(
+                        rule.id,
+                        condition.id,
+                        'value',
+                        (event.target as HTMLInputElement).value,
+                      )}
+                  />
+                {:else if conditionsOnly && fieldValueType(condition.field) === 'boolean'}
+                  <input
+                    type="checkbox"
+                    class="cinder-invocation-rule-builder__condition-value-checkbox"
+                    aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
+                    checked={condition.value === 'true'}
+                    onchange={(event) =>
+                      handleUpdateCondition(
+                        rule.id,
+                        condition.id,
+                        'value',
+                        String((event.target as HTMLInputElement).checked),
+                      )}
+                  />
+                {:else if conditionsOnly && fieldValueType(condition.field) === 'enum'}
+                  <select
+                    class="cinder-invocation-rule-builder__condition-select cinder-invocation-rule-builder__condition-value-select"
+                    aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
+                    value={condition.value}
+                    onchange={(event) =>
+                      handleUpdateCondition(
+                        rule.id,
+                        condition.id,
+                        'value',
+                        (event.target as HTMLSelectElement).value,
+                      )}
+                  >
+                    {#each fieldEnumOptions(condition.field) as option (option.value)}
+                      <option value={option.value}>{option.label}</option>
+                    {/each}
+                  </select>
+                {:else}
+                  <input
+                    type="text"
+                    class="cinder-invocation-rule-builder__condition-value"
+                    aria-label={`Value for condition ${conditionIndex + 1} of ${rule.label}`}
+                    placeholder="Value to compare"
+                    value={condition.value}
+                    oninput={(event) =>
+                      handleUpdateCondition(
+                        rule.id,
+                        condition.id,
+                        'value',
+                        (event.target as HTMLInputElement).value,
+                      )}
+                  />
+                {/if}
 
                 <button
                   type="button"
@@ -488,90 +576,92 @@
         {/if}
       </div>
 
-      <!-- Actions section -->
-      <div>
-        <span
-          id={`${baseId}-rule-${ruleIndex}-actions-label`}
-          class="cinder-invocation-rule-builder__section-heading"
-        >
-          Actions
-        </span>
-        {#if !effectiveReadonly && rule.actions.length === 0}
-          <p class="cinder-invocation-rule-builder__validation" role="status">
-            Add at least one action for this rule.
-          </p>
-        {/if}
-
-        {#if effectiveReadonly}
-          <div
-            class="cinder-invocation-rule-builder__summary"
-            aria-label={`Actions for ${rule.label}`}
+      <!-- Actions section — hidden entirely in conditions-only mode. -->
+      {#if mode === 'full'}
+        <div>
+          <span
+            id={`${baseId}-rule-${ruleIndex}-actions-label`}
+            class="cinder-invocation-rule-builder__section-heading"
           >
-            {#if rule.actions.length === 0}
-              <p class="cinder-invocation-rule-builder__empty">No actions configured.</p>
-            {:else}
-              {#each rule.actions as action (action.id)}
-                <div class="cinder-invocation-rule-builder__summary-row">
-                  {actionSummary(action)}
+            Actions
+          </span>
+          {#if !effectiveReadonly && rule.actions.length === 0}
+            <p class="cinder-invocation-rule-builder__validation" role="status">
+              Add at least one action for this rule.
+            </p>
+          {/if}
+
+          {#if effectiveReadonly}
+            <div
+              class="cinder-invocation-rule-builder__summary"
+              aria-label={`Actions for ${rule.label}`}
+            >
+              {#if rule.actions.length === 0}
+                <p class="cinder-invocation-rule-builder__empty">No actions configured.</p>
+              {:else}
+                {#each rule.actions as action (action.id)}
+                  <div class="cinder-invocation-rule-builder__summary-row">
+                    {actionSummary(action)}
+                  </div>
+                {/each}
+              {/if}
+            </div>
+          {:else}
+            <div
+              class="cinder-invocation-rule-builder__actions"
+              role="list"
+              aria-labelledby={`${baseId}-rule-${ruleIndex}-actions-label`}
+            >
+              {#each rule.actions as action, actionIndex (action.id)}
+                <div class="cinder-invocation-rule-builder__action" role="listitem">
+                  <select
+                    class="cinder-invocation-rule-builder__action-select"
+                    aria-label={`Action ${actionIndex + 1} target for ${rule.label}`}
+                    value={action.target}
+                    onchange={(event) =>
+                      handleUpdateAction(
+                        rule.id,
+                        action.id,
+                        (event.target as HTMLSelectElement).value,
+                      )}
+                  >
+                    {#each resolvedActionOptions as option (option.value)}
+                      <option value={option.value}>{option.label}</option>
+                    {/each}
+                  </select>
+
+                  <button
+                    type="button"
+                    class="cinder-invocation-rule-builder__icon-btn"
+                    aria-label={`Remove action ${actionIndex + 1} of ${rule.label}`}
+                    data-irb-action-remove
+                    onclick={() => handleRemoveAction(rule.id, action.id, actionIndex, ruleIndex)}
+                  >
+                    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                      <path
+                        d="M4 4l8 8M12 4l-8 8"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        fill="none"
+                      />
+                    </svg>
+                  </button>
                 </div>
               {/each}
-            {/if}
-          </div>
-        {:else}
-          <div
-            class="cinder-invocation-rule-builder__actions"
-            role="list"
-            aria-labelledby={`${baseId}-rule-${ruleIndex}-actions-label`}
-          >
-            {#each rule.actions as action, actionIndex (action.id)}
-              <div class="cinder-invocation-rule-builder__action" role="listitem">
-                <select
-                  class="cinder-invocation-rule-builder__action-select"
-                  aria-label={`Action ${actionIndex + 1} target for ${rule.label}`}
-                  value={action.target}
-                  onchange={(event) =>
-                    handleUpdateAction(
-                      rule.id,
-                      action.id,
-                      (event.target as HTMLSelectElement).value,
-                    )}
-                >
-                  {#each actionOptions as option (option.value)}
-                    <option value={option.value}>{option.label}</option>
-                  {/each}
-                </select>
+            </div>
 
-                <button
-                  type="button"
-                  class="cinder-invocation-rule-builder__icon-btn"
-                  aria-label={`Remove action ${actionIndex + 1} of ${rule.label}`}
-                  data-irb-action-remove
-                  onclick={() => handleRemoveAction(rule.id, action.id, actionIndex, ruleIndex)}
-                >
-                  <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                    <path
-                      d="M4 4l8 8M12 4l-8 8"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      fill="none"
-                    />
-                  </svg>
-                </button>
-              </div>
-            {/each}
-          </div>
-
-          <button
-            type="button"
-            class="cinder-invocation-rule-builder__add-btn"
-            aria-label={`${addActionLabel} to ${rule.label}`}
-            data-irb-add-action
-            onclick={() => handleAddAction(rule.id)}
-          >
-            + {addActionLabel}
-          </button>
-        {/if}
-      </div>
+            <button
+              type="button"
+              class="cinder-invocation-rule-builder__add-btn"
+              aria-label={`${addActionLabel} to ${rule.label}`}
+              data-irb-add-action
+              onclick={() => handleAddAction(rule.id)}
+            >
+              + {addActionLabel}
+            </button>
+          {/if}
+        </div>
+      {/if}
     </div>
   {/each}
 

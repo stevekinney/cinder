@@ -75,6 +75,36 @@ function renderBuilder(rules: InvocationRule[] = [], overrides: Record<string, u
   return { ...result, onchange };
 }
 
+const typedFieldOptions: InvocationRuleOption[] = [
+  { value: 'retries', label: 'Retries', type: 'number' },
+  { value: 'enabled', label: 'Enabled', type: 'boolean' },
+  {
+    value: 'severity',
+    label: 'Severity',
+    type: 'enum',
+    options: [
+      { value: 'low', label: 'Low' },
+      { value: 'high', label: 'High' },
+    ],
+  },
+  { value: 'label', label: 'Label' },
+];
+
+function renderConditionsOnlyBuilder(
+  rules: InvocationRule[] = [],
+  overrides: Record<string, unknown> = {},
+) {
+  const onchange = mock();
+  const result = render(InvocationRuleBuilder, {
+    rules,
+    onchange,
+    fieldOptions: typedFieldOptions,
+    mode: 'conditions',
+    ...overrides,
+  });
+  return { ...result, onchange };
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
@@ -713,6 +743,186 @@ describe('InvocationRuleBuilder', () => {
       const addBtn = container.querySelector<HTMLElement>('[data-irb-add-rule]')!;
       expect(addBtn.tagName).toBe('BUTTON');
       expect((addBtn as HTMLButtonElement).type).toBe('button');
+    });
+  });
+
+  describe('conditions-only mode', () => {
+    test('defaults to full mode (conditions + actions) when the mode prop is omitted', () => {
+      const { container } = renderBuilder([makeRule()]);
+      expect(container.querySelector('[data-irb-add-action]')).not.toBeNull();
+      expect(container.textContent).toContain('Actions');
+    });
+
+    test('hides action controls entirely in editable conditions-only mode', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label' })] });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      expect(container.querySelector('[data-irb-add-action]')).toBeNull();
+      expect(container.querySelector('[data-irb-action-remove]')).toBeNull();
+      expect(container.querySelector('select[aria-label*="target"]')).toBeNull();
+      expect(container.querySelector('.cinder-invocation-rule-builder__actions')).toBeNull();
+      expect(container.textContent).not.toContain('Actions');
+    });
+
+    test('hides the action summary entirely in readonly conditions-only mode', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label' })] });
+      const { container } = renderConditionsOnlyBuilder([rule], {
+        readonly: true,
+        onchange: undefined,
+      });
+      expect(container.textContent).not.toContain('Actions');
+      expect(container.textContent).not.toContain('No actions configured.');
+    });
+
+    test('constrains the operator select to the fixed eq/gt/lt/gte/lte set with default labels', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      const operatorSelect = container.querySelector<HTMLSelectElement>(
+        '[aria-label="Operator for condition 1 of PR Review Rule"]',
+      )!;
+      const values = Array.from(operatorSelect.options).map((option) => option.value);
+      expect(values).toEqual(['eq', 'gt', 'lt', 'gte', 'lte']);
+      expect(operatorSelect.options[0]?.textContent).toBe('equals');
+    });
+
+    test('ignores a consumer-supplied operatorOptions prop in conditions-only mode', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
+      const { container } = renderConditionsOnlyBuilder([rule], {
+        operatorOptions: [{ value: 'custom', label: 'Custom operator' }],
+      });
+      const operatorSelect = container.querySelector<HTMLSelectElement>(
+        '[aria-label="Operator for condition 1 of PR Review Rule"]',
+      )!;
+      const values = Array.from(operatorSelect.options).map((option) => option.value);
+      expect(values).toEqual(['eq', 'gt', 'lt', 'gte', 'lte']);
+    });
+
+    test('add-condition seeds the new condition with the fixed operator set default (eq)', async () => {
+      const rule = makeRule({ conditions: [] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+      await fireEvent.click(addCondBtn);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].operator).toBe('eq');
+    });
+
+    test('renders a numeric input for a number-typed field', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'retries', value: '3' })] });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+      expect(valueInput.tagName).toBe('INPUT');
+      expect(valueInput.type).toBe('number');
+      expect(valueInput.value).toBe('3');
+    });
+
+    test('renders a checkbox for a boolean-typed field', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'enabled', value: 'true' })] });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+      expect(valueInput.tagName).toBe('INPUT');
+      expect(valueInput.type).toBe('checkbox');
+      expect(valueInput.checked).toBe(true);
+    });
+
+    test('renders a select with declared options for an enum-typed field', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'severity', value: 'high' })] });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      const valueSelect = container.querySelector<HTMLSelectElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+      expect(valueSelect.tagName).toBe('SELECT');
+      expect(valueSelect.value).toBe('high');
+      const optionValues = Array.from(valueSelect.options).map((option) => option.value);
+      expect(optionValues).toEqual(['low', 'high']);
+    });
+
+    test('renders a text input for a string-typed (or untyped) field', () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foo' })] });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+      expect(valueInput.tagName).toBe('INPUT');
+      expect(valueInput.type).toBe('text');
+    });
+
+    test('editing a numeric condition value emits update-condition with the raw string value', async () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'retries', value: '3' })] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(valueInput, { target: { value: '5' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].value).toBe('5');
+      expect(change.type).toBe('update-condition');
+      expect(change.field).toBe('value');
+    });
+
+    test('toggling a boolean condition value emits update-condition with a stringified boolean', async () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'enabled', value: 'false' })] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+
+      await fireEvent.click(valueInput);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].value).toBe('true');
+      expect(change.type).toBe('update-condition');
+      expect(change.field).toBe('value');
+    });
+
+    test('selecting an enum condition value emits update-condition with the chosen option value', async () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'severity', value: 'low' })] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const valueSelect = container.querySelector<HTMLSelectElement>(
+        '[aria-label="Value for condition 1 of PR Review Rule"]',
+      )!;
+
+      await fireEvent.change(valueSelect, { target: { value: 'high' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].value).toBe('high');
+      expect(change.type).toBe('update-condition');
+      expect(change.field).toBe('value');
+    });
+
+    test('rules created in conditions-only mode start with an empty actions array and no action descriptors are ever emitted', async () => {
+      const { container, onchange } = renderConditionsOnlyBuilder([]);
+      const addRuleBtn = container.querySelector<HTMLElement>('[data-irb-add-rule]')!;
+
+      await fireEvent.click(addRuleBtn);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].actions).toEqual([]);
+      expect(['add-action', 'remove-action', 'update-action']).not.toContain(change.type);
+    });
+
+    test('readonly conditions-only summary shows condition text but never an actions section', () => {
+      const rule = makeRule({
+        conditions: [makeCondition({ field: 'label', value: 'foo' })],
+      });
+      const { container } = renderConditionsOnlyBuilder([rule], {
+        readonly: true,
+        onchange: undefined,
+      });
+      expect(container.textContent).toContain('Label');
+      expect(container.textContent).toContain('foo');
+      expect(container.textContent).not.toContain('Actions');
     });
   });
 

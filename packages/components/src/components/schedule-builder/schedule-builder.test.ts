@@ -1,0 +1,516 @@
+/// <reference lib="dom" />
+import { afterEach, describe, expect, mock, test } from 'bun:test';
+
+import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { ScheduleFire, ScheduleValue } from './schedule-builder.types.ts';
+
+// setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
+// reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
+// so we register happy-dom's globals first and then dynamic-import testing-library below.
+setupHappyDom();
+
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { default: ScheduleBuilder } = await import('./schedule-builder.svelte');
+// createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
+// the svelte package to resolve to the client build) applies before this import resolves.
+// A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
+// non-browser environment, making `mount()` throw "not available on the server".
+const { createRawSnippet } = await import('svelte');
+
+/** Creates a Svelte 5 Snippet that renders text content. */
+function textSnippet(text: string) {
+  return createRawSnippet(() => ({
+    render: () => `<span>${text}</span>`,
+  }));
+}
+
+const STATIC_FIRES: ScheduleFire[] = [
+  { id: 'fire-1', label: 'Mon Jun 1, 09:00' },
+  { id: 'fire-2', label: 'Tue Jun 2, 09:00' },
+];
+
+function stubComputeNextFires(fires: ScheduleFire[] = STATIC_FIRES) {
+  return mock((_value: ScheduleValue, _count: number) => fires);
+}
+
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
+describe('ScheduleBuilder', () => {
+  describe('structure', () => {
+    test('renders the cinder-schedule-builder root with a default label', () => {
+      const { container } = render(ScheduleBuilder, {});
+      const root = container.querySelector('.cinder-schedule-builder');
+      expect(root).not.toBeNull();
+      expect(root?.getAttribute('aria-label')).toBe('Schedule');
+      expect(root?.getAttribute('role')).toBe('group');
+    });
+
+    test('merges a custom class onto the root element', () => {
+      const { container } = render(ScheduleBuilder, { class: 'my-schedule' });
+      const root = container.querySelector('.cinder-schedule-builder');
+      expect(root?.classList.contains('my-schedule')).toBe(true);
+    });
+
+    test('honors a custom label prop', () => {
+      const { container } = render(ScheduleBuilder, { label: 'Job schedule' });
+      const root = container.querySelector('.cinder-schedule-builder');
+      expect(root?.getAttribute('aria-label')).toBe('Job schedule');
+    });
+
+    test('allows a consumer aria-labelledby to take precedence over the default label', () => {
+      const { container } = render(ScheduleBuilder, {
+        'aria-labelledby': 'external-heading',
+      } as never);
+      const root = container.querySelector('.cinder-schedule-builder');
+      expect(root?.getAttribute('aria-labelledby')).toBe('external-heading');
+      expect(root?.getAttribute('aria-label')).toBeNull();
+    });
+
+    test('defaults to presets mode', () => {
+      const { container } = render(ScheduleBuilder, {});
+      const root = container.querySelector('.cinder-schedule-builder');
+      expect(root?.getAttribute('data-sb-mode')).toBe('presets');
+      expect(container.querySelector('[data-sb-panel="presets"]')).not.toBeNull();
+    });
+  });
+
+  describe('mode switching', () => {
+    test('switching to cron mode shows the cron panel and hides the presets panel', async () => {
+      const { container, getByRole } = render(ScheduleBuilder, {});
+      const cronTab = getByRole('tab', { name: 'Cron' });
+
+      await fireEvent.click(cronTab);
+
+      expect(container.querySelector('[data-sb-panel="cron"]')).not.toBeNull();
+      expect(container.querySelector('[data-sb-panel="presets"]')).toBeNull();
+      expect(container.querySelectorAll('.cinder-schedule-builder__cron-fields > *')).toHaveLength(
+        5,
+      );
+    });
+
+    test('switching to interval mode shows the interval panel', async () => {
+      const { container, getByRole } = render(ScheduleBuilder, {});
+      const intervalTab = getByRole('tab', { name: 'Interval' });
+
+      await fireEvent.click(intervalTab);
+
+      expect(container.querySelector('[data-sb-panel="interval"]')).not.toBeNull();
+    });
+
+    test('switching modes does not call onchange', async () => {
+      const onchange = mock();
+      const { getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      await fireEvent.click(getByRole('tab', { name: 'Interval' }));
+      await fireEvent.click(getByRole('tab', { name: 'Presets' }));
+
+      expect(onchange).not.toHaveBeenCalled();
+    });
+
+    test('entering cron mode seeds the five fields from the default interval value', async () => {
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+
+      // Default value is "every 15 minutes" -> */15 * * * *
+      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('*/15');
+      expect((getByLabelText('Hour') as HTMLInputElement).value).toBe('*');
+      expect((getByLabelText('Day of month') as HTMLInputElement).value).toBe('*');
+      expect((getByLabelText('Month') as HTMLInputElement).value).toBe('*');
+      expect((getByLabelText('Day of week') as HTMLInputElement).value).toBe('*');
+    });
+
+    test('entering interval mode from a representable cron value seeds every/unit losslessly', async () => {
+      const value: ScheduleValue = { mode: 'cron', expression: '0 */2 * * *' };
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { value });
+
+      await fireEvent.click(getByRole('tab', { name: 'Interval' }));
+
+      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('2');
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(unitSelect.value).toBe('hours');
+    });
+
+    test('entering interval mode from a non-representable cron value leaves interval fields at their default', async () => {
+      const value: ScheduleValue = { mode: 'cron', expression: '30 9 * * 1' };
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { value });
+
+      await fireEvent.click(getByRole('tab', { name: 'Interval' }));
+
+      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('15');
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(unitSelect.value).toBe('minutes');
+    });
+
+    test('round-tripping presets -> cron -> presets -> cron preserves a committed cron edit', async () => {
+      // A cron field edit only re-seeds mode fields against the last COMMITTED
+      // value (not the untouched default of whichever mode happens to be
+      // active), so a valid edit survives bouncing through presets and back.
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '0' } });
+      expect(minuteField.value).toBe('0');
+
+      await fireEvent.click(getByRole('tab', { name: 'Presets' }));
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+
+      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
+    });
+  });
+
+  describe('presets mode', () => {
+    test('presets "every" kind commits an interval value via onchange', async () => {
+      const onchange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, { onchange });
+
+      const everyInput = getByLabelText('Every') as HTMLInputElement;
+      await fireEvent.input(everyInput, { target: { value: '30' } });
+      await fireEvent.blur(everyInput);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [emitted] = onchange.mock.calls[0]!;
+      expect(emitted).toEqual({ mode: 'interval', every: 30, unit: 'minutes' });
+    });
+
+    test('presets "every" unit select commits an interval value via onchange', async () => {
+      const onchange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, { onchange });
+
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      await fireEvent.change(unitSelect, { target: { value: 'hours' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'interval', every: 15, unit: 'hours' });
+    });
+
+    test('presets "daily at" commits a cron value via onchange', async () => {
+      const onchange = mock();
+      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('radio', { name: 'Daily' }));
+      const timeInput = container.querySelector<HTMLInputElement>('#' + getByLabelText('At').id)!;
+      await fireEvent.change(timeInput, { target: { value: '09:15' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [emitted] = onchange.mock.calls[0]!;
+      expect(emitted).toEqual({ mode: 'cron', expression: '15 9 * * *' });
+    });
+
+    test('presets "weekly on" toggling a day and committing a time emits a cron value with the selected day', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('radio', { name: 'Weekly' }));
+      await fireEvent.click(getByRole('button', { name: 'Monday' }));
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 * * 1' });
+
+      const timeInput = getByLabelText('At') as HTMLInputElement;
+      await fireEvent.change(timeInput, { target: { value: '10:00' } });
+
+      expect(onchange).toHaveBeenCalledTimes(2);
+      expect(onchange.mock.calls[1]![0]).toEqual({ mode: 'cron', expression: '0 10 * * 1' });
+    });
+
+    test('weekly day chip toggles pressed state and can be deselected', async () => {
+      const { getByRole } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('radio', { name: 'Weekly' }));
+      const mondayChip = getByRole('button', { name: 'Monday' });
+      expect(mondayChip.getAttribute('aria-pressed')).toBe('false');
+
+      await fireEvent.click(mondayChip);
+      expect(mondayChip.getAttribute('aria-pressed')).toBe('true');
+
+      await fireEvent.click(mondayChip);
+      expect(mondayChip.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    test('presets "monthly on day" commits a cron value with the day and time', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('radio', { name: 'Monthly' }));
+      const dayInput = getByLabelText('Day of month') as HTMLInputElement;
+      await fireEvent.input(dayInput, { target: { value: '15' } });
+      await fireEvent.blur(dayInput);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      // presetMonthlyTime defaults to '09:00', not midnight.
+      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 15 * *' });
+    });
+
+    test('presets never emit mode: "preset" — only cron or interval', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      // every
+      await fireEvent.change(getByLabelText('Unit') as HTMLSelectElement, {
+        target: { value: 'hours' },
+      });
+      // daily
+      await fireEvent.click(getByRole('radio', { name: 'Daily' }));
+      await fireEvent.change(getByLabelText('At') as HTMLInputElement, {
+        target: { value: '08:00' },
+      });
+      // weekly
+      await fireEvent.click(getByRole('radio', { name: 'Weekly' }));
+      await fireEvent.click(getByRole('button', { name: 'Friday' }));
+      // monthly
+      await fireEvent.click(getByRole('radio', { name: 'Monthly' }));
+      const dayInput = getByLabelText('Day of month') as HTMLInputElement;
+      await fireEvent.input(dayInput, { target: { value: '1' } });
+      await fireEvent.blur(dayInput);
+
+      expect(onchange).toHaveBeenCalled();
+      for (const call of onchange.mock.calls) {
+        const emitted = call[0] as ScheduleValue;
+        expect(['cron', 'interval']).toContain(emitted.mode);
+      }
+    });
+  });
+
+  describe('interval mode', () => {
+    test('emits an interval value when the every field is committed', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('tab', { name: 'Interval' }));
+      const everyInput = getByLabelText('Every') as HTMLInputElement;
+      await fireEvent.input(everyInput, { target: { value: '5' } });
+      await fireEvent.blur(everyInput);
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'interval', every: 5, unit: 'minutes' });
+    });
+
+    test('emits an interval value when the unit select changes', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('tab', { name: 'Interval' }));
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      await fireEvent.change(unitSelect, { target: { value: 'weeks' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'interval', every: 15, unit: 'weeks' });
+    });
+  });
+
+  describe('cron mode', () => {
+    test('a valid cron field edit commits a joined cron expression via onchange', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '0' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]![0]).toEqual({
+        mode: 'cron',
+        expression: '0 * * * *',
+      });
+    });
+
+    test('an out-of-range cron field surfaces an inline error and does not call onchange', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      const hourField = getByLabelText('Hour') as HTMLInputElement;
+      await fireEvent.input(hourField, { target: { value: '99' } });
+
+      expect(hourField.getAttribute('aria-invalid')).toBe('true');
+      const describedBy = hourField.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      const errorNode = document.getElementById(
+        describedBy!.split(' ').find((id) => id.includes('error')) ?? '',
+      );
+      expect(errorNode?.textContent).toBe('Out of range (0–23).');
+      expect(onchange).not.toHaveBeenCalled();
+    });
+
+    test('correcting an invalid cron field back to valid resumes emitting onchange', async () => {
+      const onchange = mock();
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      const hourField = getByLabelText('Hour') as HTMLInputElement;
+      await fireEvent.input(hourField, { target: { value: '99' } });
+      expect(onchange).not.toHaveBeenCalled();
+
+      await fireEvent.input(hourField, { target: { value: '9' } });
+      expect(onchange).toHaveBeenCalledTimes(1);
+      expect(onchange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '*/15 9 * * *' });
+    });
+
+    test('cron field description carries its numeric hint', async () => {
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const describedBy = minuteField.getAttribute('aria-describedby') ?? '';
+      const hintId = describedBy.split(' ')[0] ?? '';
+      expect(document.getElementById(hintId)?.textContent).toBe('0–59');
+    });
+  });
+
+  describe('summary line', () => {
+    test('reflects the default value', () => {
+      const { container } = render(ScheduleBuilder, {});
+      const summary = container.querySelector('.cinder-schedule-builder__summary-text');
+      expect(summary?.textContent).toBe('Every 15 minutes');
+    });
+
+    test('updates live as interval fields change', async () => {
+      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('tab', { name: 'Interval' }));
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      await fireEvent.change(unitSelect, { target: { value: 'hours' } });
+
+      const summary = container.querySelector('.cinder-schedule-builder__summary-text');
+      expect(summary?.textContent).toBe('Every 15 hours');
+    });
+
+    test('reflects a controlled initial cron value once cron mode is opened', async () => {
+      // Presets defaults to the "every N" kind, which cannot represent an arbitrary
+      // weekly cron pattern — so the summary initially describes the default preset
+      // ("Every 15 minutes") until the user opens cron mode, where the value seeds
+      // losslessly via valueToCronFields and the summary reflects the real value.
+      const value: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
+      const { container, getByRole } = render(ScheduleBuilder, { value });
+      const summaryBefore = container.querySelector('.cinder-schedule-builder__summary-text');
+      expect(summaryBefore?.textContent).toBe('Every 15 minutes');
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+
+      const summaryAfter = container.querySelector('.cinder-schedule-builder__summary-text');
+      expect(summaryAfter?.textContent).toBe('Weekly on Monday at 09:00');
+    });
+  });
+
+  describe('next-fires preview', () => {
+    test('is hidden entirely when computeNextFires is absent', () => {
+      const { container } = render(ScheduleBuilder, {});
+      expect(container.querySelector('.cinder-schedule-builder__preview')).toBeNull();
+    });
+
+    test('does not crash when computeNextFires is absent and fields change', async () => {
+      const { container, getByRole } = render(ScheduleBuilder, {});
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      expect(container.querySelector('.cinder-schedule-builder')).not.toBeNull();
+    });
+
+    test('renders fires returned from an injected computeNextFires', () => {
+      const computeNextFires = stubComputeNextFires();
+      const { container, getAllByRole } = render(ScheduleBuilder, { computeNextFires });
+
+      expect(computeNextFires).toHaveBeenCalled();
+      const [calledValue, calledCount] = computeNextFires.mock.calls[0]!;
+      expect(calledValue).toEqual({ mode: 'interval', every: 15, unit: 'minutes' });
+      expect(calledCount).toBe(5);
+
+      const items = getAllByRole('listitem');
+      expect(items.map((item) => item.textContent)).toEqual([
+        'Mon Jun 1, 09:00',
+        'Tue Jun 2, 09:00',
+      ]);
+      expect(container.querySelector('.cinder-schedule-builder__preview')).not.toBeNull();
+    });
+
+    test('shows an empty state when computeNextFires returns no fires', () => {
+      const computeNextFires = stubComputeNextFires([]);
+      const { container } = render(ScheduleBuilder, { computeNextFires });
+
+      expect(container.querySelector('.cinder-schedule-builder__preview-list')).toBeNull();
+      expect(container.textContent).toContain('No upcoming fires.');
+    });
+
+    test('passes a custom previewCount through to computeNextFires', () => {
+      const computeNextFires = stubComputeNextFires();
+      render(ScheduleBuilder, { computeNextFires, previewCount: 3 });
+
+      expect(computeNextFires.mock.calls[0]![1]).toBe(3);
+    });
+  });
+
+  describe('timezone slot', () => {
+    test('renders nothing but a placeholder when neither timezone nor timezoneLabel is supplied', () => {
+      const { container } = render(ScheduleBuilder, {});
+      const timezoneBlock = container.querySelector('.cinder-schedule-builder__timezone');
+      expect(timezoneBlock?.textContent?.trim()).toContain('Not set');
+    });
+
+    test('renders timezoneLabel text', () => {
+      const { container } = render(ScheduleBuilder, { timezoneLabel: 'America/New_York' });
+      const timezoneBlock = container.querySelector('.cinder-schedule-builder__timezone');
+      expect(timezoneBlock?.textContent).toContain('America/New_York');
+    });
+
+    test('renders the timezone snippet, taking precedence over timezoneLabel', () => {
+      const { container } = render(ScheduleBuilder, {
+        timezoneLabel: 'UTC',
+        timezone: textSnippet('Custom timezone content'),
+      });
+      const timezoneBlock = container.querySelector('.cinder-schedule-builder__timezone');
+      expect(timezoneBlock?.textContent).toContain('Custom timezone content');
+      expect(timezoneBlock?.textContent).not.toContain('UTC');
+    });
+  });
+
+  describe('accessibility', () => {
+    test('mode switch is a tablist with three tabs', () => {
+      const { getByRole } = render(ScheduleBuilder, {});
+      const tablist = getByRole('tablist');
+      expect(tablist).not.toBeNull();
+      expect(getByRole('tab', { name: 'Presets' })).not.toBeNull();
+      expect(getByRole('tab', { name: 'Cron' })).not.toBeNull();
+      expect(getByRole('tab', { name: 'Interval' })).not.toBeNull();
+    });
+
+    test('the active mode panel is a labeled tabpanel', () => {
+      const { container, getByRole } = render(ScheduleBuilder, {});
+      const panel = container.querySelector('[role="tabpanel"]');
+      const presetsTab = getByRole('tab', { name: 'Presets' });
+      expect(panel?.getAttribute('aria-labelledby')).toBe(presetsTab.id);
+    });
+
+    test('keyboard: mode tabs are activated via arrow keys and Enter (native tab semantics)', async () => {
+      const { getByRole } = render(ScheduleBuilder, {});
+      const presetsTab = getByRole('tab', { name: 'Presets' });
+      const cronTab = getByRole('tab', { name: 'Cron' });
+
+      presetsTab.focus();
+      await fireEvent.keyDown(presetsTab, { key: 'ArrowRight' });
+
+      expect(cronTab.getAttribute('aria-selected')).toBe('true');
+    });
+
+    test('weekday chips are native buttons with aria-pressed (guarantees Enter/Space activation)', async () => {
+      const { getByRole } = render(ScheduleBuilder, {});
+      await fireEvent.click(getByRole('radio', { name: 'Weekly' }));
+      const chip = getByRole('button', { name: 'Monday' });
+      expect(chip.tagName).toBe('BUTTON');
+      expect(chip.hasAttribute('aria-pressed')).toBe(true);
+    });
+  });
+
+  describe('CSS snapshot', () => {
+    test('CSS file exists, is non-empty, and declares its cascade layer', async () => {
+      const { readFileSync } = await import('node:fs');
+      const css = readFileSync(new URL('./schedule-builder.css', import.meta.url), 'utf8');
+      expect(css).toContain('cinder-schedule-builder');
+      expect(css).toContain('@layer cinder.components');
+    });
+  });
+});

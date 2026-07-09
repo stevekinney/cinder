@@ -257,6 +257,12 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
 
+export { default as ConnectionIndicator } from './components/connection-indicator/index.ts';
+export type {
+  ConnectionIndicatorProps,
+  ConnectionIndicatorStatus,
+} from './components/connection-indicator/index.ts';
+
 export { default as Container } from './components/container/index.ts';
 export type {
   ContainerElement,
@@ -696,9 +702,13 @@ export type { RatingPrecision, RatingProps } from './components/rating/index.ts'
 export { default as RunStepTimeline } from './components/run-step-timeline/index.ts';
 export type {
   RunStep,
+  RunStepBranchGroup,
+  RunStepBranchLane,
+  RunStepBranchLaneOutcome,
   RunStepDetail,
   RunStepLink,
   RunStepStatus,
+  RunStepTimelineEntry,
   RunStepTimelineProps,
 } from './components/run-step-timeline/index.ts';
 
@@ -714,6 +724,15 @@ export type {
   ResizablePanelsResizeEvent,
   ResizablePanelsResizeReason,
 } from './components/resizable-panels/index.ts';
+
+export { default as ScheduleBuilder } from './components/schedule-builder/index.ts';
+export type {
+  ScheduleAuthoringMode,
+  ScheduleBuilderProps,
+  ScheduleFire,
+  ScheduleIntervalUnit,
+  ScheduleValue,
+} from './components/schedule-builder/index.ts';
 
 export { default as SchemaForm, readSchemaFormData } from './components/schema-form/index.ts';
 export type {

@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { RunStep } from './run-step-timeline.types.ts';
+import type {
+  RunStep,
+  RunStepBranchGroup,
+  RunStepTimelineEntry,
+} from './run-step-timeline.types.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -222,14 +226,20 @@ describe('structure', () => {
   });
 
   test('schema allows nested child details and stops at the rendered depth cap', () => {
-    const stepsSchema = runStepTimelineSchema.properties['steps'] as
+    const stepsProperty = runStepTimelineSchema.properties['steps'] as
       | {
           items: {
-            properties: Record<string, unknown>;
+            anyOf: { properties: Record<string, unknown> }[];
           };
         }
       | undefined;
-    expect(stepsSchema).toBeDefined();
+    expect(stepsProperty).toBeDefined();
+    // `steps.items` is an anyOf of a step entry and a branch-group entry; the
+    // nested-children depth cap lives on the step variant (the one with `status`).
+    const stepVariant = stepsProperty?.items.anyOf.find((variant) =>
+      Object.hasOwn(variant.properties, 'status'),
+    );
+    expect(stepVariant).toBeDefined();
 
     const childSchemaAt = (properties: Record<string, unknown>) => {
       const children = properties['children'] as
@@ -245,7 +255,7 @@ describe('structure', () => {
       return children?.items;
     };
 
-    const depthOneSchema = childSchemaAt(stepsSchema?.items.properties ?? {});
+    const depthOneSchema = childSchemaAt(stepVariant?.properties ?? {});
     const depthOneProperties = depthOneSchema?.properties ?? {};
     const depthTwoSchema = childSchemaAt(depthOneProperties);
     const depthTwoProperties = depthTwoSchema?.properties ?? {};
@@ -1030,6 +1040,232 @@ describe('accessibility', () => {
     const dds = dl?.querySelectorAll('dd');
     expect(dts?.length).toBeGreaterThan(0);
     expect(dds?.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch groups, rewound speculation, and saga compensation
+// ---------------------------------------------------------------------------
+
+const branchGroup: RunStepBranchGroup = {
+  kind: 'branch',
+  id: 'race-candidates',
+  label: 'Race deploy candidates',
+  lanes: [
+    {
+      id: 'blue',
+      label: 'Blue',
+      outcome: 'won',
+      steps: [{ id: 'blue-deploy', label: 'Deploy blue', status: 'succeeded' }],
+    },
+    {
+      id: 'green',
+      label: 'Green',
+      outcome: 'lost',
+      steps: [{ id: 'green-deploy', label: 'Deploy green', status: 'cancelled' }],
+    },
+  ],
+};
+
+describe('branch groups', () => {
+  test('renders a branch-group entry with its lanes and outcome summary', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [branchGroup] as RunStepTimelineEntry[],
+      label: 'Speculative run',
+    });
+
+    const branchItem = container.querySelector(
+      '.cinder-run-step-timeline__item--branch[data-cinder-status="branch"]',
+    );
+    expect(branchItem).not.toBeNull();
+    // Outcome summary conveyed as visible text, not color alone.
+    expect(container.textContent).toContain('1 won, 1 lost');
+    expect(container.textContent).toContain('Race deploy candidates');
+
+    const lanes = container.querySelectorAll('.cinder-run-step-timeline__lane');
+    expect(lanes.length).toBe(2);
+  });
+
+  test('marks winning and losing lanes via data-cinder-outcome', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [branchGroup] as RunStepTimelineEntry[],
+    });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__lane[data-cinder-outcome="won"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('.cinder-run-step-timeline__lane[data-cinder-outcome="lost"]'),
+    ).not.toBeNull();
+  });
+
+  test('renders lanes with no outcome as racing', () => {
+    const racing: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'racing',
+      label: 'In-flight race',
+      lanes: [
+        { id: 'a', label: 'A', steps: [{ id: 'a1', label: 'A step', status: 'running' }] },
+        { id: 'b', label: 'B', steps: [{ id: 'b1', label: 'B step', status: 'running' }] },
+      ],
+    };
+    const { container } = render(RunStepTimeline, { steps: [racing] as RunStepTimelineEntry[] });
+    expect(
+      container.querySelectorAll('.cinder-run-step-timeline__lane[data-cinder-outcome="racing"]')
+        .length,
+    ).toBe(2);
+    expect(container.textContent).toContain('2 lanes racing');
+  });
+
+  test('collapses by default once the lane count reaches the threshold', () => {
+    const threeLaneGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide',
+      label: 'Wide race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        outcome: 'settled' as const,
+        steps: [{ id: `${id}-1`, label: `${id} step`, status: 'succeeded' as const }],
+      })),
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [threeLaneGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('stays expanded below the threshold', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [branchGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('respects an explicit collapsed override regardless of threshold', () => {
+    const collapsed: RunStepBranchGroup = { ...branchGroup, collapsed: true };
+    const { container } = render(RunStepTimeline, {
+      steps: [collapsed] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('renders steps and branch groups together, preserving order', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'first', label: 'First', status: 'succeeded' },
+      branchGroup,
+      { id: 'last', label: 'Last', status: 'pending' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    // Scope to the root ol's direct children — lane sub-lists reuse the root class.
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const items = [...(rootList?.children ?? [])].filter((el) =>
+      el.classList.contains('cinder-run-step-timeline__item'),
+    );
+    // first step, branch group, last step
+    expect(items.length).toBe(3);
+    expect(items[1]?.getAttribute('data-cinder-status')).toBe('branch');
+  });
+
+  test('accepts a branch group through the generated schema', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+    expect(
+      validate({
+        steps: [
+          {
+            kind: 'branch',
+            id: 'g',
+            label: 'Group',
+            lanes: [
+              { id: 'l1', outcome: 'won', steps: [{ id: 's', label: 'S', status: 'succeeded' }] },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+    // A branch group missing its required `lanes` fails validation.
+    expect(validate({ steps: [{ kind: 'branch', id: 'g', label: 'Group' }] })).toBe(false);
+  });
+});
+
+describe('rewound steps', () => {
+  const rewoundStep: RunStep = {
+    id: 'speculative',
+    label: 'Speculative write',
+    status: 'succeeded',
+    rewound: true,
+    details: [{ id: 'log', label: 'Log', content: 'unwound after conflict' }],
+  };
+
+  test('flags a rewound step with a data attribute and visible badge', () => {
+    const { container, getByText } = render(RunStepTimeline, {
+      steps: [rewoundStep] as RunStepTimelineEntry[],
+    });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__item[data-cinder-rewound]'),
+    ).not.toBeNull();
+    // State conveyed as text, not color alone.
+    expect(getByText('Rewound')).not.toBeNull();
+  });
+
+  test('keeps a rewound step inspectable (details still render)', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [rewoundStep] as RunStepTimelineEntry[],
+    });
+    expect(container.querySelector('.cinder-run-step-timeline__details')).not.toBeNull();
+  });
+
+  test('does not flag a normal step as rewound', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [{ id: 'normal', label: 'Normal', status: 'succeeded' }] as RunStepTimelineEntry[],
+    });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__item[data-cinder-rewound]'),
+    ).toBeNull();
+  });
+});
+
+describe('compensation', () => {
+  test('insets and labels a step that compensates a resolvable forward step', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'charge', label: 'Charge card', status: 'succeeded' },
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const compensating = container.querySelector(
+      '.cinder-run-step-timeline__item[data-cinder-compensation]',
+    );
+    expect(compensating).not.toBeNull();
+    expect(container.textContent).toContain('Compensates Charge card');
+  });
+
+  test('renders a step with an unresolved compensates id in place, without inset', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'does-not-exist' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__item[data-cinder-compensation]'),
+    ).toBeNull();
+    expect(container.textContent).not.toContain('Compensates');
+  });
+
+  test('resolves a compensation target that lives inside a branch lane', () => {
+    const steps: RunStepTimelineEntry[] = [
+      branchGroup,
+      { id: 'undo-blue', label: 'Undo blue', status: 'succeeded', compensates: 'blue-deploy' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(container.textContent).toContain('Compensates Deploy blue');
   });
 });
 

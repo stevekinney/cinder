@@ -53,6 +53,7 @@
 @import '../components/command-menu/command-menu.css';
 @import '../components/command-palette/command-palette.css';
 @import '../components/confirm-dialog/confirm-dialog.css';
+@import '../components/connection-indicator/connection-indicator.css';
 @import '../components/container/container.css';
 @import '../components/context-menu/context-menu.css';
 @import '../components/copy-button/copy-button.css';
@@ -129,6 +130,7 @@
 @import '../components/resizable-panels/resizable-panels.css';
 @import '../components/run-step-timeline/run-step-timeline.css';
 @import '../components/review-editor/review-editor.css';
+@import '../components/schedule-builder/schedule-builder.css';
 @import '../components/schema-form/schema-form.css';
 @import '../components/scroll-area/scroll-area.css';
 @import '../components/search-field/search-field.css';

@@ -3,21 +3,26 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Ordered step-by-step execution rail that visualizes async run state with per-step status, durations, retries, optional progress, and expandable detail panels.
+   * @purpose Ordered execution rail for async run state: per-step status, durations, retries, plus parallel branch groups, rewound speculation, and saga compensation.
    * @tag timeline
    * @tag progress
    * @tag execution
    * @useWhen Displaying the live or completed state of a multi-step async operation: CI jobs, workflow runs, import pipelines, or deployments.
    * @useWhen Showing a sequence where one step is currently active and prior steps have streamed in over time.
+   * @useWhen Visualizing speculative parallel work (race N lanes, keep the winner) or saga-style compensation of a forward step.
    * @avoidWhen Guiding users through an interactive wizard where they choose what to do next — use steps instead.
    * @avoidWhen Showing a flat timestamp-first event log without structured step state — use timeline instead.
    * @related timeline, steps, status-dot, progress, badge, collapsible
    */
   export type {
     RunStep,
+    RunStepBranchGroup,
+    RunStepBranchLane,
+    RunStepBranchLaneOutcome,
     RunStepDetail,
     RunStepLink,
     RunStepStatus,
+    RunStepTimelineEntry,
     RunStepTimelineProps,
   } from './run-step-timeline.types.ts';
 </script>
@@ -29,40 +34,71 @@
   import Link from '../link/link.svelte';
   import Progress from '../progress/progress.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
-  import type { StatusDotStatus } from '../status-dot/status-dot.types.ts';
-  import type { RunStep, RunStepStatus, RunStepTimelineProps } from './run-step-timeline.types.ts';
+  import type {
+    RunStep,
+    RunStepBranchGroup,
+    RunStepBranchLane,
+    RunStepTimelineEntry,
+    RunStepTimelineProps,
+  } from './run-step-timeline.types.ts';
+  import {
+    actionsCountLabel,
+    badgeVariant,
+    branchOutcomeSummary,
+    branchStartsCollapsed,
+    hasProgress,
+    hiddenNestedStepLabel,
+    isCurrent,
+    isTerminal,
+    laneOutcomeBadgeVariant,
+    laneOutcomeLabel,
+    metadataItems,
+    safeStepLinkHref,
+    statusDotStatus,
+    statusLabel,
+  } from './run-step-timeline.utilities.ts';
 
   const MAX_NESTED_STEP_DEPTH = 3;
 
-  type RenderedRunStepBase = {
-    depth: number;
-    pathKey: string;
-  };
-
-  type RenderedStepRow = RenderedRunStepBase & {
+  type RenderedStepRow = {
     kind: 'step';
     step: RunStep;
-  };
-
-  type RenderedDepthLimitRow = RenderedRunStepBase & {
-    kind: 'depth-limit';
-    hiddenStepCount: number;
-    hiddenCurrent: boolean;
-  };
-
-  type PendingRenderedRunStep = RenderedStepRow | RenderedDepthLimitRow;
-
-  type RenderedRunStep = PendingRenderedRunStep & {
     depth: number;
     pathKey: string;
     connectorAfter: 'hidden' | 'visible';
     ariaCurrent: boolean;
+    /** Forward step label when this step compensates a resolvable sibling id. */
+    compensatesLabel: string | undefined;
   };
 
-  type NestedRunStepSummary = {
-    count: number;
-    hasCurrent: boolean;
+  type RenderedDepthLimitRow = {
+    kind: 'depth-limit';
+    depth: number;
+    pathKey: string;
+    connectorAfter: 'hidden' | 'visible';
+    ariaCurrent: boolean;
+    hiddenStepCount: number;
+    hiddenCurrent: boolean;
   };
+
+  type RenderedBranchRow = {
+    kind: 'branch';
+    group: RunStepBranchGroup;
+    pathKey: string;
+  };
+
+  type RenderedStepLike = RenderedStepRow | RenderedDepthLimitRow;
+  type RenderedEntry = RenderedStepLike | RenderedBranchRow;
+
+  type PendingStepRow =
+    | { kind: 'step'; step: RunStep; depth: number; pathKey: string }
+    | {
+        kind: 'depth-limit';
+        depth: number;
+        pathKey: string;
+        hiddenStepCount: number;
+        hiddenCurrent: boolean;
+      };
 
   let {
     steps,
@@ -78,165 +114,100 @@
     ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
   );
 
-  const renderedSteps = $derived(flattenRunSteps(steps));
+  // Map of step id -> label across the whole timeline (top-level, nested
+  // children, and branch-lane steps) so compensation links can resolve the
+  // forward step they reverse regardless of where it lives.
+  const stepLabelById = $derived(collectStepLabels(steps));
 
-  // Map generic RunStepStatus onto StatusDot status tokens.
-  function statusDotStatus(status: RunStepStatus): StatusDotStatus {
-    switch (status) {
-      case 'succeeded':
-        return 'success';
-      case 'failed':
-        return 'danger';
-      case 'running':
-        return 'online';
-      case 'retrying':
-        return 'warning';
-      case 'waiting_approval':
-        return 'accent';
-      case 'cancelled':
-        return 'offline';
-      case 'skipped':
-        return 'neutral';
-      case 'pending':
-        return 'pending';
-    }
+  const renderedEntries = $derived(flattenEntries(steps));
+
+  function isBranchGroup(entry: RunStepTimelineEntry): entry is RunStepBranchGroup {
+    return 'kind' in entry && entry.kind === 'branch';
   }
 
-  // Human-readable label for the StatusDot accessible name.
-  function statusLabel(status: RunStepStatus): string {
-    switch (status) {
-      case 'pending':
-        return 'Pending';
-      case 'running':
-        return 'Running';
-      case 'succeeded':
-        return 'Succeeded';
-      case 'failed':
-        return 'Failed';
-      case 'cancelled':
-        return 'Cancelled';
-      case 'skipped':
-        return 'Skipped';
-      case 'retrying':
-        return 'Retrying';
-      case 'waiting_approval':
-        return 'Waiting approval';
-    }
-  }
-
-  // Map RunStepStatus to a Badge variant for the status chip.
-  type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
-  function badgeVariant(status: RunStepStatus): BadgeVariant {
-    switch (status) {
-      case 'succeeded':
-        return 'success';
-      case 'failed':
-        return 'danger';
-      case 'running':
-        return 'info';
-      case 'retrying':
-        return 'warning';
-      case 'waiting_approval':
-        return 'accent';
-      case 'cancelled':
-        return 'neutral';
-      case 'skipped':
-        return 'neutral';
-      case 'pending':
-        return 'neutral';
-    }
-  }
-
-  // Whether this status is a terminal state (no further changes expected).
-  function isTerminal(status: RunStepStatus): boolean {
-    return (
-      status === 'succeeded' ||
-      status === 'failed' ||
-      status === 'cancelled' ||
-      status === 'skipped'
-    );
-  }
-
-  function isCurrent(status: RunStepStatus): boolean {
-    return status === 'running' || status === 'retrying' || status === 'waiting_approval';
-  }
-
-  // Whether this step has a progress bar to show.
-  function hasProgress(step: RunStep): boolean {
-    return step.progress !== undefined && isCurrent(step.status);
-  }
-
-  // Metadata items for a step, as term/definition pairs.
-  function metadataItems(step: RunStep): { term: string; definition: string }[] {
-    const items: { term: string; definition: string }[] = [];
-    if (step.startTime !== undefined) {
-      items.push({ term: 'Started', definition: step.startTime });
-    }
-    if (step.endTime !== undefined) {
-      items.push({ term: 'Ended', definition: step.endTime });
-    }
-    if (step.duration !== undefined) {
-      items.push({ term: 'Duration', definition: step.duration });
-    }
-    if (step.attemptCount !== undefined && step.attemptCount > 1) {
-      items.push({ term: 'Attempts', definition: String(step.attemptCount) });
-    }
-    return items;
-  }
-
-  function actionsCountLabel(actionsCount: number): string {
-    return actionsCount === 1 ? '1 action' : `${actionsCount} actions`;
-  }
-
-  function hiddenNestedStepLabel(hiddenStepCount: number): string {
-    return hiddenStepCount === 1
-      ? '1 nested step hidden'
-      : `${hiddenStepCount} nested steps hidden`;
-  }
-
-  function safeStepLinkHref(href: string): string | undefined {
-    const trimmedHref = href.trim();
-    if (trimmedHref === '') return undefined;
-    if (/[\u0000-\u001F\u007F]/.test(trimmedHref)) return undefined;
-    if (trimmedHref.includes('\\')) return undefined;
-    const leadingSeparators = trimmedHref.match(/^[\\/]+/)?.[0] ?? '';
-    if (leadingSeparators.length > 1) return undefined;
-
-    if (/^[A-Za-z][A-Za-z\d+.-]*:/.test(trimmedHref)) {
-      try {
-        const parsedUrl = new URL(trimmedHref);
-        return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
-          ? trimmedHref
-          : undefined;
-      } catch {
-        return undefined;
+  function collectStepLabels(entries: RunStepTimelineEntry[]): Map<string, string> {
+    const labels = new Map<string, string>();
+    const visitSteps = (list: RunStep[]): void => {
+      for (const step of list) {
+        labels.set(step.id, step.label);
+        if (step.children) visitSteps(step.children);
+      }
+    };
+    for (const entry of entries) {
+      if (isBranchGroup(entry)) {
+        for (const lane of entry.lanes) visitSteps(lane.steps);
+      } else {
+        visitSteps([entry]);
       }
     }
-
-    return trimmedHref;
+    return labels;
   }
 
-  function flattenRunSteps(steps: RunStep[]): RenderedRunStep[] {
-    const rows: PendingRenderedRunStep[] = [];
-    appendRunStepRows(rows, steps, 0, '');
+  // Flatten the top-level entries, keeping contiguous runs of steps together so
+  // the connector rail spans them, and emitting a standalone row for each
+  // branch group (which renders its own parallel sub-lanes).
+  function flattenEntries(entries: RunStepTimelineEntry[]): RenderedEntry[] {
+    const result: RenderedEntry[] = [];
+    let stepRun: RunStep[] = [];
+
+    const flushRun = (): void => {
+      if (stepRun.length === 0) return;
+      result.push(...flattenSteps(stepRun, ''));
+      stepRun = [];
+    };
+
+    for (const entry of entries) {
+      if (isBranchGroup(entry)) {
+        flushRun();
+        result.push({
+          kind: 'branch',
+          group: entry,
+          pathKey: `branch/${escapeStepPathSegment(entry.id)}`,
+        });
+      } else {
+        stepRun.push(entry);
+      }
+    }
+    flushRun();
+    return result;
+  }
+
+  // Flatten a RunStep[] (with nested children) into rendered rows, computing the
+  // connector rail, the single deepest `aria-current` row, and resolved
+  // compensation labels. Reused for the main rail and for each branch lane.
+  function flattenSteps(list: RunStep[], pathPrefix: string): RenderedStepLike[] {
+    const rows: PendingStepRow[] = [];
+    appendRunStepRows(rows, list, 0, pathPrefix);
     const currentRowIndex = deepestCurrentStepIndex(rows);
-    return rows.map((row, index) => ({
-      ...row,
-      connectorAfter:
-        rows[index + 1] === undefined || (rows[index + 1]?.depth ?? 0) < row.depth
-          ? 'hidden'
-          : 'visible',
-      ariaCurrent: index === currentRowIndex,
-    }));
+    return rows.map((row, index) => {
+      const next = rows[index + 1];
+      const connectorAfter: 'hidden' | 'visible' =
+        next === undefined || next.depth < row.depth ? 'hidden' : 'visible';
+      const ariaCurrent = index === currentRowIndex;
+      if (row.kind === 'depth-limit') {
+        return { ...row, connectorAfter, ariaCurrent };
+      }
+      return {
+        ...row,
+        connectorAfter,
+        ariaCurrent,
+        compensatesLabel: resolveCompensatesLabel(row.step),
+      };
+    });
+  }
+
+  function resolveCompensatesLabel(step: RunStep): string | undefined {
+    if (step.compensates === undefined) return undefined;
+    return stepLabelById.get(step.compensates);
   }
 
   function appendRunStepRows(
-    rows: PendingRenderedRunStep[],
-    steps: RunStep[],
+    rows: PendingStepRow[],
+    list: RunStep[],
     depth: number,
     pathPrefix: string,
   ): void {
-    for (const step of steps) {
+    for (const step of list) {
       const pathKey = nestedStepPathKey(pathPrefix, step.id);
       rows.push({ kind: 'step', step, depth, pathKey });
       if (step.children && step.children.length > 0) {
@@ -265,10 +236,10 @@
     return stepId.replaceAll('%', '%25').replaceAll('/', '%2F');
   }
 
-  function summarizeNestedRunSteps(steps: RunStep[]): NestedRunStepSummary {
+  function summarizeNestedRunSteps(list: RunStep[]): { count: number; hasCurrent: boolean } {
     let count = 0;
     let hasCurrent = false;
-    const stack = [...steps];
+    const stack = [...list];
 
     while (stack.length > 0) {
       const step = stack.pop();
@@ -277,10 +248,10 @@
       count += 1;
       if (isCurrent(step.status)) hasCurrent = true;
 
-      const children = step.children;
-      if (children) {
-        for (let index = children.length - 1; index >= 0; index -= 1) {
-          const child = children[index];
+      const stepChildren = step.children;
+      if (stepChildren) {
+        for (let index = stepChildren.length - 1; index >= 0; index -= 1) {
+          const child = stepChildren[index];
           if (child) stack.push(child);
         }
       }
@@ -289,7 +260,7 @@
     return { count, hasCurrent };
   }
 
-  function deepestCurrentStepIndex(rows: PendingRenderedRunStep[]): number {
+  function deepestCurrentStepIndex(rows: PendingStepRow[]): number {
     let currentIndex = -1;
     let currentDepth = -1;
 
@@ -309,7 +280,182 @@
 
     return currentIndex;
   }
+
+  function laneRows(lane: RunStepBranchLane): RenderedStepLike[] {
+    return flattenSteps(lane.steps, '');
+  }
+
+  function laneStateLabel(lane: RunStepBranchLane): string {
+    return lane.outcome === undefined ? 'racing' : laneOutcomeLabel(lane.outcome).toLowerCase();
+  }
 </script>
+
+{#snippet stepItem(row: RenderedStepRow)}
+  {@const step = row.step}
+  {@const terminal = isTerminal(step.status)}
+  {@const metadata = metadataItems(step)}
+  <li
+    class="cinder-run-step-timeline__item"
+    data-cinder-status={step.status}
+    data-cinder-depth={row.depth}
+    data-cinder-path={row.pathKey}
+    data-cinder-terminal={terminal ? '' : undefined}
+    data-cinder-rewound={step.rewound ? '' : undefined}
+    data-cinder-compensation={row.compensatesLabel !== undefined ? '' : undefined}
+    data-cinder-connector-after={row.connectorAfter}
+    aria-current={row.ariaCurrent ? 'step' : undefined}
+    style:--_cinder-rst-depth={row.depth}
+  >
+    <div class="cinder-run-step-timeline__event">
+      <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
+        <StatusDot
+          status={statusDotStatus(step.status)}
+          label={statusLabel(step.status)}
+          showLabel={false}
+          size="md"
+        />
+      </span>
+
+      <div class="cinder-run-step-timeline__content">
+        <div class="cinder-run-step-timeline__header">
+          <span class="cinder-run-step-timeline__label">{step.label}</span>
+          {#if step.link}
+            {@const safeLinkHref = safeStepLinkHref(step.link.href)}
+            {#if safeLinkHref}
+              <Link href={safeLinkHref} class="cinder-run-step-timeline__link">
+                {step.link.label}
+              </Link>
+            {:else}
+              <span class="cinder-run-step-timeline__link cinder-run-step-timeline__link--unsafe">
+                {step.link.label}
+              </span>
+            {/if}
+          {/if}
+          <Badge
+            class="cinder-run-step-timeline__status"
+            variant={badgeVariant(step.status)}
+            size="xs"
+            aria-label={`Status: ${statusLabel(step.status)}`}
+          >
+            {statusLabel(step.status)}
+          </Badge>
+          {#if step.rewound}
+            <Badge
+              class="cinder-run-step-timeline__flag"
+              variant="neutral"
+              size="xs"
+              aria-label="State: rewound — speculatively executed, then unwound"
+            >
+              Rewound
+            </Badge>
+          {/if}
+          {#if row.compensatesLabel !== undefined}
+            <Badge
+              class="cinder-run-step-timeline__flag"
+              variant="warning"
+              size="xs"
+              aria-label={`Compensates ${row.compensatesLabel} — reverses the forward step`}
+            >
+              Compensates {row.compensatesLabel}
+            </Badge>
+          {/if}
+          {#if step.attemptCount !== undefined && step.attemptCount > 1}
+            <Badge variant="neutral" size="xs" mono>attempt {step.attemptCount}</Badge>
+          {/if}
+          {#if step.actionsCount !== undefined && step.actionsCount > 0}
+            <Badge variant="neutral" size="xs" mono>{actionsCountLabel(step.actionsCount)}</Badge>
+          {/if}
+        </div>
+
+        {#if hasProgress(step)}
+          <div class="cinder-run-step-timeline__progress">
+            <Progress
+              value={step.progress ?? 0}
+              max={step.progressMax ?? 100}
+              size="sm"
+              ariaLabel={`${step.label} progress`}
+            />
+          </div>
+        {/if}
+
+        {#if metadata.length > 0}
+          <dl class="cinder-run-step-timeline__meta">
+            {#each metadata as item (item.term)}
+              <div class="cinder-run-step-timeline__meta-row">
+                <dt class="cinder-run-step-timeline__meta-term">{item.term}</dt>
+                <dd class="cinder-run-step-timeline__meta-definition">{item.definition}</dd>
+              </div>
+            {/each}
+          </dl>
+        {/if}
+
+        {#if step.details && step.details.length > 0}
+          <div class="cinder-run-step-timeline__details">
+            {#each step.details as detail (detail.id)}
+              <Collapsible trigger={detail.label}>
+                <pre class="cinder-run-step-timeline__detail-content">{detail.content}</pre>
+              </Collapsible>
+            {/each}
+          </div>
+        {/if}
+
+        {#if children}
+          <div class="cinder-run-step-timeline__body">
+            {@render children(step)}
+          </div>
+        {/if}
+      </div>
+    </div>
+  </li>
+{/snippet}
+
+{#snippet depthLimitItem(row: RenderedDepthLimitRow)}
+  <li
+    class="cinder-run-step-timeline__item"
+    data-cinder-status="depth-limit"
+    data-cinder-depth={row.depth}
+    data-cinder-path={row.pathKey}
+    data-cinder-connector-after={row.connectorAfter}
+    data-cinder-depth-limit
+    aria-current={row.ariaCurrent ? 'step' : undefined}
+    style:--_cinder-rst-depth={row.depth}
+  >
+    <div class="cinder-run-step-timeline__event">
+      <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
+        <StatusDot status="neutral" label="Nested steps hidden" showLabel={false} size="md" />
+      </span>
+
+      <div class="cinder-run-step-timeline__content">
+        <div class="cinder-run-step-timeline__header">
+          <span class="cinder-run-step-timeline__label">
+            {hiddenNestedStepLabel(row.hiddenStepCount)}
+          </span>
+          <Badge
+            class="cinder-run-step-timeline__status"
+            variant="neutral"
+            size="xs"
+            aria-label="Status: Nested child steps hidden"
+          >
+            Depth cap
+          </Badge>
+        </div>
+        <p class="cinder-run-step-timeline__body">
+          Additional child-workflow steps are hidden because the timeline depth cap was reached.
+        </p>
+      </div>
+    </div>
+  </li>
+{/snippet}
+
+{#snippet stepRail(rows: RenderedStepLike[])}
+  {#each rows as row (row.pathKey)}
+    {#if row.kind === 'depth-limit'}
+      {@render depthLimitItem(row)}
+    {:else}
+      {@render stepItem(row)}
+    {/if}
+  {/each}
+{/snippet}
 
 <ol
   {...rest}
@@ -317,154 +463,84 @@
   aria-label={resolvedAriaLabel}
   aria-labelledby={ariaLabelledby}
 >
-  {#each renderedSteps as row (row.pathKey)}
-    {#if row.kind === 'depth-limit'}
+  {#each renderedEntries as entry (entry.pathKey)}
+    {#if entry.kind === 'branch'}
+      {@const group = entry.group}
+      {@const summary = branchOutcomeSummary(group.lanes)}
+      {@const startOpen = !branchStartsCollapsed(
+        group.lanes.length,
+        group.collapseThreshold,
+        group.collapsed,
+      )}
       <li
-        class="cinder-run-step-timeline__item"
-        data-cinder-status="depth-limit"
-        data-cinder-depth={row.depth}
-        data-cinder-path={row.pathKey}
-        data-cinder-connector-after={row.connectorAfter}
-        data-cinder-depth-limit
-        aria-current={row.ariaCurrent ? 'step' : undefined}
-        style:--_cinder-rst-depth={row.depth}
+        class="cinder-run-step-timeline__item cinder-run-step-timeline__item--branch"
+        data-cinder-status="branch"
+        data-cinder-depth="0"
+        data-cinder-path={entry.pathKey}
+        data-cinder-connector-after="hidden"
       >
         <div class="cinder-run-step-timeline__event">
           <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
-            <StatusDot status="neutral" label="Nested steps hidden" showLabel={false} size="md" />
+            <StatusDot status="accent" label="Branch group" showLabel={false} size="md" />
           </span>
 
-          <div class="cinder-run-step-timeline__content">
-            <div class="cinder-run-step-timeline__header">
-              <span class="cinder-run-step-timeline__label">
-                {hiddenNestedStepLabel(row.hiddenStepCount)}
-              </span>
-              <Badge
-                class="cinder-run-step-timeline__status"
-                variant="neutral"
-                size="xs"
-                aria-label="Status: Nested child steps hidden"
-              >
-                Depth cap
-              </Badge>
-            </div>
-            <p class="cinder-run-step-timeline__body">
-              Additional child-workflow steps are hidden because the timeline depth cap was reached.
-            </p>
-          </div>
-        </div>
-      </li>
-    {:else}
-      {@const step = row.step}
-      {@const terminal = isTerminal(step.status)}
-      {@const metadata = metadataItems(step)}
-      <li
-        class="cinder-run-step-timeline__item"
-        data-cinder-status={step.status}
-        data-cinder-depth={row.depth}
-        data-cinder-path={row.pathKey}
-        data-cinder-terminal={terminal ? '' : undefined}
-        data-cinder-connector-after={row.connectorAfter}
-        aria-current={row.ariaCurrent ? 'step' : undefined}
-        style:--_cinder-rst-depth={row.depth}
-      >
-        <div class="cinder-run-step-timeline__event">
-          <!-- Marker: StatusDot on the rail -->
-          <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
-            <StatusDot
-              status={statusDotStatus(step.status)}
-              label={statusLabel(step.status)}
-              showLabel={false}
-              size="md"
-            />
-          </span>
+          <div class="cinder-run-step-timeline__content cinder-run-step-timeline__branch">
+            <Collapsible
+              open={startOpen}
+              class="cinder-run-step-timeline__branch-disclosure"
+              triggerAriaLabel={`Branch group: ${group.label}. ${summary}.`}
+            >
+              {#snippet trigger()}
+                <span class="cinder-run-step-timeline__branch-heading">
+                  <span class="cinder-run-step-timeline__label">{group.label}</span>
+                  <Badge variant="accent" size="xs" aria-label={`Branch group outcome: ${summary}`}>
+                    {summary}
+                  </Badge>
+                </span>
+              {/snippet}
 
-          <!-- Step content -->
-          <div class="cinder-run-step-timeline__content">
-            <!-- Header row: label + status badge -->
-            <div class="cinder-run-step-timeline__header">
-              <span class="cinder-run-step-timeline__label">{step.label}</span>
-              {#if step.link}
-                {@const safeLinkHref = safeStepLinkHref(step.link.href)}
-                {#if safeLinkHref}
-                  <Link href={safeLinkHref} class="cinder-run-step-timeline__link">
-                    {step.link.label}
-                  </Link>
-                {:else}
-                  <span
-                    class="cinder-run-step-timeline__link cinder-run-step-timeline__link--unsafe"
+              <ul class="cinder-run-step-timeline__lanes" aria-label={`${group.label} branches`}>
+                {#each group.lanes as lane (lane.id)}
+                  <li
+                    class="cinder-run-step-timeline__lane"
+                    data-cinder-outcome={lane.outcome ?? 'racing'}
+                    aria-label={`Branch ${lane.label ?? lane.id}: ${laneStateLabel(lane)}`}
                   >
-                    {step.link.label}
-                  </span>
-                {/if}
-              {/if}
-              <Badge
-                class="cinder-run-step-timeline__status"
-                variant={badgeVariant(step.status)}
-                size="xs"
-                aria-label={`Status: ${statusLabel(step.status)}`}
-              >
-                {statusLabel(step.status)}
-              </Badge>
-              {#if step.attemptCount !== undefined && step.attemptCount > 1}
-                <Badge variant="neutral" size="xs" mono>attempt {step.attemptCount}</Badge>
-              {/if}
-              {#if step.actionsCount !== undefined && step.actionsCount > 0}
-                <Badge variant="neutral" size="xs" mono
-                  >{actionsCountLabel(step.actionsCount)}</Badge
-                >
-              {/if}
-            </div>
-
-            <!-- Progress bar (only shown for current statuses with explicit progress) -->
-            {#if hasProgress(step)}
-              <div class="cinder-run-step-timeline__progress">
-                <Progress
-                  value={step.progress ?? 0}
-                  max={step.progressMax ?? 100}
-                  size="sm"
-                  ariaLabel={`${step.label} progress`}
-                />
-              </div>
-            {/if}
-
-            <!-- Metadata: start/end/duration/attempts -->
-            {#if metadata.length > 0}
-              <dl class="cinder-run-step-timeline__meta">
-                {#each metadata as item (item.term)}
-                  <div class="cinder-run-step-timeline__meta-row">
-                    <dt class="cinder-run-step-timeline__meta-term">{item.term}</dt>
-                    <dd class="cinder-run-step-timeline__meta-definition">{item.definition}</dd>
-                  </div>
+                    <div class="cinder-run-step-timeline__lane-header">
+                      <span class="cinder-run-step-timeline__lane-label">
+                        {lane.label ?? lane.id}
+                      </span>
+                      {#if lane.outcome !== undefined}
+                        <Badge
+                          variant={laneOutcomeBadgeVariant(lane.outcome)}
+                          size="xs"
+                          aria-label={`Outcome: ${laneOutcomeLabel(lane.outcome)}`}
+                        >
+                          {laneOutcomeLabel(lane.outcome)}
+                        </Badge>
+                      {:else}
+                        <Badge variant="info" size="xs" aria-label="Outcome: still racing">
+                          Racing
+                        </Badge>
+                      {/if}
+                    </div>
+                    <ol
+                      class="cinder-run-step-timeline cinder-run-step-timeline__lane-steps"
+                      aria-label={`${lane.label ?? lane.id} steps`}
+                    >
+                      {@render stepRail(laneRows(lane))}
+                    </ol>
+                  </li>
                 {/each}
-              </dl>
-            {/if}
-
-            <!-- Expandable details (logs, payloads, errors) -->
-            {#if step.details && step.details.length > 0}
-              <div class="cinder-run-step-timeline__details">
-                <!-- No idBase: let each Collapsible mint its own collision-free
-                   id via $props.id(). Passing detail.id here would reuse a
-                   consumer-supplied value that is only unique within a step, so
-                   two steps with a detail id like "logs" would produce duplicate
-                   DOM ids and cross-wired aria-controls. -->
-                {#each step.details as detail (detail.id)}
-                  <Collapsible trigger={detail.label}>
-                    <pre class="cinder-run-step-timeline__detail-content">{detail.content}</pre>
-                  </Collapsible>
-                {/each}
-              </div>
-            {/if}
-
-            <!-- Optional per-step body slot -->
-            {#if children}
-              <div class="cinder-run-step-timeline__body">
-                {@render children(step)}
-              </div>
-            {/if}
+              </ul>
+            </Collapsible>
           </div>
         </div>
       </li>
+    {:else if entry.kind === 'depth-limit'}
+      {@render depthLimitItem(entry)}
+    {:else}
+      {@render stepItem(entry)}
     {/if}
   {/each}
 </ol>

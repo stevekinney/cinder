@@ -5,10 +5,14 @@ export default InvocationRuleBuilder;
 export type {
   InvocationRule,
   InvocationRuleAction,
+  InvocationRuleBuilderMode,
   InvocationRuleBuilderProps,
   InvocationRuleBuilderSchemaProps,
   InvocationRuleChange,
   InvocationRuleCondition,
+  InvocationRuleConditionsOnlyOperator,
+  InvocationRuleFieldType,
   InvocationRuleOption,
+  InvocationRuleValueChoice,
 } from './invocation-rule-builder.types.ts';
 export { InvocationRuleBuilder };

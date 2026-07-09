@@ -1,0 +1,460 @@
+<script lang="ts" module>
+  /**
+   * @cinder
+   * @category form
+   * @status beta
+   * @purpose Recurrence-definition control that authors a cron or fixed-interval schedule via presets, raw cron fields, or an interval, alongside an always-visible summary, next-fires preview, and timezone slot.
+   * @tag schedule
+   * @tag recurrence
+   * @tag cron
+   * @tag form
+   * @useWhen Letting a user define when a job or notification recurs, supplying your own date/cron library to compute upcoming fire times.
+   * @useWhen You want a friendly presets UI (every N, daily, weekly, monthly) that still round-trips to a portable cron or interval value.
+   * @avoidWhen You need overlap policy, jitter, or backfill controls — those belong to the consumer's surrounding form. | invocation-rule-builder
+   * @avoidWhen You only need to pick a single point in time, not a recurrence — use date-picker instead. | date-picker
+   * @related date-picker, segmented-control, input, time-field
+   * @a11yPattern WAI-ARIA Tabs
+   * @a11yNote The three authoring modes (presets, cron, interval) are a tablist; each cron field reports validity via aria-invalid and an associated hint/error.
+   */
+  export type {
+    ScheduleAuthoringMode,
+    ScheduleBuilderProps,
+    ScheduleFire,
+    ScheduleIntervalUnit,
+    ScheduleValue,
+  } from './schedule-builder.types.ts';
+</script>
+
+<script lang="ts">
+  import { classNames } from '../../utilities/class-names.ts';
+  import Chip from '../chip/chip.svelte';
+  import Input from '../input/input.svelte';
+  import NumberInput from '../number-input/number-input.svelte';
+  import Segment from '../segment/segment.svelte';
+  import SegmentedControl from '../segmented-control/segmented-control.svelte';
+  import Select from '../select/select.svelte';
+  import TimeField from '../time-field/time-field.svelte';
+  import type { TimeFieldChange } from '../time-field/time-field.types.ts';
+
+  import type {
+    ScheduleAuthoringMode,
+    ScheduleBuilderProps,
+    ScheduleFire,
+    ScheduleIntervalUnit,
+    ScheduleValue,
+  } from './schedule-builder.types.ts';
+  import {
+    CRON_FIELDS,
+    WEEKDAYS,
+    INTERVAL_UNITS,
+    cronFieldsValid,
+    defaultScheduleValue,
+    describeValue,
+    joinCron,
+    lowerDailyAt,
+    lowerEveryN,
+    lowerMonthlyOnDay,
+    lowerWeeklyAt,
+    validateCronField,
+    valueToCronFields,
+    valueToInterval,
+  } from './schedule-builder.utilities.ts';
+
+  /**
+   * Preset authoring "kind" selected inside presets mode. Purely a UI concern —
+   * every kind lowers to a `cron` or `interval` {@link ScheduleValue} via the
+   * matching `lower*` utility; `PresetKind` never leaves this component.
+   */
+  type PresetKind = 'every' | 'daily' | 'weekly' | 'monthly';
+
+  const PRESET_EVERY_UNIT_OPTIONS = [
+    { value: 'minutes', label: 'Minutes' },
+    { value: 'hours', label: 'Hours' },
+  ] as const;
+
+  const INTERVAL_UNIT_LABELS: Record<ScheduleIntervalUnit, string> = {
+    minutes: 'Minutes',
+    hours: 'Hours',
+    days: 'Days',
+    weeks: 'Weeks',
+  };
+  const INTERVAL_UNIT_OPTIONS = INTERVAL_UNITS.map((unit) => ({
+    value: unit,
+    label: INTERVAL_UNIT_LABELS[unit],
+  }));
+
+  let {
+    value,
+    onchange,
+    computeNextFires,
+    previewCount = 5,
+    timezoneLabel,
+    timezone,
+    label = 'Schedule',
+    class: className,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledby,
+    ...rest
+  }: ScheduleBuilderProps = $props();
+
+  const baseId = $props.id();
+  const resolvedAriaLabel = $derived(
+    ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
+  );
+
+  // ---------------------------------------------------------------------------
+  // Seed local field state ONCE from the initial `value` prop (or the shared
+  // default), so mid-edit intermediate text (e.g. a half-typed cron range) has
+  // somewhere to live without fighting a controlled `value` prop. Subsequent
+  // external `value` changes are not re-seeded — `onchange` is how a consumer
+  // commits an edit, matching the documented "pass the value back in" contract.
+  // ---------------------------------------------------------------------------
+  const seedValue = value ?? defaultScheduleValue();
+  const seedInterval = valueToInterval(seedValue);
+  const seedIsMinutesOrHours =
+    seedInterval !== undefined &&
+    (seedInterval.unit === 'minutes' || seedInterval.unit === 'hours');
+
+  let authoringMode = $state<ScheduleAuthoringMode>('presets');
+  let presetKind = $state<PresetKind>('every');
+
+  let cronFields = $state<string[]>(valueToCronFields(seedValue));
+
+  let intervalEvery = $state(seedInterval?.every ?? 15);
+  let intervalUnit = $state<ScheduleIntervalUnit>(seedInterval?.unit ?? 'minutes');
+
+  let presetEveryValue = $state(seedIsMinutesOrHours ? seedInterval!.every : 15);
+  let presetEveryUnit = $state<'minutes' | 'hours'>(
+    seedIsMinutesOrHours ? (seedInterval!.unit as 'minutes' | 'hours') : 'minutes',
+  );
+  let presetDailyTime = $state('09:00');
+  let presetWeeklyDays = $state<number[]>([]);
+  let presetWeeklyTime = $state('09:00');
+  let presetMonthlyDay = $state(1);
+  let presetMonthlyTime = $state('09:00');
+
+  function valueForPresets(): ScheduleValue {
+    switch (presetKind) {
+      case 'every':
+        return lowerEveryN(presetEveryValue, presetEveryUnit);
+      case 'daily':
+        return lowerDailyAt(presetDailyTime);
+      case 'weekly':
+        return lowerWeeklyAt(presetWeeklyDays, presetWeeklyTime);
+      case 'monthly':
+        return lowerMonthlyOnDay(presetMonthlyDay, presetMonthlyTime);
+    }
+  }
+
+  /** The value the given authoring mode currently represents, from its own field state. */
+  function valueForMode(mode: ScheduleAuthoringMode): ScheduleValue {
+    if (mode === 'cron') return { mode: 'cron', expression: joinCron(cronFields) };
+    if (mode === 'interval') return { mode: 'interval', every: intervalEvery, unit: intervalUnit };
+    return valueForPresets();
+  }
+
+  /**
+   * The value the active authoring mode currently represents. This is ONLY
+   * ever `cron` or `interval` — presets are sugar that lower to one of the
+   * two via the matching `lower*` utility, so `mode: 'preset'` never appears.
+   */
+  const currentValue = $derived(valueForMode(authoringMode));
+
+  const fires = $derived.by((): ScheduleFire[] | undefined =>
+    computeNextFires ? computeNextFires(currentValue, previewCount) : undefined,
+  );
+
+  /**
+   * The last value the user actually committed (starting from the initial
+   * `value`/default seed). This is intentionally NOT `currentValue`:
+   * `currentValue` reflects whatever the active mode's fields would produce
+   * right now, even before the user has touched them (e.g. presets defaults
+   * to "every 15 minutes" until edited). Mode-switch seeding must recover the
+   * value the user actually committed to, not the untouched default of
+   * whichever mode happens to be active — otherwise switching straight from
+   * the initial `presets` default into cron mode would clobber a real
+   * initial cron `value` with "every 15 minutes" the moment you looked at it.
+   */
+  let lastKnownValue = $state<ScheduleValue>(seedValue);
+
+  function emitChange(): void {
+    lastKnownValue = currentValue;
+    onchange?.(currentValue);
+  }
+
+  /**
+   * Switching modes never emits a change by itself (browsing modes is
+   * exploratory, not a commitment) — it only re-seeds the destination mode's
+   * fields from `lastKnownValue`, losslessly where representable
+   * (`valueToCronFields` always succeeds; `valueToInterval` returns
+   * `undefined` for non-interval cron patterns, in which case the interval
+   * fields are left as they were).
+   */
+  function handleAuthoringModeChange(nextMode: ScheduleAuthoringMode): void {
+    if (nextMode === authoringMode) return;
+    authoringMode = nextMode;
+    if (nextMode === 'cron') {
+      cronFields = valueToCronFields(lastKnownValue);
+    } else if (nextMode === 'interval') {
+      const interval = valueToInterval(lastKnownValue);
+      if (interval) {
+        intervalEvery = interval.every;
+        intervalUnit = interval.unit;
+      }
+    }
+  }
+
+  function handlePresetKindChange(nextKind: PresetKind): void {
+    presetKind = nextKind;
+  }
+
+  function handleCronFieldChange(index: number, raw: string): void {
+    const next = [...cronFields];
+    next[index] = raw;
+    cronFields = next;
+    if (cronFieldsValid(next)) emitChange();
+  }
+
+  function handleIntervalEveryChange(next: number | null): void {
+    intervalEvery = next && next > 0 ? next : 1;
+    emitChange();
+  }
+
+  function handleIntervalUnitChange(event: Event): void {
+    intervalUnit = (event.currentTarget as HTMLSelectElement).value as ScheduleIntervalUnit;
+    emitChange();
+  }
+
+  function handlePresetEveryValueChange(next: number | null): void {
+    presetEveryValue = next && next > 0 ? next : 1;
+    emitChange();
+  }
+
+  function handlePresetEveryUnitChange(event: Event): void {
+    presetEveryUnit = (event.currentTarget as HTMLSelectElement).value as 'minutes' | 'hours';
+    emitChange();
+  }
+
+  function handlePresetDailyTimeChange(detail: TimeFieldChange): void {
+    presetDailyTime = detail.value;
+    emitChange();
+  }
+
+  function toggleWeeklyDay(day: number): void {
+    presetWeeklyDays = presetWeeklyDays.includes(day)
+      ? presetWeeklyDays.filter((existing) => existing !== day)
+      : [...presetWeeklyDays, day];
+    emitChange();
+  }
+
+  function handlePresetWeeklyTimeChange(detail: TimeFieldChange): void {
+    presetWeeklyTime = detail.value;
+    emitChange();
+  }
+
+  function handlePresetMonthlyDayChange(next: number | null): void {
+    presetMonthlyDay = next && next >= 1 ? Math.min(31, Math.trunc(next)) : 1;
+    emitChange();
+  }
+
+  function handlePresetMonthlyTimeChange(detail: TimeFieldChange): void {
+    presetMonthlyTime = detail.value;
+    emitChange();
+  }
+
+  const modeTabId = (mode: ScheduleAuthoringMode) => `${baseId}-mode-${mode}-tab`;
+  const modePanelId = (mode: ScheduleAuthoringMode) => `${baseId}-mode-${mode}-panel`;
+</script>
+
+<div
+  {...rest}
+  class={classNames('cinder-schedule-builder', className)}
+  role="group"
+  aria-label={resolvedAriaLabel}
+  aria-labelledby={ariaLabelledby}
+  data-sb-mode={authoringMode}
+>
+  <SegmentedControl
+    id={`${baseId}-mode`}
+    label="Schedule authoring mode"
+    variant="tablist"
+    value={authoringMode}
+    onchange={handleAuthoringModeChange}
+    class="cinder-schedule-builder__mode-switch"
+  >
+    <Segment id={modeTabId('presets')} value="presets" controls={modePanelId('presets')}>
+      Presets
+    </Segment>
+    <Segment id={modeTabId('cron')} value="cron" controls={modePanelId('cron')}>Cron</Segment>
+    <Segment id={modeTabId('interval')} value="interval" controls={modePanelId('interval')}>
+      Interval
+    </Segment>
+  </SegmentedControl>
+
+  {#if authoringMode === 'presets'}
+    <div
+      id={modePanelId('presets')}
+      role="tabpanel"
+      aria-labelledby={modeTabId('presets')}
+      class="cinder-schedule-builder__panel"
+      data-sb-panel="presets"
+    >
+      <SegmentedControl
+        id={`${baseId}-preset-kind`}
+        label="Preset kind"
+        value={presetKind}
+        onchange={handlePresetKindChange}
+        class="cinder-schedule-builder__preset-kind"
+      >
+        <Segment id={`${baseId}-preset-kind-every`} value="every">Every N</Segment>
+        <Segment id={`${baseId}-preset-kind-daily`} value="daily">Daily</Segment>
+        <Segment id={`${baseId}-preset-kind-weekly`} value="weekly">Weekly</Segment>
+        <Segment id={`${baseId}-preset-kind-monthly`} value="monthly">Monthly</Segment>
+      </SegmentedControl>
+
+      {#if presetKind === 'every'}
+        <div class="cinder-schedule-builder__field-row">
+          <NumberInput
+            id={`${baseId}-preset-every-value`}
+            label="Every"
+            min={1}
+            bind:value={() => presetEveryValue, handlePresetEveryValueChange}
+          />
+          <Select
+            id={`${baseId}-preset-every-unit`}
+            label="Unit"
+            options={PRESET_EVERY_UNIT_OPTIONS}
+            value={presetEveryUnit}
+            onchange={handlePresetEveryUnitChange}
+          />
+        </div>
+      {:else if presetKind === 'daily'}
+        <TimeField
+          id={`${baseId}-preset-daily-time`}
+          label="At"
+          value={presetDailyTime}
+          onchange={handlePresetDailyTimeChange}
+        />
+      {:else if presetKind === 'weekly'}
+        <div class="cinder-schedule-builder__weekday-group" role="group" aria-label="Days of week">
+          {#each WEEKDAYS as day (day.value)}
+            <Chip
+              mode="toggle"
+              label={day.short}
+              aria-label={day.long}
+              pressed={presetWeeklyDays.includes(day.value)}
+              onpressedchange={() => toggleWeeklyDay(day.value)}
+            />
+          {/each}
+        </div>
+        <TimeField
+          id={`${baseId}-preset-weekly-time`}
+          label="At"
+          value={presetWeeklyTime}
+          onchange={handlePresetWeeklyTimeChange}
+        />
+      {:else}
+        <div class="cinder-schedule-builder__field-row">
+          <NumberInput
+            id={`${baseId}-preset-monthly-day`}
+            label="Day of month"
+            min={1}
+            max={31}
+            bind:value={() => presetMonthlyDay, handlePresetMonthlyDayChange}
+          />
+          <TimeField
+            id={`${baseId}-preset-monthly-time`}
+            label="At"
+            value={presetMonthlyTime}
+            onchange={handlePresetMonthlyTimeChange}
+          />
+        </div>
+      {/if}
+    </div>
+  {:else if authoringMode === 'cron'}
+    <div
+      id={modePanelId('cron')}
+      role="tabpanel"
+      aria-labelledby={modeTabId('cron')}
+      class="cinder-schedule-builder__panel"
+      data-sb-panel="cron"
+    >
+      <div class="cinder-schedule-builder__cron-fields">
+        {#each CRON_FIELDS as field, index (field.name)}
+          {@const fieldError = validateCronField(cronFields[index] ?? '*', index)}
+          <Input
+            id={`${baseId}-cron-field-${index}`}
+            label={field.name}
+            description={field.hint}
+            bind:value={
+              () => cronFields[index] ?? '*', (next) => handleCronFieldChange(index, next)
+            }
+            {...fieldError ? { error: fieldError } : {}}
+          />
+        {/each}
+      </div>
+    </div>
+  {:else}
+    <div
+      id={modePanelId('interval')}
+      role="tabpanel"
+      aria-labelledby={modeTabId('interval')}
+      class="cinder-schedule-builder__panel"
+      data-sb-panel="interval"
+    >
+      <div class="cinder-schedule-builder__field-row">
+        <NumberInput
+          id={`${baseId}-interval-every`}
+          label="Every"
+          min={1}
+          bind:value={() => intervalEvery, handleIntervalEveryChange}
+        />
+        <Select
+          id={`${baseId}-interval-unit`}
+          label="Unit"
+          options={INTERVAL_UNIT_OPTIONS}
+          value={intervalUnit}
+          onchange={handleIntervalUnitChange}
+        />
+      </div>
+    </div>
+  {/if}
+
+  <dl class="cinder-schedule-builder__summary">
+    <dt class="cinder-schedule-builder__section-label">Summary</dt>
+    <dd class="cinder-schedule-builder__summary-text">{describeValue(currentValue)}</dd>
+  </dl>
+
+  {#if computeNextFires}
+    <div class="cinder-schedule-builder__preview">
+      <span class="cinder-schedule-builder__section-label" id={`${baseId}-preview-label`}>
+        Upcoming fires
+      </span>
+      {#if fires && fires.length > 0}
+        <ul
+          class="cinder-schedule-builder__preview-list"
+          aria-labelledby={`${baseId}-preview-label`}
+        >
+          {#each fires as fire (fire.id)}
+            <li class="cinder-schedule-builder__preview-item">{fire.label}</li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="cinder-schedule-builder__empty">No upcoming fires.</p>
+      {/if}
+    </div>
+  {/if}
+
+  <dl class="cinder-schedule-builder__timezone">
+    <dt class="cinder-schedule-builder__section-label">Timezone</dt>
+    <dd class="cinder-schedule-builder__timezone-value">
+      {#if timezone}
+        {@render timezone()}
+      {:else if timezoneLabel}
+        {timezoneLabel}
+      {:else}
+        <span class="cinder-schedule-builder__empty">Not set</span>
+      {/if}
+    </dd>
+  </dl>
+</div>
