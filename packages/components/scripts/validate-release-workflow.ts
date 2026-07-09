@@ -168,7 +168,7 @@ function runValidation(): void {
   // ── Guard 1: id-token: write must be present ────────────────────────────────
   // Skip comments: a commented-out `# id-token: write` must NOT satisfy the check.
   const hasIdTokenWrite = lines.some(
-    (line) => !isComment(line) && /id-token\s*:\s*write/.test(line),
+    (line) => !isComment(line) && /^\s*id-token\s*:\s*write(?:\s|$)/.test(line),
   );
   if (!hasIdTokenWrite) {
     fail(
@@ -178,7 +178,9 @@ function runValidation(): void {
   }
   pass('id-token: write is present');
 
-  const hasActionsRead = lines.some((line) => !isComment(line) && /actions\s*:\s*read/.test(line));
+  const hasActionsRead = lines.some(
+    (line) => !isComment(line) && /^\s*actions\s*:\s*read(?:\s|$)/.test(line),
+  );
   if (!hasActionsRead) {
     fail(
       'release.yaml is missing `actions: read`. The publish path must be able to inspect ' +
@@ -187,7 +189,9 @@ function runValidation(): void {
   }
   pass('actions: read is present');
 
-  const hasChecksRead = lines.some((line) => !isComment(line) && /checks\s*:\s*read/.test(line));
+  const hasChecksRead = lines.some(
+    (line) => !isComment(line) && /^\s*checks\s*:\s*read(?:\s|$)/.test(line),
+  );
   if (!hasChecksRead) {
     fail(
       'release.yaml is missing `checks: read`. `gh run watch` needs read access to follow ' +

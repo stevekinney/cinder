@@ -202,10 +202,9 @@ describe('ApprovalCard', () => {
     const circularPreview: Record<string, unknown> = { command: 'deploy' };
     circularPreview['self'] = circularPreview;
 
-    expect(prepareArgumentsPreview(circularPreview)).toEqual({
-      value: circularPreview,
-      truncated: false,
-    });
+    const preview = prepareArgumentsPreview(circularPreview);
+    expect(preview.value).toBe(circularPreview);
+    expect(preview.truncated).toBe(false);
   });
 
   test('falls back to an empty editable JSON object for unserializable argument previews', () => {
