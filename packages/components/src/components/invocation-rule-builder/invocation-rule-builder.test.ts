@@ -1213,6 +1213,82 @@ describe('InvocationRuleBuilder', () => {
         expect(container.textContent).toContain('matches');
       });
     });
+
+    describe('normalizing unsupported condition values', () => {
+      test('coerces a value invalid for its field type when the rule is edited via an unrelated change (renaming the rule)', async () => {
+        const rule = makeRule({
+          conditions: [
+            makeCondition({ id: 'c1', field: 'enabled', operator: 'matches', value: 'src/**' }),
+          ],
+          actions: [makeAction()],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const ruleNameInput = container.querySelector<HTMLInputElement>(
+          '[aria-label="Rule name for PR Review Rule"]',
+        )!;
+
+        await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+        await fireEvent.blur(ruleNameInput);
+
+        expect(onchange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('false');
+        expect(nextRules[0].conditions[0].operator).toBe('eq');
+        expect(nextRules[0].actions).toEqual([]);
+      });
+
+      test('coerces an enum value outside the field choices when the rule is edited via an unrelated change', async () => {
+        const rule = makeRule({
+          conditions: [
+            makeCondition({ id: 'c1', field: 'severity', operator: 'is', value: 'nonexistent' }),
+          ],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const ruleNameInput = container.querySelector<HTMLInputElement>(
+          '[aria-label="Rule name for PR Review Rule"]',
+        )!;
+
+        await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+        await fireEvent.blur(ruleNameInput);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('low');
+      });
+
+      test('leaves an already-valid condition value untouched on an unrelated edit', async () => {
+        const rule = makeRule({
+          conditions: [
+            makeCondition({ id: 'c1', field: 'enabled', operator: 'eq', value: 'true' }),
+          ],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const ruleNameInput = container.querySelector<HTMLInputElement>(
+          '[aria-label="Rule name for PR Review Rule"]',
+        )!;
+
+        await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+        await fireEvent.blur(ruleNameInput);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('true');
+      });
+
+      test('full mode never coerces condition values (conditions-only-only behavior)', async () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ field: 'path', operator: 'matches', value: 'not-a-bool' })],
+        });
+        const { container, onchange } = renderBuilder([rule]);
+        const ruleNameInput = container.querySelector<HTMLInputElement>(
+          '[aria-label="Rule name for PR Review Rule"]',
+        )!;
+
+        await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+        await fireEvent.blur(ruleNameInput);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('not-a-bool');
+      });
+    });
   });
 
   describe('CSS snapshot', () => {

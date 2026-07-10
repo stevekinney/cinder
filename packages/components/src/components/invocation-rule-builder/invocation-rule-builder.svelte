@@ -159,23 +159,37 @@
 
   /**
    * Emits `onchange`. In conditions-only mode, normalizes every emitted rule
-   * first: strips `actions` (conditions-only rules never carry an action
-   * target, even when the incoming `rules` prop arrived with actions already
-   * set) and coerces any condition `operator` outside the fixed
-   * eq/gt/lt/gte/lte set to `'eq'` (e.g. a leftover full-mode operator like
-   * `'matches'` when a consumer switches existing rules into conditions-only
-   * mode). Full mode passes rules through unchanged.
+   * first so it's internally consistent regardless of what the incoming
+   * `rules` prop originally carried (e.g. a consumer switching existing
+   * full-mode rules into conditions-only mode):
+   *
+   * - Strips `actions` — conditions-only rules never carry an action target.
+   * - Coerces any condition `operator` outside the fixed eq/gt/lt/gte/lte set
+   *   to `'eq'` (e.g. a leftover full-mode operator like `'matches'`).
+   * - Coerces any condition `value` that isn't valid for its field's
+   *   inferred type to that type's default (e.g. a boolean field whose value
+   *   is an arbitrary string, or an enum field whose value isn't one of its
+   *   choices) — the same check and defaults used for field-type changes.
+   *
+   * Full mode passes rules through unchanged.
    */
   function emitChange(nextRules: InvocationRule[], change: InvocationRuleChange): void {
     const rulesToEmit = conditionsOnly
       ? nextRules.map((rule) => ({
           ...rule,
           actions: [],
-          conditions: rule.conditions.map((condition) =>
-            isConditionsOnlyOperator(condition.operator)
+          conditions: rule.conditions.map((condition) => {
+            const operator = isConditionsOnlyOperator(condition.operator)
+              ? condition.operator
+              : 'eq';
+            const type = fieldValueType(condition.field);
+            const value = isValueValidForFieldType(condition.value, type, condition.field)
+              ? condition.value
+              : defaultConditionValue(condition.field);
+            return operator === condition.operator && value === condition.value
               ? condition
-              : { ...condition, operator: 'eq' },
-          ),
+              : { ...condition, operator, value };
+          }),
         }))
       : nextRules;
     onchange?.(rulesToEmit, change);

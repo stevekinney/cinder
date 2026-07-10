@@ -343,7 +343,7 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
 }
 
 function applyScheduleBuilderSchemaRules(schema: ComponentSchemaOutput): void {
-  // `previewCount` is a list length — a non-negative integer.
+  // `previewCount` is how many fires to request — a positive integer.
   const previewCount = schema.properties['previewCount'];
   if (previewCount?.type === 'number') {
     previewCount.type = 'integer';
