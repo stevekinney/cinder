@@ -147,9 +147,13 @@
         return fieldEnumOptions(fieldValue).some((option) => option.value === value);
       case 'number':
         // Blank is allowed; otherwise a number-like string is valid — lenient
-        // enough to not fight live typing, strict enough to still reject
-        // stale non-numeric data like hex or unit-suffixed strings.
-        return value === '' || NUMBER_LIKE_VALUE_PATTERN.test(value.trim());
+        // enough to not fight live typing, strict enough to still reject stale
+        // non-numeric data like hex or unit-suffixed strings. A whitespace-only
+        // value renders blank in the number input, so it is treated as invalid
+        // (normalized to '') rather than persisting the hidden spaces.
+        return (
+          value === '' || (value.trim() !== '' && NUMBER_LIKE_VALUE_PATTERN.test(value.trim()))
+        );
       case 'string':
         return true;
     }

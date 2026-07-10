@@ -18,7 +18,7 @@
     {
       "id": "interval",
       "title": "Interval mode",
-      "description": "Open the Interval tab to author a fixed-cadence schedule. Because the initial value here is already an interval, presets mode reflects it immediately too — switching modes never loses your place.",
+      "description": "Open the Interval tab to author a fixed-cadence schedule. The interval value round-trips losslessly through every mode that can represent it; a cadence with no exact cron equivalent (like every 5 hours) seeds a neutral default in Cron mode rather than silently changing meaning.",
       "code": "<script lang=\"ts\">\n  import {\n    ScheduleBuilder,\n    type ScheduleFire,\n    type ScheduleValue,\n  } from '@lostgradient/cinder/schedule-builder';\n\n  let value = $state<ScheduleValue>({ mode: 'interval', every: 5, unit: 'hours' });\n\n  // Static, illustrative fire labels — no date library involved.\n  function computeNextFires(current: ScheduleValue, count: number): ScheduleFire[] {\n    if (current.mode !== 'interval') return [];\n    return Array.from({ length: count }, (_, index) => ({\n      id: `fire-${index}`,\n      label: `Fire ${index + 1} — in ${(index + 1) * current.every} ${current.unit}`,\n    }));\n  }\n\n  function handleChange(next: ScheduleValue): void {\n    value = next;\n  }\n</script>\n\n<ScheduleBuilder\n  {value}\n  onchange={handleChange}\n  {computeNextFires}\n  timezoneLabel=\"UTC\"\n  label=\"Health check schedule\"\n/>\n"
     },
     {

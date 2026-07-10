@@ -119,7 +119,11 @@ export function joinCron(fields: string[]): string {
 /** Split a cron expression into exactly five fields, padding with `*` if short. */
 export function splitCron(expression: string): [string, string, string, string, string] {
   const parts = expression.trim().split(/\s+/).filter(Boolean);
-  return [parts[0] ?? '*', parts[1] ?? '*', parts[2] ?? '*', parts[3] ?? '*', parts[4] ?? '*'];
+  // Preserve any overflow (e.g. a 6-field seconds cron) in the last field rather
+  // than silently dropping it — the joined field then fails per-field validation
+  // so the out-of-contract expression is surfaced instead of quietly truncated.
+  const lastField = parts.length > 5 ? parts.slice(4).join(' ') : parts[4];
+  return [parts[0] ?? '*', parts[1] ?? '*', parts[2] ?? '*', parts[3] ?? '*', lastField ?? '*'];
 }
 
 /** Clamp/parse a `HH:MM` time string into `{ hour, minute }`, defaulting to 00:00. */
@@ -182,7 +186,10 @@ export function lowerMonthlyOnDay(day: number, time: string): ScheduleValue {
  * divide 60.
  */
 function isEvenDivisorStep(every: number, cycleLength: number): boolean {
-  return Number.isInteger(every) && every > 0 && cycleLength % every === 0;
+  // Must be strictly below the cycle length: a `*/N` where N equals (or exceeds)
+  // the cycle is out of the field's range (e.g. `*/60` for minutes, max 59) and
+  // is rejected by the cron validator, so it is not a representable step.
+  return Number.isInteger(every) && every > 0 && every < cycleLength && cycleLength % every === 0;
 }
 
 /**

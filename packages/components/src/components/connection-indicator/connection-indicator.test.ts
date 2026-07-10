@@ -97,6 +97,28 @@ describe('ConnectionIndicator', () => {
     expect(root?.getAttribute('aria-label')).toBe('Realtime feed connected');
   });
 
+  test('a forwarded aria-labelledby is emitted and suppresses the computed aria-label', () => {
+    const { container } = render(ConnectionIndicator, {
+      status: 'live',
+      'aria-labelledby': 'feed-heading',
+    });
+    const root = container.querySelector('.cinder-connection-indicator');
+    // The referenced element owns the accessible name, so the component must not
+    // also emit its own aria-label (a self-authored name would win over the ref).
+    expect(root?.getAttribute('aria-labelledby')).toBe('feed-heading');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+  });
+
+  test('a whitespace-only aria-labelledby is dropped and the computed aria-label is kept', () => {
+    const { container } = render(ConnectionIndicator, {
+      status: 'live',
+      'aria-labelledby': '   ',
+    });
+    const root = container.querySelector('.cinder-connection-indicator');
+    expect(root?.getAttribute('aria-labelledby')).toBeNull();
+    expect(root?.getAttribute('aria-label')).toBe('Connection: Live');
+  });
+
   test('live renders a pulsing dot element', () => {
     const { container } = render(ConnectionIndicator, { status: 'live' });
     const dot = container.querySelector('.cinder-connection-indicator__dot');

@@ -59,12 +59,22 @@
     attempt,
     class: className,
     'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledby,
     ...rest
   }: ConnectionIndicatorProps = $props();
 
+  // Normalize empty/whitespace-only ARIA name props to `undefined` so an empty
+  // attribute is never emitted (which would suppress the accessible-name
+  // fallback). A provided aria-labelledby takes precedence, so the automatic
+  // aria-label default steps aside for it.
   const normalizedAriaLabel = $derived(ariaLabel?.trim() ? ariaLabel.trim() : undefined);
+  const normalizedAriaLabelledby = $derived(ariaLabelledby?.trim() ? ariaLabelledby : undefined);
   const resolvedLabel = $derived(label?.trim() ? label.trim() : statusLabels[status]);
-  const resolvedAriaLabel = $derived(normalizedAriaLabel ?? `Connection: ${resolvedLabel}`);
+  const resolvedAriaLabel = $derived(
+    normalizedAriaLabelledby !== undefined
+      ? undefined
+      : (normalizedAriaLabel ?? `Connection: ${resolvedLabel}`),
+  );
   const Icon = $derived(statusIcons[status]);
 </script>
 
@@ -76,6 +86,7 @@
   aria-live="polite"
   aria-atomic="true"
   aria-label={resolvedAriaLabel}
+  aria-labelledby={normalizedAriaLabelledby}
 >
   {#if status === 'live'}
     <span class="cinder-connection-indicator__dot" aria-hidden="true"></span>

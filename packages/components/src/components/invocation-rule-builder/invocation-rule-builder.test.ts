@@ -1310,6 +1310,32 @@ describe('InvocationRuleBuilder', () => {
         },
       );
 
+      test.each(['   ', '\t', '\n '])(
+        'coerces a whitespace-only numeric value (%j) to empty on an unrelated edit — a blank number is not a valid number',
+        async (whitespaceValue) => {
+          const rule = makeRule({
+            conditions: [
+              makeCondition({
+                id: 'c1',
+                field: 'retries',
+                operator: 'is',
+                value: whitespaceValue,
+              }),
+            ],
+          });
+          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const ruleNameInput = container.querySelector<HTMLInputElement>(
+            '[aria-label="Rule name for PR Review Rule"]',
+          )!;
+
+          await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+          await fireEvent.blur(ruleNameInput);
+
+          const [nextRules] = onchange.mock.calls[0]!;
+          expect(nextRules[0].conditions[0].value).toBe('');
+        },
+      );
+
       test('leaves a canonical numeric value untouched on an unrelated edit', async () => {
         const rule = makeRule({
           conditions: [makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: '42' })],

@@ -206,6 +206,13 @@ describe('schedule-builder utilities', () => {
       const expression = '15 3 1 * *';
       expect(joinCron(splitCron(expression))).toBe(expression);
     });
+
+    test('splitCron preserves overflow fields in the last field instead of dropping them', () => {
+      // A six-field (seconds-prefixed) cron must not silently truncate to five
+      // valid fields — the overflow lands in the day-of-week field so per-field
+      // validation flags the out-of-contract expression.
+      expect(splitCron('0 0 9 * * 1')).toEqual(['0', '0', '9', '*', '* 1']);
+    });
   });
 
   describe('parseTime', () => {
@@ -407,6 +414,31 @@ describe('schedule-builder utilities', () => {
       // 5 does not divide 24: a `*/5` hour step resets at midnight, producing a
       // 4-hour gap at the day boundary instead of a steady 5 hours.
       expect(valueToCronFields({ mode: 'interval', every: 5, unit: 'hours' })).toEqual([
+        '0',
+        '0',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('never emits a full-cycle step wildcard for a minutes interval equal to the cycle (every 60 minutes)', () => {
+      // 60 divides 60, but `*/60` overflows the minute field's 0-59 range and is
+      // invalid. A step must be strictly smaller than its cycle, so this seeds the
+      // honest neutral default instead of an out-of-range step wildcard.
+      expect(valueToCronFields({ mode: 'interval', every: 60, unit: 'minutes' })).toEqual([
+        '0',
+        '0',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('never emits a full-cycle step wildcard for an hours interval equal to the cycle (every 24 hours)', () => {
+      // 24 divides 24, but `*/24` overflows the hour field's 0-23 range. Seed the
+      // neutral default rather than an out-of-range step wildcard.
+      expect(valueToCronFields({ mode: 'interval', every: 24, unit: 'hours' })).toEqual([
         '0',
         '0',
         '*',
