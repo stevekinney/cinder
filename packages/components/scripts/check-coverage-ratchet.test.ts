@@ -5,9 +5,11 @@ import {
   computeCoverageAverages,
   coverageFailures,
   formatCoverageSummary,
+  formatLineRanges,
   parseCoverageThresholds,
   parseLcovRecords,
   parseSvelteLcovRecords,
+  uncoveredLineReport,
 } from './check-coverage-ratchet.ts';
 
 const packageRoot = join(import.meta.dir, '..');
@@ -655,5 +657,75 @@ end_of_record
     expect(formatCoverageSummary(averages, { functions: 0.7, lines: 0.7 })).toBe(
       'Coverage ratchet (2 files): functions 75.00% >= 70.00% lines 75.00% >= 70.00%',
     );
+  });
+
+  describe('uncoveredLineReport', () => {
+    const gapFixture = `TN:
+SF:${join(packageRoot, 'src/components/chat/builders.ts')}
+DA:10,1
+DA:11,0
+DA:12,0
+DA:13,0
+DA:20,0
+LF:5
+LH:1
+end_of_record
+TN:
+SF:${join(packageRoot, 'src/components/chat/chat.svelte')}
+DA:1,0
+LF:1
+LH:0
+end_of_record
+TN:
+SF:${join(packageRoot, 'scripts/some-script.ts')}
+DA:1,0
+LF:1
+LH:0
+end_of_record
+`;
+
+    test('lists the unhit line numbers of in-scope runtime files, excluding svelte and scripts', () => {
+      const report = uncoveredLineReport(gapFixture, 'runtime');
+      expect(report).toEqual([
+        { file: 'src/components/chat/builders.ts', unhitLines: [11, 12, 13, 20] },
+      ]);
+    });
+
+    test('scopes to svelte sources when asked', () => {
+      const report = uncoveredLineReport(gapFixture, 'svelte');
+      expect(report).toEqual([{ file: 'src/components/chat/chat.svelte', unhitLines: [1] }]);
+    });
+
+    test('reports the unhit line of a partially covered in-scope file', () => {
+      expect(uncoveredLineReport(lcovFixture, 'runtime')).toEqual([
+        { file: 'partial.ts', unhitLines: [2] },
+      ]);
+    });
+
+    test('returns an empty report when the in-scope file is fully covered', () => {
+      const fullyCovered = `TN:
+SF:${join(packageRoot, 'src/utilities/example.ts')}
+DA:1,1
+DA:2,3
+LF:2
+LH:2
+end_of_record
+`;
+      expect(uncoveredLineReport(fullyCovered, 'runtime')).toEqual([]);
+    });
+  });
+
+  describe('formatLineRanges', () => {
+    test('condenses consecutive line numbers into ranges', () => {
+      expect(formatLineRanges([11, 12, 13, 20])).toBe('11-13, 20');
+    });
+
+    test('handles single lines, gaps, and unsorted input', () => {
+      expect(formatLineRanges([7, 1, 2, 9, 3])).toBe('1-3, 7, 9');
+    });
+
+    test('returns an empty string for no lines', () => {
+      expect(formatLineRanges([])).toBe('');
+    });
   });
 });

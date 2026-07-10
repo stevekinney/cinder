@@ -292,6 +292,66 @@ function formatThreshold(value: number): string {
   return formatPercentage(value * 100);
 }
 
+/**
+ * The unhit line numbers of every in-scope file that has at least one, keyed by
+ * the same scope filters the ratchet aggregates over. A bare "runtime lines
+ * 99.88% < 100%" failure is otherwise un-actionable in CI, where the coverage
+ * environment (which tests run, which modules load) can differ from a local
+ * build and the offending lines are invisible in the logs.
+ */
+export function uncoveredLineReport(
+  source: string,
+  scope: CoverageScope,
+): { file: string; unhitLines: number[] }[] {
+  const report: { file: string; unhitLines: number[] }[] = [];
+  for (const rawRecord of source.split('end_of_record')) {
+    const lines = rawRecord.split(/\r?\n/);
+    const sourceFile = lines.find((line) => line.startsWith('SF:'))?.slice('SF:'.length);
+    if (sourceFile === undefined || sourceFile === '') continue;
+    if (
+      isTransientTestArtifact(sourceFile) ||
+      isOutsidePackageRootSourceMap(sourceFile) ||
+      isOutsideCoverageScope(sourceFile, scope)
+    ) {
+      continue;
+    }
+    const unhitLines: number[] = [];
+    for (const line of lines) {
+      if (!line.startsWith('DA:')) continue;
+      const [lineNumber, hitCount] = line.slice('DA:'.length).split(',');
+      if (hitCount === '0' && lineNumber !== undefined) unhitLines.push(Number(lineNumber));
+    }
+    if (unhitLines.length > 0) {
+      report.push({ file: toPackageRootRelativePath(sourceFile), unhitLines });
+    }
+  }
+  return report;
+}
+
+/** Condense a sorted line-number list into compact ranges: `[1,2,3,7] → "1-3, 7"`. */
+export function formatLineRanges(lineNumbers: number[]): string {
+  const sorted = [...new Set(lineNumbers)].toSorted((a, b) => a - b);
+  const ranges: string[] = [];
+  let start: number | undefined;
+  let previous: number | undefined;
+  for (const line of sorted) {
+    if (start === undefined || previous === undefined) {
+      start = line;
+      previous = line;
+    } else if (line === previous + 1) {
+      previous = line;
+    } else {
+      ranges.push(start === previous ? `${start}` : `${start}-${previous}`);
+      start = line;
+      previous = line;
+    }
+  }
+  if (start !== undefined && previous !== undefined) {
+    ranges.push(start === previous ? `${start}` : `${start}-${previous}`);
+  }
+  return ranges.join(', ');
+}
+
 export async function main(): Promise<void> {
   const thresholds = parseCoverageThresholds(await Bun.file(defaultThresholdsPath).text());
   const coverageSource = await Bun.file(defaultCoveragePath).text();
@@ -311,6 +371,19 @@ export async function main(): Promise<void> {
 
   if (failures.length > 0) {
     console.error(`${summaries.join('\n')} Failed: ${failures.join(', ')}.`);
+    const scopesToReport: CoverageScope[] = [];
+    if (failures.some((failure) => failure.startsWith('runtime lines')))
+      scopesToReport.push('runtime');
+    if (failures.some((failure) => failure.startsWith('svelte lines')))
+      scopesToReport.push('svelte');
+    for (const scope of scopesToReport) {
+      const gaps = uncoveredLineReport(coverageSource, scope);
+      if (gaps.length === 0) continue;
+      console.error(`\nUncovered ${scope} lines (${gaps.length} file(s)):`);
+      for (const { file, unhitLines } of gaps) {
+        console.error(`  ${file}: ${formatLineRanges(unhitLines)}`);
+      }
+    }
     process.exit(1);
   }
 
