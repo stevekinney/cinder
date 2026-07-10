@@ -132,6 +132,18 @@ jobs:
       - name: Run component coverage ratchet
         run: bun run --filter=@lostgradient/cinder test:coverage
 
+      # Upload the LCOV report even on failure so a coverage regression that only
+      # reproduces in CI (different tests run than a local build) can be diagnosed
+      # from the exact per-line data instead of guessed at.
+      - name: Upload coverage LCOV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: component-coverage-lcov
+          path: packages/components/coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 7
+
   component-tests:
     name: component-tests (${{ matrix.chunk }}/4)
     runs-on: ubuntu-latest
