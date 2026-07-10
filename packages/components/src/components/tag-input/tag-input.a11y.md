@@ -51,6 +51,10 @@ them alongside `FormField` description and error text.
 - When `name` is provided, the component renders one hidden input per tag using
   the same field name so native form submission preserves free-form values
   without lossy delimiter encoding.
+- Set `commitOnSubmit` when the parent form should commit a non-empty pending
+  draft before submission. The submit-time commit uses the same validation,
+  duplicate, and max-tag checks as Enter and delimiter commits; invalid drafts
+  keep focusable form state in place and prevent submission.
 - In uncontrolled mode, native form reset restores `defaultValue`, clears the
   pending input buffer, and clears inline validation errors.
 - Controlled mode does not mutate itself on reset; the parent remains the source

@@ -12,6 +12,12 @@ Free-form token entry field that turns committed text into removable tags while 
 
 ## Guidance
 
+For native forms, pass both `name` and `commitOnSubmit` when the expected path is
+"type a tag, click Save." `TagInput` commits a valid pending draft during the
+form's submit capture phase, so `new FormData(form).getAll(name)` includes the
+same values as the hidden inputs. Invalid, duplicate, or over-limit drafts use
+the existing inline validation path and block that submit attempt.
+
 ### Use When
 
 - Collecting zero or more short free-form values such as labels, emails, or technologies.
@@ -35,6 +41,7 @@ Free-form token entry field that turns committed text into removable tags while 
 | `aria-labelledby`  | `string` \| `null`                                                                                            | no       | —       | Element ids that label both the text input and the committed-tag listbox.                                                                                  |
 | `autocapitalize`   | `"off"` \| `"on"` \| `"characters"` \| `"none"` \| `"sentences"` \| `"words"` \| `null`                       | no       | —       | Autocapitalization hint forwarded to the visible text input.                                                                                               |
 | `class`            | `string`                                                                                                      | no       | —       | Additional class merged onto the root element.                                                                                                             |
+| `commitOnSubmit`   | `boolean`                                                                                                     | no       | —       | Commit a non-empty pending draft before the parent form submits.                                                                                           |
 | `defaultValue`     | `string`[]                                                                                                    | no       | —       | Initial tags for uncontrolled usage. Ignored after mount.                                                                                                  |
 | `disabled`         | `boolean`                                                                                                     | no       | —       | Disable the input and chip removal affordances.                                                                                                            |
 | `enterkeyhint`     | `"enter"` \| `"done"` \| `"go"` \| `"next"` \| `"previous"` \| `"search"` \| `"send"` \| `null`               | no       | —       | Virtual-keyboard Enter hint forwarded to the visible text input.                                                                                           |

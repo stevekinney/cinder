@@ -31,6 +31,10 @@ const schema = {
       type: 'boolean',
       description: 'Allow the same trimmed tag value to appear more than once.',
     },
+    commitOnSubmit: {
+      type: 'boolean',
+      description: 'Commit a non-empty pending draft before the parent form submits.',
+    },
     autocapitalize: {
       enum: ['off', 'on', 'characters', 'none', 'sentences', 'words', null],
       description: 'Autocapitalization hint forwarded to the visible text input.',

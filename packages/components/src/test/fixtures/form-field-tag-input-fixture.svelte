@@ -6,6 +6,7 @@
     fieldError?: string;
     fieldRequired?: boolean;
     fieldDisabled?: boolean;
+    tagInputId?: string;
     ariaLabel?: string;
     ariaLabelledby?: string;
   };
@@ -22,6 +23,7 @@
     fieldError,
     fieldRequired,
     fieldDisabled,
+    tagInputId,
     ariaLabel,
     ariaLabelledby,
   }: FormFieldTagInputFixtureProps = $props();
@@ -40,5 +42,5 @@
 </script>
 
 <FormField id={fieldId} label={fieldLabel} {...fieldOptional}>
-  <TagInput id={fieldId} {...tagInputOptional} />
+  <TagInput id={tagInputId ?? fieldId} {...tagInputOptional} />
 </FormField>
