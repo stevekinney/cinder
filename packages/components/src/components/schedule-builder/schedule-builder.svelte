@@ -284,6 +284,15 @@
   let lastKnownValue: ScheduleValue = seedValue;
 
   /**
+   * The raw `value` prop as observed on the resync effect's most recent run.
+   * This is deliberately separate from `lastKnownValue`: it exists only to
+   * answer "did the *prop itself* actually change since I last looked?",
+   * independent of whatever this component's own local edits have done to
+   * `lastKnownValue`. See the effect below for why that distinction matters.
+   */
+  let previousValueProp: ScheduleValue | undefined = value;
+
+  /**
    * Two-way-controlled sync: when the CONSUMER hands in a `value` that is
    * genuinely different from what this component last knew about, adopt it —
    * re-seeding every field exactly like the initial seed (see
@@ -298,11 +307,39 @@
    * frequently as a freshly-constructed object with the same content) would
    * look like a "new" value on every edit and wipe mid-edit state — e.g. an
    * in-progress, not-yet-valid cron field — on every keystroke.
+   *
+   * `value === undefined` is treated as "reset to default", not "skip": a
+   * controlled parent that clears `value` back to `undefined` is a
+   * documented reset to the default/omitted state (e.g. a form reset) and
+   * must reseed to `defaultScheduleValue()`, exactly like a transition to
+   * any other genuinely new value.
+   *
+   * The `previousValueProp` reference check runs *before* any of that: this
+   * effect is only allowed to reseed on a genuine transition of the raw
+   * `value` prop, never merely because its resolved content (after the
+   * `?? defaultScheduleValue()` fallback) currently disagrees with
+   * `lastKnownValue`. That distinction is load-bearing for the uncontrolled
+   * case (no `value` prop, ever): `lastKnownValue` still advances on every
+   * local edit (via `emitChange`), so if this effect ever re-ran for a
+   * reason unrelated to `value` itself changing — e.g. a host test harness
+   * or framework integration that re-invokes effects on unrelated re-renders
+   * — a guard keyed only on `scheduleValuesEqual(default, lastKnownValue)`
+   * would misread "I have local edits the default doesn't have" as "the
+   * parent reset me to default" and wipe an in-progress, uncontrolled edit.
+   * Comparing the raw prop to what this effect saw last time is immune to
+   * that: for an uncontrolled consumer `value` is always `undefined`, so
+   * `previousValueProp` never disagrees with it, and the block below never
+   * runs at all — regardless of how many times the effect itself re-fires.
    */
   $effect(() => {
     const incoming = value;
-    if (incoming === undefined || scheduleValuesEqual(incoming, lastKnownValue)) return;
-    const seed = seedFieldsFromValue(incoming);
+    const propChanged = incoming !== previousValueProp;
+    previousValueProp = incoming;
+    if (!propChanged) return;
+
+    const resolved = incoming ?? defaultScheduleValue();
+    if (scheduleValuesEqual(resolved, lastKnownValue)) return;
+    const seed = seedFieldsFromValue(resolved);
     authoringMode = seed.authoringMode;
     cronFields = seed.cronFields;
     intervalEvery = seed.intervalEvery;
@@ -315,7 +352,7 @@
     presetWeeklyTime = seed.presetWeeklyTime;
     presetMonthlyDay = seed.presetMonthlyDay;
     presetMonthlyTime = seed.presetMonthlyTime;
-    lastKnownValue = incoming;
+    lastKnownValue = resolved;
   });
 
   /**

@@ -232,6 +232,42 @@ describe('ScheduleBuilder', () => {
 
       expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
     });
+
+    test('a controlled value change to undefined resets the visible mode and summary to the default', async () => {
+      const initialValue: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
+      const { container, rerender } = render(ScheduleBuilder, { value: initialValue });
+
+      expect(container.querySelector('[data-sb-panel="cron"]')).not.toBeNull();
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Weekly on Monday at 09:00',
+      );
+
+      // A controlled parent clearing `value` back to `undefined` is a
+      // documented reset to the default/omitted state (e.g. a form reset),
+      // not "stop controlling and freeze on whatever was last shown".
+      await rerender({ value: undefined });
+
+      expect(container.querySelector('[data-sb-panel="presets"]')).not.toBeNull();
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Every 15 minutes',
+      );
+    });
+
+    test('an uncontrolled component (no value prop, ever) does not reset a mid-edit cron field on re-render', async () => {
+      const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '7' } });
+
+      // Re-render with the same (absent) props, as an uncontrolled consumer
+      // would on any unrelated parent update. `value` stays `undefined`
+      // throughout, so the resync effect must not treat this as a reset.
+      await rerender({});
+      await rerender({});
+
+      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('7');
+    });
   });
 
   describe('mode switching', () => {

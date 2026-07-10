@@ -70,9 +70,10 @@ export function validateCronField(rawValue: string, fieldIndex: number): string 
       const rangeText = stepMatch[1] ?? '*';
       if (rangeText !== '*') {
         const [a, b] = rangeText.split('-').map(Number);
-        if (a === undefined || b === undefined || !inRange(a) || !inRange(b) || a > b) {
-          return `Range out of ${field.hint}.`;
+        if (a === undefined || b === undefined || !inRange(a) || !inRange(b)) {
+          return `Out of range (${field.hint}).`;
         }
+        if (a > b) return 'Range start is after its end.';
       }
       continue;
     }

@@ -72,7 +72,11 @@ describe('schedule-builder utilities', () => {
     });
 
     test('rejects a step whose range is out of bounds', () => {
-      expect(validateCronField('50-70/2', 0)).toBe('Range out of 0–59.');
+      expect(validateCronField('50-70/2', 0)).toBe('Out of range (0–59).');
+    });
+
+    test('rejects a step whose range start is after its end, with the same message as a plain range', () => {
+      expect(validateCronField('10-5/2', 0)).toBe('Range start is after its end.');
     });
 
     test('accepts a plain range', () => {

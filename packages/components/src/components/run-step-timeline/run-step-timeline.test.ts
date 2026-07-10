@@ -1219,6 +1219,30 @@ describe('branch groups', () => {
     expect(items[1]?.getAttribute('data-cinder-status')).toBe('branch');
   });
 
+  test('does not collide keys between a branch group and a step id "branch" with children', () => {
+    // A step id of "branch" plus a child would previously produce the same
+    // keyed-each path as a branch group; the branch key is namespaced so both
+    // render instead of one being deduped away.
+    const steps: RunStepTimelineEntry[] = [
+      {
+        id: 'branch',
+        label: 'Literal branch step',
+        status: 'running',
+        children: [{ id: 'race', label: 'Nested child', status: 'succeeded' }],
+      },
+      {
+        kind: 'branch',
+        id: 'race',
+        label: 'Actual branch group',
+        lanes: [{ id: 'l', label: 'L', steps: [{ id: 's', label: 'S', status: 'succeeded' }] }],
+      },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(container.textContent).toContain('Literal branch step');
+    expect(container.textContent).toContain('Actual branch group');
+    expect(container.querySelector('.cinder-run-step-timeline__item--branch')).not.toBeNull();
+  });
+
   test('keeps a single aria-current on the rail when active steps flank a branch group', () => {
     const steps: RunStepTimelineEntry[] = [
       { id: 'before', label: 'Before', status: 'running' },

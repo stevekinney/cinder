@@ -143,7 +143,10 @@
         result.push({
           kind: 'branch',
           group: entry,
-          pathKey: `branch/${escapeStepPathSegment(entry.id)}`,
+          // A raw `%` can never appear in an escaped step-path segment
+          // (escapeStepPathSegment turns `%` into `%25`), so this branch key
+          // cannot collide with any step's path key.
+          pathKey: `%branch/${escapeStepPathSegment(entry.id)}`,
         });
       } else {
         stepRun.push(entry);

@@ -165,13 +165,22 @@ export function branchOutcomeSummary(lanes: RunStepBranchLane[]): string {
   return parts.length > 0 ? parts.join(', ') : 'No lanes';
 }
 
-/** Whether any step in any lane of a branch group is currently in-flight. */
+/**
+ * Whether any step in any lane of a branch group is currently in-flight.
+ * Iterative (explicit stack) so a deeply-nested lane can't overflow the call
+ * stack — this runs before the render path's depth cap.
+ */
 export function branchGroupHasCurrentStep(group: RunStepBranchGroup): boolean {
-  const laneHasCurrent = (steps: RunStep[]): boolean =>
-    steps.some(
-      (step) => isCurrent(step.status) || (step.children ? laneHasCurrent(step.children) : false),
-    );
-  return group.lanes.some((lane) => laneHasCurrent(lane.steps));
+  const stack: RunStep[] = group.lanes.flatMap((lane) => lane.steps);
+  while (stack.length > 0) {
+    const step = stack.pop();
+    if (step === undefined) continue;
+    if (isCurrent(step.status)) return true;
+    if (step.children) {
+      for (const child of step.children) stack.push(child);
+    }
+  }
+  return false;
 }
 
 /**
