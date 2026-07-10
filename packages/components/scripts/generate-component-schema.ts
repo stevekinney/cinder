@@ -319,6 +319,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'schedule-builder') {
+    applyScheduleBuilderSchemaRules(schema);
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
@@ -335,6 +340,25 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       },
     },
   ];
+}
+
+function applyScheduleBuilderSchemaRules(schema: ComponentSchemaOutput): void {
+  // `previewCount` is a list length — a non-negative integer.
+  const previewCount = schema.properties['previewCount'];
+  if (previewCount?.type === 'number') {
+    previewCount.type = 'integer';
+    previewCount.minimum = 1;
+  }
+
+  // The `interval` variant's `every` is documented as a positive integer.
+  const intervalVariant = schema.properties['value']?.anyOf?.find(
+    (variant) => variant.properties?.['every'] !== undefined,
+  );
+  const every = intervalVariant?.properties?.['every'];
+  if (every?.type === 'number') {
+    every.type = 'integer';
+    every.minimum = 1;
+  }
 }
 
 function applyEventStreamViewerSchemaRules(schema: ComponentSchemaOutput): void {

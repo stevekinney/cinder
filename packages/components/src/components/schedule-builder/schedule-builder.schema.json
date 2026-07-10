@@ -24,7 +24,8 @@
               "const": "interval"
             },
             "every": {
-              "type": "number"
+              "type": "integer",
+              "minimum": 1
             },
             "unit": {
               "enum": ["minutes", "hours", "days", "weeks"]
@@ -37,8 +38,9 @@
       "description": "The current recurrence value (controlled). When omitted, the component\nstarts from a sensible default (`interval`, every 15 minutes)."
     },
     "previewCount": {
-      "type": "number",
-      "description": "How many upcoming fires to request from `computeNextFires`. Defaults to 5."
+      "type": "integer",
+      "description": "How many upcoming fires to request from `computeNextFires`. Defaults to 5.",
+      "minimum": 1
     },
     "timezoneLabel": {
       "type": "string",

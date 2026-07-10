@@ -367,8 +367,15 @@
     if (cronFieldsValid(next)) emitChange();
   }
 
+  // `ScheduleValue.every` is contractually a positive integer; NumberInput can
+  // yield decimals or nulls, so coerce every edit to `>= 1` whole units.
+  function toPositiveInteger(next: number | null): number {
+    if (next === null || !Number.isFinite(next) || next < 1) return 1;
+    return Math.trunc(next);
+  }
+
   function handleIntervalEveryChange(next: number | null): void {
-    intervalEvery = next && next > 0 ? next : 1;
+    intervalEvery = toPositiveInteger(next);
     emitChange();
   }
 
@@ -378,7 +385,7 @@
   }
 
   function handlePresetEveryValueChange(next: number | null): void {
-    presetEveryValue = next && next > 0 ? next : 1;
+    presetEveryValue = toPositiveInteger(next);
     emitChange();
   }
 
@@ -470,6 +477,7 @@
             id={`${baseId}-preset-every-value`}
             label="Every"
             min={1}
+            step={1}
             bind:value={() => presetEveryValue, handlePresetEveryValueChange}
           />
           <Select
@@ -559,6 +567,7 @@
           id={`${baseId}-interval-every`}
           label="Every"
           min={1}
+          step={1}
           bind:value={() => intervalEvery, handleIntervalEveryChange}
         />
         <Select

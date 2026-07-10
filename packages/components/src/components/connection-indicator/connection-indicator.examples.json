@@ -24,7 +24,7 @@
     {
       "id": "states",
       "title": "All connection states",
-      "description": "Each of the six states with its own icon, text label, and color.",
+      "description": "Each of the six states with its own icon and text label. Colors come from shared semantic tokens, so some states intentionally share a tone (e.g. connecting/reconnecting) — the icon and text carry the distinction, never color alone.",
       "code": "<script lang=\"ts\">\n  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';\n</script>\n\n<div class=\"example-preview-row\">\n  <ConnectionIndicator status=\"connecting\" />\n  <ConnectionIndicator status=\"live\" />\n  <ConnectionIndicator status=\"reconnecting\" />\n  <ConnectionIndicator status=\"polling\" />\n  <ConnectionIndicator status=\"stale\" />\n  <ConnectionIndicator status=\"closed\" />\n</div>\n"
     }
   ]

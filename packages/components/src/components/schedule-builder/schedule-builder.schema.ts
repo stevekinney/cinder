@@ -26,7 +26,8 @@ const schema = {
               const: 'interval',
             },
             every: {
-              type: 'number',
+              type: 'integer',
+              minimum: 1,
             },
             unit: {
               enum: ['minutes', 'hours', 'days', 'weeks'],
@@ -40,8 +41,9 @@ const schema = {
         'The current recurrence value (controlled). When omitted, the component\nstarts from a sensible default (`interval`, every 15 minutes).',
     },
     previewCount: {
-      type: 'number',
+      type: 'integer',
       description: 'How many upcoming fires to request from `computeNextFires`. Defaults to 5.',
+      minimum: 1,
     },
     timezoneLabel: {
       type: 'string',

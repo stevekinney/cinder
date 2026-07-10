@@ -312,6 +312,21 @@ describe('ScheduleBuilder', () => {
       expect(emitted).toEqual({ mode: 'interval', every: 30, unit: 'minutes' });
     });
 
+    test('coerces a fractional "every" to a positive integer before emitting', async () => {
+      const onchange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, { onchange });
+
+      const everyInput = getByLabelText('Every') as HTMLInputElement;
+      await fireEvent.input(everyInput, { target: { value: '2.5' } });
+      await fireEvent.blur(everyInput);
+
+      // The emitted `every` must always be a positive integer — no fractional leak.
+      const [emitted] = onchange.mock.calls.at(-1)! as [{ mode: string; every: number }];
+      expect(emitted.mode).toBe('interval');
+      expect(Number.isInteger(emitted.every)).toBe(true);
+      expect(emitted.every).toBeGreaterThanOrEqual(1);
+    });
+
     test('presets "every" unit select commits an interval value via onchange', async () => {
       const onchange = mock();
       const { getByLabelText } = render(ScheduleBuilder, { onchange });
