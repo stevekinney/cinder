@@ -18,10 +18,12 @@
 <script lang="ts">
   import type { ConfirmDialogProps } from './confirm-dialog.types.ts';
   import Button from '../button/button.svelte';
+  import Input from '../input/input.svelte';
   import Modal from '../modal/modal.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
   const descriptionId = $props.id();
+  const typedConfirmationId = `${descriptionId}-typed-confirmation`;
 
   let {
     open = $bindable(false),
@@ -30,12 +32,26 @@
     cancelLabel = 'Cancel',
     confirmLabel,
     destructive = false,
+    typeToConfirm,
+    typeToConfirmLabel,
     onconfirm,
     oncancel,
     triggerRef = null,
     class: className,
   }: ConfirmDialogProps = $props();
   const describedById = $derived(description ? descriptionId : undefined);
+  let typedConfirmation = $state('');
+  let previousOpen = open;
+  const typedConfirmationMatches = $derived(
+    typeToConfirm === undefined ||
+      typedConfirmation.trim().toLocaleLowerCase() === typeToConfirm.toLocaleLowerCase(),
+  );
+
+  $effect(() => {
+    if (open === previousOpen) return;
+    previousOpen = open;
+    typedConfirmation = '';
+  });
 
   function handleCancel() {
     // Mirror Modal's dismiss() ordering: state first, then callback. No try/catch —
@@ -63,10 +79,22 @@
     <p id={descriptionId} class="cinder-confirm-dialog__description">{description}</p>
   {/if}
 
+  {#if typeToConfirm !== undefined}
+    <Input
+      id={typedConfirmationId}
+      class="cinder-confirm-dialog__typed-confirmation"
+      bind:value={typedConfirmation}
+      label={typeToConfirmLabel ?? `Type "${typeToConfirm}" to confirm`}
+      autocomplete="off"
+    />
+  {/if}
+
   {#snippet footer()}
     <Button variant="secondary" autofocus onclick={handleCancel}>{cancelLabel}</Button>
-    <Button variant={destructive ? 'danger' : 'primary'} onclick={handleConfirm}
-      >{confirmLabel}</Button
+    <Button
+      variant={destructive ? 'danger' : 'primary'}
+      disabled={!typedConfirmationMatches}
+      onclick={handleConfirm}>{confirmLabel}</Button
     >
   {/snippet}
 </Modal>

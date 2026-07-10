@@ -37,6 +37,7 @@
   let {
     'aria-label': ariaLabel = 'Filters',
     searchQuery,
+    showSearch = true,
     searchPlaceholder = 'Search…',
     searchAriaLabel = 'Search',
     facets = [],
@@ -76,7 +77,9 @@
     return facet.options.find((option) => option.value === value)?.label ?? value;
   }
 
-  const hasAppliedFilters = $derived(appliedFilters.length > 0 || currentSearchQuery.length > 0);
+  const hasAppliedFilters = $derived(
+    appliedFilters.length > 0 || (showSearch && currentSearchQuery.length > 0),
+  );
   const totalActiveCount = $derived(appliedFilters.length);
 
   // Live region summary message — always in DOM, content changes when filters change.
@@ -134,15 +137,17 @@
 >
   <!-- Controls row: search field + facet selects -->
   <div class="cinder-faceted-filter-bar__controls">
-    <SearchField
-      id={searchId}
-      class="cinder-faceted-filter-bar__search"
-      value={currentSearchQuery}
-      placeholder={searchPlaceholder}
-      aria-label={searchAriaLabel}
-      {disabled}
-      oninput={handleSearchInput}
-    />
+    {#if showSearch}
+      <SearchField
+        id={searchId}
+        class="cinder-faceted-filter-bar__search"
+        value={currentSearchQuery}
+        placeholder={searchPlaceholder}
+        aria-label={searchAriaLabel}
+        {disabled}
+        oninput={handleSearchInput}
+      />
+    {/if}
 
     {#each facets as facet (facet.key)}
       {#if facet.type === 'select'}

@@ -79,6 +79,15 @@ describe('FacetedFilterBar structure', () => {
     expect(searchField).not.toBeNull();
   });
 
+  test('showSearch=false omits the search field while preserving facet controls', () => {
+    const { container } = render(FacetedFilterBar, {
+      showSearch: false,
+      facets: [STATUS_FACET],
+    });
+    expect(container.querySelector('.cinder-search-field')).toBeNull();
+    expect(container.querySelector('[aria-label="Status"]')).not.toBeNull();
+  });
+
   test('renders select facets from facets prop', () => {
     const { container } = render(FacetedFilterBar, {
       facets: [STATUS_FACET, QUEUE_FACET],

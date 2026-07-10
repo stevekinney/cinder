@@ -83,6 +83,16 @@ describe('CodeBlock — static structure', () => {
     expect(pre?.hasAttribute('tabindex')).toBe(false);
   });
 
+  test('public source-excerpt variables control the shared viewport and both render paths', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    expect(css).toContain('--cinder-code-block-height: auto');
+    expect(css).toContain('block-size: var(--cinder-code-block-height)');
+    expect(css).toContain('font-size: var(--cinder-code-block-font-size)');
+    expect(css).toContain('line-height: var(--cinder-code-block-line-height)');
+    expect(css.match(/--cinder-code-block-padding/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(css).toContain('.cinder-code-block :where(pre.shiki)');
+  });
+
   test('language prop renders a language label in the header', () => {
     const { container } = render(CodeBlock, { code: 'const x', language: 'ts', highlight: false });
     const label = container.querySelector('.cinder-code-block__language');
@@ -169,8 +179,11 @@ describe('CodeBlock — static structure', () => {
     const lightDarkCount = css.match(/\blight-dark\(/g)?.length ?? 0;
 
     expect(css).toContain('--_cinder-code-block-code-surface: light-dark(');
-    expect(css).toContain('background: var(--_cinder-code-block-code-surface);');
-    expect(css).toContain('background: var(--_cinder-code-block-code-surface) !important;');
+    expect(css).toContain(
+      '--cinder-code-block-background: var(--_cinder-code-block-code-surface);',
+    );
+    expect(css).toContain('background: var(--cinder-code-block-background);');
+    expect(css).toContain('background: var(--cinder-code-block-background) !important;');
     expect(lightDarkCount).toBe(1);
   });
 

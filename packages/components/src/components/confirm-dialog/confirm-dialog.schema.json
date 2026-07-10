@@ -26,6 +26,14 @@
       "type": "boolean",
       "description": "When true, the confirm button uses variant=\"danger\". The cancel button still\nreceives default focus regardless — color is never the sole destructive signal."
     },
+    "typeToConfirm": {
+      "type": "string",
+      "description": "When set, renders a labelled text input and disables the confirm button until the\ntrimmed input matches this value case-insensitively."
+    },
+    "typeToConfirmLabel": {
+      "type": "string",
+      "description": "Visible label for the typed-confirmation input. Defaults to `Type \"<value>\" to confirm`."
+    },
     "class": {
       "type": "string",
       "description": "Optional extra class on the underlying <Modal>. Destructured as `class: className` per repo convention."

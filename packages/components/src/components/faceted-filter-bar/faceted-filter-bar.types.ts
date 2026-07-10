@@ -69,6 +69,8 @@ export type FacetedFilterBarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   'aria-label'?: string;
   /** Current text search query. When provided, the search field is controlled. */
   searchQuery?: string;
+  /** Whether to render the leading search field. Defaults to `true`. */
+  showSearch?: boolean;
   /** Placeholder text shown in the leading search field. */
   searchPlaceholder?: string;
   /** Accessible label for the search input. Defaults to 'Search'. */
