@@ -243,6 +243,14 @@
     | { status: 'error' }
     | { status: 'ok'; fires: ScheduleFire[] };
 
+  // `previewCount` is documented and schema-constrained as a positive
+  // integer, but it's still a public prop a consumer can hand a stray 0,
+  // negative, NaN, or fractional value to — normalize before it ever reaches
+  // `computeNextFires`, the same way `toPositiveInteger` guards field edits.
+  const resolvedPreviewCount = $derived(
+    Number.isInteger(previewCount) && previewCount > 0 ? previewCount : 5,
+  );
+
   /**
    * Guards the next-fires preview two ways: (1) `computeNextFires` is only
    * ever called with a value that has passed `cronFieldsValid` — never an
@@ -255,7 +263,7 @@
     if (!computeNextFires) return { status: 'hidden' };
     if (!currentValueIsValid) return { status: 'invalid' };
     try {
-      return { status: 'ok', fires: computeNextFires(currentValue, previewCount) };
+      return { status: 'ok', fires: computeNextFires(currentValue, resolvedPreviewCount) };
     } catch {
       return { status: 'error' };
     }
@@ -403,6 +411,23 @@
         intervalEvery = interval.every;
         intervalUnit = interval.unit;
       }
+    } else if (nextMode === 'presets') {
+      // Same "lossless where representable" seeding as the initial mount and
+      // the resync effect: the only preset kind with a general inverse is
+      // "every N" at a minutes/hours cadence (`seedFieldsFromValue` already
+      // gates that through `valueToInterval` + the minutes/hours check).
+      // Daily/weekly/monthly and non-divisor/day/week intervals have no
+      // general inverse, so they fall back to the same neutral defaults used
+      // everywhere else a value gets seeded into the preset fields.
+      const seed = seedFieldsFromValue(lastKnownValue);
+      presetKind = seed.presetKind;
+      presetEveryValue = seed.presetEveryValue;
+      presetEveryUnit = seed.presetEveryUnit;
+      presetDailyTime = seed.presetDailyTime;
+      presetWeeklyDays = seed.presetWeeklyDays;
+      presetWeeklyTime = seed.presetWeeklyTime;
+      presetMonthlyDay = seed.presetMonthlyDay;
+      presetMonthlyTime = seed.presetMonthlyTime;
     }
   }
 

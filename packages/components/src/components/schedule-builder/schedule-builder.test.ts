@@ -355,6 +355,36 @@ describe('ScheduleBuilder', () => {
 
       expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
     });
+
+    test('switching to presets after committing a representable hours interval seeds the "every N" preset instead of the default', async () => {
+      const value: ScheduleValue = { mode: 'interval', every: 2, unit: 'hours' };
+      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { value });
+
+      // Bounce through cron on the way to presets, same as the coordinator's
+      // repro: the committed value must survive an intermediate mode, not
+      // just a direct interval -> presets switch.
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      await fireEvent.click(getByRole('tab', { name: 'Presets' }));
+
+      expect(getByRole('radio', { name: 'Every N' }).getAttribute('aria-checked')).toBe('true');
+      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('2');
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(unitSelect.value).toBe('hours');
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Every 2 hours',
+      );
+    });
+
+    test('switching to presets from a non-representable value leaves the "every N" preset at its default', async () => {
+      const value: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
+      const { getByLabelText, getByRole } = render(ScheduleBuilder, { value });
+
+      await fireEvent.click(getByRole('tab', { name: 'Presets' }));
+
+      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('15');
+      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(unitSelect.value).toBe('minutes');
+    });
   });
 
   describe('presets mode', () => {
@@ -704,6 +734,25 @@ describe('ScheduleBuilder', () => {
       render(ScheduleBuilder, { computeNextFires, previewCount: 3 });
 
       expect(computeNextFires.mock.calls[0]![1]).toBe(3);
+    });
+
+    test('normalizes a fractional, zero, negative, or NaN previewCount to a positive integer before calling computeNextFires', async () => {
+      const computeNextFires = stubComputeNextFires();
+      const { rerender } = render(ScheduleBuilder, { computeNextFires, previewCount: 0 });
+      expect(computeNextFires.mock.calls[0]![1]).toBe(5);
+
+      await rerender({ computeNextFires, previewCount: 2.5 });
+      expect(computeNextFires.mock.calls.at(-1)![1]).toBe(5);
+
+      await rerender({ computeNextFires, previewCount: -3 });
+      expect(computeNextFires.mock.calls.at(-1)![1]).toBe(5);
+
+      await rerender({ computeNextFires, previewCount: Number.NaN });
+      expect(computeNextFires.mock.calls.at(-1)![1]).toBe(5);
+
+      // A genuinely valid previewCount still passes through unnormalized.
+      await rerender({ computeNextFires, previewCount: 7 });
+      expect(computeNextFires.mock.calls.at(-1)![1]).toBe(7);
     });
 
     test('does not call computeNextFires while a cron field is invalid, and shows an unavailable message', async () => {
