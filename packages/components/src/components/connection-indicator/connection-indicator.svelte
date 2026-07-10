@@ -68,7 +68,9 @@
   // fallback). A provided aria-labelledby takes precedence, so the automatic
   // aria-label default steps aside for it.
   const normalizedAriaLabel = $derived(ariaLabel?.trim() ? ariaLabel.trim() : undefined);
-  const normalizedAriaLabelledby = $derived(ariaLabelledby?.trim() ? ariaLabelledby : undefined);
+  const normalizedAriaLabelledby = $derived(
+    ariaLabelledby?.trim() ? ariaLabelledby.trim() : undefined,
+  );
   const resolvedLabel = $derived(label?.trim() ? label.trim() : statusLabels[status]);
   const resolvedAriaLabel = $derived(
     normalizedAriaLabelledby !== undefined

@@ -109,6 +109,17 @@ describe('ConnectionIndicator', () => {
     expect(root?.getAttribute('aria-label')).toBeNull();
   });
 
+  test('a forwarded aria-labelledby is trimmed of surrounding whitespace before emitting', () => {
+    const { container } = render(ConnectionIndicator, {
+      status: 'live',
+      'aria-labelledby': '  feed-heading  ',
+    });
+    const root = container.querySelector('.cinder-connection-indicator');
+    // Surrounding whitespace on an IDREF must not be emitted verbatim.
+    expect(root?.getAttribute('aria-labelledby')).toBe('feed-heading');
+    expect(root?.getAttribute('aria-label')).toBeNull();
+  });
+
   test('a whitespace-only aria-labelledby is dropped and the computed aria-label is kept', () => {
     const { container } = render(ConnectionIndicator, {
       status: 'live',
