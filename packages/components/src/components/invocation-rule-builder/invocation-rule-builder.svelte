@@ -128,7 +128,7 @@
    * only arrive as stale prop data: hex (`'0x10'`), units (`'5px'`), plain
    * words (`'foo'`), or whitespace mixed with letters.
    */
-  const NUMBER_LIKE_VALUE_PATTERN = /^-?(\d+\.?\d*|\.\d+)?(e-?\d*)?$/i;
+  const NUMBER_LIKE_VALUE_PATTERN = /^[+-]?(\d+\.?\d*|\.\d+)?(e[+-]?\d*)?$/i;
 
   /**
    * Whether a stored condition value is still a faithful representation of

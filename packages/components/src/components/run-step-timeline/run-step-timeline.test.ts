@@ -1427,6 +1427,22 @@ describe('compensation', () => {
     expect(container.textContent).toContain('Compensates Charge card');
   });
 
+  test('does not resolve a compensation to a nested descendant (siblings only)', () => {
+    // "charge" exists only as a child of "parent"; a top-level step compensating
+    // "charge" must NOT match that descendant — compensates targets a sibling.
+    const steps: RunStepTimelineEntry[] = [
+      {
+        id: 'parent',
+        label: 'Parent',
+        status: 'succeeded',
+        children: [{ id: 'charge', label: 'Charge card', status: 'succeeded' }],
+      },
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(container.textContent).not.toContain('Compensates Charge card');
+  });
+
   test('does not resolve a compensation across a lane boundary (sibling scope only)', () => {
     // `compensates` is documented as a SIBLING step id. A top-level step must
     // not resolve to a same-id step inside a branch lane (which could pick the

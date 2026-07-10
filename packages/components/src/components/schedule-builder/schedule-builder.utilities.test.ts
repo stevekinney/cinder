@@ -79,6 +79,12 @@ describe('schedule-builder utilities', () => {
       expect(validateCronField('10-5/2', 0)).toBe('Range start is after its end.');
     });
 
+    test('rejects a step larger than the field maximum', () => {
+      expect(validateCronField('*/100', 0)).toBe('Step is larger than 0–59.');
+      // A step within the field range is still accepted.
+      expect(validateCronField('*/30', 0)).toBeUndefined();
+    });
+
     test('accepts a plain range', () => {
       expect(validateCronField('1-5', 0)).toBeUndefined();
     });

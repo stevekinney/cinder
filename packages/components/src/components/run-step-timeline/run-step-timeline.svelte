@@ -193,15 +193,14 @@
     appendRunStepRows(rows, list, 0, pathPrefix);
     const currentRowIndex = deepestCurrentStepIndex(rows);
 
-    // Build the compensation id→label map from the flattened rows of THIS run or
-    // lane only. Scoping it locally means a `compensates` id resolves against a
-    // sibling in the same list (not a same-id step in a different branch lane),
-    // and it iterates the already-bounded, depth-capped rows rather than
-    // recursing the full step tree (which could overflow the stack for very deep
-    // inputs).
-    const localLabels = new Map<string, string>();
+    // Index every step row by its unique path key (built from the escaped id
+    // chain). A `compensates` id then resolves to a true SIBLING — a step under
+    // the same parent — rather than any same-id descendant elsewhere in the run
+    // or lane. Iterating the already-bounded, depth-capped rows also avoids
+    // recursing the full step tree, which could overflow the stack.
+    const labelByPathKey = new Map<string, string>();
     for (const row of rows) {
-      if (row.kind === 'step') localLabels.set(row.step.id, row.step.label);
+      if (row.kind === 'step') labelByPathKey.set(row.pathKey, row.step.label);
     }
 
     return rows.map((row, index) => {
@@ -216,10 +215,24 @@
         ...row,
         connectorAfter,
         ariaCurrent,
-        compensatesLabel:
-          row.step.compensates === undefined ? undefined : localLabels.get(row.step.compensates),
+        compensatesLabel: resolveSiblingCompensatesLabel(row, labelByPathKey),
       };
     });
+  }
+
+  // Resolve a step's `compensates` id to the label of a sibling step (one under
+  // the same parent), or `undefined` when there is no such sibling. Never
+  // resolves to the step itself.
+  function resolveSiblingCompensatesLabel(
+    row: { step: RunStep; pathKey: string },
+    labelByPathKey: Map<string, string>,
+  ): string | undefined {
+    if (row.step.compensates === undefined) return undefined;
+    const lastSeparator = row.pathKey.lastIndexOf('/');
+    const parentPrefix = lastSeparator === -1 ? '' : row.pathKey.slice(0, lastSeparator);
+    const siblingPathKey = nestedStepPathKey(parentPrefix, row.step.compensates);
+    if (siblingPathKey === row.pathKey) return undefined;
+    return labelByPathKey.get(siblingPathKey);
   }
 
   function appendRunStepRows(

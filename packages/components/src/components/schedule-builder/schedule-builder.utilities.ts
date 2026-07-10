@@ -67,6 +67,9 @@ export function validateCronField(rawValue: string, fieldIndex: number): string 
     if (stepMatch) {
       const step = Number(stepMatch[2] ?? '');
       if (!Number.isInteger(step) || step <= 0) return 'Step must be a positive integer.';
+      // A step larger than the field's maximum (e.g. `*/100` for minutes) is
+      // out of the advertised range and rejected by many cron parsers.
+      if (step > field.max) return `Step is larger than ${field.hint}.`;
       const rangeText = stepMatch[1] ?? '*';
       if (rangeText !== '*') {
         const [a, b] = rangeText.split('-').map(Number);
