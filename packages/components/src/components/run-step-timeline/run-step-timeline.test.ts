@@ -1292,6 +1292,39 @@ describe('branch groups', () => {
     expect(items[1]?.getAttribute('data-cinder-status')).toBe('branch');
   });
 
+  test('keeps the main rail connected across a branch group (step → branch → step)', () => {
+    // A top-level step before a branch, and the branch itself, must keep their
+    // downward connectors so one ordered run does not split into disjoint rails.
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'plan', label: 'Plan', status: 'succeeded' },
+      branchGroup,
+      { id: 'promote', label: 'Promote', status: 'pending' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const items = [...(rootList?.children ?? [])].filter((el) =>
+      el.classList.contains('cinder-run-step-timeline__item'),
+    );
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[1]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    // The trailing step is the last row on the rail — no connector below it.
+    expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('hides the connector after a trailing branch group (branch is the last entry)', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'plan', label: 'Plan', status: 'succeeded' },
+      branchGroup,
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const items = [...(rootList?.children ?? [])].filter((el) =>
+      el.classList.contains('cinder-run-step-timeline__item'),
+    );
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
   test('does not collide keys between a branch group and a step id "branch" with children', () => {
     // A step id of "branch" plus a child would previously produce the same
     // keyed-each path as a branch group; the branch key is namespaced so both

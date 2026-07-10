@@ -56,6 +56,7 @@
     kind: 'branch';
     group: RunStepBranchGroup;
     pathKey: string;
+    connectorAfter: 'hidden' | 'visible';
   };
 
   type RenderedStepLike = RenderedStepRow | RenderedDepthLimitRow;
@@ -148,6 +149,7 @@
           // (escapeStepPathSegment turns `%` into `%25`), so this branch key
           // cannot collide with any step's path key.
           pathKey: `%branch/${escapeStepPathSegment(entry.id)}`,
+          connectorAfter: 'hidden',
         });
       } else {
         stepRun.push(entry);
@@ -158,7 +160,31 @@
     // `flattenSteps` computes `aria-current` within each contiguous run; on the
     // outer rail, keep a SINGLE deepest current row across the whole timeline so
     // a branch group between two active runs doesn't produce two current rows.
-    return applyGlobalRailAriaCurrent(result);
+    // `applyGlobalRailConnectors` then reconnects the rail across run/branch
+    // boundaries — each run is flattened in isolation, so its last row and the
+    // branch rows would otherwise both hide their connector and split one
+    // ordered run (step → branch → step) into disconnected rails.
+    return applyGlobalRailConnectors(applyGlobalRailAriaCurrent(result));
+  }
+
+  // A rail row's effective depth for connector purposes. Branch groups always
+  // render at the top level, so they sit at depth 0.
+  function railRowDepth(row: RenderedEntry): number {
+    return row.kind === 'branch' ? 0 : row.depth;
+  }
+
+  // Recompute each top-level row's downward connector against the ACTUAL next
+  // rendered row (including branch rows), rather than the per-run view that
+  // `flattenSteps` sees. A connector shows unless the row is last or the next
+  // row dedents to a shallower level — so a depth-0 step followed by a branch,
+  // and a branch followed by another run, both stay linked.
+  function applyGlobalRailConnectors(rows: RenderedEntry[]): RenderedEntry[] {
+    return rows.map((row, index) => {
+      const next = rows[index + 1];
+      const connectorAfter: 'hidden' | 'visible' =
+        next === undefined || railRowDepth(next) < railRowDepth(row) ? 'hidden' : 'visible';
+      return { ...row, connectorAfter };
+    });
   }
 
   // The "current depth" of a rail row: deeper is more current. A depth-limit row
@@ -510,7 +536,7 @@
         data-cinder-status="branch"
         data-cinder-depth="0"
         data-cinder-path={entry.pathKey}
-        data-cinder-connector-after="hidden"
+        data-cinder-connector-after={entry.connectorAfter}
       >
         <div class="cinder-run-step-timeline__event">
           <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>

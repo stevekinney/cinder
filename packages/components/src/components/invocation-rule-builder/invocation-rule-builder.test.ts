@@ -1289,6 +1289,27 @@ describe('InvocationRuleBuilder', () => {
         expect(nextRules[0].conditions[0].value).toBe('not-a-bool');
       });
 
+      test.each(['e', '+e', 'e+', 'e5'])(
+        'coerces an exponent-only fragment (%s) with no mantissa to empty on an unrelated edit',
+        async (staleValue) => {
+          const rule = makeRule({
+            conditions: [
+              makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: staleValue }),
+            ],
+          });
+          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const ruleNameInput = container.querySelector<HTMLInputElement>(
+            '[aria-label="Rule name for PR Review Rule"]',
+          )!;
+
+          await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+          await fireEvent.blur(ruleNameInput);
+
+          const [nextRules] = onchange.mock.calls[0]!;
+          expect(nextRules[0].conditions[0].value).toBe('');
+        },
+      );
+
       test.each(['0x10', '5px'])(
         'coerces a non-canonical numeric value (%s) to empty on an unrelated edit — matches what the number input would blank',
         async (staleValue) => {

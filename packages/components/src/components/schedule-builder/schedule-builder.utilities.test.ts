@@ -422,13 +422,45 @@ describe('schedule-builder utilities', () => {
       ]);
     });
 
-    test('never emits a full-cycle step wildcard for a minutes interval equal to the cycle (every 60 minutes)', () => {
-      // 60 divides 60, but `*/60` overflows the minute field's 0-59 range and is
-      // invalid. A step must be strictly smaller than its cycle, so this seeds the
-      // honest neutral default instead of an out-of-range step wildcard.
+    test('lowers a whole-hour minutes interval to the hour field (every 60 minutes → hourly)', () => {
+      // 60 minutes is hourly, not daily: `*/60` would overflow the minute field,
+      // so this lowers through the hour field as the plain hourly `0 * * * *`
+      // rather than collapsing to a once-a-day schedule.
       expect(valueToCronFields({ mode: 'interval', every: 60, unit: 'minutes' })).toEqual([
         '0',
+        '*',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('lowers a multi-hour minutes interval through the hour step (every 120 minutes → every 2 hours)', () => {
+      expect(valueToCronFields({ mode: 'interval', every: 120, unit: 'minutes' })).toEqual([
         '0',
+        '*/2',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('seeds the neutral default for a whole-hour minutes interval that does not divide the day (every 300 minutes → every 5 hours)', () => {
+      // 300 minutes = 5 hours; 5 does not divide 24, so a step wildcard would
+      // reset at midnight. Seed the neutral daily default instead.
+      expect(valueToCronFields({ mode: 'interval', every: 300, unit: 'minutes' })).toEqual([
+        '0',
+        '0',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('lowers an hourly interval to the plain hourly form (every 1 hour → 0 * * * *)', () => {
+      expect(valueToCronFields({ mode: 'interval', every: 1, unit: 'hours' })).toEqual([
+        '0',
+        '*',
         '*',
         '*',
         '*',
@@ -590,6 +622,21 @@ describe('schedule-builder utilities', () => {
 
     test('falls back to a raw cron description when any day in a multi-day list is out of range', () => {
       expect(describeValue({ mode: 'cron', expression: '0 9 * * 1,7' })).toBe('Cron: 0 9 * * 1,7');
+    });
+
+    test('does not describe a wildcard-time weekday cron as "Weekly" (it fires far more often)', () => {
+      // `* * * * 1` fires every minute on Mondays and `0 * * * 1` every hour on
+      // Mondays — "Weekly on Monday" would badly understate the cadence, so both
+      // fall through to the raw cron summary.
+      expect(describeValue({ mode: 'cron', expression: '* * * * 1' })).toBe('Cron: * * * * 1');
+      expect(describeValue({ mode: 'cron', expression: '0 * * * 1' })).toBe('Cron: 0 * * * 1');
+    });
+
+    test('does not describe a wildcard-time day-of-month cron as "Monthly"', () => {
+      // `* * 3 * *` fires every minute on the 3rd; "Monthly on day 3" would
+      // understate it, so it falls through to the raw cron summary.
+      expect(describeValue({ mode: 'cron', expression: '* * 3 * *' })).toBe('Cron: * * 3 * *');
+      expect(describeValue({ mode: 'cron', expression: '0 * 3 * *' })).toBe('Cron: 0 * 3 * *');
     });
   });
 });

@@ -126,9 +126,14 @@
    *
    * It still rejects strings a number input would never produce and that
    * only arrive as stale prop data: hex (`'0x10'`), units (`'5px'`), plain
-   * words (`'foo'`), or whitespace mixed with letters.
+   * words (`'foo'`), exponent-only fragments with no mantissa (`'e'`, `'+e'`,
+   * `'e+'`), or whitespace mixed with letters. The first alternative covers a
+   * digit-bearing number with an optional exponent; the second covers the bare
+   * sign/decimal intermediates (`''`, `'-'`, `'+'`, `'.'`, `'-.'`) that a number
+   * input surfaces mid-typing — an exponent is only ever valid glued to a
+   * mantissa, never on its own.
    */
-  const NUMBER_LIKE_VALUE_PATTERN = /^[+-]?(\d+\.?\d*|\.\d+)?(e[+-]?\d*)?$/i;
+  const NUMBER_LIKE_VALUE_PATTERN = /^([+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d*)?|[+-]?\.?)$/i;
 
   /**
    * Whether a stored condition value is still a faithful representation of

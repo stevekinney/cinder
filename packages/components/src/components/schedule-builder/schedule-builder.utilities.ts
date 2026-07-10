@@ -211,17 +211,32 @@ export function valueToCronFields(value: ScheduleValue): string[] {
   if (value.mode === 'cron') return splitCron(value.expression);
   switch (value.unit) {
     case 'minutes':
-      return isEvenDivisorStep(value.every, 60)
-        ? [`*/${value.every}`, '*', '*', '*', '*']
-        : ['0', '0', '*', '*', '*'];
+      if (isEvenDivisorStep(value.every, 60)) return [`*/${value.every}`, '*', '*', '*', '*'];
+      // A whole-hour minute cadence (60, 120, …) is an hours interval in
+      // disguise: lower it through the hour field where representable rather
+      // than collapsing to a daily default that would turn hourly into daily.
+      if (value.every % 60 === 0) return hoursIntervalFields(value.every / 60);
+      return ['0', '0', '*', '*', '*'];
     case 'hours':
-      return isEvenDivisorStep(value.every, 24)
-        ? ['0', `*/${value.every}`, '*', '*', '*']
-        : ['0', '0', '*', '*', '*'];
+      return hoursIntervalFields(value.every);
     case 'days':
     case 'weeks':
       return ['0', '0', '*', '*', '*'];
   }
+}
+
+/**
+ * Lower an "every N hours" cadence to cron fields. Hourly (`N === 1`) is the
+ * plain `0 * * * *`; a larger N that evenly divides 24 becomes an hour step
+ * wildcard. Anything that does not divide the day (every 5 hours, or `N >= 24`)
+ * has no faithful fixed-gap cron form — a step wildcard would reset at midnight
+ * and shift the cadence at the day boundary — so it seeds the neutral daily
+ * default instead.
+ */
+function hoursIntervalFields(everyHours: number): string[] {
+  if (everyHours === 1) return ['0', '*', '*', '*', '*'];
+  if (isEvenDivisorStep(everyHours, 24)) return ['0', `*/${everyHours}`, '*', '*', '*'];
+  return ['0', '0', '*', '*', '*'];
 }
 
 /**
@@ -285,8 +300,14 @@ export function describeValue(value: ScheduleValue): string {
   const timeIsFixed = /^\d+$/.test(minute) && /^\d+$/.test(hour);
   const at = timeIsFixed ? ` at ${pad2(Number(hour))}:${pad2(Number(minute))}` : '';
 
-  // Weekly: fixed day-of-week, wildcards elsewhere.
-  if (dom === '*' && month === '*' && dow !== '*' && /^[\d,]+$/.test(dow)) {
+  // The "Weekly"/"Monthly" phrasings imply a single fire per day, so they only
+  // hold when BOTH minute and hour are fixed. A schedule like `* * * * 1` or
+  // `0 * * * 1` fires every minute / every hour on Mondays — calling that
+  // "Weekly on Monday" understates the cadence — so those fall through to the
+  // raw cron summary below. ("Daily" already requires a fixed time.)
+
+  // Weekly: fixed day-of-week and a fixed time, wildcards elsewhere.
+  if (timeIsFixed && dom === '*' && month === '*' && dow !== '*' && /^[\d,]+$/.test(dow)) {
     const dayNumbers = dow.split(',').map(Number);
     // Day-of-week is declared 0–6 (Sun–Sat) by CRON_FIELDS, and
     // validateCronField already rejects a user-typed 7 for that reason — this
@@ -300,8 +321,8 @@ export function describeValue(value: ScheduleValue): string {
       return `Weekly on ${names}${at}`;
     }
   }
-  // Monthly: fixed day-of-month.
-  if (/^\d+$/.test(dom) && month === '*' && dow === '*') {
+  // Monthly: fixed day-of-month and a fixed time.
+  if (timeIsFixed && /^\d+$/.test(dom) && month === '*' && dow === '*') {
     return `Monthly on day ${dom}${at}`;
   }
   // Daily: wildcards on day fields, fixed time.
