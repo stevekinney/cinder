@@ -34,6 +34,8 @@ export type TagInputProps = SupportedInputAttributes & {
   validate?: (tag: string) => boolean | string;
   /** Allow the same trimmed tag value to appear more than once. */
   allowDuplicates?: boolean;
+  /** Commit a non-empty pending draft before the parent form submits. */
+  commitOnSubmit?: boolean;
   /** Disable the input and chip removal affordances. */
   disabled?: boolean;
   /** Render the pending-tag input as read-only and make committed tags non-removable. */
@@ -59,6 +61,8 @@ export interface TagInputSchemaProps {
   delimiter?: string | RegExp;
   /** Allow the same trimmed tag value to appear more than once. */
   allowDuplicates?: boolean;
+  /** Commit a non-empty pending draft before the parent form submits. */
+  commitOnSubmit?: boolean;
   /** Autocomplete hint forwarded to the visible text input. */
   autocomplete?: HTMLInputAttributes['autocomplete'];
   /** Autocapitalization hint forwarded to the visible text input. */

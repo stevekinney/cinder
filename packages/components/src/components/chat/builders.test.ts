@@ -8,7 +8,9 @@ import {
 } from './builders.ts';
 import type {
   ConversationEnvironment,
+  ConversationHistory,
   JSONValue,
+  Message,
   MessageInput,
   MultiModalContent,
 } from './conversation-model.ts';
@@ -134,6 +136,27 @@ describe('chat conversation builders', () => {
     expect(message.hidden).toBe(false);
   });
 
+  test('appendMessages accepts supported reasoning and tool content parts', () => {
+    const content: MultiModalContent[] = [
+      { type: 'thinking', thinking: 'Plan the response', signature: 'signed-thinking' },
+      { type: 'redacted_thinking', data: 'sealed' },
+      { type: 'server_tool_use', id: 'tool-use-1', name: 'web_search', input: {} },
+      {
+        type: 'web_search_tool_result',
+        tool_use_id: 'tool-use-1',
+        content: [{ title: 'Cinder documentation' }],
+      },
+      { type: 'container_upload', file_id: 'file-123' },
+    ];
+
+    const conversation = appendMessages(createConversation({ id: 'conversation-content-parts' }), {
+      role: 'assistant',
+      content,
+    });
+
+    expect(conversation.messages[conversation.ids[0]!]!.content).toEqual(content);
+  });
+
   test('appendMessages copies nested message metadata before storing it', () => {
     const metadata = {
       steps: [{ title: 'Draft' }],
@@ -189,6 +212,15 @@ describe('chat conversation builders', () => {
 
     expect(() =>
       appendMessages(conversation, {
+        role: 'assistant',
+        content: {
+          type: 'unsupported',
+        } as unknown as MessageInput['content'],
+      }),
+    ).toThrow('appendMessages expected MessageInput arguments before the optional environment');
+
+    expect(() =>
+      appendMessages(conversation, {
         role: 'tool-call',
         content: '',
         toolCall: {
@@ -218,6 +250,14 @@ describe('chat conversation builders', () => {
         tokenUsage: { total: 1n } as unknown as MessageInput['tokenUsage'],
       }),
     ).toThrow('tokenUsage must be a JSON-compatible object');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: 'Invalid token usage',
+        tokenUsage: { total: '1' } as unknown as MessageInput['tokenUsage'],
+      }),
+    ).toThrow('tokenUsage values must be numbers');
 
     expect(() =>
       appendMessages(conversation, {
@@ -331,6 +371,27 @@ describe('chat conversation builders', () => {
         },
       ),
     ).toThrow('duplicate toolCall.id in conversation: duplicate-call');
+
+    const duplicateExistingToolCallConversation = appendMessages(conversation, {
+      role: 'tool-call',
+      content: '',
+      toolCall: { id: 'existing-duplicate-call', name: 'lookup', arguments: {} },
+    }) as ConversationHistory & { ids: string[]; messages: Record<string, Message> };
+    const originalMessageId = duplicateExistingToolCallConversation.ids[0]!;
+    const duplicateMessageId = `${originalMessageId}-copy`;
+    duplicateExistingToolCallConversation.ids.push(duplicateMessageId);
+    duplicateExistingToolCallConversation.messages[duplicateMessageId] = {
+      ...duplicateExistingToolCallConversation.messages[originalMessageId]!,
+      id: duplicateMessageId,
+      position: 1,
+    };
+
+    expect(() =>
+      appendMessages(duplicateExistingToolCallConversation, {
+        role: 'assistant',
+        content: 'Next',
+      }),
+    ).toThrow('duplicate toolCall.id in conversation: existing-duplicate-call');
 
     expect(() =>
       appendMessages(conversation, {

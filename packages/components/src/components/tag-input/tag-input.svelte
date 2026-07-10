@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { flushSync, tick, untrack } from 'svelte';
 
   import { devWarn } from '../../utilities/dev-warn.ts';
 
@@ -41,6 +41,7 @@
     max,
     validate,
     allowDuplicates = false,
+    commitOnSubmit = false,
     disabled,
     readonly = false,
     name,
@@ -162,6 +163,20 @@
     const form = inputElement.closest('form');
     if (!form) return;
 
+    const onSubmit = (event: SubmitEvent) => {
+      if (!commitOnSubmit || field.disabled || resolvedReadonly) return;
+      if (!draftValue.trim()) return;
+
+      let committed = false;
+      flushSync(() => {
+        committed = commitDraft();
+      });
+
+      if (!committed) {
+        event.preventDefault();
+      }
+    };
+
     const onReset = () => {
       draftValue = '';
       inlineError = null;
@@ -171,8 +186,12 @@
       }
     };
 
+    form.addEventListener('submit', onSubmit, true);
     form.addEventListener('reset', onReset);
-    return () => form.removeEventListener('reset', onReset);
+    return () => {
+      form.removeEventListener('submit', onSubmit, true);
+      form.removeEventListener('reset', onReset);
+    };
   });
 
   function getChipElements(): HTMLElement[] {

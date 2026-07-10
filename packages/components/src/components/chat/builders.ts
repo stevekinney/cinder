@@ -177,9 +177,6 @@ function cloneMetadata(metadata: Record<string, JSONValue> | undefined): Record<
 
 function normalizeContent(content: MessageContentInput): MessageInput['content'] {
   if (typeof content === 'string') return content;
-  if (!isMessageContentInput(content)) {
-    throw new Error('message content must be a known multi-modal content part');
-  }
   return Array.isArray(content) ? cloneStructuredValue(content) : [cloneStructuredValue(content)];
 }
 

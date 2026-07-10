@@ -10,6 +10,10 @@ const { tick } = await import('svelte');
 const { default: TagInput } = await import('./tag-input.svelte');
 const { default: FormFieldTagInputFixture } =
   await import('../../test/fixtures/form-field-tag-input-fixture.svelte');
+const { default: TagInputFormFixture } =
+  await import('../../test/fixtures/tag-input-form-fixture.svelte');
+const { default: TagInputControlledFormFixture } =
+  await import('../../test/fixtures/tag-input-controlled-form-fixture.svelte');
 
 afterEach(() => cleanup());
 
@@ -36,17 +40,38 @@ function getRemoveButtons(container: HTMLElement): HTMLButtonElement[] {
 }
 
 function renderTagInputInForm(props: Record<string, unknown>) {
-  const form = document.createElement('form');
-  document.body.appendChild(form);
-  const result = render(TagInput, { target: form, props });
+  const result = render(TagInputFormFixture, { props });
+  const form = result.container.querySelector('form');
+  if (!form) throw new Error('form fixture did not render a form');
 
   return {
     ...result,
     form,
     cleanup() {
-      if (form.isConnected) document.body.removeChild(form);
+      result.unmount();
     },
   };
+}
+
+async function submitForm(form: HTMLFormElement): Promise<SubmitEvent> {
+  await tick();
+  let submittedEvent: SubmitEvent | null = null;
+  form.addEventListener(
+    'submit',
+    (event) => {
+      submittedEvent = event;
+    },
+    { once: true },
+  );
+  await fireEvent.submit(form);
+  if (!submittedEvent) throw new Error('submit event was not dispatched');
+  return submittedEvent;
+}
+
+function hiddenValues(container: HTMLElement, name: string): string[] {
+  return Array.from(
+    container.querySelectorAll<HTMLInputElement>(`input[type="hidden"][name="${name}"]`),
+  ).map((hiddenInput) => hiddenInput.value);
 }
 
 describe('TagInput rendering', () => {
@@ -204,6 +229,21 @@ describe('TagInput commits tags', () => {
 
     expect(getOptions(container)).toHaveLength(1);
     expect(getOptions(container)[0]?.textContent).toContain('Bun');
+    expect(input.value).toBe('');
+  });
+
+  test('RegExp delimiter strips stateful flags before repeated matching', async () => {
+    const { container } = render(TagInput, { props: { delimiter: /[,;]/gy } });
+    const input = getInput(container);
+
+    await fireEvent.input(input, { target: { value: 'Bun' } });
+    await fireEvent.keyDown(input, { key: ',' });
+    await fireEvent.input(input, { target: { value: 'Svelte' } });
+    await fireEvent.keyDown(input, { key: ',' });
+
+    expect(getOptions(container)).toHaveLength(2);
+    expect(getOptions(container)[0]?.textContent).toContain('Bun');
+    expect(getOptions(container)[1]?.textContent).toContain('Svelte');
     expect(input.value).toBe('');
   });
 
@@ -420,6 +460,199 @@ describe('TagInput form participation', () => {
     expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte']);
   });
 
+  test('commitOnSubmit commits a valid uncontrolled draft before form submit handlers read hidden controls', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+      commitOnSubmit: true,
+    });
+    let submittedValues: string[] = [];
+    mount.form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submittedValues = hiddenValues(mount.container, 'tags');
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+
+      const event = await submitForm(mount.form);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(submittedValues).toEqual(['Svelte', 'Bun']);
+      expect(hiddenValues(mount.container, 'tags')).toEqual(['Svelte', 'Bun']);
+      expect(getOptions(mount.container)).toHaveLength(2);
+      expect(input.value).toBe('');
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit preserves current behavior when it is not enabled', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+    });
+    let submittedValues: string[] = [];
+    mount.form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submittedValues = hiddenValues(mount.container, 'tags');
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+
+      await submitForm(mount.form);
+
+      expect(submittedValues).toEqual(['Svelte']);
+      expect(hiddenValues(mount.container, 'tags')).toEqual(['Svelte']);
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(input.value).toBe('Bun');
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit blocks an invalid draft and leaves existing form data unchanged', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      commitOnSubmit: true,
+      validate: (tag: string) => (tag.includes('@') ? true : 'Enter a valid email tag.'),
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'invalid-tag' } });
+
+      const event = await submitForm(mount.form);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(hiddenValues(mount.container, 'tags')).toEqual([]);
+      expect(getOptions(mount.container)).toHaveLength(0);
+      expect(input.value).toBe('invalid-tag');
+      expect(mount.container.textContent).toContain('Enter a valid email tag.');
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit blocks a duplicate draft and leaves existing form data unchanged', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+      commitOnSubmit: true,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Svelte' } });
+
+      const event = await submitForm(mount.form);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(hiddenValues(mount.container, 'tags')).toEqual(['Svelte']);
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(input.value).toBe('Svelte');
+      expect(mount.container.textContent).toContain('"Svelte" is already added.');
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit blocks a draft over max and leaves existing form data unchanged', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+      max: 1,
+      commitOnSubmit: true,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+
+      const event = await submitForm(mount.form);
+
+      expect(event.defaultPrevented).toBe(true);
+      expect(hiddenValues(mount.container, 'tags')).toEqual(['Svelte']);
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(input.value).toBe('Bun');
+      expect(mount.container.textContent).toContain('You can add up to 1 tag.');
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit does not commit or block disabled tag inputs', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+      disabled: true,
+      commitOnSubmit: true,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+
+      const event = await submitForm(mount.form);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(hiddenValues(mount.container, 'tags')).toEqual(['Svelte']);
+      expect(mount.form.elements.namedItem('tags')).not.toBeNull();
+      expect(getOptions(mount.container)).toHaveLength(1);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit does not commit or block readonly tag inputs', async () => {
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      defaultValue: ['Svelte'],
+      readonly: true,
+      commitOnSubmit: true,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+
+      const event = await submitForm(mount.form);
+
+      expect(event.defaultPrevented).toBe(false);
+      expect(hiddenValues(mount.container, 'tags')).toEqual(['Svelte']);
+      expect(mount.form.elements.namedItem('tags')).not.toBeNull();
+      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(input.value).toBe('');
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('commitOnSubmit supports controlled values when the parent updates onchange', async () => {
+    const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
+    const { container } = render(TagInputControlledFormFixture, {
+      props: {
+        name: 'tags',
+        onsubmit,
+      },
+    });
+    const form = container.querySelector('form') as HTMLFormElement;
+    const input = getInput(container);
+
+    await fireEvent.input(input, { target: { value: 'Bun' } });
+    const event = await submitForm(form);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(onsubmit).toHaveBeenCalledTimes(1);
+    expect(hiddenValues(container, 'tags')).toEqual(['Svelte', 'Bun']);
+    expect((form.elements.namedItem('tags') as RadioNodeList).length).toBe(2);
+    expect(getOptions(container)).toHaveLength(2);
+    expect(input.value).toBe('');
+  });
+
   test('disabled tag inputs do not contribute hidden values to form data', () => {
     const mount = renderTagInputInForm({
       name: 'tags',
@@ -558,6 +791,28 @@ describe('TagInput FormField wiring', () => {
 
     expect(container.querySelector('.cinder-tag-input')?.hasAttribute('data-disabled')).toBe(true);
     expect(getInput(container).disabled).toBe(true);
+  });
+
+  test('warns when the TagInput id differs from its wrapping FormField control id', () => {
+    const originalWarn = console.warn;
+    const warn = mock(() => {});
+    console.warn = warn;
+
+    try {
+      render(FormFieldTagInputFixture, {
+        props: {
+          fieldId: 'tag-field',
+          fieldLabel: 'Tags',
+          tagInputId: 'tag-input',
+        },
+      });
+
+      expect(warn).toHaveBeenCalledWith(
+        '[cinder/TagInput] id mismatch: TagInput id="tag-input" but wrapping FormField expects controlId="tag-field". Set the same id on both.',
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 });
 
