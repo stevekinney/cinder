@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
+
 @layer cinder.components {
   .cinder-confirm-dialog__description {
     margin: 0;

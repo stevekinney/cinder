@@ -40,11 +40,12 @@
     class: className,
   }: ConfirmDialogProps = $props();
   const describedById = $derived(description ? descriptionId : undefined);
+  const normalizedTypeToConfirm = $derived(typeToConfirm?.trim() || undefined);
   let typedConfirmation = $state('');
   let previousOpen = open;
   const typedConfirmationMatches = $derived(
-    typeToConfirm === undefined ||
-      typedConfirmation.trim().toLowerCase() === typeToConfirm.trim().toLowerCase(),
+    normalizedTypeToConfirm === undefined ||
+      typedConfirmation.trim().toLowerCase() === normalizedTypeToConfirm.toLowerCase(),
   );
 
   $effect(() => {
@@ -79,12 +80,12 @@
     <p id={descriptionId} class="cinder-confirm-dialog__description">{description}</p>
   {/if}
 
-  {#if typeToConfirm !== undefined}
+  {#if normalizedTypeToConfirm !== undefined}
     <Input
       id={typedConfirmationId}
       class="cinder-confirm-dialog__typed-confirmation"
       bind:value={typedConfirmation}
-      label={typeToConfirmLabel ?? `Type "${typeToConfirm}" to confirm`}
+      label={typeToConfirmLabel ?? `Type "${normalizedTypeToConfirm}" to confirm`}
       autocomplete="off"
     />
   {/if}
