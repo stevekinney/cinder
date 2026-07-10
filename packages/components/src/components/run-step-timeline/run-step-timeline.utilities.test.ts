@@ -201,6 +201,16 @@ describe('branchStartsCollapsed', () => {
     expect(branchStartsCollapsed(4, 5, undefined)).toBe(false);
     expect(branchStartsCollapsed(5, 5, undefined)).toBe(true);
   });
+
+  test('falls back to the default of 3 for an invalid threshold (0, negative, NaN, fractional)', () => {
+    // Invalid thresholds must not collapse everything (0) or behave erratically.
+    expect(branchStartsCollapsed(1, 0, undefined)).toBe(false);
+    expect(branchStartsCollapsed(3, 0, undefined)).toBe(true);
+    expect(branchStartsCollapsed(2, -5, undefined)).toBe(false);
+    expect(branchStartsCollapsed(3, Number.NaN, undefined)).toBe(true);
+    expect(branchStartsCollapsed(2, 2.5, undefined)).toBe(false);
+    expect(branchStartsCollapsed(3, 2.5, undefined)).toBe(true);
+  });
 });
 
 describe('safeStepLinkHref', () => {

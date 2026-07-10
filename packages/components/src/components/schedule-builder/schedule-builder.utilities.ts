@@ -233,6 +233,9 @@ export function valueToInterval(
   if (value.mode === 'interval') return { every: value.every, unit: value.unit };
   const [minute, hour, dom, month, dow] = splitCron(value.expression);
   if (month !== '*' || dow !== '*') return undefined;
+  // Common plain-wildcard forms: `* * * * *` = every minute, `0 * * * *` = hourly.
+  if (dom === '*' && hour === '*' && minute === '*') return { every: 1, unit: 'minutes' };
+  if (dom === '*' && hour === '*' && minute === '0') return { every: 1, unit: 'hours' };
   const minuteStep = cronFieldStep(minute);
   if (minuteStep && isEvenDivisorStep(minuteStep, 60) && hour === '*' && dom === '*') {
     return { every: minuteStep, unit: 'minutes' };

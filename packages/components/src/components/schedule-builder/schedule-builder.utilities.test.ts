@@ -423,6 +423,17 @@ describe('schedule-builder utilities', () => {
       });
     });
 
+    test('recovers every-minute and hourly intervals from the plain wildcard cron forms', () => {
+      expect(valueToInterval({ mode: 'cron', expression: '* * * * *' })).toEqual({
+        every: 1,
+        unit: 'minutes',
+      });
+      expect(valueToInterval({ mode: 'cron', expression: '0 * * * *' })).toEqual({
+        every: 1,
+        unit: 'hours',
+      });
+    });
+
     test('recovers an hours interval from an hour-step cron expression', () => {
       expect(valueToInterval({ mode: 'cron', expression: '0 */2 * * *' })).toEqual({
         every: 2,
@@ -478,10 +489,6 @@ describe('schedule-builder utilities', () => {
 
     test('returns undefined for a day-of-month-step expression regardless of its time', () => {
       expect(valueToInterval({ mode: 'cron', expression: '0 9 */3 * *' })).toBeUndefined();
-    });
-
-    test('returns undefined for a fully wildcard expression (no step to recover)', () => {
-      expect(valueToInterval({ mode: 'cron', expression: '* * * * *' })).toBeUndefined();
     });
 
     test('returns undefined for an arbitrary fixed-time daily cron expression', () => {

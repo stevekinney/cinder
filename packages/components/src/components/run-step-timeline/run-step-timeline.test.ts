@@ -1311,6 +1311,38 @@ describe('branch groups', () => {
       }),
     ).toBe(true);
   });
+
+  test('rejects a non-step nested lane child (validated as a step, not any object)', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+    // A rendered-depth lane child must be a proper step (id/label/status); an
+    // arbitrary object would crash the renderer (path keys come from step.id),
+    // so the schema rejects it.
+    expect(
+      validate({
+        steps: [
+          {
+            kind: 'branch',
+            id: 'g',
+            label: 'Group',
+            lanes: [
+              {
+                id: 'l1',
+                steps: [
+                  {
+                    id: 's',
+                    label: 'Parent',
+                    status: 'running',
+                    children: [{ reason: 'not a step' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('rewound steps', () => {

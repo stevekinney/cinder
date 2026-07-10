@@ -194,7 +194,13 @@ export function branchStartsCollapsed(
   collapsed: boolean | undefined,
 ): boolean {
   if (collapsed !== undefined) return collapsed;
-  const threshold = collapseThreshold ?? 3;
+  // Normalize the public `collapseThreshold` to a finite positive integer so a
+  // stray 0, negative, NaN, or fractional value can't produce surprising
+  // always-/never-collapsed behavior; fall back to the default of 3.
+  const threshold =
+    collapseThreshold !== undefined && Number.isInteger(collapseThreshold) && collapseThreshold > 0
+      ? collapseThreshold
+      : 3;
   return laneCount >= threshold;
 }
 

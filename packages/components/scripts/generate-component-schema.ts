@@ -436,17 +436,13 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
     description: 'Schema-bounded nested child-workflow steps.',
   });
 
-  // Branch/coordination group: a top-level entry with parallel sub-lanes. Lane
-  // steps use a leaf step (no children) so the schema stays finite.
-  // Lane steps are `RunStep[]` at runtime and render recursively, so allow
-  // nested children — but validate each child AS A STEP (id/label/status
-  // required), since the renderer builds path keys from each child's `step.id`.
-  // Their own children are modeled loosely (like the depth cap) to stay finite.
-  const laneStepSchema = makeRunStepTimelineStepSchema({
-    type: 'array',
-    items: makeRunStepTimelineStepSchema(cappedChildrenSchema),
-    description: 'Nested steps within a branch lane.',
-  });
+  // Branch/coordination group: a top-level entry with parallel sub-lanes. A lane
+  // renders its steps through the SAME depth-capped path as the main rail
+  // (`flattenSteps(lane.steps, '')` starting at depth 0), so lane steps validate
+  // with the identical schema — every rendered level (0–3) is a proper step
+  // (id/label/status required, so an `{ reason: '…' }` child that would crash the
+  // renderer is rejected), and only steps summarized past the cap are loose.
+  const laneStepSchema = topLevelStepSchema;
   const branchGroupSchema: PropertySchema = {
     type: 'object',
     properties: {

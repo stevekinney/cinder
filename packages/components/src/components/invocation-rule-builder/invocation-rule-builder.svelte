@@ -117,6 +117,16 @@
   }
 
   /**
+   * A canonical decimal number string — sign, digits, optional fractional
+   * part. This is what a native `<input type="number">` actually preserves
+   * when its `value` is set programmatically; anything else (hex like
+   * `'0x10'`, stray whitespace or trailing units like `'5px'`, exponential
+   * notation, etc.) gets silently sanitized to a BLANK field by the browser,
+   * even though `Number(value)` may still parse it to a finite number.
+   */
+  const CANONICAL_NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
+
+  /**
    * Whether a stored condition value is still a faithful representation of
    * what the typed control for `type` would render — i.e. whether it's safe
    * to keep across a field change instead of resetting to the type's default.
@@ -132,7 +142,10 @@
       case 'enum':
         return fieldEnumOptions(fieldValue).some((option) => option.value === value);
       case 'number':
-        return value === '' || Number.isFinite(Number(value));
+        // Blank is allowed; otherwise only a canonical decimal number string
+        // is valid — matching what the number input would actually preserve,
+        // not merely what `Number(value)` happens to parse.
+        return value === '' || CANONICAL_NUMBER_PATTERN.test(value.trim());
       case 'string':
         return true;
     }
