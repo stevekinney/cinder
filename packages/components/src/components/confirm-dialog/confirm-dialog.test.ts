@@ -133,12 +133,12 @@ describe('ConfirmDialog', () => {
         open: true,
         title: 'Delete repository?',
         confirmLabel: 'Delete',
-        typeToConfirm: 'Cinder',
+        typeToConfirm: ' Cinder ',
         onconfirm,
       },
     });
 
-    const input = view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement;
+    const input = view.getByLabelText('Type " Cinder " to confirm') as HTMLInputElement;
     const confirmButton = view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement;
     expect(input.autocomplete).toBe('off');
     expect(confirmButton.disabled).toBe(true);
@@ -152,10 +152,10 @@ describe('ConfirmDialog', () => {
       open: true,
       title: 'Delete repository?',
       confirmLabel: 'Delete',
-      typeToConfirm: 'Cinder',
+      typeToConfirm: ' Cinder ',
       onconfirm,
     });
-    expect((view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement).value).toBe('');
+    expect((view.getByLabelText('Type " Cinder " to confirm') as HTMLInputElement).value).toBe('');
     expect((view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
   });
 

@@ -44,7 +44,7 @@
   let previousOpen = open;
   const typedConfirmationMatches = $derived(
     typeToConfirm === undefined ||
-      typedConfirmation.trim().toLocaleLowerCase() === typeToConfirm.toLocaleLowerCase(),
+      typedConfirmation.trim().toLowerCase() === typeToConfirm.trim().toLowerCase(),
   );
 
   $effect(() => {
