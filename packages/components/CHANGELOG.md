@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.11.0
+
+### Minor Changes
+
+- [#717](https://github.com/stevekinney/cinder/pull/717) [`28ddb39`](https://github.com/stevekinney/cinder/commit/28ddb39dd9ca9014bf93c71e4bbe401e304773b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a `commitOnSubmit` option to TagInput so native forms can commit a pending draft before submission.
+
 ## 0.10.0
 
 ### Minor Changes
