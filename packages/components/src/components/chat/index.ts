@@ -46,6 +46,7 @@ export {
 export type {
   AssistantMessage,
   ContainerUploadContent,
+  ConversationEnvironment,
   ConversationHistory,
   ConversationStatus,
   ExportOptions,

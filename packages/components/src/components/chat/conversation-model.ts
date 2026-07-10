@@ -13,6 +13,7 @@ import type { ToMarkdownOptions as ConversationalistToMarkdownOptions } from 'co
 export type {
   AssistantMessage,
   ContainerUploadContent,
+  ConversationEnvironment,
   ConversationHistory,
   ConversationStatus,
   ImageContent,

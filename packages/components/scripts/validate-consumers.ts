@@ -13,6 +13,7 @@ import { createServer } from 'node:net';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import type { BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
 import { waitForReadyHtml } from './consumer-readiness.ts';
@@ -115,7 +116,8 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
   (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
 );
 
-const REQUIRED_PEER_DEPENDENCY_NAMES = ['conversationalist', 'zod'] as const;
+const REQUIRED_RUNTIME_DEPENDENCY_NAMES = ['conversationalist'] as const;
+const REQUIRED_PEER_DEPENDENCY_NAMES = ['zod'] as const;
 
 function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,
@@ -413,6 +415,17 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
     }
     if (packedManifest.peerDependenciesMeta?.[dependencyName]?.optional === true) {
       fail(`packed manifest peerDependenciesMeta["${dependencyName}"].optional must not be true`);
+    }
+  }
+  for (const dependencyName of REQUIRED_RUNTIME_DEPENDENCY_NAMES) {
+    if (packedManifest.dependencies?.[dependencyName] === undefined) {
+      fail(`packed manifest is missing runtime dependency "${dependencyName}"`);
+    }
+    if (packedManifest.peerDependencies?.[dependencyName] !== undefined) {
+      fail(`packed manifest peerDependencies["${dependencyName}"] must be a dependency`);
+    }
+    if (packedManifest.peerDependenciesMeta?.[dependencyName] !== undefined) {
+      fail(`packed manifest peerDependenciesMeta["${dependencyName}"] must not be defined`);
     }
   }
 
@@ -1498,20 +1511,24 @@ async function assertSvelteKitClientHydrates(
     15_000,
     'launching Chromium for SvelteKit hydration validation',
   );
-  const page = await browser.newPage();
+  let context: BrowserContext | undefined;
+  let page: Page | undefined;
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => {
-    const text = message.text();
-    if (
-      message.type() === 'error' ||
-      (message.type() === 'warning' && isHydrationConsoleWarning(text))
-    ) {
-      errors.push(text);
-    }
-  });
 
   try {
+    context = await browser.newContext();
+    page = await context.newPage();
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      const text = message.text();
+      if (
+        message.type() === 'error' ||
+        (message.type() === 'warning' && isHydrationConsoleWarning(text))
+      ) {
+        errors.push(text);
+      }
+    });
+
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('load', { timeout: 5_000 });
     await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
@@ -1523,11 +1540,31 @@ async function assertSvelteKitClientHydrates(
       );
     }
   } finally {
-    await promiseWithTimeout(
-      browser.close(),
-      5_000,
-      'closing Chromium after SvelteKit hydration validation',
-    );
+    try {
+      try {
+        if (page !== undefined) {
+          await promiseWithTimeout(
+            page.close(),
+            5_000,
+            'closing SvelteKit hydration validation page',
+          );
+        }
+      } finally {
+        if (context !== undefined) {
+          await promiseWithTimeout(
+            context.close(),
+            5_000,
+            'closing SvelteKit hydration validation context',
+          );
+        }
+      }
+    } finally {
+      await promiseWithTimeout(
+        browser.close(),
+        5_000,
+        'closing Chromium after SvelteKit hydration validation',
+      );
+    }
   }
 }
 

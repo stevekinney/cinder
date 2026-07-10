@@ -1,26 +1,44 @@
 /**
  * Conversation-reading helpers for Chat.
  *
- * These delegate to `conversationalist` so message ordering stays aligned with
- * the published conversation package. Tool pairing keeps Chat's role gate so an
- * incidental tool-shaped field on a non-tool message never renders as a pair.
+ * These helpers operate on the Conversationalist transcript shape while keeping
+ * Cinder's browser runtime free of the full conversation package.
  */
 
-import { getMessages } from 'conversationalist';
-import { pairToolCallsWithResults as pairConversationalistToolCallsWithResults } from 'conversationalist/utilities';
+import type {
+  ConversationHistory,
+  Message,
+  ToolCallPair,
+  ToolResult,
+} from '../conversation-model.ts';
 
-import type { Message, ToolCallPair } from '../conversation-model.ts';
-
-function hasPairableToolField(message: Message): boolean {
-  return (
-    (message.role === 'tool-call' && message.toolCall !== undefined) ||
-    (message.role === 'tool-result' && message.toolResult !== undefined)
-  );
+export function getMessages(
+  conversation: ConversationHistory,
+  options: { includeHidden?: boolean } = {},
+): Message[] {
+  return conversation.ids
+    .map((id) => conversation.messages[id])
+    .filter((message): message is Message => message !== undefined)
+    .filter((message) => options.includeHidden === true || !message.hidden);
 }
 
 /** Pairs tool calls with role-valid tool results from an already-ordered message array. */
 export function pairToolCallsWithResults(messages: ReadonlyArray<Message>): ToolCallPair[] {
-  return pairConversationalistToolCallsWithResults(messages.filter(hasPairableToolField));
-}
+  const resultsByCallId = new Map<string, ToolResult>();
+  for (const message of messages) {
+    if (message.role === 'tool-result' && message.toolResult !== undefined) {
+      resultsByCallId.set(message.toolResult.callId, message.toolResult);
+    }
+  }
 
-export { getMessages };
+  const pairs: ToolCallPair[] = [];
+  for (const message of messages) {
+    if (message.role === 'tool-call' && message.toolCall !== undefined) {
+      pairs.push({
+        call: message.toolCall,
+        result: resultsByCallId.get(message.toolCall.id),
+      });
+    }
+  }
+  return pairs;
+}
