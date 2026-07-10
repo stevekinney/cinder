@@ -164,7 +164,7 @@ A top-level entry can be a branch group instead of a step. A branch group fans o
 
 ### Rewound and compensated steps
 
-Set `rewound: true` on a step that was speculatively executed and then unwound. It renders struck-through and de-emphasized (and announces its rewound state as text) while staying inspectable. Set `compensates: '<forward-step-id>'` on a step that reverses an earlier forward step, as in a saga rollback; it renders inset beneath its forward step with a dashed reversal connector and a `Compensates <label>` badge. An unresolved `compensates` id renders the step in place.
+Set `rewound: true` on a step that was speculatively executed and then unwound. It renders struck-through and de-emphasized (and announces its rewound state as text) while staying inspectable. Set `compensates: '<forward-step-id>'` on a step that reverses an earlier forward step, as in a saga rollback; the compensating step keeps its own place in execution order and renders inset with a dashed reversal connector and a `Compensates <label>` badge that names the forward step it reverses. The `compensates` id must reference a sibling step (one under the same parent); an unresolved id renders the step in place without the badge.
 
 ## Step states
 

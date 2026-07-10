@@ -76,6 +76,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';
   import Collapsible from '../collapsible/collapsible.svelte';
+  import RunStepBranchDisclosure from './run-step-branch-disclosure.svelte';
   import Link from '../link/link.svelte';
   import Progress from '../progress/progress.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
@@ -501,7 +502,7 @@
     {#if entry.kind === 'branch'}
       {@const group = entry.group}
       {@const summary = branchOutcomeSummary(group.lanes)}
-      {@const startOpen =
+      {@const initialOpen =
         !branchStartsCollapsed(group.lanes.length, group.collapseThreshold, group.collapsed) ||
         (group.collapsed === undefined && branchGroupHasCurrentStep(group))}
       <li
@@ -517,8 +518,8 @@
           </span>
 
           <div class="cinder-run-step-timeline__content cinder-run-step-timeline__branch">
-            <Collapsible
-              open={startOpen}
+            <RunStepBranchDisclosure
+              {initialOpen}
               class="cinder-run-step-timeline__branch-disclosure"
               triggerAriaLabel={`Branch group: ${group.label}. ${summary}.`}
             >
@@ -565,7 +566,7 @@
                   </li>
                 {/each}
               </ul>
-            </Collapsible>
+            </RunStepBranchDisclosure>
           </div>
         </div>
       </li>

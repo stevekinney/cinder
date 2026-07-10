@@ -14,7 +14,7 @@ import type {
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
 const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
 
@@ -1189,6 +1189,79 @@ describe('branch groups', () => {
       '.cinder-run-step-timeline__item--branch [aria-expanded]',
     );
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('keeps an auto-opened branch open after its active lane step becomes terminal', async () => {
+    // A wide group auto-opens because lane B is running. When B finishes, the
+    // disclosure must NOT slam shut: `collapsed`/`collapseThreshold` govern the
+    // *initial* state, and the group stays user-togglable. Driving `open` from
+    // live step status (the pre-fix behavior) would re-collapse it here and
+    // override a reader mid-inspection.
+    const runningGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide-running',
+      label: 'Wide running race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        steps: [
+          { id: `${id}-1`, label: `${id} step`, status: id === 'b' ? 'running' : 'succeeded' },
+        ],
+      })),
+    };
+    const { container, rerender } = render(RunStepTimeline, {
+      steps: [runningGroup] as RunStepTimelineEntry[],
+    });
+    const selector = '.cinder-run-step-timeline__item--branch [aria-expanded]';
+    expect(container.querySelector(selector)?.getAttribute('aria-expanded')).toBe('true');
+
+    // Lane B's step finishes — no more current work anywhere in the group.
+    const settledGroup: RunStepBranchGroup = {
+      ...runningGroup,
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        steps: [{ id: `${id}-1`, label: `${id} step`, status: 'succeeded' as const }],
+      })),
+    };
+    await rerender({ steps: [settledGroup] as RunStepTimelineEntry[] });
+
+    expect(container.querySelector(selector)?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('keeps a user-opened collapsed branch open across an unrelated status change', async () => {
+    // Three settled lanes auto-collapse. The user opens the group, then an
+    // unrelated re-render (e.g. a sibling step elsewhere updating) flows new
+    // props in. The group must honor the user's disclosure toggle, not reset it.
+    const wideGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide-user',
+      label: 'Wide user race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        outcome: 'settled' as const,
+        steps: [{ id: `${id}-1`, label: `${id} step`, status: 'succeeded' as const }],
+      })),
+    };
+    const { container, rerender } = render(RunStepTimeline, {
+      steps: [wideGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '.cinder-run-step-timeline__item--branch .cinder-collapsible__trigger',
+    )!;
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+
+    await fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    // An unrelated re-render with structurally-equal group data.
+    await rerender({ steps: [{ ...wideGroup }] as RunStepTimelineEntry[] });
+    expect(
+      container
+        .querySelector('.cinder-run-step-timeline__item--branch [aria-expanded]')
+        ?.getAttribute('aria-expanded'),
+    ).toBe('true');
   });
 
   test('respects an explicit collapsed override regardless of threshold', () => {

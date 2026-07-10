@@ -346,7 +346,14 @@
     if (!propChanged) return;
 
     const resolved = incoming ?? defaultScheduleValue();
-    if (scheduleValuesEqual(resolved, lastKnownValue)) return;
+    // A genuine reset (`value` transitioning to `undefined`) always reseeds back
+    // to the default, even when `lastKnownValue` already equals the default. A
+    // non-committing mode switch (browsing Cron/Interval without emitting) leaves
+    // `lastKnownValue` at the default while the visible mode/fields have moved on,
+    // so a content-equality short-circuit here would swallow the reset and strand
+    // the UI in the browsed mode. Content equality still guards the echo case for
+    // defined values (parent handing back exactly what we just emitted is a no-op).
+    if (incoming !== undefined && scheduleValuesEqual(resolved, lastKnownValue)) return;
     const seed = seedFieldsFromValue(resolved);
     authoringMode = seed.authoringMode;
     cronFields = seed.cronFields;

@@ -488,7 +488,8 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
         description: 'The parallel sub-lanes.',
       },
       collapseThreshold: {
-        type: 'number',
+        type: 'integer',
+        minimum: 1,
         description:
           'Collapse the group by default once the lane count reaches this threshold. Defaults to 3.',
       },

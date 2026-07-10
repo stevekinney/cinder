@@ -253,6 +253,25 @@ describe('ScheduleBuilder', () => {
       );
     });
 
+    test('resets to the default even when the committed value already equals the default and the user browsed to another mode', async () => {
+      // The parent starts controlled at exactly the default value. The user
+      // switches to Cron — a non-committing mode switch that emits nothing, so
+      // `lastKnownValue` stays at the default while the visible panel is now
+      // Cron. A content-equality short-circuit would then swallow a reset (the
+      // resolved default equals the committed default) and strand the UI in
+      // Cron; the reset must force the panel back to the default Presets state.
+      const defaultValue: ScheduleValue = { mode: 'interval', every: 15, unit: 'minutes' };
+      const { container, getByRole, rerender } = render(ScheduleBuilder, { value: defaultValue });
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      expect(container.querySelector('[data-sb-panel="cron"]')).not.toBeNull();
+
+      await rerender({ value: undefined });
+
+      expect(container.querySelector('[data-sb-panel="presets"]')).not.toBeNull();
+      expect(container.querySelector('[data-sb-panel="cron"]')).toBeNull();
+    });
+
     test('an uncontrolled component (no value prop, ever) does not reset a mid-edit cron field on re-render', async () => {
       const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {});
 
