@@ -34,7 +34,6 @@
   import SegmentedControl from '../segmented-control/segmented-control.svelte';
   import Select from '../select/select.svelte';
   import TimeField from '../time-field/time-field.svelte';
-  import type { TimeFieldChange } from '../time-field/time-field.types.ts';
 
   import type {
     ScheduleAuthoringMode,
@@ -319,6 +318,30 @@
     lastKnownValue = incoming;
   });
 
+  /**
+   * `lastKnownValue` is updated optimistically, *before* the consumer's
+   * `onchange` handler runs — this is what lets the resync effect above tell
+   * "the parent echoed back exactly what I just emitted" (no-op, keep
+   * mid-edit state) apart from "the parent handed me something genuinely
+   * different" (reseed). A validating/authorizing parent that rejects an
+   * edit is expected to express that by re-passing a `value` whose *content*
+   * differs from the emitted edit (e.g. its own prior value) — that flows
+   * through the same `scheduleValuesEqual` gate and correctly reverts the
+   * fields (see the "controlled parent that rejects an edit" test).
+   *
+   * The one case this does not cover: a parent that rejects by leaving
+   * `value` at the exact same object reference it already held. Svelte's
+   * prop reactivity never marks an unchanged reference dirty, so no effect
+   * re-runs at all — there is no signal for the child to observe. Detecting
+   * that would require polling `value` on every local edit instead of only
+   * when the prop itself changes, which reintroduces the race this whole
+   * mechanism was built to avoid: the child's own optimistic write to
+   * `lastKnownValue` happens synchronously in the same tick as the edit,
+   * strictly before the parent's (asynchronous, next-render) echo, so a
+   * same-tick comparison would misread "parent hasn't responded yet" as
+   * "parent rejected this" and revert the edit the user just made. Left
+   * unhandled by design — see PR discussion for the fuller tradeoff.
+   */
   function emitChange(): void {
     lastKnownValue = currentValue;
     onchange?.(currentValue);
@@ -394,9 +417,26 @@
     emitChange();
   }
 
-  function handlePresetDailyTimeChange(detail: TimeFieldChange): void {
-    presetDailyTime = detail.value;
+  /**
+   * TimeField emits an empty string (via its native `change` event) when the
+   * user clears it, and `parseTime('')` silently defaults to midnight —
+   * accepting that here would let a user unintentionally submit a `00:00`
+   * cron just by clearing the field, with the field itself showing blank
+   * rather than "00:00". Reject the empty edit instead: don't touch the
+   * backing state at all, and don't emit. Because the preset time fields use
+   * a real two-way `bind:value` (not a one-way `value` prop), TimeField's own
+   * next read of `value` pulls the unchanged, last-committed time back
+   * through this setter's getter — so the field visually re-asserts the last
+   * valid time instead of drifting from the emitted cron.
+   */
+  function acceptPresetTime(next: string | undefined, commit: (time: string) => void): void {
+    if (!next) return;
+    commit(next);
     emitChange();
+  }
+
+  function handlePresetDailyTimeChange(next: string | undefined): void {
+    acceptPresetTime(next, (time) => (presetDailyTime = time));
   }
 
   function toggleWeeklyDay(day: number): void {
@@ -406,9 +446,8 @@
     emitChange();
   }
 
-  function handlePresetWeeklyTimeChange(detail: TimeFieldChange): void {
-    presetWeeklyTime = detail.value;
-    emitChange();
+  function handlePresetWeeklyTimeChange(next: string | undefined): void {
+    acceptPresetTime(next, (time) => (presetWeeklyTime = time));
   }
 
   function handlePresetMonthlyDayChange(next: number | null): void {
@@ -416,9 +455,8 @@
     emitChange();
   }
 
-  function handlePresetMonthlyTimeChange(detail: TimeFieldChange): void {
-    presetMonthlyTime = detail.value;
-    emitChange();
+  function handlePresetMonthlyTimeChange(next: string | undefined): void {
+    acceptPresetTime(next, (time) => (presetMonthlyTime = time));
   }
 
   const modeTabId = (mode: ScheduleAuthoringMode) => `${baseId}-mode-${mode}-tab`;
@@ -492,8 +530,7 @@
         <TimeField
           id={`${baseId}-preset-daily-time`}
           label="At"
-          value={presetDailyTime}
-          onchange={handlePresetDailyTimeChange}
+          bind:value={() => presetDailyTime, handlePresetDailyTimeChange}
         />
       {:else if presetKind === 'weekly'}
         <div class="cinder-schedule-builder__weekday-group" role="group" aria-label="Days of week">
@@ -510,8 +547,7 @@
         <TimeField
           id={`${baseId}-preset-weekly-time`}
           label="At"
-          value={presetWeeklyTime}
-          onchange={handlePresetWeeklyTimeChange}
+          bind:value={() => presetWeeklyTime, handlePresetWeeklyTimeChange}
         />
       {:else}
         <div class="cinder-schedule-builder__field-row">
@@ -525,8 +561,7 @@
           <TimeField
             id={`${baseId}-preset-monthly-time`}
             label="At"
-            value={presetMonthlyTime}
-            onchange={handlePresetMonthlyTimeChange}
+            bind:value={() => presetMonthlyTime, handlePresetMonthlyTimeChange}
           />
         </div>
       {/if}

@@ -209,6 +209,29 @@ describe('ScheduleBuilder', () => {
 
       expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
     });
+
+    test('a controlled parent that rejects an edit by re-passing the prior value reverts the field', async () => {
+      const onchange = mock();
+      const initialValue: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
+      const { getByLabelText, rerender } = render(ScheduleBuilder, {
+        value: initialValue,
+        onchange,
+      });
+
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '30' } });
+      expect(minuteField.value).toBe('30');
+      expect(onchange).toHaveBeenCalledTimes(1);
+
+      // A validating/authorizing parent that rejects the edit does NOT echo
+      // what onchange emitted — it re-passes its own (distinct, unaccepted)
+      // prior value instead. Because that's content-different from what the
+      // child optimistically emitted, the resync effect's `scheduleValuesEqual`
+      // guard treats it as a genuine external change and reseeds.
+      await rerender({ value: { ...initialValue }, onchange });
+
+      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
+    });
   });
 
   describe('mode switching', () => {
@@ -355,6 +378,33 @@ describe('ScheduleBuilder', () => {
       expect(onchange).toHaveBeenCalledTimes(2);
       const [emitted] = onchange.mock.calls[1]!;
       expect(emitted).toEqual({ mode: 'cron', expression: '15 9 * * *' });
+    });
+
+    test('clearing a Daily time keeps the prior time in the emitted value and in the field, instead of silently becoming midnight', async () => {
+      const onchange = mock();
+      const { container, getByLabelText, getByRole } = render(ScheduleBuilder, { onchange });
+
+      await fireEvent.click(getByRole('radio', { name: 'Daily' }));
+      const timeInput = container.querySelector<HTMLInputElement>('#' + getByLabelText('At').id)!;
+      await fireEvent.change(timeInput, { target: { value: '09:15' } });
+      onchange.mockClear();
+
+      // Clear the field. A real clear fires `input` before `change` (the
+      // browser updates the value live, then commits on blur); firing both,
+      // in order, is what lets TimeField's own input-mirror state settle
+      // back to the bound value once the empty edit is rejected.
+      await fireEvent.input(timeInput, { target: { value: '' } });
+      await fireEvent.change(timeInput, { target: { value: '' } });
+
+      // Must NOT silently commit midnight, and must NOT emit at all — nothing
+      // actually changed from the component's point of view.
+      expect(onchange).not.toHaveBeenCalled();
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Daily at 09:15',
+      );
+      // The field itself must re-assert the prior time rather than staying
+      // blank, so it never visually diverges from the emitted/summarized value.
+      expect(timeInput.value).toBe('09:15');
     });
 
     test('presets "weekly on" toggling a day and committing a time emits a cron value with the selected day', async () => {
