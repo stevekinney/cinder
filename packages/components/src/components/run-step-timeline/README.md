@@ -129,6 +129,43 @@ The component marks the currently active step with `aria-current="step"`. `runni
 </script>
 ```
 
+### Branch / coordination groups
+
+A top-level entry can be a branch group instead of a step. A branch group fans out into N parallel sub-lanes, each a sequence of steps with an optional `outcome` (`won` / `lost` / `settled`). The winning lane is emphasized, losers are muted, and the group is collapsible (collapsed by default once the lane count reaches `collapseThreshold`, default 3). Branch groups are opt-in via the `kind: 'branch'` discriminator, so existing `RunStep[]` arrays keep working unchanged — widen your array type to `RunStepTimelineEntry[]` to mix them in.
+
+```svelte
+<script lang="ts">
+  import type { RunStepTimelineEntry } from '@lostgradient/cinder/run-step-timeline';
+
+  const steps: RunStepTimelineEntry[] = [
+    { id: 'plan', label: 'Plan rollout', status: 'succeeded' },
+    {
+      kind: 'branch',
+      id: 'race',
+      label: 'Race deploy candidates',
+      lanes: [
+        {
+          id: 'blue',
+          label: 'Blue',
+          outcome: 'won',
+          steps: [{ id: 'b', label: 'Deploy blue', status: 'succeeded' }],
+        },
+        {
+          id: 'green',
+          label: 'Green',
+          outcome: 'lost',
+          steps: [{ id: 'g', label: 'Deploy green', status: 'cancelled' }],
+        },
+      ],
+    },
+  ];
+</script>
+```
+
+### Rewound and compensated steps
+
+Set `rewound: true` on a step that was speculatively executed and then unwound. It renders struck-through and de-emphasized (and announces its rewound state as text) while staying inspectable. Set `compensates: '<forward-step-id>'` on a step that reverses an earlier forward step, as in a saga rollback; the compensating step keeps its own place in execution order and renders inset with a dashed reversal connector and a `Compensates <label>` badge that names the forward step it reverses. The `compensates` id must reference a sibling step (one under the same parent); an unresolved id renders the step in place without the badge.
+
 ## Step states
 
 `RunStepStatus` is intentionally domain-agnostic. Map your domain state onto one of these:

@@ -160,6 +160,34 @@
     }
   }
 
+  /* ---- Typed condition value controls (conditions-only mode) ---- */
+
+  /* Enum values reuse the select chrome but keep the value input's wider flex-basis. */
+  .cinder-invocation-rule-builder__condition-value-select {
+    flex: 2 1 10rem;
+    min-inline-size: 6rem;
+  }
+
+  .cinder-invocation-rule-builder__condition-value-checkbox {
+    flex: 0 0 auto;
+    inline-size: 1.125rem;
+    block-size: 1.125rem;
+    margin: 0;
+    accent-color: var(--cinder-accent);
+    cursor: pointer;
+  }
+
+  .cinder-invocation-rule-builder__condition-value-checkbox:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-invocation-rule-builder__condition-value-checkbox:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
   /* ---- Action rows ---- */
 
   .cinder-invocation-rule-builder__actions {

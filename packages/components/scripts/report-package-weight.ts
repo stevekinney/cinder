@@ -17,10 +17,15 @@ type PackageIdentity = {
   version: string;
 };
 
+// Coarse anti-bloat headroom caps. The byte budgets are the primary bloat
+// guards; `fileCount` is a secondary cap that scales with the component count
+// (~13–14 published files per component), so it is raised as new components
+// ship. Adding the connection-indicator and schedule-builder components (plus
+// their sidecars) crossed the previous 5,000 cap with legitimate output.
 const budgets = {
   packedBytes: 8_000_000,
   unpackedBytes: 32_000_000,
-  fileCount: 5_000,
+  fileCount: 5_500,
   largestEntrypointBytes: 2_500_000,
 } as const;
 

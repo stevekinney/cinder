@@ -30,6 +30,19 @@ A `role="status"` / `aria-live="polite"` / `aria-atomic="true"` live region anno
 
 SVG icons inside buttons are `aria-hidden="true"` because the button's `aria-label` provides the accessible name.
 
+### Conditions-only mode (`mode="conditions"`)
+
+Action controls are not rendered at all, so their roles, names, and states described above do not apply — there is nothing to hide from assistive technology because nothing is emitted to the DOM in the first place.
+
+The condition value control is one of four native elements depending on the matching field option's `type`, but all four use the same accessible-name pattern as the full-mode text input: `aria-label="Value for condition N of RuleName"`.
+
+- `type: 'number'` renders `<input type="number">`.
+- `type: 'boolean'` renders `<input type="checkbox">`.
+- `type: 'enum'` renders a `<select>` populated with that field option's `options`.
+- `type: 'string'` or an omitted `type` renders the same `<input type="text">` used in full mode.
+
+The operator select's accessible name and list semantics are unchanged; only its option list is fixed to the five conditions-only operators (equals, greater than, less than, greater than or equal, less than or equal) instead of the consumer-provided `operatorOptions`.
+
 ## Keyboard
 
 | Key            | Action                                                                                         |

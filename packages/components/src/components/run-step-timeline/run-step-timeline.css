@@ -213,6 +213,130 @@
   }
 
   /* ----------------------------------------
+   * Rewound steps: speculatively executed, then unwound. Struck-through and
+   * de-emphasized but still inspectable (details/collapsibles keep working).
+   * The "Rewound" badge carries the state as text so it is never color-only.
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__item[data-cinder-rewound] .cinder-run-step-timeline__label {
+    text-decoration: line-through;
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-rewound] .cinder-run-step-timeline__marker {
+    opacity: 0.55;
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-rewound] .cinder-run-step-timeline__meta {
+    opacity: 0.7;
+  }
+
+  /* ----------------------------------------
+   * Compensation steps: inset beneath their forward step with a dashed
+   * reversal connector. The "Compensates <step>" badge names the relationship.
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__item[data-cinder-compensation] {
+    --_cinder-rst-compensation-inset: var(--cinder-space-5);
+
+    padding-inline-start: var(--_cinder-rst-compensation-inset);
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-compensation]::after {
+    content: '';
+    position: absolute;
+    inset-inline-start: calc(var(--_cinder-rst-depth-offset) + var(--_cinder-rst-rail-center));
+    inset-block-start: -0.5rem;
+    inline-size: var(--cinder-space-5);
+    block-size: 1.5rem;
+    border-inline-start: 1px dashed var(--cinder-border-strong);
+    border-block-end: 1px dashed var(--cinder-border-strong);
+    border-end-start-radius: var(--cinder-radius-md);
+    pointer-events: none;
+  }
+
+  /* ----------------------------------------
+   * Branch / coordination groups: N parallel sub-lanes with won/lost/settled
+   * outcomes. Winner emphasized, losers muted — driven by tokens.
+   * ---------------------------------------- */
+
+  .cinder-run-step-timeline__branch {
+    min-width: 0;
+  }
+
+  .cinder-run-step-timeline__branch-heading {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-run-step-timeline__lanes {
+    list-style: none;
+    margin: var(--cinder-space-2) 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-run-step-timeline__lane {
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    padding: var(--cinder-space-3);
+    background: var(--cinder-surface-inset);
+    min-width: 0;
+  }
+
+  .cinder-run-step-timeline__lane-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+    margin-block-end: var(--cinder-space-2);
+  }
+
+  .cinder-run-step-timeline__lane-label {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+    color: var(--cinder-text);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .cinder-run-step-timeline__lane-steps {
+    margin: 0;
+  }
+
+  /* Winner: emphasized border + full-strength text. */
+  .cinder-run-step-timeline__lane[data-cinder-outcome='won'] {
+    border-color: var(--cinder-success);
+    border-inline-start-width: 3px;
+  }
+
+  /* Loser: muted via a muted border and lane label — not a blanket opacity, so
+   * step text, links, detail triggers, and focus rings keep full contrast. The
+   * "Lost" outcome badge carries the outcome as text. */
+  .cinder-run-step-timeline__lane[data-cinder-outcome='lost'] {
+    border-color: var(--cinder-border-muted);
+  }
+
+  .cinder-run-step-timeline__lane[data-cinder-outcome='lost']
+    .cinder-run-step-timeline__lane-label {
+    color: var(--cinder-text-muted);
+  }
+
+  /* Settled: neutral, no competitive emphasis. */
+  .cinder-run-step-timeline__lane[data-cinder-outcome='settled'] {
+    border-color: var(--cinder-border);
+  }
+
+  /* Still racing: accent edge to signal in-flight. */
+  .cinder-run-step-timeline__lane[data-cinder-outcome='racing'] {
+    border-color: var(--cinder-accent);
+    border-inline-start-width: 3px;
+  }
+
+  /* ----------------------------------------
    * Focus ring (not applicable to the root list, but included for
    * completeness if the component is ever given an interactive element)
    * ---------------------------------------- */

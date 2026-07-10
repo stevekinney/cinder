@@ -1510,6 +1510,44 @@
       }
     },
     {
+      "name": "ConnectionIndicator",
+      "id": "connection-indicator",
+      "import": "@lostgradient/cinder/connection-indicator",
+      "exportName": "ConnectionIndicator",
+      "category": "feedback",
+      "status": "beta",
+      "purpose": "Small standalone status pill for a live connection, distinguishing connecting, live, reconnecting, polling, stale, and closed states through icon and text rather than color alone.",
+      "tags": ["connection", "status", "realtime"],
+      "useWhen": [
+        "Surfacing the transport-level health of a websocket, SSE stream, or polling loop as a compact, self-contained pill.",
+        "Distinguishing push (`live`) from interval polling (`polling`) so operators don't mistake one for the other."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Annotating a static entity's state (a row, a user, a deployment) rather than a live transport — use status-dot instead.",
+          "alternative": "status-dot"
+        },
+        {
+          "reason": "Rendering a full event log with per-event connection transitions — use event-stream-viewer instead.",
+          "alternative": "event-stream-viewer"
+        }
+      ],
+      "related": ["status-dot", "event-stream-viewer", "badge"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/connection-indicator/schema",
+        "variables": "@lostgradient/cinder/connection-indicator/variables",
+        "examples": "@lostgradient/cinder/connection-indicator/examples"
+      },
+      "a11y": {
+        "pattern": "role=\"status\" live region",
+        "notes": [
+          "Status is conveyed by icon and text together, never color alone (WCAG 1.4.1); the live pulsing dot collapses to a static dot under prefers-reduced-motion."
+        ]
+      }
+    },
+    {
       "name": "Container",
       "id": "container",
       "import": "@lostgradient/cinder/container",
@@ -2825,7 +2863,8 @@
       "purpose": "Render and edit conditional automation rules composed of conditions and actions.",
       "tags": ["automation", "rules"],
       "useWhen": [
-        "Building a UI for configuring which agents or services run based on event conditions."
+        "Building a UI for configuring which agents or services run based on event conditions.",
+        "You only need conditions (no actions) — pass mode=\"conditions\" for a constrained operator set and typed value inputs."
       ],
       "avoidWhen": [
         {
@@ -4109,11 +4148,12 @@
       "exportName": "RunStepTimeline",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Ordered step-by-step execution rail that visualizes async run state with per-step status, durations, retries, optional progress, and expandable detail panels.",
+      "purpose": "Ordered execution rail for async run state: per-step status, durations, retries, plus parallel branch groups, rewound speculation, and saga compensation.",
       "tags": ["timeline", "progress", "execution"],
       "useWhen": [
         "Displaying the live or completed state of a multi-step async operation: CI jobs, workflow runs, import pipelines, or deployments.",
-        "Showing a sequence where one step is currently active and prior steps have streamed in over time."
+        "Showing a sequence where one step is currently active and prior steps have streamed in over time.",
+        "Visualizing speculative parallel work (race N lanes, keep the winner) or saga-style compensation of a forward step."
       ],
       "avoidWhen": [
         {
@@ -4130,6 +4170,44 @@
         "schema": "@lostgradient/cinder/run-step-timeline/schema",
         "variables": "@lostgradient/cinder/run-step-timeline/variables",
         "examples": "@lostgradient/cinder/run-step-timeline/examples"
+      }
+    },
+    {
+      "name": "ScheduleBuilder",
+      "id": "schedule-builder",
+      "import": "@lostgradient/cinder/schedule-builder",
+      "exportName": "ScheduleBuilder",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Recurrence-definition control that authors a cron or fixed-interval schedule via presets, raw cron fields, or an interval, alongside an always-visible summary, next-fires preview, and timezone slot.",
+      "tags": ["schedule", "recurrence", "cron", "form"],
+      "useWhen": [
+        "Letting a user define when a job or notification recurs, supplying your own date/cron library to compute upcoming fire times.",
+        "You want a friendly presets UI (every N, daily, weekly, monthly) that still round-trips to a portable cron or interval value."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You need overlap policy, jitter, or backfill controls — those belong to the consumer's surrounding form.",
+          "alternative": "invocation-rule-builder"
+        },
+        {
+          "reason": "You only need to pick a single point in time, not a recurrence — use date-picker instead.",
+          "alternative": "date-picker"
+        }
+      ],
+      "related": ["date-picker", "segmented-control", "input", "time-field"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/schedule-builder/schema",
+        "variables": "@lostgradient/cinder/schedule-builder/variables",
+        "examples": "@lostgradient/cinder/schedule-builder/examples"
+      },
+      "a11y": {
+        "pattern": "WAI-ARIA Tabs",
+        "notes": [
+          "The three authoring modes (presets, cron, interval) are a tablist; each cron field reports validity via aria-invalid and an associated hint/error."
+        ]
       }
     },
     {

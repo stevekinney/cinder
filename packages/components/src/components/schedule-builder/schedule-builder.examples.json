@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "schedule-builder",
+  "import": "@lostgradient/cinder/schedule-builder",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic schedule builder",
+      "description": "Author a recurrence via presets, raw cron, or a fixed interval. The summary line, next-fires preview, and timezone slot stay visible across every mode.",
+      "code": "<script lang=\"ts\">\n  import {\n    ScheduleBuilder,\n    type ScheduleFire,\n    type ScheduleValue,\n  } from '@lostgradient/cinder/schedule-builder';\n\n  let value = $state<ScheduleValue>({ mode: 'interval', every: 15, unit: 'minutes' });\n\n  // Cinder ships no date math — a real app would bring its own cron/interval\n  // library here. Labels are illustrative static strings, not computed dates.\n  function computeNextFires(current: ScheduleValue, count: number): ScheduleFire[] {\n    if (current.mode === 'interval') {\n      return Array.from({ length: count }, (_, index) => ({\n        id: `fire-${index}`,\n        label: `Fire ${index + 1} — in ${(index + 1) * current.every} ${current.unit}`,\n      }));\n    }\n    return Array.from({ length: count }, (_, index) => ({\n      id: `fire-${index}`,\n      label: `Fire ${index + 1} — matches \"${current.expression}\"`,\n    }));\n  }\n\n  function handleChange(next: ScheduleValue): void {\n    value = next;\n  }\n</script>\n\n<ScheduleBuilder\n  {value}\n  onchange={handleChange}\n  {computeNextFires}\n  timezoneLabel=\"America/New_York\"\n  label=\"Data sync schedule\"\n/>\n"
+    },
+    {
+      "id": "cron",
+      "title": "Cron mode",
+      "description": "Open the Cron tab to see five independently validated fields seeded losslessly from the initial value. Each field carries a numeric hint and surfaces an inline error the moment it falls outside its valid range.",
+      "code": "<script lang=\"ts\">\n  import {\n    ScheduleBuilder,\n    type ScheduleFire,\n    type ScheduleValue,\n  } from '@lostgradient/cinder/schedule-builder';\n\n  // Weekdays at 09:00.\n  let value = $state<ScheduleValue>({ mode: 'cron', expression: '0 9 * * 1-5' });\n\n  // Static, illustrative fire labels — no date library involved.\n  function computeNextFires(current: ScheduleValue, count: number): ScheduleFire[] {\n    const description =\n      current.mode === 'cron' ? current.expression : `${current.every} ${current.unit}`;\n    return Array.from({ length: count }, (_, index) => ({\n      id: `fire-${index}`,\n      label: `Fire ${index + 1} — matches \"${description}\"`,\n    }));\n  }\n\n  function handleChange(next: ScheduleValue): void {\n    value = next;\n  }\n</script>\n\n<ScheduleBuilder {value} onchange={handleChange} {computeNextFires} label=\"Weekday report job\" />\n"
+    },
+    {
+      "id": "interval",
+      "title": "Interval mode",
+      "description": "Open the Interval tab to author a fixed-cadence schedule. The interval value round-trips losslessly through every mode that can represent it; a cadence with no exact cron equivalent (like every 5 hours) seeds a neutral default in Cron mode rather than silently changing meaning.",
+      "code": "<script lang=\"ts\">\n  import {\n    ScheduleBuilder,\n    type ScheduleFire,\n    type ScheduleValue,\n  } from '@lostgradient/cinder/schedule-builder';\n\n  let value = $state<ScheduleValue>({ mode: 'interval', every: 5, unit: 'hours' });\n\n  // Static, illustrative fire labels — no date library involved.\n  function computeNextFires(current: ScheduleValue, count: number): ScheduleFire[] {\n    if (current.mode !== 'interval') return [];\n    return Array.from({ length: count }, (_, index) => ({\n      id: `fire-${index}`,\n      label: `Fire ${index + 1} — in ${(index + 1) * current.every} ${current.unit}`,\n    }));\n  }\n\n  function handleChange(next: ScheduleValue): void {\n    value = next;\n  }\n</script>\n\n<ScheduleBuilder\n  {value}\n  onchange={handleChange}\n  {computeNextFires}\n  timezoneLabel=\"UTC\"\n  label=\"Health check schedule\"\n/>\n"
+    },
+    {
+      "id": "presets",
+      "title": "Presets mode",
+      "description": "Presets is the default authoring mode. Try each preset kind — \"every N\" lowers to an interval value, and daily/weekly/monthly all lower to a cron expression. The summary line always reflects the resulting cron or interval value, never a \"preset\".",
+      "code": "<script lang=\"ts\">\n  import {\n    ScheduleBuilder,\n    type ScheduleFire,\n    type ScheduleValue,\n  } from '@lostgradient/cinder/schedule-builder';\n\n  let value = $state<ScheduleValue>({ mode: 'interval', every: 30, unit: 'minutes' });\n\n  // Static, illustrative fire labels — no date library involved.\n  function computeNextFires(current: ScheduleValue, count: number): ScheduleFire[] {\n    const suffix =\n      current.mode === 'interval' ? `every ${current.every} ${current.unit}` : current.expression;\n    return Array.from({ length: count }, (_, index) => ({\n      id: `fire-${index}`,\n      label: `Fire ${index + 1} — ${suffix}`,\n    }));\n  }\n\n  function handleChange(next: ScheduleValue): void {\n    value = next;\n  }\n</script>\n\n<ScheduleBuilder {value} onchange={handleChange} {computeNextFires} label=\"Backup schedule\" />\n"
+    }
+  ]
+}

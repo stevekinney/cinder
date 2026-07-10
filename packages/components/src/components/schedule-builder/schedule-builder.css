@@ -1,0 +1,121 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../chip/chip.css';
+@import '../input/input.css';
+@import '../number-input/number-input.css';
+@import '../segmented-control/segmented-control.css';
+@import '../select/select.css';
+@import '../time-field/time-field.css';
+
+@layer cinder.components {
+  /* ========================================
+   * SCHEDULE-BUILDER
+   * Recurrence-definition control: presets, cron, and interval authoring
+   * modes behind a tablist, with an always-visible summary line, next-fires
+   * preview, and timezone display slot.
+   * ======================================== */
+
+  .cinder-schedule-builder {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-4);
+  }
+
+  /* ----------------------------------------
+   * Mode panel
+   * ---------------------------------------- */
+
+  .cinder-schedule-builder__panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    padding-block-start: var(--cinder-space-1);
+  }
+
+  .cinder-schedule-builder__preset-kind {
+    margin-block-end: var(--cinder-space-1);
+  }
+
+  .cinder-schedule-builder__field-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-schedule-builder__field-row > * {
+    flex: 1 1 10rem;
+    min-inline-size: 8rem;
+  }
+
+  .cinder-schedule-builder__weekday-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-schedule-builder__cron-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: var(--cinder-space-3);
+  }
+
+  /* ----------------------------------------
+   * Always-visible informational blocks: summary, preview, timezone
+   * ---------------------------------------- */
+
+  .cinder-schedule-builder__summary,
+  .cinder-schedule-builder__preview,
+  .cinder-schedule-builder__timezone {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    margin: 0;
+    padding: var(--cinder-space-3);
+    border: 1px solid var(--cinder-border-muted);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-inset);
+  }
+
+  .cinder-schedule-builder__section-label {
+    display: block;
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-semibold);
+    text-transform: uppercase;
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-schedule-builder__summary-text {
+    margin: 0;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+  }
+
+  .cinder-schedule-builder__preview-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-schedule-builder__preview-item {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cinder-schedule-builder__timezone-value {
+    margin: 0;
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text);
+    font-family: var(--cinder-font-mono);
+  }
+
+  .cinder-schedule-builder__empty {
+    font-size: var(--cinder-text-sm);
+    color: var(--cinder-text-muted);
+    font-style: italic;
+  }
+}

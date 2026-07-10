@@ -1,0 +1,86 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    value: {
+      anyOf: [
+        {
+          type: 'object',
+          properties: {
+            mode: {
+              const: 'cron',
+            },
+            expression: {
+              type: 'string',
+            },
+          },
+          additionalProperties: false,
+          required: ['expression', 'mode'],
+        },
+        {
+          type: 'object',
+          properties: {
+            mode: {
+              const: 'interval',
+            },
+            every: {
+              type: 'integer',
+              minimum: 1,
+            },
+            unit: {
+              enum: ['minutes', 'hours', 'days', 'weeks'],
+            },
+          },
+          additionalProperties: false,
+          required: ['every', 'mode', 'unit'],
+        },
+      ],
+      description:
+        'The current recurrence value (controlled). When omitted, the component\nstarts from a sensible default (`interval`, every 15 minutes).',
+    },
+    previewCount: {
+      type: 'integer',
+      description: 'How many upcoming fires to request from `computeNextFires`. Defaults to 5.',
+      minimum: 1,
+    },
+    timezoneLabel: {
+      type: 'string',
+      description: 'Timezone label rendered in the always-visible timezone display slot.',
+    },
+    label: {
+      type: 'string',
+      description: 'Accessible label for the whole control. Defaults to "Schedule".',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional CSS classes applied to the root element.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'computeNextFires',
+        reason: 'function-or-snippet',
+        description:
+          'Injected next-fires computation. The component passes the current value and\nthe requested count and renders whatever fires the consumer returns. When\nomitted, the preview list is hidden (the component ships no date logic).',
+      },
+      {
+        name: 'onchange',
+        reason: 'function-or-snippet',
+        description:
+          'Called whenever the user edits the recurrence. Receives the next lossless\n{@link ScheduleValue}. The consumer owns persistence and validation.',
+      },
+      {
+        name: 'timezone',
+        reason: 'function-or-snippet',
+        description:
+          'Custom content for the timezone display slot. Takes precedence over\n`timezoneLabel` when both are supplied.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -1,0 +1,31 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "connection-indicator",
+  "import": "@lostgradient/cinder/connection-indicator",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic connection indicator",
+      "description": "A live connection pill with its default icon and label.",
+      "code": "<script lang=\"ts\">\n  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';\n</script>\n\n<ConnectionIndicator status=\"live\" />\n"
+    },
+    {
+      "id": "polling",
+      "title": "Polling vs live",
+      "description": "Polling reads quieter and different from live through icon, motion, and font-weight — not color alone.",
+      "code": "<script lang=\"ts\">\n  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';\n</script>\n\n<div class=\"example-preview-row\">\n  <ConnectionIndicator status=\"live\" />\n  <ConnectionIndicator status=\"polling\" />\n</div>\n"
+    },
+    {
+      "id": "reconnecting",
+      "title": "Reconnecting with attempt count",
+      "description": "The reconnecting state showing a retry attempt via the attempt snippet.",
+      "code": "<script lang=\"ts\">\n  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';\n</script>\n\n<ConnectionIndicator status=\"reconnecting\">\n  {#snippet attempt()}\n    attempt 3 of 5\n  {/snippet}\n</ConnectionIndicator>\n"
+    },
+    {
+      "id": "states",
+      "title": "All connection states",
+      "description": "Each of the six states with its own icon and text label. Colors come from shared semantic tokens, so some states intentionally share a tone (e.g. connecting/reconnecting) — the icon and text carry the distinction, never color alone.",
+      "code": "<script lang=\"ts\">\n  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';\n</script>\n\n<div class=\"example-preview-row\">\n  <ConnectionIndicator status=\"connecting\" />\n  <ConnectionIndicator status=\"live\" />\n  <ConnectionIndicator status=\"reconnecting\" />\n  <ConnectionIndicator status=\"polling\" />\n  <ConnectionIndicator status=\"stale\" />\n  <ConnectionIndicator status=\"closed\" />\n</div>\n"
+    }
+  ]
+}

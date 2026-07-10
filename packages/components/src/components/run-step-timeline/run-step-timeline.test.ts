@@ -3,14 +3,18 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { RunStep } from './run-step-timeline.types.ts';
+import type {
+  RunStep,
+  RunStepBranchGroup,
+  RunStepTimelineEntry,
+} from './run-step-timeline.types.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
 const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
 
@@ -222,14 +226,20 @@ describe('structure', () => {
   });
 
   test('schema allows nested child details and stops at the rendered depth cap', () => {
-    const stepsSchema = runStepTimelineSchema.properties['steps'] as
+    const stepsProperty = runStepTimelineSchema.properties['steps'] as
       | {
           items: {
-            properties: Record<string, unknown>;
+            anyOf: { properties: Record<string, unknown> }[];
           };
         }
       | undefined;
-    expect(stepsSchema).toBeDefined();
+    expect(stepsProperty).toBeDefined();
+    // `steps.items` is an anyOf of a step entry and a branch-group entry; the
+    // nested-children depth cap lives on the step variant (the one with `status`).
+    const stepVariant = stepsProperty?.items.anyOf.find((variant) =>
+      Object.hasOwn(variant.properties, 'status'),
+    );
+    expect(stepVariant).toBeDefined();
 
     const childSchemaAt = (properties: Record<string, unknown>) => {
       const children = properties['children'] as
@@ -245,7 +255,7 @@ describe('structure', () => {
       return children?.items;
     };
 
-    const depthOneSchema = childSchemaAt(stepsSchema?.items.properties ?? {});
+    const depthOneSchema = childSchemaAt(stepVariant?.properties ?? {});
     const depthOneProperties = depthOneSchema?.properties ?? {};
     const depthTwoSchema = childSchemaAt(depthOneProperties);
     const depthTwoProperties = depthTwoSchema?.properties ?? {};
@@ -1030,6 +1040,548 @@ describe('accessibility', () => {
     const dds = dl?.querySelectorAll('dd');
     expect(dts?.length).toBeGreaterThan(0);
     expect(dds?.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch groups, rewound speculation, and saga compensation
+// ---------------------------------------------------------------------------
+
+const branchGroup: RunStepBranchGroup = {
+  kind: 'branch',
+  id: 'race-candidates',
+  label: 'Race deploy candidates',
+  lanes: [
+    {
+      id: 'blue',
+      label: 'Blue',
+      outcome: 'won',
+      steps: [{ id: 'blue-deploy', label: 'Deploy blue', status: 'succeeded' }],
+    },
+    {
+      id: 'green',
+      label: 'Green',
+      outcome: 'lost',
+      steps: [{ id: 'green-deploy', label: 'Deploy green', status: 'cancelled' }],
+    },
+  ],
+};
+
+describe('branch groups', () => {
+  test('renders a branch-group entry with its lanes and outcome summary', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [branchGroup] as RunStepTimelineEntry[],
+      label: 'Speculative run',
+    });
+
+    const branchItem = container.querySelector(
+      '.cinder-run-step-timeline__item--branch[data-cinder-status="branch"]',
+    );
+    expect(branchItem).not.toBeNull();
+    // Outcome summary conveyed as visible text, not color alone.
+    expect(container.textContent).toContain('1 won, 1 lost');
+    expect(container.textContent).toContain('Race deploy candidates');
+
+    const lanes = container.querySelectorAll('.cinder-run-step-timeline__lane');
+    expect(lanes.length).toBe(2);
+  });
+
+  test('marks winning and losing lanes via data-cinder-outcome', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [branchGroup] as RunStepTimelineEntry[],
+    });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__lane[data-cinder-outcome="won"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('.cinder-run-step-timeline__lane[data-cinder-outcome="lost"]'),
+    ).not.toBeNull();
+  });
+
+  test('renders lanes with no outcome as racing', () => {
+    const racing: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'racing',
+      label: 'In-flight race',
+      lanes: [
+        { id: 'a', label: 'A', steps: [{ id: 'a1', label: 'A step', status: 'running' }] },
+        { id: 'b', label: 'B', steps: [{ id: 'b1', label: 'B step', status: 'running' }] },
+      ],
+    };
+    const { container } = render(RunStepTimeline, { steps: [racing] as RunStepTimelineEntry[] });
+    expect(
+      container.querySelectorAll('.cinder-run-step-timeline__lane[data-cinder-outcome="racing"]')
+        .length,
+    ).toBe(2);
+    expect(container.textContent).toContain('2 lanes racing');
+  });
+
+  test('collapses by default once the lane count reaches the threshold', () => {
+    const threeLaneGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide',
+      label: 'Wide race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        outcome: 'settled' as const,
+        steps: [{ id: `${id}-1`, label: `${id} step`, status: 'succeeded' as const }],
+      })),
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [threeLaneGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('stays expanded below the threshold', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [branchGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('stays expanded past the threshold when a lane has an active step', () => {
+    // 3 lanes would auto-collapse, but one lane is running: keep it open so the
+    // active step, its progress, and lane aria-current stay mounted for AT.
+    const activeWideGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide-active',
+      label: 'Wide active race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        steps: [
+          { id: `${id}-1`, label: `${id} step`, status: id === 'b' ? 'running' : 'succeeded' },
+        ],
+      })),
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [activeWideGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('respects an explicit collapsed=true even with an active lane step', () => {
+    const collapsedActive: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'collapsed-active',
+      label: 'Collapsed active',
+      collapsed: true,
+      lanes: [
+        { id: 'a', label: 'A', steps: [{ id: 'a1', label: 'A', status: 'running' }] },
+        { id: 'b', label: 'B', steps: [{ id: 'b1', label: 'B', status: 'succeeded' }] },
+      ],
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [collapsedActive] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('keeps an auto-opened branch open after its active lane step becomes terminal', async () => {
+    // A wide group auto-opens because lane B is running. When B finishes, the
+    // disclosure must NOT slam shut: `collapsed`/`collapseThreshold` govern the
+    // *initial* state, and the group stays user-togglable. Driving `open` from
+    // live step status (the pre-fix behavior) would re-collapse it here and
+    // override a reader mid-inspection.
+    const runningGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide-running',
+      label: 'Wide running race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        steps: [
+          { id: `${id}-1`, label: `${id} step`, status: id === 'b' ? 'running' : 'succeeded' },
+        ],
+      })),
+    };
+    const { container, rerender } = render(RunStepTimeline, {
+      steps: [runningGroup] as RunStepTimelineEntry[],
+    });
+    const selector = '.cinder-run-step-timeline__item--branch [aria-expanded]';
+    expect(container.querySelector(selector)?.getAttribute('aria-expanded')).toBe('true');
+
+    // Lane B's step finishes — no more current work anywhere in the group.
+    const settledGroup: RunStepBranchGroup = {
+      ...runningGroup,
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        steps: [{ id: `${id}-1`, label: `${id} step`, status: 'succeeded' as const }],
+      })),
+    };
+    await rerender({ steps: [settledGroup] as RunStepTimelineEntry[] });
+
+    expect(container.querySelector(selector)?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('keeps a user-opened collapsed branch open across an unrelated status change', async () => {
+    // Three settled lanes auto-collapse. The user opens the group, then an
+    // unrelated re-render (e.g. a sibling step elsewhere updating) flows new
+    // props in. The group must honor the user's disclosure toggle, not reset it.
+    const wideGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide-user',
+      label: 'Wide user race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        outcome: 'settled' as const,
+        steps: [{ id: `${id}-1`, label: `${id} step`, status: 'succeeded' as const }],
+      })),
+    };
+    const { container, rerender } = render(RunStepTimeline, {
+      steps: [wideGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '.cinder-run-step-timeline__item--branch .cinder-collapsible__trigger',
+    )!;
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+
+    await fireEvent.click(trigger);
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+
+    // An unrelated re-render with structurally-equal group data.
+    await rerender({ steps: [{ ...wideGroup }] as RunStepTimelineEntry[] });
+    expect(
+      container
+        .querySelector('.cinder-run-step-timeline__item--branch [aria-expanded]')
+        ?.getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  test('respects an explicit collapsed override regardless of threshold', () => {
+    const collapsed: RunStepBranchGroup = { ...branchGroup, collapsed: true };
+    const { container } = render(RunStepTimeline, {
+      steps: [collapsed] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('renders steps and branch groups together, preserving order', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'first', label: 'First', status: 'succeeded' },
+      branchGroup,
+      { id: 'last', label: 'Last', status: 'pending' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    // Scope to the root ol's direct children — lane sub-lists reuse the root class.
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const items = [...(rootList?.children ?? [])].filter((el) =>
+      el.classList.contains('cinder-run-step-timeline__item'),
+    );
+    // first step, branch group, last step
+    expect(items.length).toBe(3);
+    expect(items[1]?.getAttribute('data-cinder-status')).toBe('branch');
+  });
+
+  test('keeps the main rail connected across a branch group (step → branch → step)', () => {
+    // A top-level step before a branch, and the branch itself, must keep their
+    // downward connectors so one ordered run does not split into disjoint rails.
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'plan', label: 'Plan', status: 'succeeded' },
+      branchGroup,
+      { id: 'promote', label: 'Promote', status: 'pending' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const items = [...(rootList?.children ?? [])].filter((el) =>
+      el.classList.contains('cinder-run-step-timeline__item'),
+    );
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[1]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    // The trailing step is the last row on the rail — no connector below it.
+    expect(items[2]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('hides the connector after a trailing branch group (branch is the last entry)', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'plan', label: 'Plan', status: 'succeeded' },
+      branchGroup,
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const items = [...(rootList?.children ?? [])].filter((el) =>
+      el.classList.contains('cinder-run-step-timeline__item'),
+    );
+    expect(items[0]?.getAttribute('data-cinder-connector-after')).toBe('visible');
+    expect(items[1]?.getAttribute('data-cinder-connector-after')).toBe('hidden');
+  });
+
+  test('does not collide keys between a branch group and a step id "branch" with children', () => {
+    // A step id of "branch" plus a child would previously produce the same
+    // keyed-each path as a branch group; the branch key is namespaced so both
+    // render instead of one being deduped away.
+    const steps: RunStepTimelineEntry[] = [
+      {
+        id: 'branch',
+        label: 'Literal branch step',
+        status: 'running',
+        children: [{ id: 'race', label: 'Nested child', status: 'succeeded' }],
+      },
+      {
+        kind: 'branch',
+        id: 'race',
+        label: 'Actual branch group',
+        lanes: [{ id: 'l', label: 'L', steps: [{ id: 's', label: 'S', status: 'succeeded' }] }],
+      },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(container.textContent).toContain('Literal branch step');
+    expect(container.textContent).toContain('Actual branch group');
+    expect(container.querySelector('.cinder-run-step-timeline__item--branch')).not.toBeNull();
+  });
+
+  test('keeps a single aria-current on the rail when active steps flank a branch group', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'before', label: 'Before', status: 'running' },
+      branchGroup,
+      { id: 'after', label: 'After', status: 'running' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const currentRows = [...(rootList?.children ?? [])].filter(
+      (el) =>
+        el.classList.contains('cinder-run-step-timeline__item') &&
+        el.getAttribute('aria-current') === 'step',
+    );
+    // Exactly one current row across the whole outer rail, not one per run.
+    expect(currentRows.length).toBe(1);
+  });
+
+  test('accepts a branch group through the generated schema', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+    expect(
+      validate({
+        steps: [
+          {
+            kind: 'branch',
+            id: 'g',
+            label: 'Group',
+            lanes: [
+              { id: 'l1', outcome: 'won', steps: [{ id: 's', label: 'S', status: 'succeeded' }] },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+    // A branch group missing its required `lanes` fails validation.
+    expect(validate({ steps: [{ kind: 'branch', id: 'g', label: 'Group' }] })).toBe(false);
+  });
+
+  test('accepts a branch lane step with nested children through the schema', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+    // Lane steps are RunStep[] at runtime and can nest children; the schema
+    // must accept that rather than rejecting it under additionalProperties.
+    expect(
+      validate({
+        steps: [
+          {
+            kind: 'branch',
+            id: 'g',
+            label: 'Group',
+            lanes: [
+              {
+                id: 'l1',
+                steps: [
+                  {
+                    id: 's',
+                    label: 'Parent',
+                    status: 'running',
+                    children: [{ id: 's-child', label: 'Child', status: 'succeeded' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  test('rejects a non-step nested lane child (validated as a step, not any object)', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+    // A rendered-depth lane child must be a proper step (id/label/status); an
+    // arbitrary object would crash the renderer (path keys come from step.id),
+    // so the schema rejects it.
+    expect(
+      validate({
+        steps: [
+          {
+            kind: 'branch',
+            id: 'g',
+            label: 'Group',
+            lanes: [
+              {
+                id: 'l1',
+                steps: [
+                  {
+                    id: 's',
+                    label: 'Parent',
+                    status: 'running',
+                    children: [{ reason: 'not a step' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('rewound steps', () => {
+  const rewoundStep: RunStep = {
+    id: 'speculative',
+    label: 'Speculative write',
+    status: 'succeeded',
+    rewound: true,
+    details: [{ id: 'log', label: 'Log', content: 'unwound after conflict' }],
+  };
+
+  test('flags a rewound step with a data attribute and visible badge', () => {
+    const { container, getByText } = render(RunStepTimeline, {
+      steps: [rewoundStep] as RunStepTimelineEntry[],
+    });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__item[data-cinder-rewound]'),
+    ).not.toBeNull();
+    // State conveyed as text, not color alone.
+    expect(getByText('Rewound')).not.toBeNull();
+  });
+
+  test('keeps a rewound step inspectable (details still render)', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [rewoundStep] as RunStepTimelineEntry[],
+    });
+    expect(container.querySelector('.cinder-run-step-timeline__details')).not.toBeNull();
+  });
+
+  test('does not flag a normal step as rewound', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [{ id: 'normal', label: 'Normal', status: 'succeeded' }] as RunStepTimelineEntry[],
+    });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__item[data-cinder-rewound]'),
+    ).toBeNull();
+  });
+});
+
+describe('compensation', () => {
+  test('insets and labels a step that compensates a resolvable forward step', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'charge', label: 'Charge card', status: 'succeeded' },
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const compensating = container.querySelector(
+      '.cinder-run-step-timeline__item[data-cinder-compensation]',
+    );
+    expect(compensating).not.toBeNull();
+    expect(container.textContent).toContain('Compensates Charge card');
+  });
+
+  test('renders a step with an unresolved compensates id in place, without inset', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'does-not-exist' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(
+      container.querySelector('.cinder-run-step-timeline__item[data-cinder-compensation]'),
+    ).toBeNull();
+    expect(container.textContent).not.toContain('Compensates');
+  });
+
+  test('resolves a compensation against a sibling within the same branch lane', () => {
+    const lanedSaga: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'saga',
+      label: 'Saga',
+      lanes: [
+        {
+          id: 'lane-a',
+          label: 'A',
+          steps: [
+            { id: 'charge', label: 'Charge card', status: 'succeeded' },
+            { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+          ],
+        },
+      ],
+    };
+    const { container } = render(RunStepTimeline, { steps: [lanedSaga] as RunStepTimelineEntry[] });
+    expect(container.textContent).toContain('Compensates Charge card');
+  });
+
+  test('resolves a top-level compensation whose forward sibling sits before a branch group', () => {
+    // `charge` and `refund` are both top-level siblings, but a branch group
+    // sits between them — so each is flattened into a separate contiguous run.
+    // The compensation must still resolve across that run boundary.
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'charge', label: 'Charge card', status: 'succeeded' },
+      branchGroup,
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const refundRow = [...(rootList?.children ?? [])].find((el) =>
+      el.textContent?.includes('Refund card'),
+    );
+    expect(refundRow?.hasAttribute('data-cinder-compensation')).toBe(true);
+    expect(container.textContent).toContain('Compensates Charge card');
+  });
+
+  test('does not resolve a compensation to a nested descendant (siblings only)', () => {
+    // "charge" exists only as a child of "parent"; a top-level step compensating
+    // "charge" must NOT match that descendant — compensates targets a sibling.
+    const steps: RunStepTimelineEntry[] = [
+      {
+        id: 'parent',
+        label: 'Parent',
+        status: 'succeeded',
+        children: [{ id: 'charge', label: 'Charge card', status: 'succeeded' }],
+      },
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(container.textContent).not.toContain('Compensates Charge card');
+  });
+
+  test('does not resolve a compensation across a lane boundary (sibling scope only)', () => {
+    // `compensates` is documented as a SIBLING step id. A top-level step must
+    // not resolve to a same-id step inside a branch lane (which could pick the
+    // wrong one when ids repeat across lanes).
+    const steps: RunStepTimelineEntry[] = [
+      branchGroup, // contains a lane step id "blue-deploy"
+      { id: 'undo-blue', label: 'Undo blue', status: 'succeeded', compensates: 'blue-deploy' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(container.textContent).not.toContain('Compensates Deploy blue');
+    // The unresolved compensation renders in place, without the inset marker.
+    const undo = [...container.querySelectorAll('.cinder-run-step-timeline__item')].find((el) =>
+      el.textContent?.includes('Undo blue'),
+    );
+    expect(undo?.hasAttribute('data-cinder-compensation')).toBe(false);
   });
 });
 

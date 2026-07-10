@@ -319,6 +319,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'schedule-builder') {
+    applyScheduleBuilderSchemaRules(schema);
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
@@ -335,6 +340,25 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       },
     },
   ];
+}
+
+function applyScheduleBuilderSchemaRules(schema: ComponentSchemaOutput): void {
+  // `previewCount` is how many fires to request — a positive integer.
+  const previewCount = schema.properties['previewCount'];
+  if (previewCount?.type === 'number') {
+    previewCount.type = 'integer';
+    previewCount.minimum = 1;
+  }
+
+  // The `interval` variant's `every` is documented as a positive integer.
+  const intervalVariant = schema.properties['value']?.anyOf?.find(
+    (variant) => variant.properties?.['every'] !== undefined,
+  );
+  const every = intervalVariant?.properties?.['every'];
+  if (every?.type === 'number') {
+    every.type = 'integer';
+    every.minimum = 1;
+  }
 }
 
 function applyEventStreamViewerSchemaRules(schema: ComponentSchemaOutput): void {
@@ -412,10 +436,79 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
     description: 'Schema-bounded nested child-workflow steps.',
   });
 
+  // Branch/coordination group: a top-level entry with parallel sub-lanes. A lane
+  // renders its steps through the SAME depth-capped path as the main rail
+  // (`flattenSteps(lane.steps, '')` starting at depth 0), so lane steps validate
+  // with the identical schema — every rendered level (0–3) is a proper step
+  // (id/label/status required, so an `{ reason: '…' }` child that would crash the
+  // renderer is rejected), and only steps summarized past the cap are loose.
+  const laneStepSchema = topLevelStepSchema;
+  const branchGroupSchema: PropertySchema = {
+    type: 'object',
+    properties: {
+      kind: {
+        const: 'branch',
+        description: 'Discriminator identifying a branch-group entry.',
+      },
+      id: {
+        type: 'string',
+        description: 'Stable identity; used as the keyed list identity.',
+      },
+      label: {
+        type: 'string',
+        description: 'Display label for the branch group.',
+      },
+      lanes: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              description: 'Stable identity; used as the keyed list identity within the group.',
+            },
+            label: {
+              type: 'string',
+              description: 'Optional display label for the lane.',
+            },
+            outcome: {
+              enum: ['won', 'lost', 'settled'],
+              description:
+                'Competitive outcome for the lane. Omit while the branch is still racing.',
+            },
+            steps: {
+              type: 'array',
+              items: laneStepSchema,
+              description: 'Ordered steps that ran within this lane.',
+            },
+          },
+          additionalProperties: false,
+          required: ['id', 'steps'],
+        },
+        description: 'The parallel sub-lanes.',
+      },
+      collapseThreshold: {
+        type: 'integer',
+        minimum: 1,
+        description:
+          'Collapse the group by default once the lane count reaches this threshold. Defaults to 3.',
+      },
+      collapsed: {
+        type: 'boolean',
+        description: 'Force the initial collapsed (`true`) or expanded (`false`) state.',
+      },
+    },
+    additionalProperties: false,
+    required: ['id', 'kind', 'label', 'lanes'],
+  };
+
   schema.properties['steps'] = {
     type: 'array',
-    items: topLevelStepSchema,
-    description: 'Ordered list of steps to render.',
+    items: {
+      anyOf: [topLevelStepSchema, branchGroupSchema],
+    },
+    description:
+      'Ordered list of timeline entries to render — either steps or branch/coordination groups.',
   };
   schema.required = sortedUniqueStrings([...(schema.required ?? []), 'steps']);
 
@@ -561,6 +654,14 @@ function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): Propert
       additionalProperties: false,
       required: ['href', 'label'],
       description: 'Optional link to logs, traces, or a step detail route.',
+    },
+    rewound: {
+      type: 'boolean',
+      description: 'Marks a step that was speculatively executed and then unwound (rolled back).',
+    },
+    compensates: {
+      type: 'string',
+      description: 'Id of the forward step that this step compensates (reverses).',
     },
   };
 
