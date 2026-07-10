@@ -46,7 +46,7 @@ Three modes live behind a tablist (`Presets`, `Cron`, `Interval`); presets is th
 - **Cron** — five separate fields (minute, hour, day of month, month, day of week), each validated independently with an inline error and hint. The emitted value is the joined five-field expression.
 - **Interval** — a number and a unit (`minutes` / `hours` / `days` / `weeks`).
 
-Switching modes never emits a change by itself — it re-seeds the destination mode's fields from the last value you actually committed, losslessly where representable (an `interval` always converts to an equivalent cron pattern; a cron pattern only converts back to an `interval` when it is a pure step pattern, e.g. `*/15 * * * *`).
+Switching modes never emits a change by itself — it re-seeds the destination mode's fields from the last value you actually committed, losslessly _where representable_. A minute or hour interval converts to an equivalent cron step only when the count evenly divides its field cycle (e.g. `*/15 * * * *`); day/week intervals and non-dividing minute/hour intervals (like every 45 minutes) are not faithfully representable as a cron step, so Cron mode seeds a neutral daily default rather than a misleading expression. A cron pattern converts back to an `interval` only when it is such a dividing step pattern.
 
 Regardless of mode, three things are always visible: a plain-English summary line, the next-fires preview (when `computeNextFires` is supplied), and a timezone display slot (`timezone` snippet, else `timezoneLabel` text, else a "Not set" placeholder).
 

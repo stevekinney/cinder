@@ -87,8 +87,9 @@ export type ScheduleBuilderProps = Omit<
   /**
    * Timezone label rendered in the always-visible timezone display slot, e.g.
    * "America/New_York" or "UTC". Purely presentational — the component does not
-   * interpret it. When omitted, provide the `timezone` snippet instead, or the
-   * slot renders nothing.
+   * interpret it. When omitted, provide the `timezone` snippet instead; if
+   * neither is supplied the slot shows a "Not set" placeholder (the slot itself
+   * is always rendered).
    */
   timezoneLabel?: string | undefined;
   /**
