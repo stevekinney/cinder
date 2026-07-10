@@ -32,6 +32,27 @@ describe('consumer boundary guard', () => {
     expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.ts')).toHaveLength(
       1,
     );
+    expect(
+      findConsumerBoundaryViolations(source, 'packages\\playground\\scripts\\preload.ts'),
+    ).toEqual([]);
+  });
+
+  test('rejects multiline imports and selectors', () => {
+    const privateImport = `await import(\n  '../../../components/src/components/button/index.ts'\n);`;
+    const privateSelector = `container.querySelector(\n  '.cinder-button__icon'\n);`;
+    expect(
+      findConsumerBoundaryViolations(privateImport, 'packages/playground/scripts/build.ts'),
+    ).toHaveLength(1);
+    expect(
+      findConsumerBoundaryViolations(privateSelector, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+  });
+
+  test('rejects typed selector calls and normalizes Windows paths', () => {
+    const source = `container.querySelector<HTMLButtonElement>('.cinder-button__icon');`;
+    expect(
+      findConsumerBoundaryViolations(source, 'packages\\playground\\src\\app.test.ts'),
+    ).toHaveLength(1);
   });
 
   test('rejects internal Cinder classes in consumer test selector calls', () => {
