@@ -1325,6 +1325,43 @@ describe('InvocationRuleBuilder', () => {
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('42');
       });
+
+      test.each(['-', '1.', '1e', '1e5', '-2.5'])(
+        'treats the in-progress numeric typing state (%s) as valid — not coerced — on an unrelated edit',
+        async (typedValue) => {
+          const rule = makeRule({
+            conditions: [
+              makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: typedValue }),
+            ],
+          });
+          const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+          const ruleNameInput = container.querySelector<HTMLInputElement>(
+            '[aria-label="Rule name for PR Review Rule"]',
+          )!;
+
+          await fireEvent.input(ruleNameInput, { target: { value: 'Renamed Rule' } });
+          await fireEvent.blur(ruleNameInput);
+
+          const [nextRules] = onchange.mock.calls[0]!;
+          expect(nextRules[0].conditions[0].value).toBe(typedValue);
+        },
+      );
+
+      test('live typing "1." into the number value input is not blanked by emitChange', async () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ id: 'c1', field: 'retries', operator: 'is', value: '1' })],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const valueInput = container.querySelector<HTMLInputElement>(
+          '[aria-label="Value for condition 1 of PR Review Rule"]',
+        )!;
+
+        await fireEvent.input(valueInput, { target: { value: '1.' } });
+
+        expect(onchange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].value).toBe('1.');
+      });
     });
   });
 

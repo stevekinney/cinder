@@ -117,14 +117,18 @@
   }
 
   /**
-   * A canonical decimal number string — sign, digits, optional fractional
-   * part. This is what a native `<input type="number">` actually preserves
-   * when its `value` is set programmatically; anything else (hex like
-   * `'0x10'`, stray whitespace or trailing units like `'5px'`, exponential
-   * notation, etc.) gets silently sanitized to a BLANK field by the browser,
-   * even though `Number(value)` may still parse it to a finite number.
+   * A number-LIKE string — permissive enough to accept every intermediate
+   * state a user legitimately passes through while typing into a native
+   * `<input type="number">` (a lone `-`, a trailing `.` as in `'1.'`, a
+   * partial exponent like `'1e'` or `'1e5'`, `'-2.5'`, and so on), so
+   * `emitChange` — which runs on every value edit, not just field changes —
+   * never fights live typing by blanking a value mid-keystroke.
+   *
+   * It still rejects strings a number input would never produce and that
+   * only arrive as stale prop data: hex (`'0x10'`), units (`'5px'`), plain
+   * words (`'foo'`), or whitespace mixed with letters.
    */
-  const CANONICAL_NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
+  const NUMBER_LIKE_VALUE_PATTERN = /^-?(\d+\.?\d*|\.\d+)?(e-?\d*)?$/i;
 
   /**
    * Whether a stored condition value is still a faithful representation of
@@ -142,10 +146,10 @@
       case 'enum':
         return fieldEnumOptions(fieldValue).some((option) => option.value === value);
       case 'number':
-        // Blank is allowed; otherwise only a canonical decimal number string
-        // is valid — matching what the number input would actually preserve,
-        // not merely what `Number(value)` happens to parse.
-        return value === '' || CANONICAL_NUMBER_PATTERN.test(value.trim());
+        // Blank is allowed; otherwise a number-like string is valid — lenient
+        // enough to not fight live typing, strict enough to still reject
+        // stale non-numeric data like hex or unit-suffixed strings.
+        return value === '' || NUMBER_LIKE_VALUE_PATTERN.test(value.trim());
       case 'string':
         return true;
     }
