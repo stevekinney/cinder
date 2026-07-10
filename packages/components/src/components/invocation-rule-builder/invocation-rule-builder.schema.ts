@@ -106,7 +106,7 @@ const schema = {
               required: ['label', 'value'],
             },
             description:
-              "Enum choices for this field's value, rendered as a select in\nconditions-only mode. Required when `type` is `'enum'`; ignored\notherwise.",
+              "Enum choices for this field's value, rendered as a select in\nconditions-only mode when `type` is `'enum'`. Provide these for an enum\nfield; if omitted or empty, the value select renders with no choices.\nIgnored for non-enum field types.",
           },
         },
         additionalProperties: false,
@@ -156,7 +156,7 @@ const schema = {
               required: ['label', 'value'],
             },
             description:
-              "Enum choices for this field's value, rendered as a select in\nconditions-only mode. Required when `type` is `'enum'`; ignored\notherwise.",
+              "Enum choices for this field's value, rendered as a select in\nconditions-only mode when `type` is `'enum'`. Provide these for an enum\nfield; if omitted or empty, the value select renders with no choices.\nIgnored for non-enum field types.",
           },
         },
         additionalProperties: false,
@@ -201,7 +201,7 @@ const schema = {
               required: ['label', 'value'],
             },
             description:
-              "Enum choices for this field's value, rendered as a select in\nconditions-only mode. Required when `type` is `'enum'`; ignored\notherwise.",
+              "Enum choices for this field's value, rendered as a select in\nconditions-only mode when `type` is `'enum'`. Provide these for an enum\nfield; if omitted or empty, the value select renders with no choices.\nIgnored for non-enum field types.",
           },
         },
         additionalProperties: false,

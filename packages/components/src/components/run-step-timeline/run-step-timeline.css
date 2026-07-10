@@ -313,10 +313,16 @@
     border-inline-start-width: 3px;
   }
 
-  /* Loser: muted. Dimmed via opacity (not a color literal) + muted border. */
+  /* Loser: muted via a muted border and lane label — not a blanket opacity, so
+   * step text, links, detail triggers, and focus rings keep full contrast. The
+   * "Lost" outcome badge carries the outcome as text. */
   .cinder-run-step-timeline__lane[data-cinder-outcome='lost'] {
     border-color: var(--cinder-border-muted);
-    opacity: 0.62;
+  }
+
+  .cinder-run-step-timeline__lane[data-cinder-outcome='lost']
+    .cinder-run-step-timeline__lane-label {
+    color: var(--cinder-text-muted);
   }
 
   /* Settled: neutral, no competitive emphasis. */

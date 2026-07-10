@@ -325,6 +325,10 @@ export type RunStepTimelineSchemaGrandchildStep = {
   details?: RunStepDetail[] | undefined;
   /** Optional link to logs, traces, or a step detail route. */
   link?: RunStepLink | undefined;
+  /** Marks a step that was speculatively executed and then unwound (rolled back). */
+  rewound?: boolean | undefined;
+  /** Id of the forward step that this step compensates (reverses). */
+  compensates?: string | undefined;
   /**
    * Nested child-workflow steps rendered at depth 3.
    */
@@ -360,6 +364,10 @@ export type RunStepTimelineSchemaGreatGrandchildStep = {
   details?: RunStepDetail[] | undefined;
   /** Optional link to logs, traces, or a step detail route. */
   link?: RunStepLink | undefined;
+  /** Marks a step that was speculatively executed and then unwound (rolled back). */
+  rewound?: boolean | undefined;
+  /** Id of the forward step that this step compensates (reverses). */
+  compensates?: string | undefined;
 };
 
 /**

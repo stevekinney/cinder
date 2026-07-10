@@ -88,8 +88,9 @@ export type InvocationRuleOption = {
   type?: InvocationRuleFieldType;
   /**
    * Enum choices for this field's value, rendered as a select in
-   * conditions-only mode. Required when `type` is `'enum'`; ignored
-   * otherwise.
+   * conditions-only mode when `type` is `'enum'`. Provide these for an enum
+   * field; if omitted or empty, the value select renders with no choices.
+   * Ignored for non-enum field types.
    */
   options?: InvocationRuleValueChoice[];
 };

@@ -1256,6 +1256,37 @@ describe('branch groups', () => {
     // A branch group missing its required `lanes` fails validation.
     expect(validate({ steps: [{ kind: 'branch', id: 'g', label: 'Group' }] })).toBe(false);
   });
+
+  test('accepts a branch lane step with nested children through the schema', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+    // Lane steps are RunStep[] at runtime and can nest children; the schema
+    // must accept that rather than rejecting it under additionalProperties.
+    expect(
+      validate({
+        steps: [
+          {
+            kind: 'branch',
+            id: 'g',
+            label: 'Group',
+            lanes: [
+              {
+                id: 'l1',
+                steps: [
+                  {
+                    id: 's',
+                    label: 'Parent',
+                    status: 'running',
+                    children: [{ id: 's-child', label: 'Child', status: 'succeeded' }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
 });
 
 describe('rewound steps', () => {

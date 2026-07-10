@@ -605,6 +605,14 @@ const schema = {
                             description:
                               'Id of the forward step that this step compensates (reverses).',
                           },
+                          children: {
+                            type: 'array',
+                            items: {
+                              type: 'object',
+                              additionalProperties: true,
+                            },
+                            description: 'Nested steps within a branch lane.',
+                          },
                         },
                         additionalProperties: false,
                         required: ['id', 'label', 'status'],
