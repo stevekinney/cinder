@@ -164,7 +164,35 @@
     // boundaries — each run is flattened in isolation, so its last row and the
     // branch rows would otherwise both hide their connector and split one
     // ordered run (step → branch → step) into disconnected rails.
-    return applyGlobalRailConnectors(applyGlobalRailAriaCurrent(result));
+    // `applyGlobalTopLevelCompensates` likewise resolves `compensates` for
+    // top-level steps across the whole rail, since a compensating step can be
+    // separated from its forward sibling by a branch group (different run).
+    return applyGlobalRailConnectors(
+      applyGlobalTopLevelCompensates(applyGlobalRailAriaCurrent(result)),
+    );
+  }
+
+  // Resolve `compensates` for TOP-LEVEL steps across the entire outer rail. Each
+  // contiguous run is flattened in isolation, so a compensating top-level step
+  // separated from its forward sibling by a branch group (e.g. `charge → branch
+  // → refund` where refund compensates charge) would never find it in its own
+  // run's label map. Nested steps are unaffected: a branch group never nests
+  // inside a step's children, so nested siblings always share a run and are
+  // already resolved correctly by `flattenSteps`.
+  function applyGlobalTopLevelCompensates(rows: RenderedEntry[]): RenderedEntry[] {
+    const topLevelLabelByPathKey = new Map<string, string>();
+    for (const row of rows) {
+      if (row.kind === 'step' && row.depth === 0) {
+        topLevelLabelByPathKey.set(row.pathKey, row.step.label);
+      }
+    }
+    return rows.map((row) => {
+      if (row.kind !== 'step' || row.depth !== 0 || row.step.compensates === undefined) return row;
+      return {
+        ...row,
+        compensatesLabel: resolveSiblingCompensatesLabel(row, topLevelLabelByPathKey),
+      };
+    });
   }
 
   // A rail row's effective depth for connector purposes. Branch groups always

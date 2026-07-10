@@ -288,6 +288,13 @@ function pad2(n: number): string {
   return n.toString().padStart(2, '0');
 }
 
+/** Whether a cron token is a single integer within the inclusive `[min, max]` range. */
+function isFixedInRange(token: string, min: number, max: number): boolean {
+  if (!/^\d+$/.test(token)) return false;
+  const n = Number(token);
+  return Number.isInteger(n) && n >= min && n <= max;
+}
+
 /** A concise, human-readable description of a recurrence value. */
 export function describeValue(value: ScheduleValue): string {
   if (value.mode === 'interval') {
@@ -297,7 +304,11 @@ export function describeValue(value: ScheduleValue): string {
   }
 
   const [minute, hour, dom, month, dow] = splitCron(value.expression);
-  const timeIsFixed = /^\d+$/.test(minute) && /^\d+$/.test(hour);
+  // A "fixed" field must be a single integer WITHIN its cron range: an
+  // out-of-range digit token like `99` is invalid (validateCronField rejects it
+  // and preview is disabled), so the always-visible summary must not present
+  // `Daily at 99:00` or `Monthly on day 99` as if it were a real cadence.
+  const timeIsFixed = isFixedInRange(minute, 0, 59) && isFixedInRange(hour, 0, 23);
   const at = timeIsFixed ? ` at ${pad2(Number(hour))}:${pad2(Number(minute))}` : '';
 
   // The "Weekly"/"Monthly" phrasings imply a single fire per day, so they only
@@ -321,8 +332,8 @@ export function describeValue(value: ScheduleValue): string {
       return `Weekly on ${names}${at}`;
     }
   }
-  // Monthly: fixed day-of-month and a fixed time.
-  if (timeIsFixed && /^\d+$/.test(dom) && month === '*' && dow === '*') {
+  // Monthly: an in-range fixed day-of-month and a fixed time.
+  if (timeIsFixed && isFixedInRange(dom, 1, 31) && month === '*' && dow === '*') {
     return `Monthly on day ${dom}${at}`;
   }
   // Daily: wildcards on day fields, fixed time.

@@ -638,5 +638,14 @@ describe('schedule-builder utilities', () => {
       expect(describeValue({ mode: 'cron', expression: '* * 3 * *' })).toBe('Cron: * * 3 * *');
       expect(describeValue({ mode: 'cron', expression: '0 * 3 * *' })).toBe('Cron: 0 * 3 * *');
     });
+
+    test('does not present an out-of-range digit field as a fixed time or day', () => {
+      // Out-of-range digit tokens are invalid (validateCronField rejects them);
+      // the summary must not read them back as a real cadence like "at 99:00".
+      expect(describeValue({ mode: 'cron', expression: '0 99 * * *' })).toBe('Cron: 0 99 * * *');
+      expect(describeValue({ mode: 'cron', expression: '99 9 * * *' })).toBe('Cron: 99 9 * * *');
+      expect(describeValue({ mode: 'cron', expression: '0 9 99 * *' })).toBe('Cron: 0 9 99 * *');
+      expect(describeValue({ mode: 'cron', expression: '0 9 0 * *' })).toBe('Cron: 0 9 0 * *');
+    });
   });
 });

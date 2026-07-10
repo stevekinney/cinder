@@ -1533,6 +1533,24 @@ describe('compensation', () => {
     expect(container.textContent).toContain('Compensates Charge card');
   });
 
+  test('resolves a top-level compensation whose forward sibling sits before a branch group', () => {
+    // `charge` and `refund` are both top-level siblings, but a branch group
+    // sits between them — so each is flattened into a separate contiguous run.
+    // The compensation must still resolve across that run boundary.
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'charge', label: 'Charge card', status: 'succeeded' },
+      branchGroup,
+      { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    const refundRow = [...(rootList?.children ?? [])].find((el) =>
+      el.textContent?.includes('Refund card'),
+    );
+    expect(refundRow?.hasAttribute('data-cinder-compensation')).toBe(true);
+    expect(container.textContent).toContain('Compensates Charge card');
+  });
+
   test('does not resolve a compensation to a nested descendant (siblings only)', () => {
     // "charge" exists only as a child of "parent"; a top-level step compensating
     // "charge" must NOT match that descendant — compensates targets a sibling.
