@@ -1177,6 +1177,41 @@ describe('InvocationRuleBuilder', () => {
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].operator).toBe('matches');
       });
+
+      test('displays the "eq" label in the readonly summary for a legacy operator, before any edit', () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ field: 'label', operator: 'matches', value: 'foo' })],
+        });
+        const { container } = renderConditionsOnlyBuilder([rule], {
+          readonly: true,
+          onchange: undefined,
+        });
+
+        expect(container.textContent).toContain('equals');
+        expect(container.textContent).not.toContain('matches');
+      });
+
+      test('the editable operator select shows "eq" selected for a legacy operator, before any edit', () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ field: 'label', operator: 'matches', value: 'foo' })],
+        });
+        const { container } = renderConditionsOnlyBuilder([rule]);
+        const operatorSelect = container.querySelector<HTMLSelectElement>(
+          '[aria-label="Operator for condition 1 of PR Review Rule"]',
+        )!;
+
+        expect(operatorSelect.value).toBe('eq');
+        expect(operatorSelect.selectedOptions[0]?.value).toBe('eq');
+      });
+
+      test('full mode readonly summary displays the raw operator label unchanged, before any edit', () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ field: 'path', operator: 'matches', value: 'src/**' })],
+        });
+        const { container } = renderBuilder([rule], { readonly: true, onchange: undefined });
+
+        expect(container.textContent).toContain('matches');
+      });
     });
   });
 

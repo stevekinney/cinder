@@ -118,33 +118,10 @@
     ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
   );
 
-  // Map of step id -> label across the whole timeline (top-level, nested
-  // children, and branch-lane steps) so compensation links can resolve the
-  // forward step they reverse regardless of where it lives.
-  const stepLabelById = $derived(collectStepLabels(steps));
-
   const renderedEntries = $derived(flattenEntries(steps));
 
   function isBranchGroup(entry: RunStepTimelineEntry): entry is RunStepBranchGroup {
     return 'kind' in entry && entry.kind === 'branch';
-  }
-
-  function collectStepLabels(entries: RunStepTimelineEntry[]): Map<string, string> {
-    const labels = new Map<string, string>();
-    const visitSteps = (list: RunStep[]): void => {
-      for (const step of list) {
-        labels.set(step.id, step.label);
-        if (step.children) visitSteps(step.children);
-      }
-    };
-    for (const entry of entries) {
-      if (isBranchGroup(entry)) {
-        for (const lane of entry.lanes) visitSteps(lane.steps);
-      } else {
-        visitSteps([entry]);
-      }
-    }
-    return labels;
   }
 
   // Flatten the top-level entries, keeping contiguous runs of steps together so
@@ -212,6 +189,18 @@
     const rows: PendingStepRow[] = [];
     appendRunStepRows(rows, list, 0, pathPrefix);
     const currentRowIndex = deepestCurrentStepIndex(rows);
+
+    // Build the compensation id→label map from the flattened rows of THIS run or
+    // lane only. Scoping it locally means a `compensates` id resolves against a
+    // sibling in the same list (not a same-id step in a different branch lane),
+    // and it iterates the already-bounded, depth-capped rows rather than
+    // recursing the full step tree (which could overflow the stack for very deep
+    // inputs).
+    const localLabels = new Map<string, string>();
+    for (const row of rows) {
+      if (row.kind === 'step') localLabels.set(row.step.id, row.step.label);
+    }
+
     return rows.map((row, index) => {
       const next = rows[index + 1];
       const connectorAfter: 'hidden' | 'visible' =
@@ -224,14 +213,10 @@
         ...row,
         connectorAfter,
         ariaCurrent,
-        compensatesLabel: resolveCompensatesLabel(row.step),
+        compensatesLabel:
+          row.step.compensates === undefined ? undefined : localLabels.get(row.step.compensates),
       };
     });
-  }
-
-  function resolveCompensatesLabel(step: RunStep): string | undefined {
-    if (step.compensates === undefined) return undefined;
-    return stepLabelById.get(step.compensates);
   }
 
   function appendRunStepRows(

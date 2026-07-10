@@ -144,6 +144,20 @@
   }
 
   /**
+   * The operator to display for a condition — in the readonly summary label
+   * and as the selected value of the editable operator `<select>`. In full
+   * mode this is always the raw stored operator. In conditions-only mode, a
+   * rule can arrive carrying a legacy operator outside the fixed
+   * eq/gt/lt/gte/lte set (e.g. a leftover `'matches'` from full mode); this
+   * displays `'eq'` in that case instead of an operator the mode forbids —
+   * matching what `emitChange` would coerce it to on the next edit, and
+   * keeping the operator `<select>` always showing a valid selected option.
+   */
+  function displayOperator(operator: string): string {
+    return conditionsOnly && !isConditionsOnlyOperator(operator) ? 'eq' : operator;
+  }
+
+  /**
    * Emits `onchange`. In conditions-only mode, normalizes every emitted rule
    * first: strips `actions` (conditions-only rules never carry an action
    * target, even when the incoming `rules` prop arrived with actions already
@@ -404,7 +418,10 @@
   }
 
   function operatorLabel(value: string): string {
-    return resolvedOperatorOptions.find((option) => option.value === value)?.label ?? value;
+    const displayValue = displayOperator(value);
+    return (
+      resolvedOperatorOptions.find((option) => option.value === displayValue)?.label ?? displayValue
+    );
   }
 
   function actionTargetLabel(value: string): string {
@@ -557,7 +574,7 @@
                 <select
                   class="cinder-invocation-rule-builder__condition-select"
                   aria-label={`Operator for condition ${conditionIndex + 1} of ${rule.label}`}
-                  value={condition.operator}
+                  value={displayOperator(condition.operator)}
                   onchange={(event) =>
                     handleUpdateCondition(
                       rule.id,

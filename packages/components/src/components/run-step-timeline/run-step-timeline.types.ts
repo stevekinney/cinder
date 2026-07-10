@@ -371,11 +371,13 @@ export type RunStepTimelineSchemaGreatGrandchildStep = {
 };
 
 /**
- * Schema-bounded leaf step used for branch-lane sequences. Deliberately has no
- * `children` so the branch-group → lane → step chain stays within the schema
- * generator's depth budget. The public {@link RunStepBranchLane} still accepts
- * fully-recursive {@link RunStep}s at runtime; this is only the finite JSON
- * Schema surface.
+ * Schema-bounded step used for branch-lane sequences. This exported TYPE omits
+ * `children` to keep the branch-group → lane → step chain within the schema
+ * generator's depth budget, but the hand-authored schema rules DO emit a
+ * `children` array on lane steps (validated as nested steps) so the generated
+ * JSON Schema does not reject a runtime-valid nested lane step. The public
+ * {@link RunStepBranchLane} accepts fully-recursive {@link RunStep}s at runtime;
+ * this is only the finite type surface.
  * @schemaObject
  */
 export type RunStepTimelineSchemaLaneStep = {

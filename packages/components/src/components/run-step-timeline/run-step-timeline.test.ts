@@ -1351,13 +1351,41 @@ describe('compensation', () => {
     expect(container.textContent).not.toContain('Compensates');
   });
 
-  test('resolves a compensation target that lives inside a branch lane', () => {
+  test('resolves a compensation against a sibling within the same branch lane', () => {
+    const lanedSaga: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'saga',
+      label: 'Saga',
+      lanes: [
+        {
+          id: 'lane-a',
+          label: 'A',
+          steps: [
+            { id: 'charge', label: 'Charge card', status: 'succeeded' },
+            { id: 'refund', label: 'Refund card', status: 'succeeded', compensates: 'charge' },
+          ],
+        },
+      ],
+    };
+    const { container } = render(RunStepTimeline, { steps: [lanedSaga] as RunStepTimelineEntry[] });
+    expect(container.textContent).toContain('Compensates Charge card');
+  });
+
+  test('does not resolve a compensation across a lane boundary (sibling scope only)', () => {
+    // `compensates` is documented as a SIBLING step id. A top-level step must
+    // not resolve to a same-id step inside a branch lane (which could pick the
+    // wrong one when ids repeat across lanes).
     const steps: RunStepTimelineEntry[] = [
-      branchGroup,
+      branchGroup, // contains a lane step id "blue-deploy"
       { id: 'undo-blue', label: 'Undo blue', status: 'succeeded', compensates: 'blue-deploy' },
     ];
     const { container } = render(RunStepTimeline, { steps });
-    expect(container.textContent).toContain('Compensates Deploy blue');
+    expect(container.textContent).not.toContain('Compensates Deploy blue');
+    // The unresolved compensation renders in place, without the inset marker.
+    const undo = [...container.querySelectorAll('.cinder-run-step-timeline__item')].find((el) =>
+      el.textContent?.includes('Undo blue'),
+    );
+    expect(undo?.hasAttribute('data-cinder-compensation')).toBe(false);
   });
 });
 

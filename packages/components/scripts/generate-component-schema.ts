@@ -439,11 +439,12 @@ function applyRunStepTimelineSchemaRules(schema: ComponentSchemaOutput): void {
   // Branch/coordination group: a top-level entry with parallel sub-lanes. Lane
   // steps use a leaf step (no children) so the schema stays finite.
   // Lane steps are `RunStep[]` at runtime and render recursively, so allow
-  // nested children (modeled loosely, like the depth-cap) rather than rejecting
-  // a valid nested lane step under `additionalProperties: false`.
+  // nested children — but validate each child AS A STEP (id/label/status
+  // required), since the renderer builds path keys from each child's `step.id`.
+  // Their own children are modeled loosely (like the depth cap) to stay finite.
   const laneStepSchema = makeRunStepTimelineStepSchema({
     type: 'array',
-    items: { type: 'object', additionalProperties: true },
+    items: makeRunStepTimelineStepSchema(cappedChildrenSchema),
     description: 'Nested steps within a branch lane.',
   });
   const branchGroupSchema: PropertySchema = {
