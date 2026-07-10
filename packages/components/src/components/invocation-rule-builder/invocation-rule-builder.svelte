@@ -138,16 +138,31 @@
     }
   }
 
+  /** Whether `operator` is one of the fixed conditions-only mode operators. */
+  function isConditionsOnlyOperator(operator: string): boolean {
+    return CONDITIONS_ONLY_OPERATOR_OPTIONS.some((option) => option.value === operator);
+  }
+
   /**
-   * Emits `onchange`. In conditions-only mode, strips `actions` from every
-   * emitted rule first — conditions-only rules never carry an action target,
-   * even when the incoming `rules` prop arrived with actions already set (a
-   * consumer switching an existing full-mode rule set into conditions-only
-   * mode, for example).
+   * Emits `onchange`. In conditions-only mode, normalizes every emitted rule
+   * first: strips `actions` (conditions-only rules never carry an action
+   * target, even when the incoming `rules` prop arrived with actions already
+   * set) and coerces any condition `operator` outside the fixed
+   * eq/gt/lt/gte/lte set to `'eq'` (e.g. a leftover full-mode operator like
+   * `'matches'` when a consumer switches existing rules into conditions-only
+   * mode). Full mode passes rules through unchanged.
    */
   function emitChange(nextRules: InvocationRule[], change: InvocationRuleChange): void {
     const rulesToEmit = conditionsOnly
-      ? nextRules.map((rule) => (rule.actions.length === 0 ? rule : { ...rule, actions: [] }))
+      ? nextRules.map((rule) => ({
+          ...rule,
+          actions: [],
+          conditions: rule.conditions.map((condition) =>
+            isConditionsOnlyOperator(condition.operator)
+              ? condition
+              : { ...condition, operator: 'eq' },
+          ),
+        }))
       : nextRules;
     onchange?.(rulesToEmit, change);
   }

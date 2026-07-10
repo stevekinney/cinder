@@ -167,24 +167,46 @@ export function lowerMonthlyOnDay(day: number, time: string): ScheduleValue {
 // ---------------------------------------------------------------------------
 
 /**
+ * Whether a step wildcard of `every` on a field that wraps every `cycleLength`
+ * units (60 for minutes, 24 for hours) is a genuinely fixed-gap interval. A
+ * step wildcard restarts counting from the field's own zero point each cycle
+ * (e.g. the minute field restarts at :00 every hour), so it only behaves like
+ * a true "every N units, forever" interval when `every` evenly divides the
+ * cycle — otherwise the LAST gap before the restart is shorter than `every`.
+ * For example, an every-45-minutes step wildcard fires at :00 and :45 — a
+ * 45-then-15-minute gap, not a steady 45 minutes — because 45 does not
+ * divide 60.
+ */
+function isEvenDivisorStep(every: number, cycleLength: number): boolean {
+  return Number.isInteger(every) && every > 0 && cycleLength % every === 0;
+}
+
+/**
  * Convert any value into cron fields, so switching into cron mode always has
- * something sensible to show. Only `minutes` and `hours` intervals are
- * losslessly representable as a cron step wildcard on the minute or hour
- * field. `days` and `weeks` are NOT: a step wildcard on the day-of-month
- * field resets at the start of every month rather than repeating every N
- * days, and cron has no field for "every N weeks" at all. Silently emitting
- * a step expression for those units would change the schedule's actual
- * cadence the moment a user merely LOOKED at the Cron tab. Seed an honest
- * neutral default (daily at midnight) instead — see `valueToInterval` below,
- * which mirrors this by refusing to recover `days`/`weeks` from cron.
+ * something sensible to show. Only `minutes` and `hours` intervals whose
+ * `every` evenly divides their field's cycle (60 for minutes, 24 for hours)
+ * are losslessly representable as a cron step wildcard — see
+ * `isEvenDivisorStep`. A non-dividing minute/hour interval (e.g. every 45
+ * minutes or every 5 hours), and `days`/`weeks` intervals (a step wildcard on
+ * the day-of-month field resets at the start of every month rather than
+ * repeating every N days, and cron has no field for "every N weeks" at all),
+ * would silently change the schedule's actual cadence the moment a user
+ * merely LOOKED at the Cron tab if lowered to a step wildcard. Seed an honest
+ * neutral default (daily at midnight) instead for all of those — see
+ * `valueToInterval` below, which mirrors this by only recovering a step that
+ * actually divides evenly.
  */
 export function valueToCronFields(value: ScheduleValue): string[] {
   if (value.mode === 'cron') return splitCron(value.expression);
   switch (value.unit) {
     case 'minutes':
-      return [`*/${value.every}`, '*', '*', '*', '*'];
+      return isEvenDivisorStep(value.every, 60)
+        ? [`*/${value.every}`, '*', '*', '*', '*']
+        : ['0', '0', '*', '*', '*'];
     case 'hours':
-      return ['0', `*/${value.every}`, '*', '*', '*'];
+      return isEvenDivisorStep(value.every, 24)
+        ? ['0', `*/${value.every}`, '*', '*', '*']
+        : ['0', '0', '*', '*', '*'];
     case 'days':
     case 'weeks':
       return ['0', '0', '*', '*', '*'];
@@ -193,12 +215,16 @@ export function valueToCronFields(value: ScheduleValue): string[] {
 
 /**
  * Recover an interval `{ every, unit }` from a value when representable, so
- * switching into interval mode is lossless for simple step patterns. Only
- * `minutes` and `hours` steps are recovered — a day-of-month step wildcard
- * is deliberately NOT read back as `{ unit: 'days' }`: cron's day-of-month
- * step resets every month, so it is not equivalent to "every N days" and
- * `valueToCronFields` never produces one for an interval value. Returns
- * `undefined` when the cron expression is not a pure minute/hour interval.
+ * switching into interval mode is lossless for simple step patterns. Only a
+ * `minutes` or `hours` step that evenly divides its field's cycle (60 or 24
+ * — see `isEvenDivisorStep`) is recovered: a non-dividing minute/hour step
+ * (e.g. a 45-minute step wildcard) is not a true fixed-gap interval, and a
+ * day-of-month step
+ * wildcard is deliberately NOT read back as `{ unit: 'days' }` at all —
+ * cron's day-of-month step resets every month, so it is not equivalent to
+ * "every N days" and `valueToCronFields` never produces one for an interval
+ * value. Returns `undefined` when the cron expression is not a pure,
+ * evenly-dividing minute/hour interval.
  */
 export function valueToInterval(
   value: ScheduleValue,
@@ -207,9 +233,13 @@ export function valueToInterval(
   const [minute, hour, dom, month, dow] = splitCron(value.expression);
   if (month !== '*' || dow !== '*') return undefined;
   const minuteStep = cronFieldStep(minute);
-  if (minuteStep && hour === '*' && dom === '*') return { every: minuteStep, unit: 'minutes' };
+  if (minuteStep && isEvenDivisorStep(minuteStep, 60) && hour === '*' && dom === '*') {
+    return { every: minuteStep, unit: 'minutes' };
+  }
   const hourStep = cronFieldStep(hour);
-  if (hourStep && minute === '0' && dom === '*') return { every: hourStep, unit: 'hours' };
+  if (hourStep && isEvenDivisorStep(hourStep, 24) && minute === '0' && dom === '*') {
+    return { every: hourStep, unit: 'hours' };
+  }
   return undefined;
 }
 

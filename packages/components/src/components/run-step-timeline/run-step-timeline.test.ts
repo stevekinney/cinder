@@ -1147,6 +1147,50 @@ describe('branch groups', () => {
     expect(trigger?.getAttribute('aria-expanded')).toBe('true');
   });
 
+  test('stays expanded past the threshold when a lane has an active step', () => {
+    // 3 lanes would auto-collapse, but one lane is running: keep it open so the
+    // active step, its progress, and lane aria-current stay mounted for AT.
+    const activeWideGroup: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'wide-active',
+      label: 'Wide active race',
+      lanes: ['a', 'b', 'c'].map((id) => ({
+        id,
+        label: id.toUpperCase(),
+        steps: [
+          { id: `${id}-1`, label: `${id} step`, status: id === 'b' ? 'running' : 'succeeded' },
+        ],
+      })),
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [activeWideGroup] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('respects an explicit collapsed=true even with an active lane step', () => {
+    const collapsedActive: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'collapsed-active',
+      label: 'Collapsed active',
+      collapsed: true,
+      lanes: [
+        { id: 'a', label: 'A', steps: [{ id: 'a1', label: 'A', status: 'running' }] },
+        { id: 'b', label: 'B', steps: [{ id: 'b1', label: 'B', status: 'succeeded' }] },
+      ],
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [collapsedActive] as RunStepTimelineEntry[],
+    });
+    const trigger = container.querySelector(
+      '.cinder-run-step-timeline__item--branch [aria-expanded]',
+    );
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('respects an explicit collapsed override regardless of threshold', () => {
     const collapsed: RunStepBranchGroup = { ...branchGroup, collapsed: true };
     const { container } = render(RunStepTimeline, {

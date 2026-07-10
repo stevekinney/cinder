@@ -1134,6 +1134,50 @@ describe('InvocationRuleBuilder', () => {
         expect(nextRules[0].actions).toEqual([makeAction()]);
       });
     });
+
+    describe('normalizing unsupported operators', () => {
+      test('coerces a leftover full-mode operator to "eq" (and strips actions) when a rule carrying it is edited in conditions-only mode', async () => {
+        const ruleWithLegacyOperator = makeRule({
+          conditions: [makeCondition({ field: 'label', operator: 'matches', value: 'foo' })],
+          actions: [makeAction()],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([ruleWithLegacyOperator]);
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        expect(onchange).toHaveBeenCalledTimes(1);
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].operator).toBe('eq');
+        expect(nextRules[0].actions).toEqual([]);
+      });
+
+      test('leaves an already-valid conditions-only operator untouched', async () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ field: 'label', operator: 'gte', value: 'foo' })],
+        });
+        const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].operator).toBe('gte');
+      });
+
+      test('full mode never coerces condition operators (conditions-only-only behavior)', async () => {
+        const rule = makeRule({
+          conditions: [makeCondition({ field: 'path', operator: 'matches', value: 'src/**' })],
+        });
+        const { container, onchange } = renderBuilder([rule]);
+        const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
+
+        await fireEvent.click(addCondBtn);
+
+        const [nextRules] = onchange.mock.calls[0]!;
+        expect(nextRules[0].conditions[0].operator).toBe('matches');
+      });
+    });
   });
 
   describe('CSS snapshot', () => {

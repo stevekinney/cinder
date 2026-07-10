@@ -4,6 +4,7 @@ import type { RunStep, RunStepBranchLane, RunStepStatus } from './run-step-timel
 import {
   actionsCountLabel,
   badgeVariant,
+  branchGroupHasCurrentStep,
   branchOutcomeSummary,
   branchStartsCollapsed,
   hasProgress,
@@ -145,6 +146,46 @@ describe('branch lane outcomes', () => {
     expect(branchOutcomeSummary([lane(undefined), lane(undefined)])).toBe('2 lanes racing');
     expect(branchOutcomeSummary([lane('won'), lane(undefined)])).toBe('1 won, 1 lane racing');
     expect(branchOutcomeSummary([])).toBe('No lanes');
+  });
+});
+
+describe('branchGroupHasCurrentStep', () => {
+  test('detects an in-flight step in any lane, including nested children', () => {
+    expect(
+      branchGroupHasCurrentStep({
+        kind: 'branch',
+        id: 'g',
+        label: 'G',
+        lanes: [
+          { id: 'a', steps: [{ id: 'a1', label: 'A', status: 'succeeded' }] },
+          {
+            id: 'b',
+            steps: [
+              {
+                id: 'b1',
+                label: 'B',
+                status: 'succeeded',
+                children: [{ id: 'b1a', label: 'B1a', status: 'running' }],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  test('returns false when every lane step is terminal', () => {
+    expect(
+      branchGroupHasCurrentStep({
+        kind: 'branch',
+        id: 'g',
+        label: 'G',
+        lanes: [
+          { id: 'a', steps: [{ id: 'a1', label: 'A', status: 'succeeded' }] },
+          { id: 'b', steps: [{ id: 'b1', label: 'B', status: 'failed' }] },
+        ],
+      }),
+    ).toBe(false);
   });
 });
 

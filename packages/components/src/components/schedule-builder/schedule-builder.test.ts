@@ -147,6 +147,70 @@ describe('ScheduleBuilder', () => {
     });
   });
 
+  describe('controlled value resync', () => {
+    test('a post-mount value change re-renders the summary and mode', async () => {
+      const initialValue: ScheduleValue = { mode: 'interval', every: 15, unit: 'minutes' };
+      const { container, rerender } = render(ScheduleBuilder, { value: initialValue });
+
+      expect(container.querySelector('[data-sb-panel="presets"]')).not.toBeNull();
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Every 15 minutes',
+      );
+
+      // Simulate a parent loading a saved schedule / resetting the form: a
+      // genuinely different, unrelated value arrives as a prop update.
+      const nextValue: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
+      await rerender({ value: nextValue });
+
+      expect(container.querySelector('[data-sb-panel="cron"]')).not.toBeNull();
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Weekly on Monday at 09:00',
+      );
+    });
+
+    test('re-passing the same value (a controlled onchange echo) does not reset a mid-edit cron field', async () => {
+      const onchange = mock();
+      const initialValue: ScheduleValue = { mode: 'cron', expression: '0 9 * * 1' };
+      const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {
+        value: initialValue,
+        onchange,
+      });
+
+      // Already in cron mode (a cron `value` opens directly there). Start an
+      // in-progress, momentarily-invalid edit to the minute field.
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '9' } });
+      expect(minuteField.value).toBe('9');
+      // A single-digit "9" is a valid cron token on its own, so this commits —
+      // simulate the typical controlled pattern: the parent stores whatever
+      // onchange emitted and passes the SAME content back down as `value`,
+      // often as a freshly-constructed object (not the same reference).
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const echoed: ScheduleValue = { ...(onchange.mock.calls[0]![0] as ScheduleValue) };
+
+      await rerender({ value: echoed, onchange });
+
+      // The field must still read the same committed value — an echo of an
+      // unchanged value must not re-seed and must not appear as a reset.
+      expect(minuteField.value).toBe('9');
+      expect(getByRole('tab', { name: 'Cron', selected: true })).not.toBeNull();
+    });
+
+    test('a value prop that is undefined at mount and stays undefined never triggers a resync', async () => {
+      const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {});
+
+      await fireEvent.click(getByRole('tab', { name: 'Cron' }));
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '0' } });
+
+      // A re-render with no `value` prop at all (still uncontrolled) must not
+      // clobber the in-progress cron edit.
+      await rerender({});
+
+      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
+    });
+  });
+
   describe('mode switching', () => {
     test('switching to cron mode shows the cron panel and hides the presets panel', async () => {
       const { container, getByRole } = render(ScheduleBuilder, {});

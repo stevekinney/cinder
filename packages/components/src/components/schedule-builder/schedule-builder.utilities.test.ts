@@ -357,6 +357,53 @@ describe('schedule-builder utilities', () => {
         '*',
       ]);
     });
+
+    test('lowers a minutes interval to a step wildcard only when every evenly divides 60', () => {
+      // 20 divides 60 evenly (3 cycles per hour) -> a genuinely fixed 20-minute gap.
+      expect(valueToCronFields({ mode: 'interval', every: 20, unit: 'minutes' })).toEqual([
+        '*/20',
+        '*',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('seeds an honest neutral default for a non-dividing minutes interval (every 45 minutes)', () => {
+      // 45 does not divide 60: a `*/45` step wildcard fires at :00 and :45 — a
+      // 45-then-15-minute gap, not a steady 45 minutes — so it would silently
+      // change the schedule's cadence. Seed the honest neutral default instead.
+      expect(valueToCronFields({ mode: 'interval', every: 45, unit: 'minutes' })).toEqual([
+        '0',
+        '0',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('lowers an hours interval to a step wildcard only when every evenly divides 24', () => {
+      // 8 divides 24 evenly (3 cycles per day) -> a genuinely fixed 8-hour gap.
+      expect(valueToCronFields({ mode: 'interval', every: 8, unit: 'hours' })).toEqual([
+        '0',
+        '*/8',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
+
+    test('seeds an honest neutral default for a non-dividing hours interval (every 5 hours)', () => {
+      // 5 does not divide 24: a `*/5` hour step resets at midnight, producing a
+      // 4-hour gap at the day boundary instead of a steady 5 hours.
+      expect(valueToCronFields({ mode: 'interval', every: 5, unit: 'hours' })).toEqual([
+        '0',
+        '0',
+        '*',
+        '*',
+        '*',
+      ]);
+    });
   });
 
   describe('valueToInterval', () => {
@@ -384,6 +431,33 @@ describe('schedule-builder utilities', () => {
       // 3 days", and `valueToCronFields` never produces one for an interval
       // value, so recovering it here would be a lossy, misleading round-trip.
       expect(valueToInterval({ mode: 'cron', expression: '0 0 */3 * *' })).toBeUndefined();
+    });
+
+    test('recovers a minutes interval only when the step evenly divides 60', () => {
+      expect(valueToInterval({ mode: 'cron', expression: '*/20 * * * *' })).toEqual({
+        every: 20,
+        unit: 'minutes',
+      });
+    });
+
+    test('does NOT recover a minutes interval from a non-dividing step (every 45 minutes)', () => {
+      // `*/45` fires at :00 and :45 — a 45-then-15-minute gap, not a steady 45
+      // minutes — and `valueToCronFields` never produces this for an interval
+      // value, so recovering it here would be a lossy, misleading round-trip.
+      expect(valueToInterval({ mode: 'cron', expression: '*/45 * * * *' })).toBeUndefined();
+    });
+
+    test('recovers an hours interval only when the step evenly divides 24', () => {
+      expect(valueToInterval({ mode: 'cron', expression: '0 */8 * * *' })).toEqual({
+        every: 8,
+        unit: 'hours',
+      });
+    });
+
+    test('does NOT recover an hours interval from a non-dividing step (every 5 hours)', () => {
+      // `*/5` on hours resets at midnight — a 4-hour gap at the boundary
+      // instead of a steady 5 hours.
+      expect(valueToInterval({ mode: 'cron', expression: '0 */5 * * *' })).toBeUndefined();
     });
 
     test('returns undefined when month is fixed (not a pure interval)', () => {

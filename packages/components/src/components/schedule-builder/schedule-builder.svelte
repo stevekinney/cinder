@@ -119,53 +119,89 @@
   );
 
   // ---------------------------------------------------------------------------
-  // Seed local field state ONCE from the initial `value` prop (or the shared
-  // default), so mid-edit intermediate text (e.g. a half-typed cron range) has
-  // somewhere to live without fighting a controlled `value` prop. Subsequent
-  // external `value` changes are not re-seeded — `onchange` is how a consumer
-  // commits an edit, matching the documented "pass the value back in" contract.
+  // Seed local field state from the `value` prop (or the shared default), so
+  // mid-edit intermediate text (e.g. a half-typed cron range) has somewhere to
+  // live without fighting a controlled `value` prop on every keystroke. This
+  // seeding runs at construction AND — guarded against re-seeding on a mere
+  // re-render or an echoed `onchange` — again whenever the CONSUMER hands in a
+  // genuinely different `value` (see the resync `$effect` below `lastKnownValue`).
   // ---------------------------------------------------------------------------
   const seedValue = value ?? defaultScheduleValue();
-  const seedInterval = valueToInterval(seedValue);
-  const seedIsMinutesOrHours =
-    seedInterval !== undefined &&
-    (seedInterval.unit === 'minutes' || seedInterval.unit === 'hours');
+
+  /** Structural equality for the small `ScheduleValue` discriminated union. */
+  function scheduleValuesEqual(a: ScheduleValue, b: ScheduleValue): boolean {
+    if (a.mode !== b.mode) return false;
+    if (a.mode === 'cron' && b.mode === 'cron') return a.expression === b.expression;
+    if (a.mode === 'interval' && b.mode === 'interval') {
+      return a.every === b.every && a.unit === b.unit;
+    }
+    return false;
+  }
 
   /**
-   * The authoring mode to open on first render. A minutes/hours interval (or
-   * no `value` at all) cleanly matches the "every N" preset — and is already
-   * seeded correctly there via `seedIsMinutesOrHours` below — so those start
-   * in `presets`. Any other `interval` (days/weeks, which presets cannot
+   * The authoring mode to open for a given value. A minutes/hours interval
+   * (or no value at all) cleanly matches the "every N" preset — and is
+   * already seeded correctly there by `seedFieldsFromValue` below — so those
+   * open `presets`. Any other `interval` (days/weeks, which presets cannot
    * represent) opens directly in `interval` mode; any `cron` value opens
    * directly in `cron` mode. Either way the destination mode's fields are
-   * seeded from `seedValue` below, so the summary and preview are correct
-   * from the very first render instead of showing the presets default.
+   * seeded from the value, so the summary and preview are correct immediately
+   * instead of showing the presets default.
    */
-  function initialAuthoringMode(initialValue: ScheduleValue | undefined): ScheduleAuthoringMode {
-    if (initialValue === undefined) return 'presets';
-    if (initialValue.mode === 'cron') return 'cron';
-    return initialValue.unit === 'minutes' || initialValue.unit === 'hours'
+  function initialAuthoringMode(candidateValue: ScheduleValue | undefined): ScheduleAuthoringMode {
+    if (candidateValue === undefined) return 'presets';
+    if (candidateValue.mode === 'cron') return 'cron';
+    return candidateValue.unit === 'minutes' || candidateValue.unit === 'hours'
       ? 'presets'
       : 'interval';
   }
 
-  let authoringMode = $state<ScheduleAuthoringMode>(initialAuthoringMode(value));
-  let presetKind = $state<PresetKind>('every');
+  /**
+   * Computes every field this component seeds from a `ScheduleValue` — shared
+   * by the initial seed below and the resync `$effect` (see `lastKnownValue`),
+   * so a later controlled `value` change is seeded exactly like the first
+   * render. `presetDailyTime`/`presetWeeklyDays`/`presetWeeklyTime`/
+   * `presetMonthlyDay`/`presetMonthlyTime` have no general inverse from an
+   * arbitrary cron expression (only `valueToInterval` exists), so both the
+   * initial seed and a resync reset them to the same neutral defaults.
+   */
+  function seedFieldsFromValue(seededValue: ScheduleValue) {
+    const interval = valueToInterval(seededValue);
+    const isMinutesOrHours =
+      interval !== undefined && (interval.unit === 'minutes' || interval.unit === 'hours');
+    return {
+      authoringMode: initialAuthoringMode(seededValue),
+      cronFields: valueToCronFields(seededValue),
+      intervalEvery: interval?.every ?? 15,
+      intervalUnit: interval?.unit ?? ('minutes' as ScheduleIntervalUnit),
+      presetKind: 'every' as PresetKind,
+      presetEveryValue: isMinutesOrHours ? interval!.every : 15,
+      presetEveryUnit: (isMinutesOrHours ? interval!.unit : 'minutes') as 'minutes' | 'hours',
+      presetDailyTime: '09:00',
+      presetWeeklyDays: [] as number[],
+      presetWeeklyTime: '09:00',
+      presetMonthlyDay: 1,
+      presetMonthlyTime: '09:00',
+    };
+  }
 
-  let cronFields = $state<string[]>(valueToCronFields(seedValue));
+  const initialSeed = seedFieldsFromValue(seedValue);
 
-  let intervalEvery = $state(seedInterval?.every ?? 15);
-  let intervalUnit = $state<ScheduleIntervalUnit>(seedInterval?.unit ?? 'minutes');
+  let authoringMode = $state<ScheduleAuthoringMode>(initialSeed.authoringMode);
+  let presetKind = $state<PresetKind>(initialSeed.presetKind);
 
-  let presetEveryValue = $state(seedIsMinutesOrHours ? seedInterval!.every : 15);
-  let presetEveryUnit = $state<'minutes' | 'hours'>(
-    seedIsMinutesOrHours ? (seedInterval!.unit as 'minutes' | 'hours') : 'minutes',
-  );
-  let presetDailyTime = $state('09:00');
-  let presetWeeklyDays = $state<number[]>([]);
-  let presetWeeklyTime = $state('09:00');
-  let presetMonthlyDay = $state(1);
-  let presetMonthlyTime = $state('09:00');
+  let cronFields = $state<string[]>(initialSeed.cronFields);
+
+  let intervalEvery = $state(initialSeed.intervalEvery);
+  let intervalUnit = $state<ScheduleIntervalUnit>(initialSeed.intervalUnit);
+
+  let presetEveryValue = $state(initialSeed.presetEveryValue);
+  let presetEveryUnit = $state<'minutes' | 'hours'>(initialSeed.presetEveryUnit);
+  let presetDailyTime = $state(initialSeed.presetDailyTime);
+  let presetWeeklyDays = $state<number[]>(initialSeed.presetWeeklyDays);
+  let presetWeeklyTime = $state(initialSeed.presetWeeklyTime);
+  let presetMonthlyDay = $state(initialSeed.presetMonthlyDay);
+  let presetMonthlyTime = $state(initialSeed.presetMonthlyTime);
 
   function valueForPresets(): ScheduleValue {
     switch (presetKind) {
@@ -227,17 +263,61 @@
   });
 
   /**
-   * The last value the user actually committed (starting from the initial
-   * `value`/default seed). This is intentionally NOT `currentValue`:
-   * `currentValue` reflects whatever the active mode's fields would produce
-   * right now, even before the user has touched them (e.g. presets defaults
-   * to "every 15 minutes" until edited). Mode-switch seeding must recover the
-   * value the user actually committed to, not the untouched default of
-   * whichever mode happens to be active — otherwise switching straight from
-   * the initial `presets` default into cron mode would clobber a real
-   * initial cron `value` with "every 15 minutes" the moment you looked at it.
+   * The last value this component knows the consumer has (starting from the
+   * initial `value`/default seed, then advancing to whatever the user last
+   * committed via `onchange`, then advancing again whenever the resync
+   * `$effect` below adopts a genuinely new controlled `value`). This is
+   * intentionally NOT `currentValue`: `currentValue` reflects whatever the
+   * active mode's fields would produce right now, even before the user has
+   * touched them (e.g. presets defaults to "every 15 minutes" until edited).
+   * Mode-switch seeding and the resync effect must compare against the value
+   * actually committed/known, not the untouched default of whichever mode
+   * happens to be active — otherwise switching straight from the initial
+   * `presets` default into cron mode would clobber a real initial cron
+   * `value` with "every 15 minutes" the moment you looked at it.
+   *
+   * Deliberately a plain (non-`$state`) variable: it is read only from
+   * plain functions and the effect below, never from `$derived` or the
+   * template, so it needs no reactivity of its own — and keeping it
+   * non-reactive means the resync effect's only real dependency is the
+   * `value` prop, not a self-write of its own tracked state.
    */
-  let lastKnownValue = $state<ScheduleValue>(seedValue);
+  let lastKnownValue: ScheduleValue = seedValue;
+
+  /**
+   * Two-way-controlled sync: when the CONSUMER hands in a `value` that is
+   * genuinely different from what this component last knew about, adopt it —
+   * re-seeding every field exactly like the initial seed (see
+   * `seedFieldsFromValue`). This is what makes `value` actually controlled:
+   * loading a saved schedule, a form reset, or a parent that normalizes or
+   * rejects an `onchange` all flow back in.
+   *
+   * The explicit `scheduleValuesEqual` comparison against `lastKnownValue` —
+   * not a bare `$effect(() => { ...reseed from value...})` — is load-bearing:
+   * without it, the routine controlled-component echo (parent stores
+   * whatever `onchange` just emitted and passes it straight back down,
+   * frequently as a freshly-constructed object with the same content) would
+   * look like a "new" value on every edit and wipe mid-edit state — e.g. an
+   * in-progress, not-yet-valid cron field — on every keystroke.
+   */
+  $effect(() => {
+    const incoming = value;
+    if (incoming === undefined || scheduleValuesEqual(incoming, lastKnownValue)) return;
+    const seed = seedFieldsFromValue(incoming);
+    authoringMode = seed.authoringMode;
+    cronFields = seed.cronFields;
+    intervalEvery = seed.intervalEvery;
+    intervalUnit = seed.intervalUnit;
+    presetKind = seed.presetKind;
+    presetEveryValue = seed.presetEveryValue;
+    presetEveryUnit = seed.presetEveryUnit;
+    presetDailyTime = seed.presetDailyTime;
+    presetWeeklyDays = seed.presetWeeklyDays;
+    presetWeeklyTime = seed.presetWeeklyTime;
+    presetMonthlyDay = seed.presetMonthlyDay;
+    presetMonthlyTime = seed.presetMonthlyTime;
+    lastKnownValue = incoming;
+  });
 
   function emitChange(): void {
     lastKnownValue = currentValue;

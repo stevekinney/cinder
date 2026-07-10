@@ -87,6 +87,7 @@
   import {
     actionsCountLabel,
     badgeVariant,
+    branchGroupHasCurrentStep,
     branchOutcomeSummary,
     branchStartsCollapsed,
     hasProgress,
@@ -499,11 +500,9 @@
     {#if entry.kind === 'branch'}
       {@const group = entry.group}
       {@const summary = branchOutcomeSummary(group.lanes)}
-      {@const startOpen = !branchStartsCollapsed(
-        group.lanes.length,
-        group.collapseThreshold,
-        group.collapsed,
-      )}
+      {@const startOpen =
+        !branchStartsCollapsed(group.lanes.length, group.collapseThreshold, group.collapsed) ||
+        (group.collapsed === undefined && branchGroupHasCurrentStep(group))}
       <li
         class="cinder-run-step-timeline__item cinder-run-step-timeline__item--branch"
         data-cinder-status="branch"

@@ -1,6 +1,7 @@
 import type { StatusDotStatus } from '../status-dot/status-dot.types.ts';
 import type {
   RunStep,
+  RunStepBranchGroup,
   RunStepBranchLane,
   RunStepBranchLaneOutcome,
   RunStepStatus,
@@ -162,6 +163,15 @@ export function branchOutcomeSummary(lanes: RunStepBranchLane[]): string {
     parts.push(counts.pending === 1 ? '1 lane racing' : `${counts.pending} lanes racing`);
   }
   return parts.length > 0 ? parts.join(', ') : 'No lanes';
+}
+
+/** Whether any step in any lane of a branch group is currently in-flight. */
+export function branchGroupHasCurrentStep(group: RunStepBranchGroup): boolean {
+  const laneHasCurrent = (steps: RunStep[]): boolean =>
+    steps.some(
+      (step) => isCurrent(step.status) || (step.children ? laneHasCurrent(step.children) : false),
+    );
+  return group.lanes.some((lane) => laneHasCurrent(lane.steps));
 }
 
 /**
