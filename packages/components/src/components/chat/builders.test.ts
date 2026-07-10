@@ -49,6 +49,40 @@ describe('chat conversation builders', () => {
     expect(conversation.metadata).toEqual({ steps: [{ title: 'Draft' }] });
   });
 
+  test('createConversation rejects malformed boundary fields', () => {
+    expect(() =>
+      createConversation({ id: 1 } as unknown as Parameters<typeof createConversation>[0]),
+    ).toThrow('conversation id must be a string');
+
+    expect(() =>
+      createConversation({ id: 'conversation-invalid-generated-id' }, {
+        randomId: () => 1,
+      } as unknown as Partial<ConversationEnvironment>),
+    ).not.toThrow();
+
+    expect(() =>
+      createConversation(undefined, {
+        randomId: () => 1,
+      } as unknown as Partial<ConversationEnvironment>),
+    ).toThrow('conversation id must be a string');
+
+    expect(() =>
+      createConversation({ title: 1 } as unknown as Parameters<typeof createConversation>[0]),
+    ).toThrow('conversation title must be a string');
+
+    expect(() =>
+      createConversation({ status: 'paused' } as unknown as Parameters<
+        typeof createConversation
+      >[0]),
+    ).toThrow('conversation status must be active, archived, or deleted');
+
+    expect(() =>
+      createConversation(undefined, {
+        now: () => 1,
+      } as unknown as Partial<ConversationEnvironment>),
+    ).toThrow('conversation timestamp must be a string');
+  });
+
   test('appendMessages is immutable and preserves the original snapshot when no inputs are given', () => {
     const conversation = createConversation({ id: 'conversation-noop' });
 
@@ -184,6 +218,14 @@ describe('chat conversation builders', () => {
         tokenUsage: { total: 1n } as unknown as MessageInput['tokenUsage'],
       }),
     ).toThrow('tokenUsage must be a JSON-compatible object');
+
+    expect(() =>
+      appendMessages(conversation, {
+        role: 'assistant',
+        content: 'Invalid token usage',
+        tokenUsage: { prompt: -1, completion: 0.5, total: -0.5 },
+      }),
+    ).toThrow('tokenUsage values must be non-negative integers');
   });
 
   test('appendMessages copies appended tool payloads before storing them', () => {
@@ -389,6 +431,16 @@ describe('chat conversation builders', () => {
     ).toThrow('conversation plugin returned an invalid MessageInput');
   });
 
+  test('appendMessages rejects malformed environment timestamps', () => {
+    const conversation = createConversation({ id: 'conversation-invalid-timestamp' });
+
+    expect(() =>
+      appendMessages(conversation, { role: 'assistant', content: 'Hello' }, {
+        now: () => 1,
+      } as unknown as Partial<ConversationEnvironment>),
+    ).toThrow('conversation timestamp must be a string');
+  });
+
   test('role-specific append helpers preserve order and assign positions', () => {
     const conversation = appendAssistantMessage(
       appendUserMessage(createConversation({ id: 'conversation-roles' }), 'Hi'),
@@ -463,6 +515,28 @@ describe('chat conversation builders', () => {
     const message = conversation.messages[conversation.ids[0]!]!;
 
     expect(message.metadata).toEqual(metadata);
+  });
+
+  test('role-specific append helpers keep empty plugin-list metadata', () => {
+    const metadata = {
+      plugins: [],
+    };
+
+    const userConversation = appendUserMessage(
+      createConversation({ id: 'conversation-empty-plugin-user-metadata' }),
+      'Hello',
+      metadata,
+    );
+    const assistantConversation = appendAssistantMessage(
+      createConversation({ id: 'conversation-empty-plugin-assistant-metadata' }),
+      'Hello',
+      metadata,
+    );
+
+    expect(userConversation.messages[userConversation.ids[0]!]!.metadata).toEqual(metadata);
+    expect(assistantConversation.messages[assistantConversation.ids[0]!]!.metadata).toEqual(
+      metadata,
+    );
   });
 
   test('role-specific append helpers keep persistence metadata in the three-argument overload', () => {
@@ -542,6 +616,14 @@ describe('chat conversation builders', () => {
 
     expect('goalCompleted' in userMessage).toBe(false);
     expect(assistantMessage).toMatchObject({ role: 'assistant', goalCompleted: true });
+
+    expect(() =>
+      appendMessages(createConversation({ id: 'conversation-invalid-goal-completion' }), {
+        role: 'assistant',
+        content: 'Done.',
+        goalCompleted: 'false',
+      } as unknown as MessageInput),
+    ).toThrow('appendMessages expected MessageInput arguments before the optional environment');
   });
 
   test('appendMessages rejects environment plugin entries that are not functions', () => {

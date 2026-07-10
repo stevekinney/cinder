@@ -39,6 +39,7 @@ const MESSAGE_ROLES = new Set([
   'tool-result',
   'snapshot',
 ]);
+const CONVERSATION_STATUSES = new Set<ConversationStatus>(['active', 'archived', 'deleted']);
 
 function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `message-${Date.now()}-${Math.random()}`;
@@ -90,6 +91,18 @@ function isConversationEnvironmentParameter(value: unknown): value is Conversati
   );
 }
 
+function isRoleHelperEnvironmentParameter(value: unknown): value is ConversationEnvironmentInput {
+  if (!isRecord(value) || 'role' in value) return false;
+  return (
+    typeof value['now'] === 'function' ||
+    typeof value['randomId'] === 'function' ||
+    typeof value['estimateTokens'] === 'function' ||
+    (Array.isArray(value['plugins']) &&
+      value['plugins'].length > 0 &&
+      value['plugins'].every((plugin) => typeof plugin === 'function'))
+  );
+}
+
 function isMultiModalContentPart(value: unknown): value is MultiModalContent {
   if (!isJsonObject(value) || typeof value['type'] !== 'string') return false;
   if (!Object.values(value).every(isJsonValue)) return false;
@@ -127,7 +140,8 @@ function isLooseMessageInput(value: unknown): value is LooseMessageInput {
     typeof value['role'] === 'string' &&
     MESSAGE_ROLES.has(value['role']) &&
     isMessageContentInput(value['content']) &&
-    (value['hidden'] === undefined || typeof value['hidden'] === 'boolean')
+    (value['hidden'] === undefined || typeof value['hidden'] === 'boolean') &&
+    (value['goalCompleted'] === undefined || typeof value['goalCompleted'] === 'boolean')
   );
 }
 
@@ -171,8 +185,14 @@ function normalizeContent(content: MessageContentInput): MessageInput['content']
 
 function cloneTokenUsage(tokenUsage: TokenUsage): TokenUsage {
   assertJsonObject(tokenUsage, 'tokenUsage');
-  if (Object.values(tokenUsage).some((value) => typeof value !== 'number')) {
+  const values = Object.values(tokenUsage);
+  if (values.some((value) => typeof value !== 'number')) {
     throw new Error('tokenUsage values must be numbers');
+  }
+  if (
+    values.some((value) => typeof value === 'number' && (!Number.isInteger(value) || value < 0))
+  ) {
+    throw new Error('tokenUsage values must be non-negative integers');
   }
   return cloneStructuredValue(tokenUsage);
 }
@@ -243,9 +263,22 @@ function createConversation(
 ): ConversationHistory {
   const resolvedEnvironment = resolveEnvironment(environment);
   const createdAt = resolvedEnvironment.now();
+  const conversationId = options.id ?? resolvedEnvironment.randomId();
+  if (typeof conversationId !== 'string') {
+    throw new Error('conversation id must be a string');
+  }
+  if (typeof createdAt !== 'string') {
+    throw new Error('conversation timestamp must be a string');
+  }
+  if (options.title !== undefined && typeof options.title !== 'string') {
+    throw new Error('conversation title must be a string');
+  }
+  if (options.status !== undefined && !CONVERSATION_STATUSES.has(options.status)) {
+    throw new Error('conversation status must be active, archived, or deleted');
+  }
   return {
     schemaVersion: 4,
-    id: options.id ?? resolvedEnvironment.randomId(),
+    id: conversationId,
     ...(options.title !== undefined ? { title: options.title } : {}),
     status: options.status ?? 'active',
     metadata: cloneMetadata(options.metadata),
@@ -325,6 +358,9 @@ function appendMessages(
   if (inputs.length === 0) return conversation;
   const resolvedEnvironment = resolveEnvironment(environment);
   const updatedAt = resolvedEnvironment.now();
+  if (typeof updatedAt !== 'string') {
+    throw new Error('conversation timestamp must be a string');
+  }
   const nextIds = [...conversation.ids];
   const nextMessages = { ...conversation.messages };
   const toolCallIds = buildToolCallIds(getOrderedMessages(conversation));
@@ -384,7 +420,7 @@ function appendUserMessage(
   const metadata = resolveRoleHelperMetadata(metadataOrEnvironment, environment);
   const resolvedEnvironment =
     environment ??
-    (isConversationEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
+    (isRoleHelperEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
   return appendMessages(conversation, { role: 'user', content, metadata }, resolvedEnvironment);
 }
 
@@ -408,7 +444,7 @@ function appendAssistantMessage(
   const metadata = resolveRoleHelperMetadata(metadataOrEnvironment, environment);
   const resolvedEnvironment =
     environment ??
-    (isConversationEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
+    (isRoleHelperEnvironmentParameter(metadataOrEnvironment) ? metadataOrEnvironment : undefined);
   return appendMessages(
     conversation,
     { role: 'assistant', content, metadata },
@@ -421,7 +457,7 @@ function resolveRoleHelperMetadata(
   environment: ConversationEnvironmentInput | undefined,
 ): Record<string, JSONValue> | undefined {
   if (metadataOrEnvironment === undefined) return undefined;
-  if (environment === undefined && isConversationEnvironmentParameter(metadataOrEnvironment)) {
+  if (environment === undefined && isRoleHelperEnvironmentParameter(metadataOrEnvironment)) {
     return undefined;
   }
   if (isMetadataRecord(metadataOrEnvironment)) return metadataOrEnvironment;
