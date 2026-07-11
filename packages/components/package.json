@@ -6627,13 +6627,33 @@
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@shikijs/engine-oniguruma": "^3.21.0",
+    "@shikijs/langs": "^3.21.0",
+    "@shikijs/types": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
+    "@types/hast": "^3.0.4",
+    "@types/mdast": "^4.0.4",
+    "@types/unist": "^3.0.0",
     "ajv": "^8",
+    "comlink": "^4.4.2",
     "conversationalist": "^0.2.1",
     "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
+    "hast-util-sanitize": "^5.0.0",
+    "js-yaml": "^4.1.0",
     "libphonenumber-js": "^1.13.3",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "rehype-katex": "^7.0.1",
+    "rehype-sanitize": "^6.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "remark-stringify": "^11.0.0",
+    "shiki": "^3.21.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
     "@changesets/parse": "0.4.3",
@@ -6651,7 +6671,6 @@
     "chalk": "^5.6.2",
     "change-case": "^5.4.4",
     "happy-dom": "^15.11.7",
-    "js-yaml": "^4.1.0",
     "lucide-svelte": "^0.503.0",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.0",
@@ -6672,35 +6691,12 @@
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
-    "@shikijs/engine-oniguruma": "^3.21.0",
-    "@shikijs/langs": "^3.21.0",
-    "@shikijs/rehype": "^3.21.0",
-    "@shikijs/types": "^3.21.0",
-    "@types/hast": "^3.0.4",
-    "@types/mdast": "^4.0.4",
-    "@types/unist": "^3.0.0",
-    "comlink": "^4.4.2",
-    "hast-util-sanitize": "^5.0.0",
-    "js-yaml": "^4.1.0",
     "lucide-svelte": ">=0.400.0 <1",
     "prosemirror-inputrules": "^1.5.1",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.3",
-    "rehype-katex": "^7.0.1",
-    "rehype-sanitize": "^6.0.0",
-    "rehype-stringify": "^10.0.1",
-    "remark-gfm": "^4.0.1",
-    "remark-html": "^16.0.1",
-    "remark-math": "^6.0.0",
-    "remark-parse": "^11.0.0",
-    "remark-rehype": "^11.1.2",
-    "remark-stringify": "^11.0.0",
-    "shiki": "^3.21.0",
     "svelte": ">=5.56.0 <6",
-    "unified": "^11.0.5",
-    "unist-util-remove": "^4.0.0",
-    "unist-util-visit": "^5.0.0",
     "zod": "4.4.1"
   },
   "peerDependenciesMeta": {
@@ -6713,36 +6709,6 @@
     "@milkdown/prose": {
       "optional": true
     },
-    "@shikijs/engine-oniguruma": {
-      "optional": true
-    },
-    "@shikijs/langs": {
-      "optional": true
-    },
-    "@shikijs/rehype": {
-      "optional": true
-    },
-    "@shikijs/types": {
-      "optional": true
-    },
-    "@types/hast": {
-      "optional": true
-    },
-    "@types/mdast": {
-      "optional": true
-    },
-    "@types/unist": {
-      "optional": true
-    },
-    "comlink": {
-      "optional": true
-    },
-    "hast-util-sanitize": {
-      "optional": true
-    },
-    "js-yaml": {
-      "optional": true
-    },
     "prosemirror-inputrules": {
       "optional": true
     },
@@ -6753,45 +6719,6 @@
       "optional": true
     },
     "prosemirror-view": {
-      "optional": true
-    },
-    "rehype-katex": {
-      "optional": true
-    },
-    "rehype-sanitize": {
-      "optional": true
-    },
-    "rehype-stringify": {
-      "optional": true
-    },
-    "remark-gfm": {
-      "optional": true
-    },
-    "remark-html": {
-      "optional": true
-    },
-    "remark-math": {
-      "optional": true
-    },
-    "remark-parse": {
-      "optional": true
-    },
-    "remark-rehype": {
-      "optional": true
-    },
-    "remark-stringify": {
-      "optional": true
-    },
-    "shiki": {
-      "optional": true
-    },
-    "unified": {
-      "optional": true
-    },
-    "unist-util-remove": {
-      "optional": true
-    },
-    "unist-util-visit": {
       "optional": true
     }
   },

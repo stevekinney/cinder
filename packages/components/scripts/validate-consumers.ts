@@ -76,47 +76,37 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   '@milkdown/ctx',
   '@milkdown/kit',
   '@milkdown/prose',
+  'prosemirror-inputrules',
+  'prosemirror-model',
+  'prosemirror-state',
+  'prosemirror-view',
+] as const;
+
+const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
+
+const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   '@shikijs/engine-oniguruma',
   '@shikijs/langs',
-  '@shikijs/rehype',
   '@shikijs/types',
   '@types/hast',
   '@types/mdast',
   '@types/unist',
   'comlink',
+  'conversationalist',
   'hast-util-sanitize',
   'js-yaml',
-  'prosemirror-inputrules',
-  'prosemirror-model',
-  'prosemirror-state',
-  'prosemirror-view',
   'rehype-katex',
   'rehype-sanitize',
   'rehype-stringify',
   'remark-gfm',
-  'remark-html',
   'remark-math',
   'remark-parse',
   'remark-rehype',
   'remark-stringify',
   'shiki',
   'unified',
-  'unist-util-remove',
   'unist-util-visit',
 ] as const;
-
-const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
-  // `conversationalist` depends on `gray-matter`, which depends on `js-yaml`.
-  // The styles fixture cannot use its presence as proof that the rich markdown
-  // or editor dependency tree leaked onto the base install path.
-  'js-yaml',
-]);
-
-const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
-  (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
-);
-
-const REQUIRED_RUNTIME_DEPENDENCY_NAMES = ['conversationalist'] as const;
 const REQUIRED_PEER_DEPENDENCY_NAMES = ['zod'] as const;
 
 function collectInstalledPackageNamesFromNodeModulesTree(
@@ -1158,8 +1148,15 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
   const restoreManifest =
     svelteVersion === undefined
-      ? injectTarballIntoFixture(fixtureDirectory)
-      : injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
+      ? injectTarballIntoFixture(fixtureDirectory, {
+          includeRichFeatureDependencies: false,
+          includeWorkspaceDependencyPackages: false,
+        })
+      : injectTarballIntoFixture(fixtureDirectory, {
+          svelteVersion,
+          includeRichFeatureDependencies: false,
+          includeWorkspaceDependencyPackages: false,
+        });
 
   try {
     await $`rm -rf node_modules .svelte-kit build`.cwd(fixtureDirectory);
