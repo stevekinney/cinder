@@ -96,7 +96,9 @@
     <Button
       variant={destructive ? 'danger' : 'primary'}
       disabled={!typedConfirmationMatches}
-      onclick={handleConfirm}>{confirmLabel}</Button
+      onclick={handleConfirm}
     >
+      {confirmLabel}
+    </Button>
   {/snippet}
 </Modal>
