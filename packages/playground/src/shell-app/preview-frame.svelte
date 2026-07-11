@@ -10,7 +10,8 @@
 </script>
 
 <script lang="ts">
-  import { EmptyState, Spinner } from '../../../components/src/index.ts';
+  import EmptyState from '@lostgradient/cinder/empty-state';
+  import Spinner from '@lostgradient/cinder/spinner';
   import { getPreviewStore, type ThemeChoice } from './preview-store.svelte.ts';
   import type { ColorTokenOverrides } from './color-token-registry.ts';
   import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';

@@ -5,10 +5,11 @@ const workspaceRoot = resolve(import.meta.dir, '../../..');
 const playgroundRoots = ['packages/playground/src', 'packages/playground/scripts'] as const;
 
 const sourceImportPattern =
-  /(?:from\s*|import\s*\(\s*|import\s+)(['"])(?:\.\.\/)+components\/src(?:\/[^'"]*)?\1/g;
+  /(?:from\s*|import\s*\(\s*|import\s+)(['"`])(?:\.\.\/)+components\/src(?:\/.*?)?\1/gs;
 const internalSelectorPattern = /\.cinder-[a-z0-9-]+(?:__[a-z0-9_-]+|--[a-z0-9_-]+)/i;
 const selectorCallPattern =
   /\b(?:querySelector(?:All)?|closest|matches|locator|waitForSelector)(?:\s*<[^>]+>)?\s*\(\s*(['"`])([^'"`]*\.cinder-[^'"`]*)\1/gs;
+const classNameCallPattern = /\bgetElementsByClassName\s*\(\s*(['"`])([^'"`]*cinder-[^'"`]*)\1/gs;
 const sharedTestHarnessPattern = /components\/src\/test\/happy-dom\.ts/;
 const publicSourceBarrelPattern = /components\/src\/index\.ts/;
 
@@ -47,19 +48,22 @@ export function findConsumerBoundaryViolations(
   }
 
   if (
-    normalizedFilePath.startsWith('packages/playground/src/') &&
+    normalizedFilePath.startsWith('packages/playground/') &&
     normalizedFilePath.endsWith('.test.ts')
   ) {
-    selectorCallPattern.lastIndex = 0;
-    for (const match of source.matchAll(selectorCallPattern)) {
-      const selector = match[2];
-      if (selector !== undefined && internalSelectorPattern.test(selector)) {
-        violations.push({
-          filePath,
-          lineNumber: lineNumberAt(match.index),
-          message:
-            'Test selectors must use roles, labels, visible text, or app-owned test ids instead of Cinder internal classes.',
-        });
+    for (const pattern of [selectorCallPattern, classNameCallPattern]) {
+      pattern.lastIndex = 0;
+      for (const match of source.matchAll(pattern)) {
+        const selector = match[2];
+        const normalizedSelector = selector?.startsWith('cinder-') ? `.${selector}` : selector;
+        if (normalizedSelector !== undefined && internalSelectorPattern.test(normalizedSelector)) {
+          violations.push({
+            filePath,
+            lineNumber: lineNumberAt(match.index),
+            message:
+              'Test selectors must use roles, labels, visible text, or app-owned test ids instead of Cinder internal classes.',
+          });
+        }
       }
     }
   }

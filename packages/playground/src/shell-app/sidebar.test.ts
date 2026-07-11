@@ -107,7 +107,8 @@ describe('Sidebar', () => {
     expect(container.querySelector('input#sidebar-filter')).not.toBeNull();
     const navigation = container.querySelector('nav[aria-label="Components"]');
     expect(navigation).not.toBeNull();
-    expect(navigation?.querySelectorAll('a').length).toBe(COMPONENTS.length);
+    if (navigation === null) throw new Error('Expected components navigation');
+    expect(navigation.querySelectorAll('a').length).toBe(COMPONENTS.length);
   });
 
   test('renders every component as a humanized label', () => {

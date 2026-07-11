@@ -116,14 +116,15 @@ describe('top-bar open-in-new-tab button', () => {
 
     const toolbar = container.querySelector('[role="toolbar"][aria-label="Playground controls"]');
     expect(toolbar).not.toBeNull();
-    expect(toolbar?.querySelectorAll('[role="radiogroup"]').length).toBeGreaterThanOrEqual(2);
-    expect(toolbar?.querySelector('button[aria-label="Open preview in new tab"]')).not.toBeNull();
+    if (toolbar === null) throw new Error('Expected playground controls toolbar');
+    expect(toolbar.querySelectorAll('[role="radiogroup"]').length).toBeGreaterThanOrEqual(2);
+    expect(toolbar.querySelector('button[aria-label="Open preview in new tab"]')).not.toBeNull();
     expect(
-      toolbar?.querySelector(
+      toolbar.querySelector(
         'button[aria-label="Focus mode — hide sidebar and toolbar (press Escape to exit)"]',
       ),
     ).not.toBeNull();
-    expect(toolbar?.querySelector('input')).not.toBeNull();
+    expect(toolbar.querySelector('input')).not.toBeNull();
 
     unmount();
   });

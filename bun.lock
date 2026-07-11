@@ -43,7 +43,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.10.0",
+      "version": "0.11.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -238,6 +238,7 @@
       "dependencies": {
         "@cinder/markdown": "workspace:*",
         "@lostgradient/cinder": "workspace:*",
+        "lucide-svelte": "^0.503.0",
         "shiki": "^3.0.0",
       },
       "devDependencies": {
