@@ -55,6 +55,13 @@ describe('consumer boundary guard', () => {
     ).toHaveLength(1);
   });
 
+  test('rejects dynamic imports with bundler comments', () => {
+    const source = `await import(/* @vite-ignore */ '../../components/src/components/button/index.ts');`;
+    expect(
+      findConsumerBoundaryViolations(source, 'packages/playground/scripts/build.ts'),
+    ).toHaveLength(1);
+  });
+
   test('rejects typed selector calls and normalizes Windows paths', () => {
     const source = `container.querySelector<HTMLButtonElement>('.cinder-button__icon');`;
     expect(
@@ -95,6 +102,17 @@ describe('consumer boundary guard', () => {
     const source = `container.querySelector('[class~="cinder-button__icon"]');`;
     expect(
       findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+  });
+
+  test('rejects selector constants and interpolated internal classes', () => {
+    const constant = `const icon = '.cinder-button__icon'; container.querySelector(icon);`;
+    const template = 'container.querySelector(`.cinder-${component}__icon`)';
+    expect(
+      findConsumerBoundaryViolations(constant, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+    expect(
+      findConsumerBoundaryViolations(template, 'packages/playground/src/app.test.ts'),
     ).toHaveLength(1);
   });
 
