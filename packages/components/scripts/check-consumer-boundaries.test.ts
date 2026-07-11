@@ -62,6 +62,19 @@ describe('consumer boundary guard', () => {
     ).toHaveLength(1);
   });
 
+  test('rejects import.meta.glob, require, and constant module specifiers', () => {
+    const cases = [
+      `import.meta.glob('../../components/src/components/*/index.ts');`,
+      `require('../../components/src/components/button/index.ts');`,
+      `const modulePath = '../../components/src/components/button/index.ts'; import(modulePath);`,
+    ];
+    for (const source of cases) {
+      expect(
+        findConsumerBoundaryViolations(source, 'packages/playground/scripts/build.ts'),
+      ).toHaveLength(1);
+    }
+  });
+
   test('rejects typed selector calls and normalizes Windows paths', () => {
     const source = `container.querySelector<HTMLButtonElement>('.cinder-button__icon');`;
     expect(
@@ -114,6 +127,18 @@ describe('consumer boundary guard', () => {
     expect(
       findConsumerBoundaryViolations(template, 'packages/playground/src/app.test.ts'),
     ).toHaveLength(1);
+  });
+
+  test('rejects uppercase and typed selector constants', () => {
+    const cases = [
+      `const ICON_SELECTOR = '.cinder-button__icon'; container.querySelector(ICON_SELECTOR);`,
+      `const icon: string = '.cinder-button__icon'; container.querySelector(icon);`,
+    ];
+    for (const source of cases) {
+      expect(
+        findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+      ).toHaveLength(1);
+    }
   });
 
   test('normalizes relative import specifiers before enforcing the boundary', () => {
