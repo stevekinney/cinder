@@ -6632,6 +6632,9 @@
     "@shikijs/rehype": "^3.21.0",
     "@shikijs/types": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
+    "@types/hast": "^3.0.4",
+    "@types/mdast": "^4.0.4",
+    "@types/unist": "^3.0.0",
     "ajv": "^8",
     "comlink": "^4.4.2",
     "conversationalist": "^0.2.1",
@@ -6691,9 +6694,6 @@
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
-    "@types/hast": "^3.0.4",
-    "@types/mdast": "^4.0.4",
-    "@types/unist": "^3.0.0",
     "lucide-svelte": ">=0.400.0 <1",
     "prosemirror-inputrules": "^1.5.1",
     "prosemirror-model": "^1.25.4",
@@ -6710,15 +6710,6 @@
       "optional": true
     },
     "@milkdown/prose": {
-      "optional": true
-    },
-    "@types/hast": {
-      "optional": true
-    },
-    "@types/mdast": {
-      "optional": true
-    },
-    "@types/unist": {
       "optional": true
     },
     "prosemirror-inputrules": {
