@@ -12,6 +12,10 @@ const schema = {
       type: 'string',
       description: 'Current text search query. When provided, the search field is controlled.',
     },
+    showSearch: {
+      type: 'boolean',
+      description: 'Whether to render the leading search field. Defaults to `true`.',
+    },
     searchPlaceholder: {
       type: 'string',
       description: 'Placeholder text shown in the leading search field.',

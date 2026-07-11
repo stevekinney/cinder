@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -124,6 +124,88 @@ describe('ConfirmDialog', () => {
     });
     const dialog = container.querySelector('dialog');
     expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  test('typed confirmation requires a trimmed case-insensitive match and resets on reopen', async () => {
+    const onconfirm = mock();
+    const view = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete repository?',
+        confirmLabel: 'Delete',
+        typeToConfirm: ' Cinder ',
+        onconfirm,
+      },
+    });
+
+    const input = view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement;
+    const confirmButton = view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement;
+    expect(input.autocomplete).toBe('off');
+    expect(confirmButton.disabled).toBe(true);
+
+    await fireEvent.input(input, { target: { value: '  cInDeR  ' } });
+    expect(confirmButton.disabled).toBe(false);
+    await fireEvent.click(confirmButton);
+    expect(onconfirm).toHaveBeenCalledTimes(1);
+
+    await view.rerender({
+      open: true,
+      title: 'Delete repository?',
+      confirmLabel: 'Delete',
+      typeToConfirm: ' Cinder ',
+      onconfirm,
+    });
+    expect((view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement).value).toBe('');
+    expect((view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  test('typed confirmation supports a custom visible label', () => {
+    const view = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete repository?',
+        confirmLabel: 'Delete',
+        typeToConfirm: 'Cinder',
+        typeToConfirmLabel: 'Enter the repository name',
+        onconfirm: () => {},
+      },
+    });
+    expect(view.getByLabelText('Enter the repository name')).not.toBeNull();
+  });
+
+  test('blank typed confirmation labels fall back to the accessible default', () => {
+    const view = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete repository?',
+        confirmLabel: 'Delete',
+        typeToConfirm: 'Cinder',
+        typeToConfirmLabel: '   ',
+        onconfirm: () => {},
+      },
+    });
+    expect(view.getByLabelText('Type "Cinder" to confirm')).not.toBeNull();
+  });
+
+  test('whitespace-only typed confirmation is treated as unset', () => {
+    const view = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete repository?',
+        confirmLabel: 'Delete',
+        typeToConfirm: '   ',
+        onconfirm: () => {},
+      },
+    });
+    expect(view.container.querySelector('.cinder-confirm-dialog__typed-confirmation')).toBeNull();
+    expect((view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  test('typed confirmation styles include the composed Input sidecar', async () => {
+    const css = await Bun.file(new URL('./confirm-dialog.css', import.meta.url)).text();
+    expect(css).toContain("@import '../input/input.css';");
   });
 
   test('cancel button carries autofocus; confirm button does not', () => {

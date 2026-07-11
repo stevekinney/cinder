@@ -36,6 +36,13 @@ export type ConfirmDialogProps = {
    * receives default focus regardless — color is never the sole destructive signal.
    */
   destructive?: boolean;
+  /**
+   * When set, renders a labelled text input and disables the confirm button until the
+   * trimmed input matches this value case-insensitively.
+   */
+  typeToConfirm?: string;
+  /** Visible label for the typed-confirmation input. Defaults to `Type "<value>" to confirm`. */
+  typeToConfirmLabel?: string;
   /** Fired when the user activates the confirm button. Required. Component closes itself after. */
   onconfirm: () => void;
   /**

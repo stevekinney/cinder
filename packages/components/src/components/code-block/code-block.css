@@ -9,12 +9,17 @@
  * ======================================== */
 
   .cinder-code-block {
+    --cinder-code-block-background: var(--_cinder-code-block-code-surface);
+    --cinder-code-block-font-size: var(--cinder-text-sm);
+    --cinder-code-block-height: auto;
+    --cinder-code-block-line-height: var(--cinder-leading-relaxed);
+    --cinder-code-block-padding: var(--cinder-space-4);
     --_cinder-code-block-code-surface: light-dark(
       var(--cinder-surface-raised),
       var(--cinder-surface-inset)
     );
 
-    background: var(--cinder-surface-inset);
+    background: var(--cinder-code-block-background);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
@@ -44,33 +49,34 @@
    * inner pre elements can stay metrically identical. */
   .cinder-code-block__viewport {
     display: block;
-    overflow-x: auto;
-    background: var(--_cinder-code-block-code-surface);
+    block-size: var(--cinder-code-block-height);
+    overflow: auto;
+    background: var(--cinder-code-block-background);
   }
 
   .cinder-code-block__pre,
   .cinder-code-block :where(pre.shiki) {
     margin: 0;
-    padding: var(--cinder-space-4);
+    padding: var(--cinder-code-block-padding);
     width: max-content;
     min-width: 100%;
     overflow-x: clip;
     font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-relaxed);
+    font-size: var(--cinder-code-block-font-size);
+    line-height: var(--cinder-code-block-line-height);
     color: var(--cinder-text);
     /* Use near-white in light mode so github-light token colors (e.g. #d73a49
      * keyword red) clear 4.5:1 WCAG AA. In dark mode keep the deep inset so
      * github-dark tokens maintain contrast on a very dark surface. */
-    background: var(--_cinder-code-block-code-surface);
+    background: var(--cinder-code-block-background);
   }
 
   /* Shiki writes inline background styles on its generated <pre>; keep the
    * highlighted state visually and metrically identical to the plain fallback. */
   .cinder-code-block :where(pre.shiki) {
     margin: 0 !important;
-    padding: var(--cinder-space-4) !important;
-    background: var(--_cinder-code-block-code-surface) !important;
+    padding: var(--cinder-code-block-padding) !important;
+    background: var(--cinder-code-block-background) !important;
   }
 
   .cinder-code-block__code,
