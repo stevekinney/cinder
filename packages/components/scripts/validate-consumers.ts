@@ -82,14 +82,7 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   'prosemirror-view',
 ] as const;
 
-const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
-  // The bundled chat markdown runtime requires Shiki, whose install graph
-  // includes its engine, languages, shared types, and unified AST types.
-]);
-
-const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
-  (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
-);
+const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
 
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   '@shikijs/engine-oniguruma',
