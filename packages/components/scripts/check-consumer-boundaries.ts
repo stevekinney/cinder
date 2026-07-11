@@ -8,7 +8,7 @@ const sourceImportPattern =
   /(?:from\s*|import\s*\(\s*|import\s+)(['"`])(?:\.\.\/)+components\/src(?:\/.*?)?\1/gs;
 const internalSelectorPattern = /\.cinder-[a-z0-9-]+(?:__[a-z0-9_-]+|--[a-z0-9_-]+)/i;
 const selectorCallPattern =
-  /\b(?:querySelector(?:All)?|closest|matches|locator|waitForSelector)(?:\s*<[^>]+>)?\s*\(\s*(['"`])([^'"`]*\.cinder-[^'"`]*)\1/gs;
+  /\b(?:querySelector(?:All)?|closest|matches|locator|waitForSelector)(?:\s*<[^>]+>)?\s*\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*?\.cinder-(?:\\.|(?!\1)[\s\S])*)\1/g;
 const classNameCallPattern = /\bgetElementsByClassName\s*\(\s*(['"`])([^'"`]*cinder-[^'"`]*)\1/gs;
 const sharedTestHarnessPattern = /components\/src\/test\/happy-dom\.ts/;
 const publicSourceBarrelPattern = /components\/src\/index\.ts/;
@@ -55,8 +55,15 @@ export function findConsumerBoundaryViolations(
       pattern.lastIndex = 0;
       for (const match of source.matchAll(pattern)) {
         const selector = match[2];
-        const normalizedSelector = selector?.startsWith('cinder-') ? `.${selector}` : selector;
-        if (normalizedSelector !== undefined && internalSelectorPattern.test(normalizedSelector)) {
+        const selectorCandidates =
+          pattern === classNameCallPattern
+            ? (selector?.split(/\s+/).map((className) => `.${className}`) ?? [])
+            : [selector];
+        if (
+          selectorCandidates.some(
+            (candidate) => candidate !== undefined && internalSelectorPattern.test(candidate),
+          )
+        ) {
           violations.push({
             filePath,
             lineNumber: lineNumberAt(match.index),

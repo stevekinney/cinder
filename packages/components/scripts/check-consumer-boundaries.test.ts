@@ -80,6 +80,17 @@ describe('consumer boundary guard', () => {
     ).toHaveLength(1);
   });
 
+  test('rejects internal classes after other class names or quoted attribute selectors', () => {
+    const classLookup = `container.getElementsByClassName('foo cinder-button__icon');`;
+    const selector = `container.querySelector('[aria-label="Save"] .cinder-button__icon');`;
+    expect(
+      findConsumerBoundaryViolations(classLookup, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+    expect(
+      findConsumerBoundaryViolations(selector, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+  });
+
   test('allows semantic and public-root selectors', () => {
     const source = [
       `container.querySelector('button[aria-label="Save"]');`,
