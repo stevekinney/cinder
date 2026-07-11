@@ -78,18 +78,41 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   '@milkdown/prose',
   '@shikijs/engine-oniguruma',
   '@shikijs/langs',
-  '@shikijs/rehype',
   '@shikijs/types',
   '@types/hast',
   '@types/mdast',
   '@types/unist',
-  'comlink',
-  'hast-util-sanitize',
-  'js-yaml',
   'prosemirror-inputrules',
   'prosemirror-model',
   'prosemirror-state',
   'prosemirror-view',
+] as const;
+
+const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
+  // `conversationalist` depends on `gray-matter`, which depends on `js-yaml`.
+  // The styles fixture cannot use its presence as proof that the rich markdown
+  // or editor dependency tree leaked onto the base install path.
+  'js-yaml',
+  // The bundled chat markdown runtime requires Shiki, whose install graph
+  // includes its engine, languages, shared types, and unified AST types.
+  '@shikijs/engine-oniguruma',
+  '@shikijs/langs',
+  '@shikijs/types',
+  '@types/hast',
+  '@types/mdast',
+  '@types/unist',
+]);
+
+const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
+  (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
+);
+
+const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
+  '@shikijs/rehype',
+  'comlink',
+  'conversationalist',
+  'hast-util-sanitize',
+  'js-yaml',
   'rehype-katex',
   'rehype-sanitize',
   'rehype-stringify',
@@ -104,19 +127,6 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   'unist-util-remove',
   'unist-util-visit',
 ] as const;
-
-const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
-  // `conversationalist` depends on `gray-matter`, which depends on `js-yaml`.
-  // The styles fixture cannot use its presence as proof that the rich markdown
-  // or editor dependency tree leaked onto the base install path.
-  'js-yaml',
-]);
-
-const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
-  (dependencyName) => !BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES.has(dependencyName),
-);
-
-const REQUIRED_RUNTIME_DEPENDENCY_NAMES = ['conversationalist'] as const;
 const REQUIRED_PEER_DEPENDENCY_NAMES = ['zod'] as const;
 
 function collectInstalledPackageNamesFromNodeModulesTree(
