@@ -67,7 +67,7 @@ export function relocateCompensationEntries(
   entries: RunStepTimelineEntry[],
 ): RunStepTimelineEntry[] {
   const normalized = entries.map((entry) =>
-    'kind' in entry
+    isBranchGroup(entry)
       ? {
           ...entry,
           lanes: entry.lanes.map((lane) => ({
@@ -77,7 +77,11 @@ export function relocateCompensationEntries(
         }
       : entry,
   );
-  return relocateSiblingItems(normalized, (entry) => ('kind' in entry ? undefined : entry));
+  return relocateSiblingItems(normalized, (entry) => (isBranchGroup(entry) ? undefined : entry));
+}
+
+function isBranchGroup(entry: RunStepTimelineEntry): entry is RunStepBranchGroup {
+  return 'kind' in entry && entry.kind === 'branch';
 }
 
 /** Badge variants used for the per-step status chip. */

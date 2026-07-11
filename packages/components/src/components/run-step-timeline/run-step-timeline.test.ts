@@ -1520,6 +1520,15 @@ describe('compensation', () => {
     expect(rootRowLabels(container)).toEqual(['Charge', 'Refund']);
   });
 
+  test('treats a step with an unrelated extra kind property as a step', () => {
+    const steps = [
+      { id: 'refund', label: 'Refund', status: 'succeeded', compensates: 'charge', kind: 'task' },
+      { id: 'charge', label: 'Charge', status: 'succeeded', kind: 'task' },
+    ] as unknown as RunStepTimelineEntry[];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Charge', 'Refund']);
+  });
+
   test('keeps multiple compensations in consumer order beneath their forward step', () => {
     const steps: RunStepTimelineEntry[] = [
       { id: 'charge', label: 'Charge', status: 'succeeded' },
