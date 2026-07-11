@@ -6,15 +6,15 @@ describe('consumer boundary guard', () => {
   test('rejects relative imports into private Cinder source', () => {
     const source = `import Button from '../../../components/src/components/button/index.ts';`;
     expect(
-      findConsumerBoundaryViolations(source, 'packages/playground/src/app.svelte'),
+      findConsumerBoundaryViolations(source, 'packages/playground/src/shell-app/app.svelte'),
     ).toHaveLength(1);
   });
 
   test('allows the public source barrel used by the local development server', () => {
     const source = `import { Button } from '../../../components/src/index.ts';`;
-    expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.svelte')).toEqual(
-      [],
-    );
+    expect(
+      findConsumerBoundaryViolations(source, 'packages/playground/src/shell-app/app.svelte'),
+    ).toEqual([]);
   });
 
   test('allows public package imports', () => {
@@ -38,7 +38,7 @@ describe('consumer boundary guard', () => {
   });
 
   test('rejects multiline imports and selectors', () => {
-    const privateImport = `await import(\n  '../../../components/src/components/button/index.ts'\n);`;
+    const privateImport = `await import(\n  '../../components/src/components/button/index.ts'\n);`;
     const privateSelector = `container.querySelector(\n  '.cinder-button__icon'\n);`;
     expect(
       findConsumerBoundaryViolations(privateImport, 'packages/playground/scripts/build.ts'),
@@ -49,7 +49,7 @@ describe('consumer boundary guard', () => {
   });
 
   test('rejects template-literal dynamic imports', () => {
-    const source = 'await import(`../../../components/src/components/${component}/index.ts`);';
+    const source = 'await import(`../../components/src/components/${component}/index.ts`);';
     expect(
       findConsumerBoundaryViolations(source, 'packages/playground/scripts/build.ts'),
     ).toHaveLength(1);
@@ -88,6 +88,20 @@ describe('consumer boundary guard', () => {
     ).toHaveLength(1);
     expect(
       findConsumerBoundaryViolations(selector, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+  });
+
+  test('rejects class-attribute selectors', () => {
+    const source = `container.querySelector('[class~="cinder-button__icon"]');`;
+    expect(
+      findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+  });
+
+  test('normalizes relative import specifiers before enforcing the boundary', () => {
+    const source = `import Button from '../../../components/../components/src/components/button/index.ts';`;
+    expect(
+      findConsumerBoundaryViolations(source, 'packages/playground/src/shell-app/app.ts'),
     ).toHaveLength(1);
   });
 

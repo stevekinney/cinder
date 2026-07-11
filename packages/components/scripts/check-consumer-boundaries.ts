@@ -1,17 +1,15 @@
 import { Glob } from 'bun';
-import { relative, resolve } from 'node:path';
+import { posix, relative, resolve } from 'node:path';
 
 const workspaceRoot = resolve(import.meta.dir, '../../..');
 const playgroundRoots = ['packages/playground/src', 'packages/playground/scripts'] as const;
 
 const sourceImportPattern =
-  /(?:from\s*|import\s*\(\s*|import\s+)(['"`])(?:\.\.\/)+components\/src(?:\/.*?)?\1/gs;
+  /(?:from\s*|import\s*\(\s*|import\s+)(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
 const internalSelectorPattern = /\.cinder-[a-z0-9-]+(?:__[a-z0-9_-]+|--[a-z0-9_-]+)/i;
 const selectorCallPattern =
-  /\b(?:querySelector(?:All)?|closest|matches|locator|waitForSelector)(?:\s*<[^>]+>)?\s*\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*?\.cinder-(?:\\.|(?!\1)[\s\S])*)\1/g;
+  /\b(?:querySelector(?:All)?|closest|matches|locator|waitForSelector)(?:\s*<[^>]+>)?\s*\(\s*(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
 const classNameCallPattern = /\bgetElementsByClassName\s*\(\s*(['"`])([^'"`]*cinder-[^'"`]*)\1/gs;
-const sharedTestHarnessPattern = /components\/src\/test\/happy-dom\.ts/;
-const publicSourceBarrelPattern = /components\/src\/index\.ts/;
 
 export type ConsumerBoundaryViolation = {
   filePath: string;
@@ -29,13 +27,16 @@ export function findConsumerBoundaryViolations(
 
   sourceImportPattern.lastIndex = 0;
   for (const match of source.matchAll(sourceImportPattern)) {
-    const matchedImport = match[0];
+    const specifier = match[2];
+    if (specifier === undefined || !specifier.startsWith('.')) continue;
+    const importTarget = posix.normalize(posix.join(posix.dirname(normalizedFilePath), specifier));
+    if (!importTarget.startsWith('packages/components/src')) continue;
     if (
-      !publicSourceBarrelPattern.test(matchedImport) &&
+      importTarget !== 'packages/components/src/index.ts' &&
       !(
         (normalizedFilePath.endsWith('.test.ts') ||
           normalizedFilePath === 'packages/playground/scripts/preload.ts') &&
-        sharedTestHarnessPattern.test(matchedImport)
+        importTarget === 'packages/components/src/test/happy-dom.ts'
       )
     ) {
       violations.push({
@@ -58,7 +59,11 @@ export function findConsumerBoundaryViolations(
         const selectorCandidates =
           pattern === classNameCallPattern
             ? (selector?.split(/\s+/).map((className) => `.${className}`) ?? [])
-            : [selector];
+            : [
+                selector,
+                ...(selector?.match(/cinder-[a-z0-9_-]+/gi)?.map((className) => `.${className}`) ??
+                  []),
+              ];
         if (
           selectorCandidates.some(
             (candidate) => candidate !== undefined && internalSelectorPattern.test(candidate),
