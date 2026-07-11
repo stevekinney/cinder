@@ -41,6 +41,7 @@
   }: ConfirmDialogProps = $props();
   const describedById = $derived(description ? descriptionId : undefined);
   const normalizedTypeToConfirm = $derived(typeToConfirm?.trim() || undefined);
+  const normalizedTypeToConfirmLabel = $derived(typeToConfirmLabel?.trim() || undefined);
   let typedConfirmation = $state('');
   let previousOpen = open;
   const typedConfirmationMatches = $derived(
@@ -85,7 +86,7 @@
       id={typedConfirmationId}
       class="cinder-confirm-dialog__typed-confirmation"
       bind:value={typedConfirmation}
-      label={typeToConfirmLabel ?? `Type "${normalizedTypeToConfirm}" to confirm`}
+      label={normalizedTypeToConfirmLabel ?? `Type "${normalizedTypeToConfirm}" to confirm`}
       autocomplete="off"
     />
   {/if}

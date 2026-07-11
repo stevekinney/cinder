@@ -173,6 +173,20 @@ describe('ConfirmDialog', () => {
     expect(view.getByLabelText('Enter the repository name')).not.toBeNull();
   });
 
+  test('blank typed confirmation labels fall back to the accessible default', () => {
+    const view = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Delete repository?',
+        confirmLabel: 'Delete',
+        typeToConfirm: 'Cinder',
+        typeToConfirmLabel: '   ',
+        onconfirm: () => {},
+      },
+    });
+    expect(view.getByLabelText('Type "Cinder" to confirm')).not.toBeNull();
+  });
+
   test('whitespace-only typed confirmation is treated as unset', () => {
     const view = render(ConfirmDialog, {
       props: {
