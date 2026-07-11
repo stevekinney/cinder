@@ -1,5 +1,15 @@
 # @lostgradient/cinder
 
+## 0.12.0
+
+### Minor Changes
+
+- [#721](https://github.com/stevekinney/cinder/pull/721) [`a6ee978`](https://github.com/stevekinney/cinder/commit/a6ee9784198ff450c1a9493e3c52a2f2c0965b62) Thanks [@stevekinney](https://github.com/stevekinney)! - Add public source-excerpt styling variables to CodeBlock, typed confirmation to ConfirmDialog, and a facet-only mode to FacetedFilterBar.
+
+### Patch Changes
+
+- [#725](https://github.com/stevekinney/cinder/pull/725) [`a2a3254`](https://github.com/stevekinney/cinder/commit/a2a3254df455b37f74abf4f73e8e8030017af309) Thanks [@stevekinney](https://github.com/stevekinney)! - Render compensation steps directly beneath the forward-step subtree they reverse.
+
 ## 0.11.0
 
 ### Minor Changes
