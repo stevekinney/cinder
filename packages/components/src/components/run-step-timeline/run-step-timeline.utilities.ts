@@ -18,6 +18,8 @@ export function relocateCompensationSteps(steps: RunStep[]): RunStep[] {
 }
 
 function relocateSiblingItems<T>(items: T[], getStep: (item: T) => RunStep | undefined): T[] {
+  if (!items.some((item) => getStep(item)?.compensates !== undefined)) return items;
+
   const stepById = new Map<string, RunStep>();
   for (const item of items) {
     const step = getStep(item);
