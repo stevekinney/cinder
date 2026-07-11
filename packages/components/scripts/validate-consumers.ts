@@ -86,10 +86,6 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
 ] as const;
 
 const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
-  // `conversationalist` depends on `gray-matter`, which depends on `js-yaml`.
-  // The styles fixture cannot use its presence as proof that the rich markdown
-  // or editor dependency tree leaked onto the base install path.
-  'js-yaml',
   // The bundled chat markdown runtime requires Shiki, whose install graph
   // includes its engine, languages, shared types, and unified AST types.
   '@types/hast',
