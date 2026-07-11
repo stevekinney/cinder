@@ -99,17 +99,16 @@ function dispatchClick(
 }
 
 describe('Sidebar', () => {
-  test('renders Cinder chrome hooks required by the shell stylesheet', () => {
+  test('renders the public navigation and filter contract', () => {
     const { container } = render(Sidebar, {
       props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },
     });
 
-    expect(container.querySelector('input.cinder-input#sidebar-filter')).not.toBeNull();
-    expect(container.querySelector('nav.cinder-side-navigation')).not.toBeNull();
-    expect(container.querySelector('.cinder-side-navigation__list')).not.toBeNull();
-    expect(container.querySelectorAll('.cinder-side-navigation__item').length).toBe(
-      COMPONENTS.length,
-    );
+    expect(container.querySelector('input#sidebar-filter')).not.toBeNull();
+    const navigation = container.querySelector('nav[aria-label="Components"]');
+    expect(navigation).not.toBeNull();
+    if (navigation === null) throw new Error('Expected components navigation');
+    expect(navigation.querySelectorAll('a').length).toBe(COMPONENTS.length);
   });
 
   test('renders every component as a humanized label', () => {

@@ -134,6 +134,7 @@ describe('pipeline contract: push stays parallel and scoped', () => {
 describe('pipeline contract: package script composition (source-based: reads packages/*/package.json)', () => {
   const KNOWN_LINT_INVARIANTS_CHECKS = [
     'check:no-cycle-imports',
+    'check:consumer-boundaries',
     'check:no-bare-console-warn',
     'check:no-inline-match-media',
     'check:svelte-ts-runtime-types',
@@ -158,17 +159,17 @@ describe('pipeline contract: package script composition (source-based: reads pac
     }
   });
 
-  it("components' lint:invariants chain contains (at least) all 7 known checks", async () => {
+  it("components' lint:invariants chain contains every known check", async () => {
     const manifest = await readPackageJson(join(componentsPackageRoot, 'package.json'));
     const scripts = scriptsOf(manifest);
     const lintInvariants = scripts['lint:invariants'];
     expect(lintInvariants).toBeDefined();
     // Containment, not equality: another task may append `check:pipeline-coverage`
-    // to this chain concurrently with this change. Any of the 7 checks going
+    // to this chain concurrently with this change. Any known check going
     // missing is the real regression this pins — losing one silently drops an
-    // entire class of guardrail (cycle imports, console.warn hygiene, inline
-    // matchMedia, Svelte/TS runtime type drift, boolean attribute conventions,
-    // test cleanup, or design-token literal usage).
+    // entire class of guardrail (cycle imports, consumer boundaries,
+    // console.warn hygiene, inline matchMedia, Svelte/TS runtime type drift,
+    // boolean attribute conventions, test cleanup, or design-token literal usage).
     for (const checkName of KNOWN_LINT_INVARIANTS_CHECKS) {
       expect(chainIncludesScript(lintInvariants ?? '', checkName)).toBe(true);
     }

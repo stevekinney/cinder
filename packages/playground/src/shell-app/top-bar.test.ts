@@ -108,25 +108,23 @@ function liveRegion(container: HTMLElement): HTMLElement {
 }
 
 describe('top-bar open-in-new-tab button', () => {
-  test('renders Cinder chrome hooks required by the shell stylesheet', async () => {
+  test('renders the public toolbar controls', async () => {
     const store = new PreviewStore('button');
     store.previewWidth = 375;
     const { container, unmount } = render(TopBarFixture, { store });
     await tick();
 
-    expect(container.querySelector('.cinder-toolbar')?.getAttribute('aria-label')).toBe(
-      'Playground controls',
-    );
-    expect(container.querySelectorAll('.cinder-toolbar__group').length).toBeGreaterThanOrEqual(4);
-    expect(container.querySelector('.cinder-toolbar__spacer')).not.toBeNull();
-    expect(container.querySelectorAll('.cinder-segmented-control').length).toBeGreaterThanOrEqual(
-      2,
-    );
-    // Open-in-new-tab (↗) and focus-mode (⛶) are the two cinder Buttons in the
-    // toolbar; the narrow-viewport sidebar toggle is a plain <button>, not a
-    // .cinder-button.
-    expect(container.querySelectorAll('.cinder-button').length).toBeGreaterThanOrEqual(2);
-    expect(container.querySelector('input.cinder-input')).not.toBeNull();
+    const toolbar = container.querySelector('[role="toolbar"][aria-label="Playground controls"]');
+    expect(toolbar).not.toBeNull();
+    if (toolbar === null) throw new Error('Expected playground controls toolbar');
+    expect(toolbar.querySelectorAll('[role="radiogroup"]').length).toBeGreaterThanOrEqual(2);
+    expect(toolbar.querySelector('button[aria-label="Open preview in new tab"]')).not.toBeNull();
+    expect(
+      toolbar.querySelector(
+        'button[aria-label="Focus mode — hide sidebar and toolbar (press Escape to exit)"]',
+      ),
+    ).not.toBeNull();
+    expect(toolbar.querySelector('input')).not.toBeNull();
 
     unmount();
   });

@@ -10,14 +10,8 @@
 </script>
 
 <script lang="ts">
-  // Import the two components from their per-component modules rather than the
-  // monolithic `components/src/index.ts` barrel: the barrel re-exports every
-  // component (including review-editor, which pulls in the commentary
-  // subpaths), and dragging that whole graph into this leaf both bloats the
-  // bundle and makes the component impossible to mount in a `--conditions
-  // browser` test. These narrow paths bring in only what we render.
-  import { EmptyState } from '../../../components/src/components/empty-state/index.ts';
-  import { Spinner } from '../../../components/src/components/spinner/index.ts';
+  import EmptyState from '@lostgradient/cinder/empty-state';
+  import Spinner from '@lostgradient/cinder/spinner';
   import { getPreviewStore, type ThemeChoice } from './preview-store.svelte.ts';
   import type { ColorTokenOverrides } from './color-token-registry.ts';
   import { buildIframeSrc, createPreviewMessage, type PreviewMessage } from './routing.ts';

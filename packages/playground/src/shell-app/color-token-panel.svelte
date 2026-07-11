@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
 
   import { Button, ColorPicker, Input, Popover } from '../../../components/src/index.ts';
-  import { RotateCcw } from '../../../components/src/components/icons/index.ts';
+  import { RotateCcw } from 'lucide-svelte';
   import {
     COLOR_TOKEN_GROUPS,
     isSafeColorTokenValue,

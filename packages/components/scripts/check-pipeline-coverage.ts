@@ -95,7 +95,7 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   'lint:invariants': {
     layers: ['unit-tests', 'main-green'],
     reason:
-      "cinder's 7 custom tree-walk invariant checks. Explicitly called out in unit-tests.yaml " +
+      "cinder's custom tree-walk invariant checks. Explicitly called out in unit-tests.yaml " +
       'and main-green (not folded into the `lint` sweep). ' +
       'Not run at commit/push time by name — pre-commit/pre-push scope to typecheck/test, not this chain.',
   },
@@ -124,6 +124,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       '`validate`, none of which invoke stylelint) or browser-tests/changeset-guard.',
   },
   'check:no-cycle-imports': {
+    layers: ['unit-tests', 'main-green'],
+    reason: 'Member of lint:invariants — same layer set.',
+  },
+  'check:consumer-boundaries': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
