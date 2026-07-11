@@ -1489,6 +1489,97 @@ describe('rewound steps', () => {
 });
 
 describe('compensation', () => {
+  function rootRowLabels(container: HTMLElement): string[] {
+    const rootList = container.querySelector('ol.cinder-run-step-timeline');
+    return [...(rootList?.children ?? [])].map(
+      (element) => element.querySelector('.cinder-run-step-timeline__label')?.textContent ?? '',
+    );
+  }
+
+  test('relocates a compensation directly beneath its forward step subtree by default', () => {
+    const steps: RunStepTimelineEntry[] = [
+      {
+        id: 'charge',
+        label: 'Charge',
+        status: 'succeeded',
+        children: [{ id: 'receipt', label: 'Send receipt', status: 'succeeded' }],
+      },
+      { id: 'reserve', label: 'Reserve seat', status: 'failed' },
+      { id: 'refund', label: 'Refund', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Charge', 'Send receipt', 'Refund', 'Reserve seat']);
+  });
+
+  test('relocates a compensation even when it precedes its forward step', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'refund', label: 'Refund', status: 'succeeded', compensates: 'charge' },
+      { id: 'charge', label: 'Charge', status: 'succeeded' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Charge', 'Refund']);
+  });
+
+  test('treats a step with an unrelated extra kind property as a step', () => {
+    const steps = [
+      { id: 'refund', label: 'Refund', status: 'succeeded', compensates: 'charge', kind: 'task' },
+      { id: 'charge', label: 'Charge', status: 'succeeded', kind: 'task' },
+    ] as unknown as RunStepTimelineEntry[];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Charge', 'Refund']);
+  });
+
+  test('keeps multiple compensations in consumer order beneath their forward step', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'charge', label: 'Charge', status: 'succeeded' },
+      { id: 'other', label: 'Other', status: 'succeeded' },
+      { id: 'refund', label: 'Refund', status: 'succeeded', compensates: 'charge' },
+      { id: 'credit', label: 'Credit', status: 'succeeded', compensates: 'charge' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Charge', 'Refund', 'Credit', 'Other']);
+  });
+
+  test('keeps cyclic compensation links in consumer order', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'undo-b', label: 'Undo B', status: 'succeeded', compensates: 'undo-a' },
+      { id: 'middle', label: 'Middle', status: 'succeeded' },
+      { id: 'undo-a', label: 'Undo A', status: 'succeeded', compensates: 'undo-b' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Undo B', 'Middle', 'Undo A']);
+  });
+
+  test('relocates within a branch lane but never across lane boundaries', () => {
+    const group: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'saga',
+      label: 'Saga',
+      lanes: [
+        {
+          id: 'one',
+          label: 'One',
+          steps: [
+            { id: 'charge', label: 'Charge', status: 'succeeded' },
+            { id: 'other', label: 'Other', status: 'succeeded' },
+            { id: 'refund', label: 'Refund', status: 'succeeded', compensates: 'charge' },
+          ],
+        },
+        {
+          id: 'two',
+          label: 'Two',
+          steps: [{ id: 'undo', label: 'Undo', status: 'succeeded', compensates: 'charge' }],
+        },
+      ],
+    };
+    const { container } = render(RunStepTimeline, { steps: [group] });
+    const lanes = container.querySelectorAll('.cinder-run-step-timeline__lane');
+    expect((lanes[0]?.textContent ?? '').indexOf('Refund')).toBeLessThan(
+      (lanes[0]?.textContent ?? '').indexOf('Other'),
+    );
+    expect(lanes[1]?.querySelector('[data-cinder-compensation]')).toBeNull();
+  });
+
   test('insets and labels a step that compensates a resolvable forward step', () => {
     const steps: RunStepTimelineEntry[] = [
       { id: 'charge', label: 'Charge card', status: 'succeeded' },

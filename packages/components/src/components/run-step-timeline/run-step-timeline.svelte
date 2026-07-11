@@ -99,6 +99,8 @@
     laneOutcomeBadgeVariant,
     laneOutcomeLabel,
     metadataItems,
+    relocateCompensationEntries,
+    relocateCompensationSteps,
     safeStepLinkHref,
     statusDotStatus,
     statusLabel,
@@ -120,7 +122,7 @@
     ariaLabelledby === undefined && ariaLabel === undefined ? label : ariaLabel,
   );
 
-  const renderedEntries = $derived(flattenEntries(steps));
+  const renderedEntries = $derived(flattenEntries(relocateCompensationEntries(steps)));
 
   function isBranchGroup(entry: RunStepTimelineEntry): entry is RunStepBranchGroup {
     return 'kind' in entry && entry.kind === 'branch';
@@ -245,7 +247,7 @@
   // compensation labels. Reused for the main rail and for each branch lane.
   function flattenSteps(list: RunStep[], pathPrefix: string): RenderedStepLike[] {
     const rows: PendingStepRow[] = [];
-    appendRunStepRows(rows, list, 0, pathPrefix);
+    appendRunStepRows(rows, relocateCompensationSteps(list), 0, pathPrefix);
     const currentRowIndex = deepestCurrentStepIndex(rows);
 
     // Index every step row by its unique path key (built from the escaped id
@@ -301,7 +303,7 @@
       rows.push({ kind: 'step', step, depth, pathKey });
       if (step.children && step.children.length > 0) {
         if (depth < MAX_NESTED_STEP_DEPTH) {
-          appendRunStepRows(rows, step.children, depth + 1, pathKey);
+          appendRunStepRows(rows, relocateCompensationSteps(step.children), depth + 1, pathKey);
         } else {
           const hiddenSummary = summarizeNestedRunSteps(step.children);
           rows.push({

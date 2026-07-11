@@ -5,7 +5,75 @@ import type {
   RunStepBranchLane,
   RunStepBranchLaneOutcome,
   RunStepStatus,
+  RunStepTimelineEntry,
 } from './run-step-timeline.types.ts';
+
+/**
+ * Relocate resolved compensation steps immediately after the subtree of the
+ * sibling they reverse. Unresolved, self-referential, and cyclic links retain
+ * consumer order. Multiple compensations retain their relative input order.
+ */
+export function relocateCompensationSteps(steps: RunStep[]): RunStep[] {
+  return relocateSiblingItems(steps, (step) => step);
+}
+
+function relocateSiblingItems<T>(items: T[], getStep: (item: T) => RunStep | undefined): T[] {
+  if (!items.some((item) => getStep(item)?.compensates !== undefined)) return items;
+
+  const stepById = new Map<string, RunStep>();
+  for (const item of items) {
+    const step = getStep(item);
+    if (step !== undefined) {
+      stepById.set(step.id, step);
+    }
+  }
+  const canRelocate = (step: RunStep): boolean => {
+    const visited = new Set<string>([step.id]);
+    let targetId = step.compensates;
+    while (targetId !== undefined) {
+      const target = stepById.get(targetId);
+      if (target === undefined || visited.has(targetId)) return false;
+      visited.add(targetId);
+      targetId = target.compensates;
+    }
+    return true;
+  };
+  const relocatable = new Set<RunStep>();
+  const compensationsByTarget = new Map<string, T[]>();
+  for (const item of items) {
+    const step = getStep(item);
+    if (step === undefined || step.compensates === undefined || !canRelocate(step)) continue;
+    relocatable.add(step);
+    const compensations = compensationsByTarget.get(step.compensates) ?? [];
+    compensations.push(item);
+    compensationsByTarget.set(step.compensates, compensations);
+  }
+  const result: T[] = [];
+  const appendWithCompensations = (item: T): void => {
+    result.push(item);
+    const step = getStep(item);
+    if (step === undefined) return;
+    for (const compensation of compensationsByTarget.get(step.id) ?? []) {
+      appendWithCompensations(compensation);
+    }
+  };
+  for (const item of items) {
+    const step = getStep(item);
+    if (step === undefined || !relocatable.has(step)) appendWithCompensations(item);
+  }
+  return result;
+}
+
+/** Relocate top-level compensations while preserving branch rows as rail entries. */
+export function relocateCompensationEntries(
+  entries: RunStepTimelineEntry[],
+): RunStepTimelineEntry[] {
+  return relocateSiblingItems(entries, (entry) => (isBranchGroup(entry) ? undefined : entry));
+}
+
+function isBranchGroup(entry: RunStepTimelineEntry): entry is RunStepBranchGroup {
+  return 'kind' in entry && entry.kind === 'branch';
+}
 
 /** Badge variants used for the per-step status chip. */
 export type RunStepBadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
