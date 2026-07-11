@@ -8,16 +8,7 @@
     "dev": "vite dev",
     "preview": "node build/index.js"
   },
-  "overrides": {
-    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
-    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
-    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
-    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz"
-  },
   "dependencies": {
-    "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
-    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
-    "@cinder/editor": "file:../../../editor/cinder-editor-0.0.1.tgz",
     "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz",
     "zod": "4.4.1"
   },

@@ -76,9 +76,6 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   '@milkdown/ctx',
   '@milkdown/kit',
   '@milkdown/prose',
-  '@shikijs/engine-oniguruma',
-  '@shikijs/langs',
-  '@shikijs/types',
   '@types/hast',
   '@types/mdast',
   '@types/unist',
@@ -95,9 +92,6 @@ const BASE_TRANSITIVE_RICH_FEATURE_DEPENDENCY_NAMES = new Set<string>([
   'js-yaml',
   // The bundled chat markdown runtime requires Shiki, whose install graph
   // includes its engine, languages, shared types, and unified AST types.
-  '@shikijs/engine-oniguruma',
-  '@shikijs/langs',
-  '@shikijs/types',
   '@types/hast',
   '@types/mdast',
   '@types/unist',
@@ -108,7 +102,10 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES.filter(
 );
 
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
+  '@shikijs/engine-oniguruma',
+  '@shikijs/langs',
   '@shikijs/rehype',
+  '@shikijs/types',
   'comlink',
   'conversationalist',
   'hast-util-sanitize',
@@ -1168,8 +1165,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
   const restoreManifest =
     svelteVersion === undefined
-      ? injectTarballIntoFixture(fixtureDirectory)
-      : injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
+      ? injectTarballIntoFixture(fixtureDirectory, { includeWorkspaceDependencyPackages: false })
+      : injectTarballIntoFixture(fixtureDirectory, {
+          svelteVersion,
+          includeWorkspaceDependencyPackages: false,
+        });
 
   try {
     await $`rm -rf node_modules .svelte-kit build`.cwd(fixtureDirectory);
