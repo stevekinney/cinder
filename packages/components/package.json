@@ -6629,7 +6629,6 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@shikijs/engine-oniguruma": "^3.21.0",
     "@shikijs/langs": "^3.21.0",
-    "@shikijs/rehype": "^3.21.0",
     "@shikijs/types": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
     "@types/hast": "^3.0.4",
@@ -6648,14 +6647,12 @@
     "rehype-sanitize": "^6.0.0",
     "rehype-stringify": "^10.0.1",
     "remark-gfm": "^4.0.1",
-    "remark-html": "^16.0.1",
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "remark-stringify": "^11.0.0",
     "shiki": "^3.21.0",
     "unified": "^11.0.5",
-    "unist-util-remove": "^4.0.0",
     "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {

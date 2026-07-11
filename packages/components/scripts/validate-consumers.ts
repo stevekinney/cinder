@@ -87,7 +87,6 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   '@shikijs/engine-oniguruma',
   '@shikijs/langs',
-  '@shikijs/rehype',
   '@shikijs/types',
   '@types/hast',
   '@types/mdast',
@@ -100,14 +99,12 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   'rehype-sanitize',
   'rehype-stringify',
   'remark-gfm',
-  'remark-html',
   'remark-math',
   'remark-parse',
   'remark-rehype',
   'remark-stringify',
   'shiki',
   'unified',
-  'unist-util-remove',
   'unist-util-visit',
 ] as const;
 const REQUIRED_PEER_DEPENDENCY_NAMES = ['zod'] as const;

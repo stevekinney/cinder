@@ -83,7 +83,6 @@
   },
   "dependencies": {
     "@cinder/diff": "workspace:*",
-    "@shikijs/rehype": "^3.21.0",
     "comlink": "^4.4.2",
     "diff-match-patch": "^1.0.5",
     "hast-util-sanitize": "^5.0.0",
@@ -92,14 +91,12 @@
     "rehype-sanitize": "^6.0.0",
     "rehype-stringify": "^10.0.1",
     "remark-gfm": "^4.0.1",
-    "remark-html": "^16.0.1",
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "remark-stringify": "^11.0.0",
     "shiki": "^3.21.0",
     "unified": "^11.0.5",
-    "unist-util-remove": "^4.0.0",
     "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
