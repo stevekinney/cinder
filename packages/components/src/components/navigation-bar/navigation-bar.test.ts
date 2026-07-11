@@ -23,6 +23,10 @@ const { default: NavigationBar } = await import('./navigation-bar.svelte');
 const { createRawSnippet, tick } = await import('svelte');
 
 const navigationBarCss = readFileSync(new URL('./navigation-bar.css', import.meta.url), 'utf8');
+const navigationBarSource = readFileSync(
+  new URL('./navigation-bar.svelte', import.meta.url),
+  'utf8',
+);
 
 class CapturingResizeObserver implements ResizeObserver {
   static lastCallback: ResizeObserverCallback | null = null;
@@ -211,6 +215,11 @@ function cancelingNavigationSnippet(clicks: Record<string, number>) {
 }
 
 describe('NavigationBar', () => {
+  test('passes the toggle click handler through the same snippet shape during SSR and hydration', () => {
+    expect(navigationBarSource).not.toMatch(/browser\s*\?\s*{\s*onclick:\s*handleToggle/);
+    expect([...navigationBarSource.matchAll(/onclick:\s*handleToggle/g)]).toHaveLength(2);
+  });
+
   // ── Legacy tests (preserved) ────────────────────────────────────────────
 
   test('root element is <nav>', () => {

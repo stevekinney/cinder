@@ -290,7 +290,7 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        ...(browser ? { onclick: handleToggle } : {}),
+        onclick: handleToggle,
       })}
     </div>
   {/if}
@@ -306,7 +306,7 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        ...(browser ? { onclick: handleToggle } : {}),
+        onclick: handleToggle,
       })}
     </div>
   {/if}
