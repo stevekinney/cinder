@@ -1540,6 +1540,16 @@ describe('compensation', () => {
     expect(rootRowLabels(container)).toEqual(['Charge', 'Refund', 'Credit', 'Other']);
   });
 
+  test('keeps cyclic compensation links in consumer order', () => {
+    const steps: RunStepTimelineEntry[] = [
+      { id: 'undo-b', label: 'Undo B', status: 'succeeded', compensates: 'undo-a' },
+      { id: 'middle', label: 'Middle', status: 'succeeded' },
+      { id: 'undo-a', label: 'Undo A', status: 'succeeded', compensates: 'undo-b' },
+    ];
+    const { container } = render(RunStepTimeline, { steps });
+    expect(rootRowLabels(container)).toEqual(['Undo B', 'Middle', 'Undo A']);
+  });
+
   test('relocates within a branch lane but never across lane boundaries', () => {
     const group: RunStepBranchGroup = {
       kind: 'branch',

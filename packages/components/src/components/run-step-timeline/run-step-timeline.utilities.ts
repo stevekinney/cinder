@@ -66,18 +66,7 @@ function relocateSiblingItems<T>(items: T[], getStep: (item: T) => RunStep | und
 export function relocateCompensationEntries(
   entries: RunStepTimelineEntry[],
 ): RunStepTimelineEntry[] {
-  const normalized = entries.map((entry) =>
-    isBranchGroup(entry)
-      ? {
-          ...entry,
-          lanes: entry.lanes.map((lane) => ({
-            ...lane,
-            steps: relocateCompensationSteps(lane.steps),
-          })),
-        }
-      : entry,
-  );
-  return relocateSiblingItems(normalized, (entry) => (isBranchGroup(entry) ? undefined : entry));
+  return relocateSiblingItems(entries, (entry) => (isBranchGroup(entry) ? undefined : entry));
 }
 
 function isBranchGroup(entry: RunStepTimelineEntry): entry is RunStepBranchGroup {
