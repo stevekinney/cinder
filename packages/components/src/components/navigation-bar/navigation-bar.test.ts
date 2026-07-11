@@ -216,8 +216,8 @@ function cancelingNavigationSnippet(clicks: Record<string, number>) {
 
 describe('NavigationBar', () => {
   test('passes the toggle click handler through the same snippet shape during SSR and hydration', () => {
-    expect(navigationBarSource).not.toContain('browser ? { onclick: handleToggle } : {}');
-    expect(navigationBarSource.match(/onclick: handleToggle/g)).toHaveLength(2);
+    expect(navigationBarSource).not.toMatch(/browser\s*\?\s*{\s*onclick:\s*handleToggle/);
+    expect([...navigationBarSource.matchAll(/onclick:\s*handleToggle/g)]).toHaveLength(2);
   });
 
   // ── Legacy tests (preserved) ────────────────────────────────────────────
