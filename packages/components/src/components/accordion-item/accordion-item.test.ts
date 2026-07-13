@@ -108,7 +108,7 @@ test('throws if rendered outside an Accordion', () => {
 });
 
 describe('AccordionItem', () => {
-  test('header button has aria-expanded="false" when id is not in expandedIds', () => {
+  test('header button has aria-expanded="false" and a stable panel reference when id is not in expandedIds', () => {
     const { container } = renderItem({
       id: 'item-a',
       title: 'Item A',
@@ -118,7 +118,7 @@ describe('AccordionItem', () => {
     const button = container.querySelector('.cinder-accordion-item__trigger');
     expect(button).not.toBeNull();
     expect(button?.getAttribute('aria-expanded')).toBe('false');
-    expect(button?.hasAttribute('aria-controls')).toBe(false);
+    expect(button?.getAttribute('aria-controls')).toBeTruthy();
   });
 
   test('header button has aria-expanded="true" when id is in expandedIds', () => {
