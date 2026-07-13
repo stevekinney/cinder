@@ -35,6 +35,10 @@ const schema = {
       type: 'string',
       description: 'Additional classes merged with `.cinder-action-row`.',
     },
+    style: {
+      type: 'string',
+      description: 'Inline style string applied to the `.cinder-action-row` root.',
+    },
   },
   additionalProperties: false,
   metadata: {

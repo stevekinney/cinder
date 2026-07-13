@@ -1,8 +1,11 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-stat-group {
+    --cinder-stat-group-gap: var(--cinder-space-4, 1rem);
+    --cinder-stat-group-card-padding: var(--cinder-space-4, 1rem);
+    --cinder-stat-group-shared-cell-padding: var(--cinder-space-4, 1rem);
     display: grid;
-    gap: var(--cinder-space-4, 1rem);
+    gap: var(--cinder-stat-group-gap, var(--cinder-space-4, 1rem));
     /* Query the group's own inline size so fixed column counts can collapse when
        the group is narrow — even inside a wide viewport (RESPONSIVE-POLICY.md). */
     container-type: inline-size;
@@ -50,7 +53,7 @@
 
   /* variant: cards — each stat gets a card-style border, background, and shadow */
   .cinder-stat-group[data-cinder-variant='cards'] > .cinder-stat {
-    padding: var(--cinder-space-4, 1rem);
+    padding: var(--cinder-stat-group-card-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md, 0.5rem);
@@ -63,15 +66,15 @@
  * gap with the surface color, avoiding nth-child math for any column count.
  */
   .cinder-stat-group[data-cinder-variant='shared-borders'] {
+    --cinder-stat-group-gap: 1px;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md, 0.5rem);
     overflow: hidden;
     background: var(--cinder-border);
-    gap: 1px;
   }
 
   .cinder-stat-group[data-cinder-variant='shared-borders'] > .cinder-stat {
-    padding: var(--cinder-space-4, 1rem);
+    padding: var(--cinder-stat-group-shared-cell-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
   }
 }

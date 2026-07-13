@@ -34,6 +34,7 @@ snippet. The flat `@lostgradient/cinder/stat` subpath remains exported for
 | -------------------- | -------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `class`              | `string`             | no       | —       | Additional class names merged with `.cinder-stat`.                                                                                              |
 | `label`              | `string`             | yes      | —       | Short label describing the metric, e.g. "Monthly Revenue".                                                                                      |
+| `style`              | `string`             | no       | —       | Inline style string applied to the `.cinder-stat` root.                                                                                         |
 | `value`              | `string` \| `number` | yes      | —       | The statistic. Strings rendered verbatim; numbers formatted via formatNumber.                                                                   |
 | `valueLocale`        | `string`             | no       | —       | Locale forwarded to formatNumber. Defaults to the nearest LocaleProvider locale, then en-US.                                                    |
 | `change`             | `(opaque)`           | no       | —       | Optional change indicator with direction and accessible wording. Not expressible in JSON Schema; see the component types for the signature.     |
@@ -46,8 +47,14 @@ snippet. The flat `@lostgradient/cinder/stat` subpath remains exported for
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-stat-change-font-size`
+- `--cinder-stat-change-gap`
+- `--cinder-stat-column-gap`
+- `--cinder-stat-label-font-size`
+- `--cinder-stat-row-gap`
+- `--cinder-stat-value-font-size`
+- `--cinder-stat-value-font-weight`
+- `--cinder-stat-value-line-height`
 <!-- generated:variables:end -->
 
 ## Subcomponents

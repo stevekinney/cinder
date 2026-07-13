@@ -8,12 +8,12 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 
 - Uses a native `<button type="button">` inside an `<h3>` heading element. The heading level communicates the item's place in the page outline; consumers who nest accordions inside other heading contexts should note this and adjust via CSS if the heading level needs to change semantically (a future prop can address this).
 - `aria-expanded="true|false"` — reflects whether the associated panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
-- `aria-controls="{id}-panel"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content. Unlike `Collapsible`, which emits `aria-controls` only while the panel is in the DOM, `AccordionItem` always emits this attribute because the panel ID is a stable, predictable value derived from the item `id` prop. While collapsed, the panel is absent from both the DOM and the accessibility tree, so the `aria-controls` target is briefly unresolvable — this is acceptable because the button's `aria-expanded="false"` already conveys the collapsed state, and the reference resolves as soon as the item expands.
-- `id="{id}-header"` — provides a stable ID for the header button itself.
+- `aria-controls="<generated-panel-id>"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content. `AccordionItem` always emits this attribute because the panel shell remains in the DOM with a stable, generated ID. While collapsed, the panel shell is marked `hidden` and its children are not rendered, so the content stays out of the accessibility tree until expansion.
+- `id="<generated-header-id>"` — provides a stable ID for the header button itself. DOM IDs are generated per component instance, not derived from the public `id` prop, so the same item `id` can safely appear in separate accordions.
 
 ### AccordionItem panel
 
-- `id="{id}-panel"` — the stable ID referenced by the header button's `aria-controls`. This link is sufficient for assistive technologies to navigate from the trigger to its controlled content.
+- `id="<generated-panel-id>"` — the stable ID referenced by the header button's `aria-controls`. The panel element stays mounted and hidden while collapsed so the control relationship always points at an existing DOM node. The DOM ID is generated per component instance rather than derived from the public `id` prop.
 - `role="region"` is intentionally **omitted**. The WAI-ARIA APG notes that applying `role="region"` to every accordion panel pollutes the page's landmark list, making landmark navigation harder for screen reader users. The `aria-controls` / `aria-expanded` pairing on the header button provides the machine-readable contract without inflating the landmark count.
 
 ### Disabled items
@@ -50,7 +50,7 @@ Arrow-key navigation between accordion headers (as described in the optional ARI
 
 ## Reduced Motion
 
-The chevron rotation animation is suppressed under `prefers-reduced-motion: reduce` via a CSS media query on `.cinder-accordion-item__chevron`. AccordionItem does not use a JS-driven slide transition for its panel — the panel appears and disappears instantly via `{#if}` — so there is no JS-side reduced-motion guard required. `aria-expanded` remains the primary indication of state regardless of motion preference.
+The chevron rotation animation is suppressed under `prefers-reduced-motion: reduce` via a CSS media query on `.cinder-accordion-item__chevron`. AccordionItem does not use a JS-driven slide transition for its panel — the panel shell toggles the native `hidden` attribute and content appears instantly when expanded — so there is no JS-side reduced-motion guard required. `aria-expanded` remains the primary indication of state regardless of motion preference.
 
 ## Forced-Colors Mode (Windows High Contrast)
 

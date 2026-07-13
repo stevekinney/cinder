@@ -1,17 +1,25 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-stat {
+    --cinder-stat-row-gap: var(--cinder-space-1, 0.25rem);
+    --cinder-stat-column-gap: var(--cinder-space-3, 0.75rem);
+    --cinder-stat-label-font-size: var(--cinder-text-sm);
+    --cinder-stat-value-font-size: var(--cinder-text-4xl);
+    --cinder-stat-value-font-weight: var(--cinder-font-semibold);
+    --cinder-stat-value-line-height: 1.1;
+    --cinder-stat-change-gap: var(--cinder-space-1, 0.25rem);
+    --cinder-stat-change-font-size: var(--cinder-text-sm);
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
-    row-gap: var(--cinder-space-1, 0.25rem);
+    row-gap: var(--cinder-stat-row-gap, var(--cinder-space-1, 0.25rem));
     align-items: start;
     color: var(--cinder-text);
   }
 
   .cinder-stat[data-cinder-has-icon] {
     grid-template-columns: auto 1fr;
-    column-gap: var(--cinder-space-3, 0.75rem);
+    column-gap: var(--cinder-stat-column-gap, var(--cinder-space-3, 0.75rem));
   }
 
   .cinder-stat__icon {
@@ -25,7 +33,7 @@
   }
 
   .cinder-stat__label {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--cinder-stat-label-font-size, var(--cinder-text-sm));
     color: var(--cinder-text-muted);
   }
 
@@ -34,10 +42,10 @@
   }
 
   .cinder-stat__value {
-    font-size: var(--cinder-text-4xl);
-    font-weight: var(--cinder-font-semibold);
+    font-size: var(--cinder-stat-value-font-size, var(--cinder-text-4xl));
+    font-weight: var(--cinder-stat-value-font-weight, var(--cinder-font-semibold));
     font-variant-numeric: tabular-nums;
-    line-height: 1.1;
+    line-height: var(--cinder-stat-value-line-height, 1.1);
   }
 
   .cinder-stat[data-cinder-has-icon] .cinder-stat__value {
@@ -47,8 +55,8 @@
   .cinder-stat__change {
     display: inline-flex;
     align-items: center;
-    gap: var(--cinder-space-1, 0.25rem);
-    font-size: var(--cinder-text-sm);
+    gap: var(--cinder-stat-change-gap, var(--cinder-space-1, 0.25rem));
+    font-size: var(--cinder-stat-change-font-size, var(--cinder-text-sm));
   }
 
   .cinder-stat[data-cinder-has-icon] .cinder-stat__change {

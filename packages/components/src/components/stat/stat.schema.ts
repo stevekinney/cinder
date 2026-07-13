@@ -28,6 +28,10 @@ const schema = {
       type: 'string',
       description: 'Additional class names merged with `.cinder-stat`.',
     },
+    style: {
+      type: 'string',
+      description: 'Inline style string applied to the `.cinder-stat` root.',
+    },
   },
   additionalProperties: false,
   required: ['label', 'value'],

@@ -9,6 +9,7 @@ const { cleanup, render } = await import('@testing-library/svelte');
 
 afterEach(() => cleanup());
 const { default: StatGroup } = await import('./stat-group.svelte');
+const { default: statGroupVariables } = await import('./stat-group.variables.ts');
 const { createRawSnippet } = await import('svelte');
 
 function textSnippet(text: string) {
@@ -126,5 +127,20 @@ describe('StatGroup', () => {
     expect(css).toMatch(
       /\.cinder-stat-group\[data-cinder-columns='auto'\]\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(16rem,\s*100%\),\s*1fr\)\);/,
     );
+  });
+
+  test('public CSS variables cover compact group spacing and tile padding', async () => {
+    expect(statGroupVariables).toEqual([
+      '--cinder-stat-group-card-padding',
+      '--cinder-stat-group-gap',
+      '--cinder-stat-group-shared-cell-padding',
+    ]);
+
+    const css = await Bun.file(new URL('./stat-group.css', import.meta.url)).text();
+    expect(css).toContain('gap: var(--cinder-stat-group-gap,');
+    expect(css).toContain('padding: var(--cinder-stat-group-card-padding,');
+    expect(css).toContain('padding: var(--cinder-stat-group-shared-cell-padding,');
+    expect(css).toContain('--cinder-stat-group-gap: 1px;');
+    expect(css).not.toMatch(/(^|\n)\s*gap:\s*1px;/);
   });
 });
