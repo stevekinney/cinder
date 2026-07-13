@@ -9,6 +9,7 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Accordion } = await import('../accordion/accordion.svelte');
 const { default: AccordionItem } = await import('./accordion-item.svelte');
+const { default: accordionItemVariables } = await import('./accordion-item.variables.ts');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,6 +37,7 @@ function renderItem(options: {
   title: string;
   content?: string;
   disabled?: boolean;
+  style?: string;
   expandedIds?: string[];
   multiple?: boolean;
   onExpandedChange?: (ids: string[]) => void;
@@ -45,6 +47,7 @@ function renderItem(options: {
     title,
     content = 'Panel content',
     disabled = false,
+    style,
     expandedIds: initialIds = [],
     multiple = false,
     onExpandedChange,
@@ -71,6 +74,7 @@ function renderItem(options: {
               id,
               title,
               disabled,
+              ...(style ? { style } : {}),
               children: textSnippet(content),
             },
           });
@@ -237,6 +241,17 @@ describe('AccordionItem', () => {
     expect(button?.textContent).toContain('Visible Title Text');
   });
 
+  test('style prop is forwarded to the item root for public CSS variable hooks', () => {
+    const { container } = renderItem({
+      id: 'styled-item',
+      title: 'Styled item',
+      style: '--cinder-accordion-item-trigger-padding-block: var(--cinder-space-2);',
+    });
+
+    const item = container.querySelector('.cinder-accordion-item');
+    expect(item?.getAttribute('style')).toContain('--cinder-accordion-item-trigger-padding-block');
+  });
+
   // §Interactive a11y matrix — Enter/Space key events
   // NOTE: happy-dom does not synthesize a click event from keydown on <button>, so we
   // cannot assert that the expanded state changes here. Instead we verify that:
@@ -274,5 +289,27 @@ describe('AccordionItem', () => {
 
     // Should not throw.
     await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
+  });
+
+  test('public CSS variables cover dense inspector trigger and panel subparts', async () => {
+    expect(accordionItemVariables).toEqual([
+      '--cinder-accordion-item-panel-font-size',
+      '--cinder-accordion-item-panel-inner-padding-block-end',
+      '--cinder-accordion-item-panel-inner-padding-block-start',
+      '--cinder-accordion-item-panel-inner-padding-inline',
+      '--cinder-accordion-item-panel-line-height',
+      '--cinder-accordion-item-trigger-font-size',
+      '--cinder-accordion-item-trigger-font-weight',
+      '--cinder-accordion-item-trigger-gap',
+      '--cinder-accordion-item-trigger-padding-block',
+      '--cinder-accordion-item-trigger-padding-inline',
+    ]);
+
+    const css = await Bun.file(new URL('./accordion-item.css', import.meta.url)).text();
+    expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');
+    expect(css).toContain('var(--cinder-accordion-item-trigger-padding-block,');
+    expect(css).toContain('font-size: var(--cinder-accordion-item-trigger-font-size,');
+    expect(css).toContain('--cinder-accordion-item-panel-inner-padding-block-start,');
+    expect(css).toContain('font-size: var(--cinder-accordion-item-panel-font-size,');
   });
 });

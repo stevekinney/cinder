@@ -8,6 +8,7 @@ setupHappyDom();
 
 const { fireEvent, render } = await import('@testing-library/svelte');
 const { default: ActionRow } = await import('./action-row.svelte');
+const { default: actionRowVariables } = await import('./action-row.variables.ts');
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -117,5 +118,26 @@ describe('ActionRow', () => {
     const row = container.querySelector('.cinder-action-row');
     expect(row?.getAttribute('data-cinder-density')).toBe('condensed');
     expect(row?.classList.contains('timeline-row')).toBe(true);
+  });
+
+  test('public CSS variables cover dense timeline subparts', async () => {
+    expect(actionRowVariables).toEqual([
+      '--cinder-action-row-body-gap',
+      '--cinder-action-row-description-font-size',
+      '--cinder-action-row-layout-column-gap',
+      '--cinder-action-row-layout-row-gap',
+      '--cinder-action-row-meta-font-size',
+      '--cinder-action-row-padding-block',
+      '--cinder-action-row-padding-inline',
+      '--cinder-action-row-title-font-size',
+      '--cinder-action-row-trailing-gap',
+    ]);
+
+    const css = await Bun.file(new URL('./action-row.css', import.meta.url)).text();
+    expect(css).toContain('padding: var(--cinder-action-row-padding-block,');
+    expect(css).toContain('column-gap: var(--cinder-action-row-layout-column-gap,');
+    expect(css).toContain('gap: var(--cinder-action-row-body-gap,');
+    expect(css).toContain('font-size: var(--cinder-action-row-description-font-size,');
+    expect(css).toContain('font-size: var(--cinder-action-row-meta-font-size,');
   });
 });

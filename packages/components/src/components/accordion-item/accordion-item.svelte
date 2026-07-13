@@ -19,7 +19,14 @@
   import { classNames } from '../../utilities/class-names.ts';
   import type { AccordionItemProps } from './accordion-item.types.ts';
 
-  let { id, title, disabled = false, class: className, children }: AccordionItemProps = $props();
+  let {
+    id,
+    title,
+    disabled = false,
+    class: className,
+    style,
+    children,
+  }: AccordionItemProps = $props();
 
   const context = getAccordionContext();
 
@@ -36,6 +43,7 @@
 
 <div
   class={classNames('cinder-accordion-item', className)}
+  {style}
   data-cinder-expanded={isExpanded ? '' : undefined}
   data-cinder-disabled={disabled ? '' : undefined}
 >

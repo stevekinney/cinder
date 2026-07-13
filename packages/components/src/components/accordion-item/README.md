@@ -22,6 +22,7 @@ required.
 | `class`    | `string`   | no       | —       | Additional CSS class merged with `.cinder-accordion-item`.                                                                   |
 | `disabled` | `boolean`  | no       | `false` | When true, the item cannot be toggled.                                                                                       |
 | `id`       | `string`   | yes      | —       | Unique identifier matched against Accordion's expandedIds.                                                                   |
+| `style`    | `string`   | no       | —       | Inline style string applied to the `.cinder-accordion-item` root.                                                            |
 | `title`    | `string`   | yes      | —       | Visible header label for the item.                                                                                           |
 | `children` | `(opaque)` | yes      | —       | Panel content rendered when the item is expanded. Not expressible in JSON Schema; see the component types for the signature. |
 
@@ -31,8 +32,16 @@ required.
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-accordion-item-panel-font-size`
+- `--cinder-accordion-item-panel-inner-padding-block-end`
+- `--cinder-accordion-item-panel-inner-padding-block-start`
+- `--cinder-accordion-item-panel-inner-padding-inline`
+- `--cinder-accordion-item-panel-line-height`
+- `--cinder-accordion-item-trigger-font-size`
+- `--cinder-accordion-item-trigger-font-weight`
+- `--cinder-accordion-item-trigger-gap`
+- `--cinder-accordion-item-trigger-padding-block`
+- `--cinder-accordion-item-trigger-padding-inline`
 <!-- generated:variables:end -->
 
 ## Subcomponents

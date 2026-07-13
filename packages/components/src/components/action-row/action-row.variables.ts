@@ -1,3 +1,13 @@
-const variables: readonly string[] = [];
+const variables: readonly string[] = [
+  '--cinder-action-row-body-gap',
+  '--cinder-action-row-description-font-size',
+  '--cinder-action-row-layout-column-gap',
+  '--cinder-action-row-layout-row-gap',
+  '--cinder-action-row-meta-font-size',
+  '--cinder-action-row-padding-block',
+  '--cinder-action-row-padding-inline',
+  '--cinder-action-row-title-font-size',
+  '--cinder-action-row-trailing-gap',
+];
 
 export default variables;

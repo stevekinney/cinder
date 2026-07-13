@@ -40,8 +40,9 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-stat-group-card-padding`
+- `--cinder-stat-group-gap`
+- `--cinder-stat-group-shared-cell-padding`
 <!-- generated:variables:end -->
 
 ## Subcomponents

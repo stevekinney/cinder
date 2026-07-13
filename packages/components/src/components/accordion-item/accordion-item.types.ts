@@ -13,6 +13,8 @@ export type AccordionItemProps = {
   disabled?: boolean;
   /** Additional CSS class merged with `.cinder-accordion-item`. */
   class?: string;
+  /** Inline style string applied to the `.cinder-accordion-item` root. */
+  style?: string;
   /** Panel content rendered when the item is expanded. */
   children: Snippet;
 };
@@ -30,4 +32,6 @@ export interface AccordionItemSchemaProps {
   disabled?: boolean;
   /** Additional CSS class merged with `.cinder-accordion-item`. */
   class?: string;
+  /** Inline style string applied to the `.cinder-accordion-item` root. */
+  style?: string;
 }

@@ -46,8 +46,14 @@ snippet. The flat `@lostgradient/cinder/stat` subpath remains exported for
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-stat-change-font-size`
+- `--cinder-stat-change-gap`
+- `--cinder-stat-column-gap`
+- `--cinder-stat-label-font-size`
+- `--cinder-stat-row-gap`
+- `--cinder-stat-value-font-size`
+- `--cinder-stat-value-font-weight`
+- `--cinder-stat-value-line-height`
 <!-- generated:variables:end -->
 
 ## Subcomponents

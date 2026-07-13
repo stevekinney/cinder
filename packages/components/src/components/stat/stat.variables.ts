@@ -1,3 +1,12 @@
-const variables: readonly string[] = [];
+const variables: readonly string[] = [
+  '--cinder-stat-change-font-size',
+  '--cinder-stat-change-gap',
+  '--cinder-stat-column-gap',
+  '--cinder-stat-label-font-size',
+  '--cinder-stat-row-gap',
+  '--cinder-stat-value-font-size',
+  '--cinder-stat-value-font-weight',
+  '--cinder-stat-value-line-height',
+];
 
 export default variables;
