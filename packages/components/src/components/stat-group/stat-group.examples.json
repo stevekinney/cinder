@@ -22,6 +22,12 @@
       "code": "<script lang=\"ts\">\n  import { StatGroup } from '@lostgradient/cinder/stat-group';\n</script>\n\n<StatGroup label=\"This quarter\" columns={3} variant=\"cards\">\n  <StatGroup.Stat label=\"Projects\" value={42} />\n  <StatGroup.Stat label=\"Members\" value={18} />\n  <StatGroup.Stat label=\"Storage\" value=\"64 GB\" />\n</StatGroup>\n"
     },
     {
+      "id": "compact-summary",
+      "title": "Compact summary strip",
+      "description": "Dense summaries can tune StatGroup spacing and Stat typography through public CSS variables.",
+      "code": "<script lang=\"ts\">\n  import { StatGroup } from '@lostgradient/cinder/stat-group';\n</script>\n\n<StatGroup\n  label=\"Workflow summary\"\n  columns={4}\n  variant=\"shared-borders\"\n  style=\"--cinder-stat-group-gap: 1px; --cinder-stat-group-shared-cell-padding: var(--cinder-space-2);\"\n>\n  <StatGroup.Stat\n    label=\"Events\"\n    value={128}\n    style=\"--cinder-stat-row-gap: 0; --cinder-stat-label-font-size: var(--cinder-text-xs); --cinder-stat-value-font-size: var(--cinder-text-lg); --cinder-stat-change-font-size: var(--cinder-text-xs);\"\n  />\n  <StatGroup.Stat\n    label=\"Matched\"\n    value={42}\n    style=\"--cinder-stat-row-gap: 0; --cinder-stat-label-font-size: var(--cinder-text-xs); --cinder-stat-value-font-size: var(--cinder-text-lg); --cinder-stat-change-font-size: var(--cinder-text-xs);\"\n  />\n  <StatGroup.Stat\n    label=\"Retries\"\n    value={3}\n    style=\"--cinder-stat-row-gap: 0; --cinder-stat-label-font-size: var(--cinder-text-xs); --cinder-stat-value-font-size: var(--cinder-text-lg); --cinder-stat-change-font-size: var(--cinder-text-xs);\"\n  />\n  <StatGroup.Stat\n    label=\"Latency\"\n    value=\"184 ms\"\n    style=\"--cinder-stat-row-gap: 0; --cinder-stat-label-font-size: var(--cinder-text-xs); --cinder-stat-value-font-size: var(--cinder-text-lg); --cinder-stat-change-font-size: var(--cinder-text-xs);\"\n  />\n</StatGroup>\n"
+    },
+    {
       "id": "shared-borders-variant",
       "title": "Shared-borders variant",
       "description": "The `shared-borders` variant wraps the whole set in a single outer border and divides the tiles with 1px gap rules, keeping the grid visually unified.",

@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { SideNavigation } from '@lostgradient/cinder/side-navigation';\n</script>\n\n<SideNavigation ariaLabel=\"Workspace\">\n  <SideNavigation.Item href=\"/dashboard\">Dashboard</SideNavigation.Item>\n  <SideNavigation.Group label=\"Projects\">\n    <SideNavigation.Item href=\"/projects/phoenix\" active>Phoenix</SideNavigation.Item>\n    <SideNavigation.Item href=\"/projects/atlas\">Atlas</SideNavigation.Item>\n    <SideNavigation.Item href=\"/projects/beacon\">Beacon</SideNavigation.Item>\n  </SideNavigation.Group>\n  <SideNavigation.Group label=\"Settings\">\n    <SideNavigation.Item href=\"/settings/team\">Team</SideNavigation.Item>\n    <SideNavigation.Item href=\"/settings/billing\">Billing</SideNavigation.Item>\n  </SideNavigation.Group>\n</SideNavigation>\n"
     },
     {
+      "id": "compact-sidebar",
+      "title": "Compact sidebar spacing",
+      "description": "Dense sidebars can tune the SideNavigation list gap through a public CSS variable.",
+      "code": "<script lang=\"ts\">\n  import { SideNavigation } from '@lostgradient/cinder/side-navigation';\n</script>\n\n<div style=\"max-inline-size: 18rem;\">\n  <SideNavigation ariaLabel=\"Inspector sections\" style=\"--cinder-side-navigation-list-gap: 0;\">\n    <SideNavigation.Item href=\"#overview\" active>Overview</SideNavigation.Item>\n    <SideNavigation.Item href=\"#timeline\">Timeline</SideNavigation.Item>\n    <SideNavigation.Item href=\"#payload\">Payload</SideNavigation.Item>\n    <SideNavigation.Group label=\"Artifacts\">\n      <SideNavigation.Item href=\"#source\">Source</SideNavigation.Item>\n      <SideNavigation.Item href=\"#snapshot\">Snapshot</SideNavigation.Item>\n    </SideNavigation.Group>\n  </SideNavigation>\n</div>\n"
+    },
+    {
       "id": "docs-sidebar",
       "title": "Docs sidebar",
       "description": "Documentation sidebar with grouped navigation sections. The active item receives aria-current=\"page\".",

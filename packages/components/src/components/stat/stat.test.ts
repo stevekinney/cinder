@@ -7,6 +7,7 @@ setupHappyDom();
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Stat } = await import('./stat.svelte');
+const { default: statVariables } = await import('./stat.variables.ts');
 const { createRawSnippet } = await import('svelte');
 
 afterEach(() => cleanup());
@@ -268,5 +269,25 @@ describe('Stat', () => {
     const id2 = c2.querySelector('.cinder-stat')?.getAttribute('aria-labelledby');
     // $props.id() ensures each instance gets unique IDs even with the same label.
     expect(id1).not.toBe(id2);
+  });
+
+  test('public CSS variables cover compact metric typography and spacing', async () => {
+    expect(statVariables).toEqual([
+      '--cinder-stat-change-font-size',
+      '--cinder-stat-change-gap',
+      '--cinder-stat-column-gap',
+      '--cinder-stat-label-font-size',
+      '--cinder-stat-row-gap',
+      '--cinder-stat-value-font-size',
+      '--cinder-stat-value-font-weight',
+      '--cinder-stat-value-line-height',
+    ]);
+
+    const css = await Bun.file(new URL('./stat.css', import.meta.url)).text();
+    expect(css).toContain('row-gap: var(--cinder-stat-row-gap,');
+    expect(css).toContain('column-gap: var(--cinder-stat-column-gap,');
+    expect(css).toContain('font-size: var(--cinder-stat-label-font-size,');
+    expect(css).toContain('font-size: var(--cinder-stat-value-font-size,');
+    expect(css).toContain('font-size: var(--cinder-stat-change-font-size,');
   });
 });

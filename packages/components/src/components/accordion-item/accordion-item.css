@@ -5,6 +5,16 @@
  * ======================================== */
 
   .cinder-accordion-item {
+    --cinder-accordion-item-trigger-gap: var(--cinder-space-4);
+    --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
+    --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
+    --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
+    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-medium);
+    --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
+    --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
+    --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
+    --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
+    --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
     border-block-end: 1px solid var(--cinder-border);
   }
 
@@ -31,12 +41,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--cinder-space-4);
+    gap: var(--cinder-accordion-item-trigger-gap, var(--cinder-space-4));
     width: 100%;
-    padding: var(--cinder-space-4) var(--cinder-space-5);
+    padding: var(--cinder-accordion-item-trigger-padding-block, var(--cinder-space-4))
+      var(--cinder-accordion-item-trigger-padding-inline, var(--cinder-space-5));
 
-    font-size: var(--cinder-text-base);
-    font-weight: var(--cinder-font-medium);
+    font-size: var(--cinder-accordion-item-trigger-font-size, var(--cinder-text-base));
+    font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-medium));
     line-height: var(--cinder-leading-snug);
     color: var(--cinder-text);
     text-align: start;
@@ -146,9 +157,11 @@
   }
 
   .cinder-accordion-item__panel-inner {
-    padding: var(--cinder-space-4) var(--cinder-space-5) var(--cinder-space-5);
-    font-size: var(--cinder-text-base);
-    line-height: var(--cinder-leading-normal);
+    padding: var(--cinder-accordion-item-panel-inner-padding-block-start, var(--cinder-space-4))
+      var(--cinder-accordion-item-panel-inner-padding-inline, var(--cinder-space-5))
+      var(--cinder-accordion-item-panel-inner-padding-block-end, var(--cinder-space-5));
+    font-size: var(--cinder-accordion-item-panel-font-size, var(--cinder-text-base));
+    line-height: var(--cinder-accordion-item-panel-line-height, var(--cinder-leading-normal));
     color: var(--cinder-text-muted);
   }
 

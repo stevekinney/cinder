@@ -21,6 +21,10 @@ const schema = {
       type: 'string',
       description: 'Additional CSS class merged with `.cinder-accordion-item`.',
     },
+    style: {
+      type: 'string',
+      description: 'Inline style string applied to the `.cinder-accordion-item` root.',
+    },
   },
   additionalProperties: false,
   required: ['id', 'title'],

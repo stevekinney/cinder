@@ -9,6 +9,7 @@ setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Accordion } = await import('../accordion/accordion.svelte');
 const { default: AccordionItem } = await import('./accordion-item.svelte');
+const { default: accordionItemVariables } = await import('./accordion-item.variables.ts');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,6 +37,7 @@ function renderItem(options: {
   title: string;
   content?: string;
   disabled?: boolean;
+  style?: string;
   expandedIds?: string[];
   multiple?: boolean;
   onExpandedChange?: (ids: string[]) => void;
@@ -45,6 +47,7 @@ function renderItem(options: {
     title,
     content = 'Panel content',
     disabled = false,
+    style,
     expandedIds: initialIds = [],
     multiple = false,
     onExpandedChange,
@@ -71,6 +74,7 @@ function renderItem(options: {
               id,
               title,
               disabled,
+              ...(style ? { style } : {}),
               children: textSnippet(content),
             },
           });
@@ -204,8 +208,8 @@ describe('AccordionItem', () => {
     const button = container.querySelector('.cinder-accordion-item__trigger');
     const panel = container.querySelector('.cinder-accordion-item__panel');
 
-    expect(button?.getAttribute('aria-controls')).toBe('my-item-panel');
-    expect(panel?.id).toBe('my-item-panel');
+    expect(button?.getAttribute('aria-controls')).toBe(panel?.id);
+    expect(panel?.id).toBeTruthy();
   });
 
   test('panel id matches the aria-controls reference on the header button', () => {
@@ -221,10 +225,37 @@ describe('AccordionItem', () => {
     // The panel does not carry role="region" or aria-labelledby — per WAI-ARIA APG,
     // role="region" on every accordion panel pollutes the landmark list. The panel id
     // is sufficient for the aria-controls reference on the trigger button.
-    expect(button?.id).toBe('linked-item-header');
-    expect(panel?.id).toBe('linked-item-panel');
-    expect(button?.getAttribute('aria-controls')).toBe('linked-item-panel');
+    expect(button?.id).toBeTruthy();
+    expect(panel?.id).toBeTruthy();
+    expect(button?.getAttribute('aria-controls')).toBe(panel?.id);
     expect(panel?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
+  test('duplicate item ids in separate accordions do not duplicate DOM ids', () => {
+    const first = renderItem({
+      id: 'shared-item',
+      title: 'Shared item',
+      expandedIds: ['shared-item'],
+    });
+    const second = renderItem({
+      id: 'shared-item',
+      title: 'Shared item',
+      expandedIds: ['shared-item'],
+    });
+
+    const firstButton = first.container.querySelector('.cinder-accordion-item__trigger');
+    const secondButton = second.container.querySelector('.cinder-accordion-item__trigger');
+    const firstPanel = first.container.querySelector('.cinder-accordion-item__panel');
+    const secondPanel = second.container.querySelector('.cinder-accordion-item__panel');
+
+    expect(firstButton?.id).toBeTruthy();
+    expect(secondButton?.id).toBeTruthy();
+    expect(firstPanel?.id).toBeTruthy();
+    expect(secondPanel?.id).toBeTruthy();
+    expect(firstButton?.id).not.toBe(secondButton?.id);
+    expect(firstPanel?.id).not.toBe(secondPanel?.id);
+    expect(firstButton?.getAttribute('aria-controls')).toBe(firstPanel?.id);
+    expect(secondButton?.getAttribute('aria-controls')).toBe(secondPanel?.id);
   });
 
   test('title text is rendered inside the trigger button', () => {
@@ -235,6 +266,17 @@ describe('AccordionItem', () => {
 
     const button = container.querySelector('.cinder-accordion-item__trigger');
     expect(button?.textContent).toContain('Visible Title Text');
+  });
+
+  test('style prop is forwarded to the item root for public CSS variable hooks', () => {
+    const { container } = renderItem({
+      id: 'styled-item',
+      title: 'Styled item',
+      style: '--cinder-accordion-item-trigger-padding-block: var(--cinder-space-2);',
+    });
+
+    const item = container.querySelector('.cinder-accordion-item');
+    expect(item?.getAttribute('style')).toContain('--cinder-accordion-item-trigger-padding-block');
   });
 
   // §Interactive a11y matrix — Enter/Space key events
@@ -274,5 +316,27 @@ describe('AccordionItem', () => {
 
     // Should not throw.
     await fireEvent.keyDown(button, { key: ' ', code: 'Space' });
+  });
+
+  test('public CSS variables cover dense inspector trigger and panel subparts', async () => {
+    expect(accordionItemVariables).toEqual([
+      '--cinder-accordion-item-panel-font-size',
+      '--cinder-accordion-item-panel-inner-padding-block-end',
+      '--cinder-accordion-item-panel-inner-padding-block-start',
+      '--cinder-accordion-item-panel-inner-padding-inline',
+      '--cinder-accordion-item-panel-line-height',
+      '--cinder-accordion-item-trigger-font-size',
+      '--cinder-accordion-item-trigger-font-weight',
+      '--cinder-accordion-item-trigger-gap',
+      '--cinder-accordion-item-trigger-padding-block',
+      '--cinder-accordion-item-trigger-padding-inline',
+    ]);
+
+    const css = await Bun.file(new URL('./accordion-item.css', import.meta.url)).text();
+    expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');
+    expect(css).toContain('var(--cinder-accordion-item-trigger-padding-block,');
+    expect(css).toContain('font-size: var(--cinder-accordion-item-trigger-font-size,');
+    expect(css).toContain('--cinder-accordion-item-panel-inner-padding-block-start,');
+    expect(css).toContain('font-size: var(--cinder-accordion-item-panel-font-size,');
   });
 });

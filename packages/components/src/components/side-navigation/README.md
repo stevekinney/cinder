@@ -40,8 +40,7 @@ The leaves remain importable individually for à-la-carte builds — see
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-side-navigation-list-gap`
 <!-- generated:variables:end -->
 
 ## Subcomponents

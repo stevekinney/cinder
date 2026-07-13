@@ -19,14 +19,22 @@
   import { classNames } from '../../utilities/class-names.ts';
   import type { AccordionItemProps } from './accordion-item.types.ts';
 
-  let { id, title, disabled = false, class: className, children }: AccordionItemProps = $props();
+  let {
+    id,
+    title,
+    disabled = false,
+    class: className,
+    style,
+    children,
+  }: AccordionItemProps = $props();
 
   const context = getAccordionContext();
+  const instanceId = $props.id();
 
   const isExpanded = $derived(context.expandedIds.includes(id));
 
-  const headerId = $derived(`${id}-header`);
-  const panelId = $derived(`${id}-panel`);
+  const headerId = $derived(`${instanceId}-header`);
+  const panelId = $derived(`${instanceId}-panel`);
 
   function handleClick(): void {
     if (disabled) return;
@@ -36,6 +44,7 @@
 
 <div
   class={classNames('cinder-accordion-item', className)}
+  {style}
   data-cinder-expanded={isExpanded ? '' : undefined}
   data-cinder-disabled={disabled ? '' : undefined}
 >

@@ -8,6 +8,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: SideNavigation } = await import('./side-navigation.svelte');
+const { default: sideNavigationVariables } = await import('./side-navigation.variables.ts');
 
 function emptySnippet() {
   return createRawSnippet(() => ({
@@ -122,5 +123,12 @@ describe('SideNavigation', () => {
     const nav = container.querySelector('nav');
     expect(nav?.getAttribute('aria-label')).toBe('Sections');
     expect(nav?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
+  test('public CSS variable controls list spacing without targeting internal list classes', async () => {
+    expect(sideNavigationVariables).toEqual(['--cinder-side-navigation-list-gap']);
+
+    const css = await Bun.file(new URL('./side-navigation.css', import.meta.url)).text();
+    expect(css).toContain('gap: var(--cinder-side-navigation-list-gap,');
   });
 });
