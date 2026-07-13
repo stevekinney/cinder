@@ -8,12 +8,12 @@ The accordion implementation follows the [WAI-ARIA Accordion pattern](https://ww
 
 - Uses a native `<button type="button">` inside an `<h3>` heading element. The heading level communicates the item's place in the page outline; consumers who nest accordions inside other heading contexts should note this and adjust via CSS if the heading level needs to change semantically (a future prop can address this).
 - `aria-expanded="true|false"` — reflects whether the associated panel is currently visible. Screen readers announce "expanded" or "collapsed" alongside the button label.
-- `aria-controls="{id}-panel"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content. `AccordionItem` always emits this attribute because the panel shell remains in the DOM with a stable, generated ID. While collapsed, the panel shell is marked `hidden` and its children are not rendered, so the content stays out of the accessibility tree until expansion.
-- `id="{id}-header"` — provides a stable ID for the header button itself.
+- `aria-controls="<generated-panel-id>"` — links the header button to its controlled panel by ID, allowing assistive technologies to navigate directly to the panel content. `AccordionItem` always emits this attribute because the panel shell remains in the DOM with a stable, generated ID. While collapsed, the panel shell is marked `hidden` and its children are not rendered, so the content stays out of the accessibility tree until expansion.
+- `id="<generated-header-id>"` — provides a stable ID for the header button itself. DOM IDs are generated per component instance, not derived from the public `id` prop, so the same item `id` can safely appear in separate accordions.
 
 ### AccordionItem panel
 
-- `id="{id}-panel"` — the stable ID referenced by the header button's `aria-controls`. The panel element stays mounted and hidden while collapsed so the control relationship always points at an existing DOM node.
+- `id="<generated-panel-id>"` — the stable ID referenced by the header button's `aria-controls`. The panel element stays mounted and hidden while collapsed so the control relationship always points at an existing DOM node. The DOM ID is generated per component instance rather than derived from the public `id` prop.
 - `role="region"` is intentionally **omitted**. The WAI-ARIA APG notes that applying `role="region"` to every accordion panel pollutes the page's landmark list, making landmark navigation harder for screen reader users. The `aria-controls` / `aria-expanded` pairing on the header button provides the machine-readable contract without inflating the landmark count.
 
 ### Disabled items
