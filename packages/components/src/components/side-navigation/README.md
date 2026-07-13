@@ -31,8 +31,9 @@ The leaves remain importable individually for à-la-carte builds — see
 | Prop        | Type       | Required | Default | Description                                                                                                                                            |
 | ----------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ariaLabel` | `string`   | yes      | —       | Accessible name for the <nav> landmark. Required, non-empty, distinct from other navs on the page.                                                     |
+| `class`     | `string`   | no       | —       | Additional CSS class merged with `.cinder-side-navigation`.                                                                                            |
+| `style`     | `string`   | no       | —       | Inline style string applied to the `.cinder-side-navigation` root.                                                                                     |
 | `children`  | `(opaque)` | yes      | —       | Must be <li> elements containing NavigationItem and/or SideNavigationGroup. Not expressible in JSON Schema; see the component types for the signature. |
-| `class`     | `(opaque)` | no       | —       | Additional CSS class merged with `.cinder-side-navigation`. Not expressible in JSON Schema; see the component types for the signature.                 |
 
 <!-- generated:props:end -->
 

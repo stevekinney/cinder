@@ -15,3 +15,18 @@ root or nest secondary buttons inside the row. If the full row navigates to a UR
 use `NavigationItem` instead. Use `StackedListItem` with `href` when only the title
 should be a link and trailing controls remain separate. If the content is static,
 use `DataList` and `StackedListItem`.
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+- `--cinder-action-row-body-gap`
+- `--cinder-action-row-description-font-size`
+- `--cinder-action-row-layout-column-gap`
+- `--cinder-action-row-layout-row-gap`
+- `--cinder-action-row-meta-font-size`
+- `--cinder-action-row-padding-block`
+- `--cinder-action-row-padding-inline`
+- `--cinder-action-row-title-font-size`
+- `--cinder-action-row-trailing-gap`
+<!-- generated:variables:end -->

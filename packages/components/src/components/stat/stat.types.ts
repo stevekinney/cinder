@@ -33,3 +33,23 @@ export type StatProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
   /** Additional class names merged with `.cinder-stat`. */
   class?: string;
 };
+
+/** Schema generator surface for Stat — excludes native attributes except supported styling hooks. */
+export interface StatSchemaProps {
+  /** Short label describing the metric, e.g. "Monthly Revenue". */
+  label: string;
+  /** The statistic. Strings rendered verbatim; numbers formatted via formatNumber. */
+  value: string | number;
+  /** Optional change indicator with direction and accessible wording. */
+  change?: StatChange;
+  /** Optional leading icon snippet (decorative — wrapper is aria-hidden). */
+  icon?: Snippet;
+  /** Intl.NumberFormat options applied only when `value` is a number. */
+  valueFormatOptions?: Intl.NumberFormatOptions;
+  /** Locale forwarded to formatNumber. Defaults to the nearest LocaleProvider locale, then en-US. */
+  valueLocale?: string;
+  /** Additional class names merged with `.cinder-stat`. */
+  class?: string;
+  /** Inline style string applied to the `.cinder-stat` root. */
+  style?: string;
+}

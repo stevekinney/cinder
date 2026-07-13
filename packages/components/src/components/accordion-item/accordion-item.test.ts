@@ -118,6 +118,7 @@ describe('AccordionItem', () => {
     const button = container.querySelector('.cinder-accordion-item__trigger');
     expect(button).not.toBeNull();
     expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(button?.hasAttribute('aria-controls')).toBe(false);
   });
 
   test('header button has aria-expanded="true" when id is in expandedIds', () => {

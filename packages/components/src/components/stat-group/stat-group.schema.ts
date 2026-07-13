@@ -24,6 +24,10 @@ const schema = {
       type: 'string',
       description: 'Additional class names merged with `.cinder-stat-group`.',
     },
+    style: {
+      type: 'string',
+      description: 'Inline style string applied to the `.cinder-stat-group` root.',
+    },
   },
   additionalProperties: false,
   metadata: {

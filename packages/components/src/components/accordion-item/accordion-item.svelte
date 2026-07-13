@@ -54,7 +54,7 @@
       id={headerId}
       class="cinder-accordion-item__trigger"
       aria-expanded={isExpanded}
-      aria-controls={panelId}
+      aria-controls={isExpanded ? panelId : undefined}
       {disabled}
       onclick={handleClick}
     >
