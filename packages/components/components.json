@@ -924,7 +924,8 @@
       "tags": ["chat", "conversation", "domain-suite"],
       "useWhen": [
         "Shipping a full chat surface with composer, scroll-anchor, unread indicator, and attachments bundled as one heavyweight drop-in.",
-        "Building an AI assistant or support thread where conversation state is modeled as a transcript of role-tagged messages."
+        "Building an AI assistant or support thread where conversation state is modeled as a transcript of role-tagged messages.",
+        "Embedding Chat in a definite-height flex or grid region where its internal transcript should own scrolling."
       ],
       "avoidWhen": [
         {

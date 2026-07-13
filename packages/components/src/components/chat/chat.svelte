@@ -9,6 +9,7 @@
    * @tag domain-suite
    * @useWhen Shipping a full chat surface with composer, scroll-anchor, unread indicator, and attachments bundled as one heavyweight drop-in.
    * @useWhen Building an AI assistant or support thread where conversation state is modeled as a transcript of role-tagged messages.
+   * @useWhen Embedding Chat in a definite-height flex or grid region where its internal transcript should own scrolling.
    * @avoidWhen Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite.
    * @avoidWhen The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit.
    * @related markdown-editor
