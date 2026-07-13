@@ -28,6 +28,6 @@
     Support thread
   </header>
   <div style="flex: 1; min-height: 0;">
-    <Chat id="full-height-layout-chat" {conversation} capabilities={{ attachments: false }} />
+    <Chat id="playground-full-height-layout-chat" {conversation} capabilities={{ attachments: false }} />
   </div>
 </div>
