@@ -66,11 +66,11 @@
  * gap with the surface color, avoiding nth-child math for any column count.
  */
   .cinder-stat-group[data-cinder-variant='shared-borders'] {
+    --cinder-stat-group-gap: 1px;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md, 0.5rem);
     overflow: hidden;
     background: var(--cinder-border);
-    gap: 1px;
   }
 
   .cinder-stat-group[data-cinder-variant='shared-borders'] > .cinder-stat {

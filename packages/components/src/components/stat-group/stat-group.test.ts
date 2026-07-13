@@ -140,5 +140,7 @@ describe('StatGroup', () => {
     expect(css).toContain('gap: var(--cinder-stat-group-gap,');
     expect(css).toContain('padding: var(--cinder-stat-group-card-padding,');
     expect(css).toContain('padding: var(--cinder-stat-group-shared-cell-padding,');
+    expect(css).toContain('--cinder-stat-group-gap: 1px;');
+    expect(css).not.toMatch(/(^|\n)\s*gap:\s*1px;/);
   });
 });
