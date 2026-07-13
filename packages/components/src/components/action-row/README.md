@@ -18,6 +18,9 @@ use `DataList` and `StackedListItem`.
 
 ## CSS Variables
 
+Override these variables on the `ActionRow` root with a `style` attribute or a
+stylesheet rule that targets your row class.
+
 <!-- generated:variables:start -->
 
 - `--cinder-action-row-body-gap`

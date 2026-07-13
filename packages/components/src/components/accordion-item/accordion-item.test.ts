@@ -145,7 +145,7 @@ describe('AccordionItem', () => {
     expect(panel?.textContent).toContain('Hello from panel');
   });
 
-  test('panel is absent when item is not expanded', () => {
+  test('panel shell is hidden and content is absent when item is not expanded', () => {
     const { container } = renderItem({
       id: 'item-d',
       title: 'Item D',
@@ -153,7 +153,9 @@ describe('AccordionItem', () => {
       expandedIds: [],
     });
 
-    expect(container.querySelector('.cinder-accordion-item__panel')).toBeNull();
+    expect(container.querySelector('.cinder-accordion-item__panel')?.hasAttribute('hidden')).toBe(
+      true,
+    );
     expect(container.textContent).not.toContain('Should not appear');
   });
 
@@ -254,6 +256,30 @@ describe('AccordionItem', () => {
     expect(firstPanel?.id).toBeTruthy();
     expect(secondPanel?.id).toBeTruthy();
     expect(firstButton?.id).not.toBe(secondButton?.id);
+    expect(firstPanel?.id).not.toBe(secondPanel?.id);
+    expect(firstButton?.getAttribute('aria-controls')).toBe(firstPanel?.id);
+    expect(secondButton?.getAttribute('aria-controls')).toBe(secondPanel?.id);
+  });
+
+  test('duplicate collapsed item ids still reference unique hidden panel shells', () => {
+    const first = renderItem({
+      id: 'shared-item',
+      title: 'Shared item',
+      expandedIds: [],
+    });
+    const second = renderItem({
+      id: 'shared-item',
+      title: 'Shared item',
+      expandedIds: [],
+    });
+
+    const firstButton = first.container.querySelector('.cinder-accordion-item__trigger');
+    const secondButton = second.container.querySelector('.cinder-accordion-item__trigger');
+    const firstPanel = first.container.querySelector('.cinder-accordion-item__panel');
+    const secondPanel = second.container.querySelector('.cinder-accordion-item__panel');
+
+    expect(firstPanel?.hasAttribute('hidden')).toBe(true);
+    expect(secondPanel?.hasAttribute('hidden')).toBe(true);
     expect(firstPanel?.id).not.toBe(secondPanel?.id);
     expect(firstButton?.getAttribute('aria-controls')).toBe(firstPanel?.id);
     expect(secondButton?.getAttribute('aria-controls')).toBe(secondPanel?.id);

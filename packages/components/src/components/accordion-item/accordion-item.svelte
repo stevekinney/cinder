@@ -76,11 +76,11 @@
     </button>
   </h3>
 
-  {#if isExpanded}
-    <div id={panelId} class="cinder-accordion-item__panel">
+  <div id={panelId} class="cinder-accordion-item__panel" hidden={!isExpanded}>
+    {#if isExpanded}
       <div class="cinder-accordion-item__panel-inner">
         {@render children()}
       </div>
-    </div>
-  {/if}
+    {/if}
+  </div>
 </div>
