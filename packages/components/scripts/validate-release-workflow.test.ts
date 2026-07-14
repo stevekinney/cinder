@@ -5,8 +5,11 @@ import { basename, join } from 'node:path';
 
 import {
   findIgnoredPackageChangesets,
+  findMissingWorkflowDispatches,
+  findOutdatedWorkflowActions,
   parseChangesetPackageNames,
   workflowDeclaresPermission,
+  workflowDispatchInputHasDefault,
 } from './validate-release-workflow.ts';
 
 describe('validate-release-workflow changeset guards', () => {
@@ -53,6 +56,66 @@ describe('validate-release-workflow changeset guards', () => {
         },
         'actions',
         'read',
+      ),
+    ).toBe(false);
+  });
+
+  test('finds generated pull request workflows that are not explicitly dispatched', () => {
+    const workflow = {
+      jobs: {
+        release: {
+          steps: [
+            {
+              run: [
+                '# gh workflow run unit-tests.yaml --ref "$release_branch"',
+                'gh workflow run browser-tests.yaml --ref "$release_branch"',
+              ].join('\n'),
+            },
+          ],
+        },
+      },
+    };
+
+    expect(
+      findMissingWorkflowDispatches(workflow, [
+        'unit-tests.yaml',
+        'browser-tests.yaml',
+        'changeset-guard.yaml',
+      ]),
+    ).toEqual(['unit-tests.yaml', 'changeset-guard.yaml']);
+  });
+
+  test('finds workflow actions that still target deprecated Node 20 majors', () => {
+    expect(
+      findOutdatedWorkflowActions({
+        'release.yml': 'uses: actions/checkout@v4 # upgrade required\nuses: oven-sh/setup-bun@v2\n',
+        'unit-tests.yaml': 'uses: actions/cache/restore@v4\nuses: actions/cache/save@v6\n',
+      }),
+    ).toEqual(['release.yml: actions/checkout@v4', 'unit-tests.yaml: actions/cache/restore@v4']);
+  });
+
+  test('requires manual deploys to default to preview', () => {
+    expect(
+      workflowDispatchInputHasDefault(
+        {
+          on: {
+            workflow_dispatch: {
+              inputs: {
+                environment: { default: 'preview' },
+              },
+            },
+          },
+        },
+        'environment',
+        'preview',
+      ),
+    ).toBe(true);
+
+    expect(
+      workflowDispatchInputHasDefault(
+        { on: { workflow_dispatch: { inputs: { environment: { default: 'production' } } } } },
+        'environment',
+        'preview',
       ),
     ).toBe(false);
   });

@@ -116,7 +116,7 @@ jobs:
       components: ${{ steps.decide.outputs.components }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # The graph reads source files at HEAD and detects deletions by disk
           # absence; the diff needs the merge base. fetch-depth: 0 is the
@@ -124,7 +124,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
@@ -164,16 +164,16 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Restore Bun install cache
         id: bun-cache-restore
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
@@ -186,7 +186,7 @@ jobs:
       - name: Retry Bun install cache restore
         id: bun-cache-restore-retry
         if: steps.bun-cache-restore.outputs.cache-matched-key == ''
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
@@ -221,7 +221,7 @@ jobs:
 
       - name: Save Bun install cache
         if: steps.bun-cache-restore.outputs.cache-hit != 'true' && steps.bun-cache-restore-retry.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}

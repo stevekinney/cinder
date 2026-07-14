@@ -79,6 +79,15 @@ on:
       - '.npmrc'
       - 'tsconfig*.json'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment
+        type: choice
+        options:
+          - preview
+          - production
+        default: preview
+        required: true
 
 permissions:
   contents: read
@@ -133,15 +142,15 @@ jobs:
     if: ${{ needs.preflight.outputs.can_deploy == 'true' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Cache Bun install
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
@@ -157,7 +166,7 @@ jobs:
       - name: Determine environment
         id: environment
         run: |
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environment == 'production' }}" = "true" ]; then
             echo "vercel=production" >> "$GITHUB_OUTPUT"
           else
             echo "vercel=preview" >> "$GITHUB_OUTPUT"

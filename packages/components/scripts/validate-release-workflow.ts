@@ -9,6 +9,13 @@
  *   - The file .github/workflows/release.yaml is present.
  *   - The file has `id-token: write` (the OIDC permission required for Trusted
  *     Publishing) somewhere in its permissions declarations.
+ *   - The release workflow can dispatch every validation workflow required by
+ *     a Changesets-created pull request, whose GITHUB_TOKEN-originated events
+ *     otherwise require manual approval.
+ *   - Manual playground dispatches default to preview, so release validation
+ *     cannot accidentally deploy a version branch to production.
+ *   - Workflow actions use Node 24-compatible majors instead of deprecated
+ *     Node 20 action runtimes.
  *   - The primary publish step (the `run: bun run --filter=@lostgradient/cinder publish:release`
  *     step) does NOT have NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block
  *     (precise, well-messaged check).
@@ -42,7 +49,12 @@ import { isObjectRecord } from './validation-utilities.ts';
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(scriptDirectory, '..');
 const workspaceRoot = resolve(packageRoot, '../..');
+const workflowsDirectoryPath = join(workspaceRoot, '.github/workflows');
 const releaseWorkflowPath = join(workspaceRoot, '.github/workflows/release.yaml');
+const deployPlaygroundWorkflowPath = join(
+  workspaceRoot,
+  '.github/workflows/deploy-playground.yaml',
+);
 const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 
@@ -180,6 +192,63 @@ export function workflowDeclaresPermission(
   );
 }
 
+function workflowRunScripts(workflow: unknown): string[] {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return [];
+
+  return Object.values(workflow['jobs']).flatMap((job) => {
+    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return [];
+    return job['steps'].flatMap((step) =>
+      isObjectRecord(step) && typeof step['run'] === 'string' ? [step['run']] : [],
+    );
+  });
+}
+
+export function findMissingWorkflowDispatches(
+  workflow: unknown,
+  requiredWorkflows: readonly string[],
+): string[] {
+  const runScripts = workflowRunScripts(workflow);
+  return requiredWorkflows.filter(
+    (requiredWorkflow) =>
+      !runScripts.some((script) =>
+        script.split('\n').some((line) => {
+          const command = line.trim();
+          return (
+            !command.startsWith('#') &&
+            command.startsWith(`gh workflow run ${requiredWorkflow} `) &&
+            command.includes('--ref')
+          );
+        }),
+      ),
+  );
+}
+
+export function findOutdatedWorkflowActions(
+  workflowContents: Readonly<Record<string, string>>,
+): string[] {
+  const outdatedActionPattern =
+    /^\s*uses:\s*(actions\/checkout@v[1-4]|actions\/cache(?:\/restore|\/save)?@v[1-4]|oven-sh\/setup-bun@v1)(?:\s+#.*)?\s*$/gm;
+
+  return Object.entries(workflowContents).flatMap(([workflowName, content]) =>
+    [...content.matchAll(outdatedActionPattern)].map(
+      (match) => `${workflowName}: ${match[1] ?? 'unknown action'}`,
+    ),
+  );
+}
+
+export function workflowDispatchInputHasDefault(
+  workflow: unknown,
+  inputName: string,
+  expectedDefault: string,
+): boolean {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['on'])) return false;
+  const workflowDispatch = workflow['on']['workflow_dispatch'];
+  if (!isObjectRecord(workflowDispatch) || !isObjectRecord(workflowDispatch['inputs']))
+    return false;
+  const input = workflowDispatch['inputs'][inputName];
+  return isObjectRecord(input) && input['default'] === expectedDefault;
+}
+
 function runValidation(): void {
   const workflowContent = (() => {
     try {
@@ -206,13 +275,13 @@ function runValidation(): void {
   }
   pass('id-token: write is present');
 
-  if (!workflowDeclaresPermission(parsedWorkflow, 'actions', 'read')) {
+  if (!workflowDeclaresPermission(parsedWorkflow, 'actions', 'write')) {
     fail(
-      'release.yaml is missing `actions: read`. The publish path must be able to inspect ' +
-        'the same-SHA main-green workflow run before publishing.',
+      'release.yaml is missing `actions: write`. The version path must dispatch validation ' +
+        'for Changesets-created pull requests, and the publish path must inspect main-green.',
     );
   }
-  pass('actions: read is present');
+  pass('actions: write is present');
 
   if (!workflowDeclaresPermission(parsedWorkflow, 'checks', 'read')) {
     fail(
@@ -236,6 +305,65 @@ function runValidation(): void {
     );
   }
   pass('Publish path waits for same-SHA main-green source validation');
+
+  const requiredVersionPullRequestWorkflows = [
+    'unit-tests.yaml',
+    'browser-tests.yaml',
+    'changeset-guard.yaml',
+    'deploy-playground.yaml',
+  ];
+  const missingWorkflowDispatches = findMissingWorkflowDispatches(
+    parsedWorkflow,
+    requiredVersionPullRequestWorkflows,
+  );
+  if (missingWorkflowDispatches.length > 0) {
+    fail(
+      'release.yaml does not dispatch all validation workflows for the Changesets-created ' +
+        `pull request: ${missingWorkflowDispatches.join(', ')}. GITHUB_TOKEN-created pull request ` +
+        'events require approval, so these explicit dispatches keep release validation automatic.',
+    );
+  }
+  if (!workflowContent.includes('steps.changesets.outputs.pullRequestNumber')) {
+    fail('release.yaml must gate version pull request validation on `pullRequestNumber`.');
+  }
+  pass('Version pull requests explicitly dispatch all validation workflows');
+
+  let deployPlaygroundWorkflowContent: string;
+  try {
+    deployPlaygroundWorkflowContent = readFileSync(deployPlaygroundWorkflowPath, 'utf8');
+  } catch {
+    fail(`playground deploy workflow not found at ${deployPlaygroundWorkflowPath}`);
+  }
+  let parsedDeployPlaygroundWorkflow: unknown;
+  try {
+    parsedDeployPlaygroundWorkflow = loadYaml(deployPlaygroundWorkflowContent);
+  } catch (error) {
+    fail(`deploy-playground.yaml is not valid YAML: ${errorMessageFrom(error)}`);
+  }
+  if (
+    !workflowDispatchInputHasDefault(parsedDeployPlaygroundWorkflow, 'environment', 'preview') ||
+    !deployPlaygroundWorkflowContent.includes("inputs.environment == 'production'")
+  ) {
+    fail(
+      'deploy-playground.yaml must default manual dispatches to preview and require an explicit ' +
+        '`environment=production` input for production deploys.',
+    );
+  }
+  pass('Manual playground deploys default to preview');
+
+  const workflowContents = Object.fromEntries(
+    readdirSync(workflowsDirectoryPath)
+      .filter((fileName) => /\.ya?ml$/.test(fileName))
+      .map((fileName) => [fileName, readFileSync(join(workflowsDirectoryPath, fileName), 'utf8')]),
+  );
+  const outdatedWorkflowActions = findOutdatedWorkflowActions(workflowContents);
+  if (outdatedWorkflowActions.length > 0) {
+    fail(
+      'GitHub workflows still use action majors that target deprecated Node runtimes:\n' +
+        outdatedWorkflowActions.map((action) => `  - ${action}`).join('\n'),
+    );
+  }
+  pass('GitHub workflows use current Node 24 action majors');
 
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.
