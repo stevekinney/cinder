@@ -87,7 +87,7 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
   import { MediaQuery } from 'svelte/reactivity';
 
   const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
-  let collapsed = $state(true);
+  let collapsed = $state(mobile.current);
 
   const triggerLabel = $derived(collapsed ? 'Open primary navigation' : 'Close primary navigation');
 </script>
