@@ -66,8 +66,6 @@
   }: FixtureProps = $props();
 
   void untrack(() => onValueChange);
-
-  const multipleVariant = $derived(variant === 'radiogroup' ? variant : undefined);
 </script>
 
 <!--
@@ -117,7 +115,7 @@
     {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
-    variant={multipleVariant}
+    variant={variant as 'radiogroup' | undefined}
     {size}
     {density}
     {orientation}

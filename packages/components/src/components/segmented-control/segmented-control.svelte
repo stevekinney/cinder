@@ -56,7 +56,7 @@
     selectionMode === 'multiple' && value instanceof SvelteSet ? Array.from(value) : undefined,
   );
   const effectiveVariant = $derived(
-    variant === 'navigation' && selectionMode === 'multiple' ? 'radiogroup' : variant,
+    selectionMode === 'multiple' && variant !== 'radiogroup' ? 'radiogroup' : variant,
   );
   const rendersNavigation = $derived(effectiveVariant === 'navigation');
 

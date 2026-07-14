@@ -1142,9 +1142,9 @@ describe('SegmentedControl — tablist variant', () => {
       },
     });
 
-    // Multiple-selection mode wins the role derivation regardless of variant:
-    // the fixture drops unsupported runtime variants before rendering so the
-    // control renders role="group" with aria-pressed children, never role="tab".
+    // Multiple-selection mode wins the role derivation regardless of variant,
+    // so unsupported runtime variants render role="group" with aria-pressed
+    // children, never role="tab".
     expect(screen.getByRole('group', { name: 'Review view' })).not.toBeNull();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab')).toBeNull();
