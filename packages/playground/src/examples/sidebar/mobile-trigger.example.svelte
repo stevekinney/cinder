@@ -12,7 +12,11 @@
   import { SIDEBAR_MOBILE_MEDIA_QUERY, Sidebar } from '@lostgradient/cinder/sidebar';
   import { MediaQuery } from 'svelte/reactivity';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+
+  const uid = $props.id();
   const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
+  const sidebarId = $derived(`${mountIdPrefix ?? uid}-workspace-sidebar`);
   let collapsed = $state(true);
 
   const triggerLabel = $derived(
@@ -29,7 +33,7 @@
 <div
   style="display: flex; min-height: 24rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;"
 >
-  <Sidebar id="workspace-sidebar" bind:collapsed label="Workspace">
+  <Sidebar id={sidebarId} bind:collapsed label="Workspace">
     {#snippet brand()}
       <strong style="font-size: 0.875rem;">Cinder</strong>
     {/snippet}
@@ -53,7 +57,7 @@
     >
       <Button
         label={triggerLabel}
-        aria-controls="workspace-sidebar"
+        aria-controls={sidebarId}
         aria-expanded={!collapsed}
         onclick={() => (collapsed = !collapsed)}
       />

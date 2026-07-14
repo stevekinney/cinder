@@ -86,12 +86,14 @@ describe('stripExampleHarness — fixtures', () => {
 <a href={\`#\${mainId}\`}>Home</a>
 <main id={mainId}>x</main>
 <section aria-labelledby={mainId}>x</section>
+<button aria-controls={mainId}>Toggle</button>
 `;
     const stripped = stripExampleHarness(source, 'skip-link/basic');
     expect(stripped).toContain('<SkipLink target="main" />');
     expect(stripped).toContain('<a href="#main">Home</a>');
     expect(stripped).toContain('<main id="main">');
     expect(stripped).toContain('<section aria-labelledby="main">');
+    expect(stripped).toContain('<button aria-controls="main">Toggle</button>');
     expect(stripped).not.toContain('mainId');
   });
 
