@@ -9,6 +9,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Sidebar } = await import('./sidebar.svelte');
+const { SIDEBAR_MOBILE_BREAKPOINT, SIDEBAR_MOBILE_MEDIA_QUERY } = await import('./index.ts');
 const SIDEBAR_SOURCE = new URL('./sidebar.svelte', import.meta.url).pathname;
 
 function textSnippet(text: string) {
@@ -200,6 +201,11 @@ describe('Sidebar (desktop / inline aside)', () => {
 });
 
 describe('Sidebar SSR responsive fallback', () => {
+  test('exports the mobile drawer breakpoint contract', () => {
+    expect(SIDEBAR_MOBILE_BREAKPOINT).toBe('47.99rem');
+    expect(SIDEBAR_MOBILE_MEDIA_QUERY).toBe('(max-width: 47.99rem)');
+  });
+
   test('marks the no-matchMedia desktop aside as a mobile first-paint fallback', () => {
     const hadMatchMedia = 'matchMedia' in window;
     const originalMatchMedia = window.matchMedia;
@@ -245,8 +251,11 @@ describe('Sidebar SSR responsive fallback', () => {
 
   test('component CSS hides only the SSR fallback on mobile first paint', async () => {
     const css = await Bun.file(new URL('./sidebar.css', import.meta.url)).text();
+    const escapedBreakpoint = SIDEBAR_MOBILE_BREAKPOINT.replace('.', '\\.');
     expect(css).toMatch(
-      /@media\s*\(\s*max-width:\s*47\.99rem\s*\)[\s\S]*?\.cinder-sidebar--desktop\[data-cinder-ssr-mobile-fallback\]\s*{\s*display:\s*none;\s*}/,
+      new RegExp(
+        `@media\\s*\\(\\s*max-width:\\s*${escapedBreakpoint}\\s*\\)[\\s\\S]*?\\.cinder-sidebar--desktop\\[data-cinder-ssr-mobile-fallback\\]\\s*{\\s*display:\\s*none;\\s*}`,
+      ),
     );
     expect(css).toMatch(
       /\.cinder-sidebar--desktop\[data-cinder-collapsed\]\s*{\s*display:\s*none;\s*}/,
@@ -302,7 +311,7 @@ function installMatchMediaMock(initialMatches: boolean) {
   const queries: string[] = [];
   const list = {
     matches: initialMatches,
-    media: '(max-width: 47.99rem)',
+    media: SIDEBAR_MOBILE_MEDIA_QUERY,
     onchange: null as Listener | null,
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -315,7 +324,7 @@ function installMatchMediaMock(initialMatches: boolean) {
   (window as unknown as { matchMedia: typeof window.matchMedia }).matchMedia = ((query: string) => {
     queries.push(query);
 
-    if (query === '(max-width: 47.99rem)') {
+    if (query === SIDEBAR_MOBILE_MEDIA_QUERY) {
       return list as unknown as MediaQueryList;
     }
 
@@ -340,7 +349,7 @@ function installMatchMediaMock(initialMatches: boolean) {
 }
 
 function expectMobileQueryWasUsed(mock: ReturnType<typeof installMatchMediaMock>): void {
-  expect(mock.queries).toContain('(max-width: 47.99rem)');
+  expect(mock.queries).toContain(SIDEBAR_MOBILE_MEDIA_QUERY);
 }
 
 // happy-dom doesn't implement HTMLDialogElement.showModal / close — stub them
