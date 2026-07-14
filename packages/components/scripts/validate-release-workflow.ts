@@ -203,6 +203,15 @@ function workflowRunScripts(workflow: unknown): string[] {
   });
 }
 
+export function workflowRunScriptsContainActiveLine(
+  workflow: unknown,
+  requiredContent: string,
+): boolean {
+  return workflowRunScripts(workflow).some((script) =>
+    script.split('\n').some((line) => !isComment(line) && line.includes(requiredContent)),
+  );
+}
+
 export function findMissingWorkflowDispatches(
   workflow: unknown,
   requiredWorkflows: readonly string[],
@@ -342,7 +351,10 @@ function runValidation(): void {
   }
   if (
     !workflowDispatchInputHasDefault(parsedDeployPlaygroundWorkflow, 'environment', 'preview') ||
-    !deployPlaygroundWorkflowContent.includes("inputs.environment == 'production'")
+    !workflowRunScriptsContainActiveLine(
+      parsedDeployPlaygroundWorkflow,
+      "inputs.environment == 'production'",
+    )
   ) {
     fail(
       'deploy-playground.yaml must default manual dispatches to preview and require an explicit ' +

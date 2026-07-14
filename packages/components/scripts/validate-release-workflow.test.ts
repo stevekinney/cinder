@@ -10,6 +10,7 @@ import {
   parseChangesetPackageNames,
   workflowDeclaresPermission,
   workflowDispatchInputHasDefault,
+  workflowRunScriptsContainActiveLine,
 } from './validate-release-workflow.ts';
 
 describe('validate-release-workflow changeset guards', () => {
@@ -118,6 +119,34 @@ describe('validate-release-workflow changeset guards', () => {
         'preview',
       ),
     ).toBe(false);
+  });
+
+  test('requires the production dispatch expression on an active run line', () => {
+    expect(
+      workflowRunScriptsContainActiveLine(
+        {
+          jobs: {
+            deploy: {
+              steps: [{ run: "# inputs.environment == 'production'" }],
+            },
+          },
+        },
+        "inputs.environment == 'production'",
+      ),
+    ).toBe(false);
+
+    expect(
+      workflowRunScriptsContainActiveLine(
+        {
+          jobs: {
+            deploy: {
+              steps: [{ run: 'if [ "${{ inputs.environment == \'production\' }}" = true ]; then' }],
+            },
+          },
+        },
+        "inputs.environment == 'production'",
+      ),
+    ).toBe(true);
   });
 
   test('parses package names from changeset front matter', () => {
