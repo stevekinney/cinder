@@ -89,13 +89,15 @@ describe('validate-release-workflow changeset guards', () => {
   test('finds workflow actions that still target deprecated Node 20 majors', () => {
     expect(
       findOutdatedWorkflowActions({
-        'release.yml': 'uses: actions/checkout@v4 # upgrade required\nuses: oven-sh/setup-bun@v2\n',
+        'release.yml':
+          'uses: actions/checkout@v4 # upgrade required\nuses: actions/setup-node@v4\nuses: oven-sh/setup-bun@v2\n',
         'unit-tests.yaml':
-          'uses: actions/cache/restore@v4\nuses: actions/cache/save@v6\nuses: actions/upload-artifact@v5\nuses: marocchino/sticky-pull-request-comment@v2\n',
+          'uses: actions/cache/restore@v5\nuses: actions/cache/save@v6\nuses: actions/upload-artifact@v5\nuses: marocchino/sticky-pull-request-comment@v2\n',
       }),
     ).toEqual([
       'release.yml: actions/checkout@v4',
-      'unit-tests.yaml: actions/cache/restore@v4',
+      'release.yml: actions/setup-node@v4',
+      'unit-tests.yaml: actions/cache/restore@v5',
       'unit-tests.yaml: actions/upload-artifact@v5',
       'unit-tests.yaml: marocchino/sticky-pull-request-comment@v2',
     ]);

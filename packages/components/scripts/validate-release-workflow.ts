@@ -236,7 +236,7 @@ export function findOutdatedWorkflowActions(
   workflowContents: Readonly<Record<string, string>>,
 ): string[] {
   const outdatedActionPattern =
-    /^\s*uses:\s*(actions\/checkout@v[1-4]|actions\/cache(?:\/restore|\/save)?@v[1-4]|actions\/upload-artifact@v[1-5]|marocchino\/sticky-pull-request-comment@v[12]|oven-sh\/setup-bun@v1)(?:\s+#.*)?\s*$/gm;
+    /^\s*uses:\s*(actions\/checkout@v[1-4]|actions\/cache(?:\/restore|\/save)?@v[1-5]|actions\/setup-node@v[1-4]|actions\/upload-artifact@v[1-5]|marocchino\/sticky-pull-request-comment@v[12]|oven-sh\/setup-bun@v1)(?:\s+#.*)?\s*$/gm;
 
   return Object.entries(workflowContents).flatMap(([workflowName, content]) =>
     [...content.matchAll(outdatedActionPattern)].map(

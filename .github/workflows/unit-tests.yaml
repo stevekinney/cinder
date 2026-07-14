@@ -246,6 +246,7 @@ jobs:
         run: |
           bun run --filter='*' lint
           bun run --filter=@lostgradient/cinder lint:invariants
+          bun run --filter=@lostgradient/cinder validate:release-workflow
           bunx stylelint 'packages/**/src/**/*.{css,svelte}'
 
       # Unconditional whole-repo invariant: every component CSS partial must be
