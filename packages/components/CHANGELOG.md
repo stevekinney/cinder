@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.12.1
+
+### Patch Changes
+
+- [#737](https://github.com/stevekinney/cinder/pull/737) [`3600db8`](https://github.com/stevekinney/cinder/commit/3600db878c53ae5d7048487207b08a60d5421b22) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the post-0.12 downstream fixes for Chat full-height layout metadata and dense inspector styling hooks.
+
 ## 0.12.0
 
 ### Minor Changes
