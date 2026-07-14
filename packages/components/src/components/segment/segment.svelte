@@ -73,6 +73,7 @@
   const isNavigationItem = $derived(context.variant === 'navigation');
   const anchorDisabled = $derived(effectiveDisabled || href === undefined);
   const anchorAttributes = $derived(rest as Omit<HTMLAnchorAttributes, 'class' | 'href'>);
+  const anchorTabindex = $derived(anchorDisabled ? -1 : anchorAttributes.tabindex);
   const buttonAttributes = $derived(rest as Omit<HTMLButtonAttributes, 'class'>);
 
   const role = $derived(
@@ -116,6 +117,7 @@
     data-cinder-segment-value={value}
     aria-current={current ? currentToken : undefined}
     aria-disabled={anchorDisabled ? 'true' : undefined}
+    tabindex={anchorTabindex}
     class={classNames('cinder-segmented-control-option', customClassName)}
     data-cinder-current={current ? '' : undefined}
     onclick={handleAnchorClick}

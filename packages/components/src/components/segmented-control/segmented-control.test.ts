@@ -847,6 +847,30 @@ describe('SegmentedControl — variants', () => {
     expect(missing.getAttribute('aria-disabled')).toBe('true');
   });
 
+  test('disabled navigation segments override forwarded tabindex', () => {
+    render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        variant: 'navigation',
+        options: [
+          {
+            value: 'actual',
+            label: 'Actual',
+            href: '/costs?source=actual',
+            disabled: true,
+            tabindex: 0,
+          },
+        ],
+      },
+    });
+
+    const actual = screen.getByText('Actual');
+    expect(actual.tagName.toLowerCase()).toBe('a');
+    expect(actual.getAttribute('aria-disabled')).toBe('true');
+    expect(actual.getAttribute('tabindex')).toBe('-1');
+  });
+
   test('invalid selectionMode="multiple" + variant="navigation" falls back to group semantics', () => {
     const value = new SvelteSet<string>(['actual']);
     const { container } = render(Fixture, {

@@ -6,6 +6,7 @@
     current?: boolean;
     currentToken?: 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
     onclick?: (event: MouseEvent) => void;
+    tabindex?: number;
     disabled?: boolean;
     controls?: string;
   };
@@ -90,6 +91,7 @@
         currentToken={option.currentToken}
         disabled={option.disabled}
         onclick={option.onclick}
+        tabindex={option.tabindex}
       >
         {option.label}
       </Segment>
