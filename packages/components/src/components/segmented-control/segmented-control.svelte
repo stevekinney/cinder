@@ -55,10 +55,14 @@
   const initialMultipleValues = untrack(() =>
     selectionMode === 'multiple' && value instanceof SvelteSet ? Array.from(value) : undefined,
   );
+  const effectiveVariant = $derived(
+    variant === 'navigation' && selectionMode === 'multiple' ? 'radiogroup' : variant,
+  );
+  const rendersNavigation = $derived(effectiveVariant === 'navigation');
 
   const controller = new SegmentedControlController({
     selectionMode: () => selectionMode,
-    variant: () => variant,
+    variant: () => effectiveVariant,
     orientation: () => orientation,
     controlDisabled: () => disabled,
     disallowEmptySelection: () => disallowEmptySelection,
@@ -74,7 +78,7 @@
       return selectionMode;
     },
     get variant() {
-      return variant;
+      return effectiveVariant;
     },
     get controlDisabled() {
       return disabled;
@@ -151,7 +155,7 @@
   >
     {label}
   </span>
-  {#if variant === 'navigation'}
+  {#if rendersNavigation}
     <nav
       {...rest}
       {id}
@@ -163,7 +167,7 @@
       data-cinder-selection-mode={selectionMode}
       data-cinder-detached={detached ? '' : undefined}
       data-cinder-full-width={fullWidth ? '' : undefined}
-      data-cinder-variant={variant}
+      data-cinder-variant={effectiveVariant}
       class={classNames('cinder-segmented-control', customClassName)}
     >
       {@render children()}
@@ -182,14 +186,14 @@
       data-cinder-selection-mode={selectionMode}
       data-cinder-detached={detached ? '' : undefined}
       data-cinder-full-width={fullWidth ? '' : undefined}
-      data-cinder-variant={variant}
+      data-cinder-variant={effectiveVariant}
       class={classNames('cinder-segmented-control', customClassName)}
       onkeydown={(event) => controller.handleKeydown(event)}
     >
       {@render children()}
     </div>
   {/if}
-  {#if name && variant !== 'navigation'}
+  {#if name && !rendersNavigation}
     <input bind:this={resetInputElement} type="hidden" disabled />
     {#each selectedValues as selectedValue (selectedValue)}
       <input type="hidden" {name} value={selectedValue} {disabled} />

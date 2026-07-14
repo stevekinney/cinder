@@ -216,9 +216,9 @@
   /* Sticky-hover suppression on touch: wrap hover-only chrome so it doesn't
  * "stick" after tap on touch devices that emulate :hover. */
   @media (hover: hover) {
-    .cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
-        [data-cinder-current]
-      ):not([data-cinder-pressed]) {
+    .cinder-segmented-control-option:hover:not(:disabled):not([aria-disabled='true']):not(
+        [data-cinder-selected]
+      ):not([data-cinder-current]):not([data-cinder-pressed]) {
       background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
       color: var(--cinder-text);
     }
@@ -256,7 +256,8 @@
 
   /* ── Disabled option ────────────────────────────────────────────────────── */
 
-  .cinder-segmented-control-option:disabled {
+  .cinder-segmented-control-option:disabled,
+  .cinder-segmented-control-option[aria-disabled='true'] {
     cursor: not-allowed;
     /* opacity centralized in foundation.css disabled-visual rule (0.6) */
   }

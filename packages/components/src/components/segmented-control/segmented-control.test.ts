@@ -842,6 +842,33 @@ describe('SegmentedControl — variants', () => {
     expect(container.querySelectorAll('.cinder-segmented-control-option')).toHaveLength(2);
   });
 
+  test('invalid selectionMode="multiple" + variant="navigation" falls back to group semantics', () => {
+    const value = new SvelteSet<string>(['actual']);
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        name: 'source',
+        selectionMode: 'multiple',
+        variant: 'navigation',
+        value,
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'forecast', label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    const group = screen.getByRole('group', { name: 'Cost source' });
+    expect(group.getAttribute('data-cinder-variant')).toBe('radiogroup');
+    expect(screen.queryByRole('navigation')).toBeNull();
+
+    const actual = screen.getByRole('button', { name: 'Actual' });
+    expect(actual.getAttribute('aria-pressed')).toBe('true');
+    expect(actual.getAttribute('href')).toBeNull();
+    expect(container.querySelector('input[name="source"]')?.getAttribute('value')).toBe('actual');
+  });
+
   test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
     const { container } = render(Fixture, {
       props: {

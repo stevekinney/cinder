@@ -106,7 +106,7 @@
     {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
-    variant={variant === 'tablist' || variant === 'navigation' ? undefined : variant}
+    variant={variant as 'radiogroup' | undefined}
     {size}
     {density}
     {orientation}
