@@ -238,7 +238,7 @@ export function findOutdatedWorkflowActions(
   workflowContents: Readonly<Record<string, string>>,
 ): string[] {
   const outdatedActionPattern =
-    /^\s*uses:\s*['"]?(actions\/checkout@v[1-4](?:\.\d+(?:\.\d+)?)?|actions\/cache(?:\/restore|\/save)?@v[1-5](?:\.\d+(?:\.\d+)?)?|actions\/setup-node@v[1-4](?:\.\d+(?:\.\d+)?)?|actions\/upload-artifact@v[1-5](?:\.\d+(?:\.\d+)?)?|marocchino\/sticky-pull-request-comment@v[12](?:\.\d+(?:\.\d+)?)?|oven-sh\/setup-bun@v1(?:\.\d+(?:\.\d+)?)?)['"]?(?:\s+#.*)?\s*$/gm;
+    /^\s*uses:\s*['"]?(actions\/checkout@v[1-6](?:\.\d+(?:\.\d+)?)?|actions\/cache(?:\/restore|\/save)?@v[1-5](?:\.\d+(?:\.\d+)?)?|actions\/setup-node@v[1-6](?:\.\d+(?:\.\d+)?)?|actions\/upload-artifact@v[1-6](?:\.\d+(?:\.\d+)?)?|marocchino\/sticky-pull-request-comment@v[12](?:\.\d+(?:\.\d+)?)?|oven-sh\/setup-bun@v1(?:\.\d+(?:\.\d+)?)?)['"]?(?:\s+#.*)?\s*$/gm;
 
   return Object.entries(workflowContents).flatMap(([workflowName, content]) =>
     [...content.matchAll(outdatedActionPattern)].map(
