@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.13.0
+
+### Minor Changes
+
+- [#740](https://github.com/stevekinney/cinder/pull/740) [`ddefe5c`](https://github.com/stevekinney/cinder/commit/ddefe5c7fb2beff3b2593ea1179cc1bb6ed56bae) Thanks [@stevekinney](https://github.com/stevekinney)! - Add link-backed SegmentedControl navigation options for route filters.
+
 ## 0.12.1
 
 ### Patch Changes
