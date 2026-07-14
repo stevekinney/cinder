@@ -90,12 +90,12 @@ describe('validate-release-workflow changeset guards', () => {
     expect(
       findOutdatedWorkflowActions({
         'release.yml':
-          'uses: actions/checkout@v4 # upgrade required\nuses: actions/setup-node@v4\nuses: oven-sh/setup-bun@v2\n',
+          'uses: "actions/checkout@v4.3.1" # upgrade required\nuses: actions/setup-node@v4\nuses: oven-sh/setup-bun@v2\n',
         'unit-tests.yaml':
           'uses: actions/cache/restore@v5\nuses: actions/cache/save@v6\nuses: actions/upload-artifact@v5\nuses: marocchino/sticky-pull-request-comment@v2\n',
       }),
     ).toEqual([
-      'release.yml: actions/checkout@v4',
+      'release.yml: actions/checkout@v4.3.1',
       'release.yml: actions/setup-node@v4',
       'unit-tests.yaml: actions/cache/restore@v5',
       'unit-tests.yaml: actions/upload-artifact@v5',
@@ -125,6 +125,15 @@ describe('validate-release-workflow changeset guards', () => {
         { on: { workflow_dispatch: { inputs: { environment: { default: 'production' } } } } },
         'environment',
         'preview',
+      ),
+    ).toBe(false);
+
+    expect(
+      workflowRunScriptsContainActiveLine(
+        {
+          jobs: { deploy: { steps: [{ run: "echo safe # inputs.environment == 'production'" }] } },
+        },
+        "inputs.environment == 'production'",
       ),
     ).toBe(false);
   });
