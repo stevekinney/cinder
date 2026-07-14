@@ -88,6 +88,8 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
 
   const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
   let collapsed = $state(true);
+
+  const triggerLabel = $derived(collapsed ? 'Open primary navigation' : 'Close primary navigation');
 </script>
 
 {#if mobile.current}
@@ -95,7 +97,7 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
     type="button"
     aria-controls="primary-sidebar"
     aria-expanded={!collapsed}
-    aria-label="Open primary navigation"
+    aria-label={triggerLabel}
     onclick={() => (collapsed = !collapsed)}
   >
     <!-- hamburger icon -->
