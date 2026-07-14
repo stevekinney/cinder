@@ -840,6 +840,11 @@ describe('SegmentedControl — variants', () => {
 
     expect(container.querySelectorAll('button, [role="radio"], [role="tab"]')).toHaveLength(0);
     expect(container.querySelectorAll('.cinder-segmented-control-option')).toHaveLength(2);
+
+    const missing = screen.getByText('Missing href');
+    expect(missing.tagName.toLowerCase()).toBe('a');
+    expect(missing.getAttribute('href')).toBeNull();
+    expect(missing.getAttribute('aria-disabled')).toBe('true');
   });
 
   test('invalid selectionMode="multiple" + variant="navigation" falls back to group semantics', () => {
