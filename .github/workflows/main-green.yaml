@@ -137,7 +137,7 @@ jobs:
       # from the exact per-line data instead of guessed at.
       - name: Upload coverage LCOV
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: component-coverage-lcov
           path: packages/components/coverage/lcov.info
