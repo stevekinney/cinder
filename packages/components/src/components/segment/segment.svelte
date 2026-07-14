@@ -42,7 +42,7 @@
 
   const context = getSegmentedControlContext();
 
-  const buttonValue = $derived(value ?? '');
+  const buttonValue = $derived(value ?? href ?? '');
 
   const registerSegment: Attachment<HTMLButtonElement> = (node) => {
     // Attachments run inside a tracked effect. Wrap the call to register() in

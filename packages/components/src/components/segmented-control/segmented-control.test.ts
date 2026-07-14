@@ -874,6 +874,35 @@ describe('SegmentedControl — variants', () => {
     expect(container.querySelector('input[name="source"]')?.getAttribute('value')).toBe('actual');
   });
 
+  test('href-backed segments use href as their button value outside navigation mode', async () => {
+    let value: string | undefined;
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        get value() {
+          return value;
+        },
+        set value(next: string | undefined) {
+          value = next;
+        },
+        options: [
+          { label: 'Actual', href: '/costs?source=actual' },
+          { label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    const actual = screen.getByRole('radio', { name: 'Actual' });
+    const forecast = screen.getByRole('radio', { name: 'Forecast' });
+
+    await fireEvent.click(actual);
+    expect(value).toBe('/costs?source=actual');
+    await fireEvent.click(forecast);
+    expect(value).toBe('/costs?source=forecast');
+    expect(container.querySelectorAll('[data-cinder-segment-value=""]')).toHaveLength(0);
+  });
+
   test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
     const { container } = render(Fixture, {
       props: {
@@ -1114,17 +1143,15 @@ describe('SegmentedControl — tablist variant', () => {
     });
 
     // Multiple-selection mode wins the role derivation regardless of variant:
-    // the control renders role="group" with aria-pressed children, never
-    // role="tab". Visual isolation of the raw
-    // data-cinder-variant="tablist" + data-cinder-selection-mode="multiple"
-    // attribute combination is proven in the Playwright regression, because the
-    // tablist CSS is scoped to single-selection roots.
+    // the fixture drops unsupported runtime variants before rendering so the
+    // control renders role="group" with aria-pressed children, never role="tab".
     expect(screen.getByRole('group', { name: 'Review view' })).not.toBeNull();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab')).toBeNull();
 
     const root = container.querySelector('.cinder-segmented-control');
     expect(root?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('radiogroup');
 
     const editor = screen.getByRole('button', { name: 'Editor' });
     expect(editor.getAttribute('aria-pressed')).toBe('true');

@@ -1,16 +1,17 @@
 <script lang="ts" module>
   import type { SvelteSet } from 'svelte/reactivity';
 
-  export type FixtureOption = {
-    value: string;
+  type FixtureOptionBase = {
     label: string;
-    href?: string;
     current?: boolean;
     currentToken?: 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
     onclick?: (event: MouseEvent) => void;
     disabled?: boolean;
     controls?: string;
   };
+
+  export type FixtureOption = FixtureOptionBase &
+    ({ value: string; href?: string } | { href: string; value?: string });
 
   export type FixtureProps = {
     id: string;
@@ -65,6 +66,8 @@
   }: FixtureProps = $props();
 
   void untrack(() => onValueChange);
+
+  const multipleVariant = $derived(variant === 'radiogroup' ? variant : undefined);
 </script>
 
 <!--
@@ -74,7 +77,7 @@
   site.
 -->
 {#snippet segments()}
-  {#each options as option (option.value)}
+  {#each options as option (option.value ?? option.href ?? option.label)}
     {#if option.href !== undefined}
       <Segment
         value={option.value}
@@ -87,12 +90,20 @@
         {option.label}
       </Segment>
     {:else if showLeadingIcon}
-      <Segment value={option.value} disabled={option.disabled} controls={option.controls}>
+      <Segment
+        value={option.value ?? option.href ?? ''}
+        disabled={option.disabled}
+        controls={option.controls}
+      >
         {#snippet leading()}<span data-test-icon></span>{/snippet}
         {option.label}
       </Segment>
     {:else}
-      <Segment value={option.value} disabled={option.disabled} controls={option.controls}>
+      <Segment
+        value={option.value ?? option.href ?? ''}
+        disabled={option.disabled}
+        controls={option.controls}
+      >
         {option.label}
       </Segment>
     {/if}
@@ -106,7 +117,7 @@
     {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
-    variant={variant as 'radiogroup' | undefined}
+    variant={multipleVariant}
     {size}
     {density}
     {orientation}
