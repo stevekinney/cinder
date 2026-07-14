@@ -797,7 +797,11 @@ export type { SideNavigationGroupProps } from './components/side-navigation-grou
 export { default as SideNavigationItem } from './components/side-navigation-item/index.ts';
 export type { SideNavigationItemProps } from './components/side-navigation-item/index.ts';
 
-export { default as Sidebar } from './components/sidebar/index.ts';
+export {
+  SIDEBAR_MOBILE_BREAKPOINT,
+  SIDEBAR_MOBILE_MEDIA_QUERY,
+  default as Sidebar,
+} from './components/sidebar/index.ts';
 export type { SidebarProps } from './components/sidebar/index.ts';
 
 export { default as SortableList } from './components/sortable-list/index.ts';

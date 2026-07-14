@@ -22,6 +22,7 @@
   import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Drawer from '../drawer/drawer.svelte';
+  import { SIDEBAR_MOBILE_MEDIA_QUERY } from './sidebar.constants.ts';
 
   type SidebarRuntimeProps = SidebarProps & {
     'aria-label'?: unknown;
@@ -53,16 +54,14 @@
   // identically-named landmarks.
   const navigationLabel = $derived(`${validatedLabel} navigation`);
 
-  // Breakpoint matches the existing `47.99rem` (~767px) convention used by
-  // navigation-bar.css and navigation-item.css. The fully-parenthesized form
-  // is required — `window.matchMedia` rejects bare media feature expressions
-  // on Firefox and Safari.
+  // The fully-parenthesized form is required — `window.matchMedia` rejects
+  // bare media feature expressions on Firefox and Safari.
   // Keep the fallback explicit for SSR-contract test environments that resolve
   // the client MediaQuery build while `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const usesSsrResponsiveFallback = !hasMatchMedia;
   const mobile = hasMatchMedia
-    ? new MediaQuery('(max-width: 47.99rem)', false)
+    ? new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false)
     : { current: false };
 
   const context: SidebarContextValue = {

@@ -82,21 +82,33 @@ pattern is a hamburger button with `aria-controls` pointing at the sidebar and
 `aria-expanded` reflecting `!collapsed`:
 
 ```svelte
-<button
-  type="button"
-  aria-controls="primary-sidebar"
-  aria-expanded={!collapsed}
-  aria-label="Open primary navigation"
-  onclick={() => (collapsed = !collapsed)}
->
-  <!-- hamburger icon -->
-</button>
+<script lang="ts">
+  import { SIDEBAR_MOBILE_MEDIA_QUERY, Sidebar } from '@lostgradient/cinder/sidebar';
+  import { MediaQuery } from 'svelte/reactivity';
+
+  const mobile = new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false);
+  let collapsed = $state(true);
+</script>
+
+{#if mobile.current}
+  <button
+    type="button"
+    aria-controls="primary-sidebar"
+    aria-expanded={!collapsed}
+    aria-label="Open primary navigation"
+    onclick={() => (collapsed = !collapsed)}
+  >
+    <!-- hamburger icon -->
+  </button>
+{/if}
 
 <Sidebar id="primary-sidebar" bind:collapsed label="Workspace">...</Sidebar>
 ```
 
 This wires the open/close affordance into the page chrome and keeps the
-trigger discoverable on mobile. On desktop the `id` lands on the `<aside>`.
+trigger discoverable on mobile. `SIDEBAR_MOBILE_MEDIA_QUERY` is the public
+breakpoint contract for app chrome that needs to appear at the same viewport
+boundary as Sidebar's drawer. On desktop the `id` lands on the `<aside>`.
 On mobile, once the drawer has hydrated, the same `id` lands on the
 persistent drawer `<dialog>` and resolves whether the drawer is open or
 closed. Before hydration the drawer `<dialog>` is not in the DOM at all
