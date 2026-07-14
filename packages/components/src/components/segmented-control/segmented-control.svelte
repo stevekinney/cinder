@@ -3,11 +3,12 @@
    * @cinder
    * @category form
    * @status stable
-   * @purpose Compact radio-style selector that surfaces a small fixed set of options as a single connected bar and binds the chosen value.
+   * @purpose Compact segmented selector that surfaces a small fixed set of options as a connected bar, including bindable selections and route-backed links.
    * @tag form
    * @tag selection
    * @useWhen Choosing one of two to five mutually exclusive options that all fit on screen at once.
    * @useWhen Picking a view filter where seeing every option beats hiding them inside a toggle or tabs control.
+   * @useWhen Rendering route-backed filters as real links with `variant="navigation"` and `Segment href`.
    * @avoidWhen Toggling a single binary on or off — use toggle or checkbox instead.
    * @avoidWhen Switching between panels of associated content — use tabs instead.
    * @related toggle, checkbox, tabs, button-group
@@ -54,10 +55,14 @@
   const initialMultipleValues = untrack(() =>
     selectionMode === 'multiple' && value instanceof SvelteSet ? Array.from(value) : undefined,
   );
+  const effectiveVariant = $derived(
+    selectionMode === 'multiple' && variant !== 'radiogroup' ? 'radiogroup' : variant,
+  );
+  const rendersNavigation = $derived(effectiveVariant === 'navigation');
 
   const controller = new SegmentedControlController({
     selectionMode: () => selectionMode,
-    variant: () => variant,
+    variant: () => effectiveVariant,
     orientation: () => orientation,
     controlDisabled: () => disabled,
     disallowEmptySelection: () => disallowEmptySelection,
@@ -73,7 +78,7 @@
       return selectionMode;
     },
     get variant() {
-      return variant;
+      return effectiveVariant;
     },
     get controlDisabled() {
       return disabled;
@@ -88,7 +93,13 @@
 
   // See docs/decisions/segmented-control-tablist-variant.md for why tablist remains a SegmentedControl variant.
   const groupRole = $derived(
-    selectionMode === 'multiple' ? 'group' : variant === 'tablist' ? 'tablist' : 'radiogroup',
+    selectionMode === 'multiple'
+      ? 'group'
+      : variant === 'navigation'
+        ? undefined
+        : variant === 'tablist'
+          ? 'tablist'
+          : 'radiogroup',
   );
 
   // When density="toolbar" is requested it resolves to the compact `sm` visual
@@ -144,26 +155,45 @@
   >
     {label}
   </span>
-  <div
-    {...rest}
-    {id}
-    role={groupRole}
-    aria-labelledby={`${id}-label`}
-    aria-disabled={disabled ? 'true' : undefined}
-    aria-orientation={selectionMode === 'single' ? orientation : undefined}
-    data-cinder-orientation={orientation}
-    data-cinder-size={effectiveSize}
-    data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
-    data-cinder-selection-mode={selectionMode}
-    data-cinder-detached={detached ? '' : undefined}
-    data-cinder-full-width={fullWidth ? '' : undefined}
-    data-cinder-variant={variant}
-    class={classNames('cinder-segmented-control', customClassName)}
-    onkeydown={(event) => controller.handleKeydown(event)}
-  >
-    {@render children()}
-  </div>
-  {#if name}
+  {#if rendersNavigation}
+    <nav
+      {...rest}
+      {id}
+      role="navigation"
+      aria-labelledby={`${id}-label`}
+      data-cinder-orientation={orientation}
+      data-cinder-size={effectiveSize}
+      data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+      data-cinder-selection-mode={selectionMode}
+      data-cinder-detached={detached ? '' : undefined}
+      data-cinder-full-width={fullWidth ? '' : undefined}
+      data-cinder-variant={effectiveVariant}
+      class={classNames('cinder-segmented-control', customClassName)}
+    >
+      {@render children()}
+    </nav>
+  {:else}
+    <div
+      {...rest}
+      {id}
+      role={groupRole}
+      aria-labelledby={`${id}-label`}
+      aria-disabled={disabled ? 'true' : undefined}
+      aria-orientation={selectionMode === 'single' ? orientation : undefined}
+      data-cinder-orientation={orientation}
+      data-cinder-size={effectiveSize}
+      data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+      data-cinder-selection-mode={selectionMode}
+      data-cinder-detached={detached ? '' : undefined}
+      data-cinder-full-width={fullWidth ? '' : undefined}
+      data-cinder-variant={effectiveVariant}
+      class={classNames('cinder-segmented-control', customClassName)}
+      onkeydown={(event) => controller.handleKeydown(event)}
+    >
+      {@render children()}
+    </div>
+  {/if}
+  {#if name && !rendersNavigation}
     <input bind:this={resetInputElement} type="hidden" disabled />
     {#each selectedValues as selectedValue (selectedValue)}
       <input type="hidden" {name} value={selectedValue} {disabled} />

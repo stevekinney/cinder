@@ -1,50 +1,8 @@
 import type { ComponentSchema } from '../../schema-types';
 
-const schema = {
-  $schema: 'https://json-schema.org/draft/2020-12/schema',
-  type: 'object',
-  properties: {
-    class: {
-      type: 'string',
-      description: 'Custom class merged with `.cinder-segmented-control-option`.',
-    },
-    disabled: {
-      type: 'boolean',
-      description: 'Disable just this segment (independent of the control-level `disabled`).',
-    },
-    controls: {
-      type: 'string',
-      description:
-        'ID of the panel this segment controls — only meaningful when the parent\n`SegmentedControl` uses `variant="tablist"`.',
-    },
-  },
-  additionalProperties: false,
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'children',
-        reason: 'function-or-snippet',
-        required: true,
-        description: "The segment's label content.",
-      },
-      {
-        name: 'leading',
-        reason: 'function-or-snippet',
-        description: 'Optional decorative content rendered before the label, inside `aria-hidden`.',
-      },
-      {
-        name: 'trailing',
-        reason: 'function-or-snippet',
-        description: 'Optional decorative content rendered after the label, inside `aria-hidden`.',
-      },
-      {
-        name: 'value',
-        reason: 'unknown-shape',
-        required: true,
-        description: 'Value this segment represents. Must be unique within the parent control.',
-      },
-    ],
-  },
-} satisfies ComponentSchema;
+// eslint-disable-next-line no-unsafe-type-assertion -- generated schema parsed from a build-validated JSON string; see generate-component-schema.ts.
+const schema = JSON.parse(
+  '{\n  "$schema": "https://json-schema.org/draft/2020-12/schema",\n  "type": "object",\n  "properties": {\n    "class": {\n      "type": "string",\n      "description": "Custom class merged with `.cinder-segmented-control-option`."\n    },\n    "disabled": {\n      "type": "boolean",\n      "description": "Disable just this segment (independent of the control-level `disabled`)."\n    },\n    "href": {\n      "type": "string",\n      "description": "Render this segment as a real link inside `SegmentedControl variant=\\"navigation\\"`."\n    },\n    "current": {\n      "type": "boolean",\n      "description": "Marks this linked segment as the current route/filter."\n    },\n    "currentToken": {\n      "enum": [\n        "page",\n        "step",\n        "location",\n        "date",\n        "time",\n        "true"\n      ],\n      "description": "`aria-current` token emitted while `current` is true. Defaults to `\\"page\\"`."\n    },\n    "value": {\n      "type": "string",\n      "description": "Value this segment represents. Required when `href` is not provided."\n    },\n    "controls": {\n      "type": "string",\n      "description": "ID of the panel this segment controls — only meaningful when the parent\\n`SegmentedControl` uses `variant=\\"tablist\\"`."\n    }\n  },\n  "additionalProperties": false,\n  "metadata": {\n    "unsupportedProps": [\n      {\n        "name": "children",\n        "reason": "function-or-snippet",\n        "required": true,\n        "description": "The segment\'s label content."\n      },\n      {\n        "name": "leading",\n        "reason": "function-or-snippet",\n        "description": "Optional decorative content rendered before the label, inside `aria-hidden`."\n      },\n      {\n        "name": "onclick",\n        "reason": "function-or-snippet",\n        "description": "Optional click handler for the rendered link. Disabled navigation segments\\nprevent default and do not call this handler."\n      },\n      {\n        "name": "trailing",\n        "reason": "function-or-snippet",\n        "description": "Optional decorative content rendered after the label, inside `aria-hidden`."\n      }\n    ]\n  },\n  "allOf": [\n    {\n      "if": {\n        "not": {\n          "required": [\n            "href"\n          ]\n        }\n      },\n      "then": {\n        "required": [\n          "value"\n        ]\n      }\n    }\n  ]\n}',
+) as ComponentSchema;
 
-export default schema as ComponentSchema;
+export default schema;

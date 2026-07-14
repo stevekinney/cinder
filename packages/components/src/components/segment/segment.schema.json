@@ -10,6 +10,22 @@
       "type": "boolean",
       "description": "Disable just this segment (independent of the control-level `disabled`)."
     },
+    "href": {
+      "type": "string",
+      "description": "Render this segment as a real link inside `SegmentedControl variant=\"navigation\"`."
+    },
+    "current": {
+      "type": "boolean",
+      "description": "Marks this linked segment as the current route/filter."
+    },
+    "currentToken": {
+      "enum": ["page", "step", "location", "date", "time", "true"],
+      "description": "`aria-current` token emitted while `current` is true. Defaults to `\"page\"`."
+    },
+    "value": {
+      "type": "string",
+      "description": "Value this segment represents. Required when `href` is not provided."
+    },
     "controls": {
       "type": "string",
       "description": "ID of the panel this segment controls — only meaningful when the parent\n`SegmentedControl` uses `variant=\"tablist\"`."
@@ -30,16 +46,27 @@
         "description": "Optional decorative content rendered before the label, inside `aria-hidden`."
       },
       {
+        "name": "onclick",
+        "reason": "function-or-snippet",
+        "description": "Optional click handler for the rendered link. Disabled navigation segments\nprevent default and do not call this handler."
+      },
+      {
         "name": "trailing",
         "reason": "function-or-snippet",
         "description": "Optional decorative content rendered after the label, inside `aria-hidden`."
-      },
-      {
-        "name": "value",
-        "reason": "unknown-shape",
-        "required": true,
-        "description": "Value this segment represents. Must be unique within the parent control."
       }
     ]
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "required": ["href"]
+        }
+      },
+      "then": {
+        "required": ["value"]
+      }
+    }
+  ]
 }

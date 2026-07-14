@@ -772,6 +772,162 @@ describe('SegmentedControl — variants', () => {
     expect(diff.getAttribute('aria-controls')).toBe('diff-panel');
   });
 
+  test('navigation variant renders a labelled nav with real links and current state', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        variant: 'navigation',
+        rest: { role: 'group' },
+        value: undefined,
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'forecast', label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    const navigation = screen.getByRole('navigation', { name: 'Cost source' });
+    expect(navigation.tagName.toLowerCase()).toBe('nav');
+    expect(navigation.getAttribute('role')).toBe('navigation');
+    expect(navigation.getAttribute('data-cinder-variant')).toBe('navigation');
+    expect(navigation.getAttribute('aria-orientation')).toBeNull();
+    expect(navigation.querySelectorAll('input[type="hidden"]')).toHaveLength(0);
+
+    const actual = screen.getByRole('link', { name: 'Actual' });
+    const forecast = screen.getByRole('link', { name: 'Forecast' });
+    expect(actual.getAttribute('href')).toBe('/costs?source=actual');
+    expect(forecast.getAttribute('href')).toBe('/costs?source=forecast');
+    expect(actual.getAttribute('aria-current')).toBe('page');
+    expect(actual.getAttribute('data-cinder-current')).toBe('');
+    expect(actual.getAttribute('role')).toBeNull();
+    expect(actual.getAttribute('aria-checked')).toBeNull();
+    expect(actual.getAttribute('aria-selected')).toBeNull();
+    expect(actual.getAttribute('tabindex')).toBeNull();
+    expect(container.querySelectorAll('[role="radio"], [role="tab"], button')).toHaveLength(0);
+  });
+
+  test('navigation variant omits hidden form inputs even when name is provided', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        name: 'source',
+        variant: 'navigation',
+        value: 'actual',
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'forecast', label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    expect(container.querySelector('input[name="source"]')).toBeNull();
+  });
+
+  test('navigation variant never falls back to button segment semantics', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        variant: 'navigation',
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'missing', label: 'Missing href' },
+        ],
+      },
+    });
+
+    expect(container.querySelectorAll('button, [role="radio"], [role="tab"]')).toHaveLength(0);
+    expect(container.querySelectorAll('.cinder-segmented-control-option')).toHaveLength(2);
+
+    const missing = screen.getByText('Missing href');
+    expect(missing.tagName.toLowerCase()).toBe('a');
+    expect(missing.getAttribute('href')).toBeNull();
+    expect(missing.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  test('disabled navigation segments override forwarded tabindex', () => {
+    render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        variant: 'navigation',
+        options: [
+          {
+            value: 'actual',
+            label: 'Actual',
+            href: '/costs?source=actual',
+            disabled: true,
+            tabindex: 0,
+          },
+        ],
+      },
+    });
+
+    const actual = screen.getByText('Actual');
+    expect(actual.tagName.toLowerCase()).toBe('a');
+    expect(actual.getAttribute('aria-disabled')).toBe('true');
+    expect(actual.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('invalid selectionMode="multiple" + variant="navigation" falls back to group semantics', () => {
+    const value = new SvelteSet<string>(['actual']);
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        name: 'source',
+        selectionMode: 'multiple',
+        variant: 'navigation',
+        allowUnsupportedMultipleVariant: true,
+        value,
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'forecast', label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    const group = screen.getByRole('group', { name: 'Cost source' });
+    expect(group.getAttribute('data-cinder-variant')).toBe('radiogroup');
+    expect(screen.queryByRole('navigation')).toBeNull();
+
+    const actual = screen.getByRole('button', { name: 'Actual' });
+    expect(actual.getAttribute('aria-pressed')).toBe('true');
+    expect(actual.getAttribute('href')).toBeNull();
+    expect(container.querySelector('input[name="source"]')?.getAttribute('value')).toBe('actual');
+  });
+
+  test('href-backed segments use href as their button value outside navigation mode', async () => {
+    let value: string | undefined;
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        get value() {
+          return value;
+        },
+        set value(next: string | undefined) {
+          value = next;
+        },
+        options: [
+          { label: 'Actual', href: '/costs?source=actual' },
+          { label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    const actual = screen.getByRole('radio', { name: 'Actual' });
+    const forecast = screen.getByRole('radio', { name: 'Forecast' });
+
+    await fireEvent.click(actual);
+    expect(value).toBe('/costs?source=actual');
+    await fireEvent.click(forecast);
+    expect(value).toBe('/costs?source=forecast');
+    expect(container.querySelectorAll('[data-cinder-segment-value=""]')).toHaveLength(0);
+  });
+
   test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
     const { container } = render(Fixture, {
       props: {
@@ -1011,18 +1167,16 @@ describe('SegmentedControl — tablist variant', () => {
       },
     });
 
-    // Multiple-selection mode wins the role derivation regardless of variant:
-    // the control renders role="group" with aria-pressed children, never
-    // role="tab". Visual isolation of the raw
-    // data-cinder-variant="tablist" + data-cinder-selection-mode="multiple"
-    // attribute combination is proven in the Playwright regression, because the
-    // tablist CSS is scoped to single-selection roots.
+    // Multiple-selection mode wins the role derivation regardless of variant,
+    // so unsupported runtime variants render role="group" with aria-pressed
+    // children, never role="tab".
     expect(screen.getByRole('group', { name: 'Review view' })).not.toBeNull();
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.queryByRole('tab')).toBeNull();
 
     const root = container.querySelector('.cinder-segmented-control');
     expect(root?.getAttribute('data-cinder-selection-mode')).toBe('multiple');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('radiogroup');
 
     const editor = screen.getByRole('button', { name: 'Editor' });
     expect(editor.getAttribute('aria-pressed')).toBe('true');

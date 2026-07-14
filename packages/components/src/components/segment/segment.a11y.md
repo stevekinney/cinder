@@ -4,12 +4,13 @@
 
 Segment participates in form input or field composition. Pair each control with a visible label or an explicit accessible name, and connect validation text with the same relationship the component exposes.
 
-Purpose: Individual option inside a SegmentedControl that renders the button, wires the value, and forwards leading/trailing decorations.
+Purpose: Individual option inside a SegmentedControl that renders either a selection button or a route-backed link with shared segmented styling.
 
 ## Use when
 
 - Authoring SegmentedControl children declaratively so consumers can compose icons, labels, and badges per segment.
 - Mixing disabled and enabled segments inside a single radiogroup/tablist where each segment carries its own metadata.
+- Rendering route filters as real links inside `SegmentedControl variant="navigation"`.
 
 ## Avoid when
 

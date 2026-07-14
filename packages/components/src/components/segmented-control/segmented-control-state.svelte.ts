@@ -30,8 +30,8 @@ export type SegmentRegistration = {
 export type SegmentedControlContextValue = {
   /** True when the control is in single-selection mode. */
   readonly selectionMode: 'single' | 'multiple';
-  /** 'radiogroup' or 'tablist' — single mode only. */
-  readonly variant: 'radiogroup' | 'tablist';
+  /** 'radiogroup', 'tablist', or 'navigation' — single mode only. */
+  readonly variant: 'radiogroup' | 'tablist' | 'navigation';
   /** True when the whole control is disabled. */
   readonly controlDisabled: boolean;
   /** Register a segment when its DOM node mounts. Returns an unregister fn. */
@@ -60,7 +60,7 @@ export { getSegmentedControlContext, setSegmentedControlContext };
  */
 export type SegmentedControlControllerOptions = {
   selectionMode: () => 'single' | 'multiple';
-  variant: () => 'radiogroup' | 'tablist';
+  variant: () => 'radiogroup' | 'tablist' | 'navigation';
   orientation: () => 'horizontal' | 'vertical';
   controlDisabled: () => boolean;
   disallowEmptySelection: () => boolean;
@@ -99,7 +99,7 @@ export class SegmentedControlController {
     return this.#options.selectionMode();
   }
 
-  get variant(): 'radiogroup' | 'tablist' {
+  get variant(): 'radiogroup' | 'tablist' | 'navigation' {
     return this.#options.variant();
   }
 

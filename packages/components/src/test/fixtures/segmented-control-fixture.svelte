@@ -1,12 +1,18 @@
 <script lang="ts" module>
   import type { SvelteSet } from 'svelte/reactivity';
 
-  export type FixtureOption = {
-    value: string;
+  type FixtureOptionBase = {
     label: string;
+    current?: boolean;
+    currentToken?: 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
+    onclick?: (event: MouseEvent) => void;
+    tabindex?: number;
     disabled?: boolean;
     controls?: string;
   };
+
+  export type FixtureOption = FixtureOptionBase &
+    ({ value: string; href?: string } | { href: string; value?: string });
 
   export type FixtureProps = {
     id: string;
@@ -17,7 +23,7 @@
     value?: string | SvelteSet<string> | undefined;
     onValueChange?: (next: string | SvelteSet<string> | undefined) => void;
     onchange?: (value: string) => void;
-    variant?: 'radiogroup' | 'tablist';
+    variant?: 'radiogroup' | 'tablist' | 'navigation';
     size?: 'sm' | 'md' | 'lg';
     density?: 'toolbar';
     orientation?: 'horizontal' | 'vertical';
@@ -28,6 +34,7 @@
     disallowEmptySelection?: boolean;
     className?: string;
     showLeadingIcon?: boolean;
+    allowUnsupportedMultipleVariant?: boolean;
     rest?: Record<string, unknown>;
   };
 </script>
@@ -57,10 +64,15 @@
     disallowEmptySelection,
     className,
     showLeadingIcon = false,
+    allowUnsupportedMultipleVariant = false,
     rest = {},
   }: FixtureProps = $props();
 
   void untrack(() => onValueChange);
+
+  const multipleVariant = $derived(
+    allowUnsupportedMultipleVariant || variant === 'radiogroup' ? variant : undefined,
+  );
 </script>
 
 <!--
@@ -70,14 +82,34 @@
   site.
 -->
 {#snippet segments()}
-  {#each options as option (option.value)}
-    {#if showLeadingIcon}
-      <Segment value={option.value} disabled={option.disabled} controls={option.controls}>
+  {#each options as option (option.value ?? option.href ?? option.label)}
+    {#if option.href !== undefined}
+      <Segment
+        value={option.value}
+        href={option.href}
+        current={option.current}
+        currentToken={option.currentToken}
+        disabled={option.disabled}
+        onclick={option.onclick}
+        tabindex={option.tabindex}
+      >
+        {option.label}
+      </Segment>
+    {:else if showLeadingIcon}
+      <Segment
+        value={option.value ?? option.href ?? ''}
+        disabled={option.disabled}
+        controls={option.controls}
+      >
         {#snippet leading()}<span data-test-icon></span>{/snippet}
         {option.label}
       </Segment>
     {:else}
-      <Segment value={option.value} disabled={option.disabled} controls={option.controls}>
+      <Segment
+        value={option.value ?? option.href ?? ''}
+        disabled={option.disabled}
+        controls={option.controls}
+      >
         {option.label}
       </Segment>
     {/if}
@@ -91,7 +123,7 @@
     {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
-    variant={variant === 'tablist' ? undefined : variant}
+    variant={multipleVariant as 'radiogroup' | undefined}
     {size}
     {density}
     {orientation}

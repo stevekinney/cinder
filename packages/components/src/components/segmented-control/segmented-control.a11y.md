@@ -2,10 +2,14 @@
 
 ## Pattern
 
-`segmented-control` encodes **selection state**. It has two modes:
+`segmented-control` encodes **selection state** by default and **navigation
+state** when `variant="navigation"` is used. It has three semantic modes:
 
 - **Single** (`selectionMode="single"`, default) — follows the [WAI-ARIA Radio Group pattern](https://www.w3.org/WAI/ARIA/apg/patterns/radio/). Exactly one option is selected at a time.
 - **Multiple** (`selectionMode="multiple"`) — follows the [Toggle Button pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/) applied across a group. Options toggle independently; any number may be active.
+- **Navigation** (`variant="navigation"`) — renders a labelled `<nav>` landmark
+  with real links. The current link uses `aria-current`; options do not receive
+  radio, tab, or toggle-button roles.
 
 ## Roles and States
 
@@ -23,9 +27,19 @@
 | Labelled group root | `group`          | `aria-labelledby`, `aria-disabled`          |
 | Each option         | button (default) | `aria-pressed` (`true`/`false`), `disabled` |
 
-Group-level `disabled` sets `aria-disabled="true"` on the labelled group root in both modes and disables every option button.
+### Navigation variant
 
-`aria-orientation` is present on the labelled group root in **single mode only** — `radiogroup` is a composite widget where orientation guides arrow-key navigation. The `group` role used in multiple mode is not a composite widget, so `aria-orientation` would be meaningless there.
+| Element             | Role                          | State attributes                       |
+| ------------------- | ----------------------------- | -------------------------------------- |
+| Labelled navigation | navigation (implicit `<nav>`) | `aria-labelledby`                      |
+| Each linked option  | link (implicit `<a>`)         | `href`, optional `aria-current="page"` |
+
+Group-level `disabled` sets `aria-disabled="true"` on the labelled group root in
+selection modes and disables every option button. In navigation mode, the
+`<nav>` landmark keeps its native semantics while each linked segment receives
+`aria-disabled="true"` and does not emit `href`.
+
+`aria-orientation` is present on the labelled group root in **single mode only** — `radiogroup` is a composite widget where orientation guides arrow-key navigation. The `group` role used in multiple mode is not a composite widget, and the `<nav>` used by `variant="navigation"` follows normal link navigation, so `aria-orientation` would be meaningless there.
 
 ## Why Not `aria-pressed` on Radios?
 
@@ -63,9 +77,23 @@ Vertical orientation (`orientation="vertical"`) maps `ArrowUp`/`ArrowDown` for n
 
 Arrow keys have no special meaning in multiple mode.
 
+### Navigation variant
+
+| Key                 | Behavior                                                  |
+| ------------------- | --------------------------------------------------------- |
+| `Tab` / `Shift+Tab` | Move focus between links in normal document order         |
+| `Enter`             | Follow the focused link using the browser/router behavior |
+
+Arrow keys have no special meaning in navigation mode. Do not use roving
+tabindex for route filters: links should remain ordinary links so users keep
+native navigation behavior such as copying the URL or opening in a new tab.
+
 ## Group Labeling
 
-Both modes label the group via `aria-labelledby` pointing at a sibling `<span>`. When `hideLabel` is set, the span receives `.cinder-sr-only` — visually hidden but still referenced by `aria-labelledby`, so the group name is available to assistive technology.
+All modes label the group or navigation landmark via `aria-labelledby` pointing
+at a sibling `<span>`. When `hideLabel` is set, the span receives
+`.cinder-sr-only` — visually hidden but still referenced by `aria-labelledby`,
+so the name is available to assistive technology.
 
 ## Boundary: `segmented-control` vs `button-group`
 

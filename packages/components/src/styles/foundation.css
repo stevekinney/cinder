@@ -303,7 +303,8 @@
   .cinder-dropdown-item[data-disabled],
   .cinder-toggle:disabled,
   .cinder-segmented-control[aria-disabled='true'],
-  .cinder-segmented-control-option:disabled
+  .cinder-segmented-control-option:disabled,
+  .cinder-segmented-control-option[aria-disabled='true']
 ) {
   opacity: 0.6;
 }

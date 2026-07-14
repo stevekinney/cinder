@@ -4377,11 +4377,12 @@
       "exportName": "Segment",
       "category": "form",
       "status": "stable",
-      "purpose": "Individual option inside a SegmentedControl that renders the button, wires the value, and forwards leading/trailing decorations.",
+      "purpose": "Individual option inside a SegmentedControl that renders either a selection button or a route-backed link with shared segmented styling.",
       "tags": ["form", "selection"],
       "useWhen": [
         "Authoring SegmentedControl children declaratively so consumers can compose icons, labels, and badges per segment.",
-        "Mixing disabled and enabled segments inside a single radiogroup/tablist where each segment carries its own metadata."
+        "Mixing disabled and enabled segments inside a single radiogroup/tablist where each segment carries its own metadata.",
+        "Rendering route filters as real links inside `SegmentedControl variant=\"navigation\"`."
       ],
       "avoidWhen": [
         {
@@ -4406,11 +4407,12 @@
       "exportName": "SegmentedControl",
       "category": "form",
       "status": "stable",
-      "purpose": "Compact radio-style selector that surfaces a small fixed set of options as a single connected bar and binds the chosen value.",
+      "purpose": "Compact segmented selector that surfaces a small fixed set of options as a connected bar, including bindable selections and route-backed links.",
       "tags": ["form", "selection"],
       "useWhen": [
         "Choosing one of two to five mutually exclusive options that all fit on screen at once.",
-        "Picking a view filter where seeing every option beats hiding them inside a toggle or tabs control."
+        "Picking a view filter where seeing every option beats hiding them inside a toggle or tabs control.",
+        "Rendering route-backed filters as real links with `variant=\"navigation\"` and `Segment href`."
       ],
       "avoidWhen": [
         {
