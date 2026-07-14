@@ -1992,8 +1992,8 @@ async function runExamplesConsumerFixture(): Promise<void> {
     const httpPort = await pickEphemeralPort();
     const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
       cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: 'inherit',
+      stderr: 'inherit',
       env: {
         ...Bun.env,
         PORT: String(httpPort),
