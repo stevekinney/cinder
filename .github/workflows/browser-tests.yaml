@@ -386,7 +386,7 @@ jobs:
         continue-on-error: true
         env:
           CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: visual-regression-report
           path: packages/testing/test-results/visual-report.json

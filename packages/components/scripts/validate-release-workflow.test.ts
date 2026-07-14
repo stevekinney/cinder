@@ -91,12 +91,13 @@ describe('validate-release-workflow changeset guards', () => {
       findOutdatedWorkflowActions({
         'release.yml': 'uses: actions/checkout@v4 # upgrade required\nuses: oven-sh/setup-bun@v2\n',
         'unit-tests.yaml':
-          'uses: actions/cache/restore@v4\nuses: actions/cache/save@v6\nuses: actions/upload-artifact@v5\n',
+          'uses: actions/cache/restore@v4\nuses: actions/cache/save@v6\nuses: actions/upload-artifact@v5\nuses: marocchino/sticky-pull-request-comment@v2\n',
       }),
     ).toEqual([
       'release.yml: actions/checkout@v4',
       'unit-tests.yaml: actions/cache/restore@v4',
       'unit-tests.yaml: actions/upload-artifact@v5',
+      'unit-tests.yaml: marocchino/sticky-pull-request-comment@v2',
     ]);
   });
 
