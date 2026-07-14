@@ -203,10 +203,11 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason: 'Source audit owned by main-green; release runs the release-workflow guard directly.',
   },
   'validate:release-workflow': {
-    layers: ['release'],
+    layers: ['unit-tests', 'release'],
     reason:
-      'Called directly in release so the tokenless OIDC publish path plus ignored-package ' +
-      'changeset guard are checked on every push. main-green owns the broader `validate:workflow` contract.',
+      'Called in unit-tests to catch release-workflow drift before merge and directly in release so ' +
+      'the tokenless OIDC publish path plus ignored-package changeset guard are checked on every push. ' +
+      'main-green owns the broader `validate:workflow` contract.',
   },
   'validate:svelte-peer': {
     layers: ['main-green'],
