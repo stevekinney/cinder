@@ -33,6 +33,7 @@
     disallowEmptySelection?: boolean;
     className?: string;
     showLeadingIcon?: boolean;
+    allowUnsupportedMultipleVariant?: boolean;
     rest?: Record<string, unknown>;
   };
 </script>
@@ -62,10 +63,15 @@
     disallowEmptySelection,
     className,
     showLeadingIcon = false,
+    allowUnsupportedMultipleVariant = false,
     rest = {},
   }: FixtureProps = $props();
 
   void untrack(() => onValueChange);
+
+  const multipleVariant = $derived(
+    allowUnsupportedMultipleVariant || variant === 'radiogroup' ? variant : undefined,
+  );
 </script>
 
 <!--
@@ -115,7 +121,7 @@
     {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
-    variant={variant as 'radiogroup' | undefined}
+    variant={multipleVariant as 'radiogroup' | undefined}
     {size}
     {density}
     {orientation}

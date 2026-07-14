@@ -856,6 +856,7 @@ describe('SegmentedControl — variants', () => {
         name: 'source',
         selectionMode: 'multiple',
         variant: 'navigation',
+        allowUnsupportedMultipleVariant: true,
         value,
         options: [
           { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
