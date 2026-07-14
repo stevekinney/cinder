@@ -42,4 +42,53 @@ describe('Segment', () => {
     renderControl('source');
     expect(screen.getByRole('radio', { name: 'Diff' }).getAttribute('aria-disabled')).toBe('true');
   });
+
+  test('renders as an anchor with aria-current in navigation variant', () => {
+    render(Fixture, {
+      props: {
+        id: 'source-filter',
+        label: 'Source filter',
+        variant: 'navigation',
+        options: [
+          { value: 'all', label: 'All', href: '/costs', current: true },
+          { value: 'compute', label: 'Compute', href: '/costs?source=compute' },
+        ],
+      },
+    });
+
+    const current = screen.getByRole('link', { name: 'All' });
+    expect(current.tagName.toLowerCase()).toBe('a');
+    expect(current.getAttribute('href')).toBe('/costs');
+    expect(current.getAttribute('aria-current')).toBe('page');
+    expect(current.getAttribute('data-cinder-current')).toBe('');
+    expect(current.getAttribute('role')).toBeNull();
+  });
+
+  test('disabled navigation anchors strip href and block consumer clicks', async () => {
+    const clicks: MouseEvent[] = [];
+    render(Fixture, {
+      props: {
+        id: 'source-filter',
+        label: 'Source filter',
+        variant: 'navigation',
+        options: [
+          {
+            value: 'all',
+            label: 'All',
+            href: '/costs',
+            disabled: true,
+            onclick: (event: MouseEvent) => clicks.push(event),
+          },
+        ],
+      },
+    });
+
+    const disabled = screen.getByText('All').closest('a');
+    expect(disabled).not.toBeNull();
+    expect(disabled?.getAttribute('href')).toBeNull();
+    expect(disabled?.getAttribute('aria-disabled')).toBe('true');
+
+    disabled?.click();
+    expect(clicks).toHaveLength(0);
+  });
 });

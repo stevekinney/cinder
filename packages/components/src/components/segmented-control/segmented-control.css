@@ -118,9 +118,14 @@
   .cinder-segmented-control:not([data-cinder-detached])
     .cinder-segmented-control-option[data-cinder-selected]:not(:first-child)::before,
   .cinder-segmented-control:not([data-cinder-detached])
+    .cinder-segmented-control-option[data-cinder-current]:not(:first-child)::before,
+  .cinder-segmented-control:not([data-cinder-detached])
     .cinder-segmented-control-option[data-cinder-pressed]:not(:first-child)::before,
   .cinder-segmented-control:not([data-cinder-detached])
     [data-cinder-selected]
+    + .cinder-segmented-control-option::before,
+  .cinder-segmented-control:not([data-cinder-detached])
+    [data-cinder-current]
     + .cinder-segmented-control-option::before,
   .cinder-segmented-control:not([data-cinder-detached])
     [data-cinder-pressed]
@@ -212,8 +217,8 @@
  * "stick" after tap on touch devices that emulate :hover. */
   @media (hover: hover) {
     .cinder-segmented-control-option:hover:not(:disabled):not([data-cinder-selected]):not(
-        [data-cinder-pressed]
-      ) {
+        [data-cinder-current]
+      ):not([data-cinder-pressed]) {
       background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
       color: var(--cinder-text);
     }
@@ -227,6 +232,9 @@
    * contract), so guard on BOTH :not(:disabled) and :not([aria-disabled='true'])
    * to keep hover chrome off disabled segments. */
     .cinder-segmented-control-option[data-cinder-selected]:hover:not(:disabled):not(
+        [aria-disabled='true']
+      ),
+    .cinder-segmented-control-option[data-cinder-current]:hover:not(:disabled):not(
         [aria-disabled='true']
       ),
     .cinder-segmented-control-option[data-cinder-pressed]:hover:not(:disabled):not(
@@ -261,6 +269,12 @@
     box-shadow: var(--cinder-shadow-sm);
   }
 
+  .cinder-segmented-control-option[data-cinder-current] {
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    box-shadow: var(--cinder-shadow-sm);
+  }
+
   .cinder-segmented-control-option-icon {
     opacity: 0.9;
   }
@@ -283,7 +297,9 @@
   .cinder-segmented-control:not([data-cinder-variant='tablist'])
     .cinder-segmented-control-option[data-cinder-selected]:focus-visible,
   .cinder-segmented-control:not([data-cinder-variant='tablist'])
-    .cinder-segmented-control-option[data-cinder-pressed]:focus-visible {
+    .cinder-segmented-control-option[data-cinder-pressed]:focus-visible,
+  .cinder-segmented-control:not([data-cinder-variant='tablist'])
+    .cinder-segmented-control-option[data-cinder-current]:focus-visible {
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
@@ -296,7 +312,9 @@
     .cinder-segmented-control:not([data-cinder-variant='tablist'])
       .cinder-segmented-control-option[data-cinder-selected]:focus-visible,
     .cinder-segmented-control:not([data-cinder-variant='tablist'])
-      .cinder-segmented-control-option[data-cinder-pressed]:focus-visible {
+      .cinder-segmented-control-option[data-cinder-pressed]:focus-visible,
+    .cinder-segmented-control:not([data-cinder-variant='tablist'])
+      .cinder-segmented-control-option[data-cinder-current]:focus-visible {
       outline: var(--cinder-ring-width) solid Highlight;
       outline-offset: 1px;
       box-shadow: none;

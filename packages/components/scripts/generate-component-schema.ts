@@ -324,6 +324,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'segment') {
+    applySegmentSchemaRules(schema);
+    return;
+  }
+
   if (componentName !== 'modal') return;
 
   schema.allOf = [
@@ -337,6 +342,22 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['describedById'],
+      },
+    },
+  ];
+}
+
+function applySegmentSchemaRules(schema: ComponentSchemaOutput): void {
+  schema.allOf = [
+    {
+      if: {
+        not: {
+          required: ['href'],
+        },
+      },
+      // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['value'],
       },
     },
   ];

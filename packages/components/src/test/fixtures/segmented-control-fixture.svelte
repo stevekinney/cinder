@@ -4,6 +4,10 @@
   export type FixtureOption = {
     value: string;
     label: string;
+    href?: string;
+    current?: boolean;
+    currentToken?: 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
+    onclick?: (event: MouseEvent) => void;
     disabled?: boolean;
     controls?: string;
   };
@@ -17,7 +21,7 @@
     value?: string | SvelteSet<string> | undefined;
     onValueChange?: (next: string | SvelteSet<string> | undefined) => void;
     onchange?: (value: string) => void;
-    variant?: 'radiogroup' | 'tablist';
+    variant?: 'radiogroup' | 'tablist' | 'navigation';
     size?: 'sm' | 'md' | 'lg';
     density?: 'toolbar';
     orientation?: 'horizontal' | 'vertical';
@@ -71,7 +75,18 @@
 -->
 {#snippet segments()}
   {#each options as option (option.value)}
-    {#if showLeadingIcon}
+    {#if option.href !== undefined}
+      <Segment
+        value={option.value}
+        href={option.href}
+        current={option.current}
+        currentToken={option.currentToken}
+        disabled={option.disabled}
+        onclick={option.onclick}
+      >
+        {option.label}
+      </Segment>
+    {:else if showLeadingIcon}
       <Segment value={option.value} disabled={option.disabled} controls={option.controls}>
         {#snippet leading()}<span data-test-icon></span>{/snippet}
         {option.label}
@@ -91,7 +106,7 @@
     {name}
     selectionMode="multiple"
     bind:value={value as SvelteSet<string> | undefined}
-    variant={variant === 'tablist' ? undefined : variant}
+    variant={variant === 'tablist' || variant === 'navigation' ? undefined : variant}
     {size}
     {density}
     {orientation}

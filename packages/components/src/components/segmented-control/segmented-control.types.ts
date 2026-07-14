@@ -14,10 +14,7 @@ type ComponentOwnedAttributes =
   | 'onchange'
   | 'onkeydown';
 
-type CommonProps<T extends string> = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  ComponentOwnedAttributes
-> & {
+type CommonProps<T extends string> = Omit<HTMLAttributes<HTMLElement>, ComponentOwnedAttributes> & {
   /** Unique identifier for the control. */
   id: string;
   /** Accessible label for the group. */
@@ -53,8 +50,8 @@ type CommonProps<T extends string> = Omit<
   detached?: boolean | undefined;
   /** Stretch the control to fill available width. */
   fullWidth?: boolean | undefined;
-  /** ARIA interaction pattern. Use `tablist` when options switch visible panels. */
-  variant?: 'radiogroup' | 'tablist' | undefined;
+  /** ARIA interaction pattern. Use `navigation` for route-backed links. */
+  variant?: 'radiogroup' | 'tablist' | 'navigation' | undefined;
   /** Additional class names merged with `.cinder-segmented-control`. */
   class?: string | undefined;
   /** Called when the selected value changes (single mode only). */
@@ -82,7 +79,7 @@ type MultipleProps<T extends string> = CommonProps<T> & {
   value?: SvelteSet<T> | undefined;
   /** Not applicable in multiple mode — present for Svelte destructuring compatibility. */
   disallowEmptySelection?: undefined;
-  /** Tablist semantics are only valid for single selection. */
+  /** Tablist and navigation semantics are only valid for single selection. */
   variant?: 'radiogroup' | undefined;
 };
 

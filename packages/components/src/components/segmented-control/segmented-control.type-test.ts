@@ -28,6 +28,13 @@ const _singleDefault: SegmentedControlProps<'a' | 'b'> = {
   children,
 };
 
+const _navigationValid: SegmentedControlProps<'a' | 'b'> = {
+  id: 'test',
+  label: 'Test',
+  variant: 'navigation',
+  children,
+};
+
 declare const validSet: SvelteSet<'a' | 'b'>;
 
 const _multipleValid: SegmentedControlProps<'a' | 'b'> = {
@@ -49,7 +56,19 @@ const _multiplePlainSet: SegmentedControlProps<'a' | 'b'> = {
   children,
 };
 
+// @ts-expect-error - navigation is only valid for single-selection controls
+const _multipleNavigation: SegmentedControlProps<'a' | 'b'> = {
+  id: 'test',
+  label: 'Test',
+  selectionMode: 'multiple',
+  value: validSet,
+  variant: 'navigation',
+  children,
+};
+
 void _singleValid;
 void _singleDefault;
+void _navigationValid;
 void _multipleValid;
 void _multiplePlainSet;
+void _multipleNavigation;

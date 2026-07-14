@@ -43,8 +43,8 @@
       "description": "Stretch the control to fill available width."
     },
     "variant": {
-      "enum": ["radiogroup", "tablist"],
-      "description": "ARIA interaction pattern. Use `tablist` when options switch visible panels."
+      "enum": ["radiogroup", "tablist", "navigation"],
+      "description": "ARIA interaction pattern. Use `navigation` for route-backed links."
     },
     "class": {
       "type": "string",

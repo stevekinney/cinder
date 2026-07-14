@@ -772,6 +772,76 @@ describe('SegmentedControl — variants', () => {
     expect(diff.getAttribute('aria-controls')).toBe('diff-panel');
   });
 
+  test('navigation variant renders a labelled nav with real links and current state', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        variant: 'navigation',
+        rest: { role: 'group' },
+        value: undefined,
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'forecast', label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    const navigation = screen.getByRole('navigation', { name: 'Cost source' });
+    expect(navigation.tagName.toLowerCase()).toBe('nav');
+    expect(navigation.getAttribute('role')).toBe('navigation');
+    expect(navigation.getAttribute('data-cinder-variant')).toBe('navigation');
+    expect(navigation.getAttribute('aria-orientation')).toBeNull();
+    expect(navigation.querySelectorAll('input[type="hidden"]')).toHaveLength(0);
+
+    const actual = screen.getByRole('link', { name: 'Actual' });
+    const forecast = screen.getByRole('link', { name: 'Forecast' });
+    expect(actual.getAttribute('href')).toBe('/costs?source=actual');
+    expect(forecast.getAttribute('href')).toBe('/costs?source=forecast');
+    expect(actual.getAttribute('aria-current')).toBe('page');
+    expect(actual.getAttribute('data-cinder-current')).toBe('');
+    expect(actual.getAttribute('role')).toBeNull();
+    expect(actual.getAttribute('aria-checked')).toBeNull();
+    expect(actual.getAttribute('aria-selected')).toBeNull();
+    expect(actual.getAttribute('tabindex')).toBeNull();
+    expect(container.querySelectorAll('[role="radio"], [role="tab"], button')).toHaveLength(0);
+  });
+
+  test('navigation variant omits hidden form inputs even when name is provided', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        name: 'source',
+        variant: 'navigation',
+        value: 'actual',
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'forecast', label: 'Forecast', href: '/costs?source=forecast' },
+        ],
+      },
+    });
+
+    expect(container.querySelector('input[name="source"]')).toBeNull();
+  });
+
+  test('navigation variant never falls back to button segment semantics', () => {
+    const { container } = render(Fixture, {
+      props: {
+        id: 'cost-source',
+        label: 'Cost source',
+        variant: 'navigation',
+        options: [
+          { value: 'actual', label: 'Actual', href: '/costs?source=actual', current: true },
+          { value: 'missing', label: 'Missing href' },
+        ],
+      },
+    });
+
+    expect(container.querySelectorAll('button, [role="radio"], [role="tab"]')).toHaveLength(0);
+    expect(container.querySelectorAll('.cinder-segmented-control-option')).toHaveLength(2);
+  });
+
   test('density="toolbar" sets data-cinder-density="toolbar" on the root', () => {
     const { container } = render(Fixture, {
       props: {
