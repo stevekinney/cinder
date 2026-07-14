@@ -98,6 +98,7 @@
     cursor: pointer;
     font-weight: var(--cinder-font-medium);
     line-height: 1;
+    text-decoration: none;
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       color var(--cinder-duration-fast) var(--cinder-ease-standard),

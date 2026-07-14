@@ -64,6 +64,20 @@ describe('Segment', () => {
     expect(current.getAttribute('role')).toBeNull();
   });
 
+  test('navigation anchors use href as their segment value when value is omitted', () => {
+    render(Fixture, {
+      props: {
+        id: 'source-filter',
+        label: 'Source filter',
+        variant: 'navigation',
+        options: [{ label: 'Compute', href: '/costs?source=compute' }],
+      },
+    });
+
+    const compute = screen.getByRole('link', { name: 'Compute' });
+    expect(compute.getAttribute('data-cinder-segment-value')).toBe('/costs?source=compute');
+  });
+
   test('disabled navigation anchors strip href and block consumer clicks', async () => {
     const clicks: MouseEvent[] = [];
     render(Fixture, {

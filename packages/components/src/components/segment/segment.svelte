@@ -19,7 +19,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
-  import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
+  import type { HTMLAttributes } from 'svelte/elements';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { getSegmentedControlContext } from '../segmented-control/segmented-control-state.svelte.ts';
@@ -28,6 +28,9 @@
   let {
     value,
     href,
+    download,
+    target,
+    rel,
     current = false,
     currentToken = 'page',
     disabled = false,
@@ -72,9 +75,8 @@
   const effectiveDisabled = $derived(disabled || context.controlDisabled);
   const isNavigationItem = $derived(context.variant === 'navigation');
   const anchorDisabled = $derived(effectiveDisabled || href === undefined);
-  const anchorAttributes = $derived(rest as Omit<HTMLAnchorAttributes, 'class' | 'href'>);
-  const anchorTabindex = $derived(anchorDisabled ? -1 : anchorAttributes.tabindex);
-  const buttonAttributes = $derived(rest as Omit<HTMLButtonAttributes, 'class'>);
+  const elementAttributes = $derived(rest as Omit<HTMLAttributes<HTMLElement>, 'class'>);
+  const anchorTabindex = $derived(anchorDisabled ? -1 : elementAttributes.tabindex);
 
   const role = $derived(
     context.selectionMode === 'multiple'
@@ -112,9 +114,12 @@
 
 {#if isNavigationItem}
   <a
-    {...anchorAttributes}
+    {...elementAttributes}
     href={anchorDisabled ? undefined : href}
-    data-cinder-segment-value={value}
+    {download}
+    {target}
+    {rel}
+    data-cinder-segment-value={buttonValue}
     aria-current={current ? currentToken : undefined}
     aria-disabled={anchorDisabled ? 'true' : undefined}
     tabindex={anchorTabindex}
@@ -126,7 +131,7 @@
   </a>
 {:else}
   <button
-    {...buttonAttributes}
+    {...elementAttributes}
     type="button"
     {role}
     data-cinder-segment-value={buttonValue}

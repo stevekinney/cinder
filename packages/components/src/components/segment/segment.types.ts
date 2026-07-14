@@ -1,5 +1,5 @@
 import type { Snippet } from 'svelte';
-import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
+import type { HTMLAnchorAttributes, HTMLAttributes } from 'svelte/elements';
 
 export type SegmentCurrentToken = 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
 
@@ -20,33 +20,32 @@ type SharedProps = {
   children: Snippet;
 };
 
-type SegmentButtonOwnedAttributes =
+type SegmentOwnedAttributes =
   | 'role'
   | 'type'
   | 'disabled'
   | 'tabindex'
   | 'class'
+  | 'href'
+  | 'download'
+  | 'target'
+  | 'rel'
   | 'aria-checked'
   | 'aria-selected'
   | 'aria-pressed'
   | 'aria-controls'
   | 'aria-disabled'
+  | 'aria-current'
   | 'onclick';
 
-type SegmentAnchorOwnedAttributes =
-  | 'role'
-  | 'class'
-  | 'href'
-  | 'onclick'
-  | 'aria-current'
-  | 'aria-disabled'
-  | 'aria-checked'
-  | 'aria-selected'
-  | 'aria-pressed';
+type SharedElementAttributes = Omit<HTMLAttributes<HTMLElement>, SegmentOwnedAttributes>;
 
-type SegmentButtonProps = Omit<HTMLButtonAttributes, SegmentButtonOwnedAttributes> &
+type SegmentButtonProps = SharedElementAttributes &
   SharedProps & {
     href?: undefined;
+    download?: undefined;
+    target?: undefined;
+    rel?: undefined;
     current?: undefined;
     currentToken?: undefined;
     onclick?: undefined;
@@ -59,10 +58,18 @@ type SegmentButtonProps = Omit<HTMLButtonAttributes, SegmentButtonOwnedAttribute
     controls?: string | undefined;
   };
 
-type SegmentAnchorProps = Omit<HTMLAnchorAttributes, SegmentAnchorOwnedAttributes> &
+type SegmentAnchorProps = SharedElementAttributes &
   SharedProps & {
     /** Render this segment as a real link inside `SegmentedControl variant="navigation"`. */
     href: string;
+    /** Download hint for the rendered link. */
+    download?: boolean | string | undefined;
+    /** Browsing context for the rendered link. */
+    target?: HTMLAnchorAttributes['target'] | undefined;
+    /** Relationship metadata for the rendered link. */
+    rel?: HTMLAnchorAttributes['rel'] | undefined;
+    /** Optional tab index for enabled links. Disabled navigation links force `-1`. */
+    tabindex?: HTMLAttributes<HTMLElement>['tabindex'] | undefined;
     /**
      * Optional click handler for the rendered link. Disabled navigation segments
      * prevent default and do not call this handler.

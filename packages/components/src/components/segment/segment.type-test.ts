@@ -16,6 +16,8 @@ const _navigationValid: SegmentProps = {
   href: '/costs?source=actual',
   current: true,
   currentToken: 'page',
+  target: '_blank',
+  rel: 'noreferrer',
   children,
 };
 
@@ -39,8 +41,16 @@ const _navigationFalseToken: SegmentProps = {
   children,
 };
 
+// @ts-expect-error - link-only attributes require href.
+const _buttonWithLinkOnlyAttribute: SegmentProps = {
+  value: 'actual',
+  target: '_blank',
+  children,
+};
+
 void _buttonValid;
 void _navigationValid;
 void _navigationTrueToken;
 void _buttonMissingValue;
 void _navigationFalseToken;
+void _buttonWithLinkOnlyAttribute;
