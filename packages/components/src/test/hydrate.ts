@@ -283,7 +283,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
     // `Component<Props>` type. `svelte/server.render` accepts both shapes at
     // runtime; we route through `unknown` because the public types are too
     // narrow to express the dual-target reality.
-    const ssrModule = (await import(file)) as { default: unknown };
+    const ssrModule = (await import(pathToFileURL(file).href)) as { default: unknown };
 
     const { render } = (await import('svelte/server')) as typeof import('svelte/server');
     const originalDocument = globalThis.document;
