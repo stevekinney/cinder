@@ -77,11 +77,9 @@ describe('SelectableRow', () => {
     expect(primary?.getAttribute('href')).toBe('/sessions/42');
     expect(primary?.getAttribute('aria-current')).toBe('page');
     expect(primary?.getAttribute('aria-pressed')).toBeNull();
-    expect(primary?.getAttribute('rel')?.split(' ').toSorted()).toEqual([
-      'nofollow',
-      'noopener',
-      'noreferrer',
-    ]);
+    const relTokens = primary?.getAttribute('rel')?.split(' ');
+    relTokens?.sort();
+    expect(relTokens).toEqual(['nofollow', 'noopener', 'noreferrer']);
   });
 
   test('de-duplicates rel tokens case-insensitively while preserving first-seen casing', () => {
