@@ -31,8 +31,8 @@ type SelectableRowButtonProps = SelectableRowSharedProps &
     'aria-current' | 'aria-pressed' | 'class' | 'href' | 'style' | 'title' | 'type'
   > & {
     href?: undefined;
-    /** Called when the native primary button activates. */
-    onclick: (event: MouseEvent) => void;
+    /** Called when the native primary button activates. Optional for submit and reset buttons. */
+    onclick?: (event: MouseEvent) => void;
     /** Native button type. @default "button" */
     type?: 'button' | 'submit' | 'reset';
     currentValue?: never;

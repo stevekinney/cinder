@@ -70,7 +70,8 @@ const schema = {
       {
         name: 'onclick',
         reason: 'function-or-snippet',
-        description: 'Called when the native primary button activates.',
+        description:
+          'Called when the native primary button activates. Optional for submit and reset buttons.',
       },
       {
         name: 'target',

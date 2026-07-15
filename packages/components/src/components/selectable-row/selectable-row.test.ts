@@ -103,4 +103,17 @@ describe('SelectableRow', () => {
       container.querySelector('.cinder-selectable-row')?.getAttribute('data-cinder-selected'),
     ).toBe('');
   });
+
+  test('supports a native submit button without an onclick handler', () => {
+    const { container } = render(SelectableRow, {
+      props: {
+        type: 'submit',
+        title: textSnippet('Submit session'),
+      },
+    });
+
+    const primary = container.querySelector('.cinder-selectable-row__primary');
+    expect(primary?.tagName).toBe('BUTTON');
+    expect(primary?.getAttribute('type')).toBe('submit');
+  });
 });
