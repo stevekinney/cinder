@@ -65,6 +65,7 @@ describe('SelectableRow', () => {
       props: {
         href: '/sessions/42',
         target: '_blank',
+        rel: 'nofollow',
         selected: true,
         currentValue: 'page',
         title: textSnippet('Session 42'),
@@ -76,7 +77,11 @@ describe('SelectableRow', () => {
     expect(primary?.getAttribute('href')).toBe('/sessions/42');
     expect(primary?.getAttribute('aria-current')).toBe('page');
     expect(primary?.getAttribute('aria-pressed')).toBeNull();
-    expect(primary?.getAttribute('rel')?.split(' ').toSorted()).toEqual(['noopener', 'noreferrer']);
+    expect(primary?.getAttribute('rel')?.split(' ').toSorted()).toEqual([
+      'nofollow',
+      'noopener',
+      'noreferrer',
+    ]);
   });
 
   test('maps button selection to aria-pressed and forwards native attributes', () => {

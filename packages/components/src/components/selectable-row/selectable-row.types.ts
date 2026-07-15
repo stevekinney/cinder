@@ -41,10 +41,14 @@ type SelectableRowButtonProps = SelectableRowSharedProps &
 type SelectableRowLinkProps = SelectableRowSharedProps &
   Omit<
     HTMLAnchorAttributes,
-    'aria-current' | 'aria-pressed' | 'class' | 'href' | 'style' | 'title'
+    'aria-current' | 'aria-pressed' | 'class' | 'href' | 'rel' | 'style' | 'target' | 'title'
   > & {
     /** Destination that renders the primary action as a native anchor. */
     href: string;
+    /** Browsing context for the primary anchor. `_blank` merges `noopener noreferrer` into `rel`. */
+    target?: HTMLAnchorAttributes['target'];
+    /** `rel` forwarded to the primary anchor; `noopener noreferrer` is merged automatically when `target="_blank"`. */
+    rel?: HTMLAnchorAttributes['rel'];
     /** `aria-current` value emitted when the linked row is selected. @default "page" */
     currentValue?: SelectableRowCurrentValue;
     type?: never;
@@ -61,6 +65,10 @@ export interface SelectableRowSchemaProps {
   selected?: boolean;
   /** Destination that renders the primary action as a native anchor. */
   href?: string;
+  /** Browsing context for the primary anchor. `_blank` merges `noopener noreferrer` into `rel`. */
+  target?: HTMLAnchorAttributes['target'];
+  /** `rel` forwarded to the primary anchor; `noopener noreferrer` is merged automatically when `target="_blank"`. */
+  rel?: HTMLAnchorAttributes['rel'];
   /** `aria-current` value emitted when a linked row is selected. @default "page" */
   currentValue?: SelectableRowCurrentValue;
   /** Native button type. @default "button" */

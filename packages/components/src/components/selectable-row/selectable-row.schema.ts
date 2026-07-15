@@ -18,6 +18,18 @@ const schema = {
       type: 'string',
       description: 'Destination that renders the primary action as a native anchor.',
     },
+    rel: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description:
+        '`rel` forwarded to the primary anchor; `noopener noreferrer` is merged automatically when `target="_blank"`.',
+    },
     currentValue: {
       enum: ['page', 'step', 'location', 'date', 'time', 'true'],
       description: '`aria-current` value emitted when a linked row is selected.',
@@ -59,6 +71,12 @@ const schema = {
         name: 'onclick',
         reason: 'function-or-snippet',
         description: 'Called when the native primary button activates.',
+      },
+      {
+        name: 'target',
+        reason: 'unknown-shape',
+        description:
+          'Browsing context for the primary anchor. `_blank` merges `noopener noreferrer` into `rel`.',
       },
       {
         name: 'title',
