@@ -101,15 +101,24 @@ const pendingTempFiles = new Set<string>();
 
 let exitHandlersRegistered = false;
 
+function removeRegisteredTempFile(
+  path: string,
+  removeFile: (filePath: string) => void = unlinkSync,
+): void {
+  try {
+    removeFile(path);
+    pendingTempFiles.delete(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      pendingTempFiles.delete(path);
+    }
+  }
+}
+
 /** Synchronously remove every still-registered temp file. Safe to call twice. */
 function cleanupRegisteredTempFiles(): void {
   for (const path of pendingTempFiles) {
-    try {
-      unlinkSync(path);
-    } catch {
-      // Already gone (per-test cleanup beat us to it) — ignore.
-    }
-    pendingTempFiles.delete(path);
+    removeRegisteredTempFile(path);
   }
 }
 
@@ -144,9 +153,13 @@ function ensureExitHandlersRegistered(): void {
  */
 export const __tempFileRegistryForTests: {
   paths: ReadonlySet<string>;
+  registerPath: (path: string) => void;
+  removePath: (path: string, removeFile?: (filePath: string) => void) => void;
   runExitCleanup: () => void;
 } = {
   paths: pendingTempFiles,
+  registerPath: (path) => pendingTempFiles.add(path),
+  removePath: removeRegisteredTempFile,
   runExitCleanup: cleanupRegisteredTempFiles,
 };
 
@@ -310,12 +323,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
     // rethrow for the test to observe.
     container?.remove();
     for (const tempFile of [file, serverRuntimeShimPath]) {
-      try {
-        unlinkSync(tempFile);
-      } catch {
-        // Already gone — ignore.
-      }
-      pendingTempFiles.delete(tempFile);
+      removeRegisteredTempFile(tempFile);
     }
     throw error;
   }
@@ -347,12 +355,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
       // handler skips already-deregistered paths). Best-effort — a unlink failure
       // doesn't break the test; the path stays registered for the exit sweep.
       for (const tempFile of [file, serverRuntimeShimPath]) {
-        try {
-          unlinkSync(tempFile);
-          pendingTempFiles.delete(tempFile);
-        } catch {
-          // Leave it registered so the exit-handler safety net still sweeps it.
-        }
+        removeRegisteredTempFile(tempFile);
       }
     },
   };
