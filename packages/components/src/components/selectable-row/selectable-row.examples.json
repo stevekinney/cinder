@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "selectable-row",
+  "import": "@lostgradient/cinder/selectable-row",
+  "examples": [
+    {
+      "id": "session-actions",
+      "title": "Session row with independent actions",
+      "description": "The full main body opens the session while Rename and Temporal Web remain sibling actions with their own Tab stops.",
+      "code": "<script lang=\"ts\">\n  import Button from '@lostgradient/cinder/button';\n  import SelectableRow from '@lostgradient/cinder/selectable-row';\n\n  let opened = $state(0);\n  let renamed = $state(0);\n</script>\n\n<div style=\"display: grid; gap: var(--cinder-space-3); max-inline-size: 48rem;\">\n  <SelectableRow\n    selected\n    onclick={() => {\n      opened += 1;\n    }}\n  >\n    {#snippet leading()}<span aria-hidden=\"true\">●</span>{/snippet}\n    {#snippet title()}\n      Customer onboarding workflow investigation with a deliberately long session title\n    {/snippet}\n    {#snippet description()}Inspect the active workflow execution and event history.{/snippet}\n    {#snippet meta()}Running · Updated 2 minutes ago{/snippet}\n    {#snippet trailingActions()}\n      <Button\n        size=\"sm\"\n        onclick={() => {\n          renamed += 1;\n        }}>Rename</Button\n      >\n      <Button\n        size=\"sm\"\n        href=\"https://example.com/temporal/session\"\n        target=\"_blank\"\n        rel=\"noopener noreferrer\">Temporal Web</Button\n      >\n    {/snippet}\n  </SelectableRow>\n\n  <output data-testid=\"selectable-row-activation-counts\">\n    Opened {opened} times; renamed {renamed} times.\n  </output>\n</div>\n"
+    }
+  ]
+}

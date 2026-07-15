@@ -773,6 +773,14 @@ export type { SegmentedControlProps } from './components/segmented-control/index
 export { default as Select } from './components/select/index.ts';
 export type { SelectOption, SelectProps } from './components/select/index.ts';
 
+export { default as SelectableRow } from './components/selectable-row/index.ts';
+export type {
+  SelectableRowCurrentValue,
+  SelectableRowDensity,
+  SelectableRowProps,
+  SelectableRowSchemaProps,
+} from './components/selectable-row/index.ts';
+
 export { default as SelectionPopover } from './components/selection-popover/index.ts';
 export type {
   SelectionPopoverPosition,

@@ -4587,6 +4587,38 @@
       "import": "./src/components/select/select.examples.json",
       "default": "./src/components/select/select.examples.json"
     },
+    "./selectable-row": {
+      "types": "./dist/components/selectable-row/index.d.ts",
+      "browser": "./src/components/selectable-row/index.ts",
+      "node": "./dist/server/components/selectable-row/index.js",
+      "svelte": "./src/components/selectable-row/index.ts",
+      "import": "./src/components/selectable-row/index.ts",
+      "default": "./dist/components/selectable-row/index.js"
+    },
+    "./selectable-row/schema": {
+      "types": "./dist/components/selectable-row/selectable-row.schema.d.ts",
+      "browser": "./src/components/selectable-row/selectable-row.schema.ts",
+      "node": "./dist/server/components/selectable-row/selectable-row.schema.js",
+      "svelte": "./src/components/selectable-row/selectable-row.schema.ts",
+      "import": "./src/components/selectable-row/selectable-row.schema.ts",
+      "default": "./dist/components/selectable-row/selectable-row.schema.js"
+    },
+    "./selectable-row/variables": {
+      "types": "./dist/components/selectable-row/selectable-row.variables.d.ts",
+      "browser": "./src/components/selectable-row/selectable-row.variables.ts",
+      "node": "./dist/server/components/selectable-row/selectable-row.variables.js",
+      "svelte": "./src/components/selectable-row/selectable-row.variables.ts",
+      "import": "./src/components/selectable-row/selectable-row.variables.ts",
+      "default": "./dist/components/selectable-row/selectable-row.variables.js"
+    },
+    "./selectable-row/styles": {
+      "types": "./dist/components/selectable-row/selectable-row.css.d.ts",
+      "default": "./dist/components/selectable-row/selectable-row.css"
+    },
+    "./selectable-row/examples": {
+      "import": "./src/components/selectable-row/selectable-row.examples.json",
+      "default": "./src/components/selectable-row/selectable-row.examples.json"
+    },
     "./selection-popover": {
       "types": "./dist/components/selection-popover/index.d.ts",
       "browser": "./src/components/selection-popover/index.ts",

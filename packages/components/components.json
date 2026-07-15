@@ -4462,6 +4462,54 @@
       }
     },
     {
+      "name": "SelectableRow",
+      "id": "selectable-row",
+      "import": "@lostgradient/cinder/selectable-row",
+      "exportName": "SelectableRow",
+      "category": "action",
+      "status": "beta",
+      "purpose": "Full-width row with a native button or link primary action and independent sibling trailing actions.",
+      "tags": ["row", "list", "selection", "navigation"],
+      "useWhen": [
+        "The main row body must activate as one native action while rename, menu, or external-link controls remain independently focusable.",
+        "A rich row needs leading, title, description, and metadata regions plus multiple trailing controls."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "The entire row is one button with no interactive trailing content.",
+          "alternative": "action-row"
+        },
+        {
+          "reason": "Only the title links and the rest of the row is static record content.",
+          "alternative": "stacked-list-item"
+        }
+      ],
+      "related": ["action-row", "stacked-list-item", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/selectable-row/schema",
+        "variables": "@lostgradient/cinder/selectable-row/variables",
+        "examples": "@lostgradient/cinder/selectable-row/examples"
+      },
+      "a11y": {
+        "pattern": "Native button or link",
+        "keyboard": [
+          {
+            "keys": "Enter",
+            "action": "Activates the primary button or link."
+          },
+          {
+            "keys": "Space",
+            "action": "Activates the primary action when it is a button."
+          }
+        ],
+        "notes": [
+          "The primary action and trailing controls are siblings, so trailing activation never bubbles through the primary action."
+        ]
+      }
+    },
+    {
       "name": "SelectionPopover",
       "id": "selection-popover",
       "import": "@lostgradient/cinder/selection-popover",

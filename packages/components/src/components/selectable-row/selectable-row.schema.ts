@@ -1,0 +1,78 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    density: {
+      enum: ['comfortable', 'condensed'],
+      description: 'Density token surfaced as `data-cinder-density`.',
+      default: 'comfortable',
+    },
+    selected: {
+      type: 'boolean',
+      description: 'Whether the primary action represents the selected or current row.',
+      default: false,
+    },
+    href: {
+      type: 'string',
+      description: 'Destination that renders the primary action as a native anchor.',
+    },
+    currentValue: {
+      enum: ['page', 'step', 'location', 'date', 'time', 'true'],
+      description: '`aria-current` value emitted when a linked row is selected.',
+      default: 'page',
+    },
+    type: {
+      enum: ['button', 'submit', 'reset'],
+      description: 'Native button type.',
+      default: 'button',
+    },
+    class: {
+      type: 'string',
+      description: 'Additional classes merged with `.cinder-selectable-row`.',
+    },
+    style: {
+      type: 'string',
+      description: 'Inline style string applied to the `.cinder-selectable-row` root.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'description',
+        reason: 'function-or-snippet',
+        description: 'Secondary description below the title.',
+      },
+      {
+        name: 'leading',
+        reason: 'function-or-snippet',
+        description: 'Leading visual such as an icon, avatar, marker, or status dot.',
+      },
+      {
+        name: 'meta',
+        reason: 'function-or-snippet',
+        description: 'Tertiary metadata such as a timestamp, status, or compact badge.',
+      },
+      {
+        name: 'onclick',
+        reason: 'function-or-snippet',
+        description: 'Called when the native primary button activates.',
+      },
+      {
+        name: 'title',
+        reason: 'function-or-snippet',
+        required: true,
+        description: 'Primary row label. Required.',
+      },
+      {
+        name: 'trailingActions',
+        reason: 'function-or-snippet',
+        description: 'Independent controls rendered as siblings after the primary action.',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

@@ -304,14 +304,16 @@ describe('discoverSidebarComponents', () => {
     // measured ceiling to 165. ChatComposerPopover adds one standalone composer
     // suggestion primitive with examples, bringing the measured ceiling to 166.
     // InlineLoading and KanbanBoard each add a standalone sidebar family with
-    // examples, bringing the measured ceiling to 168.
+    // examples, bringing the measured ceiling to 168. SelectableRow adds one
+    // standalone row-action family, bringing the measured ceiling to 169.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(168);
+    expect(sidebar.length).toBeLessThanOrEqual(169);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
     // from the sidebar also dropped some other family in its place.
     expect(sidebar).toContain('stacked-list-item');
+    expect(sidebar).toContain('selectable-row');
     expect(sidebar).toContain('page-header');
     expect(sidebar).toContain('data-grid');
     expect(sidebar).toContain('time-field');
