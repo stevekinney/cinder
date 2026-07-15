@@ -17,6 +17,34 @@ const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
   'review-editor',
 ]);
 
+const PUBLISHED_PACKAGE_SOURCE_PREFIX = 'node_modules/@lostgradient/cinder/';
+
+/**
+ * Give authored package components the same filename in workspace builds that
+ * Vite gives their published source. Svelte's default scoped-CSS hash includes
+ * the compiler filename, so an absolute checkout path in `dist/server` and the
+ * package-relative client source path otherwise produce different class names
+ * and cannot hydrate each other.
+ */
+export function publishedSvelteCompileFilename(filePath: string): string {
+  const normalizedPath = filePath.replaceAll('\\', '/');
+  const installedSourceMarker = `/${PUBLISHED_PACKAGE_SOURCE_PREFIX}`;
+  const installedSourceIndex = normalizedPath.lastIndexOf(installedSourceMarker);
+  if (installedSourceIndex >= 0) {
+    return normalizedPath.slice(installedSourceIndex + 1);
+  }
+
+  const workspaceSourceMarker = '/packages/components/';
+  const workspaceSourceIndex = normalizedPath.lastIndexOf(workspaceSourceMarker);
+  if (workspaceSourceIndex >= 0) {
+    return `${PUBLISHED_PACKAGE_SOURCE_PREFIX}${normalizedPath.slice(
+      workspaceSourceIndex + workspaceSourceMarker.length,
+    )}`;
+  }
+
+  return filePath;
+}
+
 function allowsStyleBlock(path: string): boolean {
   const normalizedPath = path.replaceAll('\\', '/');
 
@@ -172,11 +200,12 @@ export function sveltePlugin(
     setup(builder) {
       builder.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
+        const filename = publishedSvelteCompileFilename(path);
         const isPlaygroundFile = path.replaceAll('\\', '/').includes('/packages/playground/');
         const css = isPlaygroundFile || injectCss ? 'injected' : 'external';
         const dev = process.env['NODE_ENV'] !== 'production';
         const compileResult = compile(source, {
-          filename: path,
+          filename,
           generate: options.generate,
           css,
           // Read the same environment source that `scripts/build.ts` writes before `Bun.build()`

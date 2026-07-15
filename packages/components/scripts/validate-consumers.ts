@@ -1120,6 +1120,8 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       );
     }
 
+    await assertSvelteKitClientHydrates(httpPort, label, '/chat-layout');
+
     devSsrAssertionsPassed = true;
   } finally {
     devServer.kill();
@@ -1393,6 +1395,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       }
 
       await assertSvelteKitClientHydrates(httpPort, label, '/subpath');
+      await assertSvelteKitClientHydrates(httpPort, label, '/chat-layout');
 
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
@@ -1503,7 +1506,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 async function assertSvelteKitClientHydrates(
   httpPort: number,
   label: string,
-  routePath: '/subpath',
+  routePath: '/subpath' | '/chat-layout',
 ): Promise<void> {
   const { chromium } = await import('@playwright/test');
   const browser = await promiseWithTimeout(
@@ -1531,9 +1534,16 @@ async function assertSvelteKitClientHydrates(
 
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('load', { timeout: 5_000 });
-    await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
-    await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
-    await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
+    if (routePath === '/subpath') {
+      await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
+      await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
+      await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
+    } else {
+      await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
+      await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
+      await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
+      await page.getByText('0 messages in conversation').waitFor({ timeout: 5_000 });
+    }
     if (errors.length > 0) {
       fail(
         `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,

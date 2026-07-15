@@ -93,4 +93,20 @@ describe('renderThenHydrate', () => {
     // cleanup()'s own unlink is a harmless no-op.
     result.cleanup();
   });
+
+  test('keeps temp files registered when synchronous removal fails', () => {
+    const path = join(import.meta.dir, '.cinder-ssr-removal-failure.mjs');
+    __tempFileRegistryForTests.registerPath(path);
+
+    __tempFileRegistryForTests.removePath(path, () => {
+      throw Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    });
+
+    expect(__tempFileRegistryForTests.paths.has(path)).toBe(true);
+
+    __tempFileRegistryForTests.removePath(path, () => {
+      throw Object.assign(new Error('already removed'), { code: 'ENOENT' });
+    });
+    expect(__tempFileRegistryForTests.paths.has(path)).toBe(false);
+  });
 });

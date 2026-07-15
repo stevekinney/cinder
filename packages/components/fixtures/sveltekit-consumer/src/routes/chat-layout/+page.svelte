@@ -1,25 +1,10 @@
 <script lang="ts">
-  import Chat, {
-    appendAssistantMessage,
-    appendUserMessage,
-    createConversation,
-  } from '@lostgradient/cinder/chat';
+  import Chat, { createConversation } from '@lostgradient/cinder/chat';
 
-  const conversation = (() => {
-    let nextConversation = createConversation({ id: 'consumer-chat-layout' });
-
-    for (let index = 0; index < 24; index += 1) {
-      nextConversation = appendUserMessage(nextConversation, `Question ${index + 1}`);
-      nextConversation = appendAssistantMessage(
-        nextConversation,
-        `Answer ${index + 1} with enough text to make the transcript taller than the bounded fixture.`,
-      );
-    }
-
-    return nextConversation;
-  })();
+  const conversation = createConversation({ id: 'consumer-chat-layout' });
 </script>
 
+<h1>Empty Chat hydration</h1>
 <main class="chat-layout-fixture">
   <Chat id="consumer-chat-layout" {conversation} />
 </main>
