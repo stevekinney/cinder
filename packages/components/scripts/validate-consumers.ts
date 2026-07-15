@@ -1339,8 +1339,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     const httpPort = await pickEphemeralPort();
     const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
       cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      // This fixture does not inspect server output. Inheriting both streams
+      // prevents unread subprocess pipes from keeping `fixtureServer.exited`
+      // pending after the server has terminated.
+      stdout: 'inherit',
+      stderr: 'inherit',
       env: {
         ...Bun.env,
         PORT: String(httpPort),
@@ -1989,8 +1992,8 @@ async function runExamplesConsumerFixture(): Promise<void> {
     const httpPort = await pickEphemeralPort();
     const fixtureServer = Bun.spawn([nodeBinaryPath, 'build/index.js'], {
       cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: 'inherit',
+      stderr: 'inherit',
       env: {
         ...Bun.env,
         PORT: String(httpPort),
@@ -2002,7 +2005,11 @@ async function runExamplesConsumerFixture(): Promise<void> {
 
     try {
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 15_000, fixtureServer);
-      const response = await fetch(`http://127.0.0.1:${httpPort}/`);
+      const response = await fetchWithTimeout(
+        `http://127.0.0.1:${httpPort}/`,
+        15_000,
+        'examples-consumer SSR request',
+      );
       if (response.status !== 200) {
         fail(`examples-consumer / returned ${response.status}, want 200`);
       }
