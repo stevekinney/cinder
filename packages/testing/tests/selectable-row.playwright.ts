@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test.describe('SelectableRow native interaction contract', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/page/selectable-row?snapshot=1', { waitUntil: 'load' });
-    await page.waitForSelector('#app > *', { state: 'visible' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
   });
 
   test('pointer and native keyboard activation target only the primary action', async ({
