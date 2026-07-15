@@ -28,7 +28,7 @@ const schema = {
         },
       ],
       description:
-        '`rel` forwarded to the primary anchor; `noopener noreferrer` is merged automatically when `target="_blank"`.',
+        '`rel` forwarded to the primary anchor and de-duplicated case-insensitively; `noopener noreferrer` is merged when `target="_blank"`.',
     },
     currentValue: {
       enum: ['page', 'step', 'location', 'date', 'time', 'true'],

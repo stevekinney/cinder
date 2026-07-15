@@ -47,7 +47,7 @@ type SelectableRowLinkProps = SelectableRowSharedProps &
     href: string;
     /** Browsing context for the primary anchor. `_blank` merges `noopener noreferrer` into `rel`. */
     target?: HTMLAnchorAttributes['target'];
-    /** `rel` forwarded to the primary anchor; `noopener noreferrer` is merged automatically when `target="_blank"`. */
+    /** `rel` forwarded to the primary anchor and de-duplicated case-insensitively; `noopener noreferrer` is merged when `target="_blank"`. */
     rel?: HTMLAnchorAttributes['rel'];
     /** `aria-current` value emitted when the linked row is selected. @default "page" */
     currentValue?: SelectableRowCurrentValue;
@@ -67,7 +67,7 @@ export interface SelectableRowSchemaProps {
   href?: string;
   /** Browsing context for the primary anchor. `_blank` merges `noopener noreferrer` into `rel`. */
   target?: HTMLAnchorAttributes['target'];
-  /** `rel` forwarded to the primary anchor; `noopener noreferrer` is merged automatically when `target="_blank"`. */
+  /** `rel` forwarded to the primary anchor and de-duplicated case-insensitively; `noopener noreferrer` is merged when `target="_blank"`. */
   rel?: HTMLAnchorAttributes['rel'];
   /** `aria-current` value emitted when a linked row is selected. @default "page" */
   currentValue?: SelectableRowCurrentValue;

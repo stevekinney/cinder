@@ -84,6 +84,19 @@ describe('SelectableRow', () => {
     ]);
   });
 
+  test('de-duplicates rel tokens case-insensitively while preserving first-seen casing', () => {
+    const { container } = render(SelectableRow, {
+      props: {
+        href: '/sessions/42',
+        target: '_BLANK',
+        rel: 'NoOpener noopener sponsored',
+        title: textSnippet('Session 42'),
+      },
+    });
+
+    expect(container.querySelector('a')?.getAttribute('rel')).toBe('NoOpener sponsored noreferrer');
+  });
+
   test('maps button selection to aria-pressed and forwards native attributes', () => {
     const { container } = render(SelectableRow, {
       props: {

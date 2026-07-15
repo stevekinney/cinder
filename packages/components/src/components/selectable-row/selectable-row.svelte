@@ -55,13 +55,30 @@
   const anchorAttributes = $derived(rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'style'>);
   const buttonAttributes = $derived(rest as Omit<HTMLButtonAttributes, 'class' | 'style' | 'type'>);
   const resolvedRel = $derived.by(() => {
-    if (!isLink || anchorAttributes.target?.toLowerCase() !== '_blank') {
-      return anchorAttributes.rel;
+    if (!isLink) return undefined;
+
+    const consumerTokens = (anchorAttributes.rel ?? '').split(/\s+/).filter(Boolean);
+    const seen = new Set<string>();
+    const merged: string[] = [];
+
+    for (const token of consumerTokens) {
+      const normalizedToken = token.toLowerCase();
+      if (!seen.has(normalizedToken)) {
+        seen.add(normalizedToken);
+        merged.push(token);
+      }
     }
-    const tokens = new Set((anchorAttributes.rel ?? '').split(/\s+/).filter(Boolean));
-    tokens.add('noopener');
-    tokens.add('noreferrer');
-    return [...tokens].join(' ');
+
+    if (anchorAttributes.target?.toLowerCase() === '_blank') {
+      for (const token of ['noopener', 'noreferrer']) {
+        if (!seen.has(token)) {
+          seen.add(token);
+          merged.push(token);
+        }
+      }
+    }
+
+    return merged.length > 0 ? merged.join(' ') : undefined;
   });
 </script>
 
