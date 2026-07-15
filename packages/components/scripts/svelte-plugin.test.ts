@@ -3,7 +3,30 @@ import { describe, expect, it } from 'bun:test';
 import {
   findOneArgumentServerComponentBoundaries,
   preserveServerComponentIdentity,
+  publishedSvelteCompileFilename,
 } from './svelte-plugin.ts';
+
+describe('publishedSvelteCompileFilename', () => {
+  it('normalizes workspace and installed package sources to the same filename', () => {
+    const expected = 'node_modules/@lostgradient/cinder/src/components/chat/container/chat.svelte';
+
+    expect(
+      publishedSvelteCompileFilename(
+        '/checkout/packages/components/src/components/chat/container/chat.svelte',
+      ),
+    ).toBe(expected);
+    expect(
+      publishedSvelteCompileFilename(
+        '/consumer/node_modules/@lostgradient/cinder/src/components/chat/container/chat.svelte',
+      ),
+    ).toBe(expected);
+  });
+
+  it('leaves components outside the published package unchanged', () => {
+    const playgroundPath = '/checkout/packages/playground/src/app.svelte';
+    expect(publishedSvelteCompileFilename(playgroundPath)).toBe(playgroundPath);
+  });
+});
 
 describe('preserveServerComponentIdentity', () => {
   it('adds the exported component identity to one-argument server component boundaries', () => {
