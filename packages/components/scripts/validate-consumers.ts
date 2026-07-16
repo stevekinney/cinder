@@ -1,4 +1,4 @@
-import { $, Glob } from 'bun';
+import { Glob } from 'bun';
 import {
   existsSync,
   readFileSync,
@@ -8,7 +8,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,11 @@ import type { BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
 import { waitForReadyHtml } from './consumer-readiness.ts';
-import { installHookProcessCleanup, withLocalValidationGateLock } from './husky/utilities.ts';
+import {
+  installHookProcessCleanup,
+  runHookCommand,
+  withLocalValidationGateLock,
+} from './husky/utilities.ts';
 import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
@@ -165,6 +169,16 @@ function fail(message: string): never {
   throw new ValidationError(message);
 }
 
+async function removeFixtureEntries(
+  fixtureDirectory: string,
+  entries: readonly string[],
+): Promise<void> {
+  // Bun 1.3 can throw EFAULT when multiple recursive fs removals run concurrently.
+  for (const entry of entries) {
+    await rm(join(fixtureDirectory, entry), { recursive: true, force: true });
+  }
+}
+
 let nodeBinaryPath = '';
 const tarBinaryPath = Bun.which('tar');
 
@@ -246,14 +260,16 @@ async function ensureNodeOnPath(): Promise<void> {
 async function runBuild(): Promise<void> {
   for (const dependencyPackage of workspaceDependencyPackages) {
     process.stdout.write(`[validate-consumers] building ${dependencyPackage.name}…\n`);
-    const result = await $`bun run build`.cwd(dependencyPackage.packageDirectory).nothrow();
+    const result = await runHookCommand('bun', ['run', 'build'], {
+      cwd: dependencyPackage.packageDirectory,
+    });
     if (result.exitCode !== 0) {
       fail(`${dependencyPackage.name} build failed with exit ${result.exitCode}`);
     }
   }
 
   process.stdout.write('[validate-consumers] step 1: building cinder…\n');
-  const result = await $`bun run build`.cwd(repositoryRoot).nothrow();
+  const result = await runHookCommand('bun', ['run', 'build'], { cwd: repositoryRoot });
   if (result.exitCode !== 0) fail(`bun run build failed with exit ${result.exitCode}`);
 }
 
@@ -263,9 +279,13 @@ async function packWorkspaceDependencyTarballs(): Promise<void> {
     if (existsSync(dependencyPackage.tarballFilePath)) {
       await Bun.file(dependencyPackage.tarballFilePath).delete();
     }
-    const result = await $`bun pm pack`.cwd(dependencyPackage.packageDirectory).nothrow().quiet();
+    const result = await runHookCommand('bun', ['pm', 'pack'], {
+      cwd: dependencyPackage.packageDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (result.exitCode !== 0) {
-      fail(`${dependencyPackage.name} bun pm pack failed: ${result.stderr.toString()}`);
+      fail(`${dependencyPackage.name} bun pm pack failed: ${result.stderr}`);
     }
     if (!existsSync(dependencyPackage.tarballFilePath)) {
       fail(
@@ -298,14 +318,17 @@ async function packTarball(): Promise<void> {
  */
 async function extractTarballForInspection(destinationDirectory: string): Promise<void> {
   if (existsSync(destinationDirectory)) {
-    await $`rm -rf ${destinationDirectory}`;
+    await rm(destinationDirectory, { recursive: true, force: true });
   }
-  await $`mkdir -p ${destinationDirectory}`;
+  await mkdir(destinationDirectory, { recursive: true });
   if (tarBinaryPath === null) fail(`tar binary not on PATH`);
-  const result =
-    await $`${tarBinaryPath} -xzf ${tarballFilePath} -C ${destinationDirectory}`.nothrow();
+  const result = await runHookCommand(
+    tarBinaryPath,
+    ['-xzf', tarballFilePath, '-C', destinationDirectory],
+    { stdout: 'pipe', stderr: 'pipe' },
+  );
   if (result.exitCode !== 0) {
-    fail(`tar extract failed: ${result.stderr.toString()}`);
+    fail(`tar extract failed: ${result.stderr}`);
   }
 }
 
@@ -666,22 +689,19 @@ async function inspectTarball(): Promise<void> {
     fail('tar is required to inspect the packed tarball. Install a tar CLI and re-run.');
   }
   const tarballExpectations = await buildTarballExpectations();
-  // Bun's $ passes `tarballFilePath` as a single argv value, not interpolated into a shell
-  // string, so it can't be split on whitespace or interpreted as flags. BSD tar (macOS) doesn't
-  // accept `--` as end-of-options the way GNU tar does, so omitting it is correct here.
-  const listingResult = await $`${tarBinaryPath} -tzf ${tarballFilePath}`
-    .cwd(repositoryRoot)
-    .nothrow()
-    .quiet();
+  // Passing `tarballFilePath` as an argv value prevents whitespace splitting or flag
+  // interpretation. BSD tar (macOS) does not accept GNU tar's `--` end-of-options marker.
+  const listingResult = await runHookCommand(tarBinaryPath, ['-tzf', tarballFilePath], {
+    cwd: repositoryRoot,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
   if (listingResult.exitCode !== 0) {
     fail(
-      `tar failed while listing ${tarballFileName}:\nstdout: ${listingResult.stdout.toString()}\nstderr: ${listingResult.stderr.toString()}`,
+      `tar failed while listing ${tarballFileName}:\nstdout: ${listingResult.stdout}\nstderr: ${listingResult.stderr}`,
     );
   }
-  const entries = listingResult.stdout
-    .toString()
-    .split('\n')
-    .filter((entry) => entry.length > 0);
+  const entries = listingResult.stdout.split('\n').filter((entry) => entry.length > 0);
 
   const missingEntries = tarballExpectations.required.filter(
     (required) => !entries.includes(required),
@@ -868,12 +888,14 @@ async function runStylesConsumerFixture(): Promise<void> {
   });
 
   try {
-    await $`rm -rf node_modules dist`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (installResult.exitCode !== 0) {
-      fail(
-        `styles-consumer bun install failed:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
-      );
+      fail(`styles-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
     }
 
     const fixtureNodeModulesDirectory = join(fixtureDirectory, 'node_modules');
@@ -889,11 +911,13 @@ async function runStylesConsumerFixture(): Promise<void> {
       );
     }
 
-    const buildResult = await $`bun run build`.cwd(fixtureDirectory).nothrow();
+    const buildResult = await runHookCommand('bun', ['run', 'build'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (buildResult.exitCode !== 0) {
-      fail(
-        `styles-consumer build failed:\n${buildResult.stdout.toString()}\n${buildResult.stderr.toString()}`,
-      );
+      fail(`styles-consumer build failed:\n${buildResult.stdout}\n${buildResult.stderr}`);
     }
 
     process.stdout.write('[validate-consumers] styles-consumer OK.\n');
@@ -920,21 +944,25 @@ async function runTypescriptConsumerSvelteGate(
 ): Promise<void> {
   generateTypescriptConsumerProbe(fixtureDirectory, label);
 
-  const tscResult = await $`bunx tsc --noEmit -p tsconfig.svelte.json`
-    .cwd(fixtureDirectory)
-    .nothrow();
+  const tscResult = await runHookCommand(
+    'bun',
+    ['x', 'tsc', '--noEmit', '-p', 'tsconfig.svelte.json'],
+    { cwd: fixtureDirectory, stdout: 'pipe', stderr: 'pipe' },
+  );
   if (tscResult.exitCode !== 0) {
     fail(
-      `typescript-consumer ${label} tsc with Svelte condition failed:\n${tscResult.stdout.toString()}\n${tscResult.stderr.toString()}`,
+      `typescript-consumer ${label} tsc with Svelte condition failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
     );
   }
 
-  const checkResult = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
-    .cwd(fixtureDirectory)
-    .nothrow();
+  const checkResult = await runHookCommand(
+    'bun',
+    ['x', 'svelte-check', '--tsconfig', 'tsconfig.json', '--threshold', 'error'],
+    { cwd: fixtureDirectory, stdout: 'pipe', stderr: 'pipe' },
+  );
   if (checkResult.exitCode !== 0) {
     fail(
-      `typescript-consumer ${label} svelte-check failed:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
+      `typescript-consumer ${label} svelte-check failed:\n${checkResult.stdout}\n${checkResult.stderr}`,
     );
   }
 }
@@ -964,12 +992,14 @@ async function runTypescriptConsumerNodenextGate(
 ): Promise<void> {
   generateTypescriptConsumerProbe(fixtureDirectory, label);
 
-  const result = await $`bunx tsc --noEmit -p tsconfig.nodenext.json`
-    .cwd(fixtureDirectory)
-    .nothrow();
+  const result = await runHookCommand(
+    'bun',
+    ['x', 'tsc', '--noEmit', '-p', 'tsconfig.nodenext.json'],
+    { cwd: fixtureDirectory, stdout: 'pipe', stderr: 'pipe' },
+  );
   if (result.exitCode !== 0) {
     fail(
-      `typescript-consumer ${label} NodeNext without Svelte condition failed:\n${result.stdout.toString()}\n${result.stderr.toString()}`,
+      `typescript-consumer ${label} NodeNext without Svelte condition failed:\n${result.stdout}\n${result.stderr}`,
     );
   }
 }
@@ -985,11 +1015,15 @@ async function runSveltePeerCompatibilityFixture(
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { svelteVersion });
 
   try {
-    await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (installResult.exitCode !== 0) {
       fail(
-        `typescript-consumer ${label} bun install failed for svelte@${svelteVersion}:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+        `typescript-consumer ${label} bun install failed for svelte@${svelteVersion}:\n${installResult.stdout}\n${installResult.stderr}`,
       );
     }
     await runTypescriptConsumerSvelteGate(fixtureDirectory, label);
@@ -1012,11 +1046,15 @@ async function runTypescriptCompatibilityFixture(
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, { typescriptVersion });
 
   try {
-    await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (installResult.exitCode !== 0) {
       fail(
-        `typescript-consumer ${label} bun install failed for typescript@${typescriptVersion}:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+        `typescript-consumer ${label} bun install failed for typescript@${typescriptVersion}:\n${installResult.stdout}\n${installResult.stderr}`,
       );
     }
     assertNoPeerDependencyWarnings(installResult, label);
@@ -1048,6 +1086,7 @@ function ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory: string): vo
 }
 
 const SVELTEKIT_DEV_SSR_MARKERS = [
+  'data-dev-ssr-confirm-dialog-trigger',
   'data-dev-ssr-card-body',
   'data-dev-ssr-sidebar-brand',
   'data-dev-ssr-sidebar-navigation',
@@ -1120,7 +1159,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
       );
     }
 
-    await assertSvelteKitClientHydrates(httpPort, label, '/chat-layout');
+    await assertSvelteKitClientRoutesHydrate(httpPort, label, ['/chat-layout', '/dev-ssr']);
 
     devSsrAssertionsPassed = true;
   } finally {
@@ -1161,38 +1200,63 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         });
 
   try {
-    await $`rm -rf node_modules .svelte-kit build`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaning fixture…\n`);
+    await removeFixtureEntries(fixtureDirectory, ['node_modules', '.svelte-kit', 'build']);
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaned fixture.\n`);
+
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: installing…\n`);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (installResult.exitCode !== 0) {
       fail(
-        `sveltekit-consumer ${label} bun install failed:\n${installResult.stdout.toString()}\n${installResult.stderr.toString()}`,
+        `sveltekit-consumer ${label} bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
       );
     }
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: installed.\n`);
 
-    const syncResult = await $`bunx svelte-kit sync`.cwd(fixtureDirectory).nothrow();
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: syncing…\n`);
+    const syncResult = await runHookCommand('bun', ['x', 'svelte-kit', 'sync'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (syncResult.exitCode !== 0) {
       fail(
-        `svelte-kit sync failed in sveltekit-consumer ${label}:\n${syncResult.stdout.toString()}\n${syncResult.stderr.toString()}`,
+        `svelte-kit sync failed in sveltekit-consumer ${label}:\n${syncResult.stdout}\n${syncResult.stderr}`,
       );
     }
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: synced.\n`);
 
-    const checkResult = await $`bunx svelte-check --tsconfig tsconfig.json --threshold error`
-      .cwd(fixtureDirectory)
-      .nothrow();
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: checking types…\n`);
+    const checkResult = await runHookCommand(
+      'bun',
+      ['x', 'svelte-check', '--tsconfig', 'tsconfig.json', '--threshold', 'error'],
+      { cwd: fixtureDirectory, stdout: 'pipe', stderr: 'pipe' },
+    );
     if (checkResult.exitCode !== 0) {
       fail(
-        `svelte-check failed in sveltekit-consumer ${label}:\n${checkResult.stdout.toString()}\n${checkResult.stderr.toString()}`,
+        `svelte-check failed in sveltekit-consumer ${label}:\n${checkResult.stdout}\n${checkResult.stderr}`,
       );
     }
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: types checked.\n`);
 
     await assertSvelteKitDevSsrRoute(fixtureDirectory, label);
 
-    const viteBuildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: building…\n`);
+    const viteBuildResult = await runHookCommand('bun', ['x', 'vite', 'build'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
     if (viteBuildResult.exitCode !== 0) {
       fail(
-        `vite build failed in sveltekit-consumer ${label}:\n${viteBuildResult.stdout.toString()}\n${viteBuildResult.stderr.toString()}`,
+        `vite build failed in sveltekit-consumer ${label}:\n${viteBuildResult.stdout}\n${viteBuildResult.stderr}`,
       );
     }
+    process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: built.\n`);
     ensureSvelteKitAdapterNodeStaticAssetLink(fixtureDirectory);
 
     // Scan BOTH the intermediate Vite output and the final adapter-node output. SvelteKit's
@@ -1394,8 +1458,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         );
       }
 
-      await assertSvelteKitClientHydrates(httpPort, label, '/subpath');
-      await assertSvelteKitClientHydrates(httpPort, label, '/chat-layout');
+      await assertSvelteKitClientRoutesHydrate(httpPort, label, ['/subpath', '/chat-layout']);
 
       // Subpath page
       const subpathResponse = await fetchWithTimeout(
@@ -1503,10 +1566,12 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
   }
 }
 
-async function assertSvelteKitClientHydrates(
+type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
+
+async function assertSvelteKitClientRoutesHydrate(
   httpPort: number,
   label: string,
-  routePath: '/subpath' | '/chat-layout',
+  routePaths: SvelteKitHydrationRoute[],
 ): Promise<void> {
   const { chromium } = await import('@playwright/test');
   const browser = await promiseWithTimeout(
@@ -1515,66 +1580,100 @@ async function assertSvelteKitClientHydrates(
     'launching Chromium for SvelteKit hydration validation',
   );
   let context: BrowserContext | undefined;
-  let page: Page | undefined;
-  const errors: string[] = [];
 
   try {
     context = await browser.newContext();
-    page = await context.newPage();
-    page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => {
-      const text = message.text();
-      if (
-        message.type() === 'error' ||
-        (message.type() === 'warning' && isHydrationConsoleWarning(text))
-      ) {
-        errors.push(text);
-      }
-    });
-
-    await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('load', { timeout: 5_000 });
-    if (routePath === '/subpath') {
-      await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
-      await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
-      await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
-    } else {
-      await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
-      await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
-      await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
-      await page.getByText('0 messages in conversation').waitFor({ timeout: 5_000 });
+    for (const routePath of routePaths) {
+      await assertSvelteKitHydrationRoute(context, httpPort, label, routePath);
     }
+  } finally {
+    try {
+      if (context !== undefined) {
+        await promiseWithTimeout(
+          context.close(),
+          5_000,
+          `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
+        );
+      }
+    } finally {
+      await promiseWithTimeout(
+        browser.close(),
+        5_000,
+        `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
+      );
+    }
+  }
+}
+
+async function assertSvelteKitHydrationRoute(
+  context: BrowserContext,
+  httpPort: number,
+  label: string,
+  routePath: SvelteKitHydrationRoute,
+): Promise<void> {
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    const text = message.text();
+    if (
+      message.type() === 'error' ||
+      (message.type() === 'warning' && isHydrationConsoleWarning(text))
+    ) {
+      errors.push(text);
+    }
+  });
+
+  try {
+    await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    await page.waitForLoadState('load', { timeout: 5_000 });
+    await assertSvelteKitHydrationRouteContent(page, errors, routePath);
+
     if (errors.length > 0) {
       fail(
         `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,
       );
     }
   } finally {
-    try {
-      try {
-        if (page !== undefined) {
-          await promiseWithTimeout(
-            page.close(),
-            5_000,
-            'closing SvelteKit hydration validation page',
-          );
-        }
-      } finally {
-        if (context !== undefined) {
-          await promiseWithTimeout(
-            context.close(),
-            5_000,
-            'closing SvelteKit hydration validation context',
-          );
-        }
-      }
-    } finally {
-      await promiseWithTimeout(
-        browser.close(),
-        5_000,
-        'closing Chromium after SvelteKit hydration validation',
-      );
-    }
+    await promiseWithTimeout(
+      page.close(),
+      5_000,
+      `closing SvelteKit hydration page for ${routePath}`,
+    );
+  }
+}
+
+async function assertSvelteKitHydrationRouteContent(
+  page: Page,
+  errors: string[],
+  routePath: SvelteKitHydrationRoute,
+): Promise<void> {
+  if (routePath === '/subpath') {
+    await page.getByRole('heading', { name: /subpath imports/i }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'subpath button' }).waitFor({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Subpath accordion' }).waitFor({ timeout: 5_000 });
+    return;
+  }
+
+  if (routePath === '/chat-layout') {
+    await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
+    await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
+    await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
+    await page.getByText('0 messages in conversation').waitFor({ timeout: 5_000 });
+    return;
+  }
+
+  await page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 });
+  const trigger = page.getByRole('button', { name: 'Reset state' });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', { name: 'Reset all local state?' });
+  await dialog.waitFor({ timeout: 5_000 });
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await dialog.waitFor({ state: 'hidden' });
+  if (!(await trigger.evaluate((element) => element === document.activeElement))) {
+    errors.push('ConfirmDialog did not restore focus to its trigger after closing');
   }
 }
 
@@ -1811,12 +1910,24 @@ async function runNodeFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await $`rm -rf node_modules dist`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
-    if (installResult.exitCode !== 0) fail(`node-consumer bun install failed`);
+    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    if (installResult.exitCode !== 0) {
+      fail(`node-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
+    }
 
-    const compileResult = await $`bunx tsc`.cwd(fixtureDirectory).nothrow();
-    if (compileResult.exitCode !== 0) fail(`tsc failed in node-consumer`);
+    const compileResult = await runHookCommand('bun', ['x', 'tsc'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    if (compileResult.exitCode !== 0) {
+      fail(`tsc failed in node-consumer:\n${compileResult.stdout}\n${compileResult.stderr}`);
+    }
 
     const renderResult = Bun.spawnSync([nodeBinaryPath, 'dist/render.js'], {
       cwd: fixtureDirectory,
@@ -1880,9 +1991,17 @@ async function runManifestConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await $`rm -rf node_modules`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
-    if (installResult.exitCode !== 0) fail(`manifest-consumer bun install failed`);
+    await rm(join(fixtureDirectory, 'node_modules'), { recursive: true, force: true });
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    if (installResult.exitCode !== 0) {
+      fail(
+        `manifest-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
+      );
+    }
 
     verifyNodeSsrConditionPrecedence(fixtureDirectory);
 
@@ -1929,9 +2048,17 @@ async function runTypescriptConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await $`rm -rf node_modules src/generated`.cwd(fixtureDirectory);
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
-    if (installResult.exitCode !== 0) fail(`typescript-consumer bun install failed`);
+    await removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    if (installResult.exitCode !== 0) {
+      fail(
+        `typescript-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
+      );
+    }
 
     // Regenerate the probe from the INSTALLED manifest — stale output must not
     // survive a run, and the probe must cover whatever the tarball publishes.
@@ -1963,12 +2090,21 @@ async function runExamplesConsumerFixture(): Promise<void> {
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
 
   try {
-    await $`rm -rf node_modules .svelte-kit build src/generated src/routes/+page.svelte`.cwd(
-      fixtureDirectory,
-    );
-    const installResult = await $`bun install --no-save`.cwd(fixtureDirectory).nothrow();
-    if (installResult.exitCode !== 0) fail(`examples-consumer bun install failed`);
+    await removeFixtureEntries(fixtureDirectory, [
+      'node_modules',
+      '.svelte-kit',
+      'build',
+      'src/generated',
+      'src/routes/+page.svelte',
+    ]);
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+    });
+    if (installResult.exitCode !== 0) {
+      fail(`examples-consumer bun install failed with exit ${installResult.exitCode}`);
+    }
 
+    process.stdout.write('[validate-consumers] examples-consumer: generating examples…\n');
     const generateResult = Bun.spawnSync([nodeBinaryPath, 'generate-examples.mjs'], {
       cwd: fixtureDirectory,
       env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
@@ -1978,20 +2114,25 @@ async function runExamplesConsumerFixture(): Promise<void> {
         `examples-consumer generate-examples.mjs failed:\n${generateResult.stdout.toString()}\n${generateResult.stderr.toString()}`,
       );
     }
+    process.stdout.write('[validate-consumers] examples-consumer: generated examples.\n');
 
-    const syncResult = await $`bunx svelte-kit sync`.cwd(fixtureDirectory).nothrow();
+    process.stdout.write('[validate-consumers] examples-consumer: syncing SvelteKit…\n');
+    const syncResult = await runHookCommand('bun', ['x', 'svelte-kit', 'sync'], {
+      cwd: fixtureDirectory,
+    });
     if (syncResult.exitCode !== 0) {
-      fail(
-        `examples-consumer svelte-kit sync failed:\n${syncResult.stdout.toString()}\n${syncResult.stderr.toString()}`,
-      );
+      fail(`examples-consumer svelte-kit sync failed with exit ${syncResult.exitCode}`);
     }
+    process.stdout.write('[validate-consumers] examples-consumer: synced SvelteKit.\n');
 
-    const buildResult = await $`bunx vite build`.cwd(fixtureDirectory).nothrow();
+    process.stdout.write('[validate-consumers] examples-consumer: building fixture…\n');
+    const buildResult = await runHookCommand('bun', ['x', 'vite', 'build'], {
+      cwd: fixtureDirectory,
+    });
     if (buildResult.exitCode !== 0) {
-      fail(
-        `examples-consumer vite build failed:\n${buildResult.stdout.toString()}\n${buildResult.stderr.toString()}`,
-      );
+      fail(`examples-consumer vite build failed with exit ${buildResult.exitCode}`);
     }
+    process.stdout.write('[validate-consumers] examples-consumer: built fixture.\n');
 
     // Load the exact expected composite-id set this run produced.
     const expectedRaw = await Bun.file(
