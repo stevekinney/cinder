@@ -244,10 +244,19 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'suite stays authoritative without reintroducing a single long-running workspace test step.',
   },
   'test:coverage': {
+    layers: [],
+    reason:
+      'Local/package full-suite coverage + ratchet. main-green uses the chunk and merge scripts so ' +
+      'CI keeps the same coverage gate without serializing the whole suite into one job.',
+  },
+  'test:coverage:chunk': {
     layers: ['main-green'],
     reason:
-      'Full-suite coverage + ratchet. Runs as its own main-green job so coverage remains a source ' +
-      'gate without making release rerun the entire validation suite before publish.',
+      'Runs one full-suite coverage shard in main-green; each shard uploads LCOV for the merge gate.',
+  },
+  'test:coverage:merge': {
+    layers: ['main-green'],
+    reason: 'Merges main-green coverage shard LCOV files and runs the existing coverage ratchet.',
   },
 };
 
