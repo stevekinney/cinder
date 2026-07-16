@@ -1,5 +1,15 @@
 # @lostgradient/cinder
 
+## 0.14.0
+
+### Minor Changes
+
+- [#747](https://github.com/stevekinney/cinder/pull/747) [`fd1f5dc`](https://github.com/stevekinney/cinder/commit/fd1f5dcc73f279450523deae2b4aed3641581cb7) Thanks [@stevekinney](https://github.com/stevekinney)! - Add SelectableRow with a native primary button or link and independent trailing actions.
+
+### Patch Changes
+
+- [#748](https://github.com/stevekinney/cinder/pull/748) [`f2d7f43`](https://github.com/stevekinney/cinder/commit/f2d7f43b054aee08e57ddc477cc6b5473ba6655b) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep published Svelte source and server bundles on the same scoped-style identity so SSR component trees hydrate without mismatches.
+
 ## 0.13.0
 
 ### Minor Changes
