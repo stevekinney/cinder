@@ -38,7 +38,7 @@ type SelectableRowButtonProps = SelectableRowSharedProps &
     type?: 'button' | 'submit' | 'reset';
     /** Accessible state mapping for selected button rows. @default "pressed" */
     selectedState?: SelectableRowSelectedState;
-    /** `aria-current` value emitted when `selectedState="current"` and the row is selected. @default "page" */
+    /** `aria-current` value emitted when `selectedState="current"` and the row is selected. @default "true" */
     currentValue?: SelectableRowCurrentValue;
   };
 
@@ -53,7 +53,7 @@ type SelectableRowLinkProps = SelectableRowSharedProps &
     target?: HTMLAnchorAttributes['target'];
     /** `rel` forwarded to the primary anchor and de-duplicated case-insensitively; `noopener noreferrer` is merged when `target="_blank"`. */
     rel?: HTMLAnchorAttributes['rel'];
-    /** `aria-current` value emitted when the linked row is selected. @default "page" */
+    /** `aria-current` value emitted when the linked row is selected. @default "true" */
     currentValue?: SelectableRowCurrentValue;
     selectedState?: never;
     type?: never;
@@ -76,7 +76,7 @@ export interface SelectableRowSchemaProps {
   target?: HTMLAnchorAttributes['target'];
   /** `rel` forwarded to the primary anchor and de-duplicated case-insensitively; `noopener noreferrer` is merged when `target="_blank"`. */
   rel?: HTMLAnchorAttributes['rel'];
-  /** `aria-current` value emitted for a selected link or a selected button using `selectedState="current"`. @default "page" */
+  /** `aria-current` value emitted for a selected link or a selected button using `selectedState="current"`. @default "true" */
   currentValue?: SelectableRowCurrentValue;
   /** Native button type. @default "button" */
   type?: 'button' | 'submit' | 'reset';

@@ -38,7 +38,7 @@
     selected = false,
     selectedState = 'pressed',
     href,
-    currentValue = 'page',
+    currentValue = 'true',
     type = 'button',
     leading,
     title,

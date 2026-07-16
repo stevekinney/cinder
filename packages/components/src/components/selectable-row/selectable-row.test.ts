@@ -131,6 +131,20 @@ describe('SelectableRow', () => {
     expect(primary?.getAttribute('aria-pressed')).toBeNull();
   });
 
+  test('uses generic current semantics by default for a current button row', () => {
+    const { container } = render(SelectableRow, {
+      props: {
+        selected: true,
+        selectedState: 'current',
+        title: textSnippet('Current session'),
+      },
+    });
+
+    const primary = container.querySelector('.cinder-selectable-row__primary');
+    expect(primary?.getAttribute('aria-current')).toBe('true');
+    expect(primary?.getAttribute('aria-pressed')).toBeNull();
+  });
+
   test('supports a native submit button without an onclick handler', () => {
     const { container } = render(SelectableRow, {
       props: {

@@ -40,7 +40,7 @@ const schema = {
       enum: ['page', 'step', 'location', 'date', 'time', 'true'],
       description:
         '`aria-current` value emitted for a selected link or a selected button using `selectedState="current"`.',
-      default: 'page',
+      default: 'true',
     },
     type: {
       enum: ['button', 'submit', 'reset'],

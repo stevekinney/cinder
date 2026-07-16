@@ -19,8 +19,9 @@ are deliberately inside the primary native action.
 
 Button rows expose `aria-pressed` from `selected` by default. Use `selectedState="current"` when a
 button row represents the current item in a set; selected rows then expose `aria-current` using
-`currentValue` and omit `aria-pressed`. Linked rows always expose `aria-current` from `selected` and
-`currentValue`. Use a linked row only when the primary action really navigates.
+`currentValue` (default `"true"`) and omit `aria-pressed`. Linked rows always expose `aria-current`
+from `selected` and `currentValue`; pass `currentValue="page"` when the link represents the current
+page. Use a linked row only when the primary action really navigates.
 
 Choose `ActionRow` when the whole row is one button and its trailing content is non-interactive.
 Choose `StackedListItem` when the row is mostly static and only its title links. Choose
