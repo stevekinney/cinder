@@ -14,6 +14,12 @@ const schema = {
       description: 'Whether the primary action represents the selected or current row.',
       default: false,
     },
+    selectedState: {
+      enum: ['pressed', 'current'],
+      description:
+        'Accessible state mapping for selected button rows. Links always use `aria-current`.',
+      default: 'pressed',
+    },
     href: {
       type: 'string',
       description: 'Destination that renders the primary action as a native anchor.',
@@ -32,7 +38,8 @@ const schema = {
     },
     currentValue: {
       enum: ['page', 'step', 'location', 'date', 'time', 'true'],
-      description: '`aria-current` value emitted when a linked row is selected.',
+      description:
+        '`aria-current` value emitted for a selected link or a selected button using `selectedState="current"`.',
       default: 'page',
     },
     type: {

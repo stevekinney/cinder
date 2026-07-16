@@ -779,6 +779,7 @@ export type {
   SelectableRowDensity,
   SelectableRowProps,
   SelectableRowSchemaProps,
+  SelectableRowSelectedState,
 } from './components/selectable-row/index.ts';
 
 export { default as SelectionPopover } from './components/selection-popover/index.ts';

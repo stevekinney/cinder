@@ -108,11 +108,27 @@ describe('SelectableRow', () => {
 
     const primary = container.querySelector('.cinder-selectable-row__primary');
     expect(primary?.getAttribute('aria-pressed')).toBe('true');
+    expect(primary?.getAttribute('aria-current')).toBeNull();
     expect(primary?.getAttribute('name')).toBe('session');
     expect(primary?.hasAttribute('disabled')).toBe(true);
     expect(
       container.querySelector('.cinder-selectable-row')?.getAttribute('data-cinder-selected'),
     ).toBe('');
+  });
+
+  test('maps current button selection to aria-current without toggle semantics', () => {
+    const { container } = render(SelectableRow, {
+      props: {
+        selected: true,
+        selectedState: 'current',
+        currentValue: 'step',
+        title: textSnippet('Current session'),
+      },
+    });
+
+    const primary = container.querySelector('.cinder-selectable-row__primary');
+    expect(primary?.getAttribute('aria-current')).toBe('step');
+    expect(primary?.getAttribute('aria-pressed')).toBeNull();
   });
 
   test('supports a native submit button without an onclick handler', () => {

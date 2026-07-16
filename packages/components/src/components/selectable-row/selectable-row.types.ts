@@ -2,6 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
 export type SelectableRowDensity = 'comfortable' | 'condensed';
+export type SelectableRowSelectedState = 'pressed' | 'current';
 export type SelectableRowCurrentValue = 'page' | 'step' | 'location' | 'date' | 'time' | 'true';
 
 type SelectableRowSharedProps = {
@@ -35,7 +36,10 @@ type SelectableRowButtonProps = SelectableRowSharedProps &
     onclick?: (event: MouseEvent) => void;
     /** Native button type. @default "button" */
     type?: 'button' | 'submit' | 'reset';
-    currentValue?: never;
+    /** Accessible state mapping for selected button rows. @default "pressed" */
+    selectedState?: SelectableRowSelectedState;
+    /** `aria-current` value emitted when `selectedState="current"` and the row is selected. @default "page" */
+    currentValue?: SelectableRowCurrentValue;
   };
 
 type SelectableRowLinkProps = SelectableRowSharedProps &
@@ -51,6 +55,7 @@ type SelectableRowLinkProps = SelectableRowSharedProps &
     rel?: HTMLAnchorAttributes['rel'];
     /** `aria-current` value emitted when the linked row is selected. @default "page" */
     currentValue?: SelectableRowCurrentValue;
+    selectedState?: never;
     type?: never;
   };
 
@@ -63,13 +68,15 @@ export interface SelectableRowSchemaProps {
   density?: SelectableRowDensity;
   /** Whether the primary action represents the selected or current row. @default false */
   selected?: boolean;
+  /** Accessible state mapping for selected button rows. Links always use `aria-current`. @default "pressed" */
+  selectedState?: SelectableRowSelectedState;
   /** Destination that renders the primary action as a native anchor. */
   href?: string;
   /** Browsing context for the primary anchor. `_blank` merges `noopener noreferrer` into `rel`. */
   target?: HTMLAnchorAttributes['target'];
   /** `rel` forwarded to the primary anchor and de-duplicated case-insensitively; `noopener noreferrer` is merged when `target="_blank"`. */
   rel?: HTMLAnchorAttributes['rel'];
-  /** `aria-current` value emitted when a linked row is selected. @default "page" */
+  /** `aria-current` value emitted for a selected link or a selected button using `selectedState="current"`. @default "page" */
   currentValue?: SelectableRowCurrentValue;
   /** Native button type. @default "button" */
   type?: 'button' | 'submit' | 'reset';

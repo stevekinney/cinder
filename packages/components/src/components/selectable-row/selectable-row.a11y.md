@@ -17,8 +17,10 @@ do not need `stopPropagation()` for Rename, menu, or external-link controls. Do 
 interactive element inside the `leading`, `title`, `description`, or `meta` snippets; those regions
 are deliberately inside the primary native action.
 
-Button rows expose `aria-pressed` from `selected`. Linked rows expose `aria-current` from `selected`
-and `currentValue`. Use a linked row only when the primary action really navigates.
+Button rows expose `aria-pressed` from `selected` by default. Use `selectedState="current"` when a
+button row represents the current item in a set; selected rows then expose `aria-current` using
+`currentValue` and omit `aria-pressed`. Linked rows always expose `aria-current` from `selected` and
+`currentValue`. Use a linked row only when the primary action really navigates.
 
 Choose `ActionRow` when the whole row is one button and its trailing content is non-interactive.
 Choose `StackedListItem` when the row is mostly static and only its title links. Choose

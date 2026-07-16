@@ -23,6 +23,7 @@
     SelectableRowDensity,
     SelectableRowProps,
     SelectableRowSchemaProps,
+    SelectableRowSelectedState,
   } from './selectable-row.types.ts';
 </script>
 
@@ -35,6 +36,7 @@
   let {
     density = 'comfortable',
     selected = false,
+    selectedState = 'pressed',
     href,
     currentValue = 'page',
     type = 'button',
@@ -50,8 +52,10 @@
 
   const isLink = $derived(href !== undefined);
   const selectedDataAttribute = $derived(selected ? '' : undefined);
-  const ariaPressed = $derived(!isLink ? selected : undefined);
-  const ariaCurrent = $derived(isLink && selected ? currentValue : undefined);
+  const ariaPressed = $derived(!isLink && selectedState === 'pressed' ? selected : undefined);
+  const ariaCurrent = $derived(
+    selected && (isLink || selectedState === 'current') ? currentValue : undefined,
+  );
   const anchorAttributes = $derived(rest as Omit<HTMLAnchorAttributes, 'class' | 'href' | 'style'>);
   const buttonAttributes = $derived(rest as Omit<HTMLButtonAttributes, 'class' | 'style' | 'type'>);
   const resolvedRel = $derived.by(() => {
@@ -118,6 +122,7 @@
       class="cinder-selectable-row__primary"
       {type}
       aria-pressed={ariaPressed}
+      aria-current={ariaCurrent}
     >
       {#if leading}
         <span class="cinder-selectable-row__leading">{@render leading()}</span>

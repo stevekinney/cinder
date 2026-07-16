@@ -7,5 +7,6 @@ export type {
   SelectableRowDensity,
   SelectableRowProps,
   SelectableRowSchemaProps,
+  SelectableRowSelectedState,
 } from './selectable-row.types.ts';
 export { SelectableRow };
