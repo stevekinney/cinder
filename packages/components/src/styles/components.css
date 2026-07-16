@@ -139,6 +139,7 @@
 @import '../components/section-heading/section-heading.css';
 @import '../components/select/select.css';
 @import '../components/segmented-control/segmented-control.css';
+@import '../components/selectable-row/selectable-row.css';
 @import '../components/selection-popover/selection-popover.css';
 @import '../components/spectrogram/spectrogram.css';
 @import '../components/spectrum-chart/spectrum-chart.css';
