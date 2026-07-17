@@ -1,6 +1,6 @@
 {
   "name": "@lostgradient/cinder",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "description": "A Svelte 5 component library and design system focused on accessibility, theming, and per-component tree-shaking.",
   "keywords": [
     "svelte",

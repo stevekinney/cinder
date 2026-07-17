@@ -1,5 +1,15 @@
 # @lostgradient/cinder
 
+## 0.15.0
+
+### Minor Changes
+
+- [#757](https://github.com/stevekinney/cinder/pull/757) [`792a36d`](https://github.com/stevekinney/cinder/commit/792a36dcf267dcc3f5362f2716b5ab8060b34b5b) Thanks [@stevekinney](https://github.com/stevekinney)! - Improve Chat dependency ownership, streaming exports, and automatic component CSS imports.
+
+### Patch Changes
+
+- [#759](https://github.com/stevekinney/cinder/pull/759) [`278ed74`](https://github.com/stevekinney/cinder/commit/278ed74bc6125daa4be3fdfaaa41c78114c6d009) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix Chat SSR hydration stability for empty conversations.
+
 ## 0.14.0
 
 ### Minor Changes
