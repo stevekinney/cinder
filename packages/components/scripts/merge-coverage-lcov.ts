@@ -118,9 +118,15 @@ function parseLcov(source: string, files: Map<string, FileCoverage>): void {
     // Bun sometimes emits FNF/FNH summary counts with no per-function FN/FNDA
     // detail for a file. Fold that summary in rather than discarding it, or
     // the merged report silently reports 0 functions (100% coverage) for it.
-    // The same file's inventory doesn't change between shards, so take the
-    // max seen rather than summing — summing would double-count a file whose
-    // summary-only record appears in more than one shard.
+    //
+    // Summary-only records carry no function identity, so when the same file
+    // appears in more than one shard there is no way to tell whether the
+    // shards hit the same functions (correct combined count = max) or
+    // disjoint ones (correct combined count = sum, up to FNF). Taking the max
+    // can undercount in the disjoint case; summing can double-count in the
+    // same-function case. Max is the safer default for a ratchet: undercount
+    // can only cause a false-fail (blocks a legitimate PR), while summing's
+    // overcount risks a false-pass that hides a real coverage regression.
     if (!hasFunctionDetail && summaryFunctionsFound !== undefined) {
       coverage.summaryOnlyFunctionsFound = Math.max(
         coverage.summaryOnlyFunctionsFound,
