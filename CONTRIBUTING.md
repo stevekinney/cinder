@@ -72,9 +72,9 @@ Locally, `bun run --filter='@cinder/testing' test:browser:update` regenerates ba
 
 ### Coverage ratchet
 
-`packages/components` defines coverage floors in `packages/components/coverage-ratchet.json`, checked by `packages/components/scripts/check-coverage-ratchet.ts`. This is a manual/local check, not an automated CI or pre-commit gate: run `bun run test:coverage` from `packages/components` yourself before opening a PR that touches component coverage, and the script exits non-zero if a file drops below its floor.
+`packages/components` defines coverage floors in `packages/components/coverage-ratchet.json`, checked by `packages/components/scripts/check-coverage-ratchet.ts`. This is a manual/local check, not an automated CI or pre-commit gate: run `bun run --filter=@lostgradient/cinder test:coverage` yourself before opening a PR that touches component coverage, and the script exits non-zero if a file drops below its floor.
 
-The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `coverage-ratchet.json` to the new measured floor in the same change. Never lower them to make a red run pass locally — fix the missing coverage instead. To read the current numbers, run `bun run test:coverage` from `packages/components`; `lines` follows the file-weighted `All files` line coverage, and `functions` follows the LCOV aggregate function coverage.
+The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `coverage-ratchet.json` to the new measured floor in the same change. Never lower them to make a red run pass locally — fix the missing coverage instead. To read the current numbers, run `bun run --filter=@lostgradient/cinder test:coverage`; `lines` follows the file-weighted `All files` line coverage, and `functions` follows the LCOV aggregate function coverage.
 
 ## Main Branch Health
 
