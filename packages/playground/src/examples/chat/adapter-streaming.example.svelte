@@ -17,6 +17,10 @@
     type ConversationHistory,
   } from '@lostgradient/cinder/chat';
 
+  let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
+  const uid = $props.id();
+  let chatId = $derived(`${mountIdPrefix ?? uid}-adapter-streaming`);
+
   let chat: ReturnType<typeof Chat> | undefined;
   let conversation = $state<ConversationHistory>(createConversation({ id: 'adapter-streaming' }));
   let streaming = $state(false);
@@ -58,7 +62,7 @@
 <div style="height: 34rem;">
   <Chat
     bind:this={chat}
-    id="adapter-streaming-chat"
+    id={chatId}
     {conversation}
     {adapter}
     {streaming}
