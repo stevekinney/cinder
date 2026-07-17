@@ -232,8 +232,8 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'explicit that tests are deferred to pre-push (which owns a scoped, dependency-closure-aware ' +
       'run). main-green must NOT call this bare full-suite script because it serializes the whole ' +
       'workspace test graph into one timeout-prone step; it runs the chunkable `test:changed` full ' +
-      'suite instead. main-green reaches coverage via `test:coverage`, and unit-tests.yaml runs the ' +
-      'scoped `test:changed` variant, not this literal script name.',
+      'suite instead, and unit-tests.yaml runs the scoped `test:changed` variant, not this literal ' +
+      'script name.',
   },
   'test:changed': {
     layers: ['pre-push', 'unit-tests', 'main-green'],
