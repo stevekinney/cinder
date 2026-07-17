@@ -6644,8 +6644,6 @@
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1",
     "test:changed": "bun run scripts/test-changed.ts",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage --coverage-reporter=lcov && bun run scripts/check-coverage-ratchet.ts",
-    "test:coverage:chunk": "bun run scripts/run-coverage-chunk.ts",
-    "test:coverage:merge": "bun run scripts/merge-coverage-lcov.ts .coverage-artifacts/*/lcov.info --output coverage/lcov.info && bun run scripts/check-coverage-ratchet.ts",
     "test:memory-canary": "bun run scripts/memory-canary.ts",
     "tokens:audit": "bun run scripts/check-component-css-token-usage.ts",
     "tokens:literals": "bun run scripts/check-design-token-literals.ts",

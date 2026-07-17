@@ -245,18 +245,7 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   },
   'test:coverage': {
     layers: [],
-    reason:
-      'Local/package full-suite coverage + ratchet. main-green uses the chunk and merge scripts so ' +
-      'CI keeps the same coverage gate without serializing the whole suite into one job.',
-  },
-  'test:coverage:chunk': {
-    layers: ['main-green'],
-    reason:
-      'Runs one full-suite coverage shard in main-green; each shard uploads LCOV for the merge gate.',
-  },
-  'test:coverage:merge': {
-    layers: ['main-green'],
-    reason: 'Merges main-green coverage shard LCOV files and runs the existing coverage ratchet.',
+    reason: 'Local/package full-suite coverage + ratchet. Not part of any CI gate.',
   },
 };
 
