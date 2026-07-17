@@ -31,28 +31,86 @@ Opinionated conversation surface bundling message list, composer, attachments, a
 > `height: 100dvh`—or the message viewport collapses and Chat renders as a
 > small card instead of filling its space. See [Layout and sizing](#layout-and-sizing).
 
+## Adapter-driven streaming
+
+`ChatAdapter.sendMessage` deliberately stays a `Promise<void>` command. The
+adapter owns the conversation snapshot, while `Chat` owns the transient visual
+stream buffer. Pair the public streaming builders with the imperative instance
+methods so both surfaces advance together:
+
+```svelte
+<script lang="ts">
+  import {
+    Chat,
+    appendStreamingMessage,
+    appendUserMessage,
+    cancelStreamingMessage,
+    createConversation,
+    finalizeStreamingMessage,
+    updateStreamingMessage,
+    type ChatAdapter,
+    type ConversationHistory,
+  } from '@lostgradient/cinder/chat';
+
+  let chat: ReturnType<typeof Chat> | undefined;
+  let conversation = $state<ConversationHistory>(createConversation({ id: 'streaming' }));
+  let streaming = $state(false);
+
+  const adapter: ChatAdapter = {
+    async sendMessage(message, _attachments) {
+      conversation = appendUserMessage(conversation, message.content);
+      const { conversation: started, messageId } = appendStreamingMessage(
+        conversation,
+        'assistant',
+      );
+      conversation = started;
+      streaming = true;
+      chat?.beginStreaming(messageId);
+
+      let content = '';
+      try {
+        for await (const chunk of streamFromYourBackend(message)) {
+          content += chunk;
+          conversation = updateStreamingMessage(conversation, messageId, content);
+          chat?.pushToken(chunk);
+        }
+        conversation = finalizeStreamingMessage(conversation, messageId);
+      } catch (error) {
+        conversation = cancelStreamingMessage(conversation, messageId);
+        throw error;
+      } finally {
+        chat?.endStreaming();
+        streaming = false;
+      }
+    },
+  };
+</script>
+
+<Chat
+  bind:this={chat}
+  id="adapter-streaming-chat"
+  {conversation}
+  {adapter}
+  {streaming}
+  capabilities={{ attachments: false }}
+/>
+```
+
+The assistant placeholder must exist before `beginStreaming`; update the same
+snapshot for each token, finalize it before `endStreaming`, and cancel it when
+the backend fails. The package's Adapter-driven streaming example uses a
+complete finite stream without assuming a particular model provider.
+
 ## Conversation data contract
 
-Chat uses [`conversationalist`](https://www.npmjs.com/package/conversationalist)
-as its transcript model. Install `conversationalist@^0.2.1` and `zod@4.4.1` in
-the host application alongside `@lostgradient/cinder`; Cinder declares both as
-required peer dependencies so application code, server-side model-context
-builders, and Chat all share one package instance and one
-`CURRENT_SCHEMA_VERSION`.
+Chat owns its `conversationalist` and `zod` runtime dependencies. Host
+applications only need to install `@lostgradient/cinder` (alongside its normal
+peer dependencies) and can import the conversation types, builders, and
+`CURRENT_SCHEMA_VERSION` from `@lostgradient/cinder/chat`.
 
-Cinder re-exports the conversationalist types and delegates conversation
-builders/utilities to the installed peer. The schema-version rendering policy is
-therefore tied to that peer:
-
-- Histories produced by any supported `conversationalist@^0.2.1` version render
-  as-is.
-- Older histories render when the installed conversationalist version can still
-  read that schema shape.
-- Newer histories are not guaranteed to render on an older installed
-  conversationalist version. Upgrade `conversationalist` within Cinder's peer
-  range first; when Cinder widens the peer range for a new
-  `CURRENT_SCHEMA_VERSION`, the changeset and release notes will call out the
-  rendering contract change.
+The exported schema version is the version used by Cinder's bundled
+Conversationalist implementation. Histories produced by an older compatible
+schema can render as-is; a newer schema requires upgrading Cinder.
 
 ## Layout and sizing
 

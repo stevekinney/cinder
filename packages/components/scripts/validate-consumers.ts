@@ -110,8 +110,9 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   'shiki',
   'unified',
   'unist-util-visit',
+  'zod',
 ] as const;
-const REQUIRED_PEER_DEPENDENCY_NAMES = ['zod'] as const;
+const REQUIRED_PEER_DEPENDENCY_NAMES: readonly string[] = [];
 
 function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,
@@ -441,7 +442,6 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
       fail(`packed manifest peerDependenciesMeta["${dependencyName}"] must not be defined`);
     }
   }
-
   const exportsMap = packedManifest.exports ?? {};
   assertPackedExportConditionOrder(exportsMap, '.');
   assertPackedExportConditionOrder(exportsMap, './button');

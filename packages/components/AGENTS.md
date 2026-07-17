@@ -51,19 +51,23 @@ import '@lostgradient/cinder/styles/guard'; // dev-only: warns if the above line
 `@lostgradient/cinder/styles` is the slim base: it declares the `@layer` order
 (`cinder.tokens, cinder.foundation, cinder.components, cinder.utilities`),
 ships the design tokens, base resets, utilities, and shared internal chrome.
-It does **not** ship per-component CSS. Import each component's styles
-alongside the component:
+It does **not** ship per-component CSS. Component entry points automatically
+load their co-located sidecar, so the common case is:
 
 ```ts
 import Button from '@lostgradient/cinder/button';
-import '@lostgradient/cinder/button/styles';
 
 import Modal from '@lostgradient/cinder/modal';
-import '@lostgradient/cinder/modal/styles';
 ```
 
 Bundlers (Vite, SvelteKit, esbuild, Bun) then include only the component CSS
 you actually reference — a button-only app ships zero badge or tabs rules.
+The browser build injects the public `/styles` subpath for compiled entries,
+while the Svelte-aware source entry imports its local sidecar. Server (`node`)
+entries remain CSS-free so plain Node SSR can import them safely.
+
+The `/styles` subpaths remain published for explicit CSS composition and
+advanced bundler setups. They are not required for normal component imports.
 
 > [!WARNING] `@lostgradient/cinder/styles` MUST be imported first
 > `@lostgradient/cinder/styles` MUST be imported before any `@lostgradient/cinder/<component>/styles`. The
@@ -80,8 +84,8 @@ you actually reference — a button-only app ships zero badge or tabs rules.
 > pointing at the fix.
 
 **Compound components** (Tabs, Table, Accordion, SideNavigation) ship their
-whole family from the parent subpath — `import '@lostgradient/cinder/tabs/styles'` pulls in
-Tab, TabList, and TabPanel CSS too, so you do not import each leaf separately.
+whole family from the parent component subpath — `import '@lostgradient/cinder/tabs'`
+loads the parent and its leaf CSS, so you do not import each leaf separately.
 
 **All-in escape hatch.** If you do not want to manage per-component imports,
 `import '@lostgradient/cinder/styles/all'` ships the base plus every component's CSS in one

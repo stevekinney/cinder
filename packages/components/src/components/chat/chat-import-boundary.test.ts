@@ -1,8 +1,8 @@
 /**
  * Conversationalist boundary regression test for the Chat component.
  *
- * Chat should get transcript types from the published package without pulling
- * the Conversationalist runtime into Cinder's browser graph.
+ * Chat should get transcript types from the published package. Runtime
+ * Conversationalist imports are allowed only through the public Chat barrel.
  */
 
 import { describe, expect, it } from 'bun:test';
@@ -12,7 +12,7 @@ const CHAT_ROOT = import.meta.dir;
 const CONVERSATIONALIST_PACKAGE = 'conversationalist';
 const CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN =
   /(?:from\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*\(\s*['"]conversationalist(?:\/[^'"]*)?['"])/;
-const RUNTIME_IMPORT_ALLOWLIST = new Set(['chat-import-boundary.test.ts']);
+const RUNTIME_IMPORT_ALLOWLIST = new Set(['chat-import-boundary.test.ts', 'index.ts']);
 
 type ModuleSpecifier = {
   specifier: string;
@@ -168,5 +168,20 @@ describe('chat import boundary', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+
+  it('the public chat barrel is the only runtime boundary for streaming builders', async () => {
+    const source = await Bun.file(`${CHAT_ROOT}/index.ts`).text();
+    const specifiers = collectModuleSpecifiers(`${CHAT_ROOT}/index.ts`, source).filter(
+      ({ specifier, typeOnly }) =>
+        !typeOnly &&
+        (specifier === CONVERSATIONALIST_PACKAGE ||
+          specifier.startsWith(`${CONVERSATIONALIST_PACKAGE}/`)),
+    );
+
+    expect(specifiers).toEqual([
+      { specifier: `${CONVERSATIONALIST_PACKAGE}/versioning`, typeOnly: false },
+      { specifier: `${CONVERSATIONALIST_PACKAGE}/streaming`, typeOnly: false },
+    ]);
   });
 });

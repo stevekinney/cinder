@@ -9,6 +9,7 @@
 // Top-level Chat wrapper — the public component consumers import as
 // `@lostgradient/cinder/chat`. It composes the inner implementation in container/ with a
 // custom class-merge layer.
+import { CURRENT_SCHEMA_VERSION } from 'conversationalist/versioning';
 import './chat.css';
 import Chat from './chat.svelte';
 
@@ -20,7 +21,7 @@ export type {
   ReadReceipt,
   TypingParticipant,
 } from './chat.types.ts';
-export { Chat };
+export { Chat, CURRENT_SCHEMA_VERSION };
 
 // Adapter seam — the optional event/transport boundary around <Chat>. Type-only.
 export type {
@@ -40,14 +41,32 @@ export {
   createConversation,
 } from './builders.ts';
 
+// Streaming conversation builders — keep the immutable snapshot and Chat's
+// imperative streaming surface in sync without requiring a direct
+// conversationalist dependency in the consuming application.
+export {
+  appendStreamingMessage,
+  cancelStreamingMessage,
+  finalizeStreamingMessage,
+  updateStreamingMessage,
+} from 'conversationalist/streaming';
+
 // Conversation data model — published Conversationalist shapes Chat renders.
 // Public so consumers can type the `conversation` prop and construct messages
 // without Cinder maintaining a stale local mirror.
 export type {
   AssistantMessage,
   ContainerUploadContent,
+  Conversation,
+  ConversationActionType,
   ConversationEnvironment,
+  ConversationEvent,
+  ConversationEventMap,
+  ConversationEventType,
   ConversationHistory,
+  ConversationHistoryDraft,
+  ConversationNodeSnapshot,
+  ConversationSnapshot,
   ConversationStatus,
   ExportOptions,
   ImageContent,
@@ -65,14 +84,17 @@ export type {
   ServerToolUseContent,
   TextContent,
   ThinkingContent,
-  ToMarkdownOptions,
   TokenUsage,
+  ToMarkdownOptions,
   ToolAction,
   ToolCall,
+  ToolCallInput,
   ToolCallPair,
   ToolError,
   ToolErrorCategory,
+  ToolInteraction,
   ToolResult,
+  ToolResultInput,
   WebSearchToolResultContent,
 } from './conversation-model.ts';
 
@@ -114,9 +136,9 @@ export {
 // "99+"), not reusable behavior a consumer building a custom chat container
 // would depend on. They remain available internally from ./container.
 export {
-  DEFAULT_SCROLL_CONFIGURATION,
   calculateScrollToBottom,
   calculateUnreadCount,
+  DEFAULT_SCROLL_CONFIGURATION,
   extractTimestamp,
   findUnreadBoundaryIndex,
   isAtBottom,
