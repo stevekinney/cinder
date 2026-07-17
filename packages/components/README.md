@@ -36,7 +36,7 @@ import '@lostgradient/cinder/styles/guard';
 
 `@lostgradient/cinder/styles/guard` is development-only. It warns if the base stylesheet is missing or loaded too late.
 
-Then import the components you use. Component entry points automatically include their co-located CSS; no matching `/styles` import is required:
+Then import the components you use. In browser/Svelte-aware builds, component entry points automatically include their co-located CSS; no matching `/styles` import is required:
 
 ```svelte
 <script lang="ts">

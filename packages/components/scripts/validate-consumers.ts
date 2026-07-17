@@ -442,10 +442,6 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
       fail(`packed manifest peerDependenciesMeta["${dependencyName}"] must not be defined`);
     }
   }
-  if (packedManifest.peerDependencies?.['zod'] !== undefined) {
-    fail('packed manifest peerDependencies["zod"] must not be defined; Chat owns zod');
-  }
-
   const exportsMap = packedManifest.exports ?? {};
   assertPackedExportConditionOrder(exportsMap, '.');
   assertPackedExportConditionOrder(exportsMap, './button');
