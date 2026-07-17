@@ -110,8 +110,9 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   'shiki',
   'unified',
   'unist-util-visit',
+  'zod',
 ] as const;
-const REQUIRED_PEER_DEPENDENCY_NAMES = ['zod'] as const;
+const REQUIRED_PEER_DEPENDENCY_NAMES = [] as const;
 
 function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,
@@ -440,6 +441,9 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
     if (packedManifest.peerDependenciesMeta?.[dependencyName] !== undefined) {
       fail(`packed manifest peerDependenciesMeta["${dependencyName}"] must not be defined`);
     }
+  }
+  if (packedManifest.peerDependencies?.['zod'] !== undefined) {
+    fail('packed manifest peerDependencies["zod"] must not be defined; Chat owns zod');
   }
 
   const exportsMap = packedManifest.exports ?? {};

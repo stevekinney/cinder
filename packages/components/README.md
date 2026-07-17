@@ -32,27 +32,25 @@ import '@lostgradient/cinder/styles';
 import '@lostgradient/cinder/styles/guard';
 ```
 
-`@lostgradient/cinder/styles` is the base stylesheet. Import it once at your app entry before any component stylesheet. It declares cinder's cascade-layer order, design tokens, foundation rules, utilities, and shared internal chrome.
+`@lostgradient/cinder/styles` is the base stylesheet. Import it once at your app entry before importing any cinder component. It declares cinder's cascade-layer order, design tokens, foundation rules, utilities, and shared internal chrome.
 
 `@lostgradient/cinder/styles/guard` is development-only. It warns if the base stylesheet is missing or loaded too late.
 
-Then import components and their styles from matching subpaths:
+Then import the components you use. Component entry points automatically include their co-located CSS; no matching `/styles` import is required:
 
 ```svelte
 <script lang="ts">
   import Button from '@lostgradient/cinder/button';
-  import '@lostgradient/cinder/button/styles';
 </script>
 
 <Button variant="primary" label="Save changes" />
 ```
 
-Component styles are separate so bundlers can include only what you use:
+The same applies to other components:
 
 ```svelte
 <script lang="ts">
   import Modal from '@lostgradient/cinder/modal';
-  import '@lostgradient/cinder/modal/styles';
 </script>
 
 <Modal open title="Edit project" />
@@ -64,7 +62,9 @@ You can also import the component module from TypeScript:
 import Modal from '@lostgradient/cinder/modal';
 ```
 
-Compound components include their leaf styles from the parent stylesheet. For example, `@lostgradient/cinder/tabs/styles` covers `Tabs`, `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
+Compound components include their leaf styles from the parent entry. For example, importing `@lostgradient/cinder/tabs` covers `Tabs`, `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
+
+The `/styles` subpaths remain published for explicit CSS composition and advanced bundler setups. Use `@lostgradient/cinder/styles/all` when you want one stylesheet with every component, or the base stylesheet plus specific `/styles` sidecars when you intentionally manage CSS imports yourself.
 
 If you want one stylesheet with everything, use:
 

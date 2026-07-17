@@ -31,7 +31,7 @@ bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @s
 
 ## Quickstart
 
-Load the base stylesheet once at your app entry, before any component stylesheet:
+Load the base stylesheet once at your app entry, before importing any cinder component:
 
 ```ts
 import '@lostgradient/cinder/styles';
@@ -40,15 +40,12 @@ import '@lostgradient/cinder/styles/guard';
 
 `@lostgradient/cinder/styles` declares the cascade-layer order, design tokens, foundation rules, utilities, and shared internal chrome. `@lostgradient/cinder/styles/guard` is development-only; it warns when the base stylesheet is missing or loaded too late.
 
-Then import components and their styles from matching subpaths:
+Then import components normally. Component entry points automatically include their co-located CSS:
 
 ```svelte
 <script lang="ts">
   import Button from '@lostgradient/cinder/button';
   import Modal from '@lostgradient/cinder/modal';
-
-  import '@lostgradient/cinder/button/styles';
-  import '@lostgradient/cinder/modal/styles';
 </script>
 
 <Button variant="primary" label="Save changes" />
@@ -61,7 +58,7 @@ If you want one stylesheet with everything, use:
 import '@lostgradient/cinder/styles/all';
 ```
 
-That bundle includes the base stylesheet plus every component stylesheet. It is convenient, but it is not tree-shaken.
+That bundle includes the base stylesheet plus every component stylesheet. It is convenient, but it is not tree-shaken. The per-component `/styles` subpaths remain available for consumers that intentionally manage CSS imports themselves.
 
 ## Import Shapes
 

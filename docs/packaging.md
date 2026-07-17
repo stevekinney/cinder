@@ -41,13 +41,16 @@ paths it names are stable. Any other path under `src/` is implementation detail
 and may move at any time. `dist/` is the contract for all non-Svelte tooling
 and for every CSS sidecar.
 
-## Styles — two consumption modes
+## Styles — automatic component imports plus explicit CSS modes
 
-`@lostgradient/cinder` exposes CSS through dedicated subpaths. The base entry (`@lostgradient/cinder/styles`)
-is a **slim base**: it declares the `@layer` order and ships tokens, foundation
-(reset), shared internal chrome, and utilities, but it **does not** import any
-per-component CSS. Renders without component CSS appear unstyled. There are two
-supported ways to add the component layer on top of that base.
+`@lostgradient/cinder` exposes CSS through dedicated subpaths. Component entry
+points automatically load their co-located sidecars. The base entry
+(`@lostgradient/cinder/styles`) is a **slim base**: it declares the `@layer`
+order and ships tokens, foundation (reset), shared internal chrome, and
+utilities, but it **does not** import any per-component CSS. Import the base
+once at the application entry, then import components normally; their
+browser/Svelte entries pull their own styles. The explicit CSS modes below
+remain available when you want to own the stylesheet graph.
 
 ### Mode 1 — whole-system aggregator
 
@@ -64,18 +67,19 @@ component layer regardless of which components your app actually renders.
 
 > [!NOTE] `@lostgradient/cinder/styles` alone is not enough
 > `@lostgradient/cinder/styles` is the slim base and intentionally ships **no** per-component
-> CSS. A consumer that imports only `@lostgradient/cinder/styles` and renders a `<Button>`
-> gets the button **unstyled**. Either import `@lostgradient/cinder/styles/all` (this mode) or
-> the slim base plus per-component sidecars (Mode 2).
+> CSS. A consumer that imports only the base and renders a `<Button>` through a bundler still
+> gets the button's CSS from the component entry; the base alone is not a replacement for
+> importing the component. Use `@lostgradient/cinder/styles/all` when you want every component
+> stylesheet up front.
 
-### Mode 2 — à la carte
+### Explicit mode — à la carte
 
 ```ts
 // Required: the slim base must come FIRST. It declares the @layer order and
 // ships tokens, foundation, utilities, and shared internal chrome.
 import '@lostgradient/cinder/styles';
 
-// Then import only the components you use.
+// Optional: import only the component sidecars you choose to manage explicitly.
 import '@lostgradient/cinder/button/styles';
 import '@lostgradient/cinder/badge/styles';
 ```
@@ -98,9 +102,9 @@ strict:
   The base is also what defines the `--cinder-*` tokens and resets the sidecars
   reference; without it components have no token definitions and inherit no
   resets.
-- Component JS modules (`@lostgradient/cinder/button`, `@lostgradient/cinder/badge`, etc.) do not pull CSS
-  as a side effect. Importing the JS gives you the component; importing
-  `@lostgradient/cinder/<name>/styles` gives you its CSS. They are independent.
+- Component JS modules (`@lostgradient/cinder/button`, `@lostgradient/cinder/badge`, etc.) pull their
+  sidecars automatically in browser and Svelte-aware builds. The explicit `/styles` imports are
+  additive and remain available for consumers that intentionally manage CSS themselves.
 
 ## The `files` whitelist contract
 

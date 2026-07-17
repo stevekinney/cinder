@@ -4,6 +4,12 @@
   "import": "@lostgradient/cinder/chat",
   "examples": [
     {
+      "id": "adapter-streaming",
+      "title": "Adapter-driven streaming",
+      "description": "Use ChatAdapter.sendMessage with the public streaming builders while keeping the conversation snapshot synchronized with Chat's imperative stream.",
+      "code": "<script lang=\"ts\">\n  import {\n    Chat,\n    appendStreamingMessage,\n    appendUserMessage,\n    cancelStreamingMessage,\n    createConversation,\n    finalizeStreamingMessage,\n    updateStreamingMessage,\n    type ChatAdapter,\n    type ConversationHistory,\n  } from '@lostgradient/cinder/chat';\n\n  let chat: ReturnType<typeof Chat> | undefined;\n  let conversation = $state<ConversationHistory>(createConversation({ id: 'adapter-streaming' }));\n  let streaming = $state(false);\n\n  const responseChunks = ['This reply ', 'arrives ', 'through ', 'an adapter.'];\n\n  function wait(milliseconds: number): Promise<void> {\n    return new Promise((resolve) => setTimeout(resolve, milliseconds));\n  }\n\n  const adapter: ChatAdapter = {\n    async sendMessage(message) {\n      conversation = appendUserMessage(conversation, message.content);\n      const started = appendStreamingMessage(conversation, 'assistant');\n      conversation = started.conversation;\n      streaming = true;\n      chat?.beginStreaming(started.messageId);\n\n      let content = '';\n      try {\n        for (const chunk of responseChunks) {\n          content += chunk;\n          conversation = updateStreamingMessage(conversation, started.messageId, content);\n          chat?.pushToken(chunk);\n          await wait(240);\n        }\n        conversation = finalizeStreamingMessage(conversation, started.messageId);\n      } catch (error) {\n        conversation = cancelStreamingMessage(conversation, started.messageId);\n        throw error;\n      } finally {\n        chat?.endStreaming();\n        streaming = false;\n      }\n    },\n  };\n</script>\n\n<div style=\"height: 34rem;\">\n  <Chat\n    bind:this={chat}\n    id=\"adapter-streaming-chat\"\n    {conversation}\n    {adapter}\n    {streaming}\n    capabilities={{ attachments: false }}\n  />\n</div>\n"
+    },
+    {
       "id": "basic",
       "title": "Basic chat",
       "description": "A conversation with editable input and markdown rendering.",
