@@ -57,7 +57,7 @@ methods so both surfaces advance together:
   let streaming = $state(false);
 
   const adapter: ChatAdapter = {
-    async sendMessage(message) {
+    async sendMessage(message, _attachments) {
       conversation = appendUserMessage(conversation, message.content);
       const { conversation: started, messageId } = appendStreamingMessage(
         conversation,

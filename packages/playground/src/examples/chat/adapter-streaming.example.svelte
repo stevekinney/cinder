@@ -28,7 +28,7 @@
   }
 
   const adapter: ChatAdapter = {
-    async sendMessage(message) {
+    async sendMessage(message, _attachments) {
       conversation = appendUserMessage(conversation, message.content);
       const started = appendStreamingMessage(conversation, 'assistant');
       conversation = started.conversation;

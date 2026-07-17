@@ -1,8 +1,8 @@
 /**
  * Conversationalist boundary regression test for the Chat component.
  *
- * Chat should get transcript types from the published package without pulling
- * the Conversationalist runtime into Cinder's browser graph.
+ * Chat should get transcript types from the published package. Runtime
+ * Conversationalist imports are allowed only through the public Chat barrel.
  */
 
 import { describe, expect, it } from 'bun:test';

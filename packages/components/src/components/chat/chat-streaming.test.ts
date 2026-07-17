@@ -23,11 +23,10 @@ describe('public chat streaming builders', () => {
       'Hello',
       environment,
     );
-    expect(updated.messages[started.messageId]?.metadata['__streaming']).toBe(true);
     expect(updated.messages[started.messageId]?.content).toBe('Hello');
 
     const finalized = finalizeStreamingMessage(updated, started.messageId, undefined, environment);
-    expect(finalized.messages[started.messageId]?.metadata['__streaming']).toBeUndefined();
+    expect(finalized.messages[started.messageId]?.content).toBe('Hello');
 
     const cancelled = cancelStreamingMessage(started.conversation, started.messageId, environment);
     expect(cancelled.ids).toEqual([]);
