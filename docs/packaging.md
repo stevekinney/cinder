@@ -67,10 +67,10 @@ component layer regardless of which components your app actually renders.
 
 > [!NOTE] `@lostgradient/cinder/styles` alone is not enough
 > `@lostgradient/cinder/styles` is the slim base and intentionally ships **no** per-component
-> CSS. A consumer that imports only the base and renders a `<Button>` through a bundler still
-> gets the button's CSS from the component entry; the base alone is not a replacement for
-> importing the component. Use `@lostgradient/cinder/styles/all` when you want every component
-> stylesheet up front.
+> CSS. You still need to import the component modules you render; in browser/Svelte builds,
+> those component entries automatically import their co-located sidecar CSS. The base alone
+> does not style a `<Button>`. Use `@lostgradient/cinder/styles/all` when you want every
+> component stylesheet up front.
 
 ### Explicit mode — à la carte
 
