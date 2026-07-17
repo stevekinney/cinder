@@ -7,15 +7,22 @@ const packageRoot = resolve(scriptDirectory, '..');
 
 type FunctionCoverage = {
   name: string;
+  line: number;
   count: number;
 };
 
 type FileCoverage = {
-  functions: Map<number, FunctionCoverage>;
+  // Keyed by `${line}\0${name}` — line alone collides when two functions
+  // start on the same line (compact callbacks, object methods).
+  functions: Map<string, FunctionCoverage>;
   lines: Map<number, number>;
   summaryOnlyFunctionsFound: number;
   summaryOnlyFunctionsHit: number;
 };
+
+function functionKey(line: number, name: string): string {
+  return `${line}\0${name}`;
+}
 
 function parseArguments(argv: string[]): { inputs: string[]; output: string } {
   const outputIndex = argv.indexOf('--output');
@@ -34,7 +41,7 @@ function coverageForFile(files: Map<string, FileCoverage>, file: string): FileCo
   if (existing !== undefined) return existing;
 
   const coverage = {
-    functions: new Map<number, FunctionCoverage>(),
+    functions: new Map<string, FunctionCoverage>(),
     lines: new Map<number, number>(),
     summaryOnlyFunctionsFound: 0,
     summaryOnlyFunctionsHit: 0,
@@ -76,8 +83,9 @@ function parseLcov(source: string, files: Map<string, FileCoverage>): void {
         const queue = pendingLinesByName.get(name) ?? [];
         queue.push(parsedLine);
         pendingLinesByName.set(name, queue);
-        if (!coverage.functions.has(parsedLine)) {
-          coverage.functions.set(parsedLine, { name, count: 0 });
+        const key = functionKey(parsedLine, name);
+        if (!coverage.functions.has(key)) {
+          coverage.functions.set(key, { name, line: parsedLine, count: 0 });
         }
       } else if (line.startsWith('FNDA:')) {
         const [count, name] = line.slice('FNDA:'.length).split(',', 2);
@@ -86,9 +94,11 @@ function parseLcov(source: string, files: Map<string, FileCoverage>): void {
         const functionLine = pendingLinesByName.get(name)?.shift();
         if (functionLine === undefined) continue;
 
-        const existing = coverage.functions.get(functionLine);
-        coverage.functions.set(functionLine, {
+        const key = functionKey(functionLine, name);
+        const existing = coverage.functions.get(key);
+        coverage.functions.set(key, {
           name,
+          line: functionLine,
           count: (existing?.count ?? 0) + Number(count),
         });
       } else if (line.startsWith('FNF:')) {
@@ -108,9 +118,18 @@ function parseLcov(source: string, files: Map<string, FileCoverage>): void {
     // Bun sometimes emits FNF/FNH summary counts with no per-function FN/FNDA
     // detail for a file. Fold that summary in rather than discarding it, or
     // the merged report silently reports 0 functions (100% coverage) for it.
+    // The same file's inventory doesn't change between shards, so take the
+    // max seen rather than summing — summing would double-count a file whose
+    // summary-only record appears in more than one shard.
     if (!hasFunctionDetail && summaryFunctionsFound !== undefined) {
-      coverage.summaryOnlyFunctionsFound += summaryFunctionsFound;
-      coverage.summaryOnlyFunctionsHit += summaryFunctionsHit ?? 0;
+      coverage.summaryOnlyFunctionsFound = Math.max(
+        coverage.summaryOnlyFunctionsFound,
+        summaryFunctionsFound,
+      );
+      coverage.summaryOnlyFunctionsHit = Math.max(
+        coverage.summaryOnlyFunctionsHit,
+        summaryFunctionsHit ?? 0,
+      );
     }
   }
 }
@@ -121,19 +140,17 @@ function serializeLcov(files: Map<string, FileCoverage>): string {
   for (const [file, coverage] of [...files.entries()].toSorted(([left], [right]) =>
     left.localeCompare(right),
   )) {
-    const functions = [...coverage.functions.entries()].toSorted(
-      ([leftLine], [rightLine]) => leftLine - rightLine,
+    const functions = [...coverage.functions.values()].toSorted(
+      (left, right) => left.line - right.line || left.name.localeCompare(right.name),
     );
     const lines = [...coverage.lines.entries()].toSorted(([left], [right]) => left - right);
 
     const record = [`SF:${file}`];
-    for (const [line, { name }] of functions) record.push(`FN:${line},${name}`);
-    for (const [, { name, count }] of functions) record.push(`FNDA:${count},${name}`);
+    for (const { line, name } of functions) record.push(`FN:${line},${name}`);
+    for (const { name, count } of functions) record.push(`FNDA:${count},${name}`);
     record.push(`FNF:${functions.length + coverage.summaryOnlyFunctionsFound}`);
     record.push(
-      `FNH:${
-        functions.filter(([, { count }]) => count > 0).length + coverage.summaryOnlyFunctionsHit
-      }`,
+      `FNH:${functions.filter(({ count }) => count > 0).length + coverage.summaryOnlyFunctionsHit}`,
     );
     for (const [line, count] of lines) record.push(`DA:${line},${count}`);
     record.push(`LF:${lines.length}`);

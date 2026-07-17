@@ -89,4 +89,41 @@ describe('mergeLcovSources', () => {
       linesHit: 1,
     });
   });
+
+  it('does not double-count a summary-only inventory reported by multiple shards', () => {
+    const shard = ['SF:src/example.ts', 'FNF:3', 'FNH:2', 'end_of_record'].join('\n');
+
+    const [record] = parseLcovRecords(mergeLcovSources([shard, shard]));
+
+    expect(record).toEqual({
+      file: 'src/example.ts',
+      functionsFound: 3,
+      functionsHit: 2,
+      linesFound: 0,
+      linesHit: 0,
+    });
+  });
+
+  it('keeps functions that share a source line distinct', () => {
+    const source = [
+      'SF:src/example.ts',
+      'FN:5,onClick',
+      'FN:5,onKeyDown',
+      'FNDA:1,onClick',
+      'FNDA:0,onKeyDown',
+      'FNF:2',
+      'FNH:1',
+      'end_of_record',
+    ].join('\n');
+
+    const [record] = parseLcovRecords(mergeLcovSources([source]));
+
+    expect(record).toEqual({
+      file: 'src/example.ts',
+      functionsFound: 2,
+      functionsHit: 1,
+      linesFound: 0,
+      linesHit: 0,
+    });
+  });
 });
