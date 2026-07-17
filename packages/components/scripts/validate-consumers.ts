@@ -112,7 +112,7 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   'unist-util-visit',
   'zod',
 ] as const;
-const REQUIRED_PEER_DEPENDENCY_NAMES = [] as const;
+const REQUIRED_PEER_DEPENDENCY_NAMES: readonly string[] = [];
 
 function collectInstalledPackageNamesFromNodeModulesTree(
   nodeModulesDirectory: string,
