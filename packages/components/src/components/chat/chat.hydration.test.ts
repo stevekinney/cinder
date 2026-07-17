@@ -4,6 +4,7 @@ import { afterAll, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { renderThenHydrate } from '../../test/hydrate.ts';
+import { createConversation } from './builders.ts';
 import type { ConversationHistory } from './conversation-model.ts';
 
 setupHappyDom();
@@ -49,6 +50,32 @@ const emptyConversation: ConversationHistory = {
 };
 
 describe('Chat hydration', () => {
+  test('hydrates a createConversation snapshot without a mismatch warning', async () => {
+    const conversation = createConversation(
+      {
+        id: 'default-environment-conversation',
+      },
+      {
+        now: () => '2026-01-01T00:00:00.000Z',
+      },
+    );
+    const result = await renderThenHydrate(Chat, sourcePath, {
+      id: 'default-environment-chat',
+      conversation,
+    });
+
+    try {
+      expect(
+        result.warnings.filter((warning) => warning.toLowerCase().includes('hydration')),
+      ).toEqual([]);
+      expect(result.container.querySelector('.chat-empty')?.textContent).toContain(
+        'No messages yet',
+      );
+    } finally {
+      result.cleanup();
+    }
+  });
+
   test('hydrates an empty conversation without changing the server-rendered surface', async () => {
     const result = await renderThenHydrate(Chat, sourcePath, {
       id: 'stable-empty-chat',
