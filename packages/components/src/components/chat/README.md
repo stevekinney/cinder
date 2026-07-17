@@ -86,7 +86,14 @@ methods so both surfaces advance together:
   };
 </script>
 
-<Chat bind:this={chat} {conversation} {adapter} {streaming} />
+<Chat
+  bind:this={chat}
+  id="adapter-streaming-chat"
+  {conversation}
+  {adapter}
+  {streaming}
+  capabilities={{ attachments: false }}
+/>
 ```
 
 The assistant placeholder must exist before `beginStreaming`; update the same
