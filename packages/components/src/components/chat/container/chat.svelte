@@ -272,7 +272,7 @@
   // C5 — suggested replies are a per-TURN affordance shown only beneath the last
   // message, not on every historical message that still carries the metadata.
   const lastMessageId = $derived(messages.at(-1)?.id);
-  let previousAutoScrollMessageCount = getMessages(conversation).length;
+  let previousAutoScrollMessageCount = $state(messages.length);
 
   // The conversation id as a stable VALUE dependency. The subscribe effect keys
   // on this (not on `conversation.id` read inline) so a consumer passing a fresh
