@@ -104,6 +104,30 @@ describe('mergeLcovSources', () => {
     });
   });
 
+  it('prefers detailed function coverage over a summary-only shard for the same file', () => {
+    const detailedShard = [
+      'SF:src/example.ts',
+      'FN:1,usedInFirstShard',
+      'FN:2,usedInSecondShard',
+      'FNDA:1,usedInFirstShard',
+      'FNDA:0,usedInSecondShard',
+      'FNF:2',
+      'FNH:1',
+      'end_of_record',
+    ].join('\n');
+    const summaryOnlyShard = ['SF:src/example.ts', 'FNF:2', 'FNH:2', 'end_of_record'].join('\n');
+
+    const [record] = parseLcovRecords(mergeLcovSources([detailedShard, summaryOnlyShard]));
+
+    expect(record).toEqual({
+      file: 'src/example.ts',
+      functionsFound: 2,
+      functionsHit: 1,
+      linesFound: 0,
+      linesHit: 0,
+    });
+  });
+
   it('keeps functions that share a source line distinct', () => {
     const source = [
       'SF:src/example.ts',

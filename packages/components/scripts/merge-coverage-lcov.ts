@@ -151,13 +151,22 @@ function serializeLcov(files: Map<string, FileCoverage>): string {
     );
     const lines = [...coverage.lines.entries()].toSorted(([left], [right]) => left - right);
 
+    // A summary-only record for this file from one shard describes the same
+    // inventory a detailed shard already counted via FN/FNDA — fall back to
+    // the summary only when no shard ever gave per-function detail, or the
+    // two would be added together and double-count the file's functions.
+    const functionsFound =
+      functions.length > 0 ? functions.length : coverage.summaryOnlyFunctionsFound;
+    const functionsHit =
+      functions.length > 0
+        ? functions.filter(({ count }) => count > 0).length
+        : coverage.summaryOnlyFunctionsHit;
+
     const record = [`SF:${file}`];
     for (const { line, name } of functions) record.push(`FN:${line},${name}`);
     for (const { name, count } of functions) record.push(`FNDA:${count},${name}`);
-    record.push(`FNF:${functions.length + coverage.summaryOnlyFunctionsFound}`);
-    record.push(
-      `FNH:${functions.filter(({ count }) => count > 0).length + coverage.summaryOnlyFunctionsHit}`,
-    );
+    record.push(`FNF:${functionsFound}`);
+    record.push(`FNH:${functionsHit}`);
     for (const [line, count] of lines) record.push(`DA:${line},${count}`);
     record.push(`LF:${lines.length}`);
     record.push(`LH:${lines.filter(([, count]) => count > 0).length}`);
