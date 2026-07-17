@@ -57,7 +57,7 @@ if (import.meta.main) {
   try {
     process.exit(await main());
   } catch (caught) {
-    console.error(`run-coverage-chunk failed: ${String(caught)}`);
+    console.error('run-coverage-chunk failed:', caught);
     process.exit(1);
   }
 }

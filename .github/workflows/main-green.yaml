@@ -147,7 +147,7 @@ jobs:
         with:
           name: component-coverage-lcov-${{ matrix.chunk }}
           path: packages/components/coverage/chunk-${{ matrix.chunk }}/lcov.info
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 7
 
   component-coverage-ratchet:

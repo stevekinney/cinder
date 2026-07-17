@@ -44,4 +44,49 @@ describe('mergeLcovSources', () => {
       linesHit: 2,
     });
   });
+
+  it('keeps duplicate function names distinct instead of collapsing their hit counts', () => {
+    const source = [
+      'SF:src/example.ts',
+      'FN:10,visit',
+      'FN:40,visit',
+      'FNDA:1,visit',
+      'FNDA:0,visit',
+      'FNF:2',
+      'FNH:1',
+      'end_of_record',
+    ].join('\n');
+
+    const [record] = parseLcovRecords(mergeLcovSources([source]));
+
+    expect(record).toEqual({
+      file: 'src/example.ts',
+      functionsFound: 2,
+      functionsHit: 1,
+      linesFound: 0,
+      linesHit: 0,
+    });
+  });
+
+  it('preserves FNF/FNH summary counts for records with no per-function detail', () => {
+    const source = [
+      'SF:src/example.ts',
+      'FNF:3',
+      'FNH:2',
+      'DA:1,1',
+      'LF:1',
+      'LH:1',
+      'end_of_record',
+    ].join('\n');
+
+    const [record] = parseLcovRecords(mergeLcovSources([source]));
+
+    expect(record).toEqual({
+      file: 'src/example.ts',
+      functionsFound: 3,
+      functionsHit: 2,
+      linesFound: 1,
+      linesHit: 1,
+    });
+  });
 });
