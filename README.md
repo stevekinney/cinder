@@ -40,7 +40,7 @@ import '@lostgradient/cinder/styles/guard';
 
 `@lostgradient/cinder/styles` declares the cascade-layer order, design tokens, foundation rules, utilities, and shared internal chrome. `@lostgradient/cinder/styles/guard` is development-only; it warns when the base stylesheet is missing or loaded too late.
 
-Then import components normally. Component entry points automatically include their co-located CSS:
+Then import components normally. In browser/Svelte-aware builds, component entry points automatically include their co-located CSS:
 
 ```svelte
 <script lang="ts">
