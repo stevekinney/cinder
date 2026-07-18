@@ -1613,6 +1613,18 @@ function badRequest(message: string): Response {
   return new Response(message, { status: 400, headers: { 'Content-Type': 'text/plain' } });
 }
 
+const CINDER_COMPONENT_STYLE_IMPORT =
+  /(['"])@lostgradient\/cinder\/([a-z0-9][a-z0-9-]*)\/styles\1/gu;
+
+/** Resolve peer-package style imports to the playground's Cinder CSS routes. */
+export function rewritePackageComponentStyleImports(css: string): string {
+  return css.replace(
+    CINDER_COMPONENT_STYLE_IMPORT,
+    (_match, quote: string, componentName: string) =>
+      `${quote}/components/${componentName}/${componentName}.css${quote}`,
+  );
+}
+
 export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
   return rewriteRelativeRenderedMarkdownLinks(html, (href) => repositorySourceHref('', href));
 }
@@ -1764,7 +1776,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (cssRelativePath.startsWith('..') || isAbsolute(cssRelativePath)) return notFound();
     const cssFile = Bun.file(cssPath);
     if (!(await cssFile.exists())) return notFound(`${relative} not found`);
-    return new Response(await cssFile.text(), {
+    return new Response(rewritePackageComponentStyleImports(await cssFile.text()), {
       headers: { 'Content-Type': 'text/css' },
     });
   }

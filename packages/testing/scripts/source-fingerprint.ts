@@ -22,10 +22,11 @@ export const FINGERPRINT_SOURCE_DIRECTORIES = [
   // the wrong bytes.
   'packages/components/scripts',
   'packages/playground/scripts',
-  // The playground server prebuilds and imports these private upstream
-  // packages (see `playgroundBundleDependencyPackages` in start-server.ts).
-  // An edit to one of them must invalidate the fingerprint too, or a
-  // running server built from stale upstream code looks fresh.
+  // The playground server prebuilds these upstream workspaces plus the public
+  // Cinder and Chat packages (see `playgroundBundleDependencyPackages` in
+  // start-server.ts). The public packages already have source coverage above;
+  // these four private source trees must be listed explicitly too, or a running
+  // server built from stale upstream code looks fresh.
   'packages/diff/src',
   'packages/markdown/src',
   'packages/editor/src',

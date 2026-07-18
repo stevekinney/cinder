@@ -63,6 +63,7 @@ jobs:
           bun run --filter=@lostgradient/cinder platform:audit -- --strict
           bun run --filter=@lostgradient/cinder colors:audit -- --strict
           bun run --filter=@lostgradient/cinder tokens:audit -- --strict
+          bun run --filter=@lostgradient/cinder build
 
       - name: Source audits (chat)
         run: |
@@ -74,10 +75,11 @@ jobs:
 
       # The full `bun run test` suite includes @cinder/playground's bundle/route
       # tests (playground-server.test.ts), which bundle the playground FROM
-      # SOURCE and resolve these private packages through their built `dist/`
-      # subpath exports (e.g. @cinder/markdown/pipeline, @cinder/editor/
-      # component-runtime, @cinder/commentary/anchor-decorations). Without a
-      # prior build those imports fail to resolve and the bundle tests error.
+      # SOURCE and resolve private @cinder/* packages plus the public Cinder and
+      # Chat packages through built `dist/` subpath exports (e.g.
+      # @cinder/markdown/pipeline and @lostgradient/cinder/dropdown/styles).
+      # Without a prior build those imports fail to resolve and the bundle
+      # tests error.
       # The package list is the SAME one the Playwright runner builds in
       # packages/testing/scripts/start-server.ts and is pinned by the
       # "playground bundle dependency build preflight" test in start-server.test.ts
@@ -89,6 +91,8 @@ jobs:
           --filter=@cinder/markdown
           --filter=@cinder/editor
           --filter=@cinder/commentary
+          --filter=@lostgradient/cinder
+          --filter=@lostgradient/chat
           build
 
       - name: Test non-Cinder workspaces

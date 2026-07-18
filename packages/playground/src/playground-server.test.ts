@@ -9,14 +9,13 @@
  * beforeAll guard asserts this up front so failures are diagnosable.
  *
  * PRECONDITION: the /bundle/* and /page-bundle/* "build artifact" tests bundle
- * the playground FROM SOURCE, which resolves @cinder/diff, @cinder/markdown,
- * @cinder/editor, and @cinder/commentary through their built `dist/` subpath
- * exports. Run `bun run --filter=@cinder/diff --filter=@cinder/markdown
- * --filter=@cinder/editor --filter=@cinder/commentary build` before this file
- * in a fresh checkout, or those tests fail with "Could not resolve" import
- * errors. CI does this in the main-green `Build playground bundle dependencies`
- * step; the Playwright runner does it via start-server.ts. The package list is
- * pinned by the "playground bundle dependency build preflight" test.
+ * the playground FROM SOURCE, which resolves the private @cinder/* workspaces
+ * plus @lostgradient/cinder and @lostgradient/chat through built `dist/`
+ * subpath exports. Build the playground's dependency list before this file in
+ * a fresh checkout, or those tests fail with "Could not resolve" import errors.
+ * CI does this in the main-green `Build playground bundle dependencies` step;
+ * the Playwright runner does it via start-server.ts. The package list is pinned
+ * by the "playground bundle dependency build preflight" test.
  */
 
 import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
@@ -892,6 +891,29 @@ describe('/page/:name', () => {
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get('Content-Type')).toBe('text/css');
     expect(await stylesheet.text()).toContain('.cinder-chat');
+  });
+
+  it('rewrites extracted Chat peer styles to reachable playground CSS routes', async () => {
+    const cases = [
+      ['chat-composer-popover', 'command-menu'],
+      ['chat-conversation-header', 'dropdown'],
+    ] as const;
+
+    for (const [chatComponent, cinderComponent] of cases) {
+      const stylesheet = await handleRequest(
+        req(`/package-components/chat/${chatComponent}/${chatComponent}.css`),
+      );
+      expect(stylesheet.status).toBe(200);
+      const css = await stylesheet.text();
+      expect(css).toContain(`@import '/components/${cinderComponent}/${cinderComponent}.css';`);
+      expect(css).not.toContain('@lostgradient/cinder/');
+
+      const peerStylesheet = await handleRequest(
+        req(`/components/${cinderComponent}/${cinderComponent}.css`),
+      );
+      expect(peerStylesheet.status).toBe(200);
+      expect(peerStylesheet.headers.get('Content-Type')).toBe('text/css');
+    }
   });
 
   it('installs the validated color-token message bridge on preview pages', async () => {

@@ -23,14 +23,14 @@ describe('publishedSvelteCompileFilename', () => {
   });
 
   it('normalizes the Chat workspace and installed package sources to the same filename', () => {
-    const expected = 'node_modules/@lostgradient/chat/src/lib/components/chat/chat.svelte';
+    const expected = 'node_modules/@lostgradient/chat/dist/components/chat/chat.svelte';
 
     expect(
       publishedSvelteCompileFilename('/checkout/packages/chat/src/lib/components/chat/chat.svelte'),
     ).toBe(expected);
     expect(
       publishedSvelteCompileFilename(
-        '/consumer/node_modules/@lostgradient/chat/src/lib/components/chat/chat.svelte',
+        '/consumer/node_modules/@lostgradient/chat/dist/components/chat/chat.svelte',
       ),
     ).toBe(expected);
   });

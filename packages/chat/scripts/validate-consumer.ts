@@ -187,21 +187,31 @@ function formatBuildLogs(logs: readonly { message: string }[]): string {
   return logs.map((log) => log.message).join('\n');
 }
 
+function scopedCssTokenForClass(source: string, className: string, artifactLabel: string): string {
+  const match = new RegExp(`${className}(?:\\s+|\\.)(svelte-[a-z0-9]+)`, 'u').exec(source);
+  const token = match?.[1];
+  if (token === undefined) {
+    fail(`${artifactLabel} does not retain the scoped CSS token for .${className}`);
+  }
+  return token;
+}
+
 async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const clientEntryPath = join(fixture.root, 'client.ts');
   const serverEntryPath = join(fixture.root, 'server.ts');
   await Bun.write(
     clientEntryPath,
-    `import Chat from '@lostgradient/chat';\n` +
+    `import Chat, { ArtifactPanel } from '@lostgradient/chat';\n` +
       `import ChatComposerPopover from '@lostgradient/chat/composer-popover';\n` +
       `import ChatConversationHeader from '@lostgradient/chat/conversation-header';\n` +
       `import ChatConversationList from '@lostgradient/chat/conversation-list';\n` +
-      `if (![Chat, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n`,
+      `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n`,
   );
   await Bun.write(
     serverEntryPath,
     `import { render } from 'svelte/server';\n` +
-      `import Chat, { createConversation } from '@lostgradient/chat';\n` +
+      `import Chat, { ArtifactPanel, createConversation } from '@lostgradient/chat';\n` +
+      `if (!ArtifactPanel) throw new Error('missing ArtifactPanel export');\n` +
       `const rendered = render(Chat, { props: { id: 'consumer-chat', conversation: createConversation({ id: 'consumer-conversation' }) } });\n` +
       `if (!rendered.body.includes('chat-container')) throw new Error('Chat SSR output is missing its root');\n`,
   );
@@ -214,6 +224,8 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   });
   if (!clientResult.success)
     fail(`client consumer build failed:\n${formatBuildLogs(clientResult.logs)}`);
+  const clientArtifact = clientResult.outputs[0];
+  if (clientArtifact === undefined) fail('client consumer build emitted no entry artifact');
 
   const serverOutput = join(fixture.root, 'server-output');
   const serverResult = await Bun.build({
@@ -226,6 +238,24 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   if (!serverResult.success)
     fail(`server consumer build failed:\n${formatBuildLogs(serverResult.logs)}`);
   await run('bun', [join(serverOutput, 'server.js')], fixture.root);
+
+  const clientSource = await clientArtifact.text();
+  const serverSource = await Bun.file(join(serverOutput, 'server.js')).text();
+  const clientScopedCssToken = scopedCssTokenForClass(
+    clientSource,
+    'artifact-panel',
+    'packed client build',
+  );
+  const serverScopedCssToken = scopedCssTokenForClass(
+    serverSource,
+    'artifact-panel',
+    'packed server build',
+  );
+  if (clientScopedCssToken !== serverScopedCssToken) {
+    fail(
+      `packed client/server scoped CSS identity differs for ArtifactPanel (${clientScopedCssToken} !== ${serverScopedCssToken})`,
+    );
+  }
 
   const typeEntryPath = join(fixture.root, 'type-consumer.ts');
   const tsconfigPath = join(fixture.root, 'tsconfig.json');

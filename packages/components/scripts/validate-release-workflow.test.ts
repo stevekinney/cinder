@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 
 import getReleasePlan from '@changesets/get-release-plan';
 
@@ -54,6 +54,25 @@ describe('validate-release-workflow changeset guards', () => {
 
     expect(publicPackagePublishOrderIsValid(workflow([cinder, chat]))).toBe(true);
     expect(publicPackagePublishOrderIsValid(workflow([chat, cinder]))).toBe(false);
+  });
+
+  test('builds Cinder before Chat in fresh-checkout coverage workflows', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    for (const workflowName of ['unit-tests.yaml', 'main-green.yaml']) {
+      const workflow = readFileSync(
+        join(workspaceRoot, '.github', 'workflows', workflowName),
+        'utf8',
+      );
+      const cinderBuildIndex = workflow.indexOf('bun run --filter=@lostgradient/cinder build');
+      const chatBuildIndex = workflow.indexOf('bun run --filter=@lostgradient/chat build');
+      const chatCoverageIndex = workflow.indexOf(
+        'bun run --filter=@lostgradient/chat test:coverage',
+      );
+
+      expect(cinderBuildIndex).toBeGreaterThan(-1);
+      expect(chatBuildIndex).toBeGreaterThan(cinderBuildIndex);
+      expect(chatCoverageIndex).toBeGreaterThan(chatBuildIndex);
+    }
   });
 
   test('requires the root publish shortcut to use staged package artifacts in order', () => {

@@ -21,6 +21,8 @@ const playgroundBundleDependencyPackages = [
   '@cinder/markdown',
   '@cinder/editor',
   '@cinder/commentary',
+  '@lostgradient/cinder',
+  '@lostgradient/chat',
 ] as const;
 // Probe the cheap liveness endpoint first. `/api/manifest` does real work and
 // can lag behind initial server readiness, which makes local startup look hung

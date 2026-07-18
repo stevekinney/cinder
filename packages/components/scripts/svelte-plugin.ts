@@ -25,8 +25,8 @@ const PUBLISHED_PACKAGE_SOURCE_MAPPINGS = [
     workspaceSourceMarker: '/packages/components/',
   },
   {
-    publishedSourcePrefix: 'node_modules/@lostgradient/chat/',
-    workspaceSourceMarker: '/packages/chat/',
+    publishedSourcePrefix: 'node_modules/@lostgradient/chat/dist/',
+    workspaceSourceMarker: '/packages/chat/src/lib/',
   },
 ] as const;
 

@@ -277,6 +277,7 @@ jobs:
         run: |
           bun run --filter=@lostgradient/cinder components:check
           bun run --filter=@lostgradient/chat components:check
+          bun run --filter=@lostgradient/cinder build
           bun run --filter=@lostgradient/chat build
 
       - name: Run Chat unit tests with coverage

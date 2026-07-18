@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --watch run src/playground-server.ts",
+    "dev": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && bun run --filter='@cinder/commentary' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/chat' build && bun --watch run src/playground-server.ts",
     "examples:audit": "bun run scripts/check-raw-native-controls.ts",
     "lint": "oxlint src/ scripts/",
     "lint:fix": "oxlint --fix src/ scripts/",
-    "test": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && bun run --filter='@cinder/commentary' build && bun run scripts/run-tests.ts",
+    "test": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && bun run --filter='@cinder/commentary' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/chat' build && bun run scripts/run-tests.ts",
     "typecheck": "tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
     "validate": "bun run scripts/check-raw-native-controls.ts --strict && bun run src/validate-playground.ts",
-    "vercel-build": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && bun run --filter='@cinder/commentary' build && bun run scripts/static-export.ts"
+    "vercel-build": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && bun run --filter='@cinder/commentary' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/chat' build && bun run scripts/static-export.ts"
   },
   "dependencies": {
     "@cinder/markdown": "workspace:*",

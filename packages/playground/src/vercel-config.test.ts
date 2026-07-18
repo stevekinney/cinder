@@ -16,6 +16,14 @@ import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
+const WORKSPACE_BUILD_STEPS = [
+  "bun run --filter='@cinder/diff' build",
+  "bun run --filter='@cinder/markdown' build",
+  "bun run --filter='@cinder/editor' build",
+  "bun run --filter='@cinder/commentary' build",
+  "bun run --filter='@lostgradient/cinder' build",
+  "bun run --filter='@lostgradient/chat' build",
+] as const;
 
 /**
  * Read and JSON-parse `vercel.json`. A parse failure here is itself a useful
@@ -56,24 +64,38 @@ describe('vercel.json', () => {
     expect(await Bun.file(join(PLAYGROUND_ROOT, 'api', 'index.ts')).exists()).toBe(false);
   });
 
-  it('builds the static site via scripts/static-export.ts', async () => {
-    // The `vercel-build` script (run by vercel.json's buildCommand) must run the
-    // pre-render directly.
+  it('builds workspace packages before exporting the static site', async () => {
+    // A clean Vercel checkout has no package dist directories. Build every
+    // workspace that exposes generated assets before the pre-render imports
+    // component styles and server entrypoints.
     const manifest = (await Bun.file(join(PLAYGROUND_ROOT, 'package.json')).json()) as {
       scripts: Record<string, string>;
     };
     const vercelBuild = manifest.scripts['vercel-build'] ?? '';
-    expect(vercelBuild).toContain("bun run --filter='@cinder/diff' build");
-    expect(vercelBuild).toContain("bun run --filter='@cinder/markdown' build");
-    expect(vercelBuild).toContain("bun run --filter='@cinder/editor' build");
-    expect(vercelBuild).toContain("bun run --filter='@cinder/commentary' build");
-    expect(vercelBuild).toContain('scripts/static-export.ts');
+    expect(vercelBuild.split(' && ')).toEqual([
+      ...WORKSPACE_BUILD_STEPS,
+      'bun run scripts/static-export.ts',
+    ]);
     // The export must exist and drive the real server handler.
     const exportScript = await Bun.file(
       join(PLAYGROUND_ROOT, 'scripts', 'static-export.ts'),
     ).text();
     expect(exportScript).toContain('handleRequest');
     expect(exportScript).toContain('playground-server.ts');
+  });
+
+  it('builds the same workspace dependency order before local tests and development', async () => {
+    const manifest = (await Bun.file(join(PLAYGROUND_ROOT, 'package.json')).json()) as {
+      scripts: Record<string, string>;
+    };
+    expect((manifest.scripts['test'] ?? '').split(' && ')).toEqual([
+      ...WORKSPACE_BUILD_STEPS,
+      'bun run scripts/run-tests.ts',
+    ]);
+    expect((manifest.scripts['dev'] ?? '').split(' && ')).toEqual([
+      ...WORKSPACE_BUILD_STEPS,
+      'bun --watch run src/playground-server.ts',
+    ]);
   });
 
   it('keeps the server module out of Vercel backend-entrypoint auto-detection', async () => {

@@ -86,12 +86,14 @@ describe('appendServerOutputBuffer', () => {
 });
 
 describe('playground bundle dependency build preflight', () => {
-  test('builds every private package the playground browser bundle resolves through dist', () => {
+  test('builds every workspace package the playground browser bundle resolves through dist', () => {
     expect(playgroundBundleDependencyBuildPackages()).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
       '@cinder/editor',
       '@cinder/commentary',
+      '@lostgradient/cinder',
+      '@lostgradient/chat',
     ]);
   });
 
