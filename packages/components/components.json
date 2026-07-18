@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "package": {
     "name": "@lostgradient/cinder",
-    "version": "0.15.0",
+    "version": "0.16.0",
     "framework": "svelte",
     "frameworkVersionRange": ">=5.56.0 <6",
     "classPrefix": "cinder-",
