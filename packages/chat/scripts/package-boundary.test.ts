@@ -16,6 +16,7 @@ const chatManifest = JSON.parse(
 const cinderManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'components', 'package.json')).text(),
 ) as PackageManifest;
+const chatReadme = await Bun.file(join(packageRoot, 'README.md')).text();
 
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
@@ -52,6 +53,27 @@ describe('Chat package ownership boundary', () => {
       'zod',
       'zod/*',
     ]);
+  });
+
+  test("documents Chat and Cinder's required peers in the install command", () => {
+    const cinderPeerMetadata = (cinderManifest['peerDependenciesMeta'] ?? {}) as Record<
+      string,
+      { optional?: boolean }
+    >;
+    const requiredCinderPeers = Object.keys(cinderManifest.peerDependencies ?? {}).filter(
+      (peer) => cinderPeerMetadata[peer]?.optional !== true,
+    );
+    const expectedPackages = [
+      ...new Set([
+        chatManifest.name,
+        ...Object.keys(chatManifest.peerDependencies ?? {}),
+        ...requiredCinderPeers,
+      ]),
+    ].toSorted();
+    const documentedPackages =
+      chatReadme.match(/^bun add (?<packages>.+)$/m)?.groups?.['packages']?.split(/\s+/) ?? [];
+
+    expect(documentedPackages).toEqual(expectedPackages);
   });
 
   test("exposes Chat icons through Cinder's public peer seam", () => {

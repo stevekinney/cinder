@@ -178,6 +178,8 @@ export type ExampleFileInput = {
   source: string;
   /** Set of valid `@lostgradient/cinder/<subpath>` names (the component names, without `@lostgradient/cinder/` prefix). */
   validCinderSubpaths: ReadonlySet<string>;
+  /** Additional exact package imports accepted by this package's examples. */
+  allowedImportSpecifiers?: ReadonlySet<string>;
 };
 
 /** The result of extracting a single example file. */
@@ -194,7 +196,13 @@ export type ExampleFileResult =
  * of valid subpaths, making it easy to unit-test without real disk I/O.
  */
 export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
-  const { componentId, filePath, source, validCinderSubpaths } = input;
+  const {
+    componentId,
+    filePath,
+    source,
+    validCinderSubpaths,
+    allowedImportSpecifiers = new Set<string>(),
+  } = input;
 
   // Step 1: check for the exclusion marker anywhere in the file.
   const exclusionMatch = EXCLUSION_MARKER_REGEX.exec(source);
@@ -275,7 +283,13 @@ export function extractExampleFile(input: ExampleFileInput): ExampleFileResult {
   }
 
   // Step 5: validate all import specifiers in the full file.
-  const importError = validateImports(source, filePath, componentId, validCinderSubpaths);
+  const importError = validateImports(
+    source,
+    filePath,
+    componentId,
+    validCinderSubpaths,
+    allowedImportSpecifiers,
+  );
   if (importError !== null) {
     return { kind: 'error', reason: importError };
   }
@@ -434,6 +448,7 @@ function validateImports(
   filePath: string,
   _componentId: string,
   validCinderSubpaths: ReadonlySet<string>,
+  allowedImportSpecifiers: ReadonlySet<string>,
 ): string | null {
   // Validate every form an import can take in a Svelte module: bound (`from`),
   // side-effect (`import 'x';`), and dynamic (`import('x')`). Any specifier
@@ -453,7 +468,7 @@ function validateImports(
       const specifier = match[1];
       if (specifier === undefined) continue;
 
-      const verdict = classifySpecifier(specifier, validCinderSubpaths);
+      const verdict = classifySpecifier(specifier, validCinderSubpaths, allowedImportSpecifiers);
       if (verdict === 'allowed') continue;
 
       const prefix =
@@ -479,6 +494,7 @@ function validateImports(
 function classifySpecifier(
   specifier: string,
   validCinderSubpaths: ReadonlySet<string>,
+  allowedImportSpecifiers: ReadonlySet<string>,
 ): 'allowed' | 'relative' | 'unknown-cinder-subpath' | 'banned' {
   if (specifier.startsWith('./') || specifier.startsWith('../') || specifier === '..') {
     return 'relative';
@@ -495,6 +511,7 @@ function classifySpecifier(
     }
     return 'unknown-cinder-subpath';
   }
+  if (allowedImportSpecifiers.has(specifier)) return 'allowed';
   if (ALLOWED_EXAMPLE_PACKAGES.includes(specifier)) return 'allowed';
   return 'banned';
 }

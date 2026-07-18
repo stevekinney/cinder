@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdir } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 
 import Ajv from 'ajv/dist/2020.js';
 import * as prettier from 'prettier';
@@ -9,9 +10,17 @@ import {
   type ComponentArtifacts,
 } from '../../components/scripts/component-artifact-operations.ts';
 import {
+  extractExampleFile,
+  type ExampleExclusion,
+  type ExampleSet,
+  type ExtractExampleError,
+  type GenerateExamplesResult,
+} from '../../components/scripts/generate-component-examples.ts';
+import {
   extractFromSource,
   type ComponentMetadata,
 } from '../../components/scripts/generate-component-metadata.ts';
+import { discoverDirectoryComponents } from '../../components/scripts/generate-exports.ts';
 import { categories, statusLevels } from '../../components/src/manifest.meta.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -38,7 +47,9 @@ type ManifestComponent = Omit<ComponentMetadata, 'isExperimental'> & {
 };
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
+const PACKAGES_ROOT = join(PACKAGE_ROOT, '..');
 const COMPONENTS_ROOT = join(PACKAGE_ROOT, 'src', 'lib', 'components');
+const PLAYGROUND_EXAMPLES_ROOT = join(PACKAGES_ROOT, 'playground', 'src', 'examples');
 const MANIFEST_PATH = join(PACKAGE_ROOT, 'components.json');
 const MANIFEST_SCHEMA_PATH = join(PACKAGE_ROOT, 'src', 'lib', 'schemas', 'manifest.schema.json');
 
@@ -60,6 +71,13 @@ const componentDefinitions: readonly ComponentDefinition[] = [
     importSpecifier: '@lostgradient/chat/conversation-list',
   },
 ];
+
+const componentDefinitionById = new Map(
+  componentDefinitions.map((definition) => [definition.id, definition]),
+);
+const allowedChatImportSpecifiers = new Set(
+  componentDefinitions.map((definition) => definition.importSpecifier),
+);
 
 async function format(content: string, path: string): Promise<string> {
   const configuration = await prettier.resolveConfig(path);
@@ -126,39 +144,186 @@ async function componentArtifactDrift(artifacts: ComponentArtifacts): Promise<st
   return drift;
 }
 
-async function validateExamples(definition: ComponentDefinition): Promise<string[]> {
-  const path = join(componentDirectory(definition), `${definition.id}.examples.json`);
-  if (!existsSync(path)) return [`${definition.id}/${definition.id}.examples.json (missing)`];
+function exampleArtifactPath(componentId: string): string {
+  const definition = componentDefinitionById.get(componentId);
+  if (definition === undefined) throw new Error(`Unknown Chat component: ${componentId}`);
+  return join(componentDirectory(definition), `${componentId}.examples.json`);
+}
 
-  let artifact: {
-    component?: unknown;
-    import?: unknown;
-    examples?: unknown[];
-  };
-  try {
-    const parsed: unknown = JSON.parse(await Bun.file(path).text());
-    if (!isRecord(parsed)) throw new Error('examples artifact must be a JSON object');
-    artifact = {
-      component: parsed['component'],
-      import: parsed['import'],
-      ...(Array.isArray(parsed['examples']) ? { examples: parsed['examples'] } : {}),
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return [`${definition.id}/${definition.id}.examples.json (invalid JSON: ${message})`];
+function serializedExampleSet(exampleSet: ExampleSet): string {
+  return `${JSON.stringify(exampleSet, null, 2)}\n`;
+}
+
+export async function generateChatExamples(): Promise<GenerateExamplesResult> {
+  const cinderComponents = await discoverDirectoryComponents();
+  const validCinderSubpaths = new Set<string>(['highlighters/shiki']);
+  for (const component of cinderComponents) {
+    validCinderSubpaths.add(
+      component.isExperimental ? `experimental/${component.name}` : component.name,
+    );
   }
 
+  const exampleSets: ExampleSet[] = [];
+  const exclusions: ExampleExclusion[] = [];
+  const errors: ExtractExampleError[] = [];
+
+  for (const definition of componentDefinitions) {
+    const examplesDirectory = join(PLAYGROUND_EXAMPLES_ROOT, definition.id);
+    let filenames: string[];
+    try {
+      const directoryEntries = await readdir(examplesDirectory);
+      filenames = directoryEntries
+        .filter((filename) => filename.endsWith('.example.svelte'))
+        .toSorted();
+    } catch {
+      errors.push({
+        componentId: definition.id,
+        file: `playground/src/examples/${definition.id}`,
+        reason: 'example directory is missing or unreadable',
+      });
+      continue;
+    }
+
+    if (filenames.length === 0) {
+      errors.push({
+        componentId: definition.id,
+        file: `playground/src/examples/${definition.id}`,
+        reason: 'no .example.svelte source files found',
+      });
+      continue;
+    }
+
+    const examples: ExampleSet['examples'] = [];
+    for (const filename of filenames) {
+      const filePath = join(examplesDirectory, filename);
+      const relativeFilePath = filePath.slice(PACKAGES_ROOT.length + 1);
+      let source: string;
+      try {
+        source = await Bun.file(filePath).text();
+      } catch {
+        errors.push({
+          componentId: definition.id,
+          file: relativeFilePath,
+          reason: `could not read file: ${filePath}`,
+        });
+        continue;
+      }
+
+      const result = extractExampleFile({
+        componentId: definition.id,
+        filePath: relativeFilePath,
+        source,
+        validCinderSubpaths,
+        allowedImportSpecifiers: allowedChatImportSpecifiers,
+      });
+      if (result.kind === 'error') {
+        errors.push({
+          componentId: definition.id,
+          file: relativeFilePath,
+          reason: result.reason,
+        });
+        continue;
+      }
+      if (result.kind === 'exclusion') {
+        exclusions.push({
+          componentId: definition.id,
+          file: relativeFilePath,
+          reason: result.reason,
+        });
+        continue;
+      }
+      if (result.componentOverride !== undefined) {
+        errors.push({
+          componentId: definition.id,
+          file: relativeFilePath,
+          reason: 'Chat examples cannot override their owning component',
+        });
+        continue;
+      }
+
+      examples.push(result.example);
+    }
+
+    if (examples.length === 0) {
+      errors.push({
+        componentId: definition.id,
+        file: `playground/src/examples/${definition.id}`,
+        reason: `all ${filenames.length} playground example(s) are excluded or errored; at least one must be published`,
+      });
+      continue;
+    }
+
+    exampleSets.push({
+      $schema: '../../schemas/examples.schema.json',
+      component: definition.id,
+      import: definition.importSpecifier,
+      examples,
+    });
+  }
+
+  const totalExamples =
+    exclusions.length +
+    errors.filter((error) => !error.reason.startsWith('all ')).length +
+    exampleSets.reduce((total, exampleSet) => total + exampleSet.examples.length, 0);
+  if (exclusions.length > totalExamples * 0.1) {
+    throw new Error(
+      `exclusion budget exceeded: ${exclusions.length} of ${totalExamples} examples excluded; cap is 10%`,
+    );
+  }
+
+  return { exampleSets, exclusions, errors };
+}
+
+async function writeChatExampleArtifacts(result: GenerateExamplesResult): Promise<void> {
+  for (const exampleSet of result.exampleSets) {
+    await Bun.write(exampleArtifactPath(exampleSet.component), serializedExampleSet(exampleSet));
+  }
+}
+
+type ChatExamplesDriftOptions = {
+  listComponentDirectories?: () => Promise<readonly string[]>;
+  readDirectory?: (directory: string) => Promise<readonly string[]>;
+};
+
+async function componentDirectoriesOnDisk(): Promise<string[]> {
+  const entries = await readdir(COMPONENTS_ROOT, { withFileTypes: true }).catch(() => []);
+  return entries
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => join(COMPONENTS_ROOT, entry.name))
+    .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+}
+
+export async function checkChatExamplesDrift(
+  result: GenerateExamplesResult,
+  options: ChatExamplesDriftOptions = {},
+): Promise<string[]> {
   const issues: string[] = [];
-  if (artifact.component !== definition.id) issues.push(`${definition.id}/examples component`);
-  if (artifact.import !== definition.importSpecifier)
-    issues.push(`${definition.id}/examples import`);
-  if (!Array.isArray(artifact.examples) || artifact.examples.length === 0) {
-    issues.push(`${definition.id}/examples entries`);
+  const expectedPaths = new Set<string>();
+  for (const exampleSet of result.exampleSets) {
+    const path = exampleArtifactPath(exampleSet.component);
+    expectedPaths.add(path);
+    if (!existsSync(path)) {
+      issues.push(`${exampleSet.component}/${exampleSet.component}.examples.json (missing)`);
+    } else if ((await Bun.file(path).text()) !== serializedExampleSet(exampleSet)) {
+      issues.push(`${exampleSet.component}/${exampleSet.component}.examples.json (stale)`);
+    }
   }
 
-  const source = JSON.stringify(artifact);
-  if (source.includes('@lostgradient/cinder/chat')) {
-    issues.push(`${definition.id}/examples contains a removed Cinder Chat import`);
+  const readDirectory = options.readDirectory ?? readdir;
+  const listComponentDirectories = options.listComponentDirectories ?? componentDirectoriesOnDisk;
+  const componentDirectories = await listComponentDirectories();
+  for (const directory of componentDirectories) {
+    const componentId = basename(directory);
+    const filenames = await readDirectory(directory).catch(() => []);
+    for (const filename of filenames.toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))) {
+      if (!filename.endsWith('.examples.json')) continue;
+      const path = join(directory, filename);
+      if (!expectedPaths.has(path)) {
+        issues.push(
+          `orphan artifact (no corresponding source example): ${componentId}/${filename}`,
+        );
+      }
+    }
   }
   return issues;
 }
@@ -250,16 +415,39 @@ async function formattedManifest(): Promise<string> {
 async function main(): Promise<void> {
   const checkMode = process.argv.includes('--check');
   const issues: string[] = [];
+  const examples = await generateChatExamples();
+
+  for (const error of examples.errors) {
+    issues.push(`examples: ${error.componentId}/${error.file} (${error.reason})`);
+  }
+  if (checkMode) {
+    issues.push(...(await checkChatExamplesDrift(examples)));
+  } else if (examples.errors.length > 0) {
+    process.stderr.write(
+      `components:generate — refusing to write artifacts: ${examples.errors.length} example error(s)\n`,
+    );
+    for (const error of examples.errors) {
+      process.stderr.write(`  [${error.componentId}] ${error.file}: ${error.reason}\n`);
+    }
+    process.exitCode = 1;
+    return;
+  }
 
   for (const definition of componentDefinitions) {
     const artifacts = await generateComponentArtifacts(definition);
-    issues.push(...(await validateExamples(definition)));
     if (checkMode) {
       issues.push(...(await componentArtifactDrift(artifacts)));
     } else {
       await writeComponentArtifacts(artifacts);
       process.stdout.write(`generated ${definition.id}\n`);
     }
+  }
+
+  if (!checkMode) {
+    await writeChatExampleArtifacts(examples);
+    process.stdout.write(
+      `generated examples: ${examples.exampleSets.length} component(s), ${examples.exampleSets.reduce((total, exampleSet) => total + exampleSet.examples.length, 0)} example(s)\n`,
+    );
   }
 
   const manifest = await formattedManifest();
@@ -284,4 +472,4 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+if (import.meta.main) await main();

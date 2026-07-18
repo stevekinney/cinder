@@ -157,7 +157,7 @@
     "lint": "oxlint --type-aware --tsconfig tsconfig.json $(rg --files src scripts -g '*.ts' -g '*.svelte')",
     "lint:fix": "oxlint --fix --type-aware --tsconfig tsconfig.json $(rg --files src scripts -g '*.ts' -g '*.svelte')",
     "pack:publish": "bun run scripts/pack-for-publish.ts",
-    "package:weight:check": "bun ../components/scripts/report-package-weight.ts --package-root .",
+    "package:weight:check": "bun ../components/scripts/report-package-weight.ts --check --package-root .",
     "platform:audit": "bun ../components/scripts/check-platform-features.ts --source-root src/lib --baseline scripts/platform-viewport-baseline.json --strict",
     "publish:release": "bun ../components/scripts/publish-release.ts --package-root .",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 src/lib scripts",
