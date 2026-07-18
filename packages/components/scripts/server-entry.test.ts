@@ -39,19 +39,17 @@ describe('createServerEntrySource', () => {
   it('generates runtime imports for multiline default and named export blocks', () => {
     const source = [
       'export {',
-      '  default as ChatConversationList,',
-      '  deriveConversationSummary,',
-      "} from './components/chat-conversation-list/index.ts';",
+      '  default as ToastRegion,',
+      '  useToast,',
+      "} from './components/toast-region/index.ts';",
     ].join('\n');
 
     const serverEntrySource = createServerEntrySource(source);
 
     expect(serverEntrySource).toContain(
-      "import { default as ChatConversationList, deriveConversationSummary } from './components/chat-conversation-list/index.ts';",
+      "import { default as ToastRegion, useToast } from './components/toast-region/index.ts';",
     );
-    expect(serverEntrySource).toContain('ChatConversationListExport as ChatConversationList');
-    expect(serverEntrySource).toContain(
-      'deriveConversationSummaryExport as deriveConversationSummary',
-    );
+    expect(serverEntrySource).toContain('ToastRegionExport as ToastRegion');
+    expect(serverEntrySource).toContain('useToastExport as useToast');
   });
 });

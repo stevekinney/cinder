@@ -64,6 +64,14 @@ jobs:
           bun run --filter=@lostgradient/cinder colors:audit -- --strict
           bun run --filter=@lostgradient/cinder tokens:audit -- --strict
 
+      - name: Source audits (chat)
+        run: |
+          bun run --filter=@lostgradient/chat components:check
+          bun run --filter=@lostgradient/chat build
+          bun run --filter=@lostgradient/chat platform:audit -- --strict
+          bun run --filter=@lostgradient/chat colors:audit -- --strict
+          bun run --filter=@lostgradient/chat tokens:audit -- --strict
+
       # The full `bun run test` suite includes @cinder/playground's bundle/route
       # tests (playground-server.test.ts), which bundle the playground FROM
       # SOURCE and resolve these private packages through their built `dist/`
@@ -83,7 +91,7 @@ jobs:
           --filter=@cinder/commentary
           build
 
-      - name: Test non-component workspaces
+      - name: Test non-Cinder workspaces
         run: >-
           bun run
           --filter=@cinder/diff
@@ -93,6 +101,9 @@ jobs:
           --filter=@cinder/playground
           --filter=@cinder/testing
           test
+
+      - name: Test Chat package with coverage
+        run: bun run --filter=@lostgradient/chat test:coverage
 
       # Non-blocking trend signal, not a gate: always exits 0 for the RSS
       # number itself (only a genuine test failure inside the canary's own

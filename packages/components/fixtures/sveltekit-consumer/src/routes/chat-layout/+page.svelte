@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Chat, { createConversation } from '@lostgradient/cinder/chat';
+  import Chat, { createConversation } from '@lostgradient/chat';
 
   const conversation = createConversation({ id: 'consumer-chat-layout' });
 </script>

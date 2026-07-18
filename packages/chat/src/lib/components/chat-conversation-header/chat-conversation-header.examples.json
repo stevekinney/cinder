@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "chat-conversation-header",
+  "import": "@lostgradient/chat/conversation-header",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic conversation header",
+      "description": "A header derived from the active compatible conversation snapshot.",
+      "code": "<script lang=\"ts\">\n  import { ChatConversationHeader } from '@lostgradient/chat/conversation-header';\n  import { appendAssistantMessage, createConversation } from '@lostgradient/chat';\n\n  let conversation = createConversation({\n    id: 'launch-support',\n    title: 'Launch support',\n  });\n\n  conversation = {\n    ...appendAssistantMessage(conversation, 'I drafted the launch checklist.'),\n    metadata: { _participantNames: ['Ada', 'Grace', 'Lin'] },\n  };\n</script>\n\n<ChatConversationHeader {conversation} />\n"
+    }
+  ]
+}

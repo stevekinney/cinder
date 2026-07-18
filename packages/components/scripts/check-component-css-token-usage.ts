@@ -37,6 +37,7 @@
  */
 
 import { Glob } from 'bun';
+import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,7 +45,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
 const componentsSource = join(componentsRoot, 'src');
 const tokensBasePath = join(componentsSource, 'styles', 'tokens-base.css');
-const baselinePath = join(scriptDirectory, 'token-usage-baseline.json');
+const defaultBaselinePath = join(scriptDirectory, 'token-usage-baseline.json');
 
 /**
  * Runtime-state variables that are set from JS (`element.style.setProperty`) or an
@@ -249,12 +250,15 @@ export function findReferences(surface: string): Array<{ name: string; lineNumbe
 }
 
 /** Scans every component style surface and classifies every `--cinder-*` reference. */
-export async function scan(globals: Set<string>): Promise<TokenFlag[]> {
+export async function scan(globals: Set<string>, sourceRoot?: string): Promise<TokenFlag[]> {
   const flags: TokenFlag[] = [];
-  const scanRoots = [
-    { dir: join(componentsSource, 'components'), prefix: 'src/components' },
-    { dir: join(componentsSource, 'styles', 'components'), prefix: 'src/styles/components' },
-  ];
+  const componentScanRoots = sourceRoot
+    ? [{ dir: join(sourceRoot, 'components'), prefix: 'src/components' }]
+    : [{ dir: join(componentsSource, 'components'), prefix: 'src/components' }];
+  const sharedStylesRoot = join(sourceRoot ?? componentsSource, 'styles', 'components');
+  const scanRoots = existsSync(sharedStylesRoot)
+    ? [...componentScanRoots, { dir: sharedStylesRoot, prefix: 'src/styles/components' }]
+    : componentScanRoots;
 
   // Pass 1: collect, per component directory, every custom-property name that
   // component declares or sets (across ALL its files, including .svelte script +
@@ -347,7 +351,9 @@ export function parseBaseline(parsed: unknown): Map<string, number> {
   return allowed;
 }
 
-export async function readBaseline(): Promise<Map<string, number>> {
+export async function readBaseline(
+  baselinePath: string = defaultBaselinePath,
+): Promise<Map<string, number>> {
   const file = Bun.file(baselinePath);
   if (!(await file.exists())) return new Map();
   return parseBaseline(await file.json());
@@ -428,9 +434,25 @@ function renderReport(flags: TokenFlag[]): string {
 async function main(): Promise<void> {
   const strict = process.argv.includes('--strict');
   const updateBaseline = process.argv.includes('--update-baseline');
+  const sourceRootArgumentIndex = process.argv.indexOf('--source-root');
+  const sourceRootArgument =
+    sourceRootArgumentIndex >= 0 ? process.argv[sourceRootArgumentIndex + 1] : undefined;
+  if (sourceRootArgumentIndex >= 0 && sourceRootArgument === undefined) {
+    throw new Error('--source-root requires a path argument');
+  }
+  const baselineArgumentIndex = process.argv.indexOf('--baseline');
+  const baselineArgument =
+    baselineArgumentIndex >= 0 ? process.argv[baselineArgumentIndex + 1] : undefined;
+  if (baselineArgumentIndex >= 0 && baselineArgument === undefined) {
+    throw new Error('--baseline requires a path argument');
+  }
+  const sourceRoot = sourceRootArgument ? resolve(process.cwd(), sourceRootArgument) : undefined;
+  const baselinePath = baselineArgument
+    ? resolve(process.cwd(), baselineArgument)
+    : defaultBaselinePath;
 
   const globals = parseGlobalTokens(await Bun.file(tokensBasePath).text());
-  const flags = await scan(globals);
+  const flags = await scan(globals, sourceRoot);
   const unresolved = flags.filter((flag) => flag.category === 'unresolved');
 
   if (updateBaseline) {
@@ -442,7 +464,7 @@ async function main(): Promise<void> {
 
   process.stdout.write(renderReport(flags));
 
-  const allowed = await readBaseline();
+  const allowed = await readBaseline(baselinePath);
   const baselineTotal = [...allowed.values()].reduce((sum, count) => sum + count, 0);
   const direction =
     unresolved.length > baselineTotal

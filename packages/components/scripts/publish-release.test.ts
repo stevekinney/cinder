@@ -1,6 +1,52 @@
 import { describe, expect, mock, test } from 'bun:test';
 
-import { resolvePublishAction, runPublishRelease } from './publish-release.ts';
+import {
+  getPackFileName,
+  resolvePackageRootArgument,
+  resolvePublishAction,
+  runPublishRelease,
+} from './publish-release.ts';
+
+describe('publish-release package selection', () => {
+  test('derives scoped tarball names for either public package', () => {
+    expect(getPackFileName({ name: '@lostgradient/cinder', version: '0.16.0' })).toBe(
+      'lostgradient-cinder-0.16.0.tgz',
+    );
+    expect(getPackFileName({ name: '@lostgradient/chat', version: '0.1.0' })).toBe(
+      'lostgradient-chat-0.1.0.tgz',
+    );
+  });
+
+  test('resolves explicit package roots relative to the invoking package', () => {
+    expect(
+      resolvePackageRootArgument(['--package-root', '.'], {
+        defaultRoot: '/workspace/packages/components',
+        currentWorkingDirectory: '/workspace/packages/chat',
+      }),
+    ).toBe('/workspace/packages/chat');
+    expect(
+      resolvePackageRootArgument(['--package-root=../chat'], {
+        defaultRoot: '/workspace/packages/components',
+        currentWorkingDirectory: '/workspace/packages/components',
+      }),
+    ).toBe('/workspace/packages/chat');
+  });
+
+  test('uses the components root by default and rejects missing values', () => {
+    expect(
+      resolvePackageRootArgument([], {
+        defaultRoot: '/workspace/packages/components',
+        currentWorkingDirectory: '/workspace',
+      }),
+    ).toBe('/workspace/packages/components');
+    expect(() =>
+      resolvePackageRootArgument(['--package-root'], {
+        defaultRoot: '/workspace/packages/components',
+        currentWorkingDirectory: '/workspace',
+      }),
+    ).toThrow('--package-root requires a path argument');
+  });
+});
 
 describe('publish-release existing-version handling', () => {
   test('skips publish when the package version already exists', () => {
@@ -79,5 +125,31 @@ describe('publish-release existing-version handling', () => {
       '--dry-run',
     ]);
     expect(output.join('')).toContain('no validated artifact found');
+  });
+
+  test('publishes only the tarball matching the source manifest version', async () => {
+    const publishedArguments: string[][] = [];
+    await runPublishRelease({
+      dryRun: false,
+      skipValidation: true,
+      packageRootPath: '/tmp/cinder-package',
+      dependencies: {
+        readManifest: async () => ({ name: '@lostgradient/cinder', version: '0.15.0' }),
+        versionExists: async () => false,
+        // A validation-only 0.16.0 peer fixture could exist beside this file;
+        // publish-release must derive and select only the manifest's 0.15.0 artifact.
+        artifactExists: (path) => path.endsWith('lostgradient-cinder-0.15.0.tgz'),
+        validateConsumerArtifact: async () => {},
+        spawnPublish: (arguments_) => {
+          publishedArguments.push(arguments_);
+          return { exitCode: 0 };
+        },
+        writeOutput: () => {},
+      },
+    });
+
+    expect(publishedArguments).toEqual([
+      ['publish', '/tmp/cinder-package/lostgradient-cinder-0.15.0.tgz'],
+    ]);
   });
 });

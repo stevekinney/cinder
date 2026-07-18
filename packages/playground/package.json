@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@cinder/markdown": "workspace:*",
+    "@lostgradient/chat": "workspace:*",
     "@lostgradient/cinder": "workspace:*",
     "lucide-svelte": "^0.503.0",
     "shiki": "^3.0.0"

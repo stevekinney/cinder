@@ -31,9 +31,7 @@ export type CoverageAverages = {
 type CoverageScope = 'runtime' | 'svelte';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const packageRoot = resolve(scriptDirectory, '..');
-const defaultThresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
-const defaultCoveragePath = resolve(packageRoot, 'coverage/lcov.info');
+const defaultPackageRoot = resolve(scriptDirectory, '..');
 
 export function parseCoverageThresholds(source: string): CoverageThresholdConfiguration {
   const parsed: unknown = JSON.parse(source);
@@ -99,7 +97,7 @@ function isRatchetThreshold(value: number): boolean {
  * shippable code and carry no coverage obligation, so exclude them from the
  * ratchet aggregate.
  */
-function isTransientTestArtifact(file: string): boolean {
+function isTransientTestArtifact(file: string, packageRoot: string): boolean {
   // Matches the generated contract from server-render.ts / hydrate.ts:
   // `.cinder-ssr-<pid>-<epoch-ms>-<base36 rand>.mjs`. The leading `(?:^|/)` and
   // the trailing `$` anchor the match to the final path segment, so a real
@@ -137,12 +135,12 @@ function isTransientTestArtifact(file: string): boolean {
  * packages have their own validation scripts; this ratchet is scoped to the
  * @lostgradient/cinder package directory.
  */
-function isOutsidePackageRootSourceMap(file: string): boolean {
-  const relativeFile = toPackageRootRelativePath(file);
+function isOutsidePackageRootSourceMap(file: string, packageRoot: string): boolean {
+  const relativeFile = toPackageRootRelativePath(file, packageRoot);
   return relativeFile === '..' || relativeFile.startsWith('../');
 }
 
-function toPackageRootRelativePath(file: string): string {
+function toPackageRootRelativePath(file: string, packageRoot: string): string {
   const absoluteFile = isAbsolute(file) ? file : resolve(packageRoot, file);
   return relative(packageRoot, absoluteFile).replaceAll('\\', '/');
 }
@@ -155,40 +153,54 @@ function toPackageRootRelativePath(file: string): string {
  * harnesses and package scripts are validated by their own direct tests and
  * gates, not by the public runtime-source ratchet.
  */
-function isOutsideCoverageScope(file: string, scope: CoverageScope): boolean {
-  const normalizedFile = toPackageRootRelativePath(file);
+function isOutsideCoverageScope(file: string, scope: CoverageScope, packageRoot: string): boolean {
+  const normalizedFile = toPackageRootRelativePath(file, packageRoot);
   if (normalizedFile.startsWith('scripts/')) return true;
   // The CLI entrypoint is tested as a subprocess so process I/O matches the
   // published binary. Bun does not merge subprocess LCOV into the parent report,
   // so keep only that entrypoint out of the in-process runtime ratchet.
   if (normalizedFile === 'src/cli/index.ts') return true;
   if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
-  if (normalizedFile.startsWith('src/test/')) return true;
+  if (normalizedFile.startsWith('src/test/') || normalizedFile.startsWith('src/lib/test/')) {
+    return true;
+  }
   const isSvelteSource =
     normalizedFile.endsWith('.svelte') || normalizedFile.endsWith('.svelte.ts');
   if (scope === 'runtime') return isSvelteSource;
   return !isSvelteSource;
 }
 
-export function parseRuntimeLcovRecords(source: string): CoverageRecord[] {
-  return parseLcovRecords(source, 'runtime');
+export function parseRuntimeLcovRecords(
+  source: string,
+  packageRoot: string = defaultPackageRoot,
+): CoverageRecord[] {
+  return parseLcovRecords(source, 'runtime', packageRoot);
 }
 
-export function parseSvelteLcovRecords(source: string): CoverageRecord[] {
-  return parseLcovRecords(source, 'svelte');
+export function parseSvelteLcovRecords(
+  source: string,
+  packageRoot: string = defaultPackageRoot,
+): CoverageRecord[] {
+  return parseLcovRecords(source, 'svelte', packageRoot);
 }
 
 export function parseLcovRecords(source: string): CoverageRecord[];
 export function parseLcovRecords(source: string, scope: CoverageScope): CoverageRecord[];
 export function parseLcovRecords(
   source: string,
+  scope: CoverageScope,
+  packageRoot: string,
+): CoverageRecord[];
+export function parseLcovRecords(
+  source: string,
   scope: CoverageScope = 'runtime',
+  packageRoot: string = defaultPackageRoot,
 ): CoverageRecord[] {
   return parseAllLcovRecords(source).filter(
     (record) =>
-      !isTransientTestArtifact(record.file) &&
-      !isOutsidePackageRootSourceMap(record.file) &&
-      !isOutsideCoverageScope(record.file, scope),
+      !isTransientTestArtifact(record.file, packageRoot) &&
+      !isOutsidePackageRootSourceMap(record.file, packageRoot) &&
+      !isOutsideCoverageScope(record.file, scope, packageRoot),
   );
 }
 
@@ -302,6 +314,7 @@ function formatThreshold(value: number): string {
 export function uncoveredLineReport(
   source: string,
   scope: CoverageScope,
+  packageRoot: string = defaultPackageRoot,
 ): { file: string; unhitLines: number[] }[] {
   const report: { file: string; unhitLines: number[] }[] = [];
   for (const rawRecord of source.split('end_of_record')) {
@@ -309,9 +322,9 @@ export function uncoveredLineReport(
     const sourceFile = lines.find((line) => line.startsWith('SF:'))?.slice('SF:'.length);
     if (sourceFile === undefined || sourceFile === '') continue;
     if (
-      isTransientTestArtifact(sourceFile) ||
-      isOutsidePackageRootSourceMap(sourceFile) ||
-      isOutsideCoverageScope(sourceFile, scope)
+      isTransientTestArtifact(sourceFile, packageRoot) ||
+      isOutsidePackageRootSourceMap(sourceFile, packageRoot) ||
+      isOutsideCoverageScope(sourceFile, scope, packageRoot)
     ) {
       continue;
     }
@@ -322,7 +335,7 @@ export function uncoveredLineReport(
       if (hitCount === '0' && lineNumber !== undefined) unhitLines.push(Number(lineNumber));
     }
     if (unhitLines.length > 0) {
-      report.push({ file: toPackageRootRelativePath(sourceFile), unhitLines });
+      report.push({ file: toPackageRootRelativePath(sourceFile, packageRoot), unhitLines });
     }
   }
   return report;
@@ -353,14 +366,27 @@ export function formatLineRanges(lineNumbers: number[]): string {
 }
 
 export async function main(): Promise<void> {
-  const thresholds = parseCoverageThresholds(await Bun.file(defaultThresholdsPath).text());
-  const coverageSource = await Bun.file(defaultCoveragePath).text();
-  const averages = computeCoverageAverages(parseRuntimeLcovRecords(coverageSource));
+  const packageRootArgumentIndex = process.argv.indexOf('--package-root');
+  const packageRootArgument =
+    packageRootArgumentIndex >= 0 ? process.argv[packageRootArgumentIndex + 1] : undefined;
+  if (packageRootArgumentIndex >= 0 && packageRootArgument === undefined) {
+    throw new Error('--package-root requires a path argument');
+  }
+  const packageRoot = packageRootArgument
+    ? resolve(process.cwd(), packageRootArgument)
+    : defaultPackageRoot;
+  const thresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
+  const coveragePath = resolve(packageRoot, 'coverage/lcov.info');
+  const thresholds = parseCoverageThresholds(await Bun.file(thresholdsPath).text());
+  const coverageSource = await Bun.file(coveragePath).text();
+  const averages = computeCoverageAverages(parseRuntimeLcovRecords(coverageSource, packageRoot));
   const summaries = [formatCoverageSummary(averages, thresholds)];
   const failures = coverageFailures(averages, thresholds).map((failure) => `runtime ${failure}`);
 
   if (thresholds.svelte) {
-    const svelteAverages = computeCoverageAverages(parseSvelteLcovRecords(coverageSource));
+    const svelteAverages = computeCoverageAverages(
+      parseSvelteLcovRecords(coverageSource, packageRoot),
+    );
     summaries.push(
       formatCoverageSummary(svelteAverages, thresholds.svelte, 'Svelte coverage ratchet'),
     );
@@ -377,7 +403,7 @@ export async function main(): Promise<void> {
     if (failures.some((failure) => failure.startsWith('svelte lines')))
       scopesToReport.push('svelte');
     for (const scope of scopesToReport) {
-      const gaps = uncoveredLineReport(coverageSource, scope);
+      const gaps = uncoveredLineReport(coverageSource, scope, packageRoot);
       if (gaps.length === 0) continue;
       console.error(`\nUncovered ${scope} lines (${gaps.length} file(s)):`);
       for (const { file, unhitLines } of gaps) {

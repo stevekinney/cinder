@@ -191,8 +191,6 @@ const runtimeDependencyExternals = [
   'ajv',
   'ajv/*',
   'comlink',
-  'conversationalist',
-  'conversationalist/*',
   'diff-match-patch',
   'hast-util-sanitize',
   'js-yaml',
@@ -283,8 +281,8 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
 
 /**
  * Static sub-paths cinder exposes outside the `components/` tree. Today this
- * is the first-party Shiki adapter at `@lostgradient/cinder/highlighters/shiki` and the
- * dev-only base-loaded guard at `@lostgradient/cinder/styles/guard`; new non-component
+ * includes the first-party Shiki adapter, the shared icons barrel, and the
+ * dev-only base-loaded guard; new non-component
  * static sub-paths get listed here so the build emits a predictable
  * `dist/<rel>.js` for each one. `shiki` itself stays external (declared in
  * cinder's `dependencies` + the `runtimeDependencyExternals` list) — the
@@ -292,6 +290,7 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
  * `@lostgradient/cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
  */
 const staticSubpathEntrypoints = [
+  `${sourceRoot}/components/icons/index.ts`,
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/styles/base-guard.ts`,
 ];
@@ -867,6 +866,9 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/server/index.js`,
   `${distributionDirectory}/components/button/button.svelte.d.ts`,
   // Static sub-paths emitted alongside the components tree.
+  `${distributionDirectory}/components/icons/index.js`,
+  `${distributionDirectory}/components/icons/index.d.ts`,
+  `${distributionDirectory}/server/components/icons/index.js`,
   `${distributionDirectory}/highlighters/shiki/index.js`,
   `${distributionDirectory}/highlighters/shiki/index.d.ts`,
   `${distributionDirectory}/server/highlighters/shiki/index.js`,

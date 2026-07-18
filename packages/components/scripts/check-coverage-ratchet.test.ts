@@ -209,35 +209,35 @@ LF:10
 LH:0
 end_of_record
 TN:
-SF:src/components/chat/.cinder-ssr-chat-12345-1780000000000.mjs
+SF:src/components/virtual-list/.cinder-ssr-virtual-list-12345-1780000000000.mjs
 FNF:10
 FNH:0
 LF:10
 LH:0
 end_of_record
 TN:
-SF:src/components/chat/message/.cinder-ssr-parts-12345-1780000000000.mjs
+SF:src/components/data-table/.cinder-ssr-data-table-12345-1780000000000.mjs
 FNF:10
 FNH:0
 LF:10
 LH:0
 end_of_record
 TN:
-SF:src/components/chat/message/parts/.cinder-ssr-tool-approval-12345-1780000000000.mjs
+SF:src/components/popover/.cinder-ssr-popover-12345-1780000000000.mjs
 FNF:10
 FNH:0
 LF:10
 LH:0
 end_of_record
 TN:
-SF:src/components/chat/message/parts/.cinder-ssr-reasoning-12345-1780000000000.mjs
+SF:src/components/modal/.cinder-ssr-modal-12345-1780000000000.mjs
 FNF:10
 FNH:0
 LF:10
 LH:0
 end_of_record
 TN:
-SF:src/components/chat/message/parts/.cinder-ssr-reasoning-12345-1780000000000.svelte-server.mjs
+SF:src/components/modal/.cinder-ssr-modal-12345-1780000000000.svelte-server.mjs
 FNF:10
 FNH:0
 LF:10
@@ -661,7 +661,7 @@ end_of_record
 
   describe('uncoveredLineReport', () => {
     const gapFixture = `TN:
-SF:${join(packageRoot, 'src/components/chat/builders.ts')}
+SF:${join(packageRoot, 'src/components/data-table/data-table.ts')}
 DA:10,1
 DA:11,0
 DA:12,0
@@ -671,7 +671,7 @@ LF:5
 LH:1
 end_of_record
 TN:
-SF:${join(packageRoot, 'src/components/chat/chat.svelte')}
+SF:${join(packageRoot, 'src/components/data-table/data-table.svelte')}
 DA:1,0
 LF:1
 LH:0
@@ -687,13 +687,15 @@ end_of_record
     test('lists the unhit line numbers of in-scope runtime files, excluding svelte and scripts', () => {
       const report = uncoveredLineReport(gapFixture, 'runtime');
       expect(report).toEqual([
-        { file: 'src/components/chat/builders.ts', unhitLines: [11, 12, 13, 20] },
+        { file: 'src/components/data-table/data-table.ts', unhitLines: [11, 12, 13, 20] },
       ]);
     });
 
     test('scopes to svelte sources when asked', () => {
       const report = uncoveredLineReport(gapFixture, 'svelte');
-      expect(report).toEqual([{ file: 'src/components/chat/chat.svelte', unhitLines: [1] }]);
+      expect(report).toEqual([
+        { file: 'src/components/data-table/data-table.svelte', unhitLines: [1] },
+      ]);
     });
 
     test('reports the unhit line of a partially covered in-scope file', () => {

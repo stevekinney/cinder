@@ -10,7 +10,7 @@
     appendAssistantMessage,
     appendUserMessage,
     createConversation,
-  } from '@lostgradient/cinder/chat';
+  } from '@lostgradient/chat';
 
   const conversation = appendAssistantMessage(
     appendUserMessage(

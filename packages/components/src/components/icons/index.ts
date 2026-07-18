@@ -1,46 +1,88 @@
 import type { IconProps } from 'lucide-svelte';
+import ArrowUpIcon from 'lucide-svelte/icons/arrow-up';
+import BoldIcon from 'lucide-svelte/icons/bold';
+import CheckIcon from 'lucide-svelte/icons/check';
+import CheckCheckIcon from 'lucide-svelte/icons/check-check';
+import ChevronDownIcon from 'lucide-svelte/icons/chevron-down';
+import ChevronLeftIcon from 'lucide-svelte/icons/chevron-left';
+import ChevronRightIcon from 'lucide-svelte/icons/chevron-right';
+import ChevronUpIcon from 'lucide-svelte/icons/chevron-up';
+import CircleAlertIcon from 'lucide-svelte/icons/circle-alert';
+import CodeIcon from 'lucide-svelte/icons/code';
+import CopyIcon from 'lucide-svelte/icons/copy';
+import FileCodeIcon from 'lucide-svelte/icons/file-code';
+import FileTextIcon from 'lucide-svelte/icons/file-text';
+import FolderGit2Icon from 'lucide-svelte/icons/folder-git-2';
+import GitBranchIcon from 'lucide-svelte/icons/git-branch';
+import Heading1Icon from 'lucide-svelte/icons/heading-1';
+import Heading2Icon from 'lucide-svelte/icons/heading-2';
+import Heading3Icon from 'lucide-svelte/icons/heading-3';
+import ItalicIcon from 'lucide-svelte/icons/italic';
+import LinkIcon from 'lucide-svelte/icons/link';
+import ListIcon from 'lucide-svelte/icons/list';
+import ListOrderedIcon from 'lucide-svelte/icons/list-ordered';
+import MessageCircleIcon from 'lucide-svelte/icons/message-circle';
+import MessageSquareIcon from 'lucide-svelte/icons/message-square';
+import MoreHorizontalIcon from 'lucide-svelte/icons/more-horizontal';
+import PaperclipIcon from 'lucide-svelte/icons/paperclip';
+import PencilIcon from 'lucide-svelte/icons/pencil';
+import PilcrowIcon from 'lucide-svelte/icons/pilcrow';
+import PlusIcon from 'lucide-svelte/icons/plus';
+import QuoteIcon from 'lucide-svelte/icons/quote';
+import Redo2Icon from 'lucide-svelte/icons/redo-2';
+import RefreshCwIcon from 'lucide-svelte/icons/refresh-cw';
+import RotateCcwIcon from 'lucide-svelte/icons/rotate-ccw';
+import SearchIcon from 'lucide-svelte/icons/search';
+import SquareIcon from 'lucide-svelte/icons/square';
+import StrikethroughIcon from 'lucide-svelte/icons/strikethrough';
+import Trash2Icon from 'lucide-svelte/icons/trash-2';
+import Undo2Icon from 'lucide-svelte/icons/undo-2';
+import UnlinkIcon from 'lucide-svelte/icons/unlink';
+import XIcon from 'lucide-svelte/icons/x';
 import type { ComponentType, SvelteComponent } from 'svelte';
 
-export {
-  ArrowUp,
-  Bold,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Code,
-  Copy,
-  FileCode,
-  FileText,
-  FolderGit2,
-  GitBranch,
-  Heading1,
-  Heading2,
-  Heading3,
-  Italic,
-  Link,
-  List,
-  ListOrdered,
-  MessageCircle,
-  MessageSquare,
-  MoreHorizontal,
-  Paperclip,
-  Pencil,
-  Pilcrow,
-  Plus,
-  Quote,
-  Redo2,
-  RefreshCw,
-  RotateCcw,
-  Search,
-  Square,
-  Strikethrough,
-  Trash2,
-  Undo2,
-  Unlink,
-  X,
-} from 'lucide-svelte';
+// Local aliases keep Bun's split client/server builds from tree-shaking the
+// imported Svelte component bindings while retaining dangling re-exports.
+export const ArrowUp = ArrowUpIcon;
+export const Bold = BoldIcon;
+export const Check = CheckIcon;
+export const CheckCheck = CheckCheckIcon;
+export const ChevronDown = ChevronDownIcon;
+export const ChevronLeft = ChevronLeftIcon;
+export const ChevronRight = ChevronRightIcon;
+export const ChevronUp = ChevronUpIcon;
+export const CircleAlert = CircleAlertIcon;
+export const Code = CodeIcon;
+export const Copy = CopyIcon;
+export const FileCode = FileCodeIcon;
+export const FileText = FileTextIcon;
+export const FolderGit2 = FolderGit2Icon;
+export const GitBranch = GitBranchIcon;
+export const Heading1 = Heading1Icon;
+export const Heading2 = Heading2Icon;
+export const Heading3 = Heading3Icon;
+export const Italic = ItalicIcon;
+export const Link = LinkIcon;
+export const List = ListIcon;
+export const ListOrdered = ListOrderedIcon;
+export const MessageCircle = MessageCircleIcon;
+export const MessageSquare = MessageSquareIcon;
+export const MoreHorizontal = MoreHorizontalIcon;
+export const Paperclip = PaperclipIcon;
+export const Pencil = PencilIcon;
+export const Pilcrow = PilcrowIcon;
+export const Plus = PlusIcon;
+export const Quote = QuoteIcon;
+export const Redo2 = Redo2Icon;
+export const RefreshCw = RefreshCwIcon;
+export const RotateCcw = RotateCcwIcon;
+export const Search = SearchIcon;
+export const Square = SquareIcon;
+export const Strikethrough = StrikethroughIcon;
+export const Trash2 = Trash2Icon;
+export const Undo2 = Undo2Icon;
+export const Unlink = UnlinkIcon;
+export const X = XIcon;
 
 export type { IconProps } from 'lucide-svelte';
 

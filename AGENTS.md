@@ -14,7 +14,7 @@ This file covers repo-wide Bun workspace conventions.
 bun install              # Install workspace dependencies
 bun run dev              # Start the playground dev server
 bun run playground       # Alias for the playground dev server
-bun run build            # Build @lostgradient/cinder
+bun run build            # Build @lostgradient/cinder, then @lostgradient/chat
 ```
 
 ### Testing
@@ -50,6 +50,10 @@ bun run --filter=@lostgradient/cinder components:check
 bun run --filter=@lostgradient/cinder exports:check
 bun run --filter=@lostgradient/cinder validate:consumer
 bun run --filter=@lostgradient/cinder package:weight:check
+bun run --filter=@lostgradient/chat components:generate
+bun run --filter=@lostgradient/chat components:check
+bun run --filter=@lostgradient/chat validate:consumer
+bun run --filter=@lostgradient/chat package:weight:check
 ```
 
 Run `components:generate` after changing component source metadata, examples, constraints, variables, generated README sections, or export-affecting component files.
@@ -59,6 +63,7 @@ Run `components:generate` after changing component source metadata, examples, co
 | Workspace             | Purpose                                                    |
 | --------------------- | ---------------------------------------------------------- |
 | `packages/components` | Published `@lostgradient/cinder` package.                  |
+| `packages/chat`       | Published `@lostgradient/chat` domain package.             |
 | `packages/playground` | Private component playground and static export.            |
 | `packages/testing`    | Private Playwright, axe, and visual-regression harness.    |
 | `packages/diff`       | Private diff utilities used by domain-suite components.    |
@@ -69,7 +74,7 @@ Run `components:generate` after changing component source metadata, examples, co
 ## Architecture Notes
 
 - **Bun workspace:** Use `bun` commands and the root `bun.lock`; do not introduce npm or Yarn lockfiles.
-- **Published package:** `@lostgradient/cinder` lives in `packages/components` and is the only npm-published workspace.
+- **Published packages:** `@lostgradient/cinder` lives in `packages/components`; `@lostgradient/chat` lives in `packages/chat` and declares Cinder plus its runtime libraries as peers.
 - **Private packages:** `@cinder/*` packages are private implementation workspaces. Some are packed into the published artifact through `packages/components/scripts/pack-for-publish.ts`.
 - **Svelte 5:** The public peer range is `svelte >=5.56.0 <6`.
 - **Styles:** The base stylesheet is `@lostgradient/cinder/styles`; component CSS is opt-in through `@lostgradient/cinder/<component>/styles`, or all-in through `@lostgradient/cinder/styles/all`.
@@ -80,6 +85,7 @@ Run `components:generate` after changing component source metadata, examples, co
 - Root consumer/developer overview: [`README.md`](./README.md)
 - Long-form docs index: [`docs/README.md`](./docs/README.md)
 - Published package README: [`packages/components/README.md`](./packages/components/README.md)
+- Chat package README: [`packages/chat/README.md`](./packages/chat/README.md)
 - Package contribution guidance: [`packages/components/AGENTS.md`](./packages/components/AGENTS.md)
 
 When documentation mentions commands, prefer root workspace commands with `bun run --filter=<package>` for package-specific gates. Avoid bare `bun test` in docs unless the local package script intentionally wraps it.

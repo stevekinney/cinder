@@ -4,7 +4,10 @@
 </script>
 
 <script lang="ts">
-  import { ChatConversationList, type ConversationSummary } from '@lostgradient/cinder';
+  import {
+    ChatConversationList,
+    type ConversationSummary,
+  } from '@lostgradient/chat/conversation-list';
 
   const conversations: ConversationSummary[] = [
     {

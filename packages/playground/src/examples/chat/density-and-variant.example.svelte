@@ -10,7 +10,7 @@
     appendAssistantMessage,
     appendUserMessage,
     createConversation,
-  } from '@lostgradient/cinder/chat';
+  } from '@lostgradient/chat';
   import { Select } from '@lostgradient/cinder/select';
 
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();

@@ -15,7 +15,7 @@
     updateStreamingMessage,
     type ChatAdapter,
     type ConversationHistory,
-  } from '@lostgradient/cinder/chat';
+  } from '@lostgradient/chat';
 
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();

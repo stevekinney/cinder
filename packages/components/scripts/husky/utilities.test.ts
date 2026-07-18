@@ -70,7 +70,8 @@ const graphPackages: readonly WorkspacePackage[] = [
   pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
   pkg('@cinder/editor', 'packages/editor/', ['@cinder/markdown']),
   pkg('@cinder/commentary', 'packages/commentary/', ['@cinder/editor', '@cinder/markdown']),
-  pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/cinder']),
+  pkg('@lostgradient/chat', 'packages/chat/', ['@lostgradient/cinder']),
+  pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/chat', '@lostgradient/cinder']),
   pkg('@cinder/diff', 'packages/diff/'),
   pkg('@cinder/testing', 'packages/testing/', [], { hasLint: false }),
 ];
@@ -472,6 +473,7 @@ describe('loadWorkspacePackages', () => {
     expect(names).toContain('@cinder/commentary');
     expect(names).toContain('@cinder/playground');
     expect(names).toContain('@cinder/testing');
+    expect(names).toContain('@lostgradient/chat');
     expect(names).toContain('@lostgradient/cinder');
     for (const entry of packages) {
       expect(entry.dir.startsWith('packages/')).toBe(true);
@@ -489,6 +491,9 @@ describe('loadWorkspacePackages', () => {
 
     // @cinder/playground depends on cinder.
     expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/cinder');
+    expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/chat');
+    // Chat composes Cinder primitives and utilities through the public package.
+    expect([...byName.get('@lostgradient/chat')!.dependencies]).toContain('@lostgradient/cinder');
     // @cinder/markdown depends on @cinder/diff.
     expect([...byName.get('@cinder/markdown')!.dependencies]).toContain('@cinder/diff');
     // cinder dev-depends on @cinder/testing.
@@ -506,8 +511,9 @@ describe('loadWorkspacePackages', () => {
 
 describe('expandToDependents', () => {
   // NOTE: the real graph has `@lostgradient/cinder` dev-depending on every sub-package (its
-  // own tests import them) AND `@cinder/playground` depending on `@lostgradient/cinder`. So
-  // any sub-package change pulls in `@lostgradient/cinder` + `@cinder/playground` as
+  // own tests import them), `@lostgradient/chat` depending on Cinder, and
+  // `@cinder/playground` depending on both public packages. So any sub-package
+  // change pulls in Cinder + Chat + playground as
   // dependents. Only `@cinder/commentary` (a true leaf in the consumer
   // direction) and `@cinder/playground` stay small. These expectations are the
   // sound closures, computed from the graph — not the smaller sets an earlier
@@ -518,10 +524,11 @@ describe('expandToDependents', () => {
     expect(expand('@cinder/playground')).toEqual(['@cinder/playground']);
   });
 
-  it('expands @cinder/commentary to commentary + cinder + playground', () => {
+  it('expands @cinder/commentary through both public packages to playground', () => {
     expect(expand('@cinder/commentary')).toEqual([
       '@cinder/commentary',
       '@cinder/playground',
+      '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
@@ -531,6 +538,7 @@ describe('expandToDependents', () => {
       '@cinder/commentary',
       '@cinder/editor',
       '@cinder/playground',
+      '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
@@ -541,6 +549,7 @@ describe('expandToDependents', () => {
       '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
+      '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
@@ -552,6 +561,7 @@ describe('expandToDependents', () => {
       '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
+      '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
@@ -560,12 +570,21 @@ describe('expandToDependents', () => {
     expect(expand('@cinder/testing')).toEqual([
       '@cinder/playground',
       '@cinder/testing',
+      '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
 
-  it('expands cinder to cinder + playground', () => {
-    expect(expand('@lostgradient/cinder')).toEqual(['@cinder/playground', '@lostgradient/cinder']);
+  it('expands cinder through chat to playground', () => {
+    expect(expand('@lostgradient/cinder')).toEqual([
+      '@cinder/playground',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('expands chat to chat + playground', () => {
+    expect(expand('@lostgradient/chat')).toEqual(['@cinder/playground', '@lostgradient/chat']);
   });
 
   it('is cycle-safe and dedupes across multiple touched packages', () => {
@@ -575,6 +594,7 @@ describe('expandToDependents', () => {
       '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
+      '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
@@ -984,10 +1004,13 @@ describe('scoped job derivation (real workspace)', () => {
       'packages/components/src/components/alert.css',
       'packages/components/src/components/callout.css',
     ]);
-    // Positive: cinder's three gates plus playground typecheck/test (closure).
+    // Positive: Cinder's three gates plus Chat and playground typecheck/test
+    // through the real reverse-dependency closure.
     expect(jobs).toEqual([
       '@cinder/playground test',
       '@cinder/playground typecheck',
+      '@lostgradient/chat test',
+      '@lostgradient/chat typecheck',
       '@lostgradient/cinder lint',
       '@lostgradient/cinder test:changed',
       '@lostgradient/cinder typecheck',

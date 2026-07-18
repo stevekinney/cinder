@@ -23,7 +23,7 @@ fresh consumer:
 bun add @milkdown/ctx @milkdown/kit @milkdown/prose @types/mdast @types/unist js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view remark-gfm remark-parse remark-stringify unified unist-util-visit
 ```
 
-`@lostgradient/cinder/review-editor` and `@lostgradient/cinder/chat` with the default composer also
+`@lostgradient/cinder/review-editor` and `@lostgradient/chat` with the default composer also
 use this editor stack. If a peer is missing, Vite can surface the failure as an
 `__vite-optional-peer-dep:*` export error, such as a missing `PluginKey` export from
 `prosemirror-state`; install the peer set above instead of debugging the generated placeholder

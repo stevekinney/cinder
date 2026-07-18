@@ -1,7 +1,0 @@
-@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
-/* ChatComposerPopover renders CommandMenu and CommandItem internally. Pull in
- * the command menu family so the wrapper is styled through its own styles path. */
-@import '../command-menu/command-menu.css';
-
-@layer cinder.components {
-}

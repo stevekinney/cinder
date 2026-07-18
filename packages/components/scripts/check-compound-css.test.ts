@@ -79,17 +79,6 @@ describe('Compound component CSS dependency contracts', () => {
     });
   });
 
-  describe('ChatConversationHeader — imports Dropdown styles', () => {
-    const chatConversationHeaderCss = readCss(
-      'chat-conversation-header/chat-conversation-header.css',
-    );
-
-    test('chat-conversation-header.css @imports dropdown.css', () => {
-      // ChatConversationHeader renders ConversationExportActions, which composes Dropdown leaves.
-      expect(chatConversationHeaderCss).toMatch(/@import\s+['"]\.\.\/dropdown\/dropdown\.css['"]/);
-    });
-  });
-
   describe('SideNavigation — imports NavigationItem styles', () => {
     const sideNavigationCss = readCss('side-navigation/side-navigation.css');
 

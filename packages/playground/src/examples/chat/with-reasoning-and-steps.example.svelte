@@ -5,12 +5,7 @@
 </script>
 
 <script lang="ts">
-  import {
-    Chat,
-    appendMessages,
-    appendUserMessage,
-    createConversation,
-  } from '@lostgradient/cinder/chat';
+  import { Chat, appendMessages, appendUserMessage, createConversation } from '@lostgradient/chat';
 
   const reasoningContent =
     'The user is asking me to walk them through solving a quadratic equation step by step. I should break this down into a structured sequence of steps: first identify the coefficients, then apply the quadratic formula, then simplify the result. I should also surface my reasoning process so the user can see my thinking before I present the final answer.';

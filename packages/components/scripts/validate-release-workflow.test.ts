@@ -3,17 +3,211 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 
+import getReleasePlan from '@changesets/get-release-plan';
+
 import {
   findIgnoredPackageChangesets,
+  findMissingPublicPackageReleaseCommands,
   findMissingWorkflowDispatches,
   findOutdatedWorkflowActions,
+  manualChatBootstrapHasCinderRegistryPreflight,
   parseChangesetPackageNames,
+  publicPackagePublishOrderIsValid,
+  rootConsumerValidationIncludesPublicPackages,
+  rootPublishScriptUsesStagedPackers,
   workflowDeclaresPermission,
   workflowDispatchInputHasDefault,
   workflowRunScriptsContainActiveLine,
 } from './validate-release-workflow.ts';
 
 describe('validate-release-workflow changeset guards', () => {
+  test('requires artifact and publish commands for both public packages', () => {
+    const workflow = {
+      jobs: {
+        release: {
+          steps: [
+            {
+              run: [
+                'bun run --filter=@lostgradient/cinder validate:consumer',
+                'bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball',
+                'bun run --filter=@lostgradient/cinder publish:release -- --skip-validation',
+                'bun run --filter=@lostgradient/chat validate:consumer',
+                'bun run --filter=@lostgradient/chat publish:release -- --skip-validation',
+              ].join('\n'),
+            },
+          ],
+        },
+      },
+    };
+
+    expect(findMissingPublicPackageReleaseCommands(workflow)).toEqual([
+      'bun run --filter=@lostgradient/chat package:weight:check',
+    ]);
+  });
+
+  test('requires Cinder to publish before Chat', () => {
+    const workflow = (commands: string[]) => ({
+      jobs: { release: { steps: commands.map((run) => ({ run })) } },
+    });
+    const cinder = 'bun run --filter=@lostgradient/cinder publish:release -- --skip-validation';
+    const chat = 'bun run --filter=@lostgradient/chat publish:release -- --skip-validation';
+
+    expect(publicPackagePublishOrderIsValid(workflow([cinder, chat]))).toBe(true);
+    expect(publicPackagePublishOrderIsValid(workflow([chat, cinder]))).toBe(false);
+  });
+
+  test('requires the root publish shortcut to use staged package artifacts in order', () => {
+    const manifest = (script: string) => ({ scripts: { 'changeset:publish': script } });
+    const cinder = 'bun run --filter=@lostgradient/cinder publish:release';
+    const chat = 'bun run --filter=@lostgradient/chat publish:release';
+
+    expect(rootPublishScriptUsesStagedPackers(manifest(`${cinder} && ${chat}`))).toBe(true);
+    expect(rootPublishScriptUsesStagedPackers(manifest('changeset publish'))).toBe(false);
+    expect(rootPublishScriptUsesStagedPackers(manifest(`${chat} && ${cinder}`))).toBe(false);
+  });
+
+  test('requires the root validation gate to exercise both packed public packages', () => {
+    const manifest = (validate: string, validateConsumer: string) => ({
+      scripts: { validate, 'validate:consumer': validateConsumer },
+    });
+    const cinder = 'bun run --filter=@lostgradient/cinder validate:consumer';
+    const chat = 'bun run --filter=@lostgradient/chat validate:consumer';
+
+    expect(
+      rootConsumerValidationIncludesPublicPackages(
+        manifest(`bun run --sequential --filter='*' validate && ${chat}`, `${cinder} && ${chat}`),
+      ),
+    ).toBe(true);
+    expect(
+      rootConsumerValidationIncludesPublicPackages(
+        manifest(`bun run --sequential --filter='*' validate && ${chat}`, cinder),
+      ),
+    ).toBe(false);
+    expect(
+      rootConsumerValidationIncludesPublicPackages(
+        manifest("bun run --sequential --filter='*' validate", `${cinder} && ${chat}`),
+      ),
+    ).toBe(false);
+    expect(
+      rootConsumerValidationIncludesPublicPackages(
+        manifest(`bun run --filter='*' validate && ${chat}`, `${cinder} && ${chat}`),
+      ),
+    ).toBe(false);
+  });
+
+  test('requires the manual Chat bootstrap to preflight its Cinder peer', () => {
+    const workflow = (run: string) => ({
+      jobs: {
+        publish: {
+          steps: [{ if: "inputs.package == 'chat'", run }],
+        },
+      },
+    });
+    const peerLookup = [
+      'cinder_peer_range="$(jq -er \'.peerDependencies["@lostgradient/cinder"]\' packages/chat/package.json)"',
+      'npm view "@lostgradient/cinder@${cinder_peer_range}" version --json',
+      'echo "::error::Publish Cinder first"',
+    ].join('\n');
+
+    expect(manualChatBootstrapHasCinderRegistryPreflight(workflow(peerLookup))).toBe(true);
+    expect(
+      manualChatBootstrapHasCinderRegistryPreflight(
+        workflow('npm view "@lostgradient/cinder" version --json'),
+      ),
+    ).toBe(false);
+  });
+
+  test('the stock Changesets plan keeps both public releases pre-1.0 minors', async () => {
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-release-plan-'));
+    const changesetDirectory = join(temporaryDirectory, '.changeset');
+    const cinderDirectory = join(temporaryDirectory, 'packages/components');
+    const chatDirectory = join(temporaryDirectory, 'packages/chat');
+
+    try {
+      mkdirSync(changesetDirectory, { recursive: true });
+      mkdirSync(cinderDirectory, { recursive: true });
+      mkdirSync(chatDirectory, { recursive: true });
+      writeFileSync(
+        join(temporaryDirectory, 'package.json'),
+        `${JSON.stringify(
+          {
+            name: 'release-plan-fixture',
+            version: '0.0.0',
+            private: true,
+            workspaces: ['packages/*'],
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      writeFileSync(
+        join(cinderDirectory, 'package.json'),
+        `${JSON.stringify({ name: '@lostgradient/cinder', version: '0.15.0' }, null, 2)}\n`,
+      );
+      writeFileSync(
+        join(chatDirectory, 'package.json'),
+        `${JSON.stringify(
+          {
+            name: '@lostgradient/chat',
+            version: '0.0.0',
+            peerDependencies: { '@lostgradient/cinder': '^0.16.0' },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      writeFileSync(
+        join(changesetDirectory, 'config.json'),
+        `${JSON.stringify(
+          {
+            changelog: false,
+            commit: false,
+            fixed: [],
+            linked: [],
+            access: 'public',
+            baseBranch: 'main',
+            updateInternalDependencies: 'patch',
+            bumpVersionsWithWorkspaceProtocolOnly: true,
+            ignore: [],
+            privatePackages: { version: true, tag: false },
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      writeFileSync(
+        join(changesetDirectory, 'extract-chat-package.md'),
+        `---
+'@lostgradient/cinder': minor
+'@lostgradient/chat': minor
+---
+
+Extract Chat into its own package.
+`,
+      );
+
+      const releasePlan = await getReleasePlan(temporaryDirectory);
+      expect(releasePlan).toMatchObject({
+        releases: expect.arrayContaining([
+          expect.objectContaining({
+            name: '@lostgradient/cinder',
+            type: 'minor',
+            oldVersion: '0.15.0',
+            newVersion: '0.16.0',
+          }),
+          expect.objectContaining({
+            name: '@lostgradient/chat',
+            type: 'minor',
+            oldVersion: '0.0.0',
+            newVersion: '0.1.0',
+          }),
+        ]),
+      });
+    } finally {
+      rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+  });
+
   test('finds permissions only in workflow or job permission blocks', () => {
     expect(
       workflowDeclaresPermission(

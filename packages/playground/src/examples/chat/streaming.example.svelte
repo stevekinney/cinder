@@ -9,7 +9,7 @@
     appendAssistantMessage,
     appendUserMessage,
     createConversation,
-  } from '@lostgradient/cinder/chat';
+  } from '@lostgradient/chat';
 
   let conversation = $state(
     appendAssistantMessage(

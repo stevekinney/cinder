@@ -7,8 +7,8 @@
 <script lang="ts">
   import ChatComposerPopover, {
     type ChatComposerPopoverSelection,
-  } from '@lostgradient/cinder/chat-composer-popover';
-  import { ChatInput } from '@lostgradient/cinder/chat';
+  } from '@lostgradient/chat/composer-popover';
+  import { ChatInput } from '@lostgradient/chat';
 
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();

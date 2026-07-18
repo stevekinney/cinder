@@ -17,8 +17,8 @@
  *   - `/page/<name>` iframe HTML, for every component
  *   - `/shell-bundle/shell.js` + every hashed chunk it imports
  *   - `/page-bundle/<name>.js` + every hashed chunk each imports
- *   - `/styles.css`, `/styles/all.css`, and every `/styles/*` + `/components/*`
- *     CSS the rendered HTML references
+ *   - `/styles.css`, `/styles/all.css`, and every core or extracted-package CSS
+ *     asset the rendered HTML references
  *   - `/api/manifest/<name>` and `/api/documentation/<name>`
  *   - `/example-src/<name>/<scenario>` for every example
  *   - `/ping` (so the deploy smoke-test has a static `pong`)

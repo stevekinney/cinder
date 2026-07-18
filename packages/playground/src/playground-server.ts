@@ -15,6 +15,7 @@
  *   GET /styles.css    → raw contents of src/styles/index.css (slim base — no per-component CSS)
  *   GET /styles/shell.css → shell chrome styles (base CSS plus shell component CSS)
  *   GET /styles/all.css → full cascade aggregator (all component CSS — used by the preview iframe)
+ *   GET /package-components/:source/*.css → CSS owned by extracted component packages
  *   GET /example-src/:name/:scenario → raw .example.svelte source
  *   GET /events        → Server-Sent Events stream for live reload
  *   GET /ping          → health check ("pong")
@@ -25,13 +26,12 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { rmSync, watch, type FSWatcher } from 'node:fs';
+import { existsSync, rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
 
 import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 import type { BuildArtifact } from 'bun';
 import {
-  componentSourcePath,
   findFixture,
   loadFixtureFile,
   resolveFixtureFilePath,
@@ -46,14 +46,21 @@ import {
   newestSourceMtimeMs,
   type PlaygroundFreshnessFingerprint,
 } from '../../testing/scripts/source-fingerprint.ts';
-import { analyzeAll, resetProject } from './analyze.ts';
+import { analyzeComponent, resetProject } from './analyze.ts';
 import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import {
   ComponentDocumentationError,
   buildComponentDocumentation,
 } from './component-documentation.ts';
 import {
+  CINDER_COMPONENT_SOURCE,
+  COMPONENT_SOURCES,
+  componentSourceById,
+} from './component-sources.ts';
+import {
   COMPOSE_ONLY_COMPONENTS,
+  discoverComponentDefinition,
+  discoverComponentDefinitions,
   discoverComponents,
   discoverExamples,
   discoverSidebarComponents,
@@ -107,7 +114,7 @@ export const PORT = resolvePreferredPort();
 const MAX_PORT_SCAN_ATTEMPTS = 100;
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
-const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
+const COMPONENTS_ROOT = CINDER_COMPONENT_SOURCE.packageRoot; // packages/components/
 const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
 
 /**
@@ -490,12 +497,26 @@ function startWatcher(): FSWatcher[] {
     // cross-component-import / shared-utility fan-out), so this always uses
     // the 'components' scope — which ALSO marks the shell stale (shell-app
     // UI imports the full component barrel; see `ChangeScope`'s doc comment).
-    const srcPath = join(COMPONENTS_ROOT, 'src');
-    created.push(
-      watch(srcPath, { recursive: true }, (_event, filename) => {
-        if (filename) scheduleRebuild({ kind: 'components' });
-      }),
-    );
+    for (const componentSource of COMPONENT_SOURCES) {
+      const srcPath = join(componentSource.packageRoot, 'src');
+      created.push(
+        watch(srcPath, { recursive: true }, (_event, filename) => {
+          if (filename) scheduleRebuild({ kind: 'components' });
+        }),
+      );
+
+      for (const metadataPath of [
+        join(componentSource.packageRoot, 'package.json'),
+        componentSource.manifestPath,
+      ]) {
+        if (!existsSync(metadataPath)) continue;
+        created.push(
+          watch(metadataPath, () => {
+            scheduleRebuild({ kind: 'components' });
+          }),
+        );
+      }
+    }
 
     // Examples directory: an edit to `<name>/<scenario>.example.svelte` can
     // only ever affect that one component's page bundle, so the scope is
@@ -819,6 +840,9 @@ async function compilePageBundleArtifacts(
     if (!components.includes(componentName)) return null;
   }
 
+  const componentDefinition = await discoverComponentDefinition(componentName);
+  if (componentDefinition === undefined) return null;
+
   const scenarios = await discoverExamples(componentName);
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
   // which renders a "No examples found" fallback.
@@ -840,7 +864,7 @@ async function compilePageBundleArtifacts(
   const entrySource = `import { mount } from 'svelte';
 
 import ComponentPage from '../component-page.svelte';
-import * as BareComponentModule from '@lostgradient/cinder/${componentName}';
+import * as BareComponentModule from ${JSON.stringify(componentDefinition.importPath)};
 ${scenarioImports}
 const scenarios: Record<string, unknown> = {
 ${scenarioRegistrations}
@@ -1212,8 +1236,16 @@ async function getManifests(): Promise<ComponentManifest[]> {
   // Captured before awaiting so we can tell, once the analysis resolves,
   // whether an invalidation raced past us — see the publish guard below.
   const generationAtStart = rebuildGeneration;
-  // Reuse the in-flight promise so concurrent callers don't each start analyzeAll().
-  manifestPromise ??= analyzeAll(join(COMPONENTS_ROOT, 'src', 'components'));
+  // Reuse the in-flight promise so concurrent callers don't each analyze the
+  // same package sources. Discovery has already rejected duplicate route slugs.
+  manifestPromise ??= discoverComponentDefinitions().then(async (definitions) => {
+    const manifests = await Promise.all(
+      definitions.map((definition) =>
+        analyzeComponent(definition.filePath, { importPath: definition.importPath }),
+      ),
+    );
+    return manifests.toSorted((left, right) => left.kebabName.localeCompare(right.kebabName));
+  });
   const inFlight = manifestPromise;
   try {
     const manifests = await inFlight;
@@ -1365,6 +1397,13 @@ function renderPreviewMessageBridgeScript(): string {
  * Without `?snapshot=1`, the output is byte-identical to the previous behavior.
  */
 async function renderComponentPage(componentName: string, snapshotMode: boolean): Promise<string> {
+  const componentDefinition = await discoverComponentDefinition(componentName);
+  const componentStylesheetUrl =
+    componentDefinition?.source.componentStylesheetUrl(componentName) ?? null;
+  const componentStylesheetLink =
+    componentStylesheetUrl === null
+      ? ''
+      : `\n    <link rel="stylesheet" href="${escapeHtml(componentStylesheetUrl)}" />`;
   const scenarios = await discoverExamples(componentName);
   const examples = await Promise.all(
     scenarios.map(async (scenario) => {
@@ -1397,7 +1436,7 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
     <title>${humanName} — cinder playground</title>
     <meta name="description" content="${pageDescription}" />
     <link rel="icon" href="${FAVICON_HREF}" />
-    <link rel="stylesheet" href="/styles/all.css" />
+    <link rel="stylesheet" href="/styles/all.css" />${componentStylesheetLink}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       /* Iframe scaffold: scope the reset narrowly. Unlike the shell, the
@@ -1441,6 +1480,7 @@ function renderFixturePageHtml(
   fixtureName: string,
   snapshotMode: boolean,
   scriptSource: string,
+  componentStylesheetUrl: string | null,
 ): string {
   const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
   const styleTag = snapshotModeStyleTag(snapshotMode);
@@ -1453,7 +1493,11 @@ function renderFixturePageHtml(
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${humanName} / ${escapeHtml(fixtureName)} — cinder playground</title>
     <link rel="icon" href="${FAVICON_HREF}" />
-    <link rel="stylesheet" href="/styles/all.css" />
+    <link rel="stylesheet" href="/styles/all.css" />${
+      componentStylesheetUrl === null
+        ? ''
+        : `\n    <link rel="stylesheet" href="${escapeHtml(componentStylesheetUrl)}" />`
+    }
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       *, *::before, *::after { box-sizing: border-box; }
@@ -1491,7 +1535,11 @@ async function renderFixturePageResponse(
   snapshotMode: boolean,
   expectedFixtureContentHash: string,
 ): Promise<Response> {
-  const fixturesRoot = join(COMPONENTS_ROOT, 'src', 'components');
+  const componentDefinition = await discoverComponentDefinition(componentName);
+  if (componentDefinition === undefined) {
+    return notFound(`Component "${componentName}" not found`);
+  }
+  const fixturesRoot = componentDefinition.source.componentsRoot;
   const fixtureFilePath = resolveFixtureFilePath(componentName, fixturesRoot);
   let fixtureFile;
   try {
@@ -1520,7 +1568,7 @@ async function renderFixturePageResponse(
   const componentOrHostPath =
     fixtureRenderMode(fixture) === 'host'
       ? resolveFixtureHostPath(fixtureFile, fixture)
-      : componentSourcePath(componentName);
+      : componentDefinition.filePath;
 
   const fixtureEntryPath = await buildFixtureBundle(
     componentName,
@@ -1537,7 +1585,13 @@ async function renderFixturePageResponse(
 
   const scriptSource = `/fixture-bundle/${fixtureEntryPath}`;
   return new Response(
-    renderFixturePageHtml(componentName, fixtureName, snapshotMode, scriptSource),
+    renderFixturePageHtml(
+      componentName,
+      fixtureName,
+      snapshotMode,
+      scriptSource,
+      componentDefinition.source.componentStylesheetUrl(componentName),
+    ),
     {
       headers: { 'Content-Type': 'text/html' },
     },
@@ -1691,6 +1745,30 @@ export async function handleRequest(request: Request): Promise<Response> {
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });
   }
 
+  // GET /package-components/:source/<path>.css → extracted package component CSS.
+  // The source id comes from component-sources.ts; preserving the component
+  // directory shape keeps relative CSS imports working for future packages.
+  const packageComponentStyleMatch = pathname.match(
+    /^\/package-components\/([a-z0-9][a-z0-9-]*)\/(.+\.css)$/,
+  );
+  if (packageComponentStyleMatch) {
+    const sourceId = packageComponentStyleMatch[1]!;
+    const relative = packageComponentStyleMatch[2]!;
+    const componentSource = componentSourceById(sourceId);
+    if (componentSource === undefined || relative.includes('..') || relative.startsWith('/')) {
+      return notFound();
+    }
+
+    const cssPath = join(componentSource.componentsRoot, relative);
+    const cssRelativePath = relativePath(componentSource.componentsRoot, cssPath);
+    if (cssRelativePath.startsWith('..') || isAbsolute(cssRelativePath)) return notFound();
+    const cssFile = Bun.file(cssPath);
+    if (!(await cssFile.exists())) return notFound(`${relative} not found`);
+    return new Response(await cssFile.text(), {
+      headers: { 'Content-Type': 'text/css' },
+    });
+  }
+
   // GET /bundle/:name/:scenario.js
   const bundleMatch = pathname.match(/^\/bundle\/([^/]+)\/([^/]+)\.js$/);
   if (bundleMatch) {
@@ -1841,9 +1919,18 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (manifest === undefined) {
       return notFound(`Documentation for "${componentName}" not found`);
     }
+    const componentDefinition = await discoverComponentDefinition(componentName);
+    if (componentDefinition === undefined) {
+      return notFound(`Documentation for "${componentName}" not found`);
+    }
 
     try {
-      const documentation = await buildComponentDocumentation(componentName, manifest);
+      const documentation = await buildComponentDocumentation(
+        componentName,
+        manifest,
+        undefined,
+        componentDefinition.source,
+      );
       const validationErrors = validateComponentDocumentationPayload(documentation);
       if (validationErrors.length > 0) {
         throw new Error(

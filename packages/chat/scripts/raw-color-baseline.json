@@ -1,0 +1,12 @@
+[
+  {
+    "filePath": "src/components/chat/input/chat-input.svelte",
+    "colorClass": "oklch",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/chat/message/image-lightbox.svelte",
+    "colorClass": "rgb",
+    "allowedCount": 9
+  }
+]

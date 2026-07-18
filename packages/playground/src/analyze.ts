@@ -670,7 +670,14 @@ function isPublicPropName(name: string): boolean {
 }
 
 /** Analyzes a single Svelte component file and returns its ComponentManifest. */
-export async function analyzeComponent(filePath: string): Promise<ComponentManifest> {
+export type AnalyzeComponentOptions = {
+  importPath?: string;
+};
+
+export async function analyzeComponent(
+  filePath: string,
+  options: AnalyzeComponentOptions = {},
+): Promise<ComponentManifest> {
   const source = await Bun.file(filePath).text();
   const fileBaseName = basename(filePath, '.svelte');
   const componentName = toPascalCase(fileBaseName);
@@ -713,7 +720,7 @@ export async function analyzeComponent(filePath: string): Promise<ComponentManif
     name: componentName,
     kebabName: fileBaseName,
     file: filePath,
-    importPath: `@lostgradient/cinder/${fileBaseName}`,
+    importPath: options.importPath ?? `@lostgradient/cinder/${fileBaseName}`,
     props,
     ...(isCompound ? { isCompound: true } : {}),
   };

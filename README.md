@@ -2,7 +2,7 @@
 
 Components for product interfaces.
 
-The published package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The current generated manifest lists 167 public component entries across action, data-display, domain, feedback, form, layout, navigation, overlay, and typography categories.
+The core package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The Chat domain suite is published separately as `@lostgradient/chat`, with Cinder and its other runtime libraries supplied by the consuming application as peer dependencies.
 
 Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data fetching layer, global state provider, or theme provider. The package is SSR-safe.
 
@@ -16,14 +16,20 @@ bun add @lostgradient/cinder svelte lucide-svelte
 It uses Lucide for its own component chrome, but it does not provide a general icon library for
 your application-specific icons.
 
+Install the Chat domain suite separately when you need it:
+
+```bash
+bun add @lostgradient/chat @lostgradient/cinder conversationalist zod svelte
+```
+
 Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
 use optional peer dependencies. Install them only when your app imports
 `@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`,
-`@lostgradient/cinder/chat` with the default composer, `@lostgradient/cinder/markdown`,
+`@lostgradient/cinder/markdown`,
 `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`,
 `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`,
 `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on
-`Chat` built-in markdown/tool message rendering or `CodeBlock` automatic highlighting:
+`CodeBlock` automatic highlighting:
 
 ```bash
 bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @shikijs/langs @shikijs/rehype @shikijs/types @types/hast @types/mdast @types/unist comlink hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
@@ -193,9 +199,12 @@ bun run --filter=@lostgradient/cinder components:check
 bun run --filter=@lostgradient/cinder components:generate
 bun run --filter=@lostgradient/cinder exports:check
 bun run --filter=@lostgradient/cinder validate:consumer
+bun run --filter=@lostgradient/chat build
+bun run --filter=@lostgradient/chat components:check
+bun run --filter=@lostgradient/chat validate:consumer
 ```
 
-When adding or changing components, update files under `packages/components/src/components/<component-id>/`, then run:
+When adding or changing core components, update files under `packages/components/src/components/<component-id>/`, then run:
 
 ```bash
 bun run --filter=@lostgradient/cinder components:generate
@@ -203,17 +212,21 @@ bun run --filter=@lostgradient/cinder components:generate
 
 That regenerates schemas, variables, examples, constraints, the manifest, generated README sections, package exports, and related artifacts.
 
+For the Chat family, update `packages/chat/src/lib/components/<component-id>/` and run the matching `@lostgradient/chat` `components:generate` command.
+
 ## Release
 
-Only `@lostgradient/cinder` publishes to npm. The other `@cinder/*` workspaces are private implementation packages that are packed into the published artifact when needed.
+`@lostgradient/cinder` and `@lostgradient/chat` publish to npm. The `@cinder/*` workspaces remain private implementation packages that are packed into Cinder's published artifact when needed.
 
-The npm artifact has one source of truth: `packages/components/scripts/pack-for-publish.ts`. Consumer validation, release dry runs, the Changesets publish path, and the manual break-glass workflow all publish or inspect the staged tarball from that script.
+Each public package owns its packed artifact. Consumer validation, release dry runs, and the Changesets publish path build and inspect both tarballs before publishing Cinder first and Chat second.
 
 Before a release, run:
 
 ```bash
 bun run --filter=@lostgradient/cinder validate:consumer
 bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
+bun run --filter=@lostgradient/chat validate:consumer
+bun run --filter=@lostgradient/chat package:weight:check -- --existing-tarball
 ```
 
 ## Repository

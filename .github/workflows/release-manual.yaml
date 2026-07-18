@@ -1,16 +1,23 @@
 name: release-manual
 
-# Break-glass fallback for releasing `@lostgradient/cinder` if Changesets-driven
-# `release.yaml` fails. Triggered manually from the Actions UI. The
-# package.json version in `packages/components/` must already be bumped
-# before dispatching this workflow — `verify-release-version.ts` enforces
-# that the working tree's version matches the input tag.
+# Break-glass fallback for releasing either public package if Changesets-driven
+# `release.yaml` fails. Triggered manually from the Actions UI. The selected
+# package manifest must already be versioned, and the package-qualified tag must
+# point at that exact commit.
 
 on:
   workflow_dispatch:
     inputs:
+      package:
+        description: 'Public package to publish.'
+        required: true
+        default: cinder
+        type: choice
+        options:
+          - cinder
+          - chat
       tag:
-        description: 'Release tag (e.g. v0.1.0). Must match packages/components/package.json#version.'
+        description: 'Package-qualified release tag (for example cinder-v0.16.0 or chat-v0.1.0).'
         required: true
         type: string
 
@@ -35,11 +42,23 @@ jobs:
         with:
           bun-version: 1.3.13
 
-      - name: Verify tag matches package.json version
-        working-directory: packages/components
+      - name: Verify tag matches selected package version
         env:
           TAG_NAME: ${{ inputs.tag }}
-        run: bun run scripts/verify-release-version.ts
+          PACKAGE_SELECTION: ${{ inputs.package }}
+        run: |
+          set -euo pipefail
+          case "$PACKAGE_SELECTION" in
+            cinder) package_directory='packages/components' ;;
+            chat) package_directory='packages/chat' ;;
+            *) echo "::error::Unsupported package selection: $PACKAGE_SELECTION"; exit 1 ;;
+          esac
+          package_version="$(jq -er '.version' "$package_directory/package.json")"
+          expected_tag="${PACKAGE_SELECTION}-v${package_version}"
+          if [ "$TAG_NAME" != "$expected_tag" ]; then
+            echo "::error::Tag $TAG_NAME does not match $expected_tag from $package_directory/package.json."
+            exit 1
+          fi
 
   publish-npm:
     needs: verify
@@ -65,8 +84,8 @@ jobs:
       # so this writes a token-bearing .npmrc. The `${NODE_AUTH_TOKEN}`
       # placeholder is written literally (quoted heredoc) and expanded by npm
       # at runtime from the publish step's env — the secret is never baked
-      # into the file. Once 0.1.0 exists on npm, configure Trusted Publishing
-      # and migrate release.yaml back to the OIDC path.
+      # into the file. Once 0.1.0 exists on npm, configure Chat's Trusted
+      # Publisher so release.yaml can publish future versions through OIDC.
       - name: Configure npm authentication
         shell: bash
         run: |
@@ -88,20 +107,55 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Verify tag matches package.json version
-        working-directory: packages/components
+      - name: Select public package
+        id: package
         env:
-          TAG_NAME: ${{ inputs.tag }}
-        run: bun run scripts/verify-release-version.ts
+          PACKAGE_SELECTION: ${{ inputs.package }}
+        run: |
+          set -euo pipefail
+          case "$PACKAGE_SELECTION" in
+            cinder)
+              echo 'name=@lostgradient/cinder' >> "$GITHUB_OUTPUT"
+              ;;
+            chat)
+              echo 'name=@lostgradient/chat' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unsupported package selection: $PACKAGE_SELECTION"
+              exit 1
+              ;;
+          esac
+
+      - name: Verify Chat's required Cinder release exists
+        if: inputs.package == 'chat'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cinder_peer_range="$(jq -er '.peerDependencies["@lostgradient/cinder"]' packages/chat/package.json)"
+          if ! published_versions="$(NPM_CONFIG_USERCONFIG=/dev/null npm view "@lostgradient/cinder@${cinder_peer_range}" version --json 2>/dev/null)"; then
+            echo "::error::No published @lostgradient/cinder version satisfies Chat's required peer ${cinder_peer_range}. Publish Cinder first."
+            exit 1
+          fi
+          if ! jq -e 'if type == "array" then length > 0 else type == "string" and length > 0 end' <<<"$published_versions" >/dev/null; then
+            echo "::error::No published @lostgradient/cinder version satisfies Chat's required peer ${cinder_peer_range}. Publish Cinder first."
+            exit 1
+          fi
+          echo "Published Cinder satisfies Chat peer ${cinder_peer_range}: ${published_versions}"
 
       - name: Install Chromium for consumer validation
         run: bunx playwright install --with-deps chromium
 
-      - name: Validate package artifact
+      # Validate both artifacts before publishing either. Chat's fixture uses
+      # the staged Cinder tarball to prove its required peer contract without
+      # falling back to the local workspace package.
+      - name: Validate Cinder package artifact
         run: bun run --filter=@lostgradient/cinder validate:consumer
 
-      - name: Check package artifact budget
-        run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
+      - name: Validate Chat package artifact
+        run: bun run --filter=@lostgradient/chat validate:consumer
+
+      - name: Check selected package artifact budget
+        run: bun run --filter=${{ steps.package.outputs.name }} package:weight:check -- --existing-tarball
 
       # Break-glass publish. The primary release path (release.yaml) is the
       # Changesets/OIDC route; this manual fallback uses NPM_TOKEN as an
@@ -117,11 +171,11 @@ jobs:
       # verified Bun/BoringSSL fix).
       #
       # Token rotation: NPM_TOKEN should be rotated at least every 90 days per
-      # security policy. The token is a Granular Access Token scoped to the
-      # `cinder` package only — never use a full-access automation token.
+      # security policy. Use a Granular Access Token scoped only to the two
+      # public packages — never a full-access automation token.
       - name: Publish to npm
         env:
           NPM_CONFIG_PROVENANCE: 'false'
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
+        run: bun run --filter=${{ steps.package.outputs.name }} publish:release -- --skip-validation

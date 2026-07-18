@@ -153,40 +153,6 @@ export type {
   CarouselSlideContent,
 } from './components/carousel/index.ts';
 
-export { default as Chat } from './components/chat/index.ts';
-export type { ChatProps } from './components/chat/index.ts';
-
-export {
-  default as ChatComposerPopover,
-  filterFuzzySubsequence,
-  fuzzySubsequenceScore,
-} from './components/chat-composer-popover/index.ts';
-export type {
-  ChatComposerPopoverComposerProps,
-  ChatComposerPopoverItem,
-  ChatComposerPopoverItemSnippetContext,
-  ChatComposerPopoverProps,
-  ChatComposerPopoverSelection,
-  ChatComposerPopoverTriggerMatch,
-  FuzzyFilterItem,
-  FuzzyFilterResult,
-} from './components/chat-composer-popover/index.ts';
-
-export { default as ChatConversationHeader } from './components/chat-conversation-header/index.ts';
-export type {
-  ChatConversationHeaderHeadingLevel,
-  ChatConversationHeaderProps,
-} from './components/chat-conversation-header/index.ts';
-
-export {
-  default as ChatConversationList,
-  deriveConversationSummary,
-} from './components/chat-conversation-list/index.ts';
-export type {
-  ChatConversationListProps,
-  ConversationSummary,
-} from './components/chat-conversation-list/index.ts';
-
 export { default as ChoiceGrid } from './components/choice-grid/index.ts';
 export type {
   ChoiceGridColumns,

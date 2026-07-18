@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { ChatConversationHeader } from '@lostgradient/cinder';
-  import { appendAssistantMessage, createConversation } from '@lostgradient/cinder/chat';
+  import { appendAssistantMessage, createConversation } from '@lostgradient/chat';
+  import { ChatConversationHeader } from '@lostgradient/chat/conversation-header';
 
   let conversation = createConversation({
     id: 'launch-support',

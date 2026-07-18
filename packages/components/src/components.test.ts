@@ -14,6 +14,7 @@ describe('svelte plugin', () => {
     type LoadResult = { contents: string; loader: string };
     type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;
     type MinimalSetupBuilder = {
+      config: { target: 'bun' };
       onLoad(filter: { filter: RegExp }, handler: LoadHandler): void;
     };
 
@@ -21,13 +22,15 @@ describe('svelte plugin', () => {
     // for rune modules). Capture the one whose filter matches our `.svelte` fixture path.
     let registeredLoadHandler: LoadHandler | undefined;
     const builderStub: MinimalSetupBuilder = {
+      config: { target: 'bun' },
       onLoad(filter, handler) {
         if (filter.filter.test('fixture.svelte') && !filter.filter.test('fixture.svelte.ts')) {
           registeredLoadHandler = handler;
         }
       },
     };
-    // The real builder has more surface but the plugin only calls onLoad.
+    // The real builder has more surface; the Bun target does not register the
+    // non-Bun relative-Svelte resolver, so this focused stub only needs onLoad.
     plugin.setup(builderStub as Parameters<typeof plugin.setup>[0]);
 
     if (!registeredLoadHandler) {
@@ -55,13 +58,18 @@ describe('svelte plugin', () => {
     type LoadResult = { contents: string; loader: string };
     type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;
     type MinimalSetupBuilder = {
+      config: { target: 'bun' };
       onLoad(filter: { filter: RegExp }, handler: LoadHandler): void;
     };
 
     let registeredLoadHandler: LoadHandler | undefined;
     const builderStub: MinimalSetupBuilder = {
+      config: { target: 'bun' },
       onLoad(filter, handler) {
-        if (filter.filter.test('chat.svelte') && !filter.filter.test('chat.svelte.ts')) {
+        if (
+          filter.filter.test('diff-viewer.svelte') &&
+          !filter.filter.test('diff-viewer.svelte.ts')
+        ) {
           registeredLoadHandler = handler;
         }
       },
@@ -72,7 +80,7 @@ describe('svelte plugin', () => {
       throw new Error('plugin did not register the .svelte onLoad handler');
     }
 
-    const fixtureDirectory = `${import.meta.dir}/components/chat`;
+    const fixtureDirectory = `${import.meta.dir}/components/diff-viewer`;
     const fixturePath = `${fixtureDirectory}/style-allowed-fixture.svelte`;
     await Bun.$`mkdir -p ${fixtureDirectory}`;
     await Bun.write(
@@ -95,12 +103,14 @@ describe('svelte plugin', () => {
     type LoadResult = { contents: string; loader: string };
     type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;
     type MinimalSetupBuilder = {
+      config: { target: 'bun' };
       onLoad(filter: { filter: RegExp }, handler: LoadHandler): void;
     };
 
     // Capture the `.svelte.(js|ts)` handler specifically (not the `.svelte` one).
     let registeredLoadHandler: LoadHandler | undefined;
     const builderStub: MinimalSetupBuilder = {
+      config: { target: 'bun' },
       onLoad(filter, handler) {
         if (filter.filter.test('fixture.svelte.ts')) {
           registeredLoadHandler = handler;

@@ -46,13 +46,14 @@
  */
 
 import { Glob } from 'bun';
+import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
 const componentsSource = join(componentsRoot, 'src');
-const baselinePath = join(scriptDirectory, 'raw-color-baseline.json');
+const defaultBaselinePath = join(scriptDirectory, 'raw-color-baseline.json');
 
 /**
  * The reason a raw-color site is intentional and NOT migration debt. Sites whose
@@ -187,12 +188,15 @@ export function extractInlineReason(line: string): RawColorReason | null {
  * classified by the inline reason marker on (or directly above) its line, or
  * `migration-debt` when unmarked.
  */
-export async function scan(): Promise<RawColorFlag[]> {
+export async function scan(sourceRoot?: string): Promise<RawColorFlag[]> {
   const flags: RawColorFlag[] = [];
-  const scanRoots = [
-    { dir: join(componentsSource, 'components'), prefix: 'src/components' },
-    { dir: join(componentsSource, 'styles', 'components'), prefix: 'src/styles/components' },
-  ];
+  const componentScanRoots = sourceRoot
+    ? [{ dir: join(sourceRoot, 'components'), prefix: 'src/components' }]
+    : [{ dir: join(componentsSource, 'components'), prefix: 'src/components' }];
+  const sharedStylesRoot = join(sourceRoot ?? componentsSource, 'styles', 'components');
+  const scanRoots = existsSync(sharedStylesRoot)
+    ? [...componentScanRoots, { dir: sharedStylesRoot, prefix: 'src/styles/components' }]
+    : componentScanRoots;
 
   for (const { dir, prefix } of scanRoots) {
     const glob = new Glob('**/*.{css,svelte}');
@@ -295,7 +299,9 @@ export function parseBaseline(parsed: unknown): Map<string, number> {
 }
 
 /** Reads the baseline file as a `flagKey` → allowed-count map (empty if absent). */
-export async function readBaseline(): Promise<Map<string, number>> {
+export async function readBaseline(
+  baselinePath: string = defaultBaselinePath,
+): Promise<Map<string, number>> {
   const file = Bun.file(baselinePath);
   if (!(await file.exists())) return new Map();
   return parseBaseline(await file.json());
@@ -396,8 +402,24 @@ function renderReport(flags: RawColorFlag[]): string {
 async function main(): Promise<void> {
   const strict = process.argv.includes('--strict');
   const updateBaseline = process.argv.includes('--update-baseline');
+  const sourceRootArgumentIndex = process.argv.indexOf('--source-root');
+  const sourceRootArgument =
+    sourceRootArgumentIndex >= 0 ? process.argv[sourceRootArgumentIndex + 1] : undefined;
+  if (sourceRootArgumentIndex >= 0 && sourceRootArgument === undefined) {
+    throw new Error('--source-root requires a path argument');
+  }
+  const baselineArgumentIndex = process.argv.indexOf('--baseline');
+  const baselineArgument =
+    baselineArgumentIndex >= 0 ? process.argv[baselineArgumentIndex + 1] : undefined;
+  if (baselineArgumentIndex >= 0 && baselineArgument === undefined) {
+    throw new Error('--baseline requires a path argument');
+  }
+  const sourceRoot = sourceRootArgument ? resolve(process.cwd(), sourceRootArgument) : undefined;
+  const baselinePath = baselineArgument
+    ? resolve(process.cwd(), baselineArgument)
+    : defaultBaselinePath;
 
-  const flags = await scan();
+  const flags = await scan(sourceRoot);
   const debtFlags = flags.filter((flag) => flag.reason === 'migration-debt');
 
   if (updateBaseline) {
@@ -409,7 +431,7 @@ async function main(): Promise<void> {
 
   process.stdout.write(renderReport(flags));
 
-  const allowed = await readBaseline();
+  const allowed = await readBaseline(baselinePath);
   const baselineTotal = [...allowed.values()].reduce((sum, count) => sum + count, 0);
   const debtTotal = debtFlags.length;
   const direction =

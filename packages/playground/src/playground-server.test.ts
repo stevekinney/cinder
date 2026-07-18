@@ -882,6 +882,18 @@ describe('/page/:name', () => {
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
+  it('loads package-owned component CSS for extracted Chat pages', async () => {
+    const response = await handleRequest(req('/page/chat'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('href="/package-components/chat/chat/chat.css"');
+
+    const stylesheet = await handleRequest(req('/package-components/chat/chat/chat.css'));
+    expect(stylesheet.status).toBe(200);
+    expect(stylesheet.headers.get('Content-Type')).toBe('text/css');
+    expect(await stylesheet.text()).toContain('.cinder-chat');
+  });
+
   it('installs the validated color-token message bridge on preview pages', async () => {
     const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
     const html = await response.text();
@@ -1205,6 +1217,13 @@ describe('/api/manifest/:name', () => {
     const response = await handleRequest(req('/api/manifest/Button'));
     expect(response.status).toBe(404);
   }, 30_000);
+
+  it('uses the extracted package import path for Chat', async () => {
+    const response = await handleRequest(req('/api/manifest/chat'));
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as ComponentManifest;
+    expect(result.importPath).toBe('@lostgradient/chat');
+  }, 30_000);
 });
 
 describe('/api/documentation/:name', () => {
@@ -1223,6 +1242,16 @@ describe('/api/documentation/:name', () => {
     expect(body.readme.html).toContain('<h2>Usage</h2>');
     expect(body.constraints).not.toBeNull();
     expect(body.examples).not.toBeNull();
+  }, 30_000);
+
+  it('serves documentation from the extracted Chat package manifest', async () => {
+    const response = await handleRequest(req('/api/documentation/chat'));
+    expect(response.status).toBe(200);
+    const body: unknown = await response.json();
+    expect(isComponentDocumentationPayload(body)).toBe(true);
+    if (!isComponentDocumentationPayload(body)) return;
+    expect(body.component.id).toBe('chat');
+    expect(body.component.importSpecifier).toBe('@lostgradient/chat');
   }, 30_000);
 
   it('returns 404 for an unknown component', async () => {

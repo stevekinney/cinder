@@ -52,6 +52,7 @@ const packageRoot = resolve(scriptDirectory, '..');
 const repoRoot = resolve(packageRoot, '..', '..');
 const workflowsDirectory = join(repoRoot, '.github', 'workflows');
 const componentsPackageName = '@lostgradient/cinder';
+const chatPackageName = '@lostgradient/chat';
 
 export const LAYERS = [
   'pre-commit',
@@ -247,6 +248,56 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: [],
     reason: 'Local/package full-suite coverage + ratchet. Not part of any CI gate.',
   },
+  [`${chatPackageName}#lint`]: {
+    layers: ['pre-push', 'unit-tests', 'main-green'],
+    reason:
+      'Chat package oxlint. Pre-push scopes by touched workspace; unit-tests and main-green reach it through the workspace lint scripts.',
+  },
+  [`${chatPackageName}#typecheck`]: {
+    layers: ['pre-commit', 'pre-push', 'browser-tests', 'main-green'],
+    reason:
+      'Chat package typecheck follows the same workspace and hook gates as every typed package.',
+  },
+  [`${chatPackageName}#components:check`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Chat generated metadata and exports are checked before merge and in the authoritative main gate.',
+  },
+  [`${chatPackageName}#build`]: {
+    layers: ['pre-push', 'unit-tests', 'main-green'],
+    reason:
+      'The extracted public package builds in the touched-workspace pre-push gate, before merge, ' +
+      'and on the authoritative main gate.',
+  },
+  [`${chatPackageName}#platform:audit`]: {
+    layers: ['main-green'],
+    reason: 'Chat platform compatibility audit owned by the authoritative source gate.',
+  },
+  [`${chatPackageName}#colors:audit`]: {
+    layers: ['main-green'],
+    reason: 'Chat raw-color audit owned by the authoritative source gate.',
+  },
+  [`${chatPackageName}#tokens:audit`]: {
+    layers: ['main-green'],
+    reason: 'Chat token audit owned by the authoritative source gate.',
+  },
+  [`${chatPackageName}#validate:consumer`]: {
+    layers: ['release'],
+    reason: 'The release artifact gate installs and validates the staged Chat tarball.',
+  },
+  [`${chatPackageName}#package:weight:check`]: {
+    layers: ['release'],
+    reason: 'The release artifact gate applies the dedicated Chat tarball budget.',
+  },
+  [`${chatPackageName}#test`]: {
+    layers: ['pre-push'],
+    reason: 'The fast Chat suite runs from the touched-workspace pre-push gate.',
+  },
+  [`${chatPackageName}#test:coverage`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Chat owns a coverage-producing package suite now that its tests no longer run in Cinder component chunks.',
+  },
 };
 
 /** Commands whose layer set is intentionally NOT verified (meta-scripts with no fixed home). */
@@ -312,6 +363,8 @@ function layerInvokesExternalBinary(
 type ParsedSources = {
   /** name -> resolved script body, packages/components/package.json scripts. */
   packageScripts: Record<string, string>;
+  /** Public package name -> package.json scripts. Includes Cinder and Chat. */
+  publicPackageScripts?: Record<string, Record<string, string>>;
   /**
    * name -> resolved script body, the workspace ROOT package.json scripts.
    * Workflow `bun run <name>` entry points resolve through this root scope
@@ -375,9 +428,9 @@ function normalizeFilter(value: string | undefined): string | undefined {
   return value.replace(/^['"]|['"]$/gu, '');
 }
 
-function filterTargetsComponentsPackage(filter: string | undefined): boolean {
+function filterTargetsPackage(filter: string | undefined, packageName: string): boolean {
   if (filter === undefined) return false;
-  return filter === componentsPackageName || filter === '*';
+  return filter === packageName || filter === '*';
 }
 
 function extractBunRunInvocations(body: string): BunRunInvocation[] {
@@ -393,18 +446,22 @@ function extractBunRunInvocations(body: string): BunRunInvocation[] {
   return found;
 }
 
-function scopeForWorkflowInvocation(invocation: BunRunInvocation): ScriptScope | undefined {
+function scopeForWorkflowInvocation(
+  invocation: BunRunInvocation,
+  packageName = componentsPackageName,
+): ScriptScope | undefined {
   if (invocation.filter === undefined) return 'root';
-  if (filterTargetsComponentsPackage(invocation.filter)) return 'package';
+  if (filterTargetsPackage(invocation.filter, packageName)) return 'package';
   return undefined;
 }
 
 function scopeForNestedInvocation(
   invocation: BunRunInvocation,
   currentScope: ScriptScope,
+  packageName: string,
 ): ScriptScope | undefined {
   if (invocation.filter === undefined) return currentScope;
-  if (filterTargetsComponentsPackage(invocation.filter)) return 'package';
+  if (filterTargetsPackage(invocation.filter, packageName)) return 'package';
   return undefined;
 }
 
@@ -413,6 +470,7 @@ function resolveScriptChainsAcrossScopes(
   initialScope: ScriptScope,
   packageScripts: Record<string, string>,
   rootScripts: Record<string, string>,
+  packageName = componentsPackageName,
   seen: Set<string> = new Set(),
 ): { packageScripts: Set<string>; rootScripts: Set<string> } {
   const packageChain = new Set<string>();
@@ -434,7 +492,7 @@ function resolveScriptChainsAcrossScopes(
     }
 
     for (const invocation of extractBunRunInvocations(body)) {
-      const nextScope = scopeForNestedInvocation(invocation, scope);
+      const nextScope = scopeForNestedInvocation(invocation, scope, packageName);
       if (nextScope === undefined) continue;
       visit(invocation.name, nextScope);
     }
@@ -515,19 +573,21 @@ function layerInvokesCommand(
   command: string,
   packageScripts: Record<string, string>,
   rootScripts: Record<string, string>,
+  packageName = componentsPackageName,
 ): boolean {
   if (invokesDirectScriptPath(layerText, command, packageScripts)) return true;
 
   // Resolve every `bun run <name>` entry point in the workflow text into its
   // transitive chain and check membership.
   for (const invocation of extractBunRunInvocations(layerText)) {
-    const scope = scopeForWorkflowInvocation(invocation);
+    const scope = scopeForWorkflowInvocation(invocation, packageName);
     if (scope === undefined) continue;
     const chain = resolveScriptChainsAcrossScopes(
       invocation.name,
       scope,
       packageScripts,
       rootScripts,
+      packageName,
     );
     if (chain.packageScripts.has(command)) return true;
   }
@@ -615,6 +675,20 @@ async function loadPackageScripts(): Promise<Record<string, string>> {
   return loadManifestScripts(join(packageRoot, 'package.json'));
 }
 
+async function loadPublicPackageScripts(): Promise<Record<string, Record<string, string>>> {
+  const packageRoots = [
+    [componentsPackageName, packageRoot],
+    [chatPackageName, join(repoRoot, 'packages', 'chat')],
+  ] as const;
+  const entries = await Promise.all(
+    packageRoots.map(
+      async ([packageName, root]) =>
+        [packageName, await loadManifestScripts(join(root, 'package.json'))] as const,
+    ),
+  );
+  return Object.fromEntries(entries);
+}
+
 /**
  * The workspace ROOT `package.json` scripts. A workflow step's `bun run lint`
  * (unqualified, no `--filter`) invokes the ROOT `lint` script — `bun run
@@ -628,13 +702,15 @@ async function loadRootScripts(): Promise<Record<string, string>> {
 }
 
 export async function loadParsedSources(): Promise<ParsedSources> {
-  const [packageScripts, rootScripts, workflowText, hookText] = await Promise.all([
-    loadPackageScripts(),
-    loadRootScripts(),
-    loadWorkflowText(),
-    loadHookText(),
-  ]);
-  return { packageScripts, rootScripts, workflowText, hookText };
+  const [packageScripts, publicPackageScripts, rootScripts, workflowText, hookText] =
+    await Promise.all([
+      loadPackageScripts(),
+      loadPublicPackageScripts(),
+      loadRootScripts(),
+      loadWorkflowText(),
+      loadHookText(),
+    ]);
+  return { packageScripts, publicPackageScripts, rootScripts, workflowText, hookText };
 }
 
 /**
@@ -672,6 +748,13 @@ export function checkPipelineCoverage(
 
   for (const [command, row] of Object.entries(declarationTable)) {
     if (IGNORED_COMMANDS.has(command)) continue;
+    const separatorIndex = command.indexOf('#');
+    const packageName =
+      separatorIndex === -1 ? componentsPackageName : command.slice(0, separatorIndex);
+    const scriptName = separatorIndex === -1 ? command : command.slice(separatorIndex + 1);
+    const packageScripts =
+      sources.publicPackageScripts?.[packageName] ??
+      (packageName === componentsPackageName ? sources.packageScripts : {});
     const declared = new Set(row.layers);
 
     for (const layer of LAYERS) {
@@ -694,19 +777,20 @@ export function checkPipelineCoverage(
         continue;
       }
 
-      const isExternalBinary = EXTERNAL_BINARY_COMMANDS.has(command);
+      const isExternalBinary = EXTERNAL_BINARY_COMMANDS.has(scriptName);
       const actuallyRuns = isExternalBinary
         ? isHookLayer
-          ? invokesExternalBinaryToken(layerText, command)
-          : layerInvokesExternalBinary(
-              layerText,
-              command,
-              sources.packageScripts,
-              sources.rootScripts,
-            )
+          ? invokesExternalBinaryToken(layerText, scriptName)
+          : layerInvokesExternalBinary(layerText, scriptName, packageScripts, sources.rootScripts)
         : isHookLayer
-          ? hookInvokesCommand(layerText, command)
-          : layerInvokesCommand(layerText, command, sources.packageScripts, sources.rootScripts);
+          ? hookInvokesCommand(layerText, scriptName)
+          : layerInvokesCommand(
+              layerText,
+              scriptName,
+              packageScripts,
+              sources.rootScripts,
+              packageName,
+            );
       const isDeclared = declared.has(layer);
 
       if (actuallyRuns && !isDeclared) {

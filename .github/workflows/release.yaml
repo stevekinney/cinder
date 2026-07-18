@@ -1,17 +1,18 @@
 name: release
 
-# Changesets-driven release pipeline for the `@lostgradient/cinder` npm package.
+# Changesets-driven release pipeline for the public `@lostgradient/cinder` and
+# `@lostgradient/chat` npm packages.
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
-#     "Version Packages" pull request that bumps `packages/components/package.json`
-#     and updates the changelog. Merging that PR re-triggers this workflow,
-#     which then publishes to npm through npm Trusted Publishing.
-#   - If no changesets are pending, the action enters the publish path. The
-#     publish script skips cleanly when the package version already exists on
+#     "Version Packages" pull request that bumps public package manifests and
+#     changelogs. Merging that pull request re-triggers this workflow, which
+#     then publishes to npm through npm Trusted Publishing.
+#   - If no changesets are pending, the action enters the publish path. Each
+#     publish script skips cleanly when that package version already exists on
 #     npm.
 #
-# The publish path validates the package artifact it is about to publish
+# The publish path validates both package artifacts before publishing either
 # (`validate:consumer` + package weight), but it does not rerun the full
 # source-validation suite. Source validation is owned by PR CI and main-green;
 # the publish path waits for the same-SHA main-green run before publishing.
@@ -114,9 +115,13 @@ jobs:
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bunx playwright install --with-deps chromium
 
-      - name: Validate package artifact
+      - name: Validate Cinder package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/cinder validate:consumer
+
+      - name: Validate Chat package artifact
+        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
+        run: bun run --filter=@lostgradient/chat validate:consumer
 
       - name: Create Release Pull Request or publish to npm
         id: changesets
@@ -180,9 +185,13 @@ jobs:
 
           gh run watch "$main_green_run_id" --exit-status --interval 30
 
-      - name: Check validated package artifact budget
+      - name: Check validated Cinder package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
+
+      - name: Check validated Chat package artifact budget
+        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/chat package:weight:check -- --existing-tarball
 
       # Primary publish path: npm Trusted Publishing (OIDC). No long-lived token.
       # npm >= 11.5.1 (installed above) + id-token: write (on this job) + the npm
@@ -198,14 +207,26 @@ jobs:
       #
       # If this path breaks and a token-based emergency publish is required, use
       # .github/workflows/release-manual.yaml instead (see CONTRIBUTING.md).
-      - name: Publish validated package artifact to npm
+      # Cinder must publish first: Chat's peer contract starts at the Cinder
+      # minor released by the same Version Packages pull request.
+      - name: Publish validated Cinder package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'false'
 
+      - name: Publish validated Chat package artifact to npm
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/chat publish:release -- --skip-validation
+        env:
+          NPM_CONFIG_PROVENANCE: 'false'
+
       # Diagnostic dry-run: publish the same staged tarball that
       # validate:consumer installs into the fixture apps.
-      - name: Publish (dry-run)
+      - name: Publish Cinder (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation
+
+      - name: Publish Chat (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        run: bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation

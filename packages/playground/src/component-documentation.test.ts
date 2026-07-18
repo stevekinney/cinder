@@ -7,7 +7,10 @@ import {
   buildComponentDocumentation,
   loadPackageManifestForDocumentation,
   renderReadmeDocumentation,
+  rewriteComponentReadmeLinks,
 } from './component-documentation.ts';
+import { CHAT_COMPONENT_SOURCE } from './component-sources.ts';
+import { discoverComponentDefinitions } from './discover.ts';
 import type { ComponentManifest } from './types.ts';
 
 const COMPONENTS_ROOT = join(import.meta.dir, '..', '..', 'components', 'src', 'components');
@@ -107,6 +110,61 @@ describe('buildComponentDocumentation', () => {
     expect(second.components.map((component) => component.id)).toEqual(
       first.components.map((component) => component.id),
     );
+  });
+
+  it('loads Chat documentation and source links from the extracted package', async () => {
+    const manifest = await analyzeComponent(
+      join(CHAT_COMPONENT_SOURCE.componentsRoot, 'chat', 'chat.svelte'),
+      { importPath: '@lostgradient/chat' },
+    );
+    const packageManifest = await loadPackageManifestForDocumentation(CHAT_COMPONENT_SOURCE);
+    const payload = await buildComponentDocumentation(
+      'chat',
+      manifest,
+      packageManifest,
+      CHAT_COMPONENT_SOURCE,
+    );
+
+    expect(payload.component.importSpecifier).toBe('@lostgradient/chat');
+    expect(
+      rewriteComponentReadmeLinks(
+        '<a href="./chat.a11y.md">Accessibility</a>',
+        'chat',
+        new Set(['chat']),
+        CHAT_COMPONENT_SOURCE,
+      ),
+    ).toContain('github.com/stevekinney/cinder/blob/main/packages/chat/src/lib/components/chat/');
+  });
+
+  it('builds valid documentation for every extracted Chat component', async () => {
+    const allDefinitions = await discoverComponentDefinitions();
+    const definitions = allDefinitions.filter(
+      (definition) => definition.source.id === CHAT_COMPONENT_SOURCE.id,
+    );
+    const packageManifest = await loadPackageManifestForDocumentation(CHAT_COMPONENT_SOURCE);
+    const failures: string[] = [];
+
+    for (const definition of definitions) {
+      const manifest = await analyzeComponent(definition.filePath, {
+        importPath: definition.importPath,
+      });
+      const payload = await buildComponentDocumentation(
+        definition.name,
+        manifest,
+        packageManifest,
+        CHAT_COMPONENT_SOURCE,
+      );
+      const errors = validateComponentDocumentationPayload(payload);
+      if (errors.length > 0) failures.push(`${definition.name}: ${errors.join('; ')}`);
+    }
+
+    expect(definitions.map((definition) => definition.name)).toEqual([
+      'chat',
+      'chat-composer-popover',
+      'chat-conversation-header',
+      'chat-conversation-list',
+    ]);
+    expect(failures).toEqual([]);
   });
 
   it('renders generated README tag references without marking the README unsafe', () => {

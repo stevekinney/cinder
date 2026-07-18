@@ -8,16 +8,29 @@ import {
 
 describe('publishedSvelteCompileFilename', () => {
   it('normalizes workspace and installed package sources to the same filename', () => {
-    const expected = 'node_modules/@lostgradient/cinder/src/components/chat/container/chat.svelte';
+    const expected = 'node_modules/@lostgradient/cinder/src/components/data-grid/data-grid.svelte';
 
     expect(
       publishedSvelteCompileFilename(
-        '/checkout/packages/components/src/components/chat/container/chat.svelte',
+        '/checkout/packages/components/src/components/data-grid/data-grid.svelte',
       ),
     ).toBe(expected);
     expect(
       publishedSvelteCompileFilename(
-        '/consumer/node_modules/@lostgradient/cinder/src/components/chat/container/chat.svelte',
+        '/consumer/node_modules/@lostgradient/cinder/src/components/data-grid/data-grid.svelte',
+      ),
+    ).toBe(expected);
+  });
+
+  it('normalizes the Chat workspace and installed package sources to the same filename', () => {
+    const expected = 'node_modules/@lostgradient/chat/src/lib/components/chat/chat.svelte';
+
+    expect(
+      publishedSvelteCompileFilename('/checkout/packages/chat/src/lib/components/chat/chat.svelte'),
+    ).toBe(expected);
+    expect(
+      publishedSvelteCompileFilename(
+        '/consumer/node_modules/@lostgradient/chat/src/lib/components/chat/chat.svelte',
       ),
     ).toBe(expected);
   });

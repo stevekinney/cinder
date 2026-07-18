@@ -33,6 +33,13 @@ describe('analyzeComponent — button.svelte', () => {
     expect(manifest.importPath).toBe('@lostgradient/cinder/button');
   });
 
+  it('accepts a package-specific public import path', async () => {
+    const manifest = await analyzeComponent(componentPath('button'), {
+      importPath: '@example/components/button',
+    });
+    expect(manifest.importPath).toBe('@example/components/button');
+  });
+
   it('includes a variant prop as a select control', async () => {
     const manifest = await analyzeComponent(componentPath('button'));
     const variant = manifest.props.find((p) => p.name === 'variant');

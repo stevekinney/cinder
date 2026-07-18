@@ -96,6 +96,7 @@ const STYLES_UTILITIES_KEY = './styles/utilities';
 const STYLES_GUARD_KEY = './styles/guard';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
+const ICONS_KEY = './icons';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 
 /**
@@ -113,6 +114,7 @@ const RESERVED_KEYS = new Set([
   STYLES_UTILITIES_KEY,
   STYLES_GUARD_KEY,
   PACKAGE_JSON_KEY,
+  ICONS_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
 ]);
 
@@ -184,6 +186,18 @@ function highlightersShikiExport(): ExportEntry {
     node: './dist/server/highlighters/shiki/index.js',
     import: './src/highlighters/shiki/index.ts',
     default: './dist/highlighters/shiki/index.js',
+  });
+}
+
+/** Canonical conditional entry for the shared Cinder icon barrel. */
+function iconsExport(): ExportEntry {
+  return orderedExportEntry({
+    types: './dist/components/icons/index.d.ts',
+    browser: './src/components/icons/index.ts',
+    node: './dist/server/components/icons/index.js',
+    svelte: './src/components/icons/index.ts',
+    import: './src/components/icons/index.ts',
+    default: './dist/components/icons/index.js',
   });
 }
 
@@ -716,6 +730,7 @@ async function main(): Promise<void> {
       next[key] = stylesExport(cssPath);
     }
     next[STYLES_GUARD_KEY] = stylesGuardExport();
+    next[ICONS_KEY] = iconsExport();
     next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
 
     // Preserve legacy flat component subpaths whose component still exists as
@@ -799,6 +814,14 @@ async function main(): Promise<void> {
       issues.push(`Reserved export "${HIGHLIGHTERS_SHIKI_KEY}" is missing`);
     } else if (JSON.stringify(currentShikiEntry) !== JSON.stringify(expectedShikiEntry)) {
       issues.push(`Stale reserved export "${HIGHLIGHTERS_SHIKI_KEY}"`);
+    }
+
+    const expectedIconsEntry = iconsExport();
+    const currentIconsEntry = existing[ICONS_KEY];
+    if (!currentIconsEntry) {
+      issues.push(`Reserved export "${ICONS_KEY}" is missing`);
+    } else if (JSON.stringify(currentIconsEntry) !== JSON.stringify(expectedIconsEntry)) {
+      issues.push(`Stale reserved export "${ICONS_KEY}"`);
     }
 
     const expectedGuardEntry = stylesGuardExport();

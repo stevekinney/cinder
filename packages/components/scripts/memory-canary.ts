@@ -30,8 +30,8 @@ const packageRoot = resolve(scriptDirectory, '..');
 /**
  * A fixed, diverse slice of component suites: a simple leaf (card), a
  * data-heavy/virtualized component (data-table), a floating/async-search
- * component (combobox), a compound multi-file component with streaming state
- * (chat), a floating-UI positioning component (tooltip), and a floating
+ * component (combobox), a compound multi-file component with command state
+ * (command-palette), a floating-UI positioning component (tooltip), and a floating
  * list/menu component (dropdown). Deliberately NOT derived from a diff or
  * component count — this is a fixed representative sample so the number is
  * comparable run over run.
@@ -40,7 +40,7 @@ export const CANARY_COMPONENT_SLUGS = [
   'card',
   'data-table',
   'combobox',
-  'chat',
+  'command-palette',
   'tooltip',
   'dropdown',
 ] as const;

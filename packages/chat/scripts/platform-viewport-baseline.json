@@ -1,0 +1,7 @@
+[
+  {
+    "filePath": "src/components/chat/message/chat-message.svelte",
+    "query": "@media (max-width: 480px)",
+    "allowedCount": 2
+  }
+]

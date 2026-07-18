@@ -1,16 +1,16 @@
 /**
  * Pre-1.0 changeset bump-level guard.
  *
- * While `@lostgradient/cinder` is pre-release (version `< 1.0.0`), the project
- * policy is that breaking changes ship as MINOR bumps, not MAJOR — a `0.x` line
- * signals "no stability promise yet", so every release stays on `0.y.z`. A stray
- * `major` changeset silently rolls the package to `1.0.0`: `changeset version`
- * applies it without prompting, and the release workflow then opens a "Version
- * Packages" PR proposing `1.0.0` — a stability commitment nobody approved.
+ * While a public package is pre-release (version `< 1.0.0`), the project policy
+ * is that breaking changes ship as MINOR bumps, not MAJOR — a `0.x` line signals
+ * "no stability promise yet", so every release stays on `0.y.z`. A stray `major`
+ * changeset silently rolls the package to `1.0.0`: `changeset version` applies it
+ * without prompting, and the release workflow then opens a "Version Packages"
+ * pull request proposing `1.0.0` — a stability commitment nobody approved.
  *
- * This guard reads the package version and every changeset under the repo-root
- * `.changeset/` directory and fails if any changeset requests a `major` bump for
- * `@lostgradient/cinder` while the version is still `< 1.0.0`. It runs inside
+ * This guard reads every public package version and every changeset under the
+ * repository-root `.changeset/` directory and fails if any changeset requests a
+ * `major` bump for a package that is still `< 1.0.0`. It runs inside
  * `bun run validate`, which the release workflow executes BEFORE the changesets
  * action — so a mislabeled changeset turns CI red on the branch that introduced
  * it instead of surfacing as a surprise major-version PR on `main`.
@@ -28,13 +28,24 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
 const repositoryRoot = resolve(componentsRoot, '..', '..');
 
-const PACKAGE_NAME = '@lostgradient/cinder';
+const DEFAULT_PACKAGE_NAME = '@lostgradient/cinder';
+const PUBLIC_PACKAGE_DIRECTORIES = ['packages/components', 'packages/chat'] as const;
 
 export type ChangesetBumpViolation = {
   /** Changeset file path, relative to the repository root. */
   filePath: string;
   /** The disallowed bump level found for the package (always `major` here). */
   bump: string;
+};
+
+export type PublicPackageBumpViolation = ChangesetBumpViolation & {
+  packageName: string;
+  version: string;
+};
+
+export type PublicPackageIdentity = {
+  packageName: string;
+  version: string;
 };
 
 /**
@@ -76,7 +87,7 @@ export async function checkChangesetPrereleaseBumps(options: {
   relativeTo?: string;
 }): Promise<ChangesetBumpViolation[]> {
   const { changesetDirectory, version } = options;
-  const packageName = options.packageName ?? PACKAGE_NAME;
+  const packageName = options.packageName ?? DEFAULT_PACKAGE_NAME;
   const relativeTo = options.relativeTo ?? process.cwd();
 
   if (!isPreRelease(version)) return [];
@@ -96,48 +107,79 @@ export async function checkChangesetPrereleaseBumps(options: {
   return violations;
 }
 
+/** Check every public package against the same pre-1.0 bump policy. */
+export async function checkPublicPackagesPrereleaseBumps(options: {
+  changesetDirectory: string;
+  packages: readonly PublicPackageIdentity[];
+  relativeTo?: string;
+}): Promise<PublicPackageBumpViolation[]> {
+  const violations = await Promise.all(
+    options.packages.map(async ({ packageName, version }) => {
+      const packageViolations = await checkChangesetPrereleaseBumps({
+        changesetDirectory: options.changesetDirectory,
+        version,
+        packageName,
+        ...(options.relativeTo === undefined ? {} : { relativeTo: options.relativeTo }),
+      });
+      return packageViolations.map((violation) => ({
+        ...violation,
+        packageName,
+        version,
+      }));
+    }),
+  );
+  return violations.flat();
+}
+
 /** Read and validate the `version` field from a parsed package.json value. */
-function readVersion(packageJson: unknown): string {
+function readPackageIdentity(packageJson: unknown, manifestPath: string): PublicPackageIdentity {
   if (
     typeof packageJson === 'object' &&
     packageJson !== null &&
+    'name' in packageJson &&
+    typeof packageJson.name === 'string' &&
     'version' in packageJson &&
     typeof packageJson.version === 'string'
   ) {
-    return packageJson.version;
+    return { packageName: packageJson.name, version: packageJson.version };
   }
-  throw new Error('packages/components/package.json has no string "version" field.');
+  throw new Error(`${manifestPath} must have string "name" and "version" fields.`);
 }
 
 async function main(): Promise<void> {
-  const packageJson: unknown = await Bun.file(resolve(componentsRoot, 'package.json')).json();
-  const version = readVersion(packageJson);
-  const violations = await checkChangesetPrereleaseBumps({
+  const packages = await Promise.all(
+    PUBLIC_PACKAGE_DIRECTORIES.map(async (packageDirectory) => {
+      const manifestPath = resolve(repositoryRoot, packageDirectory, 'package.json');
+      const packageJson: unknown = await Bun.file(manifestPath).json();
+      return readPackageIdentity(packageJson, manifestPath);
+    }),
+  );
+  const violations = await checkPublicPackagesPrereleaseBumps({
     changesetDirectory: resolve(repositoryRoot, '.changeset'),
-    version,
+    packages,
     relativeTo: repositoryRoot,
   });
 
   if (violations.length === 0) {
-    // Once the package is stable (>= 1.0.0) the guard does not scan and major
-    // bumps are allowed — say so explicitly rather than implying "no majors exist".
-    const reason = isPreRelease(version)
-      ? `no major changesets while ${PACKAGE_NAME} is pre-1.0`
-      : `${PACKAGE_NAME} is stable (>= 1.0.0); major bumps allowed, guard not applied`;
+    const packageSummary = packages
+      .map(({ packageName, version }) => `${packageName}@${version}`)
+      .join(', ');
     process.stdout.write(
-      `check-changeset-prerelease-bumps — OK (${reason}; version ${version}).\n`,
+      `check-changeset-prerelease-bumps — OK (no disallowed major changesets; ${packageSummary}).\n`,
     );
     return;
   }
 
   process.stderr.write(
-    `check-changeset-prerelease-bumps — major changeset(s) found while ${PACKAGE_NAME} is pre-1.0 (${version}).\n` +
+    'check-changeset-prerelease-bumps — major changeset(s) found for pre-1.0 public packages.\n' +
       'Pre-1.0 policy: breaking changes ship as a MINOR bump, not MAJOR. A major bump would\n' +
       'roll the package to 1.0.0 and make the release workflow open an unapproved version PR.\n' +
       "Change these changesets' bump level to `minor` (or `patch`):\n\n",
   );
   for (const violation of violations) {
-    process.stderr.write(`  ${violation.filePath}\n`);
+    process.stderr.write(
+      `  ${violation.filePath}: ${violation.packageName}@${violation.version}\n`,
+    );
   }
   process.exit(1);
 }

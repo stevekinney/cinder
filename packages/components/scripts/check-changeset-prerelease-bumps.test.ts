@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   bumpLevelForPackage,
   checkChangesetPrereleaseBumps,
+  checkPublicPackagesPrereleaseBumps,
   isPreRelease,
 } from './check-changeset-prerelease-bumps.ts';
 
@@ -115,6 +116,30 @@ describe('checkChangesetPrereleaseBumps', () => {
     });
     expect(violations.map((v) => v.filePath)).toEqual(['breaking.md']);
     expect(violations.map((v) => v.bump)).toEqual(['major']);
+  });
+
+  it('checks every public package independently', async () => {
+    const dir = makeChangesetDir({
+      'breaking-chat.md': `---\n'@lostgradient/chat': major\n---\n\nBreaking chat change.\n`,
+      'cinder-feature.md': changeset('minor'),
+    });
+    const violations = await checkPublicPackagesPrereleaseBumps({
+      changesetDirectory: dir,
+      packages: [
+        { packageName: PACKAGE, version: '0.15.0' },
+        { packageName: '@lostgradient/chat', version: '0.1.0' },
+      ],
+      relativeTo: dir,
+    });
+
+    expect(violations).toEqual([
+      {
+        bump: 'major',
+        filePath: 'breaking-chat.md',
+        packageName: '@lostgradient/chat',
+        version: '0.1.0',
+      },
+    ]);
   });
 
   it('passes when every pre-1.0 changeset is minor or patch', async () => {
