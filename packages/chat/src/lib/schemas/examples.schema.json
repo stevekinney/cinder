@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "examples.schema.json",
+  "title": "cinder component examples",
+  "description": "Per-component code examples derived from playground .example.svelte files. Agents fetch this to get canonical usage snippets they can copy into a consumer application.",
+  "type": "object",
+  "required": ["$schema", "component", "import", "examples"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Relative path to the JSON Schema that validates this file."
+    },
+    "component": {
+      "type": "string",
+      "description": "Kebab-case id of the component these examples demonstrate. Must match a component id in components.json.",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "examples": ["button"]
+    },
+    "import": {
+      "type": "string",
+      "description": "The import specifier consumers use to import the component. Matches the component's 'import' field in components.json.",
+      "examples": ["cinder/button"]
+    },
+    "examples": {
+      "type": "array",
+      "description": "Ordered list of code examples. Each example is a self-contained Svelte snippet.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "description", "code"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable kebab-case identifier for this example. Derived from the .example.svelte filename (without the extension).",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "examples": ["primary", "with-icons", "as-link"]
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable title for this example.",
+            "minLength": 1,
+            "examples": ["Primary button", "With icons"]
+          },
+          "description": {
+            "type": "string",
+            "description": "One-sentence description of what this example demonstrates.",
+            "minLength": 1
+          },
+          "featured": {
+            "type": "boolean",
+            "const": true,
+            "description": "When true, the playground promotes this example on the component Overview."
+          },
+          "code": {
+            "type": "string",
+            "description": "The complete, self-contained Svelte snippet source. Consumers can paste this directly into a .svelte file. Imports use the published cinder subpath specifiers.",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -22,6 +22,7 @@ on:
   pull_request:
     paths:
       - 'packages/components/**'
+      - 'packages/chat/**'
       - 'packages/*/package.json'
       - 'packages/*/scripts/**'
       - 'packages/*/tsconfig*.json'
@@ -66,6 +67,7 @@ on:
       - main
     paths:
       - 'packages/components/**'
+      - 'packages/chat/**'
       - 'packages/*/package.json'
       - 'packages/*/scripts/**'
       - 'packages/*/tsconfig*.json'
@@ -272,7 +274,14 @@ jobs:
       # while the generator's own files are unchanged (so `test:changed` would miss
       # it). Sub-second; mirrors the aggregator gate above.
       - name: Check generated component artifacts are up to date
-        run: bun run --filter=@lostgradient/cinder components:check
+        run: |
+          bun run --filter=@lostgradient/cinder components:check
+          bun run --filter=@lostgradient/chat components:check
+          bun run --filter=@lostgradient/cinder build
+          bun run --filter=@lostgradient/chat build
+
+      - name: Run Chat unit tests with coverage
+        run: bun run --filter=@lostgradient/chat test:coverage
 
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and

@@ -19,6 +19,7 @@ on:
     paths:
       - '.changeset/**'
       - 'packages/components/package.json'
+      - 'packages/chat/package.json'
       - 'packages/components/scripts/check-changeset-prerelease-bumps.ts'
       - '.github/workflows/changeset-guard.yaml'
   workflow_dispatch: {}

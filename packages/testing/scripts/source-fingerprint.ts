@@ -11,6 +11,7 @@ import { join } from 'node:path';
 export const FINGERPRINT_SOURCE_DIRECTORIES = [
   'packages/playground/src',
   'packages/components/src',
+  'packages/chat/src',
   // The playground server itself and its build helpers live under these
   // `scripts` trees (playground-server.ts imports e.g. components'
   // scripts/svelte-plugin.ts and scripts/lib/visual-fixtures/loader.ts). An
@@ -21,14 +22,24 @@ export const FINGERPRINT_SOURCE_DIRECTORIES = [
   // the wrong bytes.
   'packages/components/scripts',
   'packages/playground/scripts',
-  // The playground server prebuilds and imports these private upstream
-  // packages (see `playgroundBundleDependencyPackages` in start-server.ts).
-  // An edit to one of them must invalidate the fingerprint too, or a
-  // running server built from stale upstream code looks fresh.
+  // The playground server prebuilds these upstream workspaces plus the public
+  // Cinder and Chat packages (see `playgroundBundleDependencyPackages` in
+  // start-server.ts). The public packages already have source coverage above;
+  // these four private source trees must be listed explicitly too, or a running
+  // server built from stale upstream code looks fresh.
   'packages/diff/src',
   'packages/markdown/src',
   'packages/editor/src',
   'packages/commentary/src',
+] as const;
+
+/** Package metadata read by playground discovery, documentation, and bundling. */
+export const FINGERPRINT_SOURCE_FILES = [
+  'packages/playground/package.json',
+  'packages/components/package.json',
+  'packages/components/components.json',
+  'packages/chat/package.json',
+  'packages/chat/components.json',
 ] as const;
 
 /**
@@ -84,6 +95,14 @@ export function newestSourceMtimeMs(repoRoot: string): number | null {
   for (const relativeDirectory of FINGERPRINT_SOURCE_DIRECTORIES) {
     const candidate = newestFileMtimeMs(join(repoRoot, relativeDirectory));
     if (candidate !== null && (newest === null || candidate > newest)) newest = candidate;
+  }
+  for (const relativeFile of FINGERPRINT_SOURCE_FILES) {
+    try {
+      const candidate = statSync(join(repoRoot, relativeFile)).mtimeMs;
+      if (newest === null || candidate > newest) newest = candidate;
+    } catch {
+      // A source package may be absent while a branch is being assembled.
+    }
   }
   return newest;
 }

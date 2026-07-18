@@ -1,4 +1,4 @@
-import { dirname, join, posix } from 'node:path';
+import { join, posix } from 'node:path';
 
 import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
 
@@ -11,13 +11,10 @@ import type {
   DocumentationReadme,
   JsonValue,
 } from './component-documentation-types.ts';
+import { CINDER_COMPONENT_SOURCE, type ComponentSource } from './component-sources.ts';
+import { discoverComponents } from './discover.ts';
 import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
 import type { ComponentManifest } from './types.ts';
-
-const PLAYGROUND_ROOT = dirname(import.meta.dirname);
-const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components');
-const COMPONENTS_SOURCE_ROOT = join(COMPONENTS_ROOT, 'src', 'components');
-const COMPONENTS_MANIFEST_PATH = join(COMPONENTS_ROOT, 'components.json');
 
 type PackageComponentEntry = {
   name: string;
@@ -150,12 +147,14 @@ function isPackageManifest(value: unknown): value is PackageManifest {
   );
 }
 
-export async function loadPackageManifestForDocumentation(): Promise<PackageManifest> {
-  const raw: unknown = await Bun.file(COMPONENTS_MANIFEST_PATH).json();
+export async function loadPackageManifestForDocumentation(
+  componentSource: ComponentSource = CINDER_COMPONENT_SOURCE,
+): Promise<PackageManifest> {
+  const raw: unknown = await Bun.file(componentSource.manifestPath).json();
   if (!isPackageManifest(raw)) {
     throw new ComponentDocumentationError(
       'malformed-components-manifest',
-      'packages/components/components.json does not match the documentation manifest shape',
+      `${componentSource.manifestPath} does not match the documentation manifest shape`,
     );
   }
   return raw;
@@ -211,12 +210,20 @@ async function readOptionalJson(path: string, label: string): Promise<JsonValue 
   return await parseJsonArtifact(path, label);
 }
 
-function artifactPath(componentName: string, artifactName: DocumentationArtifactName): string {
-  return join(COMPONENTS_SOURCE_ROOT, componentName, `${componentName}.${artifactName}.json`);
+function artifactPath(
+  componentSource: ComponentSource,
+  componentName: string,
+  artifactName: DocumentationArtifactName,
+): string {
+  return join(
+    componentSource.componentsRoot,
+    componentName,
+    `${componentName}.${artifactName}.json`,
+  );
 }
 
-function readmePath(componentName: string): string {
-  return join(COMPONENTS_SOURCE_ROOT, componentName, 'README.md');
+function readmePath(componentSource: ComponentSource, componentName: string): string {
+  return join(componentSource.componentsRoot, componentName, 'README.md');
 }
 
 const generatedRegionPattern =
@@ -269,11 +276,16 @@ function trimReadmeForOverview(markdown: string): string {
   return markdown.replace(leadingTitlePattern, '').replace(generatedSectionWithHeadingPattern, '');
 }
 
-function componentReadmeSourceHref(componentName: string, href: string): string {
-  return repositorySourceHref(`packages/components/src/components/${componentName}`, href);
+function componentReadmeSourceHref(
+  componentSource: ComponentSource,
+  componentName: string,
+  href: string,
+): string {
+  return repositorySourceHref(`${componentSource.repositoryComponentsRoot}/${componentName}`, href);
 }
 
 function componentReadmeHref(
+  componentSource: ComponentSource,
   componentName: string,
   href: string,
   componentIds: ReadonlySet<string>,
@@ -285,7 +297,7 @@ function componentReadmeHref(
     return { href: `/c/${match[1]}`, attributes: ' target="_top"' };
   }
   return {
-    href: componentReadmeSourceHref(componentName, href),
+    href: componentReadmeSourceHref(componentSource, componentName, href),
     attributes: ' target="_blank" rel="noopener noreferrer"',
   };
 }
@@ -294,9 +306,10 @@ export function rewriteComponentReadmeLinks(
   html: string,
   componentName: string,
   componentIds: ReadonlySet<string>,
+  componentSource: ComponentSource = CINDER_COMPONENT_SOURCE,
 ): string {
   return rewriteRelativeRenderedMarkdownLinks(html, (href) =>
-    componentReadmeHref(componentName, href, componentIds),
+    componentReadmeHref(componentSource, componentName, href, componentIds),
   );
 }
 
@@ -353,34 +366,48 @@ export async function buildComponentDocumentation(
   componentName: string,
   propsManifest: ComponentManifest,
   packageManifestOverride?: PackageManifest,
+  componentSource: ComponentSource = CINDER_COMPONENT_SOURCE,
 ): Promise<ComponentDocumentationPayload> {
-  const packageManifest = packageManifestOverride ?? (await loadPackageManifestForDocumentation());
+  const packageManifest =
+    packageManifestOverride ?? (await loadPackageManifestForDocumentation(componentSource));
   const entry = packageManifest.components.find((component) => component.id === componentName);
   if (entry === undefined) {
     throw new ComponentDocumentationError(
       'unknown-component',
-      `Component "${componentName}" is not listed in packages/components/components.json`,
+      `Component "${componentName}" is not listed in ${componentSource.manifestPath}`,
     );
   }
 
   const readmeMarkdownPromise = readRequiredText(
-    readmePath(componentName),
+    readmePath(componentSource, componentName),
     `${componentName} README.md`,
   );
   const schemaPromise = readRequiredJson(
-    artifactPath(componentName, 'schema'),
+    artifactPath(componentSource, componentName, 'schema'),
     `${componentName} schema`,
   );
   const variablesPromise = readRequiredJson(
-    artifactPath(componentName, 'variables'),
+    artifactPath(componentSource, componentName, 'variables'),
     `${componentName} variables`,
   );
   const constraintsPromise = entry.hasConstraints
-    ? readRequiredJson(artifactPath(componentName, 'constraints'), `${componentName} constraints`)
-    : readOptionalJson(artifactPath(componentName, 'constraints'), `${componentName} constraints`);
+    ? readRequiredJson(
+        artifactPath(componentSource, componentName, 'constraints'),
+        `${componentName} constraints`,
+      )
+    : readOptionalJson(
+        artifactPath(componentSource, componentName, 'constraints'),
+        `${componentName} constraints`,
+      );
   const examplesPromise = entry.hasExamples
-    ? readRequiredJson(artifactPath(componentName, 'examples'), `${componentName} examples`)
-    : readOptionalJson(artifactPath(componentName, 'examples'), `${componentName} examples`);
+    ? readRequiredJson(
+        artifactPath(componentSource, componentName, 'examples'),
+        `${componentName} examples`,
+      )
+    : readOptionalJson(
+        artifactPath(componentSource, componentName, 'examples'),
+        `${componentName} examples`,
+      );
 
   const [readmeMarkdown, schema, variables, constraints, examples] = await Promise.all([
     readmeMarkdownPromise,
@@ -390,9 +417,18 @@ export async function buildComponentDocumentation(
     examplesPromise,
     initializeHighlighter(),
   ]);
-  const componentIds = new Set(packageManifest.components.map((component) => component.id));
+  // README relationships can cross package boundaries (for example Chat's
+  // composer popover links to Cinder's CommandMenu). Route every component
+  // known to the shared playground internally; only true file links should
+  // fall through to a repository URL.
+  const componentIds = new Set(await discoverComponents());
   const readme = renderReadmeDocumentation(readmeMarkdown);
-  readme.html = rewriteComponentReadmeLinks(readme.html, componentName, componentIds);
+  readme.html = rewriteComponentReadmeLinks(
+    readme.html,
+    componentName,
+    componentIds,
+    componentSource,
+  );
   const manifestEntry: JsonValue = {
     name: entry.name,
     id: entry.id,

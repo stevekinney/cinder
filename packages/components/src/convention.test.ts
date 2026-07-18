@@ -58,12 +58,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'tooltip',
 ]);
 
-const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set([
-  'chat',
-  'diff-viewer',
-  'review-editor',
-  'markdown-editor',
-]);
+const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set(['diff-viewer', 'review-editor', 'markdown-editor']);
 
 /**
  * Components that intentionally render no class-bearing root element and
@@ -86,9 +81,6 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
   // the consumer `class` flows through `{...rest}` to schema-form-body.svelte, whose
   // `<form>` root merges it via `classNames('cinder-schema-form', customClassName)`.
   'schema-form',
-  // chat-composer-popover.svelte renders the consumer-provided composer snippet
-  // and a CommandMenu instance. It has no class-bearing root element of its own.
-  'chat-composer-popover',
 ]);
 
 /**
@@ -132,7 +124,7 @@ async function getSvelteFiles(): Promise<string[]> {
         await readFile(join(COMPONENTS_DIR, inner), 'utf-8');
         files.push(inner);
       } catch {
-        // Directory without a matching .svelte (e.g. chat container) — skip.
+        // Directory without a matching top-level .svelte — skip.
       }
     }
   }

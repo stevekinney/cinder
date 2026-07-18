@@ -5,11 +5,6 @@
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/chat/message/chat-message.svelte",
-    "query": "@media (max-width: 480px)",
-    "allowedCount": 2
-  },
-  {
     "filePath": "src/components/diff-viewer/diff-summary-bar.svelte",
     "query": "@media (max-width: 360px)",
     "allowedCount": 1

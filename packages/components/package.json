@@ -63,6 +63,14 @@
       "import": "./src/styles/base-guard.ts",
       "default": "./dist/styles/base-guard.js"
     },
+    "./icons": {
+      "types": "./dist/components/icons/index.d.ts",
+      "browser": "./src/components/icons/index.ts",
+      "node": "./dist/server/components/icons/index.js",
+      "svelte": "./src/components/icons/index.ts",
+      "import": "./src/components/icons/index.ts",
+      "default": "./dist/components/icons/index.js"
+    },
     "./highlighters/shiki": {
       "types": "./dist/highlighters/shiki/index.d.ts",
       "browser": "./src/highlighters/shiki/index.ts",
@@ -934,134 +942,6 @@
     "./carousel/examples": {
       "import": "./src/components/carousel/carousel.examples.json",
       "default": "./src/components/carousel/carousel.examples.json"
-    },
-    "./chat": {
-      "types": "./dist/components/chat/index.d.ts",
-      "browser": "./src/components/chat/index.ts",
-      "node": "./dist/server/components/chat/index.js",
-      "svelte": "./src/components/chat/index.ts",
-      "import": "./src/components/chat/index.ts",
-      "default": "./dist/components/chat/index.js"
-    },
-    "./chat/schema": {
-      "types": "./dist/components/chat/chat.schema.d.ts",
-      "browser": "./src/components/chat/chat.schema.ts",
-      "node": "./dist/server/components/chat/chat.schema.js",
-      "svelte": "./src/components/chat/chat.schema.ts",
-      "import": "./src/components/chat/chat.schema.ts",
-      "default": "./dist/components/chat/chat.schema.js"
-    },
-    "./chat/variables": {
-      "types": "./dist/components/chat/chat.variables.d.ts",
-      "browser": "./src/components/chat/chat.variables.ts",
-      "node": "./dist/server/components/chat/chat.variables.js",
-      "svelte": "./src/components/chat/chat.variables.ts",
-      "import": "./src/components/chat/chat.variables.ts",
-      "default": "./dist/components/chat/chat.variables.js"
-    },
-    "./chat/styles": {
-      "types": "./dist/components/chat/chat.css.d.ts",
-      "default": "./dist/components/chat/chat.css"
-    },
-    "./chat/examples": {
-      "import": "./src/components/chat/chat.examples.json",
-      "default": "./src/components/chat/chat.examples.json"
-    },
-    "./chat-composer-popover": {
-      "types": "./dist/components/chat-composer-popover/index.d.ts",
-      "browser": "./src/components/chat-composer-popover/index.ts",
-      "node": "./dist/server/components/chat-composer-popover/index.js",
-      "svelte": "./src/components/chat-composer-popover/index.ts",
-      "import": "./src/components/chat-composer-popover/index.ts",
-      "default": "./dist/components/chat-composer-popover/index.js"
-    },
-    "./chat-composer-popover/schema": {
-      "types": "./dist/components/chat-composer-popover/chat-composer-popover.schema.d.ts",
-      "browser": "./src/components/chat-composer-popover/chat-composer-popover.schema.ts",
-      "node": "./dist/server/components/chat-composer-popover/chat-composer-popover.schema.js",
-      "svelte": "./src/components/chat-composer-popover/chat-composer-popover.schema.ts",
-      "import": "./src/components/chat-composer-popover/chat-composer-popover.schema.ts",
-      "default": "./dist/components/chat-composer-popover/chat-composer-popover.schema.js"
-    },
-    "./chat-composer-popover/variables": {
-      "types": "./dist/components/chat-composer-popover/chat-composer-popover.variables.d.ts",
-      "browser": "./src/components/chat-composer-popover/chat-composer-popover.variables.ts",
-      "node": "./dist/server/components/chat-composer-popover/chat-composer-popover.variables.js",
-      "svelte": "./src/components/chat-composer-popover/chat-composer-popover.variables.ts",
-      "import": "./src/components/chat-composer-popover/chat-composer-popover.variables.ts",
-      "default": "./dist/components/chat-composer-popover/chat-composer-popover.variables.js"
-    },
-    "./chat-composer-popover/styles": {
-      "types": "./dist/components/chat-composer-popover/chat-composer-popover.css.d.ts",
-      "default": "./dist/components/chat-composer-popover/chat-composer-popover.css"
-    },
-    "./chat-composer-popover/examples": {
-      "import": "./src/components/chat-composer-popover/chat-composer-popover.examples.json",
-      "default": "./src/components/chat-composer-popover/chat-composer-popover.examples.json"
-    },
-    "./chat-conversation-header": {
-      "types": "./dist/components/chat-conversation-header/index.d.ts",
-      "browser": "./src/components/chat-conversation-header/index.ts",
-      "node": "./dist/server/components/chat-conversation-header/index.js",
-      "svelte": "./src/components/chat-conversation-header/index.ts",
-      "import": "./src/components/chat-conversation-header/index.ts",
-      "default": "./dist/components/chat-conversation-header/index.js"
-    },
-    "./chat-conversation-header/schema": {
-      "types": "./dist/components/chat-conversation-header/chat-conversation-header.schema.d.ts",
-      "browser": "./src/components/chat-conversation-header/chat-conversation-header.schema.ts",
-      "node": "./dist/server/components/chat-conversation-header/chat-conversation-header.schema.js",
-      "svelte": "./src/components/chat-conversation-header/chat-conversation-header.schema.ts",
-      "import": "./src/components/chat-conversation-header/chat-conversation-header.schema.ts",
-      "default": "./dist/components/chat-conversation-header/chat-conversation-header.schema.js"
-    },
-    "./chat-conversation-header/variables": {
-      "types": "./dist/components/chat-conversation-header/chat-conversation-header.variables.d.ts",
-      "browser": "./src/components/chat-conversation-header/chat-conversation-header.variables.ts",
-      "node": "./dist/server/components/chat-conversation-header/chat-conversation-header.variables.js",
-      "svelte": "./src/components/chat-conversation-header/chat-conversation-header.variables.ts",
-      "import": "./src/components/chat-conversation-header/chat-conversation-header.variables.ts",
-      "default": "./dist/components/chat-conversation-header/chat-conversation-header.variables.js"
-    },
-    "./chat-conversation-header/styles": {
-      "types": "./dist/components/chat-conversation-header/chat-conversation-header.css.d.ts",
-      "default": "./dist/components/chat-conversation-header/chat-conversation-header.css"
-    },
-    "./chat-conversation-header/examples": {
-      "import": "./src/components/chat-conversation-header/chat-conversation-header.examples.json",
-      "default": "./src/components/chat-conversation-header/chat-conversation-header.examples.json"
-    },
-    "./chat-conversation-list": {
-      "types": "./dist/components/chat-conversation-list/index.d.ts",
-      "browser": "./src/components/chat-conversation-list/index.ts",
-      "node": "./dist/server/components/chat-conversation-list/index.js",
-      "svelte": "./src/components/chat-conversation-list/index.ts",
-      "import": "./src/components/chat-conversation-list/index.ts",
-      "default": "./dist/components/chat-conversation-list/index.js"
-    },
-    "./chat-conversation-list/schema": {
-      "types": "./dist/components/chat-conversation-list/chat-conversation-list.schema.d.ts",
-      "browser": "./src/components/chat-conversation-list/chat-conversation-list.schema.ts",
-      "node": "./dist/server/components/chat-conversation-list/chat-conversation-list.schema.js",
-      "svelte": "./src/components/chat-conversation-list/chat-conversation-list.schema.ts",
-      "import": "./src/components/chat-conversation-list/chat-conversation-list.schema.ts",
-      "default": "./dist/components/chat-conversation-list/chat-conversation-list.schema.js"
-    },
-    "./chat-conversation-list/variables": {
-      "types": "./dist/components/chat-conversation-list/chat-conversation-list.variables.d.ts",
-      "browser": "./src/components/chat-conversation-list/chat-conversation-list.variables.ts",
-      "node": "./dist/server/components/chat-conversation-list/chat-conversation-list.variables.js",
-      "svelte": "./src/components/chat-conversation-list/chat-conversation-list.variables.ts",
-      "import": "./src/components/chat-conversation-list/chat-conversation-list.variables.ts",
-      "default": "./dist/components/chat-conversation-list/chat-conversation-list.variables.js"
-    },
-    "./chat-conversation-list/styles": {
-      "types": "./dist/components/chat-conversation-list/chat-conversation-list.css.d.ts",
-      "default": "./dist/components/chat-conversation-list/chat-conversation-list.css"
-    },
-    "./chat-conversation-list/examples": {
-      "import": "./src/components/chat-conversation-list/chat-conversation-list.examples.json",
-      "default": "./src/components/chat-conversation-list/chat-conversation-list.examples.json"
     },
     "./checkbox": {
       "types": "./dist/components/checkbox/index.d.ts",
@@ -6668,7 +6548,6 @@
     "@types/unist": "^3.0.0",
     "ajv": "^8",
     "comlink": "^4.4.2",
-    "conversationalist": "^0.2.1",
     "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
     "hast-util-sanitize": "^5.0.0",
@@ -6689,6 +6568,7 @@
     "zod": "4.4.1"
   },
   "devDependencies": {
+    "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
     "@cinder/commentary": "workspace:*",
     "@cinder/diff": "workspace:*",

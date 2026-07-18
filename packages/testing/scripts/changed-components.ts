@@ -23,6 +23,8 @@
  * Beyond component source, two diff categories also map to slugs directly:
  *   - `packages/playground/src/examples/<slug>/…` — a component's playground
  *     example feeds its rendered fixture, so an example change retests `<slug>`.
+ *   - source below a configured extracted component package — retests that
+ *     package's complete component family, whose internal graph is cohesive.
  * Everything the graph cannot place falls through to `computeScope`, which
  * force-fulls on anything it cannot map.
  */
@@ -33,7 +35,6 @@ import { fileURLToPath } from 'node:url';
 
 import {
   computeScope,
-  loadKnownSlugs,
   loadSourceFiles,
   type ScopeDecision,
 } from '../../components/scripts/component-graph.ts';
@@ -42,7 +43,12 @@ import {
 // any playground runtime. Threaded into computeScope so the scope job's emitted
 // slugs match the Playwright runner's manifest vocabulary (compose-only leaves
 // like `feed-event` have no standalone page and must not be emitted).
-import { COMPOSE_ONLY_COMPONENTS } from '../../playground/src/discover.ts';
+import {
+  CINDER_COMPONENT_SOURCE,
+  COMPONENT_SOURCES,
+  type ComponentSource,
+} from '../../playground/src/component-sources.ts';
+import { COMPOSE_ONLY_COMPONENTS, discoverComponents } from '../../playground/src/discover.ts';
 import { parseComponentFilter } from '../src/helpers/component-filter.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -51,6 +57,23 @@ const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
 
 /** `packages/playground/src/examples/<slug>/…` → `<slug>`. */
 const examplePattern = /^packages\/playground\/src\/examples\/([a-z0-9][a-z0-9-]*)\//;
+const extractedComponentSources = COMPONENT_SOURCES.filter(
+  (source) => source.id !== CINDER_COMPONENT_SOURCE.id && source.componentNames !== null,
+);
+
+function extractedComponentSourceMatch(
+  path: string,
+): { componentName: string; source: ComponentSource } | null {
+  for (const source of extractedComponentSources) {
+    const prefix = `${source.repositoryComponentsRoot}/`;
+    if (!path.startsWith(prefix)) continue;
+    const componentName = path.slice(prefix.length).split('/')[0];
+    if (componentName !== undefined && componentName.length > 0) {
+      return { componentName, source };
+    }
+  }
+  return null;
+}
 
 export type Decision =
   | { mode: 'full'; reason: string }
@@ -101,19 +124,32 @@ export function decide(
   composeOnlySlugs: ReadonlySet<string> = COMPOSE_ONLY_COMPONENTS,
 ): Decision {
   const cleaned = changedFiles.map((line) => line.trim()).filter((line) => line.length > 0);
+  const deletedFileSet = new Set(deletedFiles);
 
   // Example changes map directly to a slug. Collect them, and hand the rest to
   // the graph. An example for an UNKNOWN slug forces full (mirrors the graph's
   // unknown-slug guard) rather than silently inventing a slug.
   const exampleSlugs = new Set<string>();
+  const extractedPackageSlugs = new Set<string>();
   const nonExampleChanges: string[] = [];
   for (const path of cleaned) {
-    const match = examplePattern.exec(path);
-    if (match?.[1] !== undefined) {
-      if (!knownSlugs.has(match[1])) {
+    const exampleMatch = examplePattern.exec(path);
+    const extractedSourceMatch = extractedComponentSourceMatch(path);
+    if (exampleMatch?.[1] !== undefined) {
+      if (!knownSlugs.has(exampleMatch[1])) {
         return { mode: 'full', reason: `example for unknown slug: ${path}` };
       }
-      exampleSlugs.add(match[1]);
+      exampleSlugs.add(exampleMatch[1]);
+    } else if (extractedSourceMatch !== null) {
+      if (!knownSlugs.has(extractedSourceMatch.componentName)) {
+        return { mode: 'full', reason: `source for unknown extracted slug: ${path}` };
+      }
+      if (deletedFileSet.has(path)) {
+        return { mode: 'full', reason: `deleted extracted-package source: ${path}` };
+      }
+      for (const componentName of extractedSourceMatch.source.componentNames ?? []) {
+        if (knownSlugs.has(componentName)) extractedPackageSlugs.add(componentName);
+      }
     } else {
       nonExampleChanges.push(path);
     }
@@ -131,13 +167,33 @@ export function decide(
     // If the ONLY changes were examples (the graph saw nothing to map and said
     // "no component-mapped changes"), the example slugs are still a valid
     // filtered scope. Any other full reason (real force-full trigger) wins.
-    if (exampleSlugs.size > 0 && graphDecision.reason === 'no component-mapped changes detected') {
-      return { mode: 'filtered', components: [...exampleSlugs].toSorted() };
+    if (
+      (exampleSlugs.size > 0 || extractedPackageSlugs.size > 0) &&
+      graphDecision.reason === 'no component-mapped changes detected'
+    ) {
+      return {
+        mode: 'filtered',
+        components: [...exampleSlugs, ...extractedPackageSlugs].toSorted(),
+      };
     }
     return { mode: 'full', reason: graphDecision.reason };
   }
 
-  const components = new Set<string>([...graphDecision.slugs, ...exampleSlugs]);
+  const components = new Set<string>([
+    ...graphDecision.slugs,
+    ...exampleSlugs,
+    ...extractedPackageSlugs,
+  ]);
+  const cinderSourceChanged = nonExampleChanges.some((path) =>
+    path.startsWith('packages/components/src/'),
+  );
+  if (cinderSourceChanged) {
+    for (const source of extractedComponentSources) {
+      for (const componentName of source.componentNames ?? []) {
+        if (knownSlugs.has(componentName)) components.add(componentName);
+      }
+    }
+  }
   return { mode: 'filtered', components: [...components].toSorted() };
 }
 
@@ -185,7 +241,7 @@ async function emit(decision: Decision): Promise<void> {
 
 async function main(): Promise<void> {
   const explicitComponents = process.env['CINDER_TEST_COMPONENTS'];
-  const knownSlugs = await loadKnownSlugs();
+  const knownSlugs = new Set(await discoverComponents());
 
   let decision: Decision;
   if (explicitComponents !== undefined) {

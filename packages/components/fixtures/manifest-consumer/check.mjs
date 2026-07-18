@@ -253,6 +253,7 @@ const allowedNonComponentExportKeys = new Set([
   './styles/foundation',
   './styles/utilities',
   './styles/guard',
+  './icons',
   './highlighters/shiki',
   // Upstream re-export root barrels. These (and their `/subpath` children,
   // skipped below) are not component exports; node-consumer validates them.

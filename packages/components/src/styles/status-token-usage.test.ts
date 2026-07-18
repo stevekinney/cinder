@@ -9,9 +9,6 @@ const STYLES_DIR = join(import.meta.dir, 'components');
 const auditedFiles = [
   join(COMPONENTS_DIR, 'badge', 'badge.css'),
   join(COMPONENTS_DIR, 'button', 'button.css'),
-  join(COMPONENTS_DIR, 'chat', 'input', 'chat-input.svelte'),
-  join(COMPONENTS_DIR, 'chat', 'message', 'chat-message.svelte'),
-  join(COMPONENTS_DIR, 'chat', 'message', 'tool-call-group.svelte'),
   join(COMPONENTS_DIR, 'chip', 'chip.css'),
   join(COMPONENTS_DIR, 'diff-viewer', 'diff-line.svelte'),
   join(COMPONENTS_DIR, 'diff-viewer', 'diff-viewer.svelte'),

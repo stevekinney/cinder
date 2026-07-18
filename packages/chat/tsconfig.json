@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "customConditions": ["svelte"],
+    "rootDir": "../..",
+    "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo"
+  },
+  "include": ["src", "scripts"],
+  "exclude": ["node_modules", "coverage", "dist", "**/.cinder-ssr-*", "**/.chat-ssr-*"]
+}

@@ -9,10 +9,13 @@
 import { describe, expect, it } from 'bun:test';
 import { basename, dirname, join } from 'node:path';
 
-import { analyzeAll } from './analyze.ts';
+import { analyzeComponent } from './analyze.ts';
+import { CHAT_COMPONENT_SOURCE, CINDER_COMPONENT_SOURCE } from './component-sources.ts';
 import {
   COMPOSE_ONLY_COMPONENTS,
+  assertUniqueComponentSlugs,
   discoverAll,
+  discoverComponentDefinitions,
   discoverComponentFilePaths,
   discoverComponents,
   discoverExamples,
@@ -67,6 +70,23 @@ describe('discoverComponents', () => {
   it('includes date-picker', async () => {
     const components = await discoverComponents();
     expect(components).toContain('date-picker');
+  });
+
+  it('includes the extracted Chat package under the existing route slugs', async () => {
+    const definitions = await discoverComponentDefinitions();
+    const chatDefinitions = definitions.filter((entry) => entry.source.id === 'chat');
+    expect(chatDefinitions.map((entry) => entry.name)).toEqual([
+      'chat',
+      'chat-composer-popover',
+      'chat-conversation-header',
+      'chat-conversation-list',
+    ]);
+    expect(chatDefinitions.map((entry) => entry.importPath)).toEqual([
+      '@lostgradient/chat',
+      '@lostgradient/chat/composer-popover',
+      '@lostgradient/chat/conversation-header',
+      '@lostgradient/chat/conversation-list',
+    ]);
   });
 });
 
@@ -401,10 +421,13 @@ describe('discoverComponentFilePaths', () => {
     }
   });
 
-  it('yields the exact same name set as discoverComponents() (sorted compare)', async () => {
+  it('yields the exact same Cinder name set as package-aware discovery', async () => {
     const filePaths = await discoverComponentFilePaths(COMPONENTS_DIR);
     const namesFromPaths = [...new Set(filePaths.map((p) => basename(p, '.svelte')))].toSorted();
-    const components = await discoverComponents();
+    const definitions = await discoverComponentDefinitions();
+    const components = definitions
+      .filter((component) => component.source.id === 'cinder')
+      .map((component) => component.name);
     expect(namesFromPaths).toEqual(components);
   });
 
@@ -421,12 +444,38 @@ describe('discoverComponentFilePaths', () => {
   // cost), so the cold-start scan over the whole library can exceed the default
   // 5s per-test budget. The generous timeout keeps this invariant test honest
   // without flaking on a slow machine.
-  it('matches the component set analyzeAll() resolves', async () => {
-    const manifests = await analyzeAll(COMPONENTS_DIR);
+  it('matches the component set the analyzer resolves across packages', async () => {
+    const definitions = await discoverComponentDefinitions();
+    const manifests = await Promise.all(
+      definitions.map((definition) =>
+        analyzeComponent(definition.filePath, { importPath: definition.importPath }),
+      ),
+    );
     const fromAnalyze = manifests.map((m) => m.kebabName).toSorted();
     const fromDiscover = await discoverComponents();
     expect(fromAnalyze).toEqual(fromDiscover);
   }, 60_000);
+
+  it('rejects duplicate route slugs claimed by two packages', () => {
+    expect(() =>
+      assertUniqueComponentSlugs([
+        {
+          name: 'conversation-surface',
+          filePath: '/tmp/cinder/conversation-surface.svelte',
+          importPath: '@lostgradient/cinder/conversation-surface',
+          source: CINDER_COMPONENT_SOURCE,
+        },
+        {
+          name: 'conversation-surface',
+          filePath: '/tmp/chat/conversation-surface.svelte',
+          importPath: '@lostgradient/chat/conversation-surface',
+          source: CHAT_COMPONENT_SOURCE,
+        },
+      ]),
+    ).toThrow(
+      /duplicate component slug "conversation-surface".*@lostgradient\/cinder.*@lostgradient\/chat/,
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------

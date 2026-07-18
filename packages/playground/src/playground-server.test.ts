@@ -9,14 +9,13 @@
  * beforeAll guard asserts this up front so failures are diagnosable.
  *
  * PRECONDITION: the /bundle/* and /page-bundle/* "build artifact" tests bundle
- * the playground FROM SOURCE, which resolves @cinder/diff, @cinder/markdown,
- * @cinder/editor, and @cinder/commentary through their built `dist/` subpath
- * exports. Run `bun run --filter=@cinder/diff --filter=@cinder/markdown
- * --filter=@cinder/editor --filter=@cinder/commentary build` before this file
- * in a fresh checkout, or those tests fail with "Could not resolve" import
- * errors. CI does this in the main-green `Build playground bundle dependencies`
- * step; the Playwright runner does it via start-server.ts. The package list is
- * pinned by the "playground bundle dependency build preflight" test.
+ * the playground FROM SOURCE, which resolves the private @cinder/* workspaces
+ * plus @lostgradient/cinder and @lostgradient/chat through built `dist/`
+ * subpath exports. Build the playground's dependency list before this file in
+ * a fresh checkout, or those tests fail with "Could not resolve" import errors.
+ * CI does this in the main-green `Build playground bundle dependencies` step;
+ * the Playwright runner does it via start-server.ts. The package list is pinned
+ * by the "playground bundle dependency build preflight" test.
  */
 
 import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
@@ -882,6 +881,41 @@ describe('/page/:name', () => {
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
+  it('loads package-owned component CSS for extracted Chat pages', async () => {
+    const response = await handleRequest(req('/page/chat'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('href="/package-components/chat/chat/chat.css"');
+
+    const stylesheet = await handleRequest(req('/package-components/chat/chat/chat.css'));
+    expect(stylesheet.status).toBe(200);
+    expect(stylesheet.headers.get('Content-Type')).toBe('text/css');
+    expect(await stylesheet.text()).toContain('.cinder-chat');
+  });
+
+  it('rewrites extracted Chat peer styles to reachable playground CSS routes', async () => {
+    const cases = [
+      ['chat-composer-popover', 'command-menu'],
+      ['chat-conversation-header', 'dropdown'],
+    ] as const;
+
+    for (const [chatComponent, cinderComponent] of cases) {
+      const stylesheet = await handleRequest(
+        req(`/package-components/chat/${chatComponent}/${chatComponent}.css`),
+      );
+      expect(stylesheet.status).toBe(200);
+      const css = await stylesheet.text();
+      expect(css).toContain(`@import '/components/${cinderComponent}/${cinderComponent}.css';`);
+      expect(css).not.toContain('@lostgradient/cinder/');
+
+      const peerStylesheet = await handleRequest(
+        req(`/components/${cinderComponent}/${cinderComponent}.css`),
+      );
+      expect(peerStylesheet.status).toBe(200);
+      expect(peerStylesheet.headers.get('Content-Type')).toBe('text/css');
+    }
+  });
+
   it('installs the validated color-token message bridge on preview pages', async () => {
     const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
     const html = await response.text();
@@ -1205,6 +1239,13 @@ describe('/api/manifest/:name', () => {
     const response = await handleRequest(req('/api/manifest/Button'));
     expect(response.status).toBe(404);
   }, 30_000);
+
+  it('uses the extracted package import path for Chat', async () => {
+    const response = await handleRequest(req('/api/manifest/chat'));
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as ComponentManifest;
+    expect(result.importPath).toBe('@lostgradient/chat');
+  }, 30_000);
 });
 
 describe('/api/documentation/:name', () => {
@@ -1223,6 +1264,16 @@ describe('/api/documentation/:name', () => {
     expect(body.readme.html).toContain('<h2>Usage</h2>');
     expect(body.constraints).not.toBeNull();
     expect(body.examples).not.toBeNull();
+  }, 30_000);
+
+  it('serves documentation from the extracted Chat package manifest', async () => {
+    const response = await handleRequest(req('/api/documentation/chat'));
+    expect(response.status).toBe(200);
+    const body: unknown = await response.json();
+    expect(isComponentDocumentationPayload(body)).toBe(true);
+    if (!isComponentDocumentationPayload(body)) return;
+    expect(body.component.id).toBe('chat');
+    expect(body.component.importSpecifier).toBe('@lostgradient/chat');
   }, 30_000);
 
   it('returns 404 for an unknown component', async () => {

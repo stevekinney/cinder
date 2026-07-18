@@ -39,7 +39,7 @@ import { DEFAULT_FILE_SCAN_CONCURRENCY, mapWithConcurrencyLimit } from './valida
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
 const componentsSource = join(componentsRoot, 'src');
-const baselinePath = join(scriptDirectory, 'platform-viewport-baseline.json');
+const defaultBaselinePath = join(scriptDirectory, 'platform-viewport-baseline.json');
 
 /** A classified feature and the regex that detects its usage in source. */
 export type FeatureProbe = {
@@ -176,27 +176,32 @@ export function findViewportMediaQueries(
   return results;
 }
 
-export async function scan(): Promise<{ counts: FeatureCount[]; viewportFlags: Flag[] }> {
+export async function scan(
+  sourceRoots: readonly string[] = [componentsSource],
+): Promise<{ counts: FeatureCount[]; viewportFlags: Flag[] }> {
   const counts: FeatureCount[] = FEATURE_PROBES.map((probe) => ({
     feature: probe.feature,
     tier: probe.tier,
     count: 0,
   }));
 
-  const allFiles = new Glob('**/*.{css,svelte,ts}');
-  const relativePaths: string[] = [];
-  for await (const relativePath of allFiles.scan({ cwd: componentsSource })) {
-    // The inventory reflects real component usage, not test fixtures: a probe like
-    // `inert` or `showPopover` matches strings/identifiers in test files and would
-    // overstate adoption. Skip test/spec sources.
-    if (!isTestPath(relativePath)) relativePaths.push(relativePath);
+  const sourceFiles: Array<{ filePath: string; relativePath: string }> = [];
+  for (const sourceRoot of sourceRoots) {
+    const allFiles = new Glob('**/*.{css,svelte,ts}');
+    for await (const relativePath of allFiles.scan({ cwd: sourceRoot })) {
+      // The inventory reflects real component usage, not test fixtures: a probe like
+      // `inert` or `showPopover` matches strings/identifiers in test files and would
+      // overstate adoption. Skip test/spec sources.
+      if (!isTestPath(relativePath)) {
+        sourceFiles.push({ filePath: join(sourceRoot, relativePath), relativePath });
+      }
+    }
   }
 
   const scannedFiles = await mapWithConcurrencyLimit(
-    relativePaths,
+    sourceFiles,
     DEFAULT_FILE_SCAN_CONCURRENCY,
-    async (relativePath) => {
-      const filePath = join(componentsSource, relativePath);
+    async ({ filePath, relativePath }) => {
       const content = await Bun.file(filePath).text();
       const fileCounts = Array.from({ length: FEATURE_PROBES.length }, () => 0);
       const viewportFlags: Flag[] = [];
@@ -294,7 +299,9 @@ export function parseBaseline(parsed: unknown): Map<string, number> {
 }
 
 /** Reads the baseline file as a map of `flagKey` → allowed occurrence count. */
-export async function readBaseline(): Promise<Map<string, number>> {
+export async function readBaseline(
+  baselinePath: string = defaultBaselinePath,
+): Promise<Map<string, number>> {
   const file = Bun.file(baselinePath);
   if (!(await file.exists())) return new Map();
   return parseBaseline(await file.json());
@@ -366,7 +373,23 @@ function renderInventory(counts: FeatureCount[]): string {
 async function main(): Promise<void> {
   const strict = process.argv.includes('--strict');
   const updateBaseline = process.argv.includes('--update-baseline');
-  const { counts, viewportFlags } = await scan();
+  const sourceRootArgumentIndex = process.argv.indexOf('--source-root');
+  const sourceRootArgument =
+    sourceRootArgumentIndex >= 0 ? process.argv[sourceRootArgumentIndex + 1] : undefined;
+  if (sourceRootArgumentIndex >= 0 && sourceRootArgument === undefined) {
+    throw new Error('--source-root requires a path argument');
+  }
+  const baselineArgumentIndex = process.argv.indexOf('--baseline');
+  const baselineArgument =
+    baselineArgumentIndex >= 0 ? process.argv[baselineArgumentIndex + 1] : undefined;
+  if (baselineArgumentIndex >= 0 && baselineArgument === undefined) {
+    throw new Error('--baseline requires a path argument');
+  }
+  const sourceRoot = sourceRootArgument ? resolve(process.cwd(), sourceRootArgument) : undefined;
+  const baselinePath = baselineArgument
+    ? resolve(process.cwd(), baselineArgument)
+    : defaultBaselinePath;
+  const { counts, viewportFlags } = await scan(sourceRoot ? [sourceRoot] : undefined);
 
   if (updateBaseline) {
     const entries = buildBaselineEntries(viewportFlags);
@@ -404,7 +427,7 @@ async function main(): Promise<void> {
 
   // Strict mode: fail only when a site's current count exceeds its grandfathered
   // allowance (a genuinely NEW viewport query), not for the known set.
-  const baseline = await readBaseline();
+  const baseline = await readBaseline(baselinePath);
   const regressions = findRegressions(viewportFlags, baseline);
   if (regressions.length === 0) {
     process.stdout.write(

@@ -10,19 +10,9 @@
     "allowedCount": 2
   },
   {
-    "filePath": "src/components/chat/input/chat-input.svelte",
-    "colorClass": "oklch",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/chat/message/image-lightbox.svelte",
-    "colorClass": "rgb",
-    "allowedCount": 9
-  },
-  {
     "filePath": "src/components/code-block/code-block.css",
     "colorClass": "light-dark",
-    "allowedCount": 3
+    "allowedCount": 1
   },
   {
     "filePath": "src/components/command-menu/command-menu.css",
@@ -43,11 +33,6 @@
     "filePath": "src/components/markdown-editor/markdown-editor.svelte",
     "colorClass": "rgb",
     "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/markdown-editor/prosemirror.css",
-    "colorClass": "hex",
-    "allowedCount": 2
   },
   {
     "filePath": "src/components/rating/rating.css",

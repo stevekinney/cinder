@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import {
   FINGERPRINT_SOURCE_DIRECTORIES,
+  FINGERPRINT_SOURCE_FILES,
   isFingerprintStale,
   newestFileMtimeMs,
   newestSourceMtimeMs,
@@ -88,6 +89,16 @@ describe('newestSourceMtimeMs', () => {
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/markdown/src');
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/editor/src');
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/commentary/src');
+  });
+
+  test('includes extracted Chat package source', () => {
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/chat/src');
+  });
+
+  test('includes package manifests that control discovery and bundling', () => {
+    expect(FINGERPRINT_SOURCE_FILES).toContain('packages/components/components.json');
+    expect(FINGERPRINT_SOURCE_FILES).toContain('packages/chat/package.json');
+    expect(FINGERPRINT_SOURCE_FILES).toContain('packages/chat/components.json');
   });
 
   test('includes the server and bundler script trees the playground server runs', () => {

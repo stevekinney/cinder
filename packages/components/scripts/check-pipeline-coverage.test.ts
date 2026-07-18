@@ -133,6 +133,101 @@ describe('checkPipelineCoverage', () => {
     expect(result.violations).toEqual([]);
   });
 
+  it('tracks package-qualified Chat commands independently from Cinder', () => {
+    const table: Record<string, DeclarationRow> = {
+      '@lostgradient/chat#validate:consumer': {
+        layers: ['release'],
+        reason: 'test fixture — Chat artifact validation',
+      },
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts: { 'validate:consumer': 'bun run scripts/validate-consumers.ts' },
+      publicPackageScripts: {
+        '@lostgradient/cinder': {
+          'validate:consumer': 'bun run scripts/validate-consumers.ts',
+        },
+        '@lostgradient/chat': {
+          'validate:consumer': 'bun run scripts/validate-consumers.ts',
+        },
+      },
+      rootScripts: {},
+      workflowText: {
+        'unit-tests': '',
+        'browser-tests': '',
+        'main-green': '',
+        release: 'bun run --filter=@lostgradient/chat validate:consumer',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it('recognizes the Chat coverage command as the unit-tests and main-green gate', () => {
+    const table: Record<string, DeclarationRow> = {
+      '@lostgradient/chat#test:coverage': {
+        layers: ['unit-tests', 'main-green'],
+        reason: 'test fixture — Chat coverage gate',
+      },
+    };
+    const chatScripts = {
+      test: 'bun test src/lib',
+      'test:coverage': 'bun test --coverage src/lib',
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts: {},
+      publicPackageScripts: {
+        '@lostgradient/cinder': {},
+        '@lostgradient/chat': chatScripts,
+      },
+      rootScripts: {},
+      workflowText: {
+        'unit-tests': 'bun run --filter=@lostgradient/chat test:coverage',
+        'browser-tests': '',
+        'main-green': 'bun run --filter=@lostgradient/chat test:coverage',
+        release: '',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it('does not let a Cinder filter falsely cover a package-qualified Chat command', () => {
+    const table: Record<string, DeclarationRow> = {
+      '@lostgradient/chat#validate:consumer': {
+        layers: ['release'],
+        reason: 'test fixture — Chat artifact validation',
+      },
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts: {},
+      publicPackageScripts: {
+        '@lostgradient/cinder': { 'validate:consumer': 'bun run cinder-validation.ts' },
+        '@lostgradient/chat': { 'validate:consumer': 'bun run chat-validation.ts' },
+      },
+      rootScripts: {},
+      workflowText: {
+        'unit-tests': '',
+        'browser-tests': '',
+        'main-green': '',
+        release: 'bun run --filter=@lostgradient/cinder validate:consumer',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toContainEqual(
+      expect.objectContaining({
+        command: '@lostgradient/chat#validate:consumer',
+        kind: 'missing',
+        layer: 'release',
+      }),
+    );
+  });
+
   it('does not let an unqualified root entry point falsely cover a package gate', () => {
     const table: Record<string, DeclarationRow> = {
       'components:check': {

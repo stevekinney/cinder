@@ -108,7 +108,7 @@ The cinder playground already hosts 131 interactive examples across 50 component
 
 Additionally, two chat components house TypeScript test fixtures for unit/story support:
 
-- **Location**: `packages/components/src/components/chat/<subcomponent>/<name>-fixtures.ts`
+- **Location**: `packages/chat/src/lib/components/chat/<subcomponent>/<name>-fixtures.ts`
 - **Shape**: factory functions with mutable counters (not JSON-serializable)
 - **Purpose**: deterministic test data for story development
 

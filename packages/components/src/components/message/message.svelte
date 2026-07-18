@@ -11,7 +11,7 @@
    * @useWhen Rendering AI agent runs, support threads, or audit logs where each entry has a speaker and a body.
    * @avoidWhen Building a complete conversation surface with composer and scroll affordances — reach for the chat suite instead.
    * @avoidWhen Communicating a single non-conversational notice — callout is more appropriate.
-   * @related chat, callout
+   * @related callout
    */
   import type { MessageRole } from './message.types.ts';
 

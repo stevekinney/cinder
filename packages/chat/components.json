@@ -1,0 +1,203 @@
+{
+  "$schema": "./dist/schemas/manifest.schema.json",
+  "manifestVersion": 1,
+  "package": {
+    "name": "@lostgradient/chat",
+    "version": "0.0.0",
+    "framework": "svelte",
+    "frameworkVersionRange": ">=5.56.0 <6",
+    "classPrefix": "cinder-",
+    "cssVarPrefix": "--cinder-",
+    "tokenNamespaces": ["color", "space", "radius", "ring", "type", "motion", "shadow"],
+    "stylesEntry": "@lostgradient/cinder/styles",
+    "schemaDialect": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "categories": {
+    "action": {
+      "label": "Actions",
+      "description": "Controls that trigger operations, submit data, or navigate."
+    },
+    "overlay": {
+      "label": "Overlays",
+      "description": "Floating surfaces that layer above page content and require user dismissal."
+    },
+    "form": {
+      "label": "Forms",
+      "description": "Input controls and layout primitives for collecting structured user data."
+    },
+    "feedback": {
+      "label": "Feedback",
+      "description": "Non-interactive indicators that communicate status, progress, or results."
+    },
+    "navigation": {
+      "label": "Navigation",
+      "description": "Wayfinding controls that move users between views, sections, or steps."
+    },
+    "data-display": {
+      "label": "Data Display",
+      "description": "Read-only presentational components for structured data and content."
+    },
+    "layout": {
+      "label": "Layout",
+      "description": "Structural primitives that control spacing, containment, and composition."
+    },
+    "typography": {
+      "label": "Typography",
+      "description": "Text-rendering components that enforce hierarchy and typographic conventions."
+    },
+    "domain": {
+      "label": "Domain",
+      "description": "Application-specific components that encode product-level business concepts."
+    }
+  },
+  "statusLevels": {
+    "stable": "Public API under semver protection; breaking changes require a major version bump.",
+    "beta": "API is near-final but may have breaking changes in minor versions before promotion.",
+    "alpha": "Experimental; no stability guarantee and subject to removal or significant redesign.",
+    "domain-suite": "A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence."
+  },
+  "overlapFamilies": {},
+  "components": [
+    {
+      "id": "chat",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Opinionated conversation surface bundling message list, composer, attachments, and scroll affordances for AI or support transcripts.",
+      "tags": ["chat", "conversation", "domain-suite"],
+      "useWhen": [
+        "Shipping a full chat surface with composer, scroll-anchor, unread indicator, and attachments bundled as one heavyweight drop-in.",
+        "Building an AI assistant or support thread where conversation state is modeled as a transcript of role-tagged messages.",
+        "Embedding Chat in a definite-height flex or grid region where its internal transcript should own scrolling."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering a one-off message list — compose lighter primitives directly instead of pulling the full suite."
+        },
+        {
+          "reason": "The transcript is read-only and needs no composer — a simple list of message bubbles is a better fit."
+        }
+      ],
+      "related": ["markdown-editor"],
+      "name": "Chat",
+      "import": "@lostgradient/chat",
+      "exportName": "Chat",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/chat/schema",
+        "variables": "@lostgradient/chat/variables",
+        "examples": "@lostgradient/chat/examples"
+      }
+    },
+    {
+      "id": "chat-composer-popover",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Chat composer-bound slash-command and mention listbox primitive.",
+      "tags": ["chat", "command", "overlay"],
+      "useWhen": [
+        "Adding slash commands, mentions, or autocomplete to ChatInput without re-implementing combobox ARIA.",
+        "Composer suggestions should stay anchored to the active token and leave command definitions in application code."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Opening a global command launcher detached from the composer — use command-palette instead."
+        },
+        {
+          "reason": "Anchoring a generic command menu to an arbitrary input — use command-menu instead."
+        }
+      ],
+      "related": ["chat", "command-menu", "command-item", "command-palette"],
+      "a11y": {
+        "pattern": "WAI-ARIA Combobox with Listbox Popup",
+        "keyboard": [
+          {
+            "keys": "ArrowUp / ArrowDown",
+            "action": "Moves the active suggestion."
+          },
+          {
+            "keys": "Enter",
+            "action": "Selects the active suggestion."
+          },
+          {
+            "keys": "Escape",
+            "action": "Dismisses the suggestion popover."
+          }
+        ],
+        "notes": [
+          "Passes combobox role and aria-expanded, aria-controls, aria-activedescendant, and aria-autocomplete through to ChatInput's composer overlay API."
+        ]
+      },
+      "name": "ChatComposerPopover",
+      "import": "@lostgradient/chat/composer-popover",
+      "exportName": "ChatComposerPopover",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/chat/composer-popover/schema",
+        "variables": "@lostgradient/chat/composer-popover/variables",
+        "examples": "@lostgradient/chat/composer-popover/examples"
+      }
+    },
+    {
+      "id": "chat-conversation-header",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Header primitive for the active Chat conversation, composed as a sibling above Chat rather than inside it.",
+      "tags": ["chat", "conversation", "header"],
+      "useWhen": [
+        "Showing the active conversation title, participants, status, and export controls above a Chat transcript.",
+        "Building a multi-conversation chat layout where the list, header, and Chat surface are composed as siblings."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering the conversation switcher — use chat-conversation-list."
+        },
+        {
+          "reason": "Rendering the transcript body and composer — use chat."
+        }
+      ],
+      "related": ["chat", "chat-conversation-list"],
+      "name": "ChatConversationHeader",
+      "import": "@lostgradient/chat/conversation-header",
+      "exportName": "ChatConversationHeader",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/chat/conversation-header/schema",
+        "variables": "@lostgradient/chat/conversation-header/variables",
+        "examples": "@lostgradient/chat/conversation-header/examples"
+      }
+    },
+    {
+      "id": "chat-conversation-list",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Conversation navigation list for switching among Chat transcripts without embedding the list inside Chat.",
+      "tags": ["chat", "conversation", "navigation"],
+      "useWhen": [
+        "Rendering a multi-conversation chat sidebar beside one active Chat transcript.",
+        "Showing unread counts and last-message previews for compatible conversation snapshots."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering the message transcript itself — use chat for the active conversation surface."
+        },
+        {
+          "reason": "Building app-wide primary navigation — use side-navigation or navigation-bar."
+        }
+      ],
+      "related": ["chat", "chat-conversation-header", "side-navigation"],
+      "name": "ChatConversationList",
+      "import": "@lostgradient/chat/conversation-list",
+      "exportName": "ChatConversationList",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/chat/conversation-list/schema",
+        "variables": "@lostgradient/chat/conversation-list/variables",
+        "examples": "@lostgradient/chat/conversation-list/examples"
+      }
+    }
+  ]
+}

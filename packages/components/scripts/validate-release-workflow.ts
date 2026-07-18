@@ -16,8 +16,9 @@
  *     cannot accidentally deploy a version branch to production.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
- *   - The primary publish step (the `run: bun run --filter=@lostgradient/cinder publish:release`
- *     step) does NOT have NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block
+ *   - Both public packages have consumer validation, package-weight, and
+ *     publish commands, and neither publish step has NODE_AUTH_TOKEN or
+ *     NPM_TOKEN in its `env:` block
  *     (precise, well-messaged check).
  *   - NODE_AUTH_TOKEN / NPM_TOKEN do NOT appear anywhere else in release.yaml
  *     either — a token in a JOB-level or WORKFLOW-level `env:` block would be
@@ -51,12 +52,19 @@ const packageRoot = resolve(scriptDirectory, '..');
 const workspaceRoot = resolve(packageRoot, '../..');
 const workflowsDirectoryPath = join(workspaceRoot, '.github/workflows');
 const releaseWorkflowPath = join(workspaceRoot, '.github/workflows/release.yaml');
+const releaseManualWorkflowPath = join(workspaceRoot, '.github/workflows/release-manual.yaml');
 const deployPlaygroundWorkflowPath = join(
   workspaceRoot,
   '.github/workflows/deploy-playground.yaml',
 );
 const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
+const PUBLIC_PACKAGE_NAMES = ['@lostgradient/cinder', '@lostgradient/chat'] as const;
+const REQUIRED_RELEASE_SCRIPTS = [
+  'validate:consumer',
+  'package:weight:check',
+  'publish:release',
+] as const;
 
 export type IgnoredPackageChangeset = {
   filePath: string;
@@ -203,6 +211,28 @@ function workflowRunScripts(workflow: unknown): string[] {
   });
 }
 
+/** The Chat bootstrap path must prove its required Cinder peer exists on npm. */
+export function manualChatBootstrapHasCinderRegistryPreflight(workflow: unknown): boolean {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
+
+  return Object.values(workflow['jobs']).some((job) => {
+    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return false;
+    return job['steps'].some((step) => {
+      if (!isObjectRecord(step)) return false;
+      const condition = step['if'];
+      const run = step['run'];
+      return (
+        typeof condition === 'string' &&
+        condition.includes("inputs.package == 'chat'") &&
+        typeof run === 'string' &&
+        run.includes('.peerDependencies["@lostgradient/cinder"]') &&
+        run.includes('npm view "@lostgradient/cinder@${cinder_peer_range}" version --json') &&
+        run.includes('Publish Cinder first')
+      );
+    });
+  });
+}
+
 export function workflowRunScriptsContainActiveLine(
   workflow: unknown,
   requiredContent: string,
@@ -211,6 +241,65 @@ export function workflowRunScriptsContainActiveLine(
     script
       .split('\n')
       .some((line) => !isComment(line) && line.replace(/\s+#.*$/, '').includes(requiredContent)),
+  );
+}
+
+/** Return public-package release commands that are absent from active run steps. */
+export function findMissingPublicPackageReleaseCommands(workflow: unknown): string[] {
+  return PUBLIC_PACKAGE_NAMES.flatMap((packageName) =>
+    REQUIRED_RELEASE_SCRIPTS.map(
+      (scriptName) => `bun run --filter=${packageName} ${scriptName}`,
+    ).filter((command) => !workflowRunScriptsContainActiveLine(workflow, command)),
+  );
+}
+
+/** Cinder must publish before Chat because Chat peers on the new Cinder minor. */
+export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
+  const executableScripts = workflowRunScripts(workflow).join('\n');
+  const cinderIndex = executableScripts.indexOf(
+    'bun run --filter=@lostgradient/cinder publish:release',
+  );
+  const chatIndex = executableScripts.indexOf(
+    'bun run --filter=@lostgradient/chat publish:release',
+  );
+  return cinderIndex !== -1 && chatIndex !== -1 && cinderIndex < chatIndex;
+}
+
+/** The root publish shortcut must use the same staged artifact path as CI. */
+export function rootPublishScriptUsesStagedPackers(manifest: unknown): boolean {
+  if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
+  const publishScript = manifest['scripts']['changeset:publish'];
+  if (typeof publishScript !== 'string') return false;
+
+  const cinderCommand = 'bun run --filter=@lostgradient/cinder publish:release';
+  const chatCommand = 'bun run --filter=@lostgradient/chat publish:release';
+  const cinderIndex = publishScript.indexOf(cinderCommand);
+  const chatIndex = publishScript.indexOf(chatCommand);
+  return (
+    cinderIndex !== -1 &&
+    chatIndex !== -1 &&
+    cinderIndex < chatIndex &&
+    !publishScript.includes('changeset publish')
+  );
+}
+
+/** The documented root gate must exercise both public packages as packed consumers. */
+export function rootConsumerValidationIncludesPublicPackages(manifest: unknown): boolean {
+  if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
+  const validateScript = manifest['scripts']['validate'];
+  const consumerScript = manifest['scripts']['validate:consumer'];
+  if (typeof validateScript !== 'string' || typeof consumerScript !== 'string') return false;
+
+  const cinderCommand = 'bun run --filter=@lostgradient/cinder validate:consumer';
+  const chatCommand = 'bun run --filter=@lostgradient/chat validate:consumer';
+  const cinderIndex = consumerScript.indexOf(cinderCommand);
+  const chatIndex = consumerScript.indexOf(chatCommand);
+  return (
+    validateScript.includes("bun run --sequential --filter='*' validate") &&
+    validateScript.includes(chatCommand) &&
+    cinderIndex !== -1 &&
+    chatIndex !== -1 &&
+    cinderIndex < chatIndex
   );
 }
 
@@ -379,6 +468,55 @@ function runValidation(): void {
   }
   pass('GitHub workflows use current Node 24 action majors');
 
+  const missingPublicPackageReleaseCommands =
+    findMissingPublicPackageReleaseCommands(parsedWorkflow);
+  if (missingPublicPackageReleaseCommands.length > 0) {
+    fail(
+      'release.yaml is missing required public-package artifact or publish commands:\n' +
+        missingPublicPackageReleaseCommands.map((command) => `  - ${command}`).join('\n'),
+    );
+  }
+  pass('Both public packages have validation, weight, and publish gates');
+  if (!publicPackagePublishOrderIsValid(parsedWorkflow)) {
+    fail('release.yaml must publish @lostgradient/cinder before @lostgradient/chat.');
+  }
+  pass('Cinder publishes before Chat');
+
+  let rootManifest: unknown;
+  try {
+    rootManifest = JSON.parse(readFileSync(join(workspaceRoot, 'package.json'), 'utf8'));
+  } catch (error) {
+    fail(`root package.json is missing or invalid JSON: ${errorMessageFrom(error)}`);
+  }
+  if (!rootPublishScriptUsesStagedPackers(rootManifest)) {
+    fail(
+      'package.json#scripts.changeset:publish must publish Cinder then Chat through their ' +
+        'publish:release staged-artifact commands; direct `changeset publish` is unsafe.',
+    );
+  }
+  pass('Root publish shortcut uses both staged package artifacts in dependency order');
+  if (!rootConsumerValidationIncludesPublicPackages(rootManifest)) {
+    fail(
+      'package.json#scripts.validate must run workspace validation sequentially and append the ' +
+        'Chat packed-consumer gate, while validate:consumer must validate Cinder then Chat.',
+    );
+  }
+  pass('Root validation exercises both public packages as packed consumers');
+
+  let parsedManualReleaseWorkflow: unknown;
+  try {
+    parsedManualReleaseWorkflow = loadYaml(readFileSync(releaseManualWorkflowPath, 'utf8'));
+  } catch (error) {
+    fail(`release-manual.yaml is missing or invalid YAML: ${errorMessageFrom(error)}`);
+  }
+  if (!manualChatBootstrapHasCinderRegistryPreflight(parsedManualReleaseWorkflow)) {
+    fail(
+      "release-manual.yaml must derive Chat's Cinder peer range and verify a satisfying " +
+        'Cinder version exists on npm before bootstrapping Chat.',
+    );
+  }
+  pass('Manual Chat bootstrap requires its Cinder peer on npm');
+
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.
   // We scan for the step boundary and extract its env: block, then check for tokens.
@@ -390,58 +528,52 @@ function runValidation(): void {
   // Match the publish step's actual `run:` command, not a comment that mentions it.
   // `^\s*run:` anchors to a real YAML key so a `# ... bun run ... publish:release`
   // note can't be mistaken for the step.
-  const publishRunPattern = /^\s*run\s*:.*bun run --filter=@lostgradient\/cinder publish:release/;
-  const publishRunLineIndex = lines.findIndex(
-    (line) => !isComment(line) && publishRunPattern.test(line),
-  );
-
-  if (publishRunLineIndex === -1) {
-    fail(
-      'Could not locate the primary publish step in release.yaml. ' +
-        'Expected a step with `run: bun run --filter=@lostgradient/cinder publish:release`.',
-    );
-  }
-
-  // Walk backward to find the `- name:` opening of this step (skipping comments).
-  let stepStartIndex = publishRunLineIndex;
-  for (let index = publishRunLineIndex - 1; index >= 0; index--) {
-    if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
-      stepStartIndex = index;
-      break;
-    }
-  }
-
-  // Walk forward to find the next `- name:` opening (start of the next step) or EOF.
-  let stepEndIndex = lines.length;
-  for (let index = publishRunLineIndex + 1; index < lines.length; index++) {
-    if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/.test(lines[index]!)) {
-      stepEndIndex = index;
-      break;
-    }
-  }
-
-  const publishStepLines = lines.slice(stepStartIndex, stepEndIndex);
-
   // ── Guard 3: no token env vars in the publish step ──────────────────────────
   const forbiddenPatterns: Array<{ pattern: RegExp; label: string }> = [
     { pattern: /NODE_AUTH_TOKEN\s*:/, label: 'NODE_AUTH_TOKEN' },
     { pattern: /NPM_TOKEN\s*:/, label: 'NPM_TOKEN' },
   ];
 
-  for (const { pattern, label } of forbiddenPatterns) {
-    const offendingLine = publishStepLines.find((line) => !isComment(line) && pattern.test(line));
-    if (offendingLine !== undefined) {
-      fail(
-        `release.yaml's primary publish step contains ${label}:\n` +
-          `  ${offendingLine.trim()}\n\n` +
-          'The primary publish path must use npm Trusted Publishing (OIDC), not a long-lived token.\n' +
-          'Remove the token env var from this step.\n' +
-          'For break-glass token publishing, use release-manual.yaml instead.',
-      );
+  for (const packageName of PUBLIC_PACKAGE_NAMES) {
+    const publishCommand = `bun run --filter=${packageName} publish:release`;
+    const publishRunLineIndex = lines.findIndex(
+      (line) => !isComment(line) && /^\s*run\s*:/u.test(line) && line.includes(publishCommand),
+    );
+    if (publishRunLineIndex === -1) {
+      fail(`Could not locate the ${packageName} publish step in release.yaml.`);
+    }
+
+    let stepStartIndex = publishRunLineIndex;
+    for (let index = publishRunLineIndex - 1; index >= 0; index--) {
+      if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/u.test(lines[index]!)) {
+        stepStartIndex = index;
+        break;
+      }
+    }
+    let stepEndIndex = lines.length;
+    for (let index = publishRunLineIndex + 1; index < lines.length; index++) {
+      if (!isComment(lines[index]!) && /^\s+-\s+name\s*:/u.test(lines[index]!)) {
+        stepEndIndex = index;
+        break;
+      }
+    }
+
+    const publishStepLines = lines.slice(stepStartIndex, stepEndIndex);
+    for (const { pattern, label } of forbiddenPatterns) {
+      const offendingLine = publishStepLines.find((line) => !isComment(line) && pattern.test(line));
+      if (offendingLine !== undefined) {
+        fail(
+          `release.yaml's ${packageName} publish step contains ${label}:\n` +
+            `  ${offendingLine.trim()}\n\n` +
+            'The primary publish path must use npm Trusted Publishing (OIDC), not a long-lived token.\n' +
+            'Remove the token env var from this step.\n' +
+            'For break-glass token publishing, use release-manual.yaml instead.',
+        );
+      }
     }
   }
 
-  pass('No NODE_AUTH_TOKEN or NPM_TOKEN in the primary publish step');
+  pass('No NODE_AUTH_TOKEN or NPM_TOKEN in either public-package publish step');
 
   // ── Guard 4: no token env vars ANYWHERE in release.yaml ─────────────────────
   // The step-scoped check above is precise, but a token placed in a `env:` block
@@ -492,7 +624,7 @@ function runValidation(): void {
         `${formattedChangesets}\n\n` +
         'changesets/action treats these files as pending release work, but `changeset version` ' +
         'does not consume ignored packages. Remove the changeset files, or retarget them to ' +
-        '@lostgradient/cinder if the public package should release.',
+        '@lostgradient/cinder or @lostgradient/chat if a public package should release.',
     );
   }
 

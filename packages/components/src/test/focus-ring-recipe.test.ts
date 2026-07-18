@@ -68,9 +68,6 @@ const shareCardCss = loadCss('../components/share-card/share-card.css');
 const transferListCss = loadCss('../components/transfer-list/transfer-list.css');
 const tableCss = loadCss('../components/table/table.css');
 const menuBarCss = loadCss('../components/menu-bar/menu-bar.css');
-const chatConversationListCss = loadCss(
-  '../components/chat-conversation-list/chat-conversation-list.css',
-);
 
 // Focus-ring sweep targets (15f4d777) — colored outline-only recipes converted
 // to the shared Strategy B / B-inset recipe.
@@ -110,22 +107,6 @@ const commentSidebarStyle = loadSvelteStyle('../components/review-editor/comment
 const reviewExportActionsStyle = loadSvelteStyle(
   '../components/review-editor/export-actions.svelte',
 );
-const conversationExportActionsStyle = loadSvelteStyle(
-  '../components/chat/export/conversation-export-actions.svelte',
-);
-const artifactPanelStyle = loadSvelteStyle('../components/chat/artifact/artifact-panel.svelte');
-const chatStyle = loadSvelteStyle('../components/chat/container/chat.svelte');
-const chatJumpControlsStyle = loadSvelteStyle(
-  '../components/chat/container/chat-jump-controls.svelte',
-);
-const chatSearchBarStyle = loadSvelteStyle('../components/chat/container/chat-search-bar.svelte');
-const chatMessageStyle = loadSvelteStyle('../components/chat/message/chat-message.svelte');
-const toolCallGroupStyle = loadSvelteStyle('../components/chat/message/tool-call-group.svelte');
-const messageAttachmentsStyle = loadSvelteStyle(
-  '../components/chat/message/message-attachments.svelte',
-);
-const chatInputStyle = loadSvelteStyle('../components/chat/input/chat-input.svelte');
-const imageLightboxStyle = loadSvelteStyle('../components/chat/message/image-lightbox.svelte');
 
 const TRANSPARENT_OUTLINE = 'var(--cinder-ring-width) solid transparent';
 const SHARED_BOX_SHADOW = 'var(--_cinder-focus-ring-shadow)';
@@ -745,26 +726,6 @@ describe('focus-ring sweep — Strategy B-inset Svelte selectors', () => {
       style: commentSidebarStyle,
       selector: '.thread-item:focus-visible',
     },
-    {
-      name: 'artifact-panel close',
-      style: artifactPanelStyle,
-      selector: '.artifact-panel-close:focus-visible',
-    },
-    {
-      name: 'chat timeline',
-      style: chatStyle,
-      selector: '.chat-timeline:focus-visible',
-    },
-    {
-      name: 'message attachment button',
-      style: messageAttachmentsStyle,
-      selector: '.message-attachment-button:focus-visible',
-    },
-    {
-      name: 'tool-call header',
-      style: toolCallGroupStyle,
-      selector: '.tool-call-header:focus-visible',
-    },
   ];
 
   for (const { name, style, selector } of insetCases) {
@@ -782,24 +743,9 @@ describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
       selector: '.export-actions :global(.export-trigger:focus-visible)',
     },
     {
-      name: 'chat export trigger',
-      style: conversationExportActionsStyle,
-      selector: '.conversation-export-actions :global(.export-trigger:focus-visible)',
-    },
-    {
       name: 'comment-sidebar actions trigger',
       style: commentSidebarStyle,
       selector: '.sidebar-header :global(.actions-trigger:focus-visible)',
-    },
-    {
-      name: 'chat empty prompt',
-      style: chatStyle,
-      selector: '.chat-empty-prompt:focus-visible',
-    },
-    {
-      name: 'chat search nav button',
-      style: chatSearchBarStyle,
-      selector: '.chat-search-nav-button:focus-visible',
     },
     {
       name: 'diff front-matter header',
@@ -815,51 +761,6 @@ describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
       name: 'markdown toolbar dropdown trigger',
       style: toolbarDropdownStyle,
       selector: ':global(.toolbar-dropdown-trigger:focus-visible)',
-    },
-    {
-      name: 'chat jump button',
-      style: chatJumpControlsStyle,
-      selector: '.chat-jump-button:focus-visible',
-    },
-    {
-      name: 'chat new indicator',
-      style: chatJumpControlsStyle,
-      selector: '.chat-new-indicator:focus-visible',
-    },
-    {
-      name: 'chat send button',
-      style: chatInputStyle,
-      selector: '.chat-input-send:focus-visible',
-    },
-    {
-      name: 'chat message row',
-      style: chatMessageStyle,
-      selector: '.chat-message:focus-visible',
-    },
-    {
-      name: 'chat message expand button',
-      style: chatMessageStyle,
-      selector: '.chat-message-expand:focus-visible',
-    },
-    {
-      name: 'chat message retry button',
-      style: chatMessageStyle,
-      selector: '.chat-message-retry:focus-visible',
-    },
-    {
-      name: 'chat message action button',
-      style: chatMessageStyle,
-      selector: ':global(.chat-message-action-button:focus-visible)',
-    },
-    {
-      name: 'chat message edit save',
-      style: chatMessageStyle,
-      selector: '.chat-message-edit-save:focus-visible',
-    },
-    {
-      name: 'chat message edit cancel',
-      style: chatMessageStyle,
-      selector: '.chat-message-edit-cancel:focus-visible',
     },
   ];
 
@@ -999,11 +900,6 @@ describe('SVG chart focus-ring recipe', () => {
 describe('focus-ring sweep — text-entry focus selectors', () => {
   const textEntryCases: Array<{ name: string; style: string; selector: string }> = [
     {
-      name: 'chat message edit textarea',
-      style: chatMessageStyle,
-      selector: '.chat-message-edit-textarea:focus',
-    },
-    {
       name: 'review comment composer textarea',
       style: commentComposerStyle,
       selector: '.comment-composer-textarea:focus',
@@ -1048,12 +944,6 @@ describe('focus-ring sweep — text-entry focus selectors', () => {
 });
 
 describe('focus-ring sweep — selected/current state boundaries', () => {
-  test('chat stop button does not override the shared send-button focus ring with danger color', () => {
-    const root = parse(chatInputStyle);
-    const rules = findRules(root, '.chat-input-send[data-stop]:focus-visible');
-    expect(rules).toEqual([]);
-  });
-
   test('ProseMirror selected nodes use a tokenized selected-state outline, not a focus selector', () => {
     const root = parse(prosemirrorCss);
     const selectedNode = findRule(root, '.ProseMirror-selectednode');
@@ -1063,61 +953,6 @@ describe('focus-ring sweep — selected/current state boundaries', () => {
     expect(selectedNode!.selector).not.toContain(':focus');
     expect(declValue(selectedNode!, 'outline')).toBe('2px solid var(--cinder-accent)');
     expect(declValue(selectedListItem!, 'border')).toBe('2px solid var(--cinder-accent)');
-  });
-});
-
-describe('chat-input attachment-remove — inset ring painted on the visible chip', () => {
-  // The button is a 44px touch target with the visible chip rendered by its
-  // `::before`. The standard-mode ring is an inset box-shadow on `::before` so it
-  // hugs the chip, not the oversized hit area. In forced-colors the box-shadow is
-  // stripped, so the system-color outline is repainted on the SAME `::before`
-  // selector (the round chip), which avoids fragile parent-to-pseudo offset math.
-  test('::before paints an inset ring referencing the ring color', () => {
-    const root = parse(chatInputStyle);
-    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible::before').filter(
-      (rule) => !isUnderForcedColors(rule),
-    );
-    expect(rules.length).toBeGreaterThanOrEqual(1);
-    const boxShadow = declValue(rules[0]!, 'box-shadow');
-    expect(boxShadow).toBeDefined();
-    expect(boxShadow).toContain('inset');
-    expect(boxShadow).toContain('var(--cinder-ring-color)');
-    expect(boxShadow).not.toContain(SHARED_BOX_SHADOW);
-  });
-
-  test('forced-colors fallback repaints the outline on the ::before chip', () => {
-    const root = parse(chatInputStyle);
-    const rules = findRules(root, '.chat-input-attachment-remove:focus-visible::before').filter(
-      (rule) => isUnderForcedColors(rule),
-    );
-    expect(rules.length).toBeGreaterThanOrEqual(1);
-    const fallback = rules[0]!;
-    // box-shadow stripped, system-color outline painted on the visible chip.
-    expect(declValue(fallback, 'box-shadow')).toBe('none');
-    expect(declValue(fallback, 'outline')).toBe('var(--cinder-ring-width) solid ButtonText');
-    expect(declValue(fallback, 'outline-offset')).toBe('var(--cinder-ring-offset)');
-  });
-});
-
-describe('image-lightbox white-over-photo allowlist', () => {
-  // Documented exception: white outline for contrast over an arbitrary photo
-  // backdrop. The lint rule permits these via stylelint-disable-next-line; the
-  // recipe test pins that the deliberate white ring is preserved AND that each
-  // is annotated with a disable comment citing the contrast reason.
-  for (const selector of ['.lightbox-close:focus-visible', '.lightbox-nav:focus-visible']) {
-    test(`${selector} keeps the deliberate white outline`, () => {
-      const root = parse(imageLightboxStyle);
-      const rules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
-      expect(rules.length).toBeGreaterThanOrEqual(1);
-      expect(declValue(rules[0]!, 'outline')).toBe('2px solid white');
-    });
-  }
-
-  test('both selectors are annotated with a stylelint-disable allowlist comment', () => {
-    const disableMatches = imageLightboxStyle.match(
-      /stylelint-disable-next-line cinder\/no-focus-visible-colored-outline/g,
-    );
-    expect(disableMatches?.length).toBe(2);
   });
 });
 
@@ -1286,17 +1121,6 @@ describe('forced-colors fallbacks — issue #460 (9 affected components)', () =>
       name: 'menu-bar trigger',
       css: menuBarCss,
       selector: '.cinder-menu-bar__trigger:focus-visible',
-      expectedOffset: '3px',
-    },
-    {
-      name: 'chat-conversation-list interactive button',
-      css: chatConversationListCss,
-      selector:
-        '.cinder-chat-conversation-list__button[data-cinder-conversation-interactive]:focus-visible',
-      // Button element: ButtonBorder renders in HCM regardless of standard-mode
-      // border-color:transparent. ButtonText is correct (aria-current="page" nav
-      // semantics, not aria-selected list selection — Highlight/HighlightText
-      // would be wrong here).
       expectedOffset: '3px',
     },
   ];

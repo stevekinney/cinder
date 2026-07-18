@@ -13,6 +13,7 @@ import { createServer } from 'node:net';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import parseChangeset from '@changesets/parse';
 import type { BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
@@ -25,7 +26,7 @@ import {
 import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
-import { parseJsonFile } from './lib/read-json-file.ts';
+import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
 import { getSourceMapReferences, packForPublish } from './pack-for-publish.ts';
 import { sveltePeerContract } from './validate-svelte-peer-contract.ts';
 import { isObjectRecord } from './validation-utilities.ts';
@@ -46,6 +47,14 @@ function getPackFileName(identity: PackageIdentity): string {
   return `${packageFileNamePrefix}-${identity.version}.tgz`;
 }
 
+/** A fixture-only path outside the package root's publish/weight selection seam. */
+export function chatPeerValidationTarballPath(
+  packageRoot: string,
+  identity: PackageIdentity,
+): string {
+  return join(packageRoot, 'tmp', 'chat-peer-validation', getPackFileName(identity));
+}
+
 /** Derive the tarball filename from package.json so version bumps don't silently break validation. */
 function readPackageIdentity(packageDirectory = repositoryRoot): PackageIdentity {
   const parsed: unknown = JSON.parse(readFileSync(join(packageDirectory, 'package.json'), 'utf8'));
@@ -62,6 +71,11 @@ function readPackageIdentity(packageDirectory = repositoryRoot): PackageIdentity
 const packageIdentity = readPackageIdentity();
 const tarballFileName = getPackFileName(packageIdentity);
 const tarballFilePath = join(repositoryRoot, tarballFileName);
+const chatPackageDirectory = join(workspaceRoot, 'packages', 'chat');
+const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
+const chatTarballFileName = getPackFileName(chatPackageIdentity);
+const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
+let chatFixtureCinderTarballFilePath = tarballFilePath;
 const workspaceDependencyPackages = ['diff', 'markdown', 'editor', 'commentary'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
@@ -96,7 +110,6 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   '@types/mdast',
   '@types/unist',
   'comlink',
-  'conversationalist',
   'hast-util-sanitize',
   'js-yaml',
   'rehype-katex',
@@ -272,6 +285,14 @@ async function runBuild(): Promise<void> {
   process.stdout.write('[validate-consumers] step 1: building cinder…\n');
   const result = await runHookCommand('bun', ['run', 'build'], { cwd: repositoryRoot });
   if (result.exitCode !== 0) fail(`bun run build failed with exit ${result.exitCode}`);
+
+  process.stdout.write('[validate-consumers] building @lostgradient/chat…\n');
+  const chatBuildResult = await runHookCommand('bun', ['run', 'build'], {
+    cwd: chatPackageDirectory,
+  });
+  if (chatBuildResult.exitCode !== 0) {
+    fail(`@lostgradient/chat build failed with exit ${chatBuildResult.exitCode}`);
+  }
 }
 
 async function packWorkspaceDependencyTarballs(): Promise<void> {
@@ -310,6 +331,168 @@ async function packTarball(): Promise<void> {
     fail(`pack-for-publish failed: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!existsSync(tarballFilePath)) fail(`Tarball not at ${tarballFilePath} after pack.`);
+}
+
+async function packChatTarball(): Promise<void> {
+  process.stdout.write(
+    `[validate-consumers] staged Chat pack-for-publish → ${chatTarballFileName}…\n`,
+  );
+  if (existsSync(chatTarballFilePath)) {
+    await Bun.file(chatTarballFilePath).delete();
+  }
+  const result = await runHookCommand('bun', ['run', 'pack:publish'], {
+    cwd: chatPackageDirectory,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  if (result.exitCode !== 0) {
+    fail(`@lostgradient/chat pack:publish failed:\n${result.stdout}\n${result.stderr}`);
+  }
+  if (!existsSync(chatTarballFilePath)) {
+    fail(`Chat tarball not at ${chatTarballFilePath} after pack:publish.`);
+  }
+}
+
+type ReleaseType = 'patch' | 'minor' | 'major';
+
+const releasePriority: Record<ReleaseType, number> = { patch: 0, minor: 1, major: 2 };
+
+/** Apply a Changesets release type to a plain semantic version. */
+export function bumpPackageVersion(version: string, releaseType: ReleaseType): string {
+  const match = /^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$/u.exec(version);
+  if (match?.groups === undefined) {
+    throw new Error(`cannot apply a pending changeset to non-plain version ${version}`);
+  }
+  const major = Number(match.groups['major']);
+  const minor = Number(match.groups['minor']);
+  const patch = Number(match.groups['patch']);
+  if (releaseType === 'major') return `${major + 1}.0.0`;
+  if (releaseType === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
+
+async function pendingReleaseTypeForPackage(packageName: string): Promise<ReleaseType | undefined> {
+  const changesetDirectory = join(workspaceRoot, '.changeset');
+  const changesetGlob = new Glob('*.md');
+  let highestReleaseType: ReleaseType | undefined;
+  for await (const relativePath of changesetGlob.scan({ cwd: changesetDirectory })) {
+    if (relativePath === 'README.md') continue;
+    const source = await Bun.file(join(changesetDirectory, relativePath)).text();
+    const release = parseChangeset(source).releases.find((entry) => entry.name === packageName);
+    if (
+      release === undefined ||
+      (release.type !== 'patch' && release.type !== 'minor' && release.type !== 'major')
+    ) {
+      continue;
+    }
+    if (
+      highestReleaseType === undefined ||
+      releasePriority[release.type] > releasePriority[highestReleaseType]
+    ) {
+      highestReleaseType = release.type;
+    }
+  }
+  return highestReleaseType;
+}
+
+/**
+ * Determine the Cinder version Chat's fixture must install. Before the Version
+ * Packages pull request, Chat already declares its future Cinder peer range but
+ * Cinder's source manifest still has the previous version. A pending changeset
+ * is the only authorized bridge; release branches use the exact source version.
+ */
+export function resolveChatFixtureCinderVersion(options: {
+  currentVersion: string;
+  peerRange: string;
+  pendingReleaseType?: ReleaseType;
+}): { version: string; requiresValidationOnlyRepack: boolean } {
+  if (Bun.semver.satisfies(options.currentVersion, options.peerRange)) {
+    return { version: options.currentVersion, requiresValidationOnlyRepack: false };
+  }
+  if (options.pendingReleaseType === undefined) {
+    throw new Error(
+      `Cinder ${options.currentVersion} does not satisfy Chat peer ${options.peerRange}, and no pending Cinder changeset can reconcile them`,
+    );
+  }
+  const pendingVersion = bumpPackageVersion(options.currentVersion, options.pendingReleaseType);
+  if (!Bun.semver.satisfies(pendingVersion, options.peerRange)) {
+    throw new Error(
+      `pending Cinder ${pendingVersion} does not satisfy Chat peer ${options.peerRange}`,
+    );
+  }
+  return { version: pendingVersion, requiresValidationOnlyRepack: true };
+}
+
+async function stageChatFixtureCinderArtifact(): Promise<{
+  tarballPath: string;
+  cleanup: () => Promise<void>;
+}> {
+  const chatManifest = await readJsonFile<{
+    peerDependencies?: Record<string, string>;
+  }>(join(chatPackageDirectory, 'package.json'));
+  const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
+  if (cinderPeerRange === undefined) {
+    fail('@lostgradient/chat must declare @lostgradient/cinder as a required peer dependency');
+  }
+  const pendingReleaseType = await pendingReleaseTypeForPackage(packageIdentity.name);
+  const resolution = resolveChatFixtureCinderVersion({
+    currentVersion: packageIdentity.version,
+    peerRange: cinderPeerRange,
+    ...(pendingReleaseType === undefined ? {} : { pendingReleaseType }),
+  });
+  if (!resolution.requiresValidationOnlyRepack) {
+    return { tarballPath: tarballFilePath, cleanup: async () => {} };
+  }
+
+  const validationDirectory = join(repositoryRoot, 'tmp', 'chat-peer-validation');
+  const stagingDirectory = join(validationDirectory, 'staging');
+  await rm(validationDirectory, { recursive: true, force: true });
+  await mkdir(stagingDirectory, { recursive: true });
+  if (tarBinaryPath === null) fail('tar is required to stage the pending Cinder peer artifact');
+  const extractResult = await runHookCommand(
+    tarBinaryPath,
+    ['-xzf', tarballFilePath, '-C', stagingDirectory],
+    { stdout: 'pipe', stderr: 'pipe' },
+  );
+  if (extractResult.exitCode !== 0) {
+    fail(`could not extract Cinder tarball for Chat peer validation: ${extractResult.stderr}`);
+  }
+
+  const stagedPackageRoot = join(stagingDirectory, 'package');
+  const stagedManifestPath = join(stagedPackageRoot, 'package.json');
+  const stagedManifest = await readJsonFile<Record<string, unknown>>(stagedManifestPath);
+  stagedManifest['version'] = resolution.version;
+  writeFileSync(stagedManifestPath, `${JSON.stringify(stagedManifest, null, 2)}\n`);
+  const validationIdentity = { ...packageIdentity, version: resolution.version };
+  const validationTarballPath = chatPeerValidationTarballPath(repositoryRoot, validationIdentity);
+  try {
+    const packResult = await runHookCommand(
+      'bun',
+      ['pm', 'pack', '--destination', validationDirectory],
+      {
+        cwd: stagedPackageRoot,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    if (packResult.exitCode !== 0 || !existsSync(validationTarballPath)) {
+      fail(
+        `could not create validation-only Cinder ${resolution.version} tarball:\n${packResult.stdout}\n${packResult.stderr}`,
+      );
+    }
+    process.stdout.write(
+      `[validate-consumers] using validation-only Cinder ${resolution.version} tarball for Chat's pending ${cinderPeerRange} peer contract.\n`,
+    );
+    return {
+      tarballPath: validationTarballPath,
+      cleanup: async () => {
+        await rm(validationDirectory, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    await rm(validationDirectory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 /**
@@ -814,6 +997,7 @@ function injectTarballIntoFixture(
     typescriptVersion?: string;
     includeRichFeatureDependencies?: boolean;
     includeWorkspaceDependencyPackages?: boolean;
+    includeChatPackage?: boolean;
   } = {},
 ): () => void {
   const manifestPath = join(fixtureDirectory, 'package.json');
@@ -872,6 +1056,17 @@ function injectTarballIntoFixture(
       const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
       dependencies[dependencyPackage.name] = fileSpecifier;
       overrides[dependencyPackage.name] = fileSpecifier;
+    }
+  }
+  if (options.includeChatPackage === true) {
+    const chatPeerDependencies = parseJsonFile<{
+      peerDependencies?: Record<string, string>;
+    }>(readFileSync(join(chatPackageDirectory, 'package.json'), 'utf8')).peerDependencies;
+    dependencies['@lostgradient/cinder'] = `file:${chatFixtureCinderTarballFilePath}`;
+    dependencies['@lostgradient/chat'] = `file:${chatTarballFilePath}`;
+    for (const [dependencyName, version] of Object.entries(chatPeerDependencies ?? {})) {
+      if (dependencyName === '@lostgradient/cinder' || dependencyName === 'svelte') continue;
+      dependencies[dependencyName] = version;
     }
   }
   writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + '\n');
@@ -1192,11 +1387,13 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       ? injectTarballIntoFixture(fixtureDirectory, {
           includeRichFeatureDependencies: false,
           includeWorkspaceDependencyPackages: false,
+          includeChatPackage: true,
         })
       : injectTarballIntoFixture(fixtureDirectory, {
           svelteVersion,
           includeRichFeatureDependencies: false,
           includeWorkspaceDependencyPackages: false,
+          includeChatPackage: true,
         });
 
   try {
@@ -1205,11 +1402,18 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: cleaned fixture.\n`);
 
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: installing…\n`);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    // These tarballs are rebuilt repeatedly at the same path and version during
+    // local validation. Bypass Bun's package cache so hydration always exercises
+    // the bytes produced by this run rather than a stale earlier pack.
+    const installResult = await runHookCommand(
+      'bun',
+      ['install', '--no-save', '--force', '--no-cache'],
+      {
+        cwd: fixtureDirectory,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
     if (installResult.exitCode !== 0) {
       fail(
         `sveltekit-consumer ${label} bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
@@ -1903,6 +2107,8 @@ async function fetchWithTimeout(
   }
 }
 
+export const EXAMPLES_CONSUMER_READINESS_PATH = '/_app/version.json';
+
 async function runNodeFixture(): Promise<void> {
   const fixtureDirectory = join(repositoryRoot, 'fixtures/node-consumer');
   process.stdout.write('[validate-consumers] step 5: node-consumer (under Node, not Bun)…\n');
@@ -2155,7 +2361,14 @@ async function runExamplesConsumerFixture(): Promise<void> {
     });
 
     try {
-      await waitForUrl(`http://127.0.0.1:${httpPort}/`, 15_000, fixtureServer);
+      // Poll a static build asset so readiness checks do not repeatedly start
+      // the intentionally expensive all-examples SSR render and abort it after
+      // 500 ms. Once the server is ready, render `/` exactly once below.
+      await waitForUrl(
+        `http://127.0.0.1:${httpPort}${EXAMPLES_CONSUMER_READINESS_PATH}`,
+        15_000,
+        fixtureServer,
+      );
       const response = await fetchWithTimeout(
         `http://127.0.0.1:${httpPort}/`,
         15_000,
@@ -2216,6 +2429,7 @@ async function main(): Promise<void> {
   await runBuild();
   await packWorkspaceDependencyTarballs();
   await packTarball();
+  await packChatTarball();
   await inspectTarball();
 
   // PR 1 publish-path gates: assert the staged pack produced a self-contained
@@ -2243,25 +2457,34 @@ async function main(): Promise<void> {
   // → node-consumer (tsc + SSR render) → typescript-consumer (tsc + svelte-check)
   // → sveltekit-consumer (full Vite build) → examples-consumer (SvelteKit build +
   // SSR over every example, slowest).
-  await runStylesConsumerFixture();
-  await runManifestConsumerFixture();
-  await runNodeFixture();
-  await runTypescriptConsumerFixture();
-  await runTypescriptCompatibilityFixture('latest TypeScript 6', '^6.0.3');
-  await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
-  await runSveltePeerCompatibilityFixture('latest Svelte 5', sveltePeerContract.latest);
-  await runSveltekitFixture('minimum', sveltePeerContract.minimum);
-  await runSveltekitFixture('latest Svelte 5', sveltePeerContract.latest);
-  await runExamplesConsumerFixture();
-  process.stdout.write('[validate-consumers] all checks passed.\n');
+  const chatFixtureCinderArtifact = await stageChatFixtureCinderArtifact();
+  chatFixtureCinderTarballFilePath = chatFixtureCinderArtifact.tarballPath;
+  try {
+    await runStylesConsumerFixture();
+    await runManifestConsumerFixture();
+    await runNodeFixture();
+    await runTypescriptConsumerFixture();
+    await runTypescriptCompatibilityFixture('latest TypeScript 6', '^6.0.3');
+    await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
+    await runSveltePeerCompatibilityFixture('latest tested Svelte 5', sveltePeerContract.latest);
+    await runSveltekitFixture('minimum', sveltePeerContract.minimum);
+    await runSveltekitFixture('latest tested Svelte 5', sveltePeerContract.latest);
+    await runExamplesConsumerFixture();
+    process.stdout.write('[validate-consumers] all checks passed.\n');
+  } finally {
+    await chatFixtureCinderArtifact.cleanup();
+    chatFixtureCinderTarballFilePath = tarballFilePath;
+  }
 }
 
-try {
-  await withLocalValidationGateLock(main);
-} catch (error) {
-  if (error instanceof ValidationError) {
-    process.stderr.write(`[validate-consumers] ${error.message}\n`);
-    process.exit(1);
+if (import.meta.main) {
+  try {
+    await withLocalValidationGateLock(main);
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      process.stderr.write(`[validate-consumers] ${error.message}\n`);
+      process.exit(1);
+    }
+    throw error;
   }
-  throw error;
 }

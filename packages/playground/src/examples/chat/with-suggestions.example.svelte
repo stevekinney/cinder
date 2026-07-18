@@ -5,12 +5,7 @@
 </script>
 
 <script lang="ts">
-  import {
-    Chat,
-    appendMessages,
-    appendUserMessage,
-    createConversation,
-  } from '@lostgradient/cinder/chat';
+  import { Chat, appendMessages, appendUserMessage, createConversation } from '@lostgradient/chat';
 
   let conversation = $state(
     appendMessages(

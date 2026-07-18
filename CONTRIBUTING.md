@@ -97,7 +97,7 @@ The playground (`@cinder/playground`) is a `Bun.serve` dev server that compiles 
 The moving parts:
 
 - `packages/playground/src/playground-server.ts`: the `Bun.serve` dev server. Its `handleRequest` (a `(Request) => Promise<Response>`) is the whole router, reused verbatim by the pre-render. It is **deliberately not** named `server`/`index`/`app`/`main`: those are Vercel's Bun backend-entrypoint magic names, and matching one would make Vercel auto-detect a root function and try to _run_ it — re-introducing the runtime failure the static export avoids. The `import.meta.main` block is the local dev/CLI path (it binds a port + file watcher) and never runs in the build.
-- `packages/playground/scripts/static-export.ts` (the `vercel-build` npm script): drives `handleRequest` at build time and writes every route's response into `public/` — `/c/<name>` and `/page/<name>` HTML, `/shell-bundle/*` + `/page-bundle/*` JS (following each bundle's hashed-chunk imports), `/styles/*` + `/components/*` CSS, `/api/manifest/<name>` JSON, `/example-src/*` source, and a `/ping` (so the deploy smoke-test has a static `pong`). HTML pages are written as `index.html` directories (clean URLs); data routes are written as literal extensionless files.
+- `packages/playground/scripts/static-export.ts` (the `vercel-build` npm script): drives `handleRequest` at build time and writes every route's response into `public/` — `/c/<name>` and `/page/<name>` HTML, `/shell-bundle/*` + `/page-bundle/*` JS (following each bundle's hashed-chunk imports), `/styles/*` + `/components/*` + `/package-components/*` CSS, `/api/manifest/<name>` JSON, `/example-src/*` source, and a `/ping` (so the deploy smoke-test has a static `pong`). HTML pages are written as `index.html` directories (clean URLs); data routes are written as literal extensionless files.
 - `packages/playground/vercel.json`: `framework: null`, the `vercel-build` build command, `outputDirectory: "public"`, `cleanUrls: true`, and a single rewrite of `/` to the pre-rendered redirect `index.html`. No `functions`, no `bunVersion` runtime — nothing executes at request time.
 - `.github/workflows/deploy-playground.yaml`: deploys on push to `main` (production) and on pull requests (preview). It uses the Vercel CLI (`vercel pull` → `vercel build` → `vercel deploy --prebuilt`) and finishes with a `/ping` smoke-test.
 
@@ -110,7 +110,7 @@ The full site is rendered at build time, so deploys are slower than a function d
 Nothing below is performed by this repository or its workflows. A maintainer with Vercel access must do it once:
 
 1. **Create the Vercel project.** In the Vercel dashboard, import this Git repository as a new project (or run `bunx vercel link` locally from the repo root and follow the prompts).
-2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root, because `cinder` is a `workspace:*` dependency). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the static-export build reads component sources from `../components` at build time, and that toggle must be on for those files to be available during the build.
+2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root because `@lostgradient/cinder` and `@lostgradient/chat` are workspace dependencies). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the static-export build reads component sources from `../components` and `../chat` at build time, and that toggle must be on for those files to be available during the build.
 3. **Capture the three deploy secrets** and add them to the repository's GitHub Actions secrets (Settings → Secrets and variables → Actions):
 
    | Secret              | Where it comes from                                                                                |
@@ -156,7 +156,7 @@ It does not contact Vercel or deploy anything — it just produces the static `p
 
 ## Changesets
 
-If your pull request changes anything that ships in the `cinder` npm package (the workspace at `packages/components/`), add a changeset:
+If your pull request changes anything that ships in `@lostgradient/cinder` (`packages/components/`) or `@lostgradient/chat` (`packages/chat/`), add a changeset:
 
 ```bash
 bun x changeset
@@ -164,11 +164,11 @@ bun x changeset
 
 Pick the appropriate semver bump (`patch`, `minor`, `major`), write a short summary, and commit the generated file under `.changeset/`. The release workflow (`.github/workflows/release.yaml`) consumes pending changesets to open a "Version Packages" pull request; merging that PR publishes to npm through npm Trusted Publishing.
 
-The npm artifact has one source of truth: `packages/components/scripts/pack-for-publish.ts`. Consumer validation, release dry-runs, the Changesets publish path, and the manual break-glass workflow all publish or inspect the staged tarball from that script. Do not publish from raw `packages/components/package.json`; that source manifest contains workspace-only development dependencies and scripts that are intentionally stripped from the released artifact.
+Each npm artifact has one staged-pack source of truth: `packages/components/scripts/pack-for-publish.ts` for Cinder and `packages/chat/scripts/pack-for-publish.ts` for Chat. Consumer validation, release dry-runs, and both publish paths use those exact tarballs. Do not publish directly from either source manifest; workspace-only development dependencies and scripts are intentionally stripped from released artifacts.
 
-Before a release, `main-green` owns source validation: lint, typecheck, generated artifact checks, source audits, and full component tests. Push runs are keyed by SHA and are not cancelled by newer pushes because the release workflow waits for the same-SHA `main-green` run before publishing. The release workflow itself validates only the artifact it is about to publish: `bun run --filter=@lostgradient/cinder validate:consumer` installs the staged tarball into consumer fixtures, runs the Svelte peer compatibility matrix (`5.56.0`, workspace `~5.56.0`, latest `svelte@^5`), and checks tarball hygiene. `bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball` reports packed size, unpacked size, file count, largest entry directories, and largest files, then fails on budget drift.
+Before a release, `main-green` owns source validation: lint, typecheck, generated artifact checks, source audits, and full package tests. Push runs are keyed by SHA and are not cancelled by newer pushes because the release workflow waits for the same-SHA `main-green` run before publishing. The release workflow validates both artifacts before publishing either: each package's `validate:consumer` command installs staged tarballs into consumer fixtures, and each `package:weight:check -- --existing-tarball` command applies a package-specific budget. Cinder publishes first because Chat requires the Cinder minor released alongside it; both publishers skip idempotently when the exact registry version already exists.
 
-Only `cinder` (the workspace at `packages/components/`) publishes to npm; the other `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` (the only private workspace with no dependents and listed under `ignore` in `.changeset/config.json`) do not need a changeset. The remaining private workspaces (`@cinder/commentary`, `@cinder/diff`, `@cinder/editor`, `@cinder/markdown`, `@cinder/testing`) are `workspace:*` dependencies of `cinder`, so changes to them generally do warrant a `cinder` changeset — they ship inside the published package.
+Only the two `@lostgradient/*` workspaces publish to npm; the `@cinder/*` workspaces are private. Changes confined to `@cinder/playground` do not need a changeset. Changes to private workspaces bundled by Cinder generally require a Cinder changeset because their output ships in its artifact.
 
 ### Publishing to npm
 
@@ -176,9 +176,9 @@ The primary release workflow (`.github/workflows/release.yaml`) uses **npm Trust
 
 #### One-time registry configuration (a maintainer must do this once in the npm web UI)
 
-npm Trusted Publishing must be configured on the `cinder` package page at [npmjs.com](https://www.npmjs.com/package/cinder):
+npm Trusted Publishing must be configured independently on the [`@lostgradient/cinder`](https://www.npmjs.com/package/@lostgradient%2Fcinder) and [`@lostgradient/chat`](https://www.npmjs.com/package/@lostgradient%2Fchat) package pages:
 
-1. Navigate to the `cinder` package → **Settings** → **Publishing** → **Add a publisher**.
+1. Navigate to each package → **Settings** → **Publishing** → **Add a publisher**.
 2. Select **GitHub Actions** as the provider.
 3. Set these values exactly:
 
@@ -191,7 +191,7 @@ npm Trusted Publishing must be configured on the `cinder` package page at [npmjs
 
 4. Save. The registry will now accept OIDC tokens from that workflow without a static secret.
 
-Until this is configured on npmjs.com, OIDC publishes will be rejected by the registry even though the workflow is otherwise correct. This is a one-time setup step performed on the npm website; it is not automated by this repository.
+Until this is configured for both packages, OIDC publishes will be rejected even though the workflow is otherwise correct. A package must exist before npm can configure its Trusted Publisher, so publish the Cinder version required by Chat first, then bootstrap the first `@lostgradient/chat` release with the manual workflow and a narrowly scoped token. The manual workflow refuses to publish Chat until npm has a Cinder version satisfying Chat's declared peer. After Chat exists, configure its Trusted Publisher so `release.yaml` can publish future versions through OIDC.
 
 #### The workflow validation guard
 
@@ -201,8 +201,8 @@ Until this is configured on npmjs.com, OIDC publishes will be rejected by the re
 
 If the Changesets/OIDC path fails and a release is urgent, `.github/workflows/release-manual.yaml` is the documented fallback. It:
 
-- Requires a manually dispatched `workflow_dispatch` event with a version tag input.
-- Uses `NPM_TOKEN` (a Granular Access Token scoped to the `cinder` package only, stored in repository secrets).
+- Requires a package selection and package-qualified version tag such as `cinder-v0.16.0` or `chat-v0.1.0`.
+- Uses `NPM_TOKEN` (a Granular Access Token scoped only to the two public packages, stored in repository secrets).
 - Uses the same staged tarball validation as the primary workflow and disables provenance until the publish runtime can sign cleanly.
 
 **Use this workflow only when the primary path is broken.** Routine releases must go through the Changesets PR flow into `main` and the primary `release.yaml`.
@@ -210,5 +210,5 @@ If the Changesets/OIDC path fails and a release is urgent, `.github/workflows/re
 Token hygiene for the break-glass secret:
 
 - Rotate `NPM_TOKEN` at least every 90 days.
-- Use a Granular Access Token scoped to the `cinder` package — never a full-access automation token.
+- Use a Granular Access Token scoped only to `@lostgradient/cinder` and `@lostgradient/chat` — never a full-access automation token.
 - After a break-glass publish, investigate and restore the primary OIDC path before the next release.

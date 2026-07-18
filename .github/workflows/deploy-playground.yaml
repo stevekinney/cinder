@@ -21,6 +21,7 @@ on:
       - main
     paths:
       - 'packages/playground/**'
+      - 'packages/chat/**'
       - 'packages/components/src/**'
       - 'packages/components/components.json'
       - 'packages/components/package.json'
@@ -51,6 +52,7 @@ on:
   pull_request:
     paths:
       - 'packages/playground/**'
+      - 'packages/chat/**'
       - 'packages/components/src/**'
       - 'packages/components/components.json'
       - 'packages/components/package.json'

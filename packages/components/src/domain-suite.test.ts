@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
 const domainSuiteModules = [
-  ['chat', './components/chat/index.ts'],
   ['diff-viewer', './components/diff-viewer/index.ts'],
   ['surface', './components/surface/index.ts'],
   ['markdown-editor', './components/markdown-editor/index.ts'],

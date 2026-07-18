@@ -20,7 +20,7 @@
     type JSONValue,
     type Message,
     type ToolErrorCategory,
-  } from '@lostgradient/cinder/chat';
+  } from '@lostgradient/chat';
   import { Button } from '@lostgradient/cinder/button';
   import { Input } from '@lostgradient/cinder/input';
   import { Segment } from '@lostgradient/cinder/segment';

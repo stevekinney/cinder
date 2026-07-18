@@ -1,0 +1,12 @@
+[
+  {
+    "filePath": "src/components/chat/container/chat-jump-controls.svelte",
+    "name": "--cinder-text-3xs",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/chat/container/chat-jump-controls.svelte",
+    "name": "--cinder-text-4xs",
+    "allowedCount": 1
+  }
+]

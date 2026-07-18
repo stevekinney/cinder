@@ -10,6 +10,7 @@ const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
 
 const C = 'packages/components/src/components';
 const U = 'packages/components/src/utilities';
+const CHAT = 'packages/chat/src/lib/components';
 
 /**
  * A small synthetic source tree exercising the dependents graph without the
@@ -126,6 +127,48 @@ describe('changed-components decide()', () => {
       knownSlugs,
     );
     expect(result).toEqual({ mode: 'filtered', components: ['accordion'] });
+  });
+});
+
+describe('changed-components extracted packages', () => {
+  const chatSlugs = [
+    'chat',
+    'chat-composer-popover',
+    'chat-conversation-header',
+    'chat-conversation-list',
+  ];
+  const knownWithChat = new Set([...knownSlugs, ...chatSlugs]);
+
+  it('tests the full Chat family when extracted package source changes', () => {
+    const result = decide(
+      [`${CHAT}/chat-conversation-list/conversation-summary.ts`],
+      sourceFiles,
+      knownWithChat,
+    );
+    expect(result).toEqual({ mode: 'filtered', components: chatSlugs });
+  });
+
+  it('includes the Chat family when a Cinder primitive changes', () => {
+    const result = decide([`${C}/badge/badge.svelte`], sourceFiles, knownWithChat);
+    expect(result).toEqual({ mode: 'filtered', components: ['badge', ...chatSlugs] });
+  });
+
+  it('includes the Chat family when a shared Cinder utility changes', () => {
+    const result = decide([`${U}/class-names.ts`], sourceFiles, knownWithChat);
+    expect(result).toEqual({
+      mode: 'filtered',
+      components: ['badge', 'button', ...chatSlugs, 'confirm', 'dialog'],
+    });
+  });
+
+  it('forces full for a deleted extracted-package source file', () => {
+    const path = `${CHAT}/chat/chat.svelte`;
+    expect(decide([path], sourceFiles, knownWithChat, [path]).mode).toBe('full');
+  });
+
+  it('forces full for an unknown extracted-package component directory', () => {
+    const result = decide([`${CHAT}/ghost/ghost.svelte`], sourceFiles, knownWithChat);
+    expect(result.mode).toBe('full');
   });
 });
 

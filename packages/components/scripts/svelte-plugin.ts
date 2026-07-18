@@ -1,4 +1,6 @@
 import type { BunPlugin } from 'bun';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { compile, compileModule } from 'svelte/compiler';
 import ts from 'typescript';
 
@@ -17,7 +19,16 @@ const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
   'review-editor',
 ]);
 
-const PUBLISHED_PACKAGE_SOURCE_PREFIX = 'node_modules/@lostgradient/cinder/';
+const PUBLISHED_PACKAGE_SOURCE_MAPPINGS = [
+  {
+    publishedSourcePrefix: 'node_modules/@lostgradient/cinder/',
+    workspaceSourceMarker: '/packages/components/',
+  },
+  {
+    publishedSourcePrefix: 'node_modules/@lostgradient/chat/dist/',
+    workspaceSourceMarker: '/packages/chat/src/lib/',
+  },
+] as const;
 
 /**
  * Give authored package components the same filename in workspace builds that
@@ -28,18 +39,22 @@ const PUBLISHED_PACKAGE_SOURCE_PREFIX = 'node_modules/@lostgradient/cinder/';
  */
 export function publishedSvelteCompileFilename(filePath: string): string {
   const normalizedPath = filePath.replaceAll('\\', '/');
-  const installedSourceMarker = `/${PUBLISHED_PACKAGE_SOURCE_PREFIX}`;
-  const installedSourceIndex = normalizedPath.lastIndexOf(installedSourceMarker);
-  if (installedSourceIndex >= 0) {
-    return normalizedPath.slice(installedSourceIndex + 1);
-  }
+  for (const {
+    publishedSourcePrefix,
+    workspaceSourceMarker,
+  } of PUBLISHED_PACKAGE_SOURCE_MAPPINGS) {
+    const installedSourceMarker = `/${publishedSourcePrefix}`;
+    const installedSourceIndex = normalizedPath.lastIndexOf(installedSourceMarker);
+    if (installedSourceIndex >= 0) {
+      return normalizedPath.slice(installedSourceIndex + 1);
+    }
 
-  const workspaceSourceMarker = '/packages/components/';
-  const workspaceSourceIndex = normalizedPath.lastIndexOf(workspaceSourceMarker);
-  if (workspaceSourceIndex >= 0) {
-    return `${PUBLISHED_PACKAGE_SOURCE_PREFIX}${normalizedPath.slice(
-      workspaceSourceIndex + workspaceSourceMarker.length,
-    )}`;
+    const workspaceSourceIndex = normalizedPath.lastIndexOf(workspaceSourceMarker);
+    if (workspaceSourceIndex >= 0) {
+      return `${publishedSourcePrefix}${normalizedPath.slice(
+        workspaceSourceIndex + workspaceSourceMarker.length,
+      )}`;
+    }
   }
 
   return filePath;
@@ -54,7 +69,9 @@ function allowsStyleBlock(path: string): boolean {
   // their styles with their markup.
   if (normalizedPath.includes('/packages/playground/')) return true;
 
-  const componentPathMatch = normalizedPath.match(/\/src\/components\/([^/]+)(?:\/|\.svelte$)/);
+  const componentPathMatch = normalizedPath.match(
+    /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,
+  );
   const componentName = componentPathMatch?.[1];
   return componentName !== undefined && DOMAIN_SUITE_STYLE_COMPONENTS.has(componentName);
 }
@@ -176,8 +193,8 @@ export function preserveServerComponentIdentity(source: string, fileName = 'comp
  *
  * - `generate`: chooses client-side or server-side rendering output.
  * - `injectCss`: when `true`, every component injects its CSS into the JS
- *   bundle — used by the playground server so domain-suite components (chat,
- *   diff-viewer, markdown-editor, review-editor) get their scoped styles
+ *   bundle — used by the playground server so domain-suite components
+ *   (Chat, diff-viewer, markdown-editor, review-editor) get their scoped styles
  *   applied. When `false` (default), library components emit external CSS
  *   sidecars so consumers can ship one cascade. Playground files always
  *   inject regardless of this flag, since dev-only chrome should not depend
@@ -198,6 +215,18 @@ export function sveltePlugin(
   return {
     name: `svelte-${options.generate}`,
     setup(builder) {
+      // Bun.plugin's global runtime builder does not expose `config`; Bun.build does.
+      // Only non-Bun build targets need the explicit relative-Svelte resolver.
+      const buildTarget = (builder as typeof builder & { config?: { target?: string } }).config
+        ?.target;
+      if (buildTarget !== undefined && buildTarget !== 'bun') {
+        builder.onResolve({ filter: /^\.\.\/(?:.*\/)?[^/]+\.svelte$/ }, ({ importer, path }) => {
+          if (importer.length === 0) return undefined;
+          const resolvedPath = resolve(dirname(importer), path);
+          return existsSync(resolvedPath) ? { path: resolvedPath } : undefined;
+        });
+      }
+
       builder.onLoad({ filter: /\.svelte$/ }, async ({ path }) => {
         const source = await Bun.file(path).text();
         const filename = publishedSvelteCompileFilename(path);

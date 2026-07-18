@@ -1,16 +1,24 @@
 /**
  * Discovery utilities for the cinder component playground.
  *
- * Scans `packages/components/src/components/` for public Svelte components and
+ * Scans every configured component package for public Svelte components and
  * `packages/playground/src/examples/` for their associated scenario files.
  * All scanning uses `Bun.Glob` with absolute paths derived from `import.meta.dirname`.
  */
 
 import { basename, dirname, join } from 'node:path';
 
+import { COMPONENT_SOURCES, type ComponentSource } from './component-sources.ts';
+
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
-const COMPONENTS_ROOT = join(PLAYGROUND_ROOT, '..', 'components'); // packages/components/
+
+export type DiscoveredComponent = {
+  name: string;
+  filePath: string;
+  importPath: string;
+  source: ComponentSource;
+};
 
 /**
  * Compose-only leaf components. These public components exist as real
@@ -100,6 +108,7 @@ export async function discoverComponentFilePaths(root: string): Promise<string[]
  * callers share a single scan instead of each kicking off their own.
  */
 let componentsCache: Promise<string[]> | null = null;
+let componentDefinitionsCache: Promise<DiscoveredComponent[]> | null = null;
 
 /**
  * Monotonic discovery generation. {@link invalidateDiscoveryCache} bumps it on
@@ -129,7 +138,65 @@ let discoverAllCache: Promise<Array<{ name: string; exampleCount: number }>> | n
 export function invalidateDiscoveryCache(): void {
   discoveryGeneration += 1;
   componentsCache = null;
+  componentDefinitionsCache = null;
   discoverAllCache = null;
+}
+
+/**
+ * Reject ambiguous route slugs before they can silently select one package.
+ * A slug is the shared key for pages, examples, documentation, and tests, so
+ * two packages claiming it is always a configuration error.
+ */
+export function assertUniqueComponentSlugs(components: readonly DiscoveredComponent[]): void {
+  const ownerByName = new Map<string, DiscoveredComponent>();
+  for (const component of components) {
+    const existing = ownerByName.get(component.name);
+    if (existing !== undefined) {
+      throw new Error(
+        `[playground] duplicate component slug "${component.name}" discovered in ${existing.source.packageName} and ${component.source.packageName}`,
+      );
+    }
+    ownerByName.set(component.name, component);
+  }
+}
+
+async function scanComponentDefinitions(): Promise<DiscoveredComponent[]> {
+  const definitionsBySource = await Promise.all(
+    COMPONENT_SOURCES.map(async (source) => {
+      const filePaths = await discoverComponentFilePaths(source.componentsRoot);
+      return filePaths.map((filePath): DiscoveredComponent => {
+        const name = basename(filePath, '.svelte');
+        return {
+          name,
+          filePath,
+          importPath: source.importPath(name),
+          source,
+        };
+      });
+    }),
+  );
+  const definitions = definitionsBySource.flat();
+
+  assertUniqueComponentSlugs(definitions);
+  return definitions.toSorted((left, right) => left.name.localeCompare(right.name));
+}
+
+/** Return every component together with the package that owns it. */
+export async function discoverComponentDefinitions(): Promise<DiscoveredComponent[]> {
+  for (;;) {
+    const generationAtStart = discoveryGeneration;
+    componentDefinitionsCache ??= scanComponentDefinitions();
+    const result = await componentDefinitionsCache;
+    if (generationAtStart === discoveryGeneration) return result;
+  }
+}
+
+/** Resolve one route slug to its owning package and public import path. */
+export async function discoverComponentDefinition(
+  componentName: string,
+): Promise<DiscoveredComponent | undefined> {
+  const definitions = await discoverComponentDefinitions();
+  return definitions.find((component) => component.name === componentName);
 }
 
 /**
@@ -140,16 +207,13 @@ export function invalidateDiscoveryCache(): void {
  * separate so the cache layer and the scan logic stay independently testable.
  */
 async function scanComponents(): Promise<string[]> {
-  const root = join(COMPONENTS_ROOT, 'src', 'components');
-  const filePaths = await discoverComponentFilePaths(root);
-  const names = filePaths.map((filePath) => basename(filePath, '.svelte'));
-  return [...new Set(names)].toSorted();
+  const definitions = await discoverComponentDefinitions();
+  return definitions.map((component) => component.name);
 }
 
 /**
- * Returns a sorted array of component kebab names. Discovers both the legacy
- * flat layout (`packages/components/src/components/<name>.svelte`) and the
- * per-directory migrated layout (`packages/components/src/components/<name>/<name>.svelte`).
+ * Returns a sorted array of component kebab names across every configured
+ * package. Discovers both legacy flat files and per-component directories.
  * Underscore-prefixed names are excluded as internal-only.
  *
  * The result is memoized at module scope: this function runs on every `/`,

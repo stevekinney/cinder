@@ -113,6 +113,7 @@ describe('exports drift', () => {
       './styles/foundation',
       './styles/utilities',
       './styles/guard',
+      './icons',
       './highlighters/shiki',
     ]);
     for (const key of Object.keys(existing)) {
@@ -135,6 +136,7 @@ describe('exports drift', () => {
     expect(exports['./styles/tokens']).toBeDefined();
     expect(exports['./styles/foundation']).toBeDefined();
     expect(exports['./styles/utilities']).toBeDefined();
+    expect(exports['./icons']).toBeDefined();
     // The slim base points at the layer-order + tokens/foundation/utilities
     // aggregator; the all-in entry points at the full-cascade aggregator.
     // Each CSS-only subpath also carries a `types` condition (first, per

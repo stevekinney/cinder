@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url';
 
 import { readJsonFile } from './lib/read-json-file.ts';
 import { packForPublish } from './pack-for-publish.ts';
+import { getPackFileName, resolvePackageRootArgument } from './publish-release.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const packageRoot = join(scriptDirectory, '..');
-const inspectionDirectory = join(packageRoot, 'tmp', 'package-weight-report');
+const defaultPackageRoot = join(scriptDirectory, '..');
 const tarBinaryPath = Bun.which('tar');
 
 type PackageIdentity = {
@@ -17,17 +17,37 @@ type PackageIdentity = {
   version: string;
 };
 
+/** Exact artifact path selected from the package's source manifest identity. */
+export function packageTarballPath(packageRoot: string, identity: PackageIdentity): string {
+  return join(packageRoot, getPackFileName(identity));
+}
+
 // Coarse anti-bloat headroom caps. The byte budgets are the primary bloat
 // guards; `fileCount` is a secondary cap that scales with the component count
 // (~13–14 published files per component), so it is raised as new components
 // ship. Adding the connection-indicator and schedule-builder components (plus
 // their sidecars) crossed the previous 5,000 cap with legitimate output.
-const budgets = {
-  packedBytes: 8_000_000,
-  unpackedBytes: 32_000_000,
-  fileCount: 5_500,
-  largestEntrypointBytes: 2_500_000,
-} as const;
+type PackageWeightBudgets = {
+  packedBytes: number;
+  unpackedBytes: number;
+  fileCount: number;
+  largestEntrypointBytes: number;
+};
+
+const budgetsByPackage: Record<string, PackageWeightBudgets> = {
+  '@lostgradient/cinder': {
+    packedBytes: 8_000_000,
+    unpackedBytes: 32_000_000,
+    fileCount: 5_500,
+    largestEntrypointBytes: 2_500_000,
+  },
+  '@lostgradient/chat': {
+    packedBytes: 2_000_000,
+    unpackedBytes: 8_000_000,
+    fileCount: 500,
+    largestEntrypointBytes: 1_500_000,
+  },
+};
 
 type FileSizeEntry = {
   path: string;
@@ -49,14 +69,9 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(2)} MB`;
 }
 
-function getPackFileName(identity: PackageIdentity): string {
-  const packageFileNamePrefix = identity.name.replace(/^@/, '').replaceAll('/', '-');
-  return `${packageFileNamePrefix}-${identity.version}.tgz`;
-}
-
-async function existingTarballPath(): Promise<string> {
+async function existingTarballPath(packageRoot: string): Promise<string> {
   const identity = await readJsonFile<PackageIdentity>(join(packageRoot, 'package.json'));
-  const tarballPath = join(packageRoot, getPackFileName(identity));
+  const tarballPath = packageTarballPath(packageRoot, identity);
   if (!existsSync(tarballPath)) {
     throw new Error(
       `expected validated package artifact at ${tarballPath}; run validate:consumer first`,
@@ -65,7 +80,7 @@ async function existingTarballPath(): Promise<string> {
   return tarballPath;
 }
 
-async function extractTarball(tarballPath: string): Promise<string> {
+async function extractTarball(tarballPath: string, inspectionDirectory: string): Promise<string> {
   if (tarBinaryPath === null) {
     throw new Error('tar is required to inspect the package artifact');
   }
@@ -94,8 +109,11 @@ function recordEntrypointSize(
   entrypointSizes.set(key, (entrypointSizes.get(key) ?? 0) + bytes);
 }
 
-async function buildReport(tarballPath: string): Promise<PackageWeightReport> {
-  const extractedPackageRoot = await extractTarball(tarballPath);
+async function buildReport(
+  tarballPath: string,
+  inspectionDirectory: string,
+): Promise<PackageWeightReport> {
+  const extractedPackageRoot = await extractTarball(tarballPath, inspectionDirectory);
   const glob = new Glob('**/*');
   const fileSizes: FileSizeEntry[] = [];
   const entrypointSizes = new Map<string, number>();
@@ -129,7 +147,7 @@ async function buildReport(tarballPath: string): Promise<PackageWeightReport> {
   };
 }
 
-function assertBudgets(report: PackageWeightReport): void {
+function assertBudgets(report: PackageWeightReport, budgets: PackageWeightBudgets): void {
   const violations: string[] = [];
   if (report.packedBytes > budgets.packedBytes) {
     violations.push(
@@ -157,6 +175,21 @@ function assertBudgets(report: PackageWeightReport): void {
   }
 }
 
+async function packPackage(packageRoot: string): Promise<string> {
+  if (packageRoot === defaultPackageRoot) {
+    const packResult = await packForPublish();
+    return packResult.tarballPath;
+  }
+
+  const packResult = await $`bun run pack:publish`.cwd(packageRoot).nothrow();
+  if (packResult.exitCode !== 0) {
+    throw new Error(
+      `pack:publish failed in ${packageRoot}:\n${packResult.stdout.toString()}\n${packResult.stderr.toString()}`,
+    );
+  }
+  return existingTarballPath(packageRoot);
+}
+
 function printReport(report: PackageWeightReport): void {
   process.stdout.write(`package-weight — ${report.tarballPath}\n`);
   process.stdout.write(`  packed:   ${formatBytes(report.packedBytes)}\n`);
@@ -173,24 +206,34 @@ function printReport(report: PackageWeightReport): void {
 }
 
 async function main(): Promise<void> {
-  const check = process.argv.includes('--check');
-  const json = process.argv.includes('--json');
-  const useExistingTarball = process.argv.includes('--existing-tarball');
+  const arguments_ = process.argv.slice(2);
+  const check = arguments_.includes('--check');
+  const json = arguments_.includes('--json');
+  const useExistingTarball = arguments_.includes('--existing-tarball');
+  const packageRoot = resolvePackageRootArgument(arguments_, {
+    defaultRoot: defaultPackageRoot,
+    currentWorkingDirectory: process.cwd(),
+  });
+  const identity = await readJsonFile<PackageIdentity>(join(packageRoot, 'package.json'));
+  const budgets = budgetsByPackage[identity.name];
+  if (budgets === undefined) {
+    throw new Error(`no package weight budget is configured for ${identity.name}`);
+  }
+  const inspectionDirectory = join(packageRoot, 'tmp', 'package-weight-report');
   try {
     let tarballPath: string;
     if (useExistingTarball) {
-      tarballPath = await existingTarballPath();
+      tarballPath = await existingTarballPath(packageRoot);
     } else {
-      const packedArtifact = await packForPublish();
-      tarballPath = packedArtifact.tarballPath;
+      tarballPath = await packPackage(packageRoot);
     }
-    const report = await buildReport(tarballPath);
+    const report = await buildReport(tarballPath, inspectionDirectory);
     if (json) {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     } else {
       printReport(report);
     }
-    if (check) assertBudgets(report);
+    if (check) assertBudgets(report, budgets);
   } finally {
     await rm(inspectionDirectory, { recursive: true, force: true }).catch(() => {});
   }

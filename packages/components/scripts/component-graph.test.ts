@@ -167,9 +167,9 @@ describe('resolveImport', () => {
   });
 
   it('rewrites .js specifiers to .ts on disk', () => {
-    const fromTs = 'packages/components/src/components/chat/input/chat-input.svelte';
-    const target = 'packages/components/src/components/chat/input/attachment-kind.ts';
-    const result = resolveImport(fromTs, './attachment-kind.js', (p) => p === target);
+    const fromTs = 'packages/components/src/components/data-grid/_internal/keyboard-model.ts';
+    const target = 'packages/components/src/components/data-grid/_internal/geometry.ts';
+    const result = resolveImport(fromTs, './geometry.js', (p) => p === target);
     expect(result).toEqual({ kind: 'resolved', path: target });
   });
 
@@ -225,8 +225,8 @@ describe('slugForFile', () => {
   });
 
   it('maps a nested subdirectory file to its top-level slug', () => {
-    expect(slugForFile('packages/components/src/components/chat/input/chat-input.svelte')).toBe(
-      'chat',
+    expect(slugForFile('packages/components/src/components/data-grid/_internal/geometry.ts')).toBe(
+      'data-grid',
     );
   });
 
