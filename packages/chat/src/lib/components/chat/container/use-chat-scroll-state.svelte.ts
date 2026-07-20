@@ -186,6 +186,12 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // session cancels the previous one's listeners/timer before starting its
   // own — see withForcedLayout below for why this matters.
   let activeForcedLayoutCancel: (() => void) | null = null;
+  // Cancel function for the in-flight withUserScrollGuard session, if any. A
+  // new session cancels the previous one's timer before starting its own —
+  // same rationale as activeForcedLayoutCancel: without it, an earlier
+  // overlapping guarded scroll's timer could flip isUserScrolling back to
+  // false while a later guarded scroll's animation is still in progress.
+  let activeUserScrollGuardCancel: (() => void) | null = null;
 
   /**
    * Set atBottom state directly.
@@ -372,16 +378,32 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * effect. See `UseChatScrollStateReturn.withUserScrollGuard` for details.
    */
   function withUserScrollGuard(action: () => void): void {
-    // Prevent auto-scroll from interrupting the programmatic scroll animation
-    isUserScrolling = true;
-    action();
+    // Cancel any previous in-flight guard first: without this, an earlier
+    // overlapping guarded scroll (e.g. two quick Home presses, or scrollToTop()
+    // called twice back to back) would have its OWN timer flip isUserScrolling
+    // back to false while THIS scroll's animation is still in progress,
+    // reintroducing the exact race this guard exists to prevent.
+    activeUserScrollGuardCancel?.();
 
-    // Clear the flag after animation completes (typical smooth scroll takes
-    // ~300-500ms). For reduced motion, use a minimal delay since scroll is instant.
+    // Prevent auto-scroll from interrupting the programmatic scroll animation.
+    // The timer is armed before `action()` runs so the flag still clears on
+    // its own even if `action()` throws.
+    isUserScrolling = true;
     const scrollDuration = reducedMotion.current ? 50 : 500;
-    setTimeout(() => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      activeUserScrollGuardCancel = null;
       isUserScrolling = false;
     }, scrollDuration);
+    activeUserScrollGuardCancel = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+    };
+
+    action();
   }
 
   /**

@@ -224,4 +224,31 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     jest.advanceTimersByTime(500);
     expect(state.isUserScrolling).toBe(false);
   });
+
+  test('a second overlapping guarded scroll cancels the first, so the first timer cannot clear isUserScrolling early', () => {
+    // Regression guard: two guarded scrolls close together (e.g. two quick
+    // Home presses, or scrollToTop() called twice) used to leave the OLDER
+    // session's timer live. When it fired on its own (earlier) schedule, it
+    // flipped isUserScrolling back to false while the NEWER scroll's
+    // animation was still in progress — reintroducing the auto-stick-to-
+    // bottom race this guard exists to prevent.
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+
+    state.withUserScrollGuard(() => {}); // session A: timer armed for ~500ms from t=0
+    jest.advanceTimersByTime(50);
+    state.withUserScrollGuard(() => {}); // session B: timer armed for ~500ms from t=50
+
+    // At t≈520ms: session A's original (500ms) deadline has passed, but
+    // session B's (550ms) has not. isUserScrolling must still be true —
+    // proving session A's timer was actually cancelled, not just racing.
+    jest.advanceTimersByTime(470);
+    expect(state.isUserScrolling).toBe(true);
+
+    // Session B's own timer eventually fires and clears it.
+    jest.advanceTimersByTime(29);
+    expect(state.isUserScrolling).toBe(true);
+    jest.advanceTimersByTime(1);
+    expect(state.isUserScrolling).toBe(false);
+  });
 });
