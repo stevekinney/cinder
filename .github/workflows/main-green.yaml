@@ -89,7 +89,6 @@ jobs:
           bun run
           --filter=@cinder/diff
           --filter=@cinder/markdown
-          --filter=@cinder/editor
           --filter=@cinder/commentary
           --filter=@lostgradient/cinder
           --filter=@lostgradient/chat
@@ -100,7 +99,6 @@ jobs:
           bun run
           --filter=@cinder/diff
           --filter=@cinder/markdown
-          --filter=@cinder/editor
           --filter=@cinder/commentary
           --filter=@cinder/playground
           --filter=@cinder/testing

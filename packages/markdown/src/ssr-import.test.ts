@@ -1,7 +1,7 @@
 /**
  * @cinder/markdown SSR import safety.
  *
- * Mirrors `packages/editor/src/ssr-import.test.ts`. The contract this guards:
+ * Mirrors `packages/commentary/src/editor/ssr-import.test.ts` (formerly `packages/editor/src/ssr-import.test.ts`). The contract this guards:
  * importing any entry point of `@cinder/markdown` in a server (no-DOM)
  * context must NOT touch a browser-only global at module-evaluation time.
  *
@@ -75,5 +75,20 @@ describe('@cinder/markdown SSR import safety', () => {
   it('imports the rendering subpath without needing browser globals', async () => {
     const renderingModule = await import('./rendering/index.js');
     expect(typeof renderingModule.renderMarkdown).toBe('function');
+  });
+
+  it('imports the templates/sanitize-html subpath without needing browser globals', async () => {
+    const sanitizeHtmlModule = await import('./templates/sanitize-html.js');
+    expect(typeof sanitizeHtmlModule.sanitizeHtml).toBe('function');
+  });
+
+  it('imports the templates/template-placeholders subpath without needing browser globals', async () => {
+    const templatePlaceholdersModule = await import('./templates/template-placeholders.js');
+    expect(typeof templatePlaceholdersModule.resolveTemplatePlaceholders).toBe('function');
+  });
+
+  it('imports the templates/template-render subpath without needing browser globals', async () => {
+    const templateRenderModule = await import('./templates/template-render.js');
+    expect(typeof templateRenderModule.renderTemplate).toBe('function');
   });
 });

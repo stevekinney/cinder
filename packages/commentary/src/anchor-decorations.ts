@@ -27,10 +27,13 @@ import type { EditorView } from '@milkdown/kit/prose/view';
 import { Decoration, DecorationSet } from '@milkdown/kit/prose/view';
 import { $prose } from '@milkdown/kit/utils';
 
-import { proseMirrorPositionToTextOffset, textOffsetToProseMirrorPosition } from '@cinder/editor';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import { reanchorQuote } from './comments/reanchor.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
+import {
+  proseMirrorPositionToTextOffset,
+  textOffsetToProseMirrorPosition,
+} from './editor/bridge.js';
 
 // ============================================================================
 // Plugin State Types

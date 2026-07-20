@@ -19,7 +19,6 @@ const playgroundRoot = resolvePath(repoRoot, 'packages/playground');
 const playgroundBundleDependencyPackages = [
   '@cinder/diff',
   '@cinder/markdown',
-  '@cinder/editor',
   '@cinder/commentary',
   '@lostgradient/cinder',
   '@lostgradient/chat',

@@ -8,11 +8,11 @@
  * @module
  */
 
-import { proseMirrorPositionToTextOffset, textOffsetToLineColumn } from '@cinder/editor';
 import type { Node } from '@milkdown/prose/model';
 import type { EditorView } from '@milkdown/prose/view';
 import type { CommentAnchor } from './comments/types.js';
 import { ANCHOR_CONTEXT_LENGTH } from './comments/types.js';
+import { proseMirrorPositionToTextOffset, textOffsetToLineColumn } from './editor/bridge.js';
 
 /**
  * Generate a stable block ID from node type and content.
