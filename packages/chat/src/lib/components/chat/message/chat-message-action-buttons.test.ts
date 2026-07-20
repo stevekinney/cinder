@@ -60,6 +60,29 @@ describe('chat message action buttons', () => {
     expect(resetBlock).not.toMatch(/(^|\s)left:\s*0/);
     expect(resetBlock).not.toMatch(/(^|\s)right:\s*auto/);
   });
+
+  // Regression for #777: a `display: none` footer on tool-paired rows can
+  // never be resurrected by the shared `:hover`/`:focus-within` rule (which
+  // only toggles opacity/pointer-events), making retry/edit/copy and any
+  // consumer `messageActions` snippet content permanently unreachable by
+  // mouse or keyboard on those rows.
+  test('tool-pair footer override hides via opacity, not display: none', () => {
+    const rule = extractRule(
+      source,
+      '.chat-message-wrapper[data-tool-pair] .chat-message-footer {',
+    );
+    expect(rule).not.toContain('display: none');
+    expect(rule).toContain('opacity: 0');
+    expect(rule).toContain('pointer-events: none');
+  });
+
+  test('the shared hover/focus-within reveal rule applies to every wrapper, including tool-paired rows', () => {
+    // No role- or attribute-scoped selector narrows this rule away from
+    // `[data-tool-pair]` wrappers — it targets the generic `.chat-message-wrapper`.
+    expect(source).toContain(
+      '.chat-message-wrapper:hover .chat-message-footer,\n  .chat-message-wrapper:focus-within .chat-message-footer {',
+    );
+  });
 });
 
 function extractRule(text: string, opening: string): string {

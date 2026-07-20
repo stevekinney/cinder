@@ -526,8 +526,15 @@
     display: none;
   }
 
+  /* Hidden-by-default like every other row's footer (opacity/pointer-events,
+   * toggled visible on :hover/:focus-within by the shared rule below) rather
+   * than `display: none` — a `display: none` element can never be hovered,
+   * focused, or hit-tested, which would make retry/edit/copy and any
+   * consumer-supplied `messageActions` snippet content permanently
+   * unreachable by mouse or keyboard on tool-paired rows. */
   .chat-message-wrapper[data-tool-pair] .chat-message-footer {
-    display: none;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .chat-message-wrapper[data-role='snapshot'] {
