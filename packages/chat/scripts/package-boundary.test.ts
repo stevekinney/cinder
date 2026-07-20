@@ -109,7 +109,9 @@ describe('Chat package ownership boundary', () => {
     };
 
     expect(published.exports['.']).toMatchObject({
+      types: './dist/index.d.ts',
       browser: './dist/index.js',
+      node: './dist/server/index.js',
       svelte: './dist/index.js',
       import: './dist/index.js',
       default: './dist/index.js',
@@ -123,7 +125,9 @@ describe('Chat package ownership boundary', () => {
       'default',
     ]);
     expect(published.exports['./composer-popover']).toMatchObject({
+      types: './dist/components/chat-composer-popover/index.d.ts',
       browser: './dist/components/chat-composer-popover/index.js',
+      node: './dist/server/components/chat-composer-popover/index.js',
       svelte: './dist/components/chat-composer-popover/index.js',
       import: './dist/components/chat-composer-popover/index.js',
       default: './dist/components/chat-composer-popover/index.js',
