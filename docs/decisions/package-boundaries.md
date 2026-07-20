@@ -1,6 +1,6 @@
 # Package Boundaries: Finishing the Extraction
 
-**Status:** Accepted 2026-07-20 — Phase 1 (dissolving `@cinder/editor`) is in flight; execution plan below.
+**Status:** Accepted 2026-07-20 — no code moved yet; execution plan below.
 **Date:** 2026-07-20
 
 ## Summary
