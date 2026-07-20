@@ -134,3 +134,94 @@ describe('useChatScrollState — withForcedLayout backstop', () => {
     expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(false);
   });
 });
+
+describe('useChatScrollState — isUserScrolling guard (regression for #774)', () => {
+  // #774: the exported `scrollToTop()` (chat.svelte) called
+  // `chatVirtualizer.scrollToOffset(0, ...)` directly instead of going through
+  // a guard that sets `isUserScrolling`, unlike `jumpToLatest`. The
+  // auto-stick-to-bottom `$effect.pre` in chat.svelte skips its correction
+  // whenever `isUserScrolling` is true, so any programmatic scroll that
+  // doesn't set it gets fought by that effect on every virtualizer
+  // remeasurement. These tests pin the guard contract directly.
+
+  test('scrollToTop sets isUserScrolling for the duration of the scroll, then clears it', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    expect(state.isUserScrolling).toBe(false);
+    state.scrollToTop(viewport);
+    expect(state.isUserScrolling).toBe(true);
+
+    jest.advanceTimersByTime(499);
+    expect(state.isUserScrolling).toBe(true);
+    jest.advanceTimersByTime(1);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('withUserScrollGuard sets isUserScrolling around an arbitrary scroll action (the virtualized scrollToOffset path)', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    let called = false;
+
+    expect(state.isUserScrolling).toBe(false);
+    state.withUserScrollGuard(() => {
+      // Runs synchronously inside the guard, mirroring
+      // `chatVirtualizer.scrollToOffset(0, ...)` in chat.svelte.
+      called = true;
+      expect(state.isUserScrolling).toBe(true);
+    });
+    expect(called).toBe(true);
+    expect(state.isUserScrolling).toBe(true);
+
+    jest.advanceTimersByTime(500);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('withUserScrollGuard uses the shorter reduced-motion duration when the user prefers reduced motion', () => {
+    jest.useFakeTimers();
+    const originalMatchMedia = window.matchMedia;
+    // Stub matchMedia so `prefers-reduced-motion: reduce` reports as active —
+    // happy-dom's real matchMedia always reports `matches: false`, which is
+    // why this branch needs an explicit stub rather than relying on the
+    // environment default (used by the 500ms test above).
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+
+    try {
+      const state = useChatScrollState();
+      state.withUserScrollGuard(() => {});
+      expect(state.isUserScrolling).toBe(true);
+
+      jest.advanceTimersByTime(49);
+      expect(state.isUserScrolling).toBe(true);
+      jest.advanceTimersByTime(1);
+      expect(state.isUserScrolling).toBe(false);
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('isUserScrolling never gets stuck true across repeated guarded scrolls', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    state.scrollToTop(viewport);
+    jest.advanceTimersByTime(500);
+    expect(state.isUserScrolling).toBe(false);
+
+    // A second, independent guarded scroll must also resolve back to false —
+    // proving the flag resets on its own timer rather than requiring some
+    // other code path to clear it.
+    state.withUserScrollGuard(() => {});
+    expect(state.isUserScrolling).toBe(true);
+    jest.advanceTimersByTime(500);
+    expect(state.isUserScrolling).toBe(false);
+  });
+});

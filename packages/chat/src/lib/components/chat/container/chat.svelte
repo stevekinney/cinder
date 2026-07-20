@@ -260,7 +260,9 @@
     onJumpToLatest: handleJumpToLatest,
     onJumpToStart: () => {
       if (isVirtualized) {
-        chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+        scrollState.withUserScrollGuard(() => {
+          chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+        });
       }
     },
     getScrollBehavior: scrollState.getScrollBehavior,
@@ -1425,7 +1427,14 @@
 
   export function scrollToTop(): void {
     if (isVirtualized) {
-      chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+      // Guard against the auto-stick-to-bottom $effect.pre (Scroll Anchoring
+      // section, above) fighting this animation: it re-fires on every
+      // virtualizer remeasurement, and without this guard it would keep
+      // snapping the viewport back toward the bottom mid-scroll since
+      // `isUserScrolling` was never set for this branch.
+      scrollState.withUserScrollGuard(() => {
+        chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
+      });
     } else {
       scrollState.scrollToTop(viewport);
     }

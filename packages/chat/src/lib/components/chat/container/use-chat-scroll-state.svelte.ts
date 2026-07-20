@@ -92,6 +92,15 @@ export interface UseChatScrollStateReturn {
    * Handles smooth scroll and focuses the last message after animation.
    */
   jumpToLatest(viewport: HTMLElement | null, onComplete?: () => void): void;
+  /**
+   * Run a programmatic scroll `action` while suppressing the auto-stick-to-bottom
+   * effect, mirroring the guard `jumpToLatest` already applies. Sets
+   * `isUserScrolling` for the duration of the scroll animation (based on the
+   * reduced-motion preference), then clears it. Use this for any caller-driven
+   * scroll (e.g. a virtualized `scrollToOffset`/`scrollToIndex` call) that isn't
+   * already routed through `scrollToBottom`/`scrollToTop`/`jumpToLatest`.
+   */
+  withUserScrollGuard(action: () => void): void;
   /** Get the appropriate scroll behavior based on user preference */
   getScrollBehavior(): ScrollBehavior;
   /** Cleanup resources */
@@ -359,10 +368,30 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   }
 
   /**
+   * Run a programmatic scroll `action` while suppressing the auto-stick-to-bottom
+   * effect. See `UseChatScrollStateReturn.withUserScrollGuard` for details.
+   */
+  function withUserScrollGuard(action: () => void): void {
+    // Prevent auto-scroll from interrupting the programmatic scroll animation
+    isUserScrolling = true;
+    action();
+
+    // Clear the flag after animation completes (typical smooth scroll takes
+    // ~300-500ms). For reduced motion, use a minimal delay since scroll is instant.
+    const scrollDuration = reducedMotion.current ? 50 : 500;
+    setTimeout(() => {
+      isUserScrolling = false;
+    }, scrollDuration);
+  }
+
+  /**
    * Scroll to the top of the viewport.
    */
   function scrollToTop(viewport: HTMLElement | null): void {
-    viewport?.scrollTo({ top: 0, behavior: getScrollBehavior() });
+    if (!viewport) return;
+    withUserScrollGuard(() => {
+      viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
+    });
   }
 
   /**
@@ -407,6 +436,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     scrollToBottom,
     scrollToTop,
     jumpToLatest,
+    withUserScrollGuard,
     getScrollBehavior,
     destroy,
     // Exposed helper for auto-scroll logic, used by the parent component
