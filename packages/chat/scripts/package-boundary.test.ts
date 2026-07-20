@@ -103,6 +103,7 @@ describe('Chat package ownership boundary', () => {
     const published = buildPublishedManifest(chatManifest);
     const exportKeys = (entry: unknown): string[] => {
       expect(entry).toBeDefined();
+      expect(entry).not.toBeNull();
       expect(typeof entry).toBe('object');
       return Object.keys(entry as Record<string, unknown>);
     };

@@ -366,9 +366,10 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
       `  ['@lostgradient/chat', '/node_modules/@lostgradient/chat/dist/index.js'],\n` +
       `  ['@lostgradient/chat/composer-popover', '/node_modules/@lostgradient/chat/dist/components/chat-composer-popover/index.js'],\n` +
       `]);\n` +
+      `if (typeof import.meta.resolve !== 'function') throw new Error('Node executable does not support import.meta.resolve for browser-condition validation');\n` +
       `for (const [specifier, expectedSuffix] of expected) {\n` +
       `  const resolved = new URL(import.meta.resolve(specifier)).pathname;\n` +
-      `  if (!resolved.endsWith(expectedSuffix)) throw new Error(\`\${specifier} resolved to \${resolved}\`);\n` +
+      `  if (!resolved.endsWith(expectedSuffix)) throw new Error(\`\${specifier} resolved to \${resolved}; expected suffix \${expectedSuffix}\`);\n` +
       `}\n`,
   );
   await run(node, ['--conditions=browser', browserConditionEntryPath], fixture.root);
