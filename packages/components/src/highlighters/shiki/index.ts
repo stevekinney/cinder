@@ -19,8 +19,33 @@
  * The factory is synchronous. Shiki itself is imported lazily on the first
  * highlight call inside the returned function — consumers that never invoke
  * the highlighter (or that never import this module) ship zero Shiki bytes
- * in their entry chunk. Subsequent calls reuse the singleton `codeToHtml`
- * import.
+ * in their entry chunk. Subsequent calls reuse the singleton highlighter
+ * instance.
+ *
+ * Why this builds on `shiki/core` + `@shikijs/engine-oniguruma` rather than
+ * `import { createHighlighter } from 'shiki'` (see
+ * `packages/markdown/src/rendering/highlighter.ts` for the sibling adapter
+ * that established this pattern, and `docs/decisions/package-boundaries.md`
+ * for the ~10 MB measurement this converges on): the default `shiki` entry
+ * resolves to `bundle-full.mjs`, which statically references every bundled
+ * grammar and theme in one module. For a build that bundles that module with
+ * `splitting: false` — which is exactly how `scripts/build.ts` builds this
+ * adapter — every grammar and theme gets inlined into a single output file,
+ * regardless of which language is ever highlighted. `shiki` was already kept
+ * external in that build (so this specific file never actually shipped that
+ * weight), but the risk was one dependency-externals edit away from landing
+ * back in cinder's own published dist. `shiki/langs` and `shiki/themes`
+ * expose the same per-language and per-theme lookup tables `shiki`
+ * re-exports, but as standalone modules (metadata plus a lazy
+ * `() => import('@shikijs/langs/…')` per entry) that pull in no theme, wasm,
+ * or highlighter-construction code — so `scripts/build.ts` only needs to
+ * externalize `shiki/*` and `@shikijs/engine-oniguruma` (see its
+ * `runtimeDependencyExternals`) to keep every one of those per-language/
+ * per-theme dynamic imports lazy, exactly like the sibling markdown adapter.
+ * Downstream, a consumer's own bundler resolves and splits those imports the
+ * same way it already did for the old `shiki`-based version — this change
+ * does not reduce what a consumer app ships; it converges the pattern with
+ * `packages/markdown` and closes the build-time regression risk above.
  *
  * Behavior contract (matches the {@link Highlighter} type in
  * `@lostgradient/cinder/utilities/highlighter`):
@@ -44,6 +69,12 @@
  * fallback path here HTML-escapes the code (`&`, `<`, `>`, `"`, `'`) so
  * `{@html}` injection is safe for both branches.
  */
+
+import type {
+  DynamicImportLanguageRegistration,
+  DynamicImportThemeRegistration,
+  HighlighterCore,
+} from '@shikijs/types';
 
 import type { Highlighter } from '../../utilities/highlighter.ts';
 import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
@@ -109,15 +140,49 @@ function plaintextBlock(code: string): string {
   return `<pre class="shiki shiki-plaintext"><code>${escapeHtml(code)}</code></pre>`;
 }
 
-type CodeToHtmlFunction = typeof import('shiki').codeToHtml;
-type BundledLanguages = typeof import('shiki').bundledLanguages;
+/**
+ * Widened to a plain string index (rather than `typeof import('shiki/langs')
+ * .bundledLanguages`, whose keys are a closed literal union) because lookups
+ * here are keyed by a `lang`/theme name string that is only known to be a
+ * member of that union after a runtime `Object.hasOwn` check.
+ */
+type BundledLanguages = Record<string, DynamicImportLanguageRegistration>;
+type BundledThemes = Record<string, DynamicImportThemeRegistration>;
 
 type ShikiModule = {
-  codeToHtml: CodeToHtmlFunction;
+  highlighter: HighlighterCore;
   bundledLanguages: BundledLanguages;
+  bundledThemes: BundledThemes;
 };
 
 type ShikiModuleLoader = () => Promise<ShikiModule>;
+
+/**
+ * Load (if not already loaded) the grammar registered under `lang` — a
+ * canonical Shiki language id or one of its native aliases, both of which
+ * are keys of `bundledLanguages`. `HighlighterCore.loadLanguage` is safe to
+ * call repeatedly for a language it already holds — the dynamic `import()`
+ * resolves from the module cache and re-registering is a cheap map write —
+ * so callers don't need to track what has already been loaded.
+ */
+async function ensureLanguageLoaded(shiki: ShikiModule, lang: string): Promise<void> {
+  const load = shiki.bundledLanguages[lang];
+  if (!load) throw new Error(`Language "${lang}" is not bundled with Shiki.`);
+  await shiki.highlighter.loadLanguage(load);
+}
+
+/** Load (if not already loaded) every theme named by `theme`. */
+async function ensureThemesLoaded(
+  shiki: ShikiModule,
+  theme: string | { light: string; dark: string },
+): Promise<void> {
+  const names = typeof theme === 'string' ? [theme] : [theme.light, theme.dark];
+  for (const name of names) {
+    const load = shiki.bundledThemes[name];
+    if (!load) throw new Error(`Theme "${name}" is not bundled with Shiki.`);
+    await shiki.highlighter.loadTheme(load);
+  }
+}
 
 /**
  * Create a Shiki-backed {@link Highlighter} suitable for
@@ -138,25 +203,40 @@ export function shikiHighlighter(
   const loadShiki = createRetryingLoaderCache(
     moduleLoader ??
       (async (): Promise<ShikiModule> => {
-        const module_ = await import('shiki');
-        // Optional preload — if the consumer named specific languages,
-        // force them through `codeToHtml` once so Shiki resolves and
+        const [{ createOnigurumaEngine }, { createHighlighterCore }, langsModule, themesModule] =
+          await Promise.all([
+            import('@shikijs/engine-oniguruma'),
+            import('shiki/core'),
+            import('shiki/langs'),
+            import('shiki/themes'),
+          ]);
+        const highlighter = await createHighlighterCore({
+          themes: [],
+          langs: [],
+          engine: createOnigurumaEngine(import('shiki/wasm')),
+        });
+        const shikiModule: ShikiModule = {
+          highlighter,
+          bundledLanguages: langsModule.bundledLanguages,
+          bundledThemes: themesModule.bundledThemes,
+        };
+
+        // Optional preload — if the consumer named specific languages, load
+        // them (and the configured theme) up front so Shiki resolves and
         // caches them before the first real call. Failures here are
-        // non-fatal; per-call language lookup will still try (and fall
-        // back to plaintext on its own miss).
+        // non-fatal; per-call language lookup will still try (and fall back
+        // to plaintext on its own miss).
         if (langs !== undefined) {
           for (const lang of langs) {
             try {
-              await module_.codeToHtml('', { lang, ...buildThemeOption(theme) });
+              await ensureThemesLoaded(shikiModule, theme);
+              await ensureLanguageLoaded(shikiModule, lang);
             } catch {
               // Swallow — the per-call path below logs and falls back.
             }
           }
         }
-        return {
-          codeToHtml: module_.codeToHtml,
-          bundledLanguages: module_.bundledLanguages,
-        };
+        return shikiModule;
       }),
   );
 
@@ -197,7 +277,9 @@ export function shikiHighlighter(
     }
 
     try {
-      const html = await shiki.codeToHtml(code, {
+      await ensureLanguageLoaded(shiki, normalizedLang);
+      await ensureThemesLoaded(shiki, theme);
+      const html = shiki.highlighter.codeToHtml(code, {
         lang: normalizedLang,
         ...buildThemeOption(theme),
       });
