@@ -265,8 +265,18 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `import '@lostgradient/chat/composer-popover/styles';\n` +
       `import '@lostgradient/chat/conversation-header/styles';\n` +
       `import '@lostgradient/chat/conversation-list/styles';\n` +
-      `import Chat from '@lostgradient/chat';\n` +
-      `void Chat;\n`,
+      `import Chat, { appendAssistantMessage, appendUserMessage, createConversation, getMessageText } from '@lostgradient/chat';\n` +
+      `import type { ChatSubmitEvent, ConversationHistory, MultiModalContent } from '@lostgradient/chat';\n` +
+      `const userContent: MultiModalContent = { type: 'text', text: 'Hello' };\n` +
+      `const assistantContent: MultiModalContent = { type: 'text', text: 'Hi there' };\n` +
+      `const conversation: ConversationHistory = appendAssistantMessage(\n` +
+      `  appendUserMessage(createConversation({ id: 'gateway-import-surface' }), [userContent]),\n` +
+      `  [assistantContent],\n` +
+      `);\n` +
+      `const submitEvent: ChatSubmitEvent = { message: { role: 'user', content: 'Follow up' }, attachments: [] };\n` +
+      `const firstMessage = conversation.messages[conversation.ids[0] ?? ''];\n` +
+      `if (firstMessage === undefined) throw new Error('expected a first conversation message');\n` +
+      `void [Chat, conversation, getMessageText(firstMessage), submitEvent];\n`,
   );
   await Bun.write(
     tsconfigPath,

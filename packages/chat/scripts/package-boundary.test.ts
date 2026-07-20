@@ -39,7 +39,7 @@ describe('Chat package ownership boundary', () => {
     expect(chatManifest.dependencies).toEqual({});
     expect(chatManifest.peerDependencies).toEqual({
       '@lostgradient/cinder': '^0.16.0',
-      conversationalist: '^0.2.1',
+      conversationalist: '^0.2.1 || ^0.4.1',
       svelte: '>=5.56.0 <6',
       zod: '4.4.1',
     });
