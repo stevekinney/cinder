@@ -263,8 +263,11 @@
         // Leaving the bottom deliberately — set atBottom synchronously rather
         // than waiting for the real scroll listener's rAF-deferred recompute,
         // so a message that arrives before that recompute runs doesn't read a
-        // stale `atBottom: true` and skip the unread indicator.
+        // stale `atBottom: true` and skip the unread indicator. Also update the
+        // bindable prop so a `bind:atBottom` consumer reflects the new state
+        // immediately (matching the pattern in the submit auto-scroll path).
         scrollState.setAtBottom(false);
+        atBottom = false;
         scrollState.withUserScrollGuard(() => {
           chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
         });
@@ -1431,18 +1434,19 @@
   }
 
   export function scrollToTop(): void {
+    // Leaving the bottom deliberately — update the bindable prop synchronously
+    // rather than waiting for the real scroll listener's rAF-deferred
+    // recompute, so a message that arrives before that recompute runs doesn't
+    // read a stale `atBottom: true` and skip the unread indicator (matching
+    // the pattern in the submit auto-scroll path, which sets both
+    // scrollState.setAtBottom() and the bindable together).
+    atBottom = false;
     if (isVirtualized) {
       // Guard against the auto-stick-to-bottom $effect.pre (Scroll Anchoring
       // section, above) fighting this animation: it re-fires on every
       // virtualizer remeasurement, and without this guard it would keep
       // snapping the viewport back toward the bottom mid-scroll since
       // `isUserScrolling` was never set for this branch.
-      //
-      // setAtBottom(false) runs first, synchronously: leaving the bottom
-      // deliberately shouldn't wait for the real scroll listener's
-      // rAF-deferred recompute — a message that arrives before that recompute
-      // runs would otherwise read a stale `atBottom: true` and skip the
-      // unread indicator.
       scrollState.setAtBottom(false);
       scrollState.withUserScrollGuard(() => {
         chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
