@@ -260,6 +260,11 @@
     onJumpToLatest: handleJumpToLatest,
     onJumpToStart: () => {
       if (isVirtualized) {
+        // Leaving the bottom deliberately — set atBottom synchronously rather
+        // than waiting for the real scroll listener's rAF-deferred recompute,
+        // so a message that arrives before that recompute runs doesn't read a
+        // stale `atBottom: true` and skip the unread indicator.
+        scrollState.setAtBottom(false);
         scrollState.withUserScrollGuard(() => {
           chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
         });
@@ -1432,6 +1437,13 @@
       // virtualizer remeasurement, and without this guard it would keep
       // snapping the viewport back toward the bottom mid-scroll since
       // `isUserScrolling` was never set for this branch.
+      //
+      // setAtBottom(false) runs first, synchronously: leaving the bottom
+      // deliberately shouldn't wait for the real scroll listener's
+      // rAF-deferred recompute — a message that arrives before that recompute
+      // runs would otherwise read a stale `atBottom: true` and skip the
+      // unread indicator.
+      scrollState.setAtBottom(false);
       scrollState.withUserScrollGuard(() => {
         chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
       });

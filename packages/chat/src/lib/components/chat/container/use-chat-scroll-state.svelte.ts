@@ -96,11 +96,15 @@ export interface UseChatScrollStateReturn {
    * Run a programmatic scroll `action` while suppressing the auto-stick-to-bottom
    * effect, mirroring the guard `jumpToLatest` already applies. Sets
    * `isUserScrolling` for the duration of the scroll animation (based on the
-   * reduced-motion preference), then clears it. Use this for any caller-driven
-   * scroll (e.g. a virtualized `scrollToOffset`/`scrollToIndex` call) that isn't
+   * reduced-motion preference), then clears it. A new call cancels any prior
+   * in-flight guard's timer first, so overlapping guarded scrolls can never
+   * leave a stale timer that clears the flag out from under a later one.
+   * `onSettled`, if given, runs once this guard's own timer fires (not if a
+   * later guard cancels it first). Use this for any caller-driven scroll
+   * (e.g. a virtualized `scrollToOffset`/`scrollToIndex` call) that isn't
    * already routed through `scrollToBottom`/`scrollToTop`/`jumpToLatest`.
    */
-  withUserScrollGuard(action: () => void): void;
+  withUserScrollGuard(action: () => void, onSettled?: () => void): void;
   /** Get the appropriate scroll behavior based on user preference */
   getScrollBehavior(): ScrollBehavior;
   /** Cleanup resources */
@@ -376,13 +380,21 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   /**
    * Run a programmatic scroll `action` while suppressing the auto-stick-to-bottom
    * effect. See `UseChatScrollStateReturn.withUserScrollGuard` for details.
+   *
+   * `onSettled`, if given, runs once the guard's own timer fires (i.e. once
+   * `isUserScrolling` has been cleared) — NOT when a later overlapping guard
+   * cancels this one first. `jumpToLatest` uses it for its post-scroll focus
+   * behavior, sharing the same single cancellable timer that `isUserScrolling`
+   * itself is cleared by, so overlapping guarded scrolls of ANY kind (jump-to-
+   * latest, scroll-to-top, jump-to-start) can never leave a stale timer behind
+   * that clears the flag mid-animation for a different call.
    */
-  function withUserScrollGuard(action: () => void): void {
+  function withUserScrollGuard(action: () => void, onSettled?: () => void): void {
     // Cancel any previous in-flight guard first: without this, an earlier
-    // overlapping guarded scroll (e.g. two quick Home presses, or scrollToTop()
-    // called twice back to back) would have its OWN timer flip isUserScrolling
-    // back to false while THIS scroll's animation is still in progress,
-    // reintroducing the exact race this guard exists to prevent.
+    // overlapping guarded scroll (e.g. jumpToLatest() immediately followed by
+    // scrollToTop(), or two quick Home presses) would have its OWN timer flip
+    // isUserScrolling back to false while THIS scroll's animation is still in
+    // progress, reintroducing the exact race this guard exists to prevent.
     activeUserScrollGuardCancel?.();
 
     // Prevent auto-scroll from interrupting the programmatic scroll animation.
@@ -396,6 +408,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       settled = true;
       activeUserScrollGuardCancel = null;
       isUserScrolling = false;
+      onSettled?.();
     }, scrollDuration);
     activeUserScrollGuardCancel = () => {
       if (settled) return;
@@ -411,6 +424,11 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    */
   function scrollToTop(viewport: HTMLElement | null): void {
     if (!viewport) return;
+    // The user is deliberately leaving the bottom. Set atBottom synchronously
+    // rather than waiting for the real scroll listener's rAF-deferred
+    // recompute — any message that arrives before that recompute runs would
+    // otherwise read a stale `atBottom: true` and skip the unread indicator.
+    atBottom = false;
     withUserScrollGuard(() => {
       viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
     });
@@ -422,26 +440,24 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   function jumpToLatest(viewport: HTMLElement | null, onComplete?: () => void): void {
     if (!viewport) return;
 
-    // Prevent auto-scroll from interrupting the smooth scroll animation
-    isUserScrolling = true;
-
-    withForcedLayout(viewport, () => {
-      viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
-    });
-    onReachBottom?.();
-    onComplete?.();
-
-    // Focus last message for keyboard users and clear the user scrolling flag
-    // after animation completes (typical smooth scroll takes ~300-500ms)
-    // For reduced motion, use minimal delay since scroll is instant
-    const scrollDuration = reducedMotion.current ? 50 : 500;
-    setTimeout(() => {
-      isUserScrolling = false;
-      const wrappers = viewport.querySelectorAll<HTMLElement>('.chat-message-wrapper');
-      const lastWrapper = wrappers.length > 0 ? wrappers[wrappers.length - 1] : null;
-      const lastMessage = lastWrapper?.querySelector<HTMLElement>('.chat-message') ?? null;
-      lastMessage?.focus();
-    }, scrollDuration);
+    withUserScrollGuard(
+      () => {
+        withForcedLayout(viewport, () => {
+          viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });
+        });
+        onReachBottom?.();
+        onComplete?.();
+      },
+      () => {
+        // Focus last message for keyboard users once the animation settles
+        // (typical smooth scroll takes ~300-500ms; reduced motion uses a
+        // minimal delay since the scroll is instant).
+        const wrappers = viewport.querySelectorAll<HTMLElement>('.chat-message-wrapper');
+        const lastWrapper = wrappers.length > 0 ? wrappers[wrappers.length - 1] : null;
+        const lastMessage = lastWrapper?.querySelector<HTMLElement>('.chat-message') ?? null;
+        lastMessage?.focus();
+      },
+    );
   }
 
   return {

@@ -258,4 +258,43 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     jest.advanceTimersByTime(1);
     expect(state.isUserScrolling).toBe(false);
   });
+
+  test('jumpToLatest and scrollToTop share the same cancellable guard, so one cannot clear isUserScrolling out from under the other', () => {
+    // Regression guard (Codex review on #787): jumpToLatest used to run its
+    // own independent isUserScrolling timer, uncoordinated with
+    // withUserScrollGuard's cancellation. A jumpToLatest() immediately
+    // followed by scrollToTop() (e.g. a fast double-tap) would let
+    // jumpToLatest's OLDER, uncancelled timer clear isUserScrolling while
+    // scrollToTop's animation was still running, letting the auto-stick
+    // effect re-engage mid-scroll.
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    state.jumpToLatest(viewport); // session A: timer armed for ~500ms from t=0
+    jest.advanceTimersByTime(50);
+    state.scrollToTop(viewport); // session B: timer armed for ~500ms from t=50
+
+    // At t≈520ms: session A's original (500ms) deadline has passed, but
+    // session B's (550ms) has not. isUserScrolling must still be true.
+    jest.advanceTimersByTime(470);
+    expect(state.isUserScrolling).toBe(true);
+
+    jest.advanceTimersByTime(30);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('scrollToTop sets atBottom to false synchronously, before the real scroll listener would recompute it', () => {
+    // Regression guard (Codex review on #787): a message that arrives in the
+    // same tick as a guarded scrollToTop() used to read a stale
+    // `atBottom: true` (only the async, rAF-deferred scroll listener updated
+    // it), so the unread indicator could silently skip a message that
+    // arrived while the viewport had already left the bottom.
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    expect(state.atBottom).toBe(true);
+    state.scrollToTop(viewport);
+    expect(state.atBottom).toBe(false);
+  });
 });
