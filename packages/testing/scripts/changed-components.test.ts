@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { decide, decideExplicitComponents } from './changed-components.ts';
+import { cinderOnlyComponents, decide, decideExplicitComponents } from './changed-components.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
@@ -172,6 +172,32 @@ describe('changed-components extracted packages', () => {
   });
 });
 
+describe('cinderOnlyComponents', () => {
+  // Regression coverage for #788: unit-tests.yaml's scoped step passed the
+  // COMBINED slug list (cinder + every extracted package) straight to
+  // `@lostgradient/cinder`'s test:changed, which rejects any @lostgradient/chat
+  // slug as unknown. `cinder_components` (the workflow output this feeds) must
+  // narrow to just what cinder's own graph can resolve.
+  const chatSlugs = [
+    'chat',
+    'chat-composer-popover',
+    'chat-conversation-header',
+    'chat-conversation-list',
+  ];
+
+  it('drops every extracted-package slug, keeping cinder-owned ones', () => {
+    expect(cinderOnlyComponents(['badge', ...chatSlugs, 'button'])).toEqual(['badge', 'button']);
+  });
+
+  it('returns an empty list when every slug belongs to an extracted package', () => {
+    expect(cinderOnlyComponents(chatSlugs)).toEqual([]);
+  });
+
+  it('is a no-op when no extracted-package slug is present', () => {
+    expect(cinderOnlyComponents(['badge', 'button'])).toEqual(['badge', 'button']);
+  });
+});
+
 describe('changed-components compose-only leaves', () => {
   // `feed-event` is a compose-only leaf (no standalone Playwright page); `feed`
   // renders it. The scope job must never EMIT `feed-event` (the runner rejects
@@ -292,7 +318,17 @@ describe('changed-components explicit component scope', () => {
 // ---------------------------------------------------------------------------
 
 describe('changed-components CLI (integration, real tree)', () => {
-  function runCli(changedPaths: string[]): { mode: string; components: string } {
+  type CliOutput = { mode: string; components: string; cinderComponents: string };
+
+  function parseOutput(stdout: string): CliOutput {
+    const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
+    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
+    const components = /^components=([^\n]*)/m.exec(stdout)?.[1] ?? '';
+    const cinderComponents = /^cinder_components=([^\n]*)/m.exec(stdout)?.[1] ?? '';
+    return { mode, components, cinderComponents };
+  }
+
+  function runCli(changedPaths: string[]): CliOutput {
     const env: NodeJS.ProcessEnv = { ...process.env, GITHUB_OUTPUT: '' };
     delete env['CINDER_TEST_COMPONENTS'];
     const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
@@ -302,17 +338,10 @@ describe('changed-components CLI (integration, real tree)', () => {
       env,
     });
     expect(result.status).toBe(0);
-    const stdout = result.stdout ?? '';
-    const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
-    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
-    const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
-    return { mode, components };
+    return parseOutput(result.stdout ?? '');
   }
 
-  function runCliWithExplicitComponents(componentScope: string): {
-    mode: string;
-    components: string;
-  } {
+  function runCliWithExplicitComponents(componentScope: string): CliOutput {
     const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
       cwd: workspaceRoot,
       input: '',
@@ -320,11 +349,7 @@ describe('changed-components CLI (integration, real tree)', () => {
       env: { ...process.env, GITHUB_OUTPUT: '', CINDER_TEST_COMPONENTS: componentScope },
     });
     expect(result.status).toBe(0);
-    const stdout = result.stdout ?? '';
-    const mode = /component_scope_mode=(\w+)/.exec(stdout)?.[1] ?? '';
-    expect(/^mode=(\w+)/m.exec(stdout)?.[1]).toBe(mode);
-    const components = /components=([^\n]*)/.exec(stdout)?.[1] ?? '';
-    return { mode, components };
+    return parseOutput(result.stdout ?? '');
   }
 
   it('a real button change is filtered to button + real dependents', () => {
@@ -354,13 +379,14 @@ describe('changed-components CLI (integration, real tree)', () => {
   });
 
   it('the lockfile forces full', () => {
-    expect(runCli(['bun.lock'])).toEqual({ mode: 'full', components: '' });
+    expect(runCli(['bun.lock'])).toEqual({ mode: 'full', components: '', cinderComponents: '' });
   });
 
   it('explicit component scope emits both scope keys without reading changed files', () => {
     expect(runCliWithExplicitComponents('button')).toEqual({
       mode: 'filtered',
       components: 'button',
+      cinderComponents: 'button',
     });
   });
 
@@ -370,5 +396,30 @@ describe('changed-components CLI (integration, real tree)', () => {
     ]);
     expect(mode).toBe('filtered');
     expect(components.split(',')).toContain('accordion');
+  });
+
+  // Regression coverage for #788: unit-tests.yaml's scoped step must receive
+  // ONLY cinder-owned slugs, never an extracted package's (which cinder's own
+  // component graph rejects as unknown).
+  it('a real chat-only change is filtered to the Chat family, with cinder_components empty', () => {
+    const { mode, components, cinderComponents } = runCli([
+      'packages/chat/src/lib/components/chat/chat.types.ts',
+    ]);
+    expect(mode).toBe('filtered');
+    const slugs = components.split(',');
+    expect(slugs).toContain('chat');
+    expect(slugs).toContain('chat-composer-popover');
+    expect(cinderComponents).toBe('');
+  });
+
+  it('a real cinder change with Chat as a dependent narrows cinder_components to cinder-owned slugs', () => {
+    const { mode, components, cinderComponents } = runCli([
+      'packages/components/src/components/button/button.svelte',
+    ]);
+    expect(mode).toBe('filtered');
+    expect(components.split(',')).toContain('button');
+    const cinderSlugs = cinderComponents.split(',');
+    expect(cinderSlugs).toContain('button');
+    expect(cinderSlugs).not.toContain('chat');
   });
 });
