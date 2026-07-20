@@ -1,6 +1,11 @@
 {
-  "$schema": "https://turborepo.com/schema.json",
-  "globalDependencies": ["tsconfig.base.json", ".oxlintrc.json"],
+  "$schema": "https://turborepo.dev/schema.json",
+  "globalDependencies": [
+    "tsconfig.json",
+    "tsconfig.base.json",
+    ".oxlintrc.json",
+    "packages/components/scripts/check-coverage-ratchet.ts"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -19,6 +24,10 @@
       "outputs": []
     },
     "@cinder/playground#typecheck": {
+      "dependsOn": [],
+      "outputs": []
+    },
+    "@lostgradient/chat#typecheck": {
       "dependsOn": [],
       "outputs": []
     },
