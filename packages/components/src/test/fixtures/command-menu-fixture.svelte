@@ -15,6 +15,7 @@
     initialQuery?: string;
     initialOpen?: boolean;
     items?: Item[];
+    omitEmpty?: boolean;
     onSelected?: (value: string, query: string) => void;
     onDismissed?: () => void;
     onStateChanged?: (activeItemId: string | null, listboxId: string) => void;
@@ -24,6 +25,7 @@
   const initialValue = untrack(() => props.initialValue) ?? '/a';
   const initialQuery = untrack(() => props.initialQuery) ?? '';
   const initialOpen = untrack(() => props.initialOpen) ?? true;
+  const omitEmpty = $derived(props.omitEmpty ?? false);
   const commandItems = $derived(
     props.items ?? [
       { value: 'alpha', label: 'Alpha' },
@@ -63,12 +65,17 @@
 </button>
 <button type="button" data-testid="outside">Outside</button>
 
+{#snippet emptySnippet()}
+  No commands
+{/snippet}
+
 <CommandMenu
   {listboxId}
   bind:open
   bind:query
   anchor={textareaElement}
   {caretIndex}
+  {...omitEmpty ? {} : { empty: emptySnippet }}
   onselect={(selection) => onSelected(selection.value, selection.query)}
   ondismiss={onDismissed}
   onstatechange={(state) => onStateChanged(state.activeItemId, state.listboxId)}
@@ -87,9 +94,5 @@
         </CommandItem>
       {/if}
     {/each}
-  {/snippet}
-
-  {#snippet empty()}
-    No commands
   {/snippet}
 </CommandMenu>

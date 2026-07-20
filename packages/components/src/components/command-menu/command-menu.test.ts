@@ -242,6 +242,48 @@ describe('CommandMenu', () => {
     expect(emptyState?.textContent).toContain('No commands');
   });
 
+  test('listbox is described by the empty-state message and marked non-empty via CSS hook', async () => {
+    // Regression for #776: the empty state renders outside the listbox (a
+    // `listbox` may only contain `option`/`group` children), so we wire
+    // `aria-describedby` from the listbox to the empty-state element instead,
+    // and flag `data-cinder-empty` so CSS can keep the listbox a non-zero-size
+    // box rather than collapsing when it has no `<li>` children.
+    const { getByTestId } = render(CommandMenuFixture);
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    const listboxBefore = queryListbox()!;
+    expect(listboxBefore.hasAttribute('aria-describedby')).toBe(false);
+    expect(listboxBefore.hasAttribute('data-cinder-empty')).toBe(false);
+
+    await fireEvent.click(getByTestId('empty-query'));
+    await settleCommandMenu();
+
+    const listbox = queryListbox()!;
+    const emptyState = Array.from(queryMenu()?.children ?? []).find(
+      (child) => child.getAttribute('role') === 'status',
+    ) as HTMLElement;
+
+    expect(emptyState?.id).toBeTruthy();
+    expect(listbox.getAttribute('aria-describedby')).toBe(emptyState.id);
+    expect(listbox.getAttribute('data-cinder-empty')).toBe('true');
+  });
+
+  test('omits aria-describedby and the empty-state hook when no `empty` snippet is passed', async () => {
+    // Regression guard for the showEmptyState = showEmpty && Boolean(empty)
+    // gate: without an `empty` snippet there's nothing for aria-describedby
+    // to point at, so a dangling reference would be invalid ARIA.
+    const { getByTestId } = render(CommandMenuFixture, { omitEmpty: true });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    await fireEvent.click(getByTestId('empty-query'));
+    await settleCommandMenu();
+
+    const listbox = queryListbox()!;
+    expect(listbox.hasAttribute('aria-describedby')).toBe(false);
+    expect(listbox.hasAttribute('data-cinder-empty')).toBe(false);
+    expect(queryMenu()?.querySelector('[role="status"]')).toBeNull();
+  });
+
   test('Enter with no active command passes through to the host field', async () => {
     const { getByTestId } = render(CommandMenuFixture);
     await waitFor(() => expect(queryMenu()).not.toBeNull());

@@ -33,6 +33,15 @@
     list-style: none;
   }
 
+  /* Zero matching items leaves the listbox with no <li> children, which
+   * collapses it to a zero-size box. A screen reader (or Playwright's
+   * `toBeVisible()`) landing on the listbox itself would then see nothing.
+   * `aria-describedby` on the <ul> points at the empty-state message, and this
+   * min-block-size keeps the listbox a real, non-zero-size box while empty. */
+  .cinder-command-menu__listbox[data-cinder-empty='true'] {
+    min-block-size: 1px;
+  }
+
   .cinder-command-menu[data-cinder-position-ready='false'] {
     visibility: hidden;
   }
