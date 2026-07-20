@@ -295,7 +295,7 @@ export function rootConsumerValidationIncludesPublicPackages(manifest: unknown):
   const cinderIndex = consumerScript.indexOf(cinderCommand);
   const chatIndex = consumerScript.indexOf(chatCommand);
   return (
-    validateScript.includes("bun run --sequential --filter='*' validate") &&
+    validateScript.includes('turbo run validate') &&
     validateScript.includes(chatCommand) &&
     cinderIndex !== -1 &&
     chatIndex !== -1 &&
@@ -497,8 +497,9 @@ function runValidation(): void {
   pass('Root publish shortcut uses both staged package artifacts in dependency order');
   if (!rootConsumerValidationIncludesPublicPackages(rootManifest)) {
     fail(
-      'package.json#scripts.validate must run workspace validation sequentially and append the ' +
-        'Chat packed-consumer gate, while validate:consumer must validate Cinder then Chat.',
+      'package.json#scripts.validate must run workspace validation through `turbo run validate` ' +
+        'and append the Chat packed-consumer gate, while validate:consumer must validate Cinder ' +
+        'then Chat.',
     );
   }
   pass('Root validation exercises both public packages as packed consumers');

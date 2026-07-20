@@ -13,7 +13,7 @@
     "packages/testing"
   ],
   "scripts": {
-    "build": "bun run --filter=@lostgradient/cinder build && bun run --filter=@lostgradient/chat build",
+    "build": "turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat",
     "changeset": "changeset",
     "changeset:publish": "bun run --filter=@lostgradient/cinder publish:release && bun run --filter=@lostgradient/chat publish:release",
     "changeset:publish:dry": "bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/chat validate:consumer && bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation",
@@ -22,17 +22,17 @@
     "dev": "bun run --filter='@cinder/playground' dev",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
-    "lint": "bun run --filter='*' lint && stylelint \"packages/**/src/**/*.{css,svelte}\"",
+    "lint": "turbo run lint && stylelint \"packages/**/src/**/*.{css,svelte}\"",
     "lint:fix": "bun run --filter='*' lint:fix && stylelint \"packages/**/src/**/*.{css,svelte}\" --fix",
     "playground": "bun run --filter='@cinder/playground' dev",
     "prepare": "husky",
-    "test": "bun run --filter='*' test",
+    "test": "turbo run test",
     "test:browser": "bun run --filter='@cinder/testing' test:playwright",
     "test:browser:headed": "bun run --filter='@cinder/testing' test:playwright:headed",
     "test:browser:install": "bun run --filter='@cinder/testing' install-browsers",
     "test:browser:ui": "bun run --filter='@cinder/testing' test:playwright:ui",
-    "typecheck": "bun run --filter='*' typecheck",
-    "validate": "bun run --sequential --filter='*' validate && bun run --filter=@lostgradient/chat validate:consumer",
+    "typecheck": "turbo run typecheck",
+    "validate": "turbo run validate --concurrency=1 && bun run --filter=@lostgradient/chat validate:consumer",
     "validate:consumer": "bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/chat validate:consumer",
     "validate:playground": "bun run --filter='@cinder/playground' validate"
   },
@@ -100,8 +100,10 @@
     "prettier-plugin-svelte": "^3.3.2",
     "sort-package-json": "^3.6.1",
     "stylelint": "^17.11.1",
-    "stylelint-use-logical": "^2.1.3"
+    "stylelint-use-logical": "^2.1.3",
+    "turbo": "2.10.5"
   },
+  "packageManager": "bun@1.3.13",
   "engines": {
     "bun": ">=1.3.0"
   }

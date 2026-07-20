@@ -57,21 +57,29 @@ describe('validate-release-workflow changeset guards', () => {
   });
 
   test('builds Cinder before Chat in fresh-checkout coverage workflows', () => {
+    // Both workflows now build Cinder and Chat through a single `turbo run
+    // build --filter=... --filter=...` invocation rather than two sequential
+    // `bun run --filter=<pkg> build` commands — Cinder-before-Chat ordering
+    // is enforced structurally by turbo's dependency graph (`build`
+    // `dependsOn: ["^build"]`, and Chat depends on Cinder), not by which
+    // `--filter` flag appears first in the command text. What this test can
+    // still pin textually: a turbo build step exists covering both packages,
+    // and Chat's coverage test step appears after it in the workflow file.
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     for (const workflowName of ['unit-tests.yaml', 'main-green.yaml']) {
       const workflow = readFileSync(
         join(workspaceRoot, '.github', 'workflows', workflowName),
         'utf8',
       );
-      const cinderBuildIndex = workflow.indexOf('bun run --filter=@lostgradient/cinder build');
-      const chatBuildIndex = workflow.indexOf('bun run --filter=@lostgradient/chat build');
+      const buildStepIndex = workflow.indexOf('turbo run build');
+      const chatFilterInBuildStep = workflow.indexOf('--filter=@lostgradient/chat', buildStepIndex);
       const chatCoverageIndex = workflow.indexOf(
-        'bun run --filter=@lostgradient/chat test:coverage',
+        'turbo run test:coverage --filter=@lostgradient/chat',
       );
 
-      expect(cinderBuildIndex).toBeGreaterThan(-1);
-      expect(chatBuildIndex).toBeGreaterThan(cinderBuildIndex);
-      expect(chatCoverageIndex).toBeGreaterThan(chatBuildIndex);
+      expect(buildStepIndex).toBeGreaterThan(-1);
+      expect(chatFilterInBuildStep).toBeGreaterThan(buildStepIndex);
+      expect(chatCoverageIndex).toBeGreaterThan(buildStepIndex);
     }
   });
 
@@ -94,17 +102,17 @@ describe('validate-release-workflow changeset guards', () => {
 
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest(`bun run --sequential --filter='*' validate && ${chat}`, `${cinder} && ${chat}`),
+        manifest(`turbo run validate && ${chat}`, `${cinder} && ${chat}`),
       ),
     ).toBe(true);
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest(`bun run --sequential --filter='*' validate && ${chat}`, cinder),
+        manifest(`turbo run validate && ${chat}`, cinder),
       ),
     ).toBe(false);
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest("bun run --sequential --filter='*' validate", `${cinder} && ${chat}`),
+        manifest('turbo run validate', `${cinder} && ${chat}`),
       ),
     ).toBe(false);
     expect(

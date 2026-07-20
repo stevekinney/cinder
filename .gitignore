@@ -76,6 +76,9 @@ dist.old-*/
 # SvelteKit build output
 .svelte-kit/
 
+# Turborepo cache
+.turbo/
+
 # Vite build output
 .vite/
 
