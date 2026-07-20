@@ -274,7 +274,9 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `  [assistantContent],\n` +
       `);\n` +
       `const submitEvent: ChatSubmitEvent = { message: { role: 'user', content: 'Follow up' }, attachments: [] };\n` +
-      `void [Chat, conversation, getMessageText(conversation.messages[conversation.ids[0] ?? '']), submitEvent];\n`,
+      `const firstMessage = conversation.messages[conversation.ids[0] ?? ''];\n` +
+      `if (firstMessage === undefined) throw new Error('expected a first conversation message');\n` +
+      `void [Chat, conversation, getMessageText(firstMessage), submitEvent];\n`,
   );
   await Bun.write(
     tsconfigPath,
