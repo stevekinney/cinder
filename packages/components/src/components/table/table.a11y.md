@@ -53,7 +53,22 @@ Pass a `caption` prop to render a `<caption>` element above the table. This is t
 
 ## Sticky header
 
-Opt-in via `stickyHeader={true}`. Wrap the table in `.cinder-table-scroll` when the table needs an overflow container, then the `<thead>` pins to the top of that scrolling container via `position: sticky`.
+Opt-in via `stickyHeader={true}`. When the table also needs an overflow container, pass `scrollable` and configure the generated `.cinder-table-scroll` wrapper through `scrollContainerProps`; the `<thead>` pins to the top of that scrolling container via `position: sticky`.
+
+When `scrollable` and `stickyHeader` are combined, the generated wrapper is the sticky header's scroll container. If vertical scrolling should happen inside the table region, give the wrapper a bounded block size and vertical overflow:
+
+```svelte
+<Table
+  scrollable
+  stickyHeader
+  scrollContainerProps={{
+    'aria-label': 'Scrollable invoice table',
+    style: 'max-block-size: 24rem; overflow-y: auto;',
+  }}
+>
+  ...
+</Table>
+```
 
 The sort button's `:focus-visible` ring uses `z-index: 2` scoped to the focus state, lifting it above the sticky thead's stacking context. If you wrap the table in a container with `overflow: hidden`, the focus ring may be clipped regardless of z-index—that's a known CSS limitation and is not fixable with z-index alone.
 
@@ -114,12 +129,10 @@ When `Table.selectable` is true, `TableHeader` supports exactly one `<TableRow>`
 
 Tables don't reflow gracefully. Cinder ships two patterns and recommends picking based on column shape.
 
-**Horizontal scroll via `.cinder-table-scroll`.** This is the default Cinder recipe for dense or unknown-width tables. The table stays a table and the wrapper owns overflow:
+**Horizontal scroll via `scrollable`.** This is the default Cinder recipe for dense or unknown-width tables. The table stays a table and the generated wrapper owns overflow:
 
 ```svelte
-<div class="cinder-table-scroll">
-  <Table>...</Table>
-</div>
+<Table scrollable>...</Table>
 ```
 
 **Column hiding via container queries.** When the column set is stable and a few columns are nice-to-have rather than essential, hide them with `@container`-driven CSS on the cells. Wrap the table in a container, declare `container-type: inline-size`, then add a class or `data-priority` attribute to each `<th>` / `<td>` and toggle `display: none` below a threshold. The table stays a table; the column count shrinks. This works without JavaScript and keeps the existing `aria-sort`, selection, and density semantics intact.

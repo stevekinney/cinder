@@ -36,10 +36,49 @@
     stickyHeader = false,
     density = 'comfortable',
     selectable = false,
+    scrollable = false,
+    scrollContainerProps,
     class: className,
     children,
     ...rest
   }: TableProps = $props();
+
+  const wrapperClassName = $derived(scrollContainerProps?.class);
+  const wrapperAriaLabelledBy = $derived(
+    normalizeOptionalAttribute(scrollContainerProps?.['aria-labelledby']),
+  );
+  const explicitWrapperAriaLabel = $derived(
+    normalizeOptionalAttribute(scrollContainerProps?.['aria-label']),
+  );
+  const explicitWrapperRole = $derived(normalizeOptionalAttribute(scrollContainerProps?.role));
+  const normalizedCaption = $derived(normalizeOptionalAttribute(caption));
+  const wrapperAriaLabel = $derived(
+    explicitWrapperAriaLabel ??
+      (wrapperAriaLabelledBy
+        ? undefined
+        : normalizedCaption
+          ? `${normalizedCaption} table scroll area`
+          : undefined),
+  );
+  const wrapperRole = $derived(
+    explicitWrapperRole ?? (wrapperAriaLabel || wrapperAriaLabelledBy ? 'region' : undefined),
+  );
+  const wrapperTabindex = $derived(normalizeOptionalTabindex(scrollContainerProps?.tabindex) ?? 0);
+
+  function normalizeOptionalAttribute(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+  }
+
+  function normalizeOptionalTabindex(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isInteger(value)) return value;
+
+    if (typeof value !== 'string') return undefined;
+
+    const normalizedValue = value.trim();
+    if (!/^-?\d+$/.test(normalizedValue)) return undefined;
+
+    return Number(normalizedValue);
+  }
 
   // A native <caption> (caption-side: top) renders above the table's border box
   // but inside the same scroll container, so a sticky <thead> pinned at top: 0
@@ -85,16 +124,34 @@
   });
 </script>
 
-<table
-  {...rest}
-  class={classNames('cinder-table', className)}
-  data-cinder-sticky-header={stickyHeader || undefined}
-  data-cinder-density={density}
-  data-cinder-selectable={selectable || undefined}
-  style:--cinder-table-caption-height={caption ? `${captionHeight}px` : undefined}
->
-  {#if caption}
-    <caption class="cinder-table__caption" {@attach measureCaption}>{caption}</caption>
-  {/if}
-  {@render children()}
-</table>
+{#snippet table()}
+  <table
+    {...rest}
+    class={classNames('cinder-table', className)}
+    data-cinder-sticky-header={stickyHeader || undefined}
+    data-cinder-density={density}
+    data-cinder-selectable={selectable || undefined}
+    style:--cinder-table-caption-height={normalizedCaption ? `${captionHeight}px` : undefined}
+  >
+    {#if normalizedCaption}
+      <caption class="cinder-table__caption" {@attach measureCaption}>{normalizedCaption}</caption>
+    {/if}
+    {@render children()}
+  </table>
+{/snippet}
+
+{#if scrollable}
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div
+    {...scrollContainerProps}
+    class={classNames('cinder-table-scroll', wrapperClassName)}
+    role={wrapperRole}
+    aria-label={wrapperAriaLabel}
+    aria-labelledby={wrapperAriaLabelledBy}
+    tabindex={wrapperTabindex}
+  >
+    {@render table()}
+  </div>
+{:else}
+  {@render table()}
+{/if}

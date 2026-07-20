@@ -4,6 +4,7 @@ import { tick } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { TableScrollContainerProps } from './table.types.ts';
 
 setupHappyDom();
 
@@ -26,6 +27,10 @@ const rows = [
   { id: '2', cells: ['Bob', '25', 'Designer'] },
 ];
 
+function unsafeScrollContainerProps(props: Record<string, unknown>): TableScrollContainerProps {
+  return props as unknown as TableScrollContainerProps;
+}
+
 describe('Table semantics', () => {
   test('renders semantic <table>, <thead>, <tbody> elements', () => {
     const { container } = render(Wrapper, { columns, rows });
@@ -41,12 +46,212 @@ describe('Table semantics', () => {
     expect(caption?.textContent?.trim()).toBe('Team');
   });
 
+  test('omits whitespace-only captions before rendering or measuring', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      caption: '   ',
+      stickyHeader: true,
+    });
+    const table = container.querySelector('table');
+    expect(table?.querySelector('caption')).toBeNull();
+    expect(table?.style.getPropertyValue('--cinder-table-caption-height')).toBe('');
+  });
+
   test('renders one row per data row plus a header row', () => {
     const { container } = render(Wrapper, { columns, rows });
     const headerRows = container.querySelectorAll('thead tr');
     const bodyRows = container.querySelectorAll('tbody tr');
     expect(headerRows.length).toBe(1);
     expect(bodyRows.length).toBe(2);
+  });
+
+  test('scrollable=false renders the table without a scroll wrapper', () => {
+    const { container } = render(Wrapper, { columns, rows });
+    expect(container.querySelector('.cinder-table-scroll')).toBeNull();
+  });
+
+  test('scrollable=true wraps the composed table in the public scroll container', () => {
+    const { container } = render(Wrapper, { columns, rows, scrollable: true });
+    const wrapper = container.querySelector('.cinder-table-scroll');
+    const table = container.querySelector('table');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.tagName).toBe('DIV');
+    expect(wrapper?.querySelector('table')).toBe(table);
+    expect(table?.parentElement).toBe(wrapper as HTMLElement);
+    expect(table?.querySelector('thead')).not.toBeNull();
+    expect(table?.querySelector('tbody')).not.toBeNull();
+  });
+
+  test('scrollable=true makes the generated scroll wrapper a named focusable region by default', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      caption: 'Contributors',
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    expect(wrapper?.getAttribute('role')).toBe('region');
+    expect(wrapper?.getAttribute('aria-label')).toBe('Contributors table scroll area');
+    expect(wrapper?.getAttribute('tabindex')).toBe('0');
+    expect(wrapper.tabIndex).toBe(0);
+  });
+
+  test('scrollable=true without a caption keeps the wrapper focusable without a duplicate region name', () => {
+    const { container } = render(Wrapper, { columns, rows, scrollable: true });
+    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    expect(wrapper?.hasAttribute('role')).toBe(false);
+    expect(wrapper?.hasAttribute('aria-label')).toBe(false);
+    expect(wrapper?.hasAttribute('aria-labelledby')).toBe(false);
+    expect(wrapper?.getAttribute('tabindex')).toBe('0');
+    expect(wrapper.tabIndex).toBe(0);
+  });
+
+  test('scrollContainerProps forwards attributes to the generated scroll wrapper', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      scrollContainerProps: {
+        'aria-label': 'Scrollable contributors',
+        class: 'custom-table-scroll',
+        role: 'group',
+        tabindex: -1,
+      },
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    expect(wrapper?.getAttribute('aria-label')).toBe('Scrollable contributors');
+    expect(wrapper?.getAttribute('role')).toBe('group');
+    expect(wrapper?.classList.contains('cinder-table-scroll')).toBe(true);
+    expect(wrapper?.classList.contains('custom-table-scroll')).toBe(true);
+    expect(wrapper?.getAttribute('tabindex')).toBe('-1');
+    expect(wrapper.tabIndex).toBe(-1);
+  });
+
+  test('scrollContainerProps normalizes empty ARIA names before falling back to the caption', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      caption: '  Quarterly revenue  ',
+      scrollContainerProps: {
+        'aria-label': '   ',
+        'aria-labelledby': '',
+      },
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll');
+    expect(wrapper?.getAttribute('aria-label')).toBe('Quarterly revenue table scroll area');
+    expect(wrapper?.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
+  test('scrollContainerProps normalizes empty roles before using the default named-region role', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      caption: 'Contributors',
+      scrollContainerProps: {
+        role: '  ',
+      },
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll');
+    expect(wrapper?.getAttribute('role')).toBe('region');
+  });
+
+  test('scrollContainerProps normalizes invalid tabindex values before using the default', () => {
+    const { container, rerender } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      scrollContainerProps: unsafeScrollContainerProps({
+        tabindex: '  ',
+      }),
+    });
+    const wrapper = () => container.querySelector('.cinder-table-scroll') as HTMLElement;
+    expect(wrapper().getAttribute('tabindex')).toBe('0');
+    expect(wrapper().tabIndex).toBe(0);
+
+    rerender({
+      columns,
+      rows,
+      scrollable: true,
+      scrollContainerProps: unsafeScrollContainerProps({
+        tabindex: 'later',
+      }),
+    });
+    expect(wrapper().getAttribute('tabindex')).toBe('0');
+    expect(wrapper().tabIndex).toBe(0);
+
+    rerender({
+      columns,
+      rows,
+      scrollable: true,
+      scrollContainerProps: unsafeScrollContainerProps({
+        tabindex: ' -1 ',
+      }),
+    });
+    expect(wrapper().getAttribute('tabindex')).toBe('-1');
+    expect(wrapper().tabIndex).toBe(-1);
+  });
+
+  test('scrollContainerProps honors non-empty aria-labelledby over the default label', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      caption: 'Contributors',
+      scrollContainerProps: {
+        'aria-labelledby': 'table-scroll-label',
+      },
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll');
+    expect(wrapper?.getAttribute('aria-labelledby')).toBe('table-scroll-label');
+    expect(wrapper?.hasAttribute('aria-label')).toBe(false);
+  });
+
+  test('scrollable=true keeps Table props on the table element', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      caption: 'Scrollable team',
+      stickyHeader: true,
+    });
+    const table = container.querySelector('table');
+    expect(table?.getAttribute('data-cinder-sticky-header')).toBe('true');
+    expect(table?.querySelector('caption')?.textContent?.trim()).toBe('Scrollable team');
+  });
+
+  test('stickyHeader with scrollable lets callers configure the generated sticky scroll container', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollable: true,
+      stickyHeader: true,
+      scrollContainerProps: {
+        'aria-label': 'Scrollable sticky table',
+        style: 'max-block-size: 20rem; overflow-y: auto;',
+      },
+    });
+    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    const table = container.querySelector('table');
+    expect(wrapper.getAttribute('aria-label')).toBe('Scrollable sticky table');
+    expect(wrapper.getAttribute('style')).toContain('max-block-size: 20rem');
+    expect(wrapper.getAttribute('style')).toContain('overflow-y: auto');
+    expect(table?.getAttribute('data-cinder-sticky-header')).toBe('true');
+    expect(table?.parentElement).toBe(wrapper);
+  });
+
+  test('scrollContainerProps are ignored when scrollable=false', () => {
+    const { container } = render(Wrapper, {
+      columns,
+      rows,
+      scrollContainerProps: {
+        'aria-label': 'Unused scroll wrapper',
+      },
+    });
+    expect(container.querySelector('.cinder-table-scroll')).toBeNull();
+    expect(container.querySelector('table')?.getAttribute('aria-label')).toBeNull();
   });
 
   test('non-sortable header cells render plain text without an inner button', () => {
@@ -718,6 +923,22 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     const tableRule = injectTableCssAndFind('.cinder-table-scroll .cinder-table');
     expect(wrapperRule?.style.overflowX).toBe('auto');
     expect(tableRule?.style.minInlineSize).toBe('max-content');
+  });
+
+  test('scroll wrapper focus-visible state declares a visible focus ring', () => {
+    const rule = injectTableCssAndFind('.cinder-table-scroll:focus-visible');
+    expect(rule?.style.outlineColor).toBe('transparent');
+    expect(rule?.style.outlineStyle).toBe('solid');
+    expect(rule?.style.outlineWidth).toBe('var(--cinder-ring-width)');
+    expect(rule?.style.boxShadow).toBe('var(--_cinder-focus-ring-shadow)');
+  });
+
+  test('scroll wrapper focus-visible forced-colors fallback uses system colors', () => {
+    expect(tableCss).toContain('@media (forced-colors: active)');
+    expect(tableCss).toContain('.cinder-table-scroll:focus-visible');
+    expect(tableCss).toContain('outline: var(--cinder-ring-width) solid ButtonText');
+    expect(tableCss).toContain('outline-offset: 3px');
+    expect(tableCss).toContain('box-shadow: none');
   });
 
   test('sticky header offsets its top by the measured caption height only when a caption is present', () => {

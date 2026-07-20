@@ -1,5 +1,5 @@
 import type { Snippet } from 'svelte';
-import type { HTMLTableAttributes } from 'svelte/elements';
+import type { HTMLAttributes, HTMLTableAttributes } from 'svelte/elements';
 /** Sort direction. */
 export type SortDirection = 'ascending' | 'descending';
 /** Bound sort state shape. */
@@ -40,6 +40,14 @@ export type TableContext = {
   /** Mirror of Table.selectable. Set synchronously at construction time. */
   readonly selectionEnabled?: boolean;
 };
+/** Attributes forwarded to Table's generated scroll wrapper. */
+export type TableScrollContainerProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'children' | 'class'
+> & {
+  /** Additional class names merged with `.cinder-table-scroll`. */
+  class?: string;
+};
 /**
  * Props for the Table component.
  *
@@ -75,6 +83,24 @@ export type TableProps = Omit<HTMLTableAttributes, 'class'> & {
    * Selection is strictly controlled — the consumer owns all selection state.
    */
   selectable?: boolean;
+  /**
+   * When true, wraps the table in a `.cinder-table-scroll` container that
+   * enables horizontal overflow scrolling for dense or unknown-width tables.
+   * Use this instead of manually wrapping Table in `.cinder-table-scroll`.
+   *
+   * When combined with `stickyHeader`, the generated wrapper is the sticky
+   * header's scroll container. Set a bounded block size on `scrollContainerProps`
+   * when the table should scroll vertically inside that wrapper.
+   */
+  scrollable?: boolean;
+  /**
+   * Attributes forwarded to the generated `.cinder-table-scroll` wrapper when
+   * `scrollable` is true. The wrapper is focusable by default so keyboard users
+   * can scroll read-only wide tables. When the table has a caption, or when
+   * `aria-label` or `aria-labelledby` is provided here, the wrapper becomes a
+   * named `region`; pass `role` or `tabindex` here to override those defaults.
+   */
+  scrollContainerProps?: TableScrollContainerProps;
   /** Additional class names merged with `.cinder-table`. */
   class?: string;
   /** TableHeader, TableBody, etc. */
