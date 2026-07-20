@@ -174,7 +174,7 @@
     "@testing-library/svelte": "^5.2.7",
     "@types/bun": "^1.3.11",
     "ajv": "^8",
-    "conversationalist": "^0.2.1",
+    "conversationalist": "^0.4.1",
     "happy-dom": "^15.11.7",
     "oxlint": "^1.56.0",
     "postcss": "^8.5.15",
@@ -186,7 +186,7 @@
   },
   "peerDependencies": {
     "@lostgradient/cinder": "^0.16.0",
-    "conversationalist": "^0.2.1",
+    "conversationalist": "^0.2.1 || ^0.4.1",
     "svelte": ">=5.56.0 <6",
     "zod": "4.4.1"
   },
