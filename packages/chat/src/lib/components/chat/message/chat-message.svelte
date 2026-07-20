@@ -797,9 +797,15 @@
     }
   }
 
-  /* Touch devices: always show actions */
+  /* Touch devices: always show actions. The tool-pair override above has
+   * higher specificity ([data-tool-pair] + .chat-message-wrapper +
+   * .chat-message-footer) than the bare `.chat-message-footer` below, so it
+   * needs its own entry here — otherwise touch users would hit the same
+   * "always opacity: 0" dead end on tool-paired rows that :hover/:focus-within
+   * fixes for pointer/keyboard. */
   @media (hover: none) or (pointer: coarse) {
-    .chat-message-footer {
+    .chat-message-footer,
+    .chat-message-wrapper[data-tool-pair] .chat-message-footer {
       opacity: 1;
       pointer-events: auto;
     }
