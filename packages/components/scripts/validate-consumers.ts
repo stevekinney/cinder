@@ -94,10 +94,12 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
   '@milkdown/ctx',
   '@milkdown/kit',
   '@milkdown/prose',
+  '@modelcontextprotocol/sdk',
   'prosemirror-inputrules',
   'prosemirror-model',
   'prosemirror-state',
   'prosemirror-view',
+  'zod',
 ] as const;
 
 const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
@@ -123,7 +125,6 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   'shiki',
   'unified',
   'unist-util-visit',
-  'zod',
 ] as const;
 const REQUIRED_PEER_DEPENDENCY_NAMES: readonly string[] = [];
 

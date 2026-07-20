@@ -1,14 +1,73 @@
-import * as z from 'zod/v4';
-
 import { CinderKnowledgeError, loadCinderKnowledge, type CinderKnowledge } from './knowledge.ts';
 import type { BestPracticeTopic } from './types.ts';
 
+// zod and @modelcontextprotocol/sdk are peer dependencies (optional) — only
+// the `mcp` CLI command needs them, so every consumer of the component
+// library shouldn't have to install them. Both are dynamically imported here
+// and nowhere else touches them, so a missing install surfaces as one clear,
+// actionable error instead of a raw module-resolution stack trace.
+type ZodModule = typeof import('zod/v4');
 type McpServerModule = typeof import('@modelcontextprotocol/sdk/server/mcp.js');
 type McpTypesModule = typeof import('@modelcontextprotocol/sdk/types.js');
+type McpStdioModule = typeof import('@modelcontextprotocol/sdk/server/stdio.js');
 type McpErrorDependencies = {
   ErrorCode: McpTypesModule['ErrorCode'];
   McpError: McpTypesModule['McpError'];
 };
+
+export const MCP_OPTIONAL_DEPENDENCIES_MESSAGE =
+  'bun add zod @modelcontextprotocol/sdk to use the cinder MCP server.';
+
+/**
+ * Distinguish "the package isn't installed" from any other failure while
+ * importing it, so we only rewrite the error message for the case the
+ * actionable message is actually about.
+ */
+export function isModuleNotFoundError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const code = (error as NodeJS.ErrnoException).code;
+  if (code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND') return true;
+  return /Cannot find (module|package)/.test(error.message);
+}
+
+async function importOptionalMcpDependency<T>(load: () => Promise<T>): Promise<T> {
+  try {
+    return await load();
+  } catch (error) {
+    if (isModuleNotFoundError(error)) {
+      throw new Error(MCP_OPTIONAL_DEPENDENCIES_MESSAGE, { cause: error });
+    }
+    throw error;
+  }
+}
+
+type McpDependencies = {
+  z: ZodModule;
+  McpServer: McpServerModule['McpServer'];
+  ResourceTemplate: McpServerModule['ResourceTemplate'];
+  ErrorCode: McpTypesModule['ErrorCode'];
+  McpError: McpTypesModule['McpError'];
+  StdioServerTransport: McpStdioModule['StdioServerTransport'];
+};
+
+async function loadMcpDependencies(): Promise<McpDependencies> {
+  const [z, serverModule, typesModule, stdioModule] = await importOptionalMcpDependency(() =>
+    Promise.all([
+      import('zod/v4'),
+      import('@modelcontextprotocol/sdk/server/mcp.js'),
+      import('@modelcontextprotocol/sdk/types.js'),
+      import('@modelcontextprotocol/sdk/server/stdio.js'),
+    ]),
+  );
+  return {
+    z,
+    McpServer: serverModule.McpServer,
+    ResourceTemplate: serverModule.ResourceTemplate,
+    ErrorCode: typesModule.ErrorCode,
+    McpError: typesModule.McpError,
+    StdioServerTransport: stdioModule.StdioServerTransport,
+  };
+}
 
 function textResult(text: string, structuredContent?: Record<string, unknown>) {
   return {
@@ -117,6 +176,7 @@ function searchOptionsFromArgs(args: {
 function registerTools(
   server: InstanceType<McpServerModule['McpServer']>,
   knowledge: CinderKnowledge,
+  z: ZodModule,
 ): void {
   server.registerTool(
     'search_components',
@@ -261,7 +321,7 @@ function registerResources(
   }
 }
 
-function registerPrompts(server: InstanceType<McpServerModule['McpServer']>): void {
+function registerPrompts(server: InstanceType<McpServerModule['McpServer']>, z: ZodModule): void {
   server.registerPrompt(
     'choose_cinder_component',
     {
@@ -323,24 +383,23 @@ function registerPrompts(server: InstanceType<McpServerModule['McpServer']>): vo
 }
 
 export async function createMcpServer() {
-  const [{ McpServer, ResourceTemplate }, { ErrorCode, McpError }, knowledge] = await Promise.all([
-    import('@modelcontextprotocol/sdk/server/mcp.js'),
-    import('@modelcontextprotocol/sdk/types.js'),
+  const [{ z, McpServer, ResourceTemplate, ErrorCode, McpError }, knowledge] = await Promise.all([
+    loadMcpDependencies(),
     loadCinderKnowledge(),
   ]);
   const server = new McpServer({
     name: 'cinder',
     version: knowledge.package.version,
   });
-  registerTools(server, knowledge);
+  registerTools(server, knowledge, z);
   registerResources(server, knowledge, ResourceTemplate, { ErrorCode, McpError });
-  registerPrompts(server);
+  registerPrompts(server, z);
   return server;
 }
 
 export async function runMcpServer(): Promise<void> {
   const [{ StdioServerTransport }, server] = await Promise.all([
-    import('@modelcontextprotocol/sdk/server/stdio.js'),
+    loadMcpDependencies(),
     createMcpServer(),
   ]);
   await server.connect(new StdioServerTransport());

@@ -16,6 +16,17 @@ function withImmediateTimers<T>(run: () => T): T {
   }
 }
 
+/**
+ * Meta-schema/compile validation dynamically imports Ajv, so even
+ * "immediate" debounce timers only kick off async work — they don't finish
+ * it. Flush a real macrotask (a genuine `setTimeout`, taken after
+ * `withImmediateTimers` has restored the original) so every microtask the
+ * validation promise chain scheduled has drained by the time we return.
+ */
+function flushValidation(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe('createEditorState — initial load', () => {
   test('parses a string schema and seeds canonical text', () => {
     const state = createEditorState({ schema: '{"type":"string"}' });
@@ -65,32 +76,32 @@ describe('createEditorState — JSON draft / Apply', () => {
     expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
-  test('applyJsonDraft commits a valid draft', () => {
+  test('applyJsonDraft commits a valid draft', async () => {
     const state = createEditorState({ schema: { type: 'string' } });
 
     state.setJsonDraftText('{"type":"number"}');
-    const applied = state.applyJsonDraft();
+    const applied = await state.applyJsonDraft();
 
     expect(applied).toBe(true);
     expect(state.committedSchema).toEqual({ type: 'number' });
     expect(state.jsonDraftIsDirty).toBe(false);
   });
 
-  test('applyJsonDraft rejects invalid JSON', () => {
+  test('applyJsonDraft rejects invalid JSON', async () => {
     const state = createEditorState({ schema: { type: 'string' } });
 
     state.setJsonDraftText('{not-valid');
-    const applied = state.applyJsonDraft();
+    const applied = await state.applyJsonDraft();
 
     expect(applied).toBe(false);
     expect(state.committedSchema).toEqual({ type: 'string' });
   });
 
-  test('applyJsonDraft rejects meta-schema-invalid drafts', () => {
+  test('applyJsonDraft rejects meta-schema-invalid drafts', async () => {
     const state = createEditorState({ schema: { type: 'string' } });
 
     state.setJsonDraftText('{"type":"not-a-real-type"}');
-    const applied = state.applyJsonDraft();
+    const applied = await state.applyJsonDraft();
 
     expect(applied).toBe(false);
     expect(state.committedSchema).toEqual({ type: 'string' });
@@ -161,10 +172,10 @@ describe('createEditorState — undo / redo / revert', () => {
     expect(state.canRedo).toBe(false);
   });
 
-  test('revert from invalid initial input clears the draft to original raw', () => {
+  test('revert from invalid initial input clears the draft to original raw', async () => {
     const state = createEditorState({ schema: '{not-valid' });
     state.setJsonDraftText('{"type":"string"}');
-    state.applyJsonDraft();
+    await state.applyJsonDraft();
 
     expect(state.committedSchema).toEqual({ type: 'string' });
 
@@ -224,7 +235,7 @@ describe('createEditorState — reload', () => {
 });
 
 describe('createEditorState — change events', () => {
-  test('onchange fires on commit, apply, undo, redo, revert-to-valid', () => {
+  test('onchange fires on commit, apply, undo, redo, revert-to-valid', async () => {
     const events: string[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
@@ -233,7 +244,7 @@ describe('createEditorState — change events', () => {
 
     state.commitFromForm({ type: 'number' });
     state.setJsonDraftText('{"type":"integer"}');
-    state.applyJsonDraft();
+    await state.applyJsonDraft();
     state.undo();
     state.redo();
     state.revert();
@@ -270,7 +281,7 @@ describe('createEditorState — onrevert callback', () => {
     expect(events[0]?.restoredFrom).toBe('original-schema');
   });
 
-  test('fires with restoredFrom: original-text when the original was unparseable', () => {
+  test('fires with restoredFrom: original-text when the original was unparseable', async () => {
     const events: { restoredFrom: string }[] = [];
     const state = createEditorState({
       schema: '{not-valid',
@@ -278,7 +289,7 @@ describe('createEditorState — onrevert callback', () => {
     });
 
     state.setJsonDraftText('{"type":"string"}');
-    state.applyJsonDraft();
+    await state.applyJsonDraft();
     state.revert();
 
     expect(events).toHaveLength(1);
@@ -354,7 +365,7 @@ describe('createEditorState — onvalidate callback', () => {
     expect(events.length).toBeGreaterThan(baseline);
   });
 
-  test('fires invalid status for a dirty top-level array draft', () => {
+  test('fires invalid status for a dirty top-level array draft', async () => {
     const events: { status: string; valid: boolean }[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
@@ -364,6 +375,10 @@ describe('createEditorState — onvalidate callback', () => {
     withImmediateTimers(() => {
       state.setJsonDraftText('[1,2,3]');
     });
+    // The immediate timer only starts the (now async, Ajv-backed) validation
+    // — it doesn't finish it. Flush a real macrotask so the promise chain
+    // resolves before asserting.
+    await flushValidation();
 
     expect(state.validationStatus).toBe('invalid');
     expect(state.validationResult.valid).toBe(false);

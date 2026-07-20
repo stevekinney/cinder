@@ -6538,7 +6538,6 @@
   },
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@shikijs/engine-oniguruma": "^3.21.0",
     "@shikijs/langs": "^3.21.0",
     "@shikijs/types": "^3.21.0",
@@ -6564,8 +6563,7 @@
     "remark-stringify": "^11.0.0",
     "shiki": "^3.21.0",
     "unified": "^11.0.5",
-    "unist-util-visit": "^5.0.0",
-    "zod": "4.4.1"
+    "unist-util-visit": "^5.0.0"
   },
   "devDependencies": {
     "@changesets/get-release-plan": "4.0.16",
@@ -6574,6 +6572,7 @@
     "@cinder/diff": "workspace:*",
     "@cinder/markdown": "workspace:*",
     "@cinder/testing": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",
@@ -6596,18 +6595,21 @@
     "svelte-check": "^4.0.0",
     "svelte2tsx": "^0.7.33",
     "ts-morph": "^28.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "zod": "4.4.1"
   },
   "peerDependencies": {
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "lucide-svelte": ">=0.400.0 <1",
     "prosemirror-inputrules": "^1.5.1",
     "prosemirror-model": "^1.25.4",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.3",
-    "svelte": ">=5.56.0 <6"
+    "svelte": ">=5.56.0 <6",
+    "zod": "^4.0.0"
   },
   "peerDependenciesMeta": {
     "@milkdown/ctx": {
@@ -6617,6 +6619,9 @@
       "optional": true
     },
     "@milkdown/prose": {
+      "optional": true
+    },
+    "@modelcontextprotocol/sdk": {
       "optional": true
     },
     "prosemirror-inputrules": {
@@ -6629,6 +6634,9 @@
       "optional": true
     },
     "prosemirror-view": {
+      "optional": true
+    },
+    "zod": {
       "optional": true
     }
   },

@@ -114,7 +114,7 @@ function makeFakeState(
     setView() {},
     setReadonly() {},
     setDraftOverride() {},
-    applyJsonDraft() {
+    async applyJsonDraft() {
       return false;
     },
     updateJsonDraftText() {},

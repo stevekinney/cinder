@@ -22,7 +22,7 @@
     <Alert variant="warning">
       <p>The diff shows the committed state; uncommitted JSON edits are not included.</p>
       <div class="cinder-jse-dirty-actions">
-        <Button variant="primary" size="sm" onclick={() => state.applyJsonDraft()}>
+        <Button variant="primary" size="sm" onclick={() => void state.applyJsonDraft()}>
           Apply JSON
         </Button>
         <Button variant="secondary" size="sm" onclick={() => state.discardJsonDraft()}>

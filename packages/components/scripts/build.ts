@@ -178,10 +178,12 @@ const upstreamReexportEntrypoints = upstreamReexports.map(
 /**
  * Third-party runtime dependencies that must stay external so they are
  * installed from the npm registry at the consumer site (declared in
- * `@lostgradient/cinder`'s own `dependencies`) rather than vendored into the
- * published bundle. Some are transitive dependencies inherited from the
- * bundled `@cinder/*` workspace packages; others, such as Ajv, are direct lazy
- * runtime dependencies for optional component behavior.
+ * `@lostgradient/cinder`'s own `dependencies` or `peerDependencies`) rather
+ * than vendored into the published bundle. Some are transitive dependencies
+ * inherited from the bundled `@cinder/*` workspace packages; others, such as
+ * Ajv, are direct lazy runtime dependencies for optional component behavior.
+ * `zod` and `@modelcontextprotocol/sdk` are optional peer dependencies —
+ * only `bin.cinder`'s `mcp` command needs them.
  */
 const runtimeDependencyExternals = [
   '@modelcontextprotocol/sdk',
@@ -572,8 +574,8 @@ await rm(temporaryServerRootMapOutput, { force: true });
 // -----------------------------------------------------------------------------
 // 3. CLI build. The published `bin.cinder` target is Node-only and must not
 //    participate in browser/component export builds. It shares the runtime
-//    dependency external list so MCP SDK and zod stay install-time dependencies
-//    instead of being vendored into the generated binary.
+//    dependency external list so MCP SDK and zod stay install-time (optional
+//    peer) dependencies instead of being vendored into the generated binary.
 // -----------------------------------------------------------------------------
 
 const cliBuildResult = await Bun.build({
