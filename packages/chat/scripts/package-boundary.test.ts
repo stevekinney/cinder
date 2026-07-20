@@ -98,4 +98,42 @@ describe('Chat package ownership boundary', () => {
     expect(serialized).not.toContain('./src/');
     expect(published.peerDependencies).toEqual(chatManifest.peerDependencies);
   });
+
+  test('rewrites browser-aware Chat exports to packed dist files', () => {
+    const published = buildPublishedManifest(chatManifest);
+    const exportKeys = (entry: unknown): string[] => {
+      expect(entry).toBeDefined();
+      expect(typeof entry).toBe('object');
+      return Object.keys(entry as Record<string, unknown>);
+    };
+
+    expect(published.exports['.']).toMatchObject({
+      browser: './dist/index.js',
+      svelte: './dist/index.js',
+      import: './dist/index.js',
+      default: './dist/index.js',
+    });
+    expect(exportKeys(published.exports['.'])).toEqual([
+      'types',
+      'browser',
+      'node',
+      'svelte',
+      'import',
+      'default',
+    ]);
+    expect(published.exports['./composer-popover']).toMatchObject({
+      browser: './dist/components/chat-composer-popover/index.js',
+      svelte: './dist/components/chat-composer-popover/index.js',
+      import: './dist/components/chat-composer-popover/index.js',
+      default: './dist/components/chat-composer-popover/index.js',
+    });
+    expect(exportKeys(published.exports['./composer-popover'])).toEqual([
+      'types',
+      'browser',
+      'node',
+      'svelte',
+      'import',
+      'default',
+    ]);
+  });
 });

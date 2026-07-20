@@ -358,6 +358,20 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
       `if (!rendered.body.includes('chat-container')) throw new Error('plain Node SSR output is missing Chat');\n`,
   );
   await run(node, [entryPath], fixture.root);
+
+  const browserConditionEntryPath = join(fixture.root, 'browser-condition-consumer.mjs');
+  await Bun.write(
+    browserConditionEntryPath,
+    `const expected = new Map([\n` +
+      `  ['@lostgradient/chat', '/node_modules/@lostgradient/chat/dist/index.js'],\n` +
+      `  ['@lostgradient/chat/composer-popover', '/node_modules/@lostgradient/chat/dist/components/chat-composer-popover/index.js'],\n` +
+      `]);\n` +
+      `for (const [specifier, expectedSuffix] of expected) {\n` +
+      `  const resolved = new URL(import.meta.resolve(specifier)).pathname;\n` +
+      `  if (!resolved.endsWith(expectedSuffix)) throw new Error(\`\${specifier} resolved to \${resolved}\`);\n` +
+      `}\n`,
+  );
+  await run(node, ['--conditions=browser', browserConditionEntryPath], fixture.root);
 }
 
 export async function validateConsumer(): Promise<void> {

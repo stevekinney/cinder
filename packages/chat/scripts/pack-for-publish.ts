@@ -110,13 +110,16 @@ export function peerExternalSpecifiers(
 function publishedExport(entry: string | ConditionalExport): string | ConditionalExport {
   if (typeof entry === 'string') return entry;
   const published: ConditionalExport = {};
+  const publishedClientTarget = entry.default;
   if (entry.types !== undefined) published.types = entry.types;
-  if (entry.node !== undefined) published.node = entry.node;
-  if (entry.default !== undefined) {
-    if (entry.browser !== undefined) published.browser = entry.default;
-    if (entry.svelte !== undefined) published.svelte = entry.default;
-    if (entry.import !== undefined) published.import = entry.default;
-    published.default = entry.default;
+  if (publishedClientTarget !== undefined) {
+    if (entry.browser !== undefined) published.browser = publishedClientTarget;
+    if (entry.node !== undefined) published.node = entry.node;
+    if (entry.svelte !== undefined) published.svelte = publishedClientTarget;
+    if (entry.import !== undefined) published.import = publishedClientTarget;
+    published.default = publishedClientTarget;
+  } else if (entry.node !== undefined) {
+    published.node = entry.node;
   }
   return published;
 }
