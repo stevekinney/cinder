@@ -36,6 +36,11 @@
     min-inline-size: max-content;
   }
 
+  .cinder-table-scroll:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
   .cinder-table__caption {
     caption-side: top;
     text-align: left;
@@ -163,6 +168,12 @@
   }
 
   @media (forced-colors: active) {
+    .cinder-table-scroll:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+      box-shadow: none;
+    }
+
     .cinder-table__sort-button:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
       /* 2px is correct here: sort-button has border:none so there is no

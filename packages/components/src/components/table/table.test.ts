@@ -925,6 +925,22 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
     expect(tableRule?.style.minInlineSize).toBe('max-content');
   });
 
+  test('scroll wrapper focus-visible state declares a visible focus ring', () => {
+    const rule = injectTableCssAndFind('.cinder-table-scroll:focus-visible');
+    expect(rule?.style.outlineColor).toBe('transparent');
+    expect(rule?.style.outlineStyle).toBe('solid');
+    expect(rule?.style.outlineWidth).toBe('var(--cinder-ring-width)');
+    expect(rule?.style.boxShadow).toBe('var(--_cinder-focus-ring-shadow)');
+  });
+
+  test('scroll wrapper focus-visible forced-colors fallback uses system colors', () => {
+    expect(tableCss).toContain('@media (forced-colors: active)');
+    expect(tableCss).toContain('.cinder-table-scroll:focus-visible');
+    expect(tableCss).toContain('outline: var(--cinder-ring-width) solid ButtonText');
+    expect(tableCss).toContain('outline-offset: 3px');
+    expect(tableCss).toContain('box-shadow: none');
+  });
+
   test('sticky header offsets its top by the measured caption height only when a caption is present', () => {
     // The native <caption> renders above the table border box; the sticky thead
     // must pin below it (not over it). The offset is scoped with :has(caption) so
