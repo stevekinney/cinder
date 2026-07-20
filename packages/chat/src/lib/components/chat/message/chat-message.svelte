@@ -526,8 +526,15 @@
     display: none;
   }
 
+  /* Hidden-by-default like every other row's footer (opacity/pointer-events,
+   * toggled visible on :hover/:focus-within by the shared rule below) rather
+   * than `display: none` — a `display: none` element can never be hovered,
+   * focused, or hit-tested, which would make retry/edit/copy and any
+   * consumer-supplied `messageActions` snippet content permanently
+   * unreachable by mouse or keyboard on tool-paired rows. */
   .chat-message-wrapper[data-tool-pair] .chat-message-footer {
-    display: none;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .chat-message-wrapper[data-role='snapshot'] {
@@ -790,9 +797,15 @@
     }
   }
 
-  /* Touch devices: always show actions */
+  /* Touch devices: always show actions. The tool-pair override above has
+   * higher specificity ([data-tool-pair] + .chat-message-wrapper +
+   * .chat-message-footer) than the bare `.chat-message-footer` below, so it
+   * needs its own entry here — otherwise touch users would hit the same
+   * "always opacity: 0" dead end on tool-paired rows that :hover/:focus-within
+   * fixes for pointer/keyboard. */
   @media (hover: none) or (pointer: coarse) {
-    .chat-message-footer {
+    .chat-message-footer,
+    .chat-message-wrapper[data-tool-pair] .chat-message-footer {
       opacity: 1;
       pointer-events: auto;
     }

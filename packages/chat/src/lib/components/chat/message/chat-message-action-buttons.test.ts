@@ -60,6 +60,40 @@ describe('chat message action buttons', () => {
     expect(resetBlock).not.toMatch(/(^|\s)left:\s*0/);
     expect(resetBlock).not.toMatch(/(^|\s)right:\s*auto/);
   });
+
+  // Regression for #777: a `display: none` footer on tool-paired rows can
+  // never be resurrected by the shared `:hover`/`:focus-within` rule (which
+  // only toggles opacity/pointer-events), making retry/edit/copy and any
+  // consumer `messageActions` snippet content permanently unreachable by
+  // mouse or keyboard on those rows.
+  test('tool-pair footer override hides via opacity, not display: none', () => {
+    const rule = extractRule(
+      source,
+      '.chat-message-wrapper[data-tool-pair] .chat-message-footer {',
+    );
+    expect(rule).not.toContain('display: none');
+    expect(rule).toContain('opacity: 0');
+    expect(rule).toContain('pointer-events: none');
+  });
+
+  test('the shared hover/focus-within reveal rule applies to every wrapper, including tool-paired rows', () => {
+    // No role- or attribute-scoped selector narrows this rule away from
+    // `[data-tool-pair]` wrappers — it targets the generic `.chat-message-wrapper`.
+    // Whitespace-tolerant (rather than an exact-string match) so a future
+    // formatter pass on `chat-message.svelte` can't silently break this
+    // assertion.
+    expect(source).toMatch(
+      /\.chat-message-wrapper:hover\s+\.chat-message-footer\s*,\s*\.chat-message-wrapper:focus-within\s+\.chat-message-footer\s*\{/,
+    );
+  });
+
+  test('touch devices reveal the tool-pair footer too, matching its higher specificity', () => {
+    // The tool-pair hidden-state override has higher specificity than the
+    // bare `.chat-message-footer` touch rule, so it needs its own entry in
+    // the touch media block or tool-paired rows stay unreachable on touch.
+    const touchBlock = extractTouchMediaBlock(source, '.chat-message-footer');
+    expect(touchBlock).toContain('.chat-message-wrapper[data-tool-pair] .chat-message-footer');
+  });
 });
 
 function extractRule(text: string, opening: string): string {
@@ -70,12 +104,15 @@ function extractRule(text: string, opening: string): string {
   return text.slice(bodyStart, end);
 }
 
-function extractTouchMediaBlock(text: string): string {
+function extractTouchMediaBlock(
+  text: string,
+  contains: string = '.chat-message-action-button',
+): string {
   const marker = '@media (hover: none) or (pointer: coarse) {';
   let searchFrom = 0;
   for (;;) {
     const start = text.indexOf(marker, searchFrom);
-    if (start === -1) throw new Error('action-button touch media block not found');
+    if (start === -1) throw new Error(`touch media block containing "${contains}" not found`);
     let depth = 0;
     let i = text.indexOf('{', start);
     const bodyStart = i + 1;
@@ -85,7 +122,7 @@ function extractTouchMediaBlock(text: string): string {
         depth--;
         if (depth === 0) {
           const body = text.slice(bodyStart, i);
-          if (body.includes('.chat-message-action-button')) return body;
+          if (body.includes(contains)) return body;
           searchFrom = i + 1;
           break;
         }
