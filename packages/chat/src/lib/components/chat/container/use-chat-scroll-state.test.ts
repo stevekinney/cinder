@@ -189,8 +189,15 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
       ({
         matches: query.includes('prefers-reduced-motion'),
         media: query,
+        onchange: null,
         addEventListener: () => {},
         removeEventListener: () => {},
+        // Legacy MediaQueryList API — included alongside the modern
+        // addEventListener/removeEventListener pair in case the Svelte
+        // MediaQuery build in use prefers it.
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
       }) as unknown as MediaQueryList) as typeof window.matchMedia;
 
     try {
