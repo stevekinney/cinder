@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.16.1
+
+### Patch Changes
+
+- [#766](https://github.com/stevekinney/cinder/pull/766) [`01cfe20`](https://github.com/stevekinney/cinder/commit/01cfe20711569effdd5643c3b985603a1536f7df) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a first-class scrollable wrapper option to the compositional Table API.
+
 ## 0.16.0
 
 ### Minor Changes
