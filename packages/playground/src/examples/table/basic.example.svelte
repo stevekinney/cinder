@@ -1,18 +1,31 @@
 <script lang="ts" module>
-  export const title = 'Basic table';
-  export const description = 'Header row plus three body rows; semantic <table> markup.';
+  export const title = 'Scrollable table';
+  export const description =
+    'Hand-composed cells inside the public horizontal scroll wrapper for dense tables.';
 </script>
 
 <script lang="ts">
   import { Table } from '@lostgradient/cinder/table';
   const people = [
-    { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
-    { name: 'Grace Hopper', role: 'Computer Scientist', commits: 98 },
-    { name: 'Alan Turing', role: 'Cryptanalyst', commits: 76 },
+    {
+      name: 'Ada Lovelace',
+      role: 'Mathematician and analytical engine collaborator',
+      commits: 142,
+    },
+    {
+      name: 'Grace Hopper',
+      role: 'Computer scientist, compiler builder, and systems educator',
+      commits: 98,
+    },
+    {
+      name: 'Alan Turing',
+      role: 'Cryptanalyst, logician, and theoretical computer scientist',
+      commits: 76,
+    },
   ];
 </script>
 
-<Table caption="Recent contributors">
+<Table caption="Recent contributors" scrollable>
   <Table.Header>
     <Table.Row>
       <Table.HeaderCell>Name</Table.HeaderCell>

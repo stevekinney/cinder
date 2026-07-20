@@ -5,9 +5,9 @@
   "examples": [
     {
       "id": "basic",
-      "title": "Basic table",
-      "description": "Header row plus three body rows; semantic <table> markup.",
-      "code": "<script lang=\"ts\">\n  import { Table } from '@lostgradient/cinder/table';\n  const people = [\n    { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },\n    { name: 'Grace Hopper', role: 'Computer Scientist', commits: 98 },\n    { name: 'Alan Turing', role: 'Cryptanalyst', commits: 76 },\n  ];\n</script>\n\n<Table caption=\"Recent contributors\">\n  <Table.Header>\n    <Table.Row>\n      <Table.HeaderCell>Name</Table.HeaderCell>\n      <Table.HeaderCell>Role</Table.HeaderCell>\n      <Table.HeaderCell align=\"right\">Commits</Table.HeaderCell>\n    </Table.Row>\n  </Table.Header>\n  <Table.Body>\n    {#each people as person (person.name)}\n      <Table.Row>\n        <Table.Cell>{person.name}</Table.Cell>\n        <Table.Cell>{person.role}</Table.Cell>\n        <Table.Cell align=\"right\">{person.commits}</Table.Cell>\n      </Table.Row>\n    {/each}\n  </Table.Body>\n</Table>\n"
+      "title": "Scrollable table",
+      "description": "Hand-composed cells inside the public horizontal scroll wrapper for dense tables.",
+      "code": "<script lang=\"ts\">\n  import { Table } from '@lostgradient/cinder/table';\n  const people = [\n    {\n      name: 'Ada Lovelace',\n      role: 'Mathematician and analytical engine collaborator',\n      commits: 142,\n    },\n    {\n      name: 'Grace Hopper',\n      role: 'Computer scientist, compiler builder, and systems educator',\n      commits: 98,\n    },\n    {\n      name: 'Alan Turing',\n      role: 'Cryptanalyst, logician, and theoretical computer scientist',\n      commits: 76,\n    },\n  ];\n</script>\n\n<Table caption=\"Recent contributors\" scrollable>\n  <Table.Header>\n    <Table.Row>\n      <Table.HeaderCell>Name</Table.HeaderCell>\n      <Table.HeaderCell>Role</Table.HeaderCell>\n      <Table.HeaderCell align=\"right\">Commits</Table.HeaderCell>\n    </Table.Row>\n  </Table.Header>\n  <Table.Body>\n    {#each people as person (person.name)}\n      <Table.Row>\n        <Table.Cell>{person.name}</Table.Cell>\n        <Table.Cell>{person.role}</Table.Cell>\n        <Table.Cell align=\"right\">{person.commits}</Table.Cell>\n      </Table.Row>\n    {/each}\n  </Table.Body>\n</Table>\n"
     },
     {
       "id": "empty",

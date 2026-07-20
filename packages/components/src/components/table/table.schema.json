@@ -18,6 +18,10 @@
       "type": "boolean",
       "description": "Enables the leading selection column on the entire table. When true:\n- The single `TableRow` inside `TableHeader` renders a leading `<th>`\n  with a select-all checkbox sourced from the header's props.\n- Every `TableRow` inside `TableBody` renders a leading selection cell.\nSelection is strictly controlled — the consumer owns all selection state."
     },
+    "scrollable": {
+      "type": "boolean",
+      "description": "When true, wraps the table in a `.cinder-table-scroll` container that\nenables horizontal overflow scrolling for dense or unknown-width tables.\nUse this instead of manually wrapping Table in `.cinder-table-scroll`.\n\nWhen combined with `stickyHeader`, the generated wrapper is the sticky\nheader's scroll container. Set a bounded block size on `scrollContainerProps`\nwhen the table should scroll vertically inside that wrapper."
+    },
     "class": {
       "type": "string",
       "description": "Additional class names merged with `.cinder-table`."
@@ -31,6 +35,11 @@
         "reason": "function-or-snippet",
         "required": true,
         "description": "TableHeader, TableBody, etc."
+      },
+      {
+        "name": "scrollContainerProps",
+        "reason": "unknown-shape",
+        "description": "Attributes forwarded to the generated `.cinder-table-scroll` wrapper when\n`scrollable` is true. The wrapper is focusable by default so keyboard users\ncan scroll read-only wide tables. When the table has a caption, or when\n`aria-label` or `aria-labelledby` is provided here, the wrapper becomes a\nnamed `region`; pass `role` or `tabindex` here to override those defaults."
       },
       {
         "name": "sort",

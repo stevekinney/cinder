@@ -1,6 +1,7 @@
 <script lang="ts" module>
   import type { TableSort } from '../../components/table/table.types.ts';
   import type { TableDensity } from '../../components/table/table.types.ts';
+  import type { TableScrollContainerProps } from '../../components/table/table.types.ts';
   import type { TableCellProps } from '../../components/table-cell/table-cell.types.ts';
   /** Test-only fixture composing a sortable table. */
   export type TableFixtureProps = {
@@ -9,6 +10,8 @@
     stickyHeader?: boolean;
     density?: TableDensity;
     selectable?: boolean;
+    scrollable?: boolean;
+    scrollContainerProps?: TableScrollContainerProps;
     includeHeaderSelectionState?: boolean;
     includeHeaderSelectionHandler?: boolean;
     renderSecondHeaderRow?: boolean;
@@ -37,6 +40,8 @@
     stickyHeader = false,
     density,
     selectable = false,
+    scrollable = false,
+    scrollContainerProps,
     includeHeaderSelectionState = true,
     includeHeaderSelectionHandler = true,
     renderSecondHeaderRow = false,
@@ -78,6 +83,8 @@
   {...density !== undefined ? { density } : {}}
   {stickyHeader}
   {selectable}
+  {scrollable}
+  {...scrollContainerProps !== undefined ? { scrollContainerProps } : {}}
 >
   <TableHeader
     {...includeHeaderSelectionState ? { allSelected, someSelected } : {}}
