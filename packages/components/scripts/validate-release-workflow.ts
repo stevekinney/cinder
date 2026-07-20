@@ -295,7 +295,11 @@ export function rootConsumerValidationIncludesPublicPackages(manifest: unknown):
   const cinderIndex = consumerScript.indexOf(cinderCommand);
   const chatIndex = consumerScript.indexOf(chatCommand);
   return (
-    validateScript.includes('turbo run validate') &&
+    // --concurrency=1 preserves the serialization the old --sequential flag
+    // gave: turbo parallelizes independent packages by default, and the
+    // playground's dev-server-backed validate step is documented as fragile
+    // under concurrent load.
+    validateScript.includes('turbo run validate --concurrency=1') &&
     validateScript.includes(chatCommand) &&
     cinderIndex !== -1 &&
     chatIndex !== -1 &&
