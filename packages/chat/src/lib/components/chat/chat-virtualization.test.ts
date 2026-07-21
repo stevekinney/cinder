@@ -294,6 +294,62 @@ describe('Chat virtualization', () => {
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
     }
   });
+
+  // Regression test for #774: scrollToTop() fights the auto-stick-to-bottom
+  // effect in virtualized mode and never reaches the top.
+  //
+  // Root cause: the exported `scrollToTop()` called
+  // `chatVirtualizer.scrollToOffset(0, ...)` directly, unlike `jumpToLatest`,
+  // which sets `isUserScrolling` for the duration of its scroll animation. The
+  // auto-stick-to-bottom `$effect.pre` skips its bottom-correction whenever
+  // `isUserScrolling` is true; without it being set, the effect re-firing on
+  // ANY dependency change (e.g. message count) while `atBottom` is still true
+  // snaps the viewport back toward the bottom.
+  //
+  // `atBottom` only flips to `false` once the real scroll listener's
+  // rAF-deferred recompute observes a genuine `scroll` event. This test
+  // deliberately does NOT dispatch one — `timeline.scrollTo` only applies
+  // `top` directly — so `atBottom` stays exactly as it would mid-animation in
+  // a real browser (before the scroll listener has caught up), isolating the
+  // `isUserScrolling` guard as the only thing that can prevent the snap-back.
+  //
+  // The assertion below reads the live-region message count (scroll-position
+  // independent) rather than checking for the newly-appended row in the DOM:
+  // that row lives at the bottom of a 21-message, ~20px-per-row transcript and
+  // is never rendered while the virtualized window sits at the top — waiting
+  // for it would only succeed if the bug fired and snapped the window back to
+  // the bottom.
+  test('scrollToTop settles at the top instead of being pulled back to the bottom by a mid-scroll message arrival', async () => {
+    let conversation = longConversation(20);
+    const { container, component, rerender } = render(Chat, {
+      props: virtualizedProps(conversation),
+    });
+    const timeline = await waitForVirtualizedTimeline(container);
+    Object.defineProperty(timeline, 'clientHeight', { configurable: true, value: 100 });
+    timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
+      timeline.scrollTop =
+        typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
+    };
+
+    await waitFor(() => expect(container.textContent).toContain('Message 19'));
+    await waitFor(() => expect(timeline.scrollTop).toBeGreaterThanOrEqual(300));
+
+    const api = component as unknown as { scrollToTop: () => void };
+    api.scrollToTop();
+    expect(timeline.scrollTop).toBe(0);
+
+    // A message arrives mid-scroll, with `atBottom` still true (no scroll
+    // event was ever dispatched above).
+    conversation = appendMessage(conversation, 'assistant', 'message-20', 'Message 20');
+    await rerender(virtualizedProps(conversation));
+    await waitFor(() => expect(container.textContent).toContain('21 messages in conversation'));
+
+    // Give any (buggy) scheduled correction a chance to run, then confirm the
+    // viewport is still at the top rather than snapped back toward the
+    // bottom.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(timeline.scrollTop).toBe(0);
+  });
 });
 
 describe('Chat history pagination', () => {
