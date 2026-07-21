@@ -22,7 +22,13 @@
   import ChatImplementation from './container/chat.svelte';
   import type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
 
-  let { class: className, ...rest }: ChatProps = $props();
+  let {
+    class: className,
+    atBottom = $bindable(true),
+    unreadCount = $bindable(0),
+    newMessageIndicatorVisible = $bindable(false),
+    ...rest
+  }: ChatProps = $props();
 
   const mergedClassName = $derived(classNames(className));
 
@@ -93,4 +99,11 @@
   }
 </script>
 
-<ChatImplementation bind:this={impl} class={mergedClassName} {...rest} />
+<ChatImplementation
+  bind:this={impl}
+  bind:atBottom
+  bind:unreadCount
+  bind:newMessageIndicatorVisible
+  class={mergedClassName}
+  {...rest}
+/>

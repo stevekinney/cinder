@@ -353,6 +353,87 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   await run(typescript, ['--project', tsconfigPath], fixture.root);
 }
 
+async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void> {
+  // Regression guard for #772/#786: `svelte-check` against a *packed,
+  // installed* @lostgradient/chat (not `bun link`, not a raw .svelte source
+  // import) is the only place the symptom reproduces — a package-local
+  // typecheck never sees it, because svelte-package's dts emission can differ
+  // in subtle ways from the source it was generated from. This step exercises
+  // `bind:atBottom` / `bind:unreadCount` / `bind:newMessageIndicatorVisible`
+  // on the public `Chat` export exactly as a consumer would.
+  const svelteCheckSourceRoot = join(fixture.root, 'svelte-check-src');
+  await mkdir(svelteCheckSourceRoot, { recursive: true });
+  await Bun.write(
+    join(svelteCheckSourceRoot, 'App.svelte'),
+    `<script lang="ts">\n` +
+      `  import { Chat, createConversation } from '@lostgradient/chat';\n` +
+      `  let atBottom = $state(true);\n` +
+      `  let unreadCount = $state(0);\n` +
+      `  let newMessageIndicatorVisible = $state(false);\n` +
+      `  const conversation = createConversation({ id: 'svelte-check-consumer' });\n` +
+      `</script>\n\n` +
+      `<Chat\n` +
+      `  id="svelte-check-consumer"\n` +
+      `  {conversation}\n` +
+      `  bind:atBottom\n` +
+      `  bind:unreadCount\n` +
+      `  bind:newMessageIndicatorVisible\n` +
+      `/>\n`,
+  );
+  // `.mjs`, not `.js`. The scratch fixture root has no `package.json`, so a
+  // `.js` config is parsed as CommonJS and `export default` is a syntax error
+  // under plain Node — an `.mjs` extension is unambiguous regardless of the
+  // surrounding package type. Cheap insurance: this failure would surface as a
+  // config-load error long before `svelte-check` ever reached `App.svelte`,
+  // making the consumer regression guard silently useless off Bun.
+  await Bun.write(join(fixture.root, 'svelte.config.mjs'), `export default {};\n`);
+  const svelteCheckTsconfigPath = join(fixture.root, 'svelte-check-tsconfig.json');
+  await Bun.write(
+    svelteCheckTsconfigPath,
+    `${JSON.stringify(
+      {
+        compilerOptions: {
+          strict: true,
+          moduleResolution: 'bundler',
+          module: 'ESNext',
+          target: 'ESNext',
+          skipLibCheck: true,
+        },
+        // An explicit .svelte glob, not a bare directory include: `svelte-check`
+        // resolves included files the way `tsc` does, which does not treat
+        // `.svelte` as a recognized extension by default. A bare directory
+        // entry risks silently matching nothing, which would make this whole
+        // step a no-op that always reports zero errors.
+        include: ['svelte-check-src/**/*.svelte'],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+
+  const typescriptRoot = join(workspaceRoot, 'node_modules', 'typescript');
+  const svelteCheckRoot = join(workspaceRoot, 'node_modules', 'svelte-check');
+  if (!existsSync(typescriptRoot)) fail('workspace peer is unavailable: typescript');
+  if (!existsSync(svelteCheckRoot)) fail('workspace peer is unavailable: svelte-check');
+  // Explicit link type, matching `linkModule` above: on Windows a directory
+  // symlink without 'junction' needs elevated permissions and fails outright.
+  const directoryLinkType = process.platform === 'win32' ? 'junction' : 'dir';
+  await symlink(typescriptRoot, join(fixture.nodeModules, 'typescript'), directoryLinkType);
+  await symlink(svelteCheckRoot, join(fixture.nodeModules, 'svelte-check'), directoryLinkType);
+
+  // Run the workspace's own binary rather than symlinking it into the
+  // fixture's `.bin`. A FILE symlink is a separate Windows problem from the
+  // directory links above — it needs Developer Mode or elevation, and
+  // 'junction' does not apply to files. Since the only goal is executing
+  // svelte-check against the fixture, invoking it directly with `cwd` set to
+  // the fixture sidesteps the issue entirely; module resolution still happens
+  // from the fixture through the directory links above.
+  const svelteCheck = join(workspaceRoot, 'node_modules', 'svelte-check', 'bin', 'svelte-check');
+  if (!existsSync(svelteCheck)) fail('workspace svelte-check binary is unavailable');
+  const node = Bun.which('node') ?? process.execPath;
+  await run(node, [svelteCheck, '--tsconfig', svelteCheckTsconfigPath], fixture.root);
+}
+
 async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
   const nodeFromPath = Bun.which('node');
   const nodeCandidates = new Set([
@@ -450,8 +531,10 @@ export async function validateConsumer(): Promise<void> {
     await linkFixtureDependencyGraph(fixture);
     await buildConsumerEntries(fixture);
     await runPlainNodeConsumer(fixture);
+    process.stdout.write('[validate-consumer] running svelte-check against the packed artifact…\n');
+    await runSvelteCheckConsumer(fixture);
     process.stdout.write(
-      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, and plain-Node SSR verified without a host-installed conversationalist/zod.\n`,
+      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, plain-Node SSR, and svelte-check bind: forwarding verified without a host-installed conversationalist/zod.\n`,
     );
   } finally {
     await rm(fixtureRoot, { recursive: true, force: true });

@@ -718,6 +718,47 @@ describe('Chat — atBottom bindable after send', () => {
   });
 });
 
+describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageIndicatorVisible', () => {
+  // Regression for #772/#786: chat.svelte (the public wrapper exported from
+  // the package) spread atBottom/unreadCount/newMessageIndicatorVisible into
+  // `...rest` instead of declaring them with `$bindable()` and forwarding
+  // `bind:` to the internal implementation. That made the *wrapper's* emitted
+  // .d.ts report an empty Bindings type parameter (`Component<ChatProps, {...},
+  // "">`) even though ChatProps documents them as bindable and the internal
+  // implementation implements them correctly — svelte-check correctly rejected
+  // `bind:atBottom` on a consuming .svelte file as a result. See
+  // chat.svelte's `$props()` destructure and the `bind:atBottom` /
+  // `bind:unreadCount` / `bind:newMessageIndicatorVisible` directives on
+  // <ChatImplementation> for the fix.
+  //
+  // A runtime render-based check (a host wrapper component that binds and
+  // reads the value back) reliably crashes bun:test + happy-dom + the
+  // testing-library/svelte mount path for *any* nested `bind:` + template
+  // read of a bindable prop, independent of Chat entirely (reproduced with a
+  // two-line throwaway parent/child pair). That is a pre-existing harness
+  // limitation, not something this fix introduces, so the runtime contract is
+  // instead covered by `bun run --filter=@lostgradient/chat validate:consumer`,
+  // which runs `svelte-check` against the *packed, installed* artifact with a
+  // real `bind:atBottom` / `bind:unreadCount` / `bind:newMessageIndicatorVisible`
+  // consumer file — the exact failure mode from the issue. The source-pattern
+  // check below guards the wrapper's implementation shape at the unit-test
+  // layer.
+  test('chat.svelte declares atBottom/unreadCount/newMessageIndicatorVisible as $bindable and forwards bind: to the implementation', async () => {
+    const { resolve } = await import('node:path');
+    const source = await Bun.file(resolve(import.meta.dir, 'chat.svelte')).text();
+
+    // Whitespace-tolerant: prettier runs over this file via lint-staged, so an
+    // exact-substring assertion would eventually fail on a reformat even though
+    // the wrapper still declares and forwards the bindings correctly.
+    expect(source).toMatch(/atBottom\s*=\s*\$bindable\(\s*true\s*\)/);
+    expect(source).toMatch(/unreadCount\s*=\s*\$bindable\(\s*0\s*\)/);
+    expect(source).toMatch(/newMessageIndicatorVisible\s*=\s*\$bindable\(\s*false\s*\)/);
+    expect(source).toMatch(/bind:atBottom\b/);
+    expect(source).toMatch(/bind:unreadCount\b/);
+    expect(source).toMatch(/bind:newMessageIndicatorVisible\b/);
+  });
+});
+
 describe('Chat — imperative API forwarding', () => {
   // The forwarded surface, as a flat interface so dot-access on the mounted
   // instance is real-property access (avoids the index-signature access rule on
