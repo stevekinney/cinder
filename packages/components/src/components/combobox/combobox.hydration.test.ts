@@ -9,12 +9,13 @@
 import { describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareHydrationSource, renderThenHydrate } from '../../test/hydrate.ts';
 
 setupHappyDom();
 
 const { default: Combobox } = await import('./combobox.svelte');
 const sourcePath = new URL('./combobox.svelte', import.meta.url).pathname;
+await prepareHydrationSource(sourcePath);
 
 const fruits = [
   { value: 'apple', label: 'Apple' },

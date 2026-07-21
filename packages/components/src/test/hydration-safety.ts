@@ -112,6 +112,44 @@ function serverCompilePlugin(): BunPlugin {
 }
 
 /**
+ * Build the smallest possible `esm-env` probe under one export-condition set.
+ * The discriminator only needs to prove that Bun resolves `BROWSER` differently;
+ * compiling and rendering a Svelte component here would duplicate the expensive
+ * work performed by every real hydration-safety check.
+ */
+async function buildDiscriminatorProbe(conditions: readonly string[]): Promise<string> {
+  const entrypoint = 'hydration-safety-browser-flag-discriminator';
+  const namespace = 'hydration-safety-discriminator';
+  const build = await Bun.build({
+    entrypoints: [entrypoint],
+    target: 'bun',
+    conditions: [...conditions],
+    plugins: [
+      {
+        name: namespace,
+        setup(builder) {
+          builder.onResolve({ filter: new RegExp(`^${entrypoint}$`) }, () => ({
+            path: entrypoint,
+            namespace,
+          }));
+          builder.onLoad({ filter: /.*/, namespace }, () => ({
+            contents: "import { BROWSER } from 'esm-env'; export default BROWSER;",
+            loader: 'js',
+          }));
+        },
+      },
+    ],
+  });
+  if (!build.success) {
+    const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
+    throw new Error(`hydration-safety: build-flag discriminator failed\n${logText}`);
+  }
+  const artifact = build.outputs[0];
+  if (!artifact) throw new Error('hydration-safety: build-flag discriminator emitted no artifact');
+  return artifact.text();
+}
+
+/**
  * Build `componentPath` for the server with the given export `conditions`, then
  * server-render it and return the HTML body. `browser` in `conditions` makes
  * esm-env resolve `BROWSER=true`; omitting it resolves `BROWSER=false`.
@@ -281,20 +319,21 @@ export async function checkBuildFlagHydrationSafety(
 
 /**
  * Memoized fail-closed self-check: the whole helper rests on `Bun.build`'s
- * `conditions` flipping esm-env's `BROWSER` between the two renders. If that ever
+ * `conditions` flipping esm-env's `BROWSER` between the two builds. If that ever
  * stops working (an esm-env export-map change, a resolution-cache quirk), every
  * `{#if BROWSER}` component would render identically both ways and be silently
  * reported `buildFlagInvariant: true` — a false negative on the exact bug class
- * this exists to catch. So before the first real check, render a sentinel that
- * is KNOWN to diverge on `BROWSER` and assert it actually does. Memoized to one
- * build pair per process so it doesn't double the cost of every call.
+ * this exists to catch. So before the first real check, bundle a minimal module
+ * that exports `BROWSER` and assert the two artifacts differ. The helper's own
+ * fixture tests separately prove that this build split changes Svelte SSR output.
+ * Memoized to one small build pair per process so it does not add two full Svelte
+ * compiles and renders to the first real component check.
  */
 let discriminatorVerified: Promise<void> | null = null;
 function assertDiscriminatorWorks(): Promise<void> {
   discriminatorVerified ??= (async () => {
-    const sentinel = join(here, 'fixtures', 'hydration-probe-browser-flag.svelte');
-    const off = await renderWithConditions(sentinel, ['svelte'], {});
-    const on = await renderWithConditions(sentinel, ['browser', 'svelte'], {});
+    const off = await buildDiscriminatorProbe(['svelte']);
+    const on = await buildDiscriminatorProbe(['browser', 'svelte']);
     if (off === on) {
       throw new Error(
         'hydration-safety: the BROWSER build-flag discriminator is not working — the ' +
