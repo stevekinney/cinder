@@ -110,6 +110,87 @@ describe('ChatInput', () => {
     });
   });
 
+  describe('insertAtRange()', () => {
+    test('replaces the range, synchronizes the value, and focuses the caret after the text', async () => {
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, { target, props: { id: 'insert-at-range-composer' } });
+      const api = instance as unknown as {
+        getValue: () => string;
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
+      };
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'Run /hel now' } });
+
+      api.insertAtRange({ start: 4, end: 8 }, '/help');
+
+      expect(api.getValue()).toBe('Run /help now');
+      expect(composer.value).toBe('Run /help now');
+      expect(composer.selectionStart).toBe(9);
+      expect(composer.selectionEnd).toBe(9);
+      expect(document.activeElement).toBe(composer);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('uses native textarea range validation and clamping', async () => {
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, { target, props: { id: 'insert-range-boundaries' } });
+      const api = instance as unknown as {
+        getValue: () => string;
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
+      };
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'hello' } });
+
+      api.insertAtRange({ start: 5, end: 500 }, '!');
+      expect(api.getValue()).toBe('hello!');
+      expect(composer.selectionStart).toBe(6);
+      expect(composer.selectionEnd).toBe(6);
+
+      let rangeError: unknown;
+      try {
+        api.insertAtRange({ start: 4, end: 2 }, '?');
+      } catch (error) {
+        rangeError = error;
+      }
+      expect(rangeError).toBeDefined();
+      expect((rangeError as Error).constructor.name).toBe('DOMException');
+      expect(api.getValue()).toBe('hello!');
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('notifies composer observers with the updated value without a synthetic event', async () => {
+      const changes: Array<{ value: string; event: Event | undefined }> = [];
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'insert-range-observer',
+          oncomposerinput: (value: string, event?: Event) => changes.push({ value, event }),
+        },
+      });
+      const api = instance as unknown as {
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
+      };
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: '/he' } });
+      changes.length = 0;
+
+      api.insertAtRange({ start: 0, end: 3 }, '/help ');
+
+      expect(changes).toEqual([{ value: '/help ', event: undefined }]);
+
+      unmount(instance);
+      target.remove();
+    });
+  });
+
   describe('oncomposerinput', () => {
     test('fires with the current composer value on every input event', async () => {
       const values: string[] = [];

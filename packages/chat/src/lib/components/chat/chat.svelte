@@ -97,6 +97,11 @@
   export function getEditorElement(): HTMLTextAreaElement | null {
     return impl?.getEditorElement() ?? null;
   }
+
+  /** Replace a composer range and place focus after the inserted text. */
+  export function insertAtRange(range: { start: number; end: number }, text: string): void {
+    impl?.insertAtRange(range, text);
+  }
 </script>
 
 <ChatImplementation

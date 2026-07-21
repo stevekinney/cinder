@@ -1,20 +1,21 @@
 /**
- * Composer public API — clearInput(), getComposerValue(), oncomposerinput.
+ * Composer public API — clearInput(), getComposerValue(), insertAtRange(), oncomposerinput.
  *
  * The public `Chat` wrapper already forwarded a streaming/scroll imperative
  * API (beginStreaming/pushToken/endStreaming/scrollToBottom/scrollToTop/
  * focusInput — see chat.test.ts), but exposed no way for a consumer to read
- * the composer's current text, clear it imperatively, or be notified on every
- * keystroke short of intercepting `onsubmit`. Requested by Stardust
- * (track/slash-commands) to drive an in-composer slash-command palette
- * without reaching into `.chat-input-editor` DOM directly.
+ * the composer's current text, clear or edit it imperatively, or be notified
+ * on every keystroke short of intercepting `onsubmit`. These methods support
+ * in-composer slash-command palettes without reaching into
+ * `.chat-input-editor` DOM directly.
  *
  * Asserts:
  *   1. getComposerValue() reflects what the user has typed.
  *   2. clearInput() empties the composer and getComposerValue() reflects it.
- *   3. oncomposerinput fires with the current value on every composer input
+ *   3. insertAtRange() replaces composer text through both forwarding layers.
+ *   4. oncomposerinput fires with the current value on every composer input
  *      event.
- *   4. Both new imperative methods are safe no-ops before mount / after
+ *   5. Imperative methods are safe no-ops before mount / after
  *      unmount, matching the existing forwarded-method contract.
  */
 
@@ -81,6 +82,7 @@ type ComposerApi = {
   clearInput: () => void;
   getComposerValue: () => string;
   getEditorElement: () => HTMLTextAreaElement | null;
+  insertAtRange: (range: { start: number; end: number }, text: string) => void;
 };
 
 function mountChat(
@@ -172,6 +174,46 @@ describe('Chat — composer API', () => {
     target.remove();
   });
 
+  test('insertAtRange() writes through the public Chat wrapper', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const { instance, api } = mountChat(target);
+    const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    await fireEvent.input(composer, { target: { value: 'Ask @st about it' } });
+
+    api.insertAtRange({ start: 4, end: 7 }, '@steve');
+
+    expect(api.getComposerValue()).toBe('Ask @steve about it');
+    expect(composer.value).toBe('Ask @steve about it');
+    expect(composer.selectionStart).toBe(10);
+    expect(composer.selectionEnd).toBe(10);
+    expect(document.activeElement).toBe(composer);
+
+    unmount(instance);
+    target.remove();
+  });
+
+  test('insertAtRange() is forwarded by the container layer', async () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const conversation = createConversation();
+    const instance = mount(ChatContainer, {
+      target,
+      props: { id: 'chat-composer-insert-container', conversation },
+    }) as Record<string, unknown>;
+    const api = instance as unknown as ComposerApi;
+    const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    await fireEvent.input(composer, { target: { value: '/sch tomorrow' } });
+
+    api.insertAtRange({ start: 0, end: 4 }, '/schedule');
+
+    expect(api.getComposerValue()).toBe('/schedule tomorrow');
+    expect(composer.selectionStart).toBe(9);
+
+    unmount(instance);
+    target.remove();
+  });
+
   test('oncomposerinput fires with the current value on every composer input event', async () => {
     const values: string[] = [];
     const target = document.createElement('div');
@@ -217,5 +259,16 @@ describe('Chat — composer API', () => {
     target.remove();
 
     expect(() => api.clearInput()).not.toThrow();
+  });
+
+  test('insertAtRange() is a safe no-op after unmount', () => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const { instance, api } = mountChat(target);
+
+    unmount(instance);
+    target.remove();
+
+    expect(() => api.insertAtRange({ start: 0, end: 0 }, 'ignored')).not.toThrow();
   });
 });

@@ -150,6 +150,7 @@
         getAttachments: () => ChatAttachment[];
         getValue: () => string;
         getEditorElement: () => HTMLTextAreaElement | null;
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
       }
     | undefined;
   let searchBarRef = $state<{ focusInput: () => void } | undefined>(undefined);
@@ -1512,6 +1513,11 @@
   /** Read the composer textarea element. Returns null until mounted. */
   export function getEditorElement(): HTMLTextAreaElement | null {
     return inputRef?.getEditorElement() ?? null;
+  }
+
+  /** Replace a composer range and place focus after the inserted text. */
+  export function insertAtRange(range: { start: number; end: number }, text: string): void {
+    inputRef?.insertAtRange(range, text);
   }
 
   /**
