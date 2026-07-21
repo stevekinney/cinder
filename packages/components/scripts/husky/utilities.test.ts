@@ -1472,26 +1472,38 @@ describe('withGateLock', () => {
     });
   });
 
-  it('fails after the bounded wait when a live gate keeps the lock', async () => {
+  it('keeps waiting past the legacy timeout while the recorded holder remains alive', async () => {
     await withTemporaryLockPath(async (lockPath) => {
-      await writeFile(
-        lockPath,
-        JSON.stringify({
-          createdAt: new Date().toISOString(),
-          pid: 123,
-          repositoryRoot: 'other-checkout',
-          token: 'still-running',
-        }),
-      );
+      const holder = Bun.spawn(['bun', '-e', 'await Bun.sleep(50)'], {
+        stderr: 'ignore',
+        stdin: 'ignore',
+        stdout: 'ignore',
+      });
 
-      await expect(
-        withGateLock(async () => 'should not run', {
-          isProcessAlive: () => true,
+      try {
+        await writeFile(
+          lockPath,
+          JSON.stringify({
+            createdAt: new Date(Date.now() - 10 * 60 * 1_000).toISOString(),
+            pid: holder.pid,
+            repositoryRoot: 'other-checkout',
+            token: 'still-running',
+          }),
+        );
+
+        const result = await withGateLock(async () => 'acquired after holder exited', {
           lockPath,
           retryMilliseconds: 1,
           waitMilliseconds: 5,
-        }),
-      ).rejects.toThrow('Another pre-push gate is already running');
+        });
+
+        expect(result).toBe('acquired after holder exited');
+        expect(await holder.exited).toBe(0);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      } finally {
+        killProcessGroup(holder.pid);
+        await holder.exited;
+      }
     });
   });
 

@@ -755,13 +755,6 @@ export async function withGateLock<T>(
         waitingMessagePrinted = true;
       }
 
-      if (Date.now() - startedAt >= waitMilliseconds) {
-        throw new Error(
-          `Another pre-push gate is already running (pid ${existingLock.pid}); waited ${waitMilliseconds}ms for ${lockPath}.`,
-          { cause: caught },
-        );
-      }
-
       await Bun.sleep(retryMilliseconds);
     }
   }

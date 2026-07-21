@@ -144,7 +144,10 @@ build` step becomes a near-instant no-op instead of a full rebuild when
   `test-changed.ts`, `generate-component-artifacts.ts`
   (`components:generate`/`components:check`), and `validate-consumers.ts`
   (`validate:consumer`) — so concurrent worktrees don't stack full test runs,
-  artifact generation, or tarball installs on top of one another.
+  artifact generation, or tarball installs on top of one another. A waiter
+  keeps polling while the lock's recorded PID is alive, regardless of the
+  lock's age; dead holders are reclaimed immediately, while malformed locks
+  retain a bounded grace period and wait before the command fails.
 - **Global test cleanup** (`src/test/register-global-cleanup.ts`, loaded via
   `scripts/preload.ts`) — a single package-wide `afterEach(cleanup)` for every
   `@testing-library/svelte` render, replacing ad hoc per-file teardown. This
