@@ -110,6 +110,29 @@ describe('PayloadInspector', () => {
       expect(container.querySelector('.cinder-json-viewer')).not.toBeNull();
     });
 
+    test('forwards initialDepth to the JSON tree', () => {
+      const { container } = renderInspector({
+        value: {
+          webhook: {
+            payload: {
+              id: 'evt_123',
+            },
+          },
+        },
+        initialDepth: 2,
+      });
+
+      const webhookNode = container.querySelector<HTMLElement>(
+        '[role="treeitem"][aria-label="webhook: object, 1 item"]',
+      );
+      const payloadNode = container.querySelector<HTMLElement>(
+        '[role="treeitem"][aria-label="payload: object, 1 item"]',
+      );
+
+      expect(webhookNode?.getAttribute('aria-expanded')).toBe('true');
+      expect(payloadNode?.getAttribute('aria-expanded')).toBe('false');
+    });
+
     test('renders exactly one copy button whose value is pretty-printed JSON', () => {
       const { container } = renderInspector({ value: { hello: 'world' } });
       const copyButtons = container.querySelectorAll('.cinder-copy-button');

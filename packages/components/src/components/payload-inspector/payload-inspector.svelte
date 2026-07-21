@@ -31,6 +31,8 @@
   let {
     value,
     truncated = false,
+    initialDepth = 1,
+    maxDepth = 50,
     maxBytes = 1_048_576,
     parse,
     label = 'Payload inspector',
@@ -187,7 +189,7 @@
     {:else if isPrimitive}
       <pre class="cinder-payload-inspector__primitive">{String(parsedValue)}</pre>
     {:else}
-      <JsonViewer value={parsedValue} {maxBytes} />
+      <JsonViewer value={parsedValue} {initialDepth} {maxDepth} {maxBytes} />
     {/if}
   </div>
 </div>
