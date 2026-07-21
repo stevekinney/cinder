@@ -35,7 +35,7 @@ directory or import flows. Native input attributes still pass through to the
 real file input, so directory selection can use `webkitdirectory`:
 
 ```svelte
-<FileUpload id="history" triggerLabel="Choose directory" webkitdirectory />
+<FileUpload id="history" triggerLabel="Choose directory" multiple webkitdirectory />
 ```
 
 ## Props
