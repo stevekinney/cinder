@@ -155,6 +155,11 @@ describe('ChatInput', () => {
       expect(composer.selectionStart).toBe(1);
       expect(composer.selectionEnd).toBe(1);
 
+      api.insertAtRange({ start: -1, end: -1 }, '<');
+      expect(api.getValue()).toBe('>hello!<');
+      expect(composer.selectionStart).toBe(8);
+      expect(composer.selectionEnd).toBe(8);
+
       let rangeError: unknown;
       try {
         api.insertAtRange({ start: 4, end: 2 }, '?');
@@ -163,7 +168,42 @@ describe('ChatInput', () => {
       }
       expect(rangeError).toBeDefined();
       expect((rangeError as Error).constructor.name).toBe('DOMException');
-      expect(api.getValue()).toBe('>hello!');
+      expect(api.getValue()).toBe('>hello!<');
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('preserves native caret placement when inserted text is normalized', async () => {
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, { target, props: { id: 'insert-normalized-text' } });
+      const api = instance as unknown as {
+        getValue: () => string;
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
+      };
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'ab' } });
+      const setRangeText = composer.setRangeText.bind(composer);
+      composer.setRangeText = (
+        replacement: string,
+        start?: number,
+        end?: number,
+        selectionMode?: SelectionMode,
+      ): void => {
+        const normalizedReplacement = replacement.replaceAll('\r\n', '\n');
+        if (start === undefined || end === undefined) {
+          setRangeText(normalizedReplacement);
+          return;
+        }
+        setRangeText(normalizedReplacement, start, end, selectionMode);
+      };
+
+      api.insertAtRange({ start: 1, end: 1 }, '\r\n');
+
+      expect(api.getValue()).toBe('a\nb');
+      expect(composer.selectionStart).toBe(2);
+      expect(composer.selectionEnd).toBe(2);
 
       unmount(instance);
       target.remove();

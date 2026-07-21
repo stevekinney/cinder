@@ -464,9 +464,8 @@
   }
 
   /** Clamp a textarea range index into [0, length], mapping non-finite values to 0. */
-  function normalizeRangeIndex(index: number, length: number): number {
-    if (!Number.isFinite(index)) return 0;
-    return Math.min(Math.max(Math.trunc(index), 0), length);
+  function toUnsignedLong(index: number): number {
+    return index >>> 0;
   }
 
   // =========================================================================
@@ -499,12 +498,12 @@
   export function insertAtRange(range: { start: number; end: number }, text: string): void {
     if (!editorElement) return;
 
-    const length = editorElement.value.length;
-    const replacementStart = normalizeRangeIndex(range.start, length);
-    const replacementEnd = normalizeRangeIndex(range.end, length);
+    const previousValue = editorElement.value;
+    const replacementStart = Math.min(toUnsignedLong(range.start), previousValue.length);
+    const replacementEnd = Math.min(toUnsignedLong(range.end), previousValue.length);
     editorElement.setRangeText(text, replacementStart, replacementEnd, 'end');
-    const caret = replacementStart + text.length;
     const nextValue = editorElement.value;
+    const caret = nextValue.length - (previousValue.length - replacementEnd);
     flushSync(() => {
       value = nextValue;
     });
