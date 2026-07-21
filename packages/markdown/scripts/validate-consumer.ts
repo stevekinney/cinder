@@ -78,6 +78,29 @@ async function assertPackedFileSet(installedRoot: string): Promise<void> {
   }
 }
 
+/**
+ * `.map` files are stripped from the published tarball (see
+ * `assertPackedFileSet` above), but `scripts/build.ts` compiles with
+ * `sourcemap: 'external'`, emitting a trailing `//# sourceMappingURL=...`
+ * comment into every `dist/**\/*.js`. `pack-for-publish.ts`'s
+ * `stripDanglingSourceMapCommentsInStaging` is supposed to remove those
+ * comments during staging — assert against the REAL packed tarball that it
+ * actually did, so a regression here fails loudly instead of shipping a
+ * package whose scripts reference source maps that don't exist.
+ */
+async function assertNoDanglingSourceMapComments(installedRoot: string): Promise<void> {
+  const offenders: string[] = [];
+  for await (const relativePath of new Glob('dist/**/*.{js,mjs,cjs}').scan({
+    cwd: installedRoot,
+  })) {
+    const content = await Bun.file(join(installedRoot, relativePath)).text();
+    if (/sourceMappingURL=/.test(content)) offenders.push(relativePath);
+  }
+  if (offenders.length > 0) {
+    fail(`packed artifact has dangling sourceMappingURL comments in:\n  ${offenders.join('\n  ')}`);
+  }
+}
+
 function barePackageName(specifier: string): string {
   return specifier.startsWith('@')
     ? specifier.split('/').slice(0, 2).join('/')
@@ -258,6 +281,7 @@ export async function validateConsumer(): Promise<void> {
     assertPackedManifest(packedManifest);
     assertPackedExports(packedManifest, fixture.installedMarkdownRoot);
     await assertPackedFileSet(fixture.installedMarkdownRoot);
+    await assertNoDanglingSourceMapComments(fixture.installedMarkdownRoot);
     await assertImportClosure(packedManifest, fixture.installedMarkdownRoot);
     await runPlainNodeConsumer(fixture);
     process.stdout.write(

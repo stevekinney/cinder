@@ -3,6 +3,8 @@ import { existsSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import { stripDanglingSourceMapUrlComments } from './lib/dangling-source-map-comments.ts';
+
 type ConditionalExport = {
   types?: string;
   bun?: string;
@@ -176,6 +178,33 @@ async function stageFiles(manifest: PackageManifest): Promise<void> {
     for await (const relativePath of new Glob(pattern.slice(1)).scan({ cwd: STAGING_ROOT })) {
       await rm(join(STAGING_ROOT, relativePath), { recursive: true, force: true });
     }
+  }
+
+  await stripDanglingSourceMapCommentsInStaging();
+}
+
+/**
+ * `scripts/build.ts` compiles with `sourcemap: 'external'`, so every emitted
+ * `dist/**\/*.js` carries a trailing `//# sourceMappingURL=...` comment. The
+ * `files` allowlist above excludes `!dist/**\/*.map` from the published
+ * tarball, which would otherwise leave every shipped script pointing at a
+ * source map that doesn't exist. Strip those now-dangling comments after
+ * `.map` files are removed from staging — mirrors
+ * `packages/components/scripts/pack-for-publish.ts`'s own
+ * `stripDanglingSourceMapCommentsInStaging`.
+ */
+async function stripDanglingSourceMapCommentsInStaging(): Promise<void> {
+  const scriptGlob = new Glob('dist/**/*.{js,mjs,cjs}');
+  for await (const relative of scriptGlob.scan({ cwd: STAGING_ROOT })) {
+    const filePath = join(STAGING_ROOT, relative);
+    const original = await Bun.file(filePath).text();
+    if (!original.includes('sourceMappingURL=')) continue;
+    const fileDirectory = dirname(filePath);
+    const stripped = stripDanglingSourceMapUrlComments(original, (reference) =>
+      existsSync(join(fileDirectory, reference)),
+    );
+    if (stripped.strippedCount === 0) continue;
+    await Bun.write(filePath, stripped.text);
   }
 }
 
