@@ -747,12 +747,15 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
     const { resolve } = await import('node:path');
     const source = await Bun.file(resolve(import.meta.dir, 'chat.svelte')).text();
 
-    expect(source).toContain('atBottom = $bindable(true)');
-    expect(source).toContain('unreadCount = $bindable(0)');
-    expect(source).toContain('newMessageIndicatorVisible = $bindable(false)');
-    expect(source).toContain('bind:atBottom');
-    expect(source).toContain('bind:unreadCount');
-    expect(source).toContain('bind:newMessageIndicatorVisible');
+    // Whitespace-tolerant: prettier runs over this file via lint-staged, so an
+    // exact-substring assertion would eventually fail on a reformat even though
+    // the wrapper still declares and forwards the bindings correctly.
+    expect(source).toMatch(/atBottom\s*=\s*\$bindable\(\s*true\s*\)/);
+    expect(source).toMatch(/unreadCount\s*=\s*\$bindable\(\s*0\s*\)/);
+    expect(source).toMatch(/newMessageIndicatorVisible\s*=\s*\$bindable\(\s*false\s*\)/);
+    expect(source).toMatch(/bind:atBottom\b/);
+    expect(source).toMatch(/bind:unreadCount\b/);
+    expect(source).toMatch(/bind:newMessageIndicatorVisible\b/);
   });
 });
 

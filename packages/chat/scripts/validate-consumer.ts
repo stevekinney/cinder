@@ -405,8 +405,12 @@ async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void>
   if (!existsSync(typescriptRoot)) fail('workspace peer is unavailable: typescript');
   if (!existsSync(svelteCheckRoot)) fail('workspace peer is unavailable: svelte-check');
   await mkdir(join(fixture.nodeModules, '.bin'), { recursive: true });
-  await symlink(typescriptRoot, join(fixture.nodeModules, 'typescript'));
-  await symlink(svelteCheckRoot, join(fixture.nodeModules, 'svelte-check'));
+  // Explicit link type, matching `linkModule` above: on Windows a directory
+  // symlink without 'junction' needs elevated permissions and fails outright.
+  const directoryLinkType = process.platform === 'win32' ? 'junction' : 'dir';
+  await symlink(typescriptRoot, join(fixture.nodeModules, 'typescript'), directoryLinkType);
+  await symlink(svelteCheckRoot, join(fixture.nodeModules, 'svelte-check'), directoryLinkType);
+  // The .bin entry is a FILE, so it takes the default type rather than 'dir'.
   await symlink(
     join(workspaceRoot, 'node_modules', '.bin', 'svelte-check'),
     join(fixture.nodeModules, '.bin', 'svelte-check'),
