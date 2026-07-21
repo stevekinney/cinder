@@ -972,20 +972,21 @@ describe('selection', () => {
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
-  test('fires onStepSelect when a selectable step row is keyboard activated', async () => {
+  test('fires onStepSelect from the selectable step row control', async () => {
     const selectedStepIds: string[] = [];
-    const { container } = render(RunStepTimeline, {
+    const { container, getByRole } = render(RunStepTimeline, {
       steps: [pendingStep, runningStep],
       onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
       selectedStepId: runningStep.id,
     });
 
     const row = stepRowByPath(container, runningStep.id);
-    expect(row?.getAttribute('tabindex')).toBe('0');
-    await fireEvent.keyDown(row as HTMLElement, { key: 'Enter' });
-    await fireEvent.keyDown(row as HTMLElement, { key: ' ' });
+    expect(row?.hasAttribute('tabindex')).toBe(false);
+    const selectionControl = getByRole('button', { name: 'Select Run integration tests' });
+    expect(selectionControl.getAttribute('aria-pressed')).toBe('true');
+    await fireEvent.click(selectionControl);
 
-    expect(selectedStepIds).toEqual([runningStep.id, runningStep.id]);
+    expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
   test('does not select a row when nested controls are activated', async () => {

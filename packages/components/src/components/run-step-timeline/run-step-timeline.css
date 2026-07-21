@@ -59,7 +59,20 @@
     cursor: pointer;
   }
 
-  .cinder-run-step-timeline__item[data-cinder-selectable]:focus-visible
+  .cinder-run-step-timeline__selection-control {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-selectable]:has(
+      .cinder-run-step-timeline__selection-control:focus-visible
+    )
     .cinder-run-step-timeline__event {
     border-radius: var(--cinder-radius-md);
     outline: var(--cinder-ring-width) solid transparent;
@@ -77,6 +90,8 @@
    * ---------------------------------------- */
 
   .cinder-run-step-timeline__event {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: var(--_cinder-rst-rail-size) 1fr;
     gap: var(--cinder-space-3);
@@ -379,7 +394,9 @@
       box-shadow: none;
     }
 
-    .cinder-run-step-timeline__item[data-cinder-selectable]:focus-visible
+    .cinder-run-step-timeline__item[data-cinder-selectable]:has(
+        .cinder-run-step-timeline__selection-control:focus-visible
+      )
       .cinder-run-step-timeline__event {
       outline: var(--cinder-ring-width) solid ButtonText;
       box-shadow: none;

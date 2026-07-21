@@ -405,19 +405,10 @@
         if (isInteractiveDescendant(node, event.target)) return;
         onStepSelect?.(stepPathKey);
       };
-      const handleKeydown = (event: KeyboardEvent): void => {
-        if (event.target !== node) return;
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        if (onStepSelect === undefined) return;
-        event.preventDefault();
-        onStepSelect(stepPathKey);
-      };
 
       node.addEventListener('click', handleClick);
-      node.addEventListener('keydown', handleKeydown);
       return () => {
         node.removeEventListener('click', handleClick);
-        node.removeEventListener('keydown', handleKeydown);
       };
     };
   }
@@ -442,8 +433,16 @@
     data-cinder-connector-after={row.connectorAfter}
     aria-current={row.ariaCurrent ? 'step' : undefined}
     style:--_cinder-rst-depth={row.depth}
-    tabindex={onStepSelect === undefined ? undefined : 0}
   >
+    {#if onStepSelect !== undefined}
+      <button
+        type="button"
+        class="cinder-run-step-timeline__selection-control"
+        aria-label={`Select ${step.label}`}
+        aria-pressed={selected}
+        onclick={() => onStepSelect?.(row.pathKey)}
+      ></button>
+    {/if}
     <div class="cinder-run-step-timeline__event">
       <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
         <StatusDot
