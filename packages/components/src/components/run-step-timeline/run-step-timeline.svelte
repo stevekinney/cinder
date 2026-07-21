@@ -393,22 +393,18 @@
     );
   }
 
-  function createStepSelectionAttachment(
-    stepPathKey: string,
-    stepSelect: RunStepTimelineProps['onStepSelect'],
-  ): Attachment<HTMLLIElement> {
+  function createStepSelectionAttachment(stepPathKey: string): Attachment<HTMLLIElement> {
     return (node) => {
-      if (stepSelect === undefined) return;
-
       const handleClick = (event: MouseEvent): void => {
         if (isInteractiveDescendant(node, event.target)) return;
-        stepSelect(stepPathKey);
+        onStepSelect?.(stepPathKey);
       };
       const handleKeydown = (event: KeyboardEvent): void => {
         if (event.target !== node) return;
         if (event.key !== 'Enter' && event.key !== ' ') return;
+        if (onStepSelect === undefined) return;
         event.preventDefault();
-        stepSelect(stepPathKey);
+        onStepSelect(stepPathKey);
       };
 
       node.addEventListener('click', handleClick);
@@ -427,7 +423,7 @@
   {@const metadata = metadataItems(step)}
   {@const selected = selectedStepId === row.pathKey}
   <li
-    {@attach createStepSelectionAttachment(row.pathKey, onStepSelect)}
+    {@attach createStepSelectionAttachment(row.pathKey)}
     class="cinder-run-step-timeline__item"
     data-cinder-status={step.status}
     data-cinder-depth={row.depth}
