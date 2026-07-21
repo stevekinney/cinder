@@ -75,6 +75,7 @@
   let composerSyncTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSyncedValue = $state(value);
   let suppressNextValueSync = false;
+  let suppressCommittedSelectionSync = false;
 
   const emptyContent = $derived(empty);
   const query = $derived(activeMatch?.query ?? '');
@@ -152,14 +153,29 @@
   }
 
   function handleComposerInput(nextValue: string, event?: Event): void {
+    const composerElement = event ? getComposerElement(event) : anchor;
+    if (!event && suppressCommittedSelectionSync) {
+      if (composerElement) anchor = composerElement;
+      lastSyncedValue = nextValue;
+      value = nextValue;
+      caretIndex = composerElement?.selectionEnd ?? nextValue.length;
+      return;
+    }
     suppressNextValueSync = false;
-    updateFromComposer(event ? getComposerElement(event) : anchor, nextValue);
+    updateFromComposer(composerElement, nextValue);
   }
 
   function handleComposerSelectionChange(event: Event): void {
-    suppressNextValueSync = false;
     const composerElement = getComposerElement(event);
     if (!composerElement) return;
+    if (suppressCommittedSelectionSync) {
+      anchor = composerElement;
+      lastSyncedValue = composerElement.value;
+      value = composerElement.value;
+      caretIndex = composerElement.selectionEnd ?? composerElement.value.length;
+      return;
+    }
+    suppressNextValueSync = false;
     syncComposerSelectionAfterNativeNavigation(composerElement);
   }
 
@@ -268,8 +284,10 @@
     activeMatch = null;
     anchor?.focus();
     suppressNextValueSync = true;
+    suppressCommittedSelectionSync = true;
     queueMicrotask(() => {
       suppressNextValueSync = false;
+      suppressCommittedSelectionSync = false;
     });
     onselect?.(detail);
   }
