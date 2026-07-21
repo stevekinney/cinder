@@ -167,3 +167,8 @@ export { ConversationExportActions } from './export/index.ts';
 
 // Artifact
 export { ArtifactPanel, ArtifactViewer, ChatArtifactLayout } from './artifact/index.ts';
+export type {
+  ArtifactContentType,
+  ArtifactViewerProps,
+  MermaidRenderer,
+} from './artifact/index.ts';
