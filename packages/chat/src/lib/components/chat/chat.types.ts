@@ -177,17 +177,19 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   /**
    * Participants who are currently typing. Out-of-band UI state — NOT stored on
    * `Message`. Pass an array of {@link TypingParticipant} objects; the component
-   * renders a per-participant typing indicator above the input. The adapter's
-   * `onTypingChange` push handler feeds the same indicator when an adapter is
-   * wired. Default `undefined` (indicator hidden).
+   * renders a per-participant typing indicator above the input. A defined prop,
+   * including an empty array, is authoritative and suppresses the adapter's
+   * `onTypingChange` pushes. Omit the prop or pass `undefined` to let the adapter
+   * drive the indicator. Default `undefined` (indicator hidden).
    */
   typingParticipants?: TypingParticipant[];
   /**
    * Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.
    * Pass a `Map` keyed by message id with a {@link ReadReceipt} value; the
-   * component renders a receipt badge on USER messages only. The adapter's
-   * `onReadReceipt` push handler populates the same state when an adapter is wired.
-   * Default `undefined` (no receipts shown).
+   * component renders a receipt badge on USER messages only. A defined prop,
+   * including an empty `Map`, is authoritative and suppresses the adapter's
+   * `onReadReceipt` pushes. Omit the prop or pass `undefined` to let the adapter
+   * drive the receipts. Default `undefined` (no receipts shown).
    */
   readReceipts?: Map<string, ReadReceipt>;
   /**
