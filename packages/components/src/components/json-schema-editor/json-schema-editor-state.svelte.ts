@@ -55,6 +55,32 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Synchronous-only slice of what `validateMetaSchema` would say: catches
+ * the shapes it can reject without touching Ajv (no schema at all,
+ * non-object/boolean). Returns null when the shape is plausible and the
+ * real answer has to wait for the async check.
+ *
+ * Used to seed `metaResult` before a validation cycle goes 'pending' —
+ * without this, a known-bad draft (unparseable JSON, a bare array) would
+ * keep reporting whatever `metaResult.valid` happened to be from the
+ * *previous* schema until the async check catches up, which is exactly
+ * the stale-state window `onvalidate` consumers shouldn't see.
+ */
+function cheapMetaShapeCheck(
+  schema: unknown,
+): { valid: boolean; errors: JsonSchemaValidationError[] } | null {
+  if (schema === null) return { valid: false, errors: [] };
+  if (typeof schema === 'boolean') return { valid: true, errors: [] };
+  if (typeof schema !== 'object' || Array.isArray(schema)) {
+    return {
+      valid: false,
+      errors: [{ path: '', message: 'Schema must be an object or boolean', keyword: '' }],
+    };
+  }
+  return null;
+}
+
 export function createEditorState(options: CreateEditorStateOptions) {
   // ---- Original (baseline) ----
   let originalRawText = $state('');
@@ -205,10 +231,19 @@ export function createEditorState(options: CreateEditorStateOptions) {
     emitValidation(buildResult());
   }
 
-  /** Cancel in-flight validation, start a new epoch, and announce 'pending'. */
+  /**
+   * Cancel in-flight validation, start a new epoch, and announce 'pending'.
+   * Clears `compileResult` (its `null` state is already what marks
+   * `recomputeStatus`/`buildResult` as pending) and seeds `metaResult` with
+   * whatever a cheap synchronous check can determine, so the pending emit
+   * never reports validity left over from a different schema.
+   */
   function beginValidationCycle(): number {
     clearTimers();
     const epoch = validationEpoch;
+    const cheapMeta = cheapMetaShapeCheck(schemaToValidate());
+    if (cheapMeta) metaResult = cheapMeta;
+    compileResult = null;
     validationStatus = 'pending';
     emitValidation(buildResult({ status: 'pending' }));
     return epoch;
@@ -435,6 +470,11 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const schema = value as JsonSchemaValue;
       const draft = detectActiveDraft(schema);
 
+      // Clear the previous compile result before announcing 'pending' — its
+      // `null` state is what recomputeStatus/buildResult treat as pending,
+      // so leaving a stale one behind would let a status recompute reuse
+      // compile info from whatever schema was committed before this draft.
+      compileResult = null;
       validationStatus = 'pending';
       emitValidation(buildResult({ status: 'pending' }));
 

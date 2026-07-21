@@ -44,6 +44,11 @@
       return;
     }
 
+    // Reset before validating the new draft — otherwise a previously-valid
+    // result lingers until this resolves, which can briefly enable Apply
+    // and hide errors for content that hasn't actually been checked yet.
+    draftMeta = null;
+
     // Guard against out-of-order resolution: if the draft changes again
     // before this validation call resolves, ignore the stale result.
     let cancelled = false;

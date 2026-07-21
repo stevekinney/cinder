@@ -385,6 +385,41 @@ describe('createEditorState — onvalidate callback', () => {
     expect(events.at(-1)).toMatchObject({ status: 'invalid', valid: false });
   });
 
+  // Regression (review feedback on the ajv-deferral PR): the pending emit
+  // that opens a new validation cycle must not report validity/compilable
+  // left over from whatever schema was active before it. Before this fix,
+  // `metaResult`/`compileResult` were untouched until the async check
+  // resolved, so a known-bad reload could briefly report `valid: true` and
+  // a stale `compilable`.
+  test("reload with malformed JSON reports invalid immediately, not the previous schema's validity", () => {
+    const events: { status: string; valid: boolean }[] = [];
+    const state = createEditorState({
+      schema: { type: 'string' },
+      onvalidate: (result) => events.push(result),
+    });
+    const baseline = events.length;
+
+    state.reload('{not-valid');
+
+    // The pending emit fires synchronously, before any Ajv import resolves.
+    const pendingEvent = events[baseline];
+    expect(pendingEvent).toMatchObject({ status: 'pending', valid: false });
+  });
+
+  test('starting a new validation cycle clears a stale compilable result', async () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    await flushValidation();
+    expect(state.validationResult.compilable).toBe(true);
+
+    state.setJsonDraftText('{"type":"number"}');
+
+    // Immediately after scheduling — before any debounce timer fires — the
+    // cycle is already 'pending' and must not still report the previous
+    // draft's compile result.
+    expect(state.validationStatus).toBe('pending');
+    expect(state.validationResult.compilable).toBe(null);
+  });
+
   test('does not synchronously compile a large draft (size gate)', () => {
     const state = createEditorState({ schema: { type: 'string' } });
 

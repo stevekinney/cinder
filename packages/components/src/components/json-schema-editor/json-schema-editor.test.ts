@@ -216,3 +216,42 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     expect(redoButton?.hasAttribute('disabled')).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// json-view.svelte: draft meta-schema check resets between drafts
+// ---------------------------------------------------------------------------
+describe('JsonSchemaEditor — JSON view draft validity', () => {
+  afterEach(() => cleanup());
+
+  function flushEffects(): Promise<void> {
+    return new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+
+  // Regression: json-view.svelte's draft meta-schema check runs async
+  // (validateMetaSchema dynamically imports Ajv). It used to leave the
+  // *previous* draft's result in place until the new one resolved — so
+  // typing a valid draft, then quickly typing something invalid, could
+  // report Apply as available (and show no error) for content that was
+  // never actually checked. Reset-to-null while pending closes that
+  // window; this asserts the final state is correct after a valid draft
+  // is immediately followed by an invalid one.
+  test('Apply disables for an invalid draft typed right after a valid one', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: { id: 'jse-draft-validity', schema: { type: 'string' }, view: 'json' as const },
+    });
+    await flushEffects();
+
+    const textarea = screen.getByRole('textbox', { name: 'JSON' });
+
+    await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
+    await flushEffects();
+    const applyButton = screen
+      .getAllByRole('button')
+      .find((button) => button.textContent?.trim() === 'Apply') as HTMLElement;
+    expect(applyButton.hasAttribute('disabled')).toBe(false);
+
+    await fireEvent.input(textarea, { target: { value: '{"type":"not-a-real-type"}' } });
+    await flushEffects();
+    expect(applyButton.hasAttribute('disabled')).toBe(true);
+  });
+});
