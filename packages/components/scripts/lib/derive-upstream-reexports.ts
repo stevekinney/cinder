@@ -102,9 +102,14 @@ export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map(
 
 /**
  * Shape of an upstream `exports` entry. `commentary` (still workspace-private)
- * uses `types`/`bun`/`import`/`default`; `@lostgradient/markdown` (published, see
- * `docs/decisions/package-boundaries.md` Phase 2) uses `types`/`import`/`default`
- * pointing at `dist/`, matching every other published sibling package.
+ * points `types` AND `bun` at `./src/**`, so a workspace consumer always sees
+ * fresh types and runtime with no build step. `@lostgradient/markdown`
+ * (published, see `docs/decisions/package-boundaries.md` Phase 2) keeps
+ * `types` pointing at `dist/**` like every other published sibling package —
+ * only `bun` points at `./src/**`, so a workspace `bun test`/`bun run`
+ * resolves the package's own self-imports without a build first, while
+ * `pack-for-publish.ts` drops the `bun` condition entirely from the
+ * published tarball (which has no `src/`).
  */
 type UpstreamConditionalExport = {
   types?: string;

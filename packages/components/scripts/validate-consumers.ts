@@ -23,7 +23,11 @@ import {
   runHookCommand,
   withLocalValidationGateLock,
 } from './husky/utilities.ts';
-import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
+import {
+  type CommentScanState,
+  containsUpstreamSpecifier,
+  lineHasUpstreamSpecifierResidue,
+} from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
@@ -105,6 +109,8 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
 const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
 
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
+  '@shikijs/engine-oniguruma',
+  '@shikijs/types',
   '@types/hast',
   '@types/mdast',
   '@types/unist',
@@ -666,12 +672,13 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
 }
 
 /**
- * Run a global grep over the extracted tarball for `@cinder/*` references
- * that look like real import specifiers. Doc-comment prose and source-map
+ * Run a global grep over the extracted tarball for upstream-package
+ * references (`@cinder/commentary`, `@lostgradient/markdown`, ...) that
+ * look like real import specifiers. Doc-comment prose and source-map
  * embedded source are tolerated because they cannot break runtime
  * resolution.
  *
- * "Looks like a real import specifier" means: the `@cinder/...` token sits
+ * "Looks like a real import specifier" means: the upstream specifier sits
  * inside a single-quote, double-quote, OR backtick-quoted *static* string on
  * a non-comment line. Backticks are flagged in code positions because
  * `await import(\`@cinder/commentary/editor\`)` is a valid runtime import
@@ -680,7 +687,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
  * sits on lines that start with `*` or `//` and is filtered by the comment
  * skip below.
  */
-async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<void> {
+async function assertNoQuotedUpstreamReferences(extractedRoot: string): Promise<void> {
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const offenders: string[] = [];
@@ -692,11 +699,11 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
   for await (const scriptPath of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, scriptPath);
     const content = await Bun.file(filePath).text();
-    if (!content.includes('@cinder/')) continue;
+    if (!containsUpstreamSpecifier(content)) continue;
     const scanState: CommentScanState = { inBlockComment: false };
     let offenderLine: string | undefined;
     for (const rawLine of content.split('\n')) {
-      if (lineHasCinderResidue(rawLine, scanState)) {
+      if (lineHasUpstreamSpecifierResidue(rawLine, scanState)) {
         offenderLine = rawLine.trim();
         break;
       }
@@ -706,7 +713,7 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
     }
   }
   if (offenders.length > 0) {
-    fail(`tarball contains quoted \`@cinder/*\` references in:\n  ${offenders.join('\n  ')}`);
+    fail(`tarball contains quoted upstream-package references in:\n  ${offenders.join('\n  ')}`);
   }
 }
 
@@ -2435,7 +2442,7 @@ async function main(): Promise<void> {
   try {
     process.stdout.write('[validate-consumers] asserting packed manifest invariants…\n');
     await assertPackedManifestInvariants(tarballInspectionDirectory);
-    await assertNoQuotedCinderReferences(tarballInspectionDirectory);
+    await assertNoQuotedUpstreamReferences(tarballInspectionDirectory);
     await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
     await assertNoDanglingSourceMapComments(tarballInspectionDirectory);
     process.stdout.write('[validate-consumers] publish-path invariants OK.\n');

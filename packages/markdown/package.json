@@ -1,6 +1,6 @@
 {
   "name": "@lostgradient/markdown",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Headless Markdown pipeline, rendering, diffing, and templating for Cinder and its sibling packages.",
   "keywords": [
     "markdown",
@@ -26,32 +26,38 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json",
     "./pipeline": {
       "types": "./dist/pipeline/index.d.ts",
+      "bun": "./src/pipeline/index.ts",
       "import": "./dist/pipeline/index.js",
       "default": "./dist/pipeline/index.js"
     },
     "./diff": {
       "types": "./dist/diff/index.d.ts",
+      "bun": "./src/diff/index.ts",
       "import": "./dist/diff/index.js",
       "default": "./dist/diff/index.js"
     },
     "./diff/line-diff": {
       "types": "./dist/diff/line-diff.d.ts",
+      "bun": "./src/diff/line-diff.ts",
       "import": "./dist/diff/line-diff.js",
       "default": "./dist/diff/line-diff.js"
     },
     "./diff/types": {
       "types": "./dist/diff/types.d.ts",
+      "bun": "./src/diff/types.ts",
       "import": "./dist/diff/types.js",
       "default": "./dist/diff/types.js"
     },
     "./rendering": {
       "types": "./dist/rendering/index.d.ts",
+      "bun": "./src/rendering/index.ts",
       "import": "./dist/rendering/index.js",
       "default": "./dist/rendering/index.js"
     },
@@ -63,51 +69,61 @@
     },
     "./rendering/types": {
       "types": "./dist/rendering/types.d.ts",
+      "bun": "./src/rendering/types.ts",
       "import": "./dist/rendering/types.js",
       "default": "./dist/rendering/types.js"
     },
     "./rendering/highlighter": {
       "types": "./dist/rendering/highlighter.d.ts",
+      "bun": "./src/rendering/highlighter.ts",
       "import": "./dist/rendering/highlighter.js",
       "default": "./dist/rendering/highlighter.js"
     },
     "./rendering/mermaid-cache": {
       "types": "./dist/rendering/mermaid-cache.d.ts",
+      "bun": "./src/rendering/mermaid-cache.ts",
       "import": "./dist/rendering/mermaid-cache.js",
       "default": "./dist/rendering/mermaid-cache.js"
     },
     "./utilities/safe-url": {
       "types": "./dist/utilities/safe-url.d.ts",
+      "bun": "./src/utilities/safe-url.ts",
       "import": "./dist/utilities/safe-url.js",
       "default": "./dist/utilities/safe-url.js"
     },
     "./utilities/sort-keys": {
       "types": "./dist/utilities/sort-keys.d.ts",
+      "bun": "./src/utilities/sort-keys.ts",
       "import": "./dist/utilities/sort-keys.js",
       "default": "./dist/utilities/sort-keys.js"
     },
     "./templates/sanitize-html": {
       "types": "./dist/templates/sanitize-html.d.ts",
+      "bun": "./src/templates/sanitize-html.ts",
       "import": "./dist/templates/sanitize-html.js",
       "default": "./dist/templates/sanitize-html.js"
     },
     "./templates/template-placeholders": {
       "types": "./dist/templates/template-placeholders.d.ts",
+      "bun": "./src/templates/template-placeholders.ts",
       "import": "./dist/templates/template-placeholders.js",
       "default": "./dist/templates/template-placeholders.js"
     },
     "./templates/template-render": {
       "types": "./dist/templates/template-render.d.ts",
+      "bun": "./src/templates/template-render.ts",
       "import": "./dist/templates/template-render.js",
       "default": "./dist/templates/template-render.js"
     },
     "./templates/placeholder-security": {
       "types": "./dist/templates/placeholder-security.d.ts",
+      "bun": "./src/templates/placeholder-security.ts",
       "import": "./dist/templates/placeholder-security.js",
       "default": "./dist/templates/placeholder-security.js"
     },
     "./templates/types": {
       "types": "./dist/templates/types.d.ts",
+      "bun": "./src/templates/types.ts",
       "import": "./dist/templates/types.js",
       "default": "./dist/templates/types.js"
     }

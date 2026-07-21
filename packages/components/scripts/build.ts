@@ -8,7 +8,11 @@ import { checkComponentCss, formatViolation } from './check-component-css.ts';
 import { componentStylesSpecifier, cssImportPlugin } from './css-import-plugin.ts';
 import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
 import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
-import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
+import {
+  containsUpstreamSpecifier,
+  lineHasUpstreamSpecifierResidue,
+  type CommentScanState,
+} from './lib/cinder-specifier-residue.ts';
 import {
   deriveUpstreamReexports,
   UPSTREAM_PACKAGE_NAMES,
@@ -819,7 +823,7 @@ async function rewriteSpecifiersUnder(
     if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
     const filePath = `${root}/${relative}`;
     const original = await Bun.file(filePath).text();
-    if (!original.includes('@cinder/')) continue;
+    if (!containsUpstreamSpecifier(original)) continue;
     const rewritten = rewriteCrossUpstreamSpecifiers(original, relative, misses);
     if (rewritten !== original) {
       await Bun.write(filePath, rewritten);
@@ -889,11 +893,11 @@ await writeOverrideRedirectShims(distributionDirectory);
 await writeOverrideRedirectShims(`${distributionDirectory}/server`);
 
 // Fast residue guard: after the rewrite pass, scan every emitted JS/`.d.ts`
-// file for surviving quoted `@cinder/*` import specifiers. `validate-consumers`
-// runs the same check against the published tarball, but that flow takes
-// minutes; this one catches the same class of bug at the end of `bun run
-// build` (~ms) so a missed rewrite surfaces immediately instead of waiting
-// for the slow consumer-validation pass.
+// file for surviving quoted upstream-package import specifiers.
+// `validate-consumers` runs the same check against the published tarball,
+// but that flow takes minutes; this one catches the same class of bug at
+// the end of `bun run build` (~ms) so a missed rewrite surfaces immediately
+// instead of waiting for the slow consumer-validation pass.
 {
   // Comment-stripping + pattern logic lives in
   // `lib/cinder-specifier-residue.ts` so this gate and the slower tarball
@@ -905,11 +909,11 @@ await writeOverrideRedirectShims(`${distributionDirectory}/server`);
   for await (const relative of residueGlob.scan({ cwd: distributionDirectory })) {
     const filePath = `${distributionDirectory}/${relative}`;
     const content = await Bun.file(filePath).text();
-    if (!content.includes('@cinder/')) continue;
+    if (!containsUpstreamSpecifier(content)) continue;
     const scanState: CommentScanState = { inBlockComment: false };
     let hit = false;
     for (const rawLine of content.split('\n')) {
-      if (lineHasCinderResidue(rawLine, scanState)) {
+      if (lineHasUpstreamSpecifierResidue(rawLine, scanState)) {
         hit = true;
         break;
       }
@@ -918,11 +922,11 @@ await writeOverrideRedirectShims(`${distributionDirectory}/server`);
   }
   if (residueOffenders.length > 0) {
     process.stderr.write(
-      'Build aborted: unresolved @cinder/* specifiers remain after rewrite:\n' +
+      'Build aborted: unresolved upstream-package specifiers remain after rewrite:\n' +
         residueOffenders.map((file) => `  ${file}`).join('\n') +
         '\n' +
-        'If the offender is a computed `import(`@cinder/${...}`)`, the rewrite\n' +
-        'pass cannot safely transform it — change the upstream source to use a\n' +
+        'If the offender is a computed `import(`@lostgradient/markdown/${...}`)`, the\n' +
+        'rewrite pass cannot safely transform it — change the upstream source to use a\n' +
         'static specifier instead.\n',
     );
     process.exit(1);

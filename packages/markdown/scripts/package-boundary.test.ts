@@ -16,7 +16,16 @@ const cinderManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'components', 'package.json')).text(),
 ) as PackageManifest;
 
-const MOVED_SHIKI_PACKAGES = ['@shikijs/engine-oniguruma', '@shikijs/langs', '@shikijs/types'];
+// `@shikijs/langs` is markdown-only: only `src/rendering/highlighter.ts` lazily
+// imports per-language grammars. `@shikijs/engine-oniguruma` and
+// `@shikijs/types` are shared: cinder's own `src/highlighters/shiki/index.ts`
+// also imports them directly (a dynamic `import('@shikijs/engine-oniguruma')`
+// and `@shikijs/types` type imports), so they must stay declared on BOTH
+// packages — dropping them from cinder would leave that adapter's transitive
+// dependency unresolved under any install layout that doesn't hoist markdown's
+// deps beside cinder (pnpm, Yarn PnP).
+const MARKDOWN_ONLY_SHIKI_PACKAGES = ['@shikijs/langs'];
+const SHARED_SHIKI_PACKAGES = ['@shikijs/engine-oniguruma', '@shikijs/types'];
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
 describe('@lostgradient/markdown package ownership boundary', () => {
@@ -38,11 +47,19 @@ describe('@lostgradient/markdown package ownership boundary', () => {
     expect(serialized).not.toContain('./src/');
   });
 
-  test('every export condition resolves under dist/, matching the staged publish shape', () => {
-    for (const [subpath, entry] of Object.entries(markdownManifest.exports)) {
+  test('every published export condition resolves under dist/, matching the staged publish shape', () => {
+    // The SOURCE manifest also carries a `bun` condition pointing at
+    // `./src/**` so a workspace `bun test`/`bun run` can resolve this
+    // package's self-imports without a build first (see
+    // `pack-for-publish.ts#publishedExport`). `buildPublishedManifest` drops
+    // that condition, so assert against the published shape, not the raw
+    // source `exports` block.
+    const published = buildPublishedManifest(markdownManifest);
+    for (const [subpath, entry] of Object.entries(published.exports)) {
       if (subpath === './package.json') continue;
       expect(typeof entry).toBe('object');
       const conditions = entry as Record<string, string>;
+      expect(Object.keys(conditions)).not.toContain('bun');
       for (const [condition, target] of Object.entries(conditions)) {
         expect(
           target.startsWith('./dist/') || target === './package.json',
@@ -52,8 +69,8 @@ describe('@lostgradient/markdown package ownership boundary', () => {
     }
   });
 
-  test('carries the @shikijs/* highlighter engine deps moved off cinder', () => {
-    for (const shikiPackage of MOVED_SHIKI_PACKAGES) {
+  test('carries every @shikijs/* highlighter engine dep it uses', () => {
+    for (const shikiPackage of [...MARKDOWN_ONLY_SHIKI_PACKAGES, ...SHARED_SHIKI_PACKAGES]) {
       expect(markdownManifest.dependencies?.[shikiPackage]).toBeDefined();
     }
     // `shiki` itself is not a `@shikijs/*` engine package — it stays a
@@ -62,11 +79,17 @@ describe('@lostgradient/markdown package ownership boundary', () => {
     expect(markdownManifest.dependencies?.['shiki']).toBeDefined();
   });
 
-  test('cinder declares no dependency on the moved @shikijs/* packages', () => {
-    for (const shikiPackage of MOVED_SHIKI_PACKAGES) {
+  test('cinder declares no dependency on the markdown-only @shikijs/* packages', () => {
+    for (const shikiPackage of MARKDOWN_ONLY_SHIKI_PACKAGES) {
       for (const field of dependencyFields) {
         expect(cinderManifest[field]?.[shikiPackage]).toBeUndefined();
       }
+    }
+  });
+
+  test('cinder keeps the shared @shikijs/* deps its own highlighter adapter imports directly', () => {
+    for (const shikiPackage of SHARED_SHIKI_PACKAGES) {
+      expect(cinderManifest.dependencies?.[shikiPackage]).toBeDefined();
     }
   });
 });

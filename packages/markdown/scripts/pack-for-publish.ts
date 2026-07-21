@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 
 type ConditionalExport = {
   types?: string;
+  bun?: string;
   import?: string;
   default?: string;
 };
@@ -98,6 +99,15 @@ export function assertSourceManifest(manifest: PackageManifest): void {
   }
 }
 
+/**
+ * The source manifest's `bun` condition points at `./src/**` so a workspace
+ * `bun test`/`bun run` resolves this package's own self-imports (e.g.
+ * `src/security.test.ts` importing `@lostgradient/markdown/pipeline`)
+ * straight to source instead of requiring a build first. That condition is
+ * intentionally dropped here, not rewritten — the published tarball has no
+ * `src/`, and omitting `bun` just falls the published package through to
+ * `import`/`default`, which already point at `dist/`.
+ */
 function publishedExport(entry: string | ConditionalExport): string | ConditionalExport {
   if (typeof entry === 'string') return entry;
   const published: ConditionalExport = {};
