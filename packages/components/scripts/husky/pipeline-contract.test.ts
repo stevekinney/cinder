@@ -84,6 +84,15 @@ describe('pipeline contract: push stays thin and fails open (source-based: entry
     // fed it) moved to CI entirely. Re-adding a job dispatch here would
     // reintroduce the multi-minute local gate that serialized concurrent
     // worktree pushes behind a shared lock. See docs/validation-topology.md.
+    //
+    // Covers every real invocation shape a re-added dispatch could plausibly
+    // take, not just the two literal fragments the original scoped dispatch
+    // used — a bare `bun run lint`/`bun run typecheck`, a `turbo run <task>`
+    // call (filtered or not; this hook has no reason to shell out to turbo at
+    // all), and the two original fragments (`bun run --filter`,
+    // `'test:changed'`) from the removed scoped-dispatch implementation.
+    expect(source).not.toMatch(/\bbun\s+run\s+(lint|typecheck|test)\b/);
+    expect(source).not.toMatch(/\bturbo\s+run\b/);
     expect(source).not.toMatch(/bun run --filter/);
     expect(source).not.toMatch(/'test:changed'/);
     expect(source).not.toMatch(/runWithConcurrencyPool/);
