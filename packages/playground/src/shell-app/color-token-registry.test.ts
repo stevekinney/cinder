@@ -10,6 +10,7 @@ import {
 import {
   COLOR_TOKEN_GROUPS,
   COLOR_TOKEN_NAMES,
+  FALLBACK_COLOR_VALUE_PATTERN,
   isSafeColorTokenValue,
 } from './color-token-registry.ts';
 
@@ -18,18 +19,24 @@ import {
 const NON_COLOR_TOKEN_NAME_PATTERN = /shadow|gradient/;
 
 /**
- * Value shapes that mark a declaration as directly color-valued.
+ * Is this declaration value a direct color, by the playground's OWN definition?
  *
- * Deliberately covers every syntax `isSafeColorTokenValue` accepts, not just
- * the ones `tokens-base.css` happens to use today: a future token written as
- * `#fff`, `rgb(…)`, `hsl(…)`, `oklab(…)` or `currentcolor` is exactly the kind
- * of edit this guard exists to catch, and a narrower pattern would wave it
- * through. `shadow`/`gradient` names are filtered separately by
- * NON_COLOR_TOKEN_NAME_PATTERN, so the function list below does not need to
- * exclude them.
+ * Reuses `FALLBACK_COLOR_VALUE_PATTERN` rather than restating the accepted
+ * syntaxes. A hand-maintained copy drifts in both directions: too narrow and
+ * the guard waves through a new `#fff` token it should have caught; too broad
+ * (an extra `hwb()`, a 5- or 7-digit hex) and it demands registration for
+ * values the playground would reject as overrides. Deriving from the validator
+ * makes both impossible by construction.
+ *
+ * The pattern also accepts a bare `var(--cinder-x)`, but a `var()` reference is
+ * not itself evidence of a color — it depends entirely on what it points at —
+ * so alias values are excluded here and resolved through their target instead.
  */
-const DIRECT_COLOR_VALUE_PATTERN =
-  /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark)\s*\(|\b(?:transparent|currentcolor|black|white)\b/i;
+function isDirectColorValue(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  if (ALIAS_VALUE_PATTERN.test(normalized)) return false;
+  return FALLBACK_COLOR_VALUE_PATTERN.test(normalized);
+}
 
 /** A value that is nothing but a `var(--cinder-x)` reference, optionally with a
  * fallback. These are invisible to the direct value-shape scan, so they are
@@ -68,7 +75,7 @@ function findColorTokenDeclarations(rootBlock: string): Map<string, string> {
 
     const value = allDeclarations.get(name);
     if (value === undefined) return false;
-    if (DIRECT_COLOR_VALUE_PATTERN.test(value)) return true;
+    if (isDirectColorValue(value)) return true;
 
     const alias = ALIAS_VALUE_PATTERN.exec(value)?.[1];
     return alias === undefined ? false : resolvesToColor(alias, seen);
