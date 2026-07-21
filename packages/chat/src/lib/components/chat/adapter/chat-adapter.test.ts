@@ -23,6 +23,7 @@ import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
 import type { ChatAdapter, ChatPushHandlers } from './chat-adapter.ts';
+import { SubscribeEventLog } from './subscribe-event-log.svelte.ts';
 
 setupHappyDom();
 
@@ -1094,6 +1095,47 @@ describe('ChatAdapter — subscribe lifecycle', () => {
     // The `if (!resolvedAdapter?.subscribe) return` guard means no subscription
     // is opened; the only observable contract is a clean mount + unmount.
     expect(() => unmount(instance)).not.toThrow();
+  });
+
+  test('deferring a $state write inside subscribe (the documented workaround) does not throw', async () => {
+    // Regression for issue #775: ChatAdapter.subscribe's JSDoc documents that
+    // Chat calls `subscribe` from inside its own internal mount `$effect`, so
+    // a SYNCHRONOUS `$state` write inside `subscribe` can throw
+    // `effect_update_depth_exceeded`. That throw is thrown from deep inside
+    // Svelte's own effect-flush machinery rather than from a call site a
+    // test can wrap in try/catch, so this test only pins the documented
+    // workaround: deferring the write with `queueMicrotask` still lands the
+    // write, just deferred, and does not throw under the same conditions the
+    // report described (mount, then more reactive updates — composer input
+    // — landing afterward).
+    const log = new SubscribeEventLog();
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      subscribe: (conversationId) => {
+        queueMicrotask(() => log.push(`subscribed to "${conversationId}"`));
+        return () => {};
+      },
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-deferred-subscribe-write',
+      conversation: failedConversation('deferred-conv'),
+      adapter,
+    });
+
+    const textarea = container.querySelector<HTMLTextAreaElement>('.chat-input-editor');
+    if (!textarea) throw new Error('composer textarea not found');
+    textarea.value = 'hello';
+    expect(() => {
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      flushSync();
+    }).not.toThrow();
+
+    // Flush the queued microtask so the deferred write lands.
+    await Promise.resolve();
+    flushSync();
+    expect(log.entries).toEqual(['subscribed to "deferred-conv"']);
+
+    unmount(instance);
   });
 
   test('a subscribe that returns a non-function teardown does not crash cleanup', () => {
