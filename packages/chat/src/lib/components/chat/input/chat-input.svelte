@@ -463,6 +463,7 @@
     oncomposerinput?.(value, event);
   }
 
+  /** Clamp a textarea range index into [0, length], mapping non-finite values to 0. */
   function normalizeRangeIndex(index: number, length: number): number {
     if (!Number.isFinite(index)) return 0;
     return Math.min(Math.max(Math.trunc(index), 0), length);

@@ -142,6 +142,7 @@
     }
   }
 
+  /** Sync bound composer value/caret only, without reopening/dismissing from trigger analysis. */
   function syncComposerValueAndCaret(
     composerElement: HTMLTextAreaElement | HTMLInputElement | null,
     nextValue: string,
