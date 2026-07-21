@@ -82,12 +82,11 @@ describe('newestSourceMtimeMs', () => {
 
   test('includes the private upstream packages the playground bundle depends on', () => {
     // start-server.ts prebuilds and the playground server imports these
-    // packages (@cinder/diff, @cinder/markdown, @cinder/editor,
-    // @cinder/commentary). An edit to one of them must move the fingerprint,
-    // or a running server built from stale upstream code looks fresh.
+    // packages (@cinder/diff, @cinder/markdown, @cinder/commentary). An edit
+    // to one of them must move the fingerprint, or a running server built
+    // from stale upstream code looks fresh.
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/diff/src');
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/markdown/src');
-    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/editor/src');
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/commentary/src');
   });
 

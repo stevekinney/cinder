@@ -1,10 +1,18 @@
+/**
+ * Migrated from `packages/editor/src/package-smoke.test.ts` when
+ * `@cinder/editor` was dissolved (see `docs/decisions/package-boundaries.md`).
+ * This half of the split verifies the ProseMirror/Milkdown editor barrel and
+ * its dependency on `@cinder/markdown` resolve through the workspace export
+ * map.
+ */
+
 import { describe, expect, it } from 'bun:test';
 
 import { contentEquals } from '@cinder/markdown/pipeline';
 
 import { createEditorAttachment, DEFAULT_DEBOUNCE_MS } from './index.js';
 
-describe('@cinder/editor package wiring', () => {
+describe('@cinder/commentary editor package wiring', () => {
   it('resolves @cinder/markdown through the workspace export map', () => {
     expect(typeof contentEquals).toBe('function');
   });

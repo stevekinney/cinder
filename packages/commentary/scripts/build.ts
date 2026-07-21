@@ -22,10 +22,7 @@ const buildCacheInputs = {
     `${workspaceRoot}/bun.lock`,
     `${workspaceRoot}/tsconfig.base.json`,
   ],
-  upstreamDistDirectories: [
-    `${workspaceRoot}/packages/editor/dist`,
-    `${workspaceRoot}/packages/markdown/dist`,
-  ],
+  upstreamDistDirectories: [`${workspaceRoot}/packages/markdown/dist`],
 };
 
 const skipDecision = await shouldSkipBuild(buildCacheInputs);

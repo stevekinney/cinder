@@ -284,7 +284,7 @@ describe('position offset map structure', () => {
     const pmToText = new Map<number, number>();
 
     // Add consistent mappings
-    const pairs = [
+    const pairs: [number, number][] = [
       [0, 1],
       [1, 2],
       [2, 3],

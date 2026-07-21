@@ -60,16 +60,15 @@ Run `components:generate` after changing component source metadata, examples, co
 
 ## Workspace Layout
 
-| Workspace             | Purpose                                                    |
-| --------------------- | ---------------------------------------------------------- |
-| `packages/components` | Published `@lostgradient/cinder` package.                  |
-| `packages/chat`       | Published `@lostgradient/chat` domain package.             |
-| `packages/playground` | Private component playground and static export.            |
-| `packages/testing`    | Private Playwright, axe, and visual-regression harness.    |
-| `packages/diff`       | Private diff utilities used by domain-suite components.    |
-| `packages/markdown`   | Private Markdown pipeline and rendering utilities.         |
-| `packages/editor`     | Private editor runtime and template-placeholder utilities. |
-| `packages/commentary` | Private review/comment anchoring utilities.                |
+| Workspace             | Purpose                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `packages/components` | Published `@lostgradient/cinder` package.                                             |
+| `packages/chat`       | Published `@lostgradient/chat` domain package.                                        |
+| `packages/playground` | Private component playground and static export.                                       |
+| `packages/testing`    | Private Playwright, axe, and visual-regression harness.                               |
+| `packages/diff`       | Private diff utilities used by domain-suite components.                               |
+| `packages/markdown`   | Private Markdown pipeline, rendering, and template-placeholder utilities.             |
+| `packages/commentary` | Private review/comment anchoring and editor (ProseMirror/Milkdown) runtime utilities. |
 
 ## Architecture Notes
 

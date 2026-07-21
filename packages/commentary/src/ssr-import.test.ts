@@ -1,7 +1,7 @@
 /**
  * @cinder/commentary SSR import safety.
  *
- * Mirrors `packages/editor/src/ssr-import.test.ts`. The contract this guards:
+ * Mirrors `packages/commentary/src/editor/ssr-import.test.ts` (formerly `packages/editor/src/ssr-import.test.ts`). The contract this guards:
  * importing any entry point of `@cinder/commentary` in a server (no-DOM)
  * context must NOT touch a browser-only global at module-evaluation time.
  *

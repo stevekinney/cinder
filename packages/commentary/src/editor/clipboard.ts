@@ -15,6 +15,7 @@
  */
 
 import { normalize } from '@cinder/markdown/pipeline';
+import { sanitizeHtml } from '@cinder/markdown/templates/sanitize-html';
 import {
   DOMParser,
   DOMSerializer,
@@ -25,7 +26,6 @@ import {
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 
 import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
-import { sanitizeHtml } from './sanitize-html.js';
 
 function isVscodeClipboardPayload(value: unknown): value is { mode?: unknown } {
   return value !== null && typeof value === 'object';

@@ -241,7 +241,7 @@ describe('slugForFile', () => {
 
   it('returns null for shared utilities and sibling packages', () => {
     expect(slugForFile('packages/components/src/utilities/class-names.ts')).toBeNull();
-    expect(slugForFile('packages/editor/src/index.ts')).toBeNull();
+    expect(slugForFile('packages/commentary/src/editor/index.ts')).toBeNull();
   });
 
   it('returns null for experimental deprecation-alias shims', () => {
@@ -353,7 +353,7 @@ describe('pathForceFullReason', () => {
     expect(pathForceFullReason('bun.lockb')).not.toBeNull();
     expect(pathForceFullReason('bunfig.toml')).not.toBeNull();
     expect(pathForceFullReason('.npmrc')).not.toBeNull();
-    expect(pathForceFullReason('packages/editor/package.json')).not.toBeNull();
+    expect(pathForceFullReason('packages/commentary/package.json')).not.toBeNull();
     expect(pathForceFullReason('packages/markdown/package.json')).not.toBeNull();
   });
 
