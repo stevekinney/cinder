@@ -32,6 +32,30 @@
 
   const mergedClassName = $derived(classNames(className));
 
+  function getAtBottom(): boolean {
+    return atBottom;
+  }
+
+  function setAtBottom(value: boolean): void {
+    atBottom = value;
+  }
+
+  function getUnreadCount(): number {
+    return unreadCount;
+  }
+
+  function setUnreadCount(value: number): void {
+    unreadCount = value;
+  }
+
+  function getNewMessageIndicatorVisible(): boolean {
+    return newMessageIndicatorVisible;
+  }
+
+  function setNewMessageIndicatorVisible(value: boolean): void {
+    newMessageIndicatorVisible = value;
+  }
+
   // The inner implementation owns the imperative streaming + scroll API. The
   // public wrapper forwards it so consumers using `@lostgradient/chat` can drive
   // streaming through a `bind:this` to <Chat> (the inner component is not
@@ -106,9 +130,9 @@
 
 <ChatImplementation
   bind:this={impl}
-  bind:atBottom
-  bind:unreadCount
-  bind:newMessageIndicatorVisible
+  bind:atBottom={getAtBottom, setAtBottom}
+  bind:unreadCount={getUnreadCount, setUnreadCount}
+  bind:newMessageIndicatorVisible={getNewMessageIndicatorVisible, setNewMessageIndicatorVisible}
   class={mergedClassName}
   {...rest}
 />
