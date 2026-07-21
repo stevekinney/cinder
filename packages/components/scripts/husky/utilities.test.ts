@@ -1680,7 +1680,15 @@ describe('withLocalValidationGateLock', () => {
  * genuine repo, not a bare temp directory.
  */
 async function initGitFixture(directory: string): Promise<void> {
-  await $`git init --quiet`.cwd(directory).nothrow().quiet();
+  const result = await $`git init --quiet`.cwd(directory).nothrow().quiet();
+  // Checked, not swallowed: a silently-failed `git init` would surface later as
+  // a confusing `isLockfileDirty` error from deep inside the repair rather than
+  // as "the fixture could not be set up".
+  if (result.exitCode !== 0) {
+    throw new Error(
+      `git init failed for fixture ${directory} (exit ${result.exitCode}): ${result.stderr.toString().trim()}`,
+    );
+  }
 }
 
 describe('nodeModulesTopology', () => {
@@ -1820,6 +1828,65 @@ describe('repairSymlinkedNodeModules', () => {
       // would be strictly worse than the aliased one we started from.
       expect(nodeModulesTopology(directory)).toBe('symlinked');
       // And the staging path must not be left behind.
+      expect(existsSync(join(directory, '.node_modules.cinder-repair'))).toBe(false);
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  // Reinstalling could rewrite uncommitted lockfile edits. Silently eating
+  // someone's lockfile work to fix a symlink is a bad trade, so the repair
+  // declines rather than proceeding.
+  it('declines to repair while bun.lock has uncommitted changes', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-lock-dirty-'));
+    try {
+      const target = join(directory, 'primary-node-modules');
+      await mkdir(target);
+      await symlink(
+        target,
+        join(directory, 'node_modules'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+      await initGitFixture(directory);
+      await writeFile(join(directory, 'bun.lock'), '{"lockfileVersion": 1}');
+      await $`git add bun.lock`.cwd(directory).nothrow().quiet();
+
+      expect(await repairSymlinkedNodeModules(directory)).toEqual({
+        repaired: false,
+        reason: 'lockfile-dirty',
+      });
+      // The tree must be left exactly as found.
+      expect(nodeModulesTopology(directory)).toBe('symlinked');
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  // If an earlier run died between moving the symlink aside and finishing the
+  // install, node_modules is absent and the symlink is parked at the staging
+  // path. Without recovery, every later run reports `missing` forever.
+  it('recovers a symlink stranded at the staging path by an interrupted run', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-stranded-'));
+    try {
+      const target = join(directory, 'primary-node-modules');
+      await mkdir(target);
+      await symlink(
+        target,
+        join(directory, '.node_modules.cinder-repair'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+      await initGitFixture(directory);
+      expect(nodeModulesTopology(directory)).toBe('missing');
+
+      // Dirty lockfile keeps this from running a real install — the assertion
+      // that matters is that the stranded symlink got moved back into place.
+      await writeFile(join(directory, 'bun.lock'), '{"lockfileVersion": 1}');
+      await $`git add bun.lock`.cwd(directory).nothrow().quiet();
+
+      const result = await repairSymlinkedNodeModules(directory);
+
+      expect(result).toEqual({ repaired: false, reason: 'lockfile-dirty' });
+      expect(nodeModulesTopology(directory)).toBe('symlinked');
       expect(existsSync(join(directory, '.node_modules.cinder-repair'))).toBe(false);
     } finally {
       await rm(directory, { force: true, recursive: true });

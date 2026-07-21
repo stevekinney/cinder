@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { capitalCase } from 'change-case';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -79,7 +79,10 @@ export function nodeModulesTopology(repositoryRoot = REPO_ROOT): NodeModulesTopo
 }
 
 export type NodeModulesRepair =
-  | { readonly repaired: false; readonly reason: 'already-real' | 'missing' | 'invalid' }
+  | {
+      readonly repaired: false;
+      readonly reason: 'already-real' | 'missing' | 'invalid' | 'lockfile-dirty';
+    }
   | { readonly repaired: false; readonly reason: 'install-failed'; readonly exitCode: number }
   | { readonly repaired: true; readonly lockfileChanged: boolean };
 
@@ -147,9 +150,8 @@ async function isLockfileDirty(repositoryRoot: string): Promise<boolean> {
  * The symlink is moved aside rather than deleted, so a failed install restores
  * it instead of leaving the checkout with no dependency tree at all — which
  * would be strictly worse than the aliased tree we started from. The install's
- * exit code is checked and surfaced either way; the caller must abort the push,
- * because reporting success would hand the gate a guaranteed-broken run and
- * bury the cause.
+ * exit code is checked and surfaced either way, so the caller can report an
+ * unrepaired worktree instead of implying it was healed.
  *
  * ## Lockfile handling: report, never revert
  *
@@ -157,36 +159,47 @@ async function isLockfileDirty(repositoryRoot: string): Promise<boolean> {
  * function reverted that rewrite as install noise, gated on the working tree
  * being clean. That was wrong: a commit can already have changed a
  * `package.json` without the matching lockfile update, leaving the working tree
- * clean — so the revert would discard a genuinely-needed regeneration and let
- * the push ship a stale lockfile that the gate never validated against.
+ * clean — so the revert would discard a genuinely-needed regeneration.
  *
  * "Noise" and "the lockfile was actually stale" are not reliably
  * distinguishable here, and discarding the second is far worse than tolerating
  * the first. So the rewrite is left in place and reported; the developer
  * decides whether to commit or discard it.
  *
- * Callers must invoke this under the local validation gate lock: it mutates a
- * tree shared by every worktree, so two concurrent pre-push hooks would
- * otherwise race on the same `rm` + install.
+ * A worktree whose `bun.lock` is *already* dirty is left alone entirely: the
+ * install could rewrite or normalize those uncommitted edits, and silently
+ * eating someone's lockfile work to fix a symlink is a bad trade. That case
+ * reports `lockfile-dirty` so the caller can tell the developer to deal with
+ * the lockfile first.
  */
 export async function repairSymlinkedNodeModules(
   repositoryRoot = REPO_ROOT,
   options: NodeModulesRepairOptions = {},
 ): Promise<NodeModulesRepair> {
+  const nodeModulesPath = join(repositoryRoot, 'node_modules');
+  const displacedSymlinkPath = join(repositoryRoot, '.node_modules.cinder-repair');
+
+  // Recover from an interrupted earlier run before classifying anything. If a
+  // previous repair died between the rename and the install, `node_modules` is
+  // gone and the symlink is sitting at the staging path — a later run would
+  // otherwise report `missing` forever and never put it back.
+  if (nodeModulesTopology(repositoryRoot) === 'missing' && existsSync(displacedSymlinkPath)) {
+    renameSync(displacedSymlinkPath, nodeModulesPath);
+  }
+
   const topology = nodeModulesTopology(repositoryRoot);
   if (topology === 'real') return { repaired: false, reason: 'already-real' };
   if (topology === 'missing') return { repaired: false, reason: 'missing' };
   if (topology === 'invalid') return { repaired: false, reason: 'invalid' };
 
   const lockfileWasDirty = await isLockfileDirty(repositoryRoot);
+  if (lockfileWasDirty) return { repaired: false, reason: 'lockfile-dirty' };
 
   // Move the symlink aside rather than deleting it outright, so a failed
   // install can put it back. Without this, a failure left the checkout with no
   // dependency tree at all — strictly worse than the aliased tree we started
   // with, and enough to break unrelated tooling until someone reinstalled by
   // hand.
-  const nodeModulesPath = join(repositoryRoot, 'node_modules');
-  const displacedSymlinkPath = join(repositoryRoot, '.node_modules.cinder-repair');
   rmSync(displacedSymlinkPath, { force: true });
   renameSync(nodeModulesPath, displacedSymlinkPath);
 
@@ -200,9 +213,9 @@ export async function repairSymlinkedNodeModules(
 
   rmSync(displacedSymlinkPath, { force: true });
 
-  // Only report a lockfile change the repair itself introduced — a lockfile the
-  // caller had already modified is their own work, not something to flag.
-  const lockfileChanged = !lockfileWasDirty && (await isLockfileDirty(repositoryRoot));
+  // Any dirt here is the repair's own doing: we bailed out above if the
+  // lockfile was already dirty.
+  const lockfileChanged = await isLockfileDirty(repositoryRoot);
   return { repaired: true, lockfileChanged };
 }
 

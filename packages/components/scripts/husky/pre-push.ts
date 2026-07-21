@@ -120,6 +120,12 @@ try {
     warning(
       'Root node_modules is neither a directory nor a symlink. Remove it and run `bun install`.',
     );
+  } else if (repair.reason === 'lockfile-dirty') {
+    warning(
+      'Root node_modules is a symlink, but bun.lock has uncommitted changes so it was left alone ' +
+        '— reinstalling could rewrite your lockfile edits. Commit or discard bun.lock, then run ' +
+        '`bun install` at the repository root.',
+    );
   }
 } catch (cause) {
   const reason = cause instanceof Error ? cause.message : String(cause);
