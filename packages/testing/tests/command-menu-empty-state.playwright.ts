@@ -32,7 +32,10 @@ test.describe('command menu empty state', () => {
     const describedById = await listbox.getAttribute('aria-describedby');
     expect(describedById).toBeTruthy();
 
-    const emptyState = page.locator(`#${describedById}`);
+    // Attribute selector, not `#id`. The id derives from `$props.id()`, which
+    // can contain characters CSS treats as combinators (`:`, `.`), so an id
+    // selector would break or flap depending on the generated value.
+    const emptyState = page.locator(`[id="${describedById}"]`);
     await expect(emptyState).toBeVisible();
     await expect(emptyState).toHaveAttribute('role', 'status');
     await expect(emptyState).toContainText('No commands match');
