@@ -72,20 +72,29 @@ describe('validate-release-workflow changeset guards', () => {
         'utf8',
       );
       const buildStepIndex = workflow.indexOf('turbo run build');
-      const cinderFilterInBuildStep = workflow.indexOf(
-        '--filter=@lostgradient/cinder',
-        buildStepIndex,
-      );
-      const chatFilterInBuildStep = workflow.indexOf('--filter=@lostgradient/chat', buildStepIndex);
+      expect(buildStepIndex).toBeGreaterThan(-1);
+
+      // Bound the search to the build step's OWN block — the next `- name:`
+      // step (at the same indentation as a job step) or end of file —
+      // instead of "anywhere later in the workflow". Without this bound, a
+      // regression to a Chat-only build filter would still pass by matching
+      // `--filter=@lostgradient/cinder` from an unrelated later step (e.g.
+      // an audit or test step).
+      const nextStepMatch = /\n {6}- name:/.exec(workflow.slice(buildStepIndex));
+      const buildStepEnd =
+        nextStepMatch === undefined || nextStepMatch === null
+          ? workflow.length
+          : buildStepIndex + nextStepMatch.index;
+      const buildStepBlock = workflow.slice(buildStepIndex, buildStepEnd);
+
+      // Both packages must be filter targets of the SAME build step — not
+      // just Chat — or a regression to a Chat-only filter would still pass.
+      expect(buildStepBlock).toContain('--filter=@lostgradient/cinder');
+      expect(buildStepBlock).toContain('--filter=@lostgradient/chat');
+
       const chatCoverageIndex = workflow.indexOf(
         'turbo run test:coverage --filter=@lostgradient/chat',
       );
-
-      expect(buildStepIndex).toBeGreaterThan(-1);
-      // Both packages must be filter targets of the SAME build step — not
-      // just Chat — or a regression to a Chat-only filter would still pass.
-      expect(cinderFilterInBuildStep).toBeGreaterThan(buildStepIndex);
-      expect(chatFilterInBuildStep).toBeGreaterThan(buildStepIndex);
       expect(chatCoverageIndex).toBeGreaterThan(buildStepIndex);
     }
   });

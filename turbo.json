@@ -4,7 +4,9 @@
     "tsconfig.json",
     "tsconfig.base.json",
     ".oxlintrc.json",
-    "packages/components/scripts/check-coverage-ratchet.ts"
+    "packages/components/scripts/check-coverage-ratchet.ts",
+    "tsconfig.build.json",
+    "packages/components/scripts/svelte-plugin.ts"
   ],
   "tasks": {
     "build": {
@@ -25,11 +27,18 @@
     },
     "@cinder/playground#typecheck": {
       "dependsOn": [],
-      "outputs": []
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/src/**",
+        "$TURBO_ROOT$/packages/chat/src/**",
+        "$TURBO_ROOT$/packages/markdown/src/**"
+      ]
     },
     "@lostgradient/chat#typecheck": {
       "dependsOn": [],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/src/**"]
     },
     "lint": {
       "dependsOn": [],
