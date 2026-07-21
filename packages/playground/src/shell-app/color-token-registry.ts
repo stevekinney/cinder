@@ -20,6 +20,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-accent-text-hover', label: 'Accent text hover' },
       { name: '--cinder-accent-hover', label: 'Accent fill hover' },
       { name: '--cinder-accent-active', label: 'Accent fill active' },
+      { name: '--cinder-accent-active-on-fill', label: 'Accent active on fill' },
     ],
   },
   {
@@ -80,6 +81,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-surface-inset', label: 'Inset surface' },
       { name: '--cinder-surface-hover', label: 'Surface hover' },
       { name: '--cinder-surface-pressed', label: 'Surface pressed' },
+      { name: '--cinder-surface-inverse', label: 'Inverse surface' },
     ],
   },
   {
@@ -91,6 +93,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-text-subtle', label: 'Subtle text' },
       { name: '--cinder-text-disabled', label: 'Disabled text' },
       { name: '--cinder-fill-disabled', label: 'Disabled fill' },
+      { name: '--cinder-text-inverse', label: 'Inverse text' },
     ],
   },
   {
@@ -100,6 +103,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-border', label: 'Border' },
       { name: '--cinder-border-muted', label: 'Muted border' },
       { name: '--cinder-border-strong', label: 'Strong border' },
+      { name: '--cinder-border-inverse', label: 'Inverse border' },
     ],
   },
   {
@@ -108,6 +112,7 @@ export const COLOR_TOKEN_GROUPS = [
     tokens: [
       { name: '--cinder-ring-offset-color', label: 'Ring offset color' },
       { name: '--cinder-ring-color', label: 'Ring color' },
+      { name: '--cinder-ring-on-accent', label: 'Ring on accent' },
     ],
   },
   {
@@ -183,4 +188,54 @@ export function isSafeColorTokenValue(value: string): boolean {
   }
 
   return true;
+}
+
+/** Token names whose value shape (shadows, gradients) means they can never be
+ * a themeable solid/translucent color, regardless of what they reference. */
+const NON_COLOR_TOKEN_NAME_PATTERN = /shadow|gradient/;
+
+/** Value shapes that mark a `:root` declaration as color-valued: an
+ * OKLCH/`color-mix()`/`light-dark()` function call, or the `transparent`
+ * keyword. This mirrors the reproduction in issue #770 so the guard's notion
+ * of "color-valued" matches the one used to originally audit the drift. */
+const COLOR_TOKEN_VALUE_PATTERN = /oklch|color-mix|light-dark|transparent/i;
+
+/**
+ * Extracts every `--cinder-*` custom property declared directly in a
+ * `:root { ... }` block (see `extractRootBlock` in
+ * `@cinder/components/src/test/token-introspection.ts`) whose value shape
+ * marks it as color-valued, mapped to its raw declared value.
+ */
+export function findColorTokenDeclarations(rootBlock: string): Map<string, string> {
+  const declarations = new Map<string, string>();
+
+  for (const match of rootBlock.matchAll(/(--cinder-[a-z0-9-]+)\s*:\s*([^;]+);/g)) {
+    const [, name, value] = match;
+    if (name === undefined || value === undefined) continue;
+    if (NON_COLOR_TOKEN_NAME_PATTERN.test(name)) continue;
+    if (!COLOR_TOKEN_VALUE_PATTERN.test(value)) continue;
+
+    declarations.set(name, value.trim());
+  }
+
+  return declarations;
+}
+
+/**
+ * The reverse of `COLOR_TOKEN_NAMES`' own drift guard: every color-valued
+ * token declared in `:root` must be either registered in
+ * `COLOR_TOKEN_GROUPS` or listed in `optOutTokenNames` as a conscious,
+ * commented exclusion. A token in neither set is a silent omission from the
+ * playground's color panel and is returned here so the caller can fail loudly.
+ */
+export function findUnregisteredColorTokens(
+  rootBlock: string,
+  registeredTokenNames: ReadonlySet<string>,
+  optOutTokenNames: ReadonlySet<string>,
+): string[] {
+  const colorTokenNames = [...findColorTokenDeclarations(rootBlock).keys()];
+
+  return colorTokenNames.filter(
+    (name) => !registeredTokenNames.has(name) && !optOutTokenNames.has(name),
+  );
 }
