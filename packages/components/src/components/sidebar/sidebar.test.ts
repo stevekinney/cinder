@@ -230,6 +230,17 @@ describe('Sidebar (desktop / inline aside)', () => {
     }).toThrow();
   });
 
+  test('non-string mobile breakpoint throws the component validation error', () => {
+    expect(() => {
+      render(Sidebar, {
+        props: {
+          mobileBreakpoint: 640 as unknown as string,
+          navigation: listSnippet('items'),
+        },
+      });
+    }).toThrow('Sidebar mobileBreakpoint must be a CSS length such as "47.99rem".');
+  });
+
   test('aria-label in rest spread cannot override the component-owned label', () => {
     const { container } = render(Sidebar, {
       props: {

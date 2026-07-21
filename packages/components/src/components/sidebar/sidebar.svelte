@@ -55,6 +55,9 @@
   const navigationLabel = $derived(`${validatedLabel} navigation`);
 
   const validatedMobileBreakpoint = $derived.by(() => {
+    if (typeof mobileBreakpoint !== 'string') {
+      throw new Error('Sidebar mobileBreakpoint must be a CSS length such as "47.99rem".');
+    }
     const value = mobileBreakpoint.trim();
     if (!isSimpleCssLength(value)) {
       throw new Error('Sidebar mobileBreakpoint must be a CSS length such as "47.99rem".');
@@ -72,20 +75,30 @@
   // Keep the fallback explicit for SSR-contract test environments where
   // `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
-  const usesSsrResponsiveFallback = !hasMatchMedia;
+  let syncedMobileMediaQuery = $state(hasMatchMedia);
   let mobile = $state(false);
   $effect(() => {
     if (!hasMatchMedia) return;
     const list = window.matchMedia(mobileMediaQuery);
     const update = () => {
       mobile = list.matches;
+      syncedMobileMediaQuery = true;
     };
     update();
-    list.addEventListener('change', update);
+
+    if (typeof list.addEventListener === 'function') {
+      list.addEventListener('change', update);
+      return () => {
+        list.removeEventListener('change', update);
+      };
+    }
+
+    list.addListener(update);
     return () => {
-      list.removeEventListener('change', update);
+      list.removeListener(update);
     };
   });
+  const usesSsrResponsiveFallback = $derived(!syncedMobileMediaQuery);
   const rendersCustomResponsiveFallbackStyle = $derived(
     usesSsrResponsiveFallback && validatedMobileBreakpoint !== SIDEBAR_MOBILE_BREAKPOINT,
   );
