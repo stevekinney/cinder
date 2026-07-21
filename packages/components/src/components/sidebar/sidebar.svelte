@@ -76,7 +76,7 @@
   // `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   let syncedMobileMediaQuery = $state(false);
-  let mobile = $state(hasMatchMedia ? window.matchMedia(mobileMediaQuery).matches : false);
+  let mobile = $state(false);
   $effect(() => {
     if (!hasMatchMedia) return undefined;
     const list = window.matchMedia(mobileMediaQuery);
