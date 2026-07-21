@@ -1,11 +1,11 @@
-// `atomicSwapDist` is duplicated byte-for-byte into five packages because each
+// `atomicSwapDist` is duplicated byte-for-byte into four packages because each
 // package's tsconfig has `rootDir: "."`, which makes a cross-package import
 // illegal — see the header comment in atomic-swap-dist.ts. Duplication is the
 // chosen trade-off, but silent DRIFT between the copies is the danger: a fix
 // applied to one and not the others would ship subtly different swap logic per
 // package. This test is the guard. If it fails, re-copy the canonical
 // (`packages/components/scripts/lib/atomic-swap-dist.ts`) over every other copy
-// so all five are identical again.
+// so all four are identical again.
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
@@ -13,7 +13,7 @@ import { join } from 'node:path';
 const CANONICAL_PACKAGE = 'components';
 
 /** Every package that carries a copy of the helper, canonical listed first. */
-const PACKAGES_WITH_COPY = ['components', 'diff', 'markdown', 'editor', 'commentary'];
+const PACKAGES_WITH_COPY = ['components', 'diff', 'markdown', 'commentary'];
 
 /** packages/<pkg>/scripts/lib/atomic-swap-dist.ts for the given package. */
 function copyPath(packageName: string): string {

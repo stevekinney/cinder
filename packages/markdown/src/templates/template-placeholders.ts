@@ -8,7 +8,7 @@
  * DEP-625: For secure markdown rendering with sanitization, use renderTemplate from template-render.ts
  */
 
-import { renderMarkdown } from '@cinder/markdown/rendering';
+import { renderMarkdown } from '../rendering/index.js';
 import { RESERVED_SEGMENTS } from './placeholder-security.js';
 import type {
   PlaceholderCandidate,

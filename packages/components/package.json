@@ -6155,6 +6155,30 @@
       "import": "./src/components/waveform/waveform.examples.json",
       "default": "./src/components/waveform/waveform.examples.json"
     },
+    "./editor/sanitize-html": {
+      "types": "./dist/editor/sanitize-html.d.ts",
+      "browser": "./src/editor/sanitize-html.ts",
+      "node": "./dist/server/editor/sanitize-html.js",
+      "svelte": "./src/editor/sanitize-html.ts",
+      "import": "./src/editor/sanitize-html.ts",
+      "default": "./dist/editor/sanitize-html.js"
+    },
+    "./editor/template-placeholders": {
+      "types": "./dist/editor/template-placeholders.d.ts",
+      "browser": "./src/editor/template-placeholders.ts",
+      "node": "./dist/server/editor/template-placeholders.js",
+      "svelte": "./src/editor/template-placeholders.ts",
+      "import": "./src/editor/template-placeholders.ts",
+      "default": "./dist/editor/template-placeholders.js"
+    },
+    "./editor/template-render": {
+      "types": "./dist/editor/template-render.d.ts",
+      "browser": "./src/editor/template-render.ts",
+      "node": "./dist/server/editor/template-render.js",
+      "svelte": "./src/editor/template-render.ts",
+      "import": "./src/editor/template-render.ts",
+      "default": "./dist/editor/template-render.js"
+    },
     "./markdown": {
       "types": "./dist/markdown/index.d.ts",
       "browser": "./src/markdown/index.ts",
@@ -6243,54 +6267,6 @@
       "import": "./src/markdown/utilities/sort-keys.ts",
       "default": "./dist/markdown/utilities/sort-keys.js"
     },
-    "./editor": {
-      "types": "./dist/editor/index.d.ts",
-      "browser": "./src/editor/index.ts",
-      "node": "./dist/server/editor/index.js",
-      "svelte": "./src/editor/index.ts",
-      "import": "./src/editor/index.ts",
-      "default": "./dist/editor/index.js"
-    },
-    "./editor/component-runtime": {
-      "types": "./dist/editor/component-runtime.d.ts",
-      "browser": "./src/editor/component-runtime.ts",
-      "node": "./dist/server/editor/component-runtime.js",
-      "svelte": "./src/editor/component-runtime.ts",
-      "import": "./src/editor/component-runtime.ts",
-      "default": "./dist/editor/component-runtime.js"
-    },
-    "./editor/sanitize-html": {
-      "types": "./dist/editor/sanitize-html.d.ts",
-      "browser": "./src/editor/sanitize-html.ts",
-      "node": "./dist/server/editor/sanitize-html.js",
-      "svelte": "./src/editor/sanitize-html.ts",
-      "import": "./src/editor/sanitize-html.ts",
-      "default": "./dist/editor/sanitize-html.js"
-    },
-    "./editor/template-placeholders": {
-      "types": "./dist/editor/template-placeholders.d.ts",
-      "browser": "./src/editor/template-placeholders.ts",
-      "node": "./dist/server/editor/template-placeholders.js",
-      "svelte": "./src/editor/template-placeholders.ts",
-      "import": "./src/editor/template-placeholders.ts",
-      "default": "./dist/editor/template-placeholders.js"
-    },
-    "./editor/template-render": {
-      "types": "./dist/editor/template-render.d.ts",
-      "browser": "./src/editor/template-render.ts",
-      "node": "./dist/server/editor/template-render.js",
-      "svelte": "./src/editor/template-render.ts",
-      "import": "./src/editor/template-render.ts",
-      "default": "./dist/editor/template-render.js"
-    },
-    "./editor/test-utilities": {
-      "types": "./dist/editor/test-utilities.d.ts",
-      "browser": "./src/editor/test-utilities.ts",
-      "node": "./dist/server/editor/test-utilities.js",
-      "svelte": "./src/editor/test-utilities.ts",
-      "import": "./src/editor/test-utilities.ts",
-      "default": "./dist/editor/test-utilities.js"
-    },
     "./commentary": {
       "types": "./dist/commentary/index.d.ts",
       "browser": "./src/commentary/index.ts",
@@ -6370,6 +6346,30 @@
       "svelte": "./src/commentary/shared/anchor-types.ts",
       "import": "./src/commentary/shared/anchor-types.ts",
       "default": "./dist/commentary/shared/anchor-types.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "browser": "./src/editor/index.ts",
+      "node": "./dist/server/editor/index.js",
+      "svelte": "./src/editor/index.ts",
+      "import": "./src/editor/index.ts",
+      "default": "./dist/editor/index.js"
+    },
+    "./editor/component-runtime": {
+      "types": "./dist/editor/component-runtime.d.ts",
+      "browser": "./src/editor/component-runtime.ts",
+      "node": "./dist/server/editor/component-runtime.js",
+      "svelte": "./src/editor/component-runtime.ts",
+      "import": "./src/editor/component-runtime.ts",
+      "default": "./dist/editor/component-runtime.js"
+    },
+    "./editor/test-utilities": {
+      "types": "./dist/editor/test-utilities.d.ts",
+      "browser": "./src/editor/test-utilities.ts",
+      "node": "./dist/server/editor/test-utilities.js",
+      "svelte": "./src/editor/test-utilities.ts",
+      "import": "./src/editor/test-utilities.ts",
+      "default": "./dist/editor/test-utilities.js"
     },
     "./diff": {
       "types": "./dist/diff/index.d.ts",
@@ -6572,7 +6572,6 @@
     "@changesets/parse": "0.4.3",
     "@cinder/commentary": "workspace:*",
     "@cinder/diff": "workspace:*",
-    "@cinder/editor": "workspace:*",
     "@cinder/markdown": "workspace:*",
     "@cinder/testing": "workspace:*",
     "@playwright/test": "1.60.0",

@@ -9,14 +9,17 @@
  * DEP-583: WYSIWYG invalid-token decoration for saved-prompt template authoring.
  */
 
+import {
+  parsePlaceholderTokens,
+  validatePlaceholderTokens,
+} from '@cinder/markdown/templates/template-placeholders';
+import type { PlaceholderCandidate } from '@cinder/markdown/templates/types';
 import type { Node as ProseMirrorNode } from 'prosemirror-model';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 
 import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
-import { parsePlaceholderTokens, validatePlaceholderTokens } from './template-placeholders.js';
 import { textOffsetToBlockDocumentPosition } from './template-position-utilities.js';
-import type { PlaceholderCandidate } from './types.js';
 
 /** Plugin key for the template invalid decoration plugin. */
 export const templateInvalidDecorationPluginKey = new PluginKey('template-invalid-decoration');

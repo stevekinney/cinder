@@ -7,7 +7,6 @@
     "packages/chat",
     "packages/commentary",
     "packages/diff",
-    "packages/editor",
     "packages/markdown",
     "packages/playground",
     "packages/testing"
@@ -59,10 +58,6 @@
     ],
     "packages/diff/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
       "oxlint --fix --type-aware --tsconfig ./packages/diff/tsconfig.json",
-      "prettier --write"
-    ],
-    "packages/editor/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix --type-aware --tsconfig ./packages/editor/tsconfig.json",
       "prettier --write"
     ],
     "packages/markdown/**/*.{js,ts,tsx,jsx,mjs,cjs}": [

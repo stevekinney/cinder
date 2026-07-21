@@ -5,6 +5,14 @@
  * Markdown Review Editor, integrating Milkdown (ProseMirror-based)
  * with Svelte 5 patterns.
  *
+ * Formerly `@cinder/editor`'s package root. That package split when it was
+ * dissolved (see `docs/decisions/package-boundaries.md`): the headless
+ * template-placeholder trio moved to `@cinder/markdown`'s `templates/`
+ * directory, and the ProseMirror/Milkdown integration moved here. This
+ * module re-composes both halves into the same combined surface the old
+ * `@cinder/editor` package root exported, so `@lostgradient/cinder`'s
+ * `./editor` re-export shim needs no changes.
+ *
  * @example
  * ```svelte
  * <script>
@@ -93,21 +101,21 @@ export {
   type ShortcutDefinition,
 } from './keymap-plugin.js';
 
-// Template placeholders (DEP-582, DEP-625)
+// Template placeholders (DEP-582, DEP-625) — headless, now owned by @cinder/markdown
 export {
   buildPlaceholderCandidatesFromJsonSchema,
   isBlockedSegment,
   parsePlaceholderTokens,
   resolveTemplatePlaceholders,
   validatePlaceholderTokens,
-} from './template-placeholders.js';
+} from '@cinder/markdown/templates/template-placeholders';
 
 // Template rendering (DEP-625)
 // Not re-exported here to avoid loading heavy @cinder/markdown pipeline for lightweight placeholder operations
-// Import from '@cinder/editor/template-render' instead
+// Import from '@cinder/markdown/templates/template-render' instead
 
-// Placeholder security (DEP-625)
-export { RESERVED_SEGMENTS } from './placeholder-security.js';
+// Placeholder security (DEP-625) — headless, now owned by @cinder/markdown
+export { RESERVED_SEGMENTS } from '@cinder/markdown/templates/placeholder-security';
 
 // Template placeholder plugins (DEP-583)
 export {
@@ -129,4 +137,4 @@ export type {
   PlaceholderValidationIssue,
   PlaceholderValidationResult,
   PlaceholderValueKind,
-} from './types.js';
+} from '@cinder/markdown/templates/types';

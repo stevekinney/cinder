@@ -1,7 +1,7 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
 import { chmod, mkdir, rm } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, relative as relativeFilePath } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
@@ -98,16 +98,19 @@ if (checkResult.exitCode !== 0) {
   process.exit(1);
 }
 
-// Dependency order: diff → markdown → editor → commentary. `markdown` vendors
-// `diff`'s dist, `editor` vendors `markdown`'s, `commentary` vendors both —
-// so the list MUST stay topologically sorted (upstream before its dependents).
-const upstreamPackageNames = ['diff', 'markdown', 'editor', 'commentary'] as const;
+// Dependency order: diff → markdown → commentary. `markdown` vendors `diff`'s
+// dist, `commentary` vendors `markdown`'s — so the list MUST stay
+// topologically sorted (upstream before its dependents). `@cinder/editor` was
+// dissolved (see `docs/decisions/package-boundaries.md`, Phase 1): its
+// headless half moved into `markdown`, its ProseMirror half into
+// `commentary`.
+const upstreamPackageNames = ['diff', 'markdown', 'commentary'] as const;
 
 // Build each upstream package so its `dist/` is fresh — hoisted ABOVE the
 // skip check below. Each upstream build.ts has its own skip check, so this is
 // near-free once every upstream is already up to date, but it MUST run before
 // `shouldSkipBuild` computes this package's input hash: this package vendors
-// all four upstream `dist/` trees (step 5b), so the hash needs to see FRESH
+// all three upstream `dist/` trees (step 5b), so the hash needs to see FRESH
 // upstream output, not whatever was on disk before this invocation. Skipping
 // this step first would let a stale upstream hash match this package's
 // recorded marker and skip a rebuild that a changed upstream (e.g. `diff`)
@@ -115,7 +118,7 @@ const upstreamPackageNames = ['diff', 'markdown', 'editor', 'commentary'] as con
 //
 // Built SERIALLY in dependency order, NOT in parallel: each upstream build's
 // own hash-skip reads its upstream deps' `dist/` bytes, so a dependent (e.g.
-// `editor`) must not compute its skip hash while its upstream (`markdown`) is
+// `commentary`) must not compute its skip hash while its upstream (`markdown`) is
 // mid-rebuild — that would hash against a half-written or stale tree and
 // wrongly skip, leaving a downstream `dist/` stale (the issue #364 race).
 // Warm builds still skip in milliseconds each, so serial costs little.
@@ -631,7 +634,7 @@ await emitDts({
 // -----------------------------------------------------------------------------
 // 5b. Vendor upstream `@cinder/*` build output verbatim into cinder's dist.
 //
-//     The four upstream workspace packages emit their own `dist/` trees via
+//     The three upstream workspace packages emit their own `dist/` trees via
 //     their per-package build. Those trees include patterns esbuild can't
 //     safely re-bundle — notably
 //     `new Worker(new URL('./render-worker.js', import.meta.url))` and the
@@ -704,7 +707,7 @@ function rewriteCrossUpstreamSpecifiers(
   // extensionless path that would yield a broken module (and pass the
   // `@cinder/` residue gate because the prefix is gone).
   return content.replace(
-    /(['"])@cinder\/(markdown|editor|commentary|diff)(\/[^'"]*)?\1/g,
+    /(['"])@cinder\/(markdown|commentary|diff)(\/[^'"]*)?\1/g,
     (_match, quote: string, pkg: string, rest: string | undefined) => {
       const subpath = rest ?? '';
       if (subpath === '') {
@@ -813,6 +816,46 @@ if (rewriteMisses.length > 0) {
   process.exit(1);
 }
 
+// `CINDER_KEY_OVERRIDES` remaps a handful of subpaths (the former
+// `@cinder/editor` surface, split across `@cinder/markdown` and
+// `@cinder/commentary`) onto a cinder key that does not match their
+// package's natural `${pkg}/<subpath>` vendored location. Rather than
+// duplicating the compiled file (which would break its sibling-relative
+// imports — `commentary`'s build is `tsc`-only, not bundled, so its emitted
+// JS keeps real relative imports like `./bridge.js` that only resolve
+// alongside the rest of `dist/commentary/editor/`), write a thin `export *`
+// redirect at the override location pointing back at the real vendored file.
+// Runs after the copy + specifier-rewrite passes so the vendored target
+// already exists, and before the residue/expected-path gates so the redirect
+// files are covered by both.
+async function writeOverrideRedirectShims(root: string): Promise<void> {
+  for (const reexport of upstreamReexports) {
+    if (reexport.distRelativePath === reexport.vendoredDistRelativePath) continue;
+
+    const overrideJsPath = `${root}/${reexport.distRelativePath}`;
+    const overrideDtsPath = overrideJsPath.replace(/\.js$/, '.d.ts');
+    const vendoredJsPath = `${root}/${reexport.vendoredDistRelativePath}`;
+    if (!existsSync(vendoredJsPath)) {
+      process.stderr.write(
+        `Build aborted: expected vendored file ${vendoredJsPath} to exist for the ` +
+          `"${reexport.cinderKey}" override redirect.\n`,
+      );
+      process.exit(1);
+    }
+
+    const relativeTarget = relativeFilePath(dirname(overrideJsPath), vendoredJsPath);
+    const specifier = relativeTarget.startsWith('.') ? relativeTarget : `./${relativeTarget}`;
+
+    await mkdir(dirname(overrideJsPath), { recursive: true });
+    const redirectBody = `export * from '${specifier}';\n`;
+    await Bun.write(overrideJsPath, redirectBody);
+    await Bun.write(overrideDtsPath, redirectBody);
+  }
+}
+
+await writeOverrideRedirectShims(distributionDirectory);
+await writeOverrideRedirectShims(`${distributionDirectory}/server`);
+
 // Fast residue guard: after the rewrite pass, scan every emitted JS/`.d.ts`
 // file for surviving quoted `@cinder/*` import specifiers. `validate-consumers`
 // runs the same check against the published tarball, but that flow takes
@@ -908,7 +951,7 @@ for (const component of components) {
 }
 
 // Post-build resolution gate for the bundled `@cinder/*` re-exports. Each
-// sub-path in `package.json#exports` for the four upstream packages must
+// sub-path in `package.json#exports` for the three upstream packages must
 // resolve to a real file in `dist/` (and a matching `.d.ts` for the `types`
 // condition) so consumers cannot import a dead sub-path.
 for (const reexport of upstreamReexports) {
@@ -1007,7 +1050,7 @@ for (const component of components) {
 await assertServerComponentBoundariesPreserveIdentity();
 
 // This package builds `dist/` in place (`rm -rf dist` above, not a staged
-// atomic swap like the four upstream packages), so the marker is written only
+// atomic swap like the three upstream packages), so the marker is written only
 // now — after every acceptance check above has passed — so it never claims a
 // half-written or failed build is up to date. The hash MUST be the same value
 // `shouldSkipBuild` computed at the top, from the source tree (and freshly

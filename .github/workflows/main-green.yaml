@@ -101,7 +101,6 @@ jobs:
           bunx turbo run build
           --filter=@cinder/diff
           --filter=@cinder/markdown
-          --filter=@cinder/editor
           --filter=@cinder/commentary
           --filter=@lostgradient/cinder
           --filter=@lostgradient/chat
@@ -111,7 +110,6 @@ jobs:
           bunx turbo run test
           --filter=@cinder/diff
           --filter=@cinder/markdown
-          --filter=@cinder/editor
           --filter=@cinder/commentary
           --filter=@cinder/playground
           --filter=@cinder/testing

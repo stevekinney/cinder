@@ -1,19 +1,29 @@
+/**
+ * Mirrors the former `packages/editor/src/ssr-import.test.ts`, migrated here
+ * when `@cinder/editor` was dissolved into `@cinder/markdown` (headless half)
+ * and `@cinder/commentary` (this ProseMirror/Milkdown half). See
+ * `docs/decisions/package-boundaries.md`.
+ */
+
 import { describe, expect, it } from 'bun:test';
 import { relative } from 'node:path';
 
-import { MILKDOWN_PREFIX } from '../../../scripts/ssr-import-boundary.ts';
-
+// Protected prefix — single source of truth is scripts/ssr-import-boundary.ts.
+// Defined inline (matching markdown-editor.import-boundary.test.ts's
+// precedent) because cross-package imports are outside commentary's rootDir.
+//
 // Editor source files legitimately import from prosemirror-* (they ARE the browser-side layer),
 // so this test uses MILKDOWN_PREFIX only. The constraint here is that @milkdown/kit/ bundles
 // must stay lazy (no static value imports in non-test files).
+const MILKDOWN_PREFIX = '@milkdown/' as const;
 const escapedPrefix = MILKDOWN_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const RUNTIME_MILKDOWN_IMPORT_PATTERN = new RegExp(
   `import\\s+(?!type\\b)[\\s\\S]*?\\s+from\\s+['"]${escapedPrefix}`,
   'g',
 );
 
-describe('@cinder/editor SSR import safety', () => {
-  it('imports the package barrel without needing browser globals', async () => {
+describe('@cinder/commentary editor SSR import safety', () => {
+  it('imports the editor barrel without needing browser globals', async () => {
     const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
 
     try {

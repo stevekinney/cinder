@@ -10,13 +10,16 @@
  * DEP-583: WYSIWYG placeholder completion for saved-prompt template authoring.
  */
 
+import type {
+  PlaceholderCandidate,
+  PlaceholderCompletionConfiguration,
+} from '@cinder/markdown/templates/types';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 
 import { createLazyProsePlugin, type LazyProsePlugin } from './milkdown-plugin-runtime.js';
 import { textOffsetToBlockDocumentPosition } from './template-position-utilities.js';
-import type { PlaceholderCandidate, PlaceholderCompletionConfiguration } from './types.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants

@@ -64,6 +64,24 @@
       "bun": "./src/shared/anchor-types.ts",
       "import": "./dist/shared/anchor-types.js",
       "default": "./dist/shared/anchor-types.js"
+    },
+    "./editor": {
+      "types": "./src/editor/index.ts",
+      "bun": "./src/editor/index.ts",
+      "import": "./dist/editor/index.js",
+      "default": "./dist/editor/index.js"
+    },
+    "./editor/component-runtime": {
+      "types": "./src/editor/component-runtime.ts",
+      "bun": "./src/editor/component-runtime.ts",
+      "import": "./dist/editor/component-runtime.js",
+      "default": "./dist/editor/component-runtime.js"
+    },
+    "./editor/test-utilities": {
+      "types": "./src/editor/test-utilities.ts",
+      "bun": "./src/editor/test-utilities.ts",
+      "import": "./dist/editor/test-utilities.js",
+      "default": "./dist/editor/test-utilities.js"
     }
   },
   "scripts": {
@@ -71,18 +89,21 @@
     "clean": "rm -rf dist coverage node_modules/.cache",
     "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
     "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
-    "test": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && bun run --filter='@cinder/editor' build && TZ=UTC LANG=en_US.UTF-8 bun test",
+    "test": "bun run --filter='@cinder/diff' build && bun run --filter='@cinder/markdown' build && TZ=UTC LANG=en_US.UTF-8 bun test",
     "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "validate": "bun run lint && bun run typecheck && bun run test && bun run build"
   },
   "dependencies": {
-    "@cinder/editor": "workspace:*",
     "@cinder/markdown": "workspace:*",
     "@milkdown/kit": "^7.17.3",
     "@milkdown/prose": "^7.17.3",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.3"
   },
   "devDependencies": {
+    "@milkdown/ctx": "^7.17.3",
     "@types/bun": "^1.3.11",
     "happy-dom": "^15.11.7",
     "oxlint": "^1.56.0",
