@@ -463,7 +463,7 @@
     oncomposerinput?.(value, event);
   }
 
-  /** Clamp a textarea range index into [0, length], mapping non-finite values to 0. */
+  /** Apply the Web IDL unsigned-long coercion used by textarea range methods. */
   function toUnsignedLong(index: number): number {
     return index >>> 0;
   }
