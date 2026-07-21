@@ -6522,8 +6522,8 @@
   },
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
-    "@modelcontextprotocol/sdk": "^1.29.0",
     "@shikijs/engine-oniguruma": "^3.21.0",
+    "@shikijs/langs": "^3.21.0",
     "@shikijs/types": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
     "@types/hast": "^3.0.4",
@@ -6556,6 +6556,7 @@
     "@cinder/commentary": "workspace:*",
     "@cinder/testing": "workspace:*",
     "@lostgradient/markdown": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",

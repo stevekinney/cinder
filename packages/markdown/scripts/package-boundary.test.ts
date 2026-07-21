@@ -16,16 +16,23 @@ const cinderManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'components', 'package.json')).text(),
 ) as PackageManifest;
 
-// `@shikijs/langs` is markdown-only: only `src/rendering/highlighter.ts` lazily
-// imports per-language grammars. `@shikijs/engine-oniguruma` and
-// `@shikijs/types` are shared: cinder's own `src/highlighters/shiki/index.ts`
-// also imports them directly (a dynamic `import('@shikijs/engine-oniguruma')`
-// and `@shikijs/types` type imports), so they must stay declared on BOTH
-// packages — dropping them from cinder would leave that adapter's transitive
-// dependency unresolved under any install layout that doesn't hoist markdown's
-// deps beside cinder (pnpm, Yarn PnP).
-const MARKDOWN_ONLY_SHIKI_PACKAGES = ['@shikijs/langs'];
-const SHARED_SHIKI_PACKAGES = ['@shikijs/engine-oniguruma', '@shikijs/types'];
+// All three `@shikijs/*` packages are shared between markdown and cinder —
+// for two different reasons:
+//   - `@shikijs/engine-oniguruma` and `@shikijs/types`: cinder's own
+//     `src/highlighters/shiki/index.ts` imports them directly (a dynamic
+//     `import('@shikijs/engine-oniguruma')` and `@shikijs/types` type
+//     imports), independent of markdown entirely.
+//   - `@shikijs/langs`: cinder's own source never imports it, but cinder's
+//     build VENDORS markdown's compiled `dist/rendering/**` wholesale into
+//     its own published dist and re-exposes it under the public
+//     `./markdown/rendering*` subpaths (see `scripts/build.ts`'s upstream
+//     vendoring pass). That vendored `rendering/highlighter.js` dynamically
+//     imports `@shikijs/langs/<name>`, so any consumer who installs
+//     `@lostgradient/cinder` alone and reaches `./markdown/rendering*`
+//     needs `@shikijs/langs` resolvable from CINDER's own dependency tree,
+//     not just markdown's — under pnpm/Yarn PnP or any non-hoisted install
+//     layout, a package can only resolve its OWN declared dependencies.
+const SHARED_SHIKI_PACKAGES = ['@shikijs/engine-oniguruma', '@shikijs/langs', '@shikijs/types'];
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
 describe('@lostgradient/markdown package ownership boundary', () => {
@@ -70,7 +77,7 @@ describe('@lostgradient/markdown package ownership boundary', () => {
   });
 
   test('carries every @shikijs/* highlighter engine dep it uses', () => {
-    for (const shikiPackage of [...MARKDOWN_ONLY_SHIKI_PACKAGES, ...SHARED_SHIKI_PACKAGES]) {
+    for (const shikiPackage of SHARED_SHIKI_PACKAGES) {
       expect(markdownManifest.dependencies?.[shikiPackage]).toBeDefined();
     }
     // `shiki` itself is not a `@shikijs/*` engine package — it stays a
@@ -79,17 +86,24 @@ describe('@lostgradient/markdown package ownership boundary', () => {
     expect(markdownManifest.dependencies?.['shiki']).toBeDefined();
   });
 
-  test('cinder declares no dependency on the markdown-only @shikijs/* packages', () => {
-    for (const shikiPackage of MARKDOWN_ONLY_SHIKI_PACKAGES) {
-      for (const field of dependencyFields) {
-        expect(cinderManifest[field]?.[shikiPackage]).toBeUndefined();
-      }
-    }
-  });
-
-  test('cinder keeps the shared @shikijs/* deps its own highlighter adapter imports directly', () => {
+  test('cinder declares every shared @shikijs/* dep, including langs (vendored via ./markdown/rendering*)', () => {
     for (const shikiPackage of SHARED_SHIKI_PACKAGES) {
       expect(cinderManifest.dependencies?.[shikiPackage]).toBeDefined();
     }
+  });
+
+  test('published markdown manifest declares @types/mdast and @types/unist as real dependencies, not devDependencies', () => {
+    // `pipeline/types.d.ts`, `rendering/extract-code-blocks.d.ts`, and other
+    // publicly exported `.d.ts` files re-export `mdast`/`unist` types. Those
+    // packages must survive `buildPublishedManifest`'s
+    // `delete published.devDependencies` — otherwise a consumer typechecking
+    // against `@lostgradient/markdown/pipeline` can't resolve them.
+    for (const declarationPackage of ['@types/mdast', '@types/unist']) {
+      expect(markdownManifest.dependencies?.[declarationPackage]).toBeDefined();
+      expect(markdownManifest.devDependencies?.[declarationPackage]).toBeUndefined();
+    }
+    const published = buildPublishedManifest(markdownManifest);
+    expect(published.dependencies?.['@types/mdast']).toBeDefined();
+    expect(published.dependencies?.['@types/unist']).toBeDefined();
   });
 });

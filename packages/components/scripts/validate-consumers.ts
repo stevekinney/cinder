@@ -44,6 +44,21 @@ type WorkspaceDependencyPackage = PackageIdentity & {
   packageDirectory: string;
   tarballFileName: string;
   tarballFilePath: string;
+  /**
+   * Command that produces `tarballFilePath`. `@lostgradient/markdown` is a
+   * REAL published package with its own staged, manifest-transforming
+   * `pack-for-publish.ts` (devDependencies stripped, `bun` source condition
+   * dropped) — `release.yaml` runs `bun run --filter=@lostgradient/markdown
+   * validate:consumer` before this validator's own step, producing that
+   * exact tarball at `tarballFilePath`. A raw `bun pm pack` here would
+   * overwrite it with an unvalidated, untransformed artifact that the later
+   * "Publish validated Markdown package artifact" step (`publish:release
+   * -- --skip-validation`, which does NOT re-pack) would then ship to npm.
+   * Reuse `pack:publish` — the same staged process — for every workspace
+   * dependency package that HAS one; only workspace-private packages with no
+   * publish surface (`commentary`) fall back to a raw pack.
+   */
+  packCommand: string[];
 };
 
 function getPackFileName(identity: PackageIdentity): string {
@@ -85,11 +100,16 @@ const workspaceDependencyPackages = ['markdown', 'commentary'].map(
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
     const identity = readPackageIdentity(packageDirectory);
     const workspaceDependencyTarballFileName = getPackFileName(identity);
+    const manifest = parseJsonFile<{ scripts?: Record<string, string> }>(
+      readFileSync(join(packageDirectory, 'package.json'), 'utf8'),
+    );
+    const hasPublishPacker = manifest.scripts?.['pack:publish'] !== undefined;
     return {
       ...identity,
       packageDirectory,
       tarballFileName: workspaceDependencyTarballFileName,
       tarballFilePath: join(packageDirectory, workspaceDependencyTarballFileName),
+      packCommand: hasPublishPacker ? ['run', 'pack:publish'] : ['pm', 'pack'],
     };
   },
 );
@@ -110,6 +130,7 @@ const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
 
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   '@shikijs/engine-oniguruma',
+  '@shikijs/langs',
   '@shikijs/types',
   '@types/hast',
   '@types/mdast',
@@ -305,13 +326,15 @@ async function packWorkspaceDependencyTarballs(): Promise<void> {
     if (existsSync(dependencyPackage.tarballFilePath)) {
       await Bun.file(dependencyPackage.tarballFilePath).delete();
     }
-    const result = await runHookCommand('bun', ['pm', 'pack'], {
+    const result = await runHookCommand('bun', dependencyPackage.packCommand, {
       cwd: dependencyPackage.packageDirectory,
       stdout: 'pipe',
       stderr: 'pipe',
     });
     if (result.exitCode !== 0) {
-      fail(`${dependencyPackage.name} bun pm pack failed: ${result.stderr}`);
+      fail(
+        `${dependencyPackage.name} bun ${dependencyPackage.packCommand.join(' ')} failed: ${result.stderr}`,
+      );
     }
     if (!existsSync(dependencyPackage.tarballFilePath)) {
       fail(
