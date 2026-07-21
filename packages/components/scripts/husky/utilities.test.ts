@@ -1828,7 +1828,7 @@ describe('repairSymlinkedNodeModules', () => {
       // would be strictly worse than the aliased one we started from.
       expect(nodeModulesTopology(directory)).toBe('symlinked');
       // And the staging path must not be left behind.
-      expect(existsSync(join(directory, '.node_modules.cinder-repair'))).toBe(false);
+      expect(existsSync(join(directory, '.node_modules.cinder-repair-1234-5678'))).toBe(false);
     } finally {
       await rm(directory, { force: true, recursive: true });
     }
@@ -1872,7 +1872,7 @@ describe('repairSymlinkedNodeModules', () => {
       await mkdir(target);
       await symlink(
         target,
-        join(directory, '.node_modules.cinder-repair'),
+        join(directory, '.node_modules.cinder-repair-1234-5678'),
         process.platform === 'win32' ? 'junction' : 'dir',
       );
       await initGitFixture(directory);
@@ -1887,7 +1887,42 @@ describe('repairSymlinkedNodeModules', () => {
 
       expect(result).toEqual({ repaired: false, reason: 'lockfile-dirty' });
       expect(nodeModulesTopology(directory)).toBe('symlinked');
-      expect(existsSync(join(directory, '.node_modules.cinder-repair'))).toBe(false);
+      expect(existsSync(join(directory, '.node_modules.cinder-repair-1234-5678'))).toBe(false);
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  // The other half of the interrupted-repair matrix: the install finished but
+  // cleanup did not, so node_modules is real while staging debris remains. The
+  // tree may be half-populated, so accepting it as 'already-real' would keep a
+  // broken checkout broken.
+  it('re-runs the install when a staged repair is left beside a real node_modules', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-staged-real-'));
+    try {
+      await mkdir(join(directory, 'node_modules'));
+      const target = join(directory, 'primary-node-modules');
+      await mkdir(target);
+      await symlink(
+        target,
+        join(directory, '.node_modules.cinder-repair-99-1'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+      await initGitFixture(directory);
+
+      let installs = 0;
+      const result = await repairSymlinkedNodeModules(directory, {
+        install: async () => {
+          installs += 1;
+          return 0;
+        },
+      });
+
+      expect(installs).toBe(1);
+      expect(result.repaired).toBe(true);
+      // Debris cleared, real tree kept.
+      expect(existsSync(join(directory, '.node_modules.cinder-repair-99-1'))).toBe(false);
+      expect(nodeModulesTopology(directory)).toBe('real');
     } finally {
       await rm(directory, { force: true, recursive: true });
     }

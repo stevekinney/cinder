@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { capitalCase } from 'change-case';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, lstatSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -120,6 +120,20 @@ async function isLockfileDirty(repositoryRoot: string): Promise<boolean> {
   return result.stdout.toString().trim().length > 0;
 }
 
+/** Shared prefix for per-run staging paths, so orphans stay discoverable. */
+const STAGED_REPAIR_PREFIX = '.node_modules.cinder-repair-';
+
+/** Staging entries left behind by an interrupted repair, if any. */
+function findStagedRepairPaths(repositoryRoot: string): string[] {
+  try {
+    return readdirSync(repositoryRoot)
+      .filter((entry) => entry.startsWith(STAGED_REPAIR_PREFIX))
+      .map((entry) => join(repositoryRoot, entry));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Replace a symlinked root `node_modules` with a real install, in place.
  *
@@ -177,14 +191,45 @@ export async function repairSymlinkedNodeModules(
   options: NodeModulesRepairOptions = {},
 ): Promise<NodeModulesRepair> {
   const nodeModulesPath = join(repositoryRoot, 'node_modules');
-  const displacedSymlinkPath = join(repositoryRoot, '.node_modules.cinder-repair');
+  // Per-run staging path, never a shared one. `pre-push` is fail-open and holds
+  // no lock, so two hooks can repair the same worktree concurrently; with a
+  // single shared path the second process's cleanup would delete the first's
+  // only restore source, and a failed install would then leave the checkout
+  // with no `node_modules` at all.
+  const displacedSymlinkPath = join(
+    repositoryRoot,
+    `${STAGED_REPAIR_PREFIX}${process.pid}-${Date.now()}`,
+  );
 
-  // Recover from an interrupted earlier run before classifying anything. If a
-  // previous repair died between the rename and the install, `node_modules` is
-  // gone and the symlink is sitting at the staging path — a later run would
-  // otherwise report `missing` forever and never put it back.
-  if (nodeModulesTopology(repositoryRoot) === 'missing' && existsSync(displacedSymlinkPath)) {
-    renameSync(displacedSymlinkPath, nodeModulesPath);
+  // Reconcile any leftovers from an interrupted earlier run before classifying
+  // anything. A repair can die in two places, and each strands a different
+  // shape:
+  //   - between the rename and the install: `node_modules` is gone and the
+  //     symlink sits at a staging path. Without recovery, every later run
+  //     reports `missing` forever and never puts it back.
+  //   - after the install but before cleanup: `node_modules` is real but a
+  //     staging entry remains, and the tree may be only partially populated.
+  //     Returning `already-real` there would accept a possibly-broken install
+  //     and leave the debris behind.
+  const staged = findStagedRepairPaths(repositoryRoot);
+  if (staged.length > 0) {
+    if (nodeModulesTopology(repositoryRoot) === 'missing') {
+      // Restore one, discard any others — a second staged entry can only come
+      // from a concurrent run that also failed, and its symlink target is the
+      // same tree.
+      const [restoreFrom, ...surplus] = staged;
+      if (restoreFrom !== undefined) renameSync(restoreFrom, nodeModulesPath);
+      for (const path of surplus) rmSync(path, { force: true, recursive: true });
+    } else {
+      // The install ran but cleanup did not. Drop the debris and re-run the
+      // install below so a half-populated tree self-heals rather than being
+      // silently accepted.
+      for (const path of staged) rmSync(path, { force: true, recursive: true });
+      const install = options.install ?? runBunInstall;
+      const exitCode = await install(repositoryRoot);
+      if (exitCode !== 0) return { repaired: false, reason: 'install-failed', exitCode };
+      return { repaired: true, lockfileChanged: await isLockfileDirty(repositoryRoot) };
+    }
   }
 
   const topology = nodeModulesTopology(repositoryRoot);
@@ -200,7 +245,6 @@ export async function repairSymlinkedNodeModules(
   // dependency tree at all — strictly worse than the aliased tree we started
   // with, and enough to break unrelated tooling until someone reinstalled by
   // hand.
-  rmSync(displacedSymlinkPath, { force: true });
   renameSync(nodeModulesPath, displacedSymlinkPath);
 
   const install = options.install ?? runBunInstall;
@@ -211,7 +255,7 @@ export async function repairSymlinkedNodeModules(
     return { repaired: false, reason: 'install-failed', exitCode };
   }
 
-  rmSync(displacedSymlinkPath, { force: true });
+  rmSync(displacedSymlinkPath, { force: true, recursive: true });
 
   // Any dirt here is the repair's own doing: we bailed out above if the
   // lockfile was already dirty.
