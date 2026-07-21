@@ -180,14 +180,21 @@
     candidateValue: ScheduleValue | undefined,
     candidateAllowedModes: ScheduleAuthoringMode[],
   ): ScheduleAuthoringMode {
+    if (candidateValue?.mode === 'interval') {
+      const presetsCanRepresentInterval =
+        candidateValue.unit === 'minutes' || candidateValue.unit === 'hours';
+      if (presetsCanRepresentInterval && candidateAllowedModes.includes('presets')) {
+        return 'presets';
+      }
+      if (candidateAllowedModes.includes('interval')) return 'interval';
+    }
+
     const preferredMode =
       candidateValue === undefined
         ? 'presets'
         : candidateValue.mode === 'cron'
           ? 'cron'
-          : candidateValue.unit === 'minutes' || candidateValue.unit === 'hours'
-            ? 'presets'
-            : 'interval';
+          : 'interval';
     return candidateAllowedModes.includes(preferredMode)
       ? preferredMode
       : candidateAllowedModes[0]!;

@@ -186,6 +186,22 @@ describe('ScheduleBuilder', () => {
         expect(emitted.mode).toBe('cron');
       }
     });
+
+    test('preserves interval mode when presets are hidden but interval is allowed', () => {
+      const value: ScheduleValue = { mode: 'interval', every: 5, unit: 'hours' };
+      const { container, getByLabelText } = render(ScheduleBuilder, {
+        allowedModes: ['cron', 'interval'],
+        value,
+      });
+
+      expect(container.querySelector('[data-sb-panel="interval"]')).not.toBeNull();
+      expect(container.querySelector('[data-sb-panel="cron"]')).toBeNull();
+      expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
+        'Every 5 hours',
+      );
+      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('5');
+      expect((getByLabelText('Unit') as HTMLSelectElement).value).toBe('hours');
+    });
   });
 
   describe('controlled value resync', () => {
