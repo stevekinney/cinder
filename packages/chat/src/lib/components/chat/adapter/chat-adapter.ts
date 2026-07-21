@@ -128,7 +128,7 @@ export type ChatAdapter = {
    *     eventLog = [...eventLog, `subscribed to "${conversationId}"`];
    *   });
    *   return transport.open(conversationId, handlers);
-   * };
+   * },
    * ```
    *
    * `tick()` works the same way if you need to wait for a specific point in
