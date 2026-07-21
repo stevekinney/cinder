@@ -67,10 +67,14 @@ describe('Chat hydration', () => {
       expect(
         result.warnings.filter((warning) => warning.toLowerCase().includes('hydration')),
       ).toEqual([]);
-      // The load-bearing assertion: this conversation's timestamps do not
-      // reach the markup, so SSR output cannot vary with the clock.
+      // The load-bearing assertions: SSR output cannot vary with the clock.
+      // Both directions are kept deliberately — the exact-value checks say
+      // THIS conversation's timestamps stay out of the markup, and the pattern
+      // check catches any other ISO-8601 timestamp a future change might start
+      // rendering, which is the case that would actually reintroduce the bug.
       expect(result.ssrHtml).not.toContain(conversation.createdAt);
       expect(result.ssrHtml).not.toContain(conversation.updatedAt);
+      expect(result.ssrHtml).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     } finally {
       result.cleanup();
     }
