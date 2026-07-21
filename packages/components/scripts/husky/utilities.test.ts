@@ -1474,7 +1474,10 @@ describe('withGateLock', () => {
 
   it('keeps waiting past the legacy timeout while the recorded holder remains alive', async () => {
     await withTemporaryLockPath(async (lockPath) => {
-      const holder = Bun.spawn(['bun', '-e', 'await Bun.sleep(500)'], {
+      const holderSleepMilliseconds = 500;
+      const legacyTimeoutMilliseconds = 5;
+      const minimumObservedWaitMilliseconds = 100;
+      const holder = Bun.spawn(['bun', '-e', `await Bun.sleep(${holderSleepMilliseconds})`], {
         stderr: 'ignore',
         stdin: 'ignore',
         stdout: 'ignore',
@@ -1495,12 +1498,12 @@ describe('withGateLock', () => {
         const result = await withGateLock(async () => 'acquired after holder exited', {
           lockPath,
           retryMilliseconds: 1,
-          waitMilliseconds: 5,
+          waitMilliseconds: legacyTimeoutMilliseconds,
         });
         const waitedMilliseconds = Date.now() - startedAt;
 
         expect(result).toBe('acquired after holder exited');
-        expect(waitedMilliseconds).toBeGreaterThanOrEqual(100);
+        expect(waitedMilliseconds).toBeGreaterThanOrEqual(minimumObservedWaitMilliseconds);
         expect(await holder.exited).toBe(0);
         expect(await Bun.file(lockPath).exists()).toBe(false);
       } finally {
