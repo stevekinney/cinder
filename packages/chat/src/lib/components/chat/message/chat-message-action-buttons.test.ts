@@ -144,16 +144,16 @@ describe('chat message action buttons', () => {
 });
 
 function extractRule(text: string, opening: string | RegExp): string {
+  let bodyStart: number;
   if (typeof opening === 'string') {
     const start = text.indexOf(opening);
     if (start === -1) throw new Error(`rule not found: ${opening}`);
-    const bodyStart = start + opening.length;
-    const end = text.indexOf('}', bodyStart);
-    return text.slice(bodyStart, end);
+    bodyStart = start + opening.length;
+  } else {
+    const match = opening.exec(text);
+    if (!match) throw new Error(`rule not found: ${opening}`);
+    bodyStart = match.index + match[0].length;
   }
-  const match = opening.exec(text);
-  if (!match) throw new Error(`rule not found: ${opening}`);
-  const bodyStart = match.index + match[0].length;
   const end = text.indexOf('}', bodyStart);
   return text.slice(bodyStart, end);
 }
