@@ -151,18 +151,20 @@ export async function validateMetaSchema(
   }
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
-  const ajv = await getMetaValidator(resolved);
   try {
+    // getMetaValidator's dynamic import can reject (e.g. the module fails
+    // to load); ajv.validateSchema can throw synchronously (a schema
+    // referencing a meta-schema URI the instance doesn't know about, e.g.
+    // cross-draft $schema references). Both are schema-validation failures
+    // from the caller's perspective, not unhandled exceptions — the editor
+    // should surface either as a validation error, not crash the host.
+    const ajv = await getMetaValidator(resolved);
     const valid = ajv.validateSchema(schema);
     return {
       valid: Boolean(valid),
       errors: ajvErrorsToValidationErrors(ajv.errors),
     };
   } catch (error) {
-    // Ajv throws synchronously when a schema references a meta-schema URI the
-    // instance doesn't know about (e.g. cross-draft $schema references). Treat
-    // as an invalid schema rather than an unhandled exception — the editor
-    // should surface this as a validation error, not crash the host.
     return {
       valid: false,
       errors: [
@@ -193,19 +195,23 @@ export async function tryCompile(
   }
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
-  let ajv: Ajv | Ajv2020 | Ajv2019;
-  if (resolved === '2020-12') {
-    const Ajv2020Class = await loadAjv2020();
-    ajv = new Ajv2020Class({ strict: false, addUsedSchema: false });
-  } else if (resolved === '2019-09') {
-    const Ajv2019Class = await loadAjv2019();
-    ajv = new Ajv2019Class({ strict: false, addUsedSchema: false });
-  } else {
-    const AjvClass = await loadAjv();
-    ajv = new AjvClass({ strict: false, addUsedSchema: false });
-  }
-
   try {
+    // The dynamic Ajv-class import can reject as readily as ajv.compile can
+    // throw — both are covered by this one try/catch so tryCompile always
+    // resolves to { ok } rather than letting an import failure surface as
+    // an unhandled rejection.
+    let ajv: Ajv | Ajv2020 | Ajv2019;
+    if (resolved === '2020-12') {
+      const Ajv2020Class = await loadAjv2020();
+      ajv = new Ajv2020Class({ strict: false, addUsedSchema: false });
+    } else if (resolved === '2019-09') {
+      const Ajv2019Class = await loadAjv2019();
+      ajv = new Ajv2019Class({ strict: false, addUsedSchema: false });
+    } else {
+      const AjvClass = await loadAjv();
+      ajv = new AjvClass({ strict: false, addUsedSchema: false });
+    }
+
     ajv.compile(schema);
     return { ok: true };
   } catch (error) {

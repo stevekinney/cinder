@@ -50,23 +50,36 @@ type McpDependencies = {
   StdioServerTransport: McpStdioModule['StdioServerTransport'];
 };
 
-async function loadMcpDependencies(): Promise<McpDependencies> {
-  const [z, serverModule, typesModule, stdioModule] = await importOptionalMcpDependency(() =>
+// Memoized so createMcpServer() and runMcpServer() calling this in the same
+// process (runMcpServer calls createMcpServer) share one import, not two —
+// dynamic import() is itself cached by the module loader, but without this
+// every call still re-runs the Promise.all/error-wrapping orchestration.
+let mcpDependenciesPromise: Promise<McpDependencies> | null = null;
+
+function loadMcpDependencies(): Promise<McpDependencies> {
+  mcpDependenciesPromise ??= importOptionalMcpDependency(() =>
     Promise.all([
       import('zod/v4'),
       import('@modelcontextprotocol/sdk/server/mcp.js'),
       import('@modelcontextprotocol/sdk/types.js'),
       import('@modelcontextprotocol/sdk/server/stdio.js'),
     ]),
-  );
-  return {
-    z,
-    McpServer: serverModule.McpServer,
-    ResourceTemplate: serverModule.ResourceTemplate,
-    ErrorCode: typesModule.ErrorCode,
-    McpError: typesModule.McpError,
-    StdioServerTransport: stdioModule.StdioServerTransport,
-  };
+  )
+    .then(([z, serverModule, typesModule, stdioModule]) => ({
+      z,
+      McpServer: serverModule.McpServer,
+      ResourceTemplate: serverModule.ResourceTemplate,
+      ErrorCode: typesModule.ErrorCode,
+      McpError: typesModule.McpError,
+      StdioServerTransport: stdioModule.StdioServerTransport,
+    }))
+    .catch((error: unknown) => {
+      // Don't cache a rejection — a transient failure (or, in tests, an
+      // injected one) shouldn't permanently poison every later call.
+      mcpDependenciesPromise = null;
+      throw error;
+    });
+  return mcpDependenciesPromise;
 }
 
 function textResult(text: string, structuredContent?: Record<string, unknown>) {
