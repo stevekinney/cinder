@@ -944,8 +944,8 @@ describe('selection', () => {
     });
 
     const row = stepRowByPath(container, runningStep.id);
-    expect(row).not.toBeNull();
-    await fireEvent.click(row as HTMLElement);
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
 
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
@@ -1024,8 +1024,8 @@ describe('selection', () => {
     });
 
     const row = stepRowByPath(container, 'parent/child');
-    expect(row).not.toBeNull();
-    await fireEvent.click(row as HTMLElement);
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
 
     expect(selectedStepIds).toEqual(['parent/child']);
   });
@@ -1050,8 +1050,8 @@ describe('selection', () => {
     });
 
     const row = stepRowByPath(container, '%branch/race/%lane/blue/blue-deploy');
-    expect(row).not.toBeNull();
-    await fireEvent.click(row as HTMLElement);
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
 
     expect(selectedStepIds).toEqual(['%branch/race/%lane/blue/blue-deploy']);
   });
