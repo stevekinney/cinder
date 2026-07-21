@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Basic sidebar';
   export const description =
-    'Layout-level sidebar with brand, navigation, and footer regions. Collapse toggles icon-only mode on desktop and closes the drawer on mobile.';
+    'Layout-level sidebar with navigation and footer regions. Collapse toggles icon-only mode on desktop and closes the drawer on mobile.';
 </script>
 
 <script lang="ts">
@@ -26,10 +26,6 @@
     style="display: flex; min-height: 24rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden;"
   >
     <Sidebar bind:collapsed label="Workspace">
-      {#snippet brand()}
-        <strong style="font-size: 0.875rem;">Cinder</strong>
-      {/snippet}
-
       {#snippet navigation()}
         <SideNavigation ariaLabel="Workspace sections">
           {#snippet children()}

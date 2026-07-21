@@ -2,8 +2,8 @@
 @layer cinder.components {
   /* ========================================
  * SIDEBAR
- * Layout-level vertical navigation container. Combines branding, a nav
- * region, and an optional footer. Delegates the actual list to
+ * Layout-level vertical navigation container. Combines a nav region and an
+ * optional footer. Delegates the actual list to
  * `side-navigation.svelte`. Below the default breakpoint (~767px) the consuming
  * component swaps the inline <aside> for a <Drawer>; this stylesheet covers
  * both surfaces because the inner regions render the same elements.
@@ -56,15 +56,6 @@
     inline-size: 4rem;
   }
 
-  .cinder-sidebar__brand {
-    display: flex;
-    align-items: center;
-    padding-block: var(--cinder-space-4);
-    padding-inline: var(--cinder-space-4);
-    border-block-end: 1px solid var(--cinder-border);
-    flex-shrink: 0;
-  }
-
   .cinder-sidebar__nav {
     flex: 1;
     overflow-y: auto;
@@ -78,7 +69,7 @@
   .cinder-sidebar__footer {
     /* margin-block-start: auto pins the footer to the bottom of the column independent
      * of siblings — so it stays bottom-aligned even when the optional nav (which carried
-     * flex: 1) is omitted, instead of collapsing up under the brand. */
+     * flex: 1) is omitted. */
     margin-block-start: auto;
     padding-block: var(--cinder-space-3);
     padding-inline: var(--cinder-space-3);

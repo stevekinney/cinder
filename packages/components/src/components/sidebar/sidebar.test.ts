@@ -109,22 +109,6 @@ describe('Sidebar (desktop / inline aside)', () => {
     expect(nav?.textContent ?? '').toContain('payload');
   });
 
-  test('omits brand region when no brand snippet is provided', () => {
-    const { container } = render(Sidebar, {
-      props: { navigation: listSnippet('items') },
-    });
-    expect(container.querySelector('.cinder-sidebar__brand')).toBeNull();
-  });
-
-  test('renders brand snippet inside .cinder-sidebar__brand when provided', () => {
-    const { container } = render(Sidebar, {
-      props: { brand: textSnippet('Cinder'), navigation: listSnippet('items') },
-    });
-    const brand = container.querySelector('.cinder-sidebar__brand');
-    expect(brand).not.toBeNull();
-    expect(brand?.textContent ?? '').toContain('Cinder');
-  });
-
   test('omits footer region when no footer snippet is provided', () => {
     const { container } = render(Sidebar, {
       props: { navigation: listSnippet('items') },
@@ -577,19 +561,15 @@ describe('Sidebar (mobile / drawer)', () => {
     expect(wrapper).toBeNull();
   });
 
-  test('mobile brand and footer render inside the drawer', () => {
+  test('mobile footer renders inside the drawer', () => {
     mock = installMatchMediaMock(true);
     const { container } = render(Sidebar, {
       props: {
-        brand: textSnippet('Cinder'),
         navigation: listSnippet('items'),
         footer: textSnippet('Sign out'),
       },
     });
     expectMobileQueryWasUsed(mock);
-    expect(container.querySelector('dialog .cinder-sidebar__brand')?.textContent ?? '').toContain(
-      'Cinder',
-    );
     expect(container.querySelector('dialog .cinder-sidebar__footer')?.textContent ?? '').toContain(
       'Sign out',
     );

@@ -1,7 +1,7 @@
 # Sidebar — Accessibility Notes
 
-Sidebar is a layout-level navigation container that combines branding, a vertical
-nav region, and an optional footer. On wide viewports it renders inline as a
+Sidebar is a layout-level navigation container that combines a vertical nav
+region and an optional footer. On wide viewports it renders inline as a
 landmark; below the `md` breakpoint (~767px) it renders inside a `<Drawer>`.
 
 ## Landmark structure
@@ -69,10 +69,6 @@ Below `md`, Sidebar renders inside `<Drawer side="left" size="md">`. The
 
 Mobile drawer inherits Drawer's focus trap, ESC handling, body scroll lock, and
 backdrop click — see [`drawer.a11y.md`](drawer.a11y.md).
-
-The brand region renders inline at the top of the drawer body (not as the
-drawer's `<h2>` title), so the drawer's visible heading reflects `label`
-and the brand block stays a visual region rather than the accessible name.
 
 ### Wiring the mobile trigger
 

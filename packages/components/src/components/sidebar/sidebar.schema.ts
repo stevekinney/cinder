@@ -28,11 +28,6 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'brand',
-        reason: 'function-or-snippet',
-        description: 'Optional branding region rendered above the navigation.',
-      },
-      {
         name: 'footer',
         reason: 'function-or-snippet',
         description: 'Optional footer region (e.g. user account, sign-out).',

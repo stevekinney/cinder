@@ -34,7 +34,6 @@
     label = 'Sidebar',
     mobileBreakpoint = SIDEBAR_MOBILE_BREAKPOINT,
     class: className,
-    brand: brandSnippet,
     navigation: navigationSnippet,
     footer: footerSnippet,
     'aria-label': _ariaLabelAttribute,
@@ -121,12 +120,6 @@
 </script>
 
 {#snippet sidebarContents(isMobile: boolean)}
-  {#if brandSnippet}
-    <div class="cinder-sidebar__brand">
-      {@render brandSnippet()}
-    </div>
-  {/if}
-
   {#if navigationSnippet}
     <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
          is an accessibility problem (screen readers announce a navigation landmark
