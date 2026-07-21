@@ -531,7 +531,6 @@ export function createBarModel(options: {
   assertValidTickCount('bar-chart', xAxis);
   assertValidTickCount('bar-chart', yAxis);
 
-  const geometry = createGeometry(width, height);
   const categories: NormalizedXValue[] = [];
   const seenCategories = new Set<string>();
   const categoryKinds = new Set<string>();
@@ -594,6 +593,14 @@ export function createBarModel(options: {
   }
 
   const sortedCategories = sortXValues(categories);
+  const categoryLabels = sortedCategories.map((category, index) =>
+    formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
+  );
+  const geometry = createGeometry(
+    width,
+    height,
+    orientation === 'horizontal' ? estimateHorizontalCategoryLabelMargin(categoryLabels) : 48,
+  );
   // Domain is computed from visible series only — same convention as cartesian
   // charts — so the value scale shrinks correctly when a series is hidden.
   const valueDomain = createPaddedDomain(
@@ -633,7 +640,7 @@ export function createBarModel(options: {
     const categoryPosition = categoryScale(category.key) ?? 0;
     return {
       categoryKey: category.key,
-      label: formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
+      label: categoryLabels[index] ?? category.label,
       x: orientation === 'vertical' ? categoryPosition + categoryScale.bandwidth() / 2 : -8,
       y:
         orientation === 'vertical'
@@ -818,11 +825,10 @@ export function legendVisible(legendPosition: ChartLegendPosition, seriesCount: 
   return legendPosition !== 'none' && seriesCount > 0;
 }
 
-function createGeometry(width: number, height: number): ChartGeometry {
+function createGeometry(width: number, height: number, marginLeft = 48): ChartGeometry {
   const marginTop = 16;
   const marginRight = 16;
   const marginBottom = 36;
-  const marginLeft = 48;
   return {
     plotWidth: Math.max(1, width - marginLeft - marginRight),
     plotHeight: Math.max(1, height - marginTop - marginBottom),
@@ -831,6 +837,14 @@ function createGeometry(width: number, height: number): ChartGeometry {
     marginBottom,
     marginLeft,
   };
+}
+
+function estimateHorizontalCategoryLabelMargin(labels: string[]): number {
+  const longestLabel = labels.reduce(
+    (longest, label) => (label.length > longest.length ? label : longest),
+    '',
+  );
+  return Math.max(48, longestLabel.length * 8 + 16);
 }
 
 function normalizeNumericValue(

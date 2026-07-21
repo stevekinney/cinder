@@ -670,6 +670,22 @@ describe('createBarModel', () => {
     expect(model.bars).toHaveLength(0);
   });
 
+  test('expands the horizontal label margin for long category labels', () => {
+    const model = createBarModel({
+      data: [{ status: 'Completed', count: 9 }],
+      categoryKey: 'status',
+      series: [{ id: 'count', label: 'Count', valueKey: 'count' }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'horizontal',
+      mode: 'grouped',
+    });
+
+    expect(model.geometry.marginLeft).toBeGreaterThan(48);
+    expect(model.geometry.marginLeft + (model.categoryTicks[0]?.x ?? 0)).toBeGreaterThan(0);
+  });
+
   test('stacked domain reflects visible series only', () => {
     const data = [
       { month: 'Jan', a: 10, b: 100 },
