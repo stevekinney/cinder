@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
+import { createRawSnippet } from 'svelte';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   RunStep,
@@ -987,6 +988,24 @@ describe('selection', () => {
     expect(selectedStepIds).toEqual([]);
     await fireEvent.click(stepRowByPath(container, 'inspect') as HTMLElement);
     expect(selectedStepIds).toEqual(['inspect']);
+  });
+
+  test('does not select a row when a labeled child control is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const childControl = createRawSnippet(() => ({
+      render: () => '<label><input type="checkbox" /> Retry</label>',
+      setup: () => {},
+    }));
+    const { container, getByText } = render(RunStepTimeline, {
+      steps: [runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+      children: childControl,
+    });
+
+    await fireEvent.click(getByText('Retry'));
+    expect(selectedStepIds).toEqual([]);
+    await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
+    expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
   test('fires onStepSelect when a nested child step row is clicked', async () => {
