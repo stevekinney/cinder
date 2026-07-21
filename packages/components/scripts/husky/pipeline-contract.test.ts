@@ -65,10 +65,11 @@ function chainIncludesScript(script: string, name: string): boolean {
 describe('pipeline contract: commit stays cheap', () => {
   it('pre-commit.ts dispatches no test job (source-based: entry script, never imported)', async () => {
     const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-commit.ts')).text());
-    // Tests are guaranteed at pre-push (scoped, dependency-closure aware) and in
-    // CI, so re-adding a test dispatch to pre-commit would regress commit time
-    // from seconds to minutes for every developer on every commit. See
-    // docs/validation-topology.md.
+    // Tests are owned entirely by PR CI and main-green now -- pre-push runs no
+    // local test dispatch either (see the "push stays thin and fails open"
+    // describe block below). Re-adding a test dispatch to pre-commit would
+    // regress commit time from seconds to minutes for every developer on every
+    // commit. See docs/validation-topology.md.
     expect(source).not.toMatch(/script:\s*'test'/);
     expect(source).not.toMatch(/'test:changed'/);
     // The only literal job `script` pre-commit constructs is 'typecheck'.

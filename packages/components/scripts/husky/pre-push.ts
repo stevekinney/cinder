@@ -95,24 +95,35 @@ if (parsed.updates.length === 0) {
  * so its wording must not claim CI will catch it. Any failure reading the
  * diff here (shallow clone, missing `origin/main`, no network) is swallowed
  * rather than escalated — this must never block or slow down the push.
+ *
+ * Diffs against the pushed ref's `localSha`, NOT `HEAD` — the checked-out
+ * working-tree HEAD is not guaranteed to be the ref actually being pushed
+ * (a push can name a different local ref, or push several refs at once).
+ * A multi-ref push has no single unambiguous ref to hint about, so the hint
+ * is skipped entirely rather than guessing.
  */
 try {
-  const diff = await $`git diff --name-only origin/main...HEAD`.cwd(REPO_ROOT).nothrow().quiet();
-  if (diff.exitCode === 0) {
-    const files = diff.stdout.toString().split('\n').filter(Boolean);
-    const touchesPublishedSource = files.some(
-      (file) =>
-        (file.startsWith('packages/components/src/') || file.startsWith('packages/chat/src/')) &&
-        !file.endsWith('.test.ts'),
-    );
-    const hasChangeset = files.some(
-      (file) => file.startsWith('.changeset/') && file.endsWith('.md'),
-    );
-    if (touchesPublishedSource && !hasChangeset) {
-      warning(
-        'No changeset detected for published-package source changes. Nothing in CI checks that ' +
-          'one exists (only that existing changesets use the right bump level) — add one now if this change needs a release note.',
+  if (parsed.updates.length === 1) {
+    const localSha = parsed.updates[0]?.localSha;
+    const diff = localSha
+      ? await $`git diff --name-only origin/main...${localSha}`.cwd(REPO_ROOT).nothrow().quiet()
+      : undefined;
+    if (diff !== undefined && diff.exitCode === 0) {
+      const files = diff.stdout.toString().split('\n').filter(Boolean);
+      const touchesPublishedSource = files.some(
+        (file) =>
+          (file.startsWith('packages/components/src/') || file.startsWith('packages/chat/src/')) &&
+          !file.endsWith('.test.ts'),
       );
+      const hasChangeset = files.some(
+        (file) => file.startsWith('.changeset/') && file.endsWith('.md'),
+      );
+      if (touchesPublishedSource && !hasChangeset) {
+        warning(
+          'No changeset detected for published-package source changes. Nothing in CI checks that ' +
+            'one exists (only that existing changesets use the right bump level) — add one now if this change needs a release note.',
+        );
+      }
     }
   }
 } catch {
