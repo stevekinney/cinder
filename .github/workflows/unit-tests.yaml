@@ -144,7 +144,7 @@ jobs:
 
   unit-tests:
     needs: scope
-    # `always()` so a `scope` job FAILURE (e.g. `changed-components.ts`
+    # `!cancelled()` so a `scope` job FAILURE (e.g. `changed-components.ts`
     # erroring) still runs this job instead of the default GitHub behavior —
     # silently SKIPPING every job that `needs` a failed job. `unit-tests` is
     # a required status check (see docs/validation-topology.md's "Branch
@@ -155,10 +155,18 @@ jobs:
     # lint/aggregator/components:check steps don't read them at all; the
     # final scoped-test step falls back to the full suite when
     # `needs.scope.outputs.mode` isn't `'filtered'`), so running unconditionally
-    # is safe, not merely safe-ish. Only skips if `scope` itself was
-    # cancelled (normally because a newer push is already superseding this
-    # whole run via the concurrency group above).
-    if: always() && needs.scope.result != 'cancelled'
+    # is safe, not merely safe-ish.
+    #
+    # Deliberately `!cancelled()`, NOT `always()`: GitHub re-evaluates a
+    # job's `if:` when the workflow is cancelled (e.g. a newer push
+    # superseding this run via the concurrency group above), and a truthy
+    # `always()` condition is documented to keep the job from being
+    # cancelled — so an `always()`-gated required job would keep burning its
+    # full runner budget on an already-superseded run instead of stopping.
+    # `!cancelled()` gets the same "run despite scope failing" behavior
+    # (it's true for both success and failure, just not cancellation)
+    # without disabling cancellation.
+    if: "!cancelled()"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -308,10 +316,33 @@ jobs:
       # "Build workspace (affected)" step above (turbo builds them
       # transparently to satisfy cinder's `^build` dependency, filter or not),
       # so a skip here is a cache hit, not a rebuild.
-      - name: Run private package unit tests (affected)
+      - name: Run private package unit tests (git-range scoped on PRs)
+        # Deliberately NOT `--filter=X --filter=Y --filter=Z --affected`:
+        # turbo combines multiple --filter flags as a UNION, and --affected is
+        # itself shorthand for a repo-wide `--filter=...[origin/main...HEAD]`
+        # — appending it to the three package filters doesn't intersect with
+        # them, it unions in every OTHER affected workspace too (so a
+        # cinder-only PR would also run cinder's/chat's full `test` task here,
+        # duplicating the scoped test:changed step below and risking this
+        # job's 20-minute timeout on a large unrelated diff).
+        #
+        # Each `<package>...[<range>]` filter is already its own
+        # package+git-range intersection ("select this package if it OR its
+        # dependencies changed in that range" — verified against turbo 2.x
+        # docs and a local --dry=json run: an unrelated diff selects zero
+        # tasks, a diff touching only @cinder/diff selects diff AND its
+        # dependents markdown/commentary, exactly the reverse-dependency
+        # closure the old pre-push dispatch covered). Unioning three of these
+        # pre-intersected filters is exactly "run each of these three if it's
+        # affected", nothing more.
         env:
-          AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-        run: bunx turbo run test --filter=@cinder/diff --filter=@cinder/markdown --filter=@cinder/commentary $AFFECTED
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            bunx turbo run test --filter="@cinder/diff...[origin/${BASE_REF}...HEAD]" --filter="@cinder/markdown...[origin/${BASE_REF}...HEAD]" --filter="@cinder/commentary...[origin/${BASE_REF}...HEAD]"
+          else
+            bunx turbo run test --filter=@cinder/diff --filter=@cinder/markdown --filter=@cinder/commentary
+          fi
 
       - name: Run Chat unit tests with coverage (affected)
         env:
@@ -320,10 +351,11 @@ jobs:
 
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
-        # their dependents. Sibling @cinder/* package suites are intentionally
-        # NOT run here — they keep their authoritative coverage in `main-green`
-        # (and the ~11-min playground suite would otherwise tax every PR).
-        # Per-package dependency scoping is the deferred follow-up.
+        # their dependents. `@cinder/diff`/`@cinder/markdown`/`@cinder/commentary`
+        # have their own git-range-scoped step above now; `@cinder/playground`
+        # and `@cinder/testing` still keep their authoritative coverage in
+        # `main-green` only (the ~11-min playground suite would otherwise tax
+        # every PR) — that part of the per-package scoping is still deferred.
         #
         # `needs.scope.outputs.components` can carry an extracted package's
         # slugs (e.g. @lostgradient/chat's `chat*` family — already fully
@@ -345,7 +377,7 @@ jobs:
           # explicit signal rather than doing its own git diff.)
           #
           # Explicitly defaults to `full` when `scope` did not succeed (see
-          # this job's `if: always() && needs.scope.result != 'cancelled'`) —
+          # this job's `if: "!cancelled()"`) —
           # `test-changed.ts` treats ONLY the literal string `full` as
           # full-suite mode, so leaving this as the bare (and on a scope
           # failure, empty) `needs.scope.outputs.mode` would make it fall

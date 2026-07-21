@@ -280,19 +280,28 @@ jobs:
 
   typecheck:
     needs: scope
-    # `always()` + explicit result/output checks, NOT the bare
+    # `!cancelled()` + explicit result/output checks, NOT the bare
     # `needs.scope.outputs.relevant == 'true'` this used to read: by default a
     # job with `needs: scope` is silently SKIPPED if `scope` fails for ANY
     # reason (e.g. `changed-components.ts` erroring before the "Decide
     # whether this diff is browser-test relevant" step even runs) — and a
     # skipped required check satisfies branch protection. That would be a
     # fail-OPEN hole: an unhealthy `scope` job would silently let a real
-    # regression merge instead of blocking it. `always()` forces this
-    # condition to evaluate regardless of `scope`'s outcome, so a `scope`
-    # failure runs this job (fail safe) instead of skipping it (fail open) —
-    # only a scope job that SUCCEEDED and explicitly determined the diff
-    # irrelevant skips this one.
-    if: always() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')
+    # regression merge instead of blocking it. `!cancelled()` forces this
+    # condition to evaluate regardless of `scope`'s success/failure, so a
+    # `scope` failure runs this job (fail safe) instead of skipping it (fail
+    # open) — only a scope job that SUCCEEDED and explicitly determined the
+    # diff irrelevant skips this one.
+    #
+    # Deliberately `!cancelled()`, NOT `always()`: GitHub documents that a
+    # truthy `always()` condition keeps a job from being cancelled even when
+    # the workflow is cancelled (e.g. a newer push superseding this run via
+    # the `browser-tests-${{ github.ref }}` concurrency group) — so an
+    # `always()`-gated Playwright/typecheck job would keep burning its full
+    # runner budget on an already-superseded run. `!cancelled()` gives the
+    # same "run despite scope failing" behavior without disabling
+    # cancellation.
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
     # Runs the workspace typecheck against a fresh checkout — explicitly does
     # NOT pre-build cinder. Catches the regression class where `cinder/<name>`
     # imports stop resolving via the package's exports map (svelte/types
@@ -325,12 +334,17 @@ jobs:
 
   playwright:
     needs: scope
-    # See the `typecheck` job's comment: `always()` + explicit result/output
-    # checks so a `scope` job FAILURE runs this job (fail safe) instead of
-    # silently skipping it (fail open, since a skipped required check still
-    # satisfies branch protection). Only a `scope` job that succeeded and
-    # explicitly determined the diff irrelevant skips this one.
-    if: always() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')
+    # See the `typecheck` job's comment: `!cancelled()` + explicit
+    # result/output checks so a `scope` job FAILURE runs this job (fail safe)
+    # instead of silently skipping it (fail open, since a skipped required
+    # check still satisfies branch protection), while still respecting
+    # cancellation from a superseding push — unlike `always()`, which GitHub
+    # documents as keeping a job from being cancelled, and would otherwise
+    # let an obsolete 30-minute Playwright run keep consuming its full
+    # runner budget after a newer push already superseded it. Only a `scope`
+    # job that succeeded and explicitly determined the diff irrelevant skips
+    # this one.
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
