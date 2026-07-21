@@ -40,6 +40,7 @@ on:
       - 'bun.lockb'
       - 'bunfig.toml'
       - 'packages/*/bunfig.toml'
+      - 'turbo.json'
       - '.npmrc'
       - 'tsconfig*.json'
       - '!packages/**/*.md'
@@ -199,11 +200,21 @@ jobs:
             exit 0
           fi
 
-          # Mirrors, in code, the path list this workflow used to declare at
-          # `on.pull_request.paths` (last-match-wins, same as GitHub's real
-          # path-filter algorithm — a later pattern overrides an earlier one,
-          # so a `!`-prefixed negation excludes a path only if nothing after
-          # it re-includes it).
+          # Reimplements, in code, the path list this workflow used to declare
+          # at `on.pull_request.paths` (last-match-wins, following the same
+          # ordering rule as GitHub's real path-filter algorithm — a later
+          # pattern overrides an earlier one, so a `!`-prefixed negation
+          # excludes a path only if nothing after it re-includes it).
+          #
+          # This is a best-effort SUPERSET of GitHub's real path-filter
+          # matching, not an exact mirror: bash's `[[ str == pattern ]]` gives
+          # `*` and `**` identical semantics (both cross `/`), whereas
+          # GitHub's own filter treats a single `*` as single-segment and only
+          # `**` as crossing directories. That divergence only ever makes this
+          # check MORE inclusive than GitHub's real filter would be (matching
+          # a few extra deeply-nested paths for a `packages/*/…` pattern) —
+          # which fails safe toward running `typecheck`/`playwright`, never
+          # toward skipping them incorrectly.
           PATTERNS=(
             'packages/components/src/**'
             'packages/components/components.json'
@@ -225,6 +236,7 @@ jobs:
             'bun.lockb'
             'bunfig.toml'
             'packages/*/bunfig.toml'
+            'turbo.json'
             '.npmrc'
             'tsconfig*.json'
             '!packages/**/*.md'

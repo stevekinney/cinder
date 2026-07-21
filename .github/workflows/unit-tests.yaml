@@ -325,8 +325,16 @@ jobs:
           # carries the scoped slug list. (The checkout is full-history as of the
           # turbo --affected adoption above, but test-changed.ts still uses the
           # explicit signal rather than doing its own git diff.)
-          CINDER_TEST_MODE: ${{ needs.scope.outputs.mode }}
-          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.cinder_components || '' }}
+          #
+          # Explicitly defaults to `full` when `scope` did not succeed (see
+          # this job's `if: always() && needs.scope.result != 'cancelled'`) —
+          # `test-changed.ts` treats ONLY the literal string `full` as
+          # full-suite mode, so leaving this as the bare (and on a scope
+          # failure, empty) `needs.scope.outputs.mode` would make it fall
+          # through to its own local `git diff` instead of the intended
+          # fail-safe full run.
+          CINDER_TEST_MODE: ${{ needs.scope.result == 'success' && needs.scope.outputs.mode || 'full' }}
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.result == 'success' && needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.cinder_components || '' }}
         run: |
           if [ "$CINDER_TEST_MODE" = "filtered" ] && [ -z "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Filtered scope has no @lostgradient/cinder components (changes belong to another package, e.g. chat) — skipping cinder-scoped unit tests."
