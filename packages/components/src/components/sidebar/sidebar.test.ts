@@ -175,16 +175,42 @@ describe('Sidebar (desktop / inline aside)', () => {
         props: { mobileBreakpoint: '64rem', navigation: listSnippet('items') },
       });
       const aside = container.querySelector('aside');
-      const style = container.querySelector('style[data-cinder-sidebar-breakpoint-style]');
       expectQueryWasUsed(mock, '(max-width: 64rem)');
       expect(aside?.getAttribute('data-cinder-sidebar-mobile-breakpoint')).toBe('64rem');
       expect(aside?.getAttribute('style')).toContain('--cinder-sidebar-mobile-breakpoint: 64rem;');
+      expect(container.querySelector('style[data-cinder-sidebar-breakpoint-style]')).toBeNull();
+    } finally {
+      mock.restore();
+    }
+  });
+
+  test('custom SSR fallback style is gated to the no-matchMedia path', () => {
+    const hadMatchMedia = 'matchMedia' in window;
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+    try {
+      const { container } = render(Sidebar, {
+        props: { mobileBreakpoint: '64rem', navigation: listSnippet('items') },
+      });
+      const style = container.querySelector('style[data-cinder-sidebar-breakpoint-style]');
       expect(style?.textContent).toContain('@media (max-width: 64rem)');
       expect(style?.textContent).toContain(
         '.cinder-sidebar--desktop[data-cinder-sidebar-mobile-breakpoint="64rem"]',
       );
     } finally {
-      mock.restore();
+      if (hadMatchMedia) {
+        Object.defineProperty(window, 'matchMedia', {
+          value: originalMatchMedia,
+          configurable: true,
+          writable: true,
+        });
+      } else {
+        delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
+      }
     }
   });
 
@@ -296,6 +322,20 @@ describe('Sidebar SSR responsive fallback', () => {
       /\bclass="(?=[^"]*\bcinder-sidebar\b)(?=[^"]*\bcinder-sidebar--desktop\b)[^"]*"/,
     );
     expect(html).toContain('data-cinder-ssr-mobile-fallback');
+  });
+
+  test('server output includes custom mobile fallback CSS only when the breakpoint changes', async () => {
+    const defaultHtml = await renderToServerHtml(SIDEBAR_SOURCE, {
+      label: 'Workspace',
+    });
+    const customHtml = await renderToServerHtml(SIDEBAR_SOURCE, {
+      label: 'Workspace',
+      mobileBreakpoint: '64rem',
+    });
+
+    expect(defaultHtml).not.toContain('data-cinder-sidebar-breakpoint-style');
+    expect(customHtml).toContain('data-cinder-sidebar-breakpoint-style');
+    expect(customHtml).toContain('@media (max-width: 64rem)');
   });
 
   test('component CSS hides only the SSR fallback on mobile first paint', async () => {
@@ -568,7 +608,7 @@ describe('Sidebar (mobile / drawer)', () => {
     expect(wrapper).toBeNull();
   });
 
-  test('custom mobile breakpoint controls the MediaQuery and mobile wrapper presentation', () => {
+  test('custom mobile breakpoint controls the media query and mobile wrapper presentation', () => {
     const customQuery = '(max-width: 64rem)';
     mock = installMatchMediaMock(true, customQuery);
     const { container } = render(Sidebar, {

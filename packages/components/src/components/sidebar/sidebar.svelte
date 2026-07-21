@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { SidebarProps } from './sidebar.types.ts';
-  import { MediaQuery } from 'svelte/reactivity';
 
   import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -70,11 +69,26 @@
 
   // The fully-parenthesized form is required — `window.matchMedia` rejects
   // bare media feature expressions on Firefox and Safari.
-  // Keep the fallback explicit for SSR-contract test environments that resolve
-  // the client MediaQuery build while `window.matchMedia` is unavailable.
+  // Keep the fallback explicit for SSR-contract test environments where
+  // `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const usesSsrResponsiveFallback = !hasMatchMedia;
-  const mobile = $derived(hasMatchMedia ? new MediaQuery(mobileMediaQuery, false).current : false);
+  let mobile = $state(false);
+  $effect(() => {
+    if (!hasMatchMedia) return;
+    const list = window.matchMedia(mobileMediaQuery);
+    const update = () => {
+      mobile = list.matches;
+    };
+    update();
+    list.addEventListener('change', update);
+    return () => {
+      list.removeEventListener('change', update);
+    };
+  });
+  const rendersCustomResponsiveFallbackStyle = $derived(
+    usesSsrResponsiveFallback && validatedMobileBreakpoint !== SIDEBAR_MOBILE_BREAKPOINT,
+  );
 
   const context: SidebarContextValue = {
     get collapsed() {
@@ -114,9 +128,11 @@
   {/if}
 {/snippet}
 
-<svelte:element this={'style'} data-cinder-sidebar-breakpoint-style>
-  {responsiveFallbackCss}
-</svelte:element>
+{#if rendersCustomResponsiveFallbackStyle}
+  <svelte:element this={'style'} data-cinder-sidebar-breakpoint-style>
+    {responsiveFallbackCss}
+  </svelte:element>
+{/if}
 
 {#if mobile}
   <Drawer
