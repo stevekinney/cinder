@@ -1,7 +1,9 @@
 name: release
 
-# Changesets-driven release pipeline for the public `@lostgradient/cinder` and
-# `@lostgradient/chat` npm packages.
+# Changesets-driven release pipeline for the public `@lostgradient/markdown`,
+# `@lostgradient/cinder`, and `@lostgradient/chat` npm packages. Publish order
+# follows the peer DAG: markdown → cinder → chat (markdown has no peers on
+# the other two; chat peers on cinder).
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
@@ -115,6 +117,10 @@ jobs:
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bunx playwright install --with-deps chromium
 
+      - name: Validate Markdown package artifact
+        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
+        run: bun run --filter=@lostgradient/markdown validate:consumer
+
       - name: Validate Cinder package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/cinder validate:consumer
@@ -185,6 +191,10 @@ jobs:
 
           gh run watch "$main_green_run_id" --exit-status --interval 30
 
+      - name: Check validated Markdown package artifact budget
+        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/markdown package:weight:check -- --existing-tarball
+
       - name: Check validated Cinder package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
@@ -207,8 +217,22 @@ jobs:
       #
       # If this path breaks and a token-based emergency publish is required, use
       # .github/workflows/release-manual.yaml instead (see CONTRIBUTING.md).
-      # Cinder must publish first: Chat's peer contract starts at the Cinder
-      # minor released by the same Version Packages pull request.
+      # Publish order follows the peer DAG: Markdown has no internal peers and
+      # publishes first; Cinder next (Chat's peer contract starts at the
+      # Cinder minor released by the same Version Packages pull request).
+      #
+      # NOTE: the FIRST publish of @lostgradient/markdown requires a one-time manual
+      # bootstrap — npm Trusted Publishing cannot mint a brand-new package name
+      # (see the "First-publish bootstrap" note in
+      # docs/decisions/package-boundaries.md). Until that bootstrap has run via
+      # release-manual.yaml's token path and the Trusted Publisher is
+      # configured on npmjs.com, this step will fail with ENEEDAUTH.
+      - name: Publish validated Markdown package artifact to npm
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/markdown publish:release -- --skip-validation
+        env:
+          NPM_CONFIG_PROVENANCE: 'false'
+
       - name: Publish validated Cinder package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder publish:release -- --skip-validation
@@ -223,6 +247,10 @@ jobs:
 
       # Diagnostic dry-run: publish the same staged tarball that
       # validate:consumer installs into the fixture apps.
+      - name: Publish Markdown (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        run: bun run --filter=@lostgradient/markdown publish:release -- --dry-run --skip-validation
+
       - name: Publish Cinder (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation

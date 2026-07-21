@@ -381,7 +381,7 @@ export function resolveTemplatePlaceholders(
  *
  * DEP-625: This function provides a secure rendering pipeline that:
  * 1. Resolves placeholders using the hardened getNestedValue() (blocks prototype pollution)
- * 2. Converts markdown to HTML using @cinder/markdown's sanitized pipeline
+ * 2. Converts markdown to HTML using @lostgradient/markdown's sanitized pipeline
  * 3. Sanitizes output via rehype-sanitize (blocks XSS attacks)
  *
  * Security guarantees:

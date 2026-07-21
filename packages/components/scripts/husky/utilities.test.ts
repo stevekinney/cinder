@@ -51,8 +51,7 @@ const pkg = (
 });
 
 const fakePackages: readonly WorkspacePackage[] = [
-  pkg('@cinder/diff', 'packages/diff/'),
-  pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
+  pkg('@lostgradient/markdown', 'packages/markdown/'),
   pkg('@lostgradient/cinder', 'packages/components/', [], { hasTest: false }),
 ];
 
@@ -383,27 +382,30 @@ describe('isSourceFile', () => {
 describe('getTouchedPackages', () => {
   it('returns the packages whose dir prefix matches staged source files', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/src/index.ts',
-      'packages/markdown/src/parser.ts',
+      'packages/markdown/src/index.ts',
+      'packages/components/src/parser.ts',
     ]);
-    expect(touched.map((p) => p.name).toSorted()).toEqual(['@cinder/diff', '@cinder/markdown']);
+    expect(touched.map((p) => p.name).toSorted()).toEqual([
+      '@lostgradient/cinder',
+      '@lostgradient/markdown',
+    ]);
   });
 
   it('ignores docs-only staged files', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/README.md',
-      'packages/diff/CHANGELOG.md',
+      'packages/markdown/README.md',
+      'packages/markdown/CHANGELOG.md',
     ]);
     expect(touched).toEqual([]);
   });
 
   it('mixes source and docs files correctly', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/README.md',
-      'packages/diff/src/index.ts',
-      'packages/markdown/docs/notes.md',
+      'packages/markdown/README.md',
+      'packages/markdown/src/index.ts',
+      'packages/components/docs/notes.md',
     ]);
-    expect(touched.map((p) => p.name)).toEqual(['@cinder/diff']);
+    expect(touched.map((p) => p.name)).toEqual(['@lostgradient/markdown']);
   });
 
   it('returns empty when no staged file matches any package', () => {
@@ -413,11 +415,11 @@ describe('getTouchedPackages', () => {
 
   it('does not double-report a package with multiple staged files', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/src/a.ts',
-      'packages/diff/src/b.ts',
-      'packages/diff/src/c.ts',
+      'packages/markdown/src/a.ts',
+      'packages/markdown/src/b.ts',
+      'packages/markdown/src/c.ts',
     ]);
-    expect(touched.map((p) => p.name)).toEqual(['@cinder/diff']);
+    expect(touched.map((p) => p.name)).toEqual(['@lostgradient/markdown']);
   });
 });
 
@@ -463,8 +465,7 @@ describe('loadWorkspacePackages', () => {
   it('reads every packages/*/package.json and exposes script presence', async () => {
     const packages = await loadWorkspacePackages();
     const names = packages.map((p) => p.name).toSorted();
-    expect(names).toContain('@cinder/diff');
-    expect(names).toContain('@cinder/markdown');
+    expect(names).toContain('@lostgradient/markdown');
     expect(names).toContain('@cinder/commentary');
     expect(names).toContain('@cinder/playground');
     expect(names).toContain('@cinder/testing');
@@ -489,8 +490,6 @@ describe('loadWorkspacePackages', () => {
     expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/chat');
     // Chat composes Cinder primitives and utilities through the public package.
     expect([...byName.get('@lostgradient/chat')!.dependencies]).toContain('@lostgradient/cinder');
-    // @cinder/markdown depends on @cinder/diff.
-    expect([...byName.get('@cinder/markdown')!.dependencies]).toContain('@cinder/diff');
     // cinder dev-depends on @cinder/testing.
     expect([...byName.get('@lostgradient/cinder')!.dependencies]).toContain('@cinder/testing');
     // Every dependency name resolves to another workspace package (external

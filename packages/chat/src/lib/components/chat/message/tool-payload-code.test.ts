@@ -26,7 +26,7 @@ describe('chat tool-payload code block', () => {
 
   test('does not import the rich markdown rendering pipeline', () => {
     expect(source).not.toContain('@lostgradient/cinder/markdown/rendering');
-    expect(source).not.toContain('@cinder/markdown/rendering');
+    expect(source).not.toContain('@lostgradient/markdown/rendering');
   });
 
   test('does not reintroduce a CinderProvider wrapper', () => {

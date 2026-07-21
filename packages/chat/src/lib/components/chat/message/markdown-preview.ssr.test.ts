@@ -4,7 +4,7 @@
  * Chat markdown-preview SSR-safety contract.
  *
  * The chat surface renders message bodies through `markdown-preview.svelte`,
- * which is where `@cinder/markdown`'s rendering pipeline (shiki/rehype/katex)
+ * which is where `@lostgradient/markdown`'s rendering pipeline (shiki/rehype/katex)
  * enters the component tree. That pipeline is SSR-safe at module-evaluation
  * time (see `packages/markdown/src/ssr-import.test.ts`), so the only remaining
  * SSR concern is that the *runtime* render — which calls

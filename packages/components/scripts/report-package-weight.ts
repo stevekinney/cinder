@@ -35,6 +35,12 @@ type PackageWeightBudgets = {
 };
 
 const budgetsByPackage: Record<string, PackageWeightBudgets> = {
+  '@lostgradient/markdown': {
+    packedBytes: 500_000,
+    unpackedBytes: 2_000_000,
+    fileCount: 300,
+    largestEntrypointBytes: 500_000,
+  },
   '@lostgradient/cinder': {
     packedBytes: 8_000_000,
     unpackedBytes: 32_000_000,

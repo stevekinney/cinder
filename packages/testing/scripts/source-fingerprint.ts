@@ -25,9 +25,8 @@ export const FINGERPRINT_SOURCE_DIRECTORIES = [
   // The playground server prebuilds these upstream workspaces plus the public
   // Cinder and Chat packages (see `playgroundBundleDependencyPackages` in
   // start-server.ts). The public packages already have source coverage above;
-  // these three private source trees must be listed explicitly too, or a running
+  // these upstream source trees must be listed explicitly too, or a running
   // server built from stale upstream code looks fresh.
-  'packages/diff/src',
   'packages/markdown/src',
   'packages/commentary/src',
 ] as const;

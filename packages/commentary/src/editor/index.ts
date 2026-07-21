@@ -7,7 +7,7 @@
  *
  * Formerly `@cinder/editor`'s package root. That package split when it was
  * dissolved (see `docs/decisions/package-boundaries.md`): the headless
- * template-placeholder trio moved to `@cinder/markdown`'s `templates/`
+ * template-placeholder trio moved to `@lostgradient/markdown`'s `templates/`
  * directory, and the ProseMirror/Milkdown integration moved here. This
  * module re-composes both halves into the same combined surface the old
  * `@cinder/editor` package root exported, so `@lostgradient/cinder`'s
@@ -101,21 +101,21 @@ export {
   type ShortcutDefinition,
 } from './keymap-plugin.js';
 
-// Template placeholders (DEP-582, DEP-625) — headless, now owned by @cinder/markdown
+// Template placeholders (DEP-582, DEP-625) — headless, now owned by @lostgradient/markdown
 export {
   buildPlaceholderCandidatesFromJsonSchema,
   isBlockedSegment,
   parsePlaceholderTokens,
   resolveTemplatePlaceholders,
   validatePlaceholderTokens,
-} from '@cinder/markdown/templates/template-placeholders';
+} from '@lostgradient/markdown/templates/template-placeholders';
 
 // Template rendering (DEP-625)
-// Not re-exported here to avoid loading heavy @cinder/markdown pipeline for lightweight placeholder operations
-// Import from '@cinder/markdown/templates/template-render' instead
+// Not re-exported here to avoid loading heavy @lostgradient/markdown pipeline for lightweight placeholder operations
+// Import from '@lostgradient/markdown/templates/template-render' instead
 
-// Placeholder security (DEP-625) — headless, now owned by @cinder/markdown
-export { RESERVED_SEGMENTS } from '@cinder/markdown/templates/placeholder-security';
+// Placeholder security (DEP-625) — headless, now owned by @lostgradient/markdown
+export { RESERVED_SEGMENTS } from '@lostgradient/markdown/templates/placeholder-security';
 
 // Template placeholder plugins (DEP-583)
 export {
@@ -137,4 +137,4 @@ export type {
   PlaceholderValidationIssue,
   PlaceholderValidationResult,
   PlaceholderValueKind,
-} from '@cinder/markdown/templates/types';
+} from '@lostgradient/markdown/templates/types';

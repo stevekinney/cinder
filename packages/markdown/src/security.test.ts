@@ -16,8 +16,8 @@
  * - Round-trip behavior is predictable
  */
 
-import { parse, serialize } from '@cinder/markdown/pipeline';
-import { isSafeUrl, sanitizeUrl } from '@cinder/markdown/utilities/safe-url';
+import { parse, serialize } from '@lostgradient/markdown/pipeline';
+import { isSafeUrl, sanitizeUrl } from '@lostgradient/markdown/utilities/safe-url';
 import { describe, expect, it } from 'bun:test';
 
 describe('URL Safety - Protocol Attacks', () => {

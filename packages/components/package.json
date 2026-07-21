@@ -6379,30 +6379,6 @@
       "import": "./src/editor/test-utilities.ts",
       "default": "./dist/editor/test-utilities.js"
     },
-    "./diff": {
-      "types": "./dist/diff/index.d.ts",
-      "browser": "./src/diff/index.ts",
-      "node": "./dist/server/diff/index.js",
-      "svelte": "./src/diff/index.ts",
-      "import": "./src/diff/index.ts",
-      "default": "./dist/diff/index.js"
-    },
-    "./diff/line-diff": {
-      "types": "./dist/diff/line-diff.d.ts",
-      "browser": "./src/diff/line-diff.ts",
-      "node": "./dist/server/diff/line-diff.js",
-      "svelte": "./src/diff/line-diff.ts",
-      "import": "./src/diff/line-diff.ts",
-      "default": "./dist/diff/line-diff.js"
-    },
-    "./diff/types": {
-      "types": "./dist/diff/types.d.ts",
-      "browser": "./src/diff/types.ts",
-      "node": "./dist/server/diff/types.js",
-      "svelte": "./src/diff/types.ts",
-      "import": "./src/diff/types.ts",
-      "default": "./dist/diff/types.js"
-    },
     "./experimental/json-viewer": {
       "types": "./dist/components/experimental/json-viewer/index.d.ts",
       "browser": "./src/components/experimental/json-viewer/index.ts",
@@ -6546,8 +6522,8 @@
   },
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@shikijs/engine-oniguruma": "^3.21.0",
-    "@shikijs/langs": "^3.21.0",
     "@shikijs/types": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
     "@types/hast": "^3.0.4",
@@ -6578,10 +6554,8 @@
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
     "@cinder/commentary": "workspace:*",
-    "@cinder/diff": "workspace:*",
-    "@cinder/markdown": "workspace:*",
     "@cinder/testing": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@lostgradient/markdown": "workspace:*",
     "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",

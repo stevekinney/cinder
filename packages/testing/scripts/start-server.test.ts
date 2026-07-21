@@ -88,8 +88,7 @@ describe('appendServerOutputBuffer', () => {
 describe('playground bundle dependency build preflight', () => {
   test('builds every workspace package the playground browser bundle resolves through dist', () => {
     expect(playgroundBundleDependencyBuildPackages()).toEqual([
-      '@cinder/diff',
-      '@cinder/markdown',
+      '@lostgradient/markdown',
       '@cinder/commentary',
       '@lostgradient/cinder',
       '@lostgradient/chat',
@@ -97,9 +96,9 @@ describe('playground bundle dependency build preflight', () => {
   });
 
   test('build arguments use Bun workspace filters', () => {
-    expect(playgroundBundleDependencyBuildArguments('@cinder/markdown')).toEqual([
+    expect(playgroundBundleDependencyBuildArguments('@lostgradient/markdown')).toEqual([
       'run',
-      '--filter=@cinder/markdown',
+      '--filter=@lostgradient/markdown',
       'build',
     ]);
   });
@@ -108,11 +107,11 @@ describe('playground bundle dependency build preflight', () => {
     const childProcess = {} as ChildProcess;
     const managedChildProcess = playgroundBundleDependencyBuildProcess(
       childProcess,
-      '@cinder/markdown',
+      '@lostgradient/markdown',
     );
 
     expect(managedChildProcess.childProcess).toBe(childProcess);
-    expect(managedChildProcess.name).toBe('@cinder/markdown build');
+    expect(managedChildProcess.name).toBe('@lostgradient/markdown build');
     expect(managedChildProcess.killProcessGroup).toBe(process.platform !== 'win32');
   });
 });

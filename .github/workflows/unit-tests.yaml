@@ -38,7 +38,6 @@ on:
       - 'packages/*/scripts/**'
       - 'packages/*/tsconfig*.json'
       - 'packages/commentary/src/**'
-      - 'packages/diff/src/**'
       - 'packages/markdown/src/**'
       - 'packages/playground/src/discover.ts'
       - 'packages/playground/src/examples/**'
@@ -303,24 +302,26 @@ jobs:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
         run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat $AFFECTED
 
-      # @cinder/diff, @cinder/markdown, and @cinder/commentary are bundled
-      # into @lostgradient/cinder but published nowhere on their own, so
-      # unlike @lostgradient/chat (covered below) and @lostgradient/cinder
-      # (covered by the scoped test:changed step further down) they had no
-      # dedicated CI test step of their own. Before pre-push was thinned to a
-      # fast, fail-open sanity check, its local dispatch covered these three
-      # on the pushing branch pre-merge; CI must own that entirely now (see
+      # @lostgradient/markdown and @cinder/commentary are bundled into
+      # @lostgradient/cinder (markdown is also independently published — see
+      # docs/decisions/package-boundaries.md Phase 2 — but still has no
+      # dedicated CI test step of its own beyond this one), so unlike
+      # @lostgradient/chat (covered below) and @lostgradient/cinder (covered
+      # by the scoped test:changed step further down) they had no dedicated CI
+      # test step of their own. Before pre-push was thinned to a fast,
+      # fail-open sanity check, its local dispatch covered these two on the
+      # pushing branch pre-merge; CI must own that entirely now (see
       # docs/validation-topology.md's "Push-layer inversion"). `--affected`
       # (via turbo, diffing against TURBO_SCM_BASE) makes this near-free when
-      # none of the three changed -- their `dist/` is already fresh from the
+      # neither changed -- their `dist/` is already fresh from the
       # "Build workspace (affected)" step above (turbo builds them
       # transparently to satisfy cinder's `^build` dependency, filter or not),
       # so a skip here is a cache hit, not a rebuild.
       - name: Run private package unit tests (git-range scoped on PRs)
-        # Deliberately NOT `--filter=X --filter=Y --filter=Z --affected`:
+        # Deliberately NOT `--filter=X --filter=Y --affected`:
         # turbo combines multiple --filter flags as a UNION, and --affected is
         # itself shorthand for a repo-wide `--filter=...[origin/main...HEAD]`
-        # — appending it to the three package filters doesn't intersect with
+        # — appending it to the two package filters doesn't intersect with
         # them, it unions in every OTHER affected workspace too (so a
         # cinder-only PR would also run cinder's/chat's full `test` task here,
         # duplicating the scoped test:changed step below and risking this
@@ -330,18 +331,18 @@ jobs:
         # package+git-range intersection ("select this package if it OR its
         # dependencies changed in that range" — verified against turbo 2.x
         # docs and a local --dry=json run: an unrelated diff selects zero
-        # tasks, a diff touching only @cinder/diff selects diff AND its
-        # dependents markdown/commentary, exactly the reverse-dependency
-        # closure the old pre-push dispatch covered). Unioning three of these
-        # pre-intersected filters is exactly "run each of these three if it's
-        # affected", nothing more.
+        # tasks, a diff touching only @lostgradient/markdown selects markdown AND
+        # its dependent commentary, exactly the reverse-dependency closure the
+        # old pre-push dispatch covered). Unioning two of these pre-intersected
+        # filters is exactly "run each of these two if it's affected",
+        # nothing more.
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            bunx turbo run test --filter="@cinder/diff...[origin/${BASE_REF}...HEAD]" --filter="@cinder/markdown...[origin/${BASE_REF}...HEAD]" --filter="@cinder/commentary...[origin/${BASE_REF}...HEAD]"
+            bunx turbo run test --filter="@lostgradient/markdown...[origin/${BASE_REF}...HEAD]" --filter="@cinder/commentary...[origin/${BASE_REF}...HEAD]"
           else
-            bunx turbo run test --filter=@cinder/diff --filter=@cinder/markdown --filter=@cinder/commentary
+            bunx turbo run test --filter=@lostgradient/markdown --filter=@cinder/commentary
           fi
 
       - name: Run Chat unit tests with coverage (affected)
@@ -351,7 +352,7 @@ jobs:
 
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
-        # their dependents. `@cinder/diff`/`@cinder/markdown`/`@cinder/commentary`
+        # their dependents. `@lostgradient/markdown`/`@cinder/commentary`
         # have their own git-range-scoped step above now; `@cinder/playground`
         # and `@cinder/testing` still keep their authoritative coverage in
         # `main-green` only (the ~11-min playground suite would otherwise tax

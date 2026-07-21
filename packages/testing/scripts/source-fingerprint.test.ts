@@ -82,10 +82,9 @@ describe('newestSourceMtimeMs', () => {
 
   test('includes the private upstream packages the playground bundle depends on', () => {
     // start-server.ts prebuilds and the playground server imports these
-    // packages (@cinder/diff, @cinder/markdown, @cinder/commentary). An edit
+    // packages (@lostgradient/markdown, @cinder/commentary). An edit
     // to one of them must move the fingerprint, or a running server built
     // from stale upstream code looks fresh.
-    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/diff/src');
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/markdown/src');
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/commentary/src');
   });
@@ -115,10 +114,10 @@ describe('newestSourceMtimeMs', () => {
     try {
       const playgroundSourceDirectory = join(repoRoot, 'packages/playground/src');
       const componentsSourceDirectory = join(repoRoot, 'packages/components/src');
-      const diffSourceDirectory = join(repoRoot, 'packages/diff/src');
+      const markdownSourceDirectory = join(repoRoot, 'packages/markdown/src');
       mkdirSync(playgroundSourceDirectory, { recursive: true });
       mkdirSync(componentsSourceDirectory, { recursive: true });
-      mkdirSync(diffSourceDirectory, { recursive: true });
+      mkdirSync(markdownSourceDirectory, { recursive: true });
 
       const playgroundFile = join(playgroundSourceDirectory, 'a.ts');
       writeFileSync(playgroundFile, 'a');
@@ -128,17 +127,17 @@ describe('newestSourceMtimeMs', () => {
       const baseline = newestSourceMtimeMs(repoRoot);
       expect(baseline).not.toBeNull();
 
-      // Editing @cinder/diff's source after the "baseline" server started
+      // Editing @lostgradient/markdown's source after the "baseline" server started
       // must be visible as a newer fingerprint input.
-      const diffFile = join(diffSourceDirectory, 'index.ts');
-      writeFileSync(diffFile, 'diff');
+      const markdownFile = join(markdownSourceDirectory, 'index.ts');
+      writeFileSync(markdownFile, 'markdown');
       const future = new Date(Date.now() + 60_000);
-      utimesSync(diffFile, future, future);
+      utimesSync(markdownFile, future, future);
 
       const afterUpstreamEdit = newestSourceMtimeMs(repoRoot);
       expect(afterUpstreamEdit).not.toBeNull();
       expect(afterUpstreamEdit! > baseline!).toBe(true);
-      expect(afterUpstreamEdit).toBe(statSync(diffFile).mtimeMs);
+      expect(afterUpstreamEdit).toBe(statSync(markdownFile).mtimeMs);
     } finally {
       rmSync(repoRoot, { recursive: true, force: true });
     }

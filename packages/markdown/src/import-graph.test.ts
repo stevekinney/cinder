@@ -2,7 +2,7 @@
  * Import-graph leanness guard.
  *
  * The bundle-bloat regression this protects against (the rendering pipeline
- * pulled in by every consumer of @cinder/markdown) is easy to re-introduce —
+ * pulled in by every consumer of @lostgradient/markdown) is easy to re-introduce —
  * one accidental `export *` or a barrel import across subpaths and the rendering
  * stack creeps back into diff-only consumers.
  *
@@ -118,19 +118,29 @@ function pickConditionTarget(entry: unknown): string | undefined {
 }
 
 /**
- * Resolve a workspace package subpath (e.g. `@cinder/markdown/diff/line-diff`)
+ * Resolve a workspace package subpath (e.g. `@lostgradient/markdown/diff/line-diff`)
  * to an absolute SOURCE file path via that package's `exports` map. Returns
  * undefined for non-workspace (external) packages — those are leaves we only
  * check by name.
+ *
+ * Workspace-ness is decided structurally rather than by a hardcoded scope
+ * prefix: every workspace package lives at `packages/<dir>`, where `<dir>` is
+ * the LAST path segment of its npm name (`@lostgradient/markdown` → `markdown`,
+ * `@cinder/commentary` → `commentary`). We try that directory and confirm its
+ * `package.json#name` matches the specifier's package name exactly, so an
+ * unrelated third-party scoped package sharing a leaf name can't false-positive
+ * as a workspace edge.
  */
 function resolveWorkspaceSubpath(specifier: string): string | undefined {
-  if (!specifier.startsWith('@cinder/')) return undefined;
-  const withoutScope = specifier.slice('@cinder/'.length);
-  const packageName = withoutScope.split('/')[0]!;
-  const subpath = withoutScope.slice(packageName.length); // '' or '/diff/line-diff'
-  const packageDir = join(PACKAGES_DIR, packageName);
+  if (!specifier.startsWith('@')) return undefined;
+  const segments = specifier.split('/');
+  const packageDirName = segments[1]; // '@scope/name/sub' → segments = ['@scope','name','sub']
+  if (packageDirName === undefined) return undefined;
+  const packageQualifiedName = `@${segments[0]!.slice(1)}/${packageDirName}`;
+  const subpath = specifier.slice(packageQualifiedName.length); // '' or '/diff/line-diff'
+  const packageDir = join(PACKAGES_DIR, packageDirName);
   const packageJson = readPackageJson(packageDir);
-  if (!packageJson?.exports) return undefined;
+  if (!packageJson?.exports || packageJson.name !== packageQualifiedName) return undefined;
 
   const exportKey = subpath === '' ? '.' : `.${subpath}`;
   const entry = packageJson.exports[exportKey];
@@ -191,7 +201,7 @@ function resolveRelative(importer: string, specifier: string): string | undefine
  *     this leanness guard exists to catch — they must be followed.
  *   - a `dynamic-import` is still a real bundle dependency (it ships in the
  *     artifact), so we treat it as reachable. This is also load-bearing for the
- *     sanity check: @cinder/markdown/rendering reaches `remark-math` /
+ *     sanity check: @lostgradient/markdown/rendering reaches `remark-math` /
  *     `rehype-katex` only via dynamic imports in render.ts. If a future Bun
  *     dropped dynamic imports from scanImports, the sanity check would fail
  *     loudly (rendering subpath stops reaching them) rather than silently
@@ -330,18 +340,25 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
         queue.push(next);
         continue;
       }
-      if (specifier.startsWith('@cinder/')) {
-        const next = resolveWorkspaceSubpath(specifier);
-        if (!next) {
-          throw new Error(
-            `Unresolvable workspace import "${specifier}" from "${file}". It does not map to a ` +
-              `declared export in the target package's package.json "exports". The traversal must ` +
-              `follow every @cinder/* edge; an internal deep import that bypasses exports (or a ` +
-              `missing export entry) could hide a rendering dependency. Declare the export or fix the import.`,
-          );
+      if (specifier.startsWith('@')) {
+        const packageDirName = specifier.split('/')[1];
+        const looksLikeWorkspacePackage =
+          packageDirName !== undefined && existsSync(join(PACKAGES_DIR, packageDirName));
+        if (looksLikeWorkspacePackage) {
+          const next = resolveWorkspaceSubpath(specifier);
+          if (!next) {
+            throw new Error(
+              `Unresolvable workspace import "${specifier}" from "${file}". It does not map to a ` +
+                `declared export in the target package's package.json "exports". The traversal must ` +
+                `follow every workspace-package edge; an internal deep import that bypasses exports (or ` +
+                `a missing export entry) could hide a rendering dependency. Declare the export or fix the import.`,
+            );
+          }
+          queue.push(next);
+          continue;
         }
-        queue.push(next);
-        continue;
+        // Not a workspace package directory — an external scoped npm package
+        // (e.g. `@shikijs/...`) — fall through and treat it as a leaf below.
       }
       // External (non-workspace) bare import — a graph leaf. We record its NAME
       // and flag it if forbidden, but do NOT traverse into node_modules. This
@@ -371,27 +388,27 @@ function assertLean(entrySubpath: string): void {
 
 describe('import-graph leanness', () => {
   describe('narrow subpaths (no rendering)', () => {
-    it('@cinder/markdown/diff/line-diff does not reach shiki/katex/rehype-katex', () => {
-      assertLean('@cinder/markdown/diff/line-diff');
+    it('@lostgradient/markdown/diff/line-diff does not reach shiki/katex/rehype-katex', () => {
+      assertLean('@lostgradient/markdown/diff/line-diff');
     });
   });
 
   describe('aggregate barrels (no rendering; unified allowed)', () => {
-    it('@cinder/markdown/pipeline does not reach shiki/katex/rehype-katex', () => {
-      assertLean('@cinder/markdown/pipeline');
+    it('@lostgradient/markdown/pipeline does not reach shiki/katex/rehype-katex', () => {
+      assertLean('@lostgradient/markdown/pipeline');
     });
 
-    it('@cinder/markdown/diff does not reach shiki/katex/rehype-katex', () => {
-      assertLean('@cinder/markdown/diff');
+    it('@lostgradient/markdown/diff does not reach shiki/katex/rehype-katex', () => {
+      assertLean('@lostgradient/markdown/diff');
     });
   });
 
   describe('bare root (no rendering reachable)', () => {
-    it('@cinder/markdown root does not reach rendering', () => {
+    it('@lostgradient/markdown root does not reach rendering', () => {
       // The root barrel re-exports diff + pipeline only. Whichever namespace a
       // consumer reaches into, the rendering graph must not be reachable from
       // the package entry.
-      assertLean('@cinder/markdown');
+      assertLean('@lostgradient/markdown');
     });
   });
 
@@ -402,8 +419,8 @@ describe('import-graph leanness', () => {
     // one of these (e.g. a dependency was renamed), this fails loudly and prompts
     // an update to FORBIDDEN_RENDERING_PACKAGES rather than silently weakening the
     // leanness guarantee.
-    it('@cinder/markdown/rendering reaches every rendering package', () => {
-      const { externalsReached } = reachFromSubpath('@cinder/markdown/rendering');
+    it('@lostgradient/markdown/rendering reaches every rendering package', () => {
+      const { externalsReached } = reachFromSubpath('@lostgradient/markdown/rendering');
       const reached = [...externalsReached];
       const missing = FORBIDDEN_RENDERING_PACKAGES.filter(
         (entry) => !reached.some((specifier) => matchesPackage(specifier, entry)),

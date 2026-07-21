@@ -3,9 +3,9 @@
  *
  * `bun pm pack` runs against the source `packages/components/package.json`,
  * which carries:
- *   - `devDependencies` on the four private `@cinder/*` workspace packages
- *     (PR 1 bundles their source into `dist/`; they must NOT appear in any
- *     published dep field).
+ *   - `devDependencies` on upstream workspace-only packages (`@lostgradient/markdown`,
+ *     `@cinder/commentary`, `@cinder/testing`) — cinder's build bundles their
+ *     source into `dist/`, so they must NOT appear in any published dep field.
  *   - `exports` entries for the 30 upstream re-export sub-paths whose
  *     `svelte` condition points at `./src/<pkg>/<subpath>.ts`. The published
  *     tarball does not ship `src/<pkg>/**`, so the `svelte` condition would
@@ -36,7 +36,11 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
-import { deriveUpstreamReexports, type UpstreamReexport } from './lib/derive-upstream-reexports.ts';
+import {
+  deriveUpstreamReexports,
+  UPSTREAM_PACKAGE_NAMES,
+  type UpstreamReexport,
+} from './lib/derive-upstream-reexports.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -121,6 +125,20 @@ async function fileHash(path: string): Promise<string> {
  * reference them in any dep field (`workspace:` protocol leaks into the
  * registry-installed manifest otherwise).
  */
+/**
+ * Upstream workspace-only packages whose `workspace:*` devDependency entries
+ * must never leak into the published `@lostgradient/cinder` manifest. Not every
+ * `@cinder/*`-prefixed name (private dev tooling) or `@lostgradient/*`-prefixed
+ * name (published siblings, e.g. `@lostgradient/chat`) is one of these — only
+ * the packages cinder's build vendors source from (see
+ * `scripts/lib/derive-upstream-reexports.ts`'s `UPSTREAM_PACKAGE_NAMES`) plus
+ * `@cinder/testing`, a dev-only workspace dependency with no publish surface.
+ */
+const UPSTREAM_WORKSPACE_DEPENDENCY_NAMES: ReadonlySet<string> = new Set([
+  ...Object.values(UPSTREAM_PACKAGE_NAMES),
+  '@cinder/testing',
+]);
+
 function stripCinderWorkspaceDeps(
   record: Record<string, string> | undefined,
 ): Record<string, string> | undefined {
@@ -128,7 +146,7 @@ function stripCinderWorkspaceDeps(
   const out: Record<string, string> = {};
   let touched = false;
   for (const [key, value] of Object.entries(record)) {
-    if (key.startsWith('@cinder/')) {
+    if (UPSTREAM_WORKSPACE_DEPENDENCY_NAMES.has(key)) {
       touched = true;
       continue;
     }

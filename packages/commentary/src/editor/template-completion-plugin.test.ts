@@ -11,7 +11,7 @@
 import type {
   PlaceholderCandidate,
   PlaceholderCompletionConfiguration,
-} from '@cinder/markdown/templates/types';
+} from '@lostgradient/markdown/templates/types';
 import { Schema } from '@milkdown/kit/prose/model';
 import type { Plugin, Transaction } from '@milkdown/kit/prose/state';
 import { EditorState, TextSelection } from '@milkdown/kit/prose/state';

@@ -2,7 +2,7 @@
  * Secure template rendering with placeholder substitution and markdown-to-HTML conversion.
  *
  * DEP-625: This module is separated from template-placeholders.ts to avoid loading the
- * heavy @cinder/markdown rendering pipeline for consumers that only need lightweight
+ * heavy @lostgradient/markdown rendering pipeline for consumers that only need lightweight
  * placeholder parsing/validation functions.
  *
  * @module
@@ -16,7 +16,7 @@ import { resolveTemplatePlaceholders } from './template-placeholders.js';
  *
  * DEP-625: This function provides a secure rendering pipeline that:
  * 1. Resolves placeholders using the hardened getNestedValue() (blocks prototype pollution)
- * 2. Converts markdown to HTML using @cinder/markdown's sanitized pipeline
+ * 2. Converts markdown to HTML using @lostgradient/markdown's sanitized pipeline
  * 3. Sanitizes output via rehype-sanitize (blocks XSS attacks)
  *
  * Security guarantees:

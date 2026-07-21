@@ -1,4 +1,4 @@
-// `buildCache` is duplicated byte-for-byte into four packages because each
+// `buildCache` is duplicated byte-for-byte into three packages because each
 // package's tsconfig has `rootDir: "."`, which makes a cross-package import
 // illegal — see the header comment in build-cache.ts (and the identical
 // rationale in atomic-swap-dist.ts). Duplication is the chosen trade-off, but
@@ -6,7 +6,7 @@
 // the others would ship subtly different skip-check logic per package. This
 // test is the guard. If it fails, re-copy the canonical
 // (`packages/components/scripts/lib/build-cache.ts`) over every other copy so
-// all four are identical again.
+// all three are identical again.
 import { describe, expect, it } from 'bun:test';
 import { join } from 'node:path';
 
@@ -14,7 +14,7 @@ import { join } from 'node:path';
 const CANONICAL_PACKAGE = 'components';
 
 /** Every package that carries a copy of the helper, canonical listed first. */
-const PACKAGES_WITH_COPY = ['components', 'diff', 'markdown', 'commentary'];
+const PACKAGES_WITH_COPY = ['components', 'markdown', 'commentary'];
 
 /** packages/<pkg>/scripts/lib/build-cache.ts for the given package. */
 function copyPath(packageName: string): string {

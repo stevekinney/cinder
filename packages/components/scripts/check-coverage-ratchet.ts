@@ -131,7 +131,7 @@ function isTransientTestArtifact(file: string, packageRoot: string): boolean {
 
 /**
  * Bun follows source maps into sibling workspaces when component tests exercise
- * packed private packages such as @cinder/commentary and @cinder/markdown. Those
+ * packed sibling packages such as @cinder/commentary and @lostgradient/markdown. Those
  * packages have their own validation scripts; this ratchet is scoped to the
  * @lostgradient/cinder package directory.
  */

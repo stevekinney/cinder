@@ -9,7 +9,7 @@
  * (no DOM required).
  */
 
-import type { PlaceholderCandidate } from '@cinder/markdown/templates/types';
+import type { PlaceholderCandidate } from '@lostgradient/markdown/templates/types';
 import { Schema } from '@milkdown/kit/prose/model';
 import { describe, expect, it } from 'bun:test';
 

@@ -10,14 +10,12 @@
   },
   "overrides": {
     "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
-    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
-    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz"
+    "@lostgradient/markdown": "file:../../../markdown/lostgradient-markdown-0.1.0.tgz"
   },
   "dependencies": {
     "@cinder/commentary": "file:../../../commentary/cinder-commentary-0.0.1.tgz",
-    "@cinder/diff": "file:../../../diff/cinder-diff-0.0.1.tgz",
-    "@cinder/markdown": "file:../../../markdown/cinder-markdown-0.0.1.tgz",
     "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz",
+    "@lostgradient/markdown": "file:../../../markdown/lostgradient-markdown-0.1.0.tgz",
     "zod": "4.4.1"
   },
   "devDependencies": {

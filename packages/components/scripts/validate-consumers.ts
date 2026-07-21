@@ -76,7 +76,7 @@ const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
 const chatTarballFileName = getPackFileName(chatPackageIdentity);
 const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
 let chatFixtureCinderTarballFilePath = tarballFilePath;
-const workspaceDependencyPackages = ['diff', 'markdown', 'commentary'].map(
+const workspaceDependencyPackages = ['markdown', 'commentary'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
     const identity = readPackageIdentity(packageDirectory);
@@ -105,9 +105,6 @@ const RICH_FEATURE_DEPENDENCY_NAMES = [
 const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
 
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
-  '@shikijs/engine-oniguruma',
-  '@shikijs/langs',
-  '@shikijs/types',
   '@types/hast',
   '@types/mdast',
   '@types/unist',
@@ -677,7 +674,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
  * "Looks like a real import specifier" means: the `@cinder/...` token sits
  * inside a single-quote, double-quote, OR backtick-quoted *static* string on
  * a non-comment line. Backticks are flagged in code positions because
- * `await import(\`@cinder/markdown/rendering\`)` is a valid runtime import
+ * `await import(\`@cinder/commentary/editor\`)` is a valid runtime import
  * — JavaScript accepts a template literal with no interpolation as a
  * dynamic-import specifier. The JSDoc/prose backtick form `` `@cinder/x` ``
  * sits on lines that start with `*` or `//` and is filtered by the comment
@@ -691,7 +688,7 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
   // so this gate and the fast post-build gate in `build.ts` share one
   // implementation. The previous inline ladder skipped any line starting
   // with `/*` even when `*/` closed on the same line, letting
-  // `/* x */ import from '@cinder/markdown'` slip through.
+  // `/* x */ import from '@lostgradient/markdown'` slip through.
   for await (const scriptPath of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, scriptPath);
     const content = await Bun.file(filePath).text();
@@ -835,8 +832,8 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // PR 1: `src/markdown/**`, `src/editor/**`, `src/commentary/**`, and
-    // `src/diff/**` (the generated re-export shells) stay out of the
+    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/commentary/**`
+    // (the generated re-export shells) stay out of the
     // tarball — upstream sub-paths resolve through `dist/` only. The rest
     // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
     // styles, JSON sidecars) ships because the published `svelte`
@@ -857,12 +854,11 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/test/',
       'package/scripts/',
       // Upstream re-export shells (`src/markdown/`, `src/editor/`,
-      // `src/commentary/`, `src/diff/`) resolve via `dist/_upstream/`; the
+      // `src/commentary/`) resolve via `dist/_upstream/`; the
       // shell sources are build-only inputs.
       'package/src/markdown/',
       'package/src/editor/',
       'package/src/commentary/',
-      'package/src/diff/',
     ],
   };
 }
@@ -2172,7 +2168,6 @@ async function runNodeFixture(): Promise<void> {
       '@lostgradient/cinder/markdown/rendering#renderMarkdown imported OK',
       '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl imported OK',
       '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys imported OK',
-      '@lostgradient/cinder/diff/line-diff#computeLineDiff imported OK',
     ];
     for (const marker of upstreamProbeMarkers) {
       if (!renderedOutput.includes(marker)) {

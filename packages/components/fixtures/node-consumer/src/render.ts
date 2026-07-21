@@ -102,7 +102,6 @@ process.stdout.write('<!-- useHistory imported OK -->\n');
 // or non-undefined value comes back — full behavior is covered by the
 // upstream packages' own test suites. Imports are restricted to SSR-safe
 // modules so this fixture stays runnable under Node 22 without a DOM.
-import { computeLineDiff as computeLineDiffViaDiff } from '@lostgradient/cinder/diff/line-diff';
 import { computeLineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
 import { renderMarkdown } from '@lostgradient/cinder/markdown/rendering';
 import { isSafeUrl } from '@lostgradient/cinder/markdown/utilities/safe-url';
@@ -113,7 +112,6 @@ const upstreamProbes: Array<{ name: string; value: unknown }> = [
   { name: '@lostgradient/cinder/markdown/rendering#renderMarkdown', value: renderMarkdown },
   { name: '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl', value: isSafeUrl },
   { name: '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys', value: sortKeys },
-  { name: '@lostgradient/cinder/diff/line-diff#computeLineDiff', value: computeLineDiffViaDiff },
 ];
 for (const { name, value } of upstreamProbes) {
   if (typeof value !== 'function') {

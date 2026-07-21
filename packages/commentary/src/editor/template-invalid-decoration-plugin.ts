@@ -12,8 +12,8 @@
 import {
   parsePlaceholderTokens,
   validatePlaceholderTokens,
-} from '@cinder/markdown/templates/template-placeholders';
-import type { PlaceholderCandidate } from '@cinder/markdown/templates/types';
+} from '@lostgradient/markdown/templates/template-placeholders';
+import type { PlaceholderCandidate } from '@lostgradient/markdown/templates/types';
 import type { Node as ProseMirrorNode } from 'prosemirror-model';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
