@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'bun:test';
-import { existsSync } from 'node:fs';
+import { describe, expect, it, spyOn } from 'bun:test';
+import { existsSync, writeFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -1472,26 +1472,49 @@ describe('withGateLock', () => {
     });
   });
 
-  it('fails after the bounded wait when a live gate keeps the lock', async () => {
+  it('keeps waiting past the legacy timeout while the recorded holder remains alive', async () => {
     await withTemporaryLockPath(async (lockPath) => {
-      await writeFile(
-        lockPath,
-        JSON.stringify({
-          createdAt: new Date().toISOString(),
-          pid: 123,
-          repositoryRoot: 'other-checkout',
-          token: 'still-running',
-        }),
-      );
+      const legacyTimeoutMilliseconds = 5;
+      const holder = Bun.spawn(['bun', '-e', 'await Bun.stdin.text()'], {
+        stderr: 'ignore',
+        stdin: 'pipe',
+        stdout: 'ignore',
+      });
+      let liveChecks = 0;
 
-      await expect(
-        withGateLock(async () => 'should not run', {
-          isProcessAlive: () => true,
+      try {
+        await writeFile(
+          lockPath,
+          JSON.stringify({
+            createdAt: new Date(Date.now() - 10 * 60 * 1_000).toISOString(),
+            pid: holder.pid,
+            repositoryRoot: 'other-checkout',
+            token: 'still-running',
+          }),
+        );
+
+        const result = await withGateLock(async () => 'acquired after holder exited', {
+          isProcessAlive: (pid) => {
+            const alive = isProcessAlive(pid);
+            if (alive && ++liveChecks === 10) holder.stdin.end();
+            return alive;
+          },
           lockPath,
           retryMilliseconds: 1,
-          waitMilliseconds: 5,
-        }),
-      ).rejects.toThrow('Another pre-push gate is already running');
+          waitMilliseconds: legacyTimeoutMilliseconds,
+        });
+
+        expect(result).toBe('acquired after holder exited');
+        expect(liveChecks).toBeGreaterThanOrEqual(10);
+        expect(await holder.exited).toBe(0);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      } finally {
+        if (isProcessAlive(holder.pid)) {
+          holder.stdin.end();
+          killProcessGroup(holder.pid);
+        }
+        await holder.exited;
+      }
     });
   });
 
@@ -1509,6 +1532,87 @@ describe('withGateLock', () => {
       ).rejects.toThrow('malformed lock');
 
       expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('starts a fresh bounded wait when a live lock is replaced by a malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 123,
+          repositoryRoot: 'other-checkout',
+          token: 'live-then-malformed',
+        }),
+      );
+      let liveChecks = 0;
+      let malformedChecks = 0;
+      let now = 0;
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          beforeMalformedLockStat: () => {
+            malformedChecks++;
+            if (malformedChecks > 1) now = 5;
+          },
+          isProcessAlive: () => {
+            if (++liveChecks === 20) writeFileSync(lockPath, '{');
+            return true;
+          },
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          now: () => now,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('malformed lock');
+
+      expect(malformedChecks).toBeGreaterThan(1);
+      expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('prints live-holder guidance after a malformed lock becomes valid', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+      const messages: string[] = [];
+      const consoleLog = spyOn(console, 'log').mockImplementation((message) => {
+        messages.push(String(message));
+      });
+      let lockCompleted = false;
+      let liveChecks = 0;
+
+      try {
+        const result = await withGateLock(async () => 'acquired after transition', {
+          beforeMalformedLockStat: async () => {
+            if (lockCompleted) return;
+            lockCompleted = true;
+            await writeFile(
+              lockPath,
+              JSON.stringify({
+                createdAt: new Date().toISOString(),
+                pid: 123,
+                repositoryRoot: 'other-checkout',
+                token: 'completed-lock',
+              }),
+            );
+          },
+          isProcessAlive: () => ++liveChecks === 1,
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          retryMilliseconds: 1,
+          waitMilliseconds: 100,
+        });
+
+        expect(result).toBe('acquired after transition');
+        expect(messages.some((message) => message.includes('preparing its lock file'))).toBe(true);
+        expect(messages.some((message) => message.includes('Waiting without an age timeout'))).toBe(
+          true,
+        );
+      } finally {
+        consoleLog.mockRestore();
+      }
     });
   });
 

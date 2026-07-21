@@ -546,6 +546,7 @@ type GateLockOptions = {
   readonly isProcessAlive?: (pid: number) => boolean;
   readonly lockPath?: string;
   readonly malformedLockGraceMilliseconds?: number;
+  readonly now?: () => number;
   readonly retryMilliseconds?: number;
   readonly resendSignal?: (signal: NodeJS.Signals) => void;
   readonly waitMilliseconds?: number;
@@ -666,10 +667,11 @@ export async function withGateLock<T>(
   const retryMilliseconds = options.retryMilliseconds ?? DEFAULT_GATE_LOCK_RETRY_MILLISECONDS;
   const waitMilliseconds = options.waitMilliseconds ?? DEFAULT_GATE_LOCK_WAIT_MILLISECONDS;
   const processAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+  const now = options.now ?? Date.now;
   const resendSignal = options.resendSignal ?? ((signal) => process.kill(process.pid, signal));
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const startedAt = Date.now();
-  let waitingMessagePrinted = false;
+  let malformedLockStartedAt: number | null = null;
+  let waitingMessageState: 'malformed' | 'live' | null = null;
   let lockAcquired = false;
   let interruptedSignal: NodeJS.Signals | null = null;
 
@@ -714,24 +716,29 @@ export async function withGateLock<T>(
 
       const existingLock = await readGateLock(lockPath);
       if (existingLock === null) {
+        malformedLockStartedAt ??= now();
         await options.beforeMalformedLockStat?.();
         let existingLockAgeMilliseconds = 0;
         try {
           existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);
         } catch (statError) {
-          if (errnoCode(statError) === 'ENOENT') continue;
+          if (errnoCode(statError) === 'ENOENT') {
+            malformedLockStartedAt = null;
+            continue;
+          }
           throw statError;
         }
         if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
           warning('Removing stale malformed pre-push gate lock.');
           await rm(lockPath, { force: true });
+          malformedLockStartedAt = null;
           continue;
         }
-        if (!waitingMessagePrinted) {
+        if (waitingMessageState !== 'malformed') {
           warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
-          waitingMessagePrinted = true;
+          waitingMessageState = 'malformed';
         }
-        if (Date.now() - startedAt >= waitMilliseconds) {
+        if (malformedLockStartedAt !== null && now() - malformedLockStartedAt >= waitMilliseconds) {
           throw new Error(
             `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
             { cause: caught },
@@ -741,25 +748,21 @@ export async function withGateLock<T>(
         continue;
       }
 
+      malformedLockStartedAt = null;
+
       if (!processAlive(existingLock.pid)) {
         warning('Removing stale pre-push gate lock.');
         await rm(lockPath, { force: true });
         continue;
       }
 
-      if (!waitingMessagePrinted) {
+      if (waitingMessageState !== 'live') {
         warning(
-          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…\n` +
-            `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command`,
+          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}, lock created ${existingLock.createdAt}). Waiting without an age timeout while that PID remains alive…\n` +
+            `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command\n` +
+            `  If that PID is not a pre-push gate, verify it before manually removing ${lockPath}.`,
         );
-        waitingMessagePrinted = true;
-      }
-
-      if (Date.now() - startedAt >= waitMilliseconds) {
-        throw new Error(
-          `Another pre-push gate is already running (pid ${existingLock.pid}); waited ${waitMilliseconds}ms for ${lockPath}.`,
-          { cause: caught },
-        );
+        waitingMessageState = 'live';
       }
 
       await Bun.sleep(retryMilliseconds);
