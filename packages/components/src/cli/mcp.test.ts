@@ -174,13 +174,21 @@ describe('importOptionalMcpDependency', () => {
 
   it('rewrites only module-not-found failures and preserves their cause', async () => {
     const missing = new Error("Cannot find package 'zod'");
-    await expect(importOptionalMcpDependency(async () => Promise.reject(missing))).rejects.toEqual(
-      new Error(MCP_OPTIONAL_DEPENDENCIES_MESSAGE, { cause: missing }),
+    const rewritten = await importOptionalMcpDependency(async () => {
+      throw missing;
+    }).then(
+      () => undefined,
+      (error: unknown) => error,
     );
+    expect(rewritten).toBeInstanceOf(Error);
+    expect((rewritten as Error).message).toBe(MCP_OPTIONAL_DEPENDENCIES_MESSAGE);
+    expect((rewritten as Error).cause).toBe(missing);
 
     const internalFailure = new Error('dependency initialization failed');
     await expect(
-      importOptionalMcpDependency(async () => Promise.reject(internalFailure)),
+      importOptionalMcpDependency(async () => {
+        throw internalFailure;
+      }),
     ).rejects.toBe(internalFailure);
   });
 });
