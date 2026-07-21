@@ -1474,14 +1474,13 @@ describe('withGateLock', () => {
 
   it('keeps waiting past the legacy timeout while the recorded holder remains alive', async () => {
     await withTemporaryLockPath(async (lockPath) => {
-      const holderSleepMilliseconds = 500;
       const legacyTimeoutMilliseconds = 5;
-      const minimumObservedWaitMilliseconds = 100;
-      const holder = Bun.spawn(['bun', '-e', `await Bun.sleep(${holderSleepMilliseconds})`], {
+      const holder = Bun.spawn(['bun', '-e', 'await Bun.stdin.text()'], {
         stderr: 'ignore',
-        stdin: 'ignore',
+        stdin: 'pipe',
         stdout: 'ignore',
       });
+      let liveChecks = 0;
 
       try {
         await writeFile(
@@ -1494,19 +1493,23 @@ describe('withGateLock', () => {
           }),
         );
 
-        const startedAt = Date.now();
         const result = await withGateLock(async () => 'acquired after holder exited', {
+          isProcessAlive: (pid) => {
+            const alive = isProcessAlive(pid);
+            if (alive && ++liveChecks === 10) holder.stdin.end();
+            return alive;
+          },
           lockPath,
           retryMilliseconds: 1,
           waitMilliseconds: legacyTimeoutMilliseconds,
         });
-        const waitedMilliseconds = Date.now() - startedAt;
 
         expect(result).toBe('acquired after holder exited');
-        expect(waitedMilliseconds).toBeGreaterThanOrEqual(minimumObservedWaitMilliseconds);
+        expect(liveChecks).toBe(10);
         expect(await holder.exited).toBe(0);
         expect(await Bun.file(lockPath).exists()).toBe(false);
       } finally {
+        if (isProcessAlive(holder.pid)) holder.stdin.end();
         killProcessGroup(holder.pid);
         await holder.exited;
       }
