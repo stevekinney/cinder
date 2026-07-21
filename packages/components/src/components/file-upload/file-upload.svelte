@@ -260,7 +260,7 @@
     return Math.max(0, Math.min(100, progress));
   }
 
-  function sentenceCaseTriggerLabel(label: string): string {
+  function lowercaseInitialCharacter(label: string): string {
     return label.length === 0 ? label : `${label[0]!.toLowerCase()}${label.slice(1)}`;
   }
 </script>
@@ -283,7 +283,7 @@
           stroke-linejoin="round"
         />
       </svg>
-      Drag files here or {sentenceCaseTriggerLabel(triggerLabel)}
+      Drag files here or {lowercaseInitialCharacter(triggerLabel)}
     </span>
     <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
   </div>
