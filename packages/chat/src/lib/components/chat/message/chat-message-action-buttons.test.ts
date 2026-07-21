@@ -150,7 +150,9 @@ function extractRule(text: string, opening: string | RegExp): string {
     if (start === -1) throw new Error(`rule not found: ${opening}`);
     bodyStart = start + opening.length;
   } else {
-    const match = opening.exec(text);
+    // Clone regex without global/sticky flags to avoid lastIndex flakiness
+    const flags = opening.flags.replace(/[gy]/g, '');
+    const match = new RegExp(opening.source, flags).exec(text);
     if (!match) throw new Error(`rule not found: ${opening}`);
     bodyStart = match.index + match[0].length;
   }
