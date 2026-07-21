@@ -8,10 +8,10 @@ Two stacked aria-live regions follow [WAI-ARIA Authoring Practices: Alert and St
 
 ## Two regions, two priorities
 
-| Variant             | Region                                      | aria-live   | role     |
-| ------------------- | ------------------------------------------- | ----------- | -------- |
-| `info`, `success`   | `.cinder-toast-region__channel` (polite)    | `polite`    | `status` |
-| `warning`, `danger` | `.cinder-toast-region__channel` (assertive) | `assertive` | `alert`  |
+| Variant                      | Region                                      | aria-live   | role     |
+| ---------------------------- | ------------------------------------------- | ----------- | -------- |
+| `info`, `success`, `warning` | `.cinder-toast-region__channel` (polite)    | `polite`    | `status` |
+| `danger`                     | `.cinder-toast-region__channel` (assertive) | `assertive` | `alert`  |
 
 Both regions carry `aria-atomic="true"` and `aria-relevant="additions"`. They render in the same visual position but route announcements through independent live-region queues so a `success` toast and a simultaneous `danger` toast don't collapse into a single ambiguous announcement.
 

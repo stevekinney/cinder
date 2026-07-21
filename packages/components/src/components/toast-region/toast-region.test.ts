@@ -191,7 +191,7 @@ describe('useToast api', () => {
     });
   });
 
-  test('warning variant routes to the assertive region', async () => {
+  test('warning variant routes to the polite region', async () => {
     let api: ToastApi | null = null;
     const { container } = render(Wrapper, {
       onReady: (a: ToastApi) => {
@@ -201,10 +201,12 @@ describe('useToast api', () => {
     await waitFor(() => expect(api).not.toBeNull());
     api!.show('Watch out', { variant: 'warning' });
     await waitFor(() => {
-      const assertive = container.querySelector('[role="alert"]');
-      expect(assertive?.textContent).toContain('Watch out');
       const polite = container.querySelector('[role="status"]');
-      expect(polite?.textContent).not.toContain('Watch out');
+      expect(polite).not.toBeNull();
+      expect(polite!.textContent).toContain('Watch out');
+      const assertive = container.querySelector('[role="alert"]');
+      expect(assertive).not.toBeNull();
+      expect(assertive!.textContent).not.toContain('Watch out');
     });
   });
 
@@ -254,8 +256,9 @@ describe('useToast api', () => {
     api!.show('Info', { variant: 'info' });
     api!.show('Warning', { variant: 'warning' });
     await waitFor(() => {
-      expect(container.querySelector('[role="status"]')?.textContent).toContain('Info');
-      expect(container.querySelector('[role="alert"]')?.textContent).toContain('Warning');
+      const politeText = container.querySelector('[role="status"]')?.textContent ?? '';
+      expect(politeText).toContain('Info');
+      expect(politeText).toContain('Warning');
     });
     api!.dismissAll();
     await waitFor(() => {
@@ -381,7 +384,7 @@ describe('useToast api', () => {
     });
   });
 
-  test('renders the icon in the assertive region for warning/danger variants', async () => {
+  test('renders the icon in the polite region for warning variants', async () => {
     let api: ToastApi | null = null;
     const { container } = render(Wrapper, {
       onReady: (a: ToastApi) => {
@@ -394,8 +397,9 @@ describe('useToast api', () => {
     }));
     api!.show('Heads up', { icon, variant: 'warning', duration: 0 });
     await waitFor(() => {
-      const assertive = container.querySelector('[role="alert"]');
-      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      const polite = container.querySelector('[role="status"]');
+      expect(polite).not.toBeNull();
+      const iconWrapper = polite!.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
       expect(iconWrapper?.querySelector('[data-testid="assertive-icon"]')).not.toBeNull();
     });
@@ -1135,8 +1139,9 @@ describe('toast variant icons', () => {
 
     api!.show('Caution', { variant: 'warning', duration: 0, showIcon: true });
     await waitFor(() => {
-      const assertive = container.querySelector('[role="alert"]');
-      const iconWrapper = assertive?.querySelector('.cinder-toast__icon');
+      const polite = container.querySelector('[role="status"]');
+      expect(polite).not.toBeNull();
+      const iconWrapper = polite!.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
       const svg = iconWrapper?.querySelector('svg');
       expect(svg).not.toBeNull();
