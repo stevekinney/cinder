@@ -619,15 +619,29 @@
     class="cinder-schedule-builder__mode-switch"
   >
     {#if modeIsAllowed('presets')}
-      <Segment id={modeTabId('presets')} value="presets" controls={modePanelId('presets')}>
+      <Segment
+        id={modeTabId('presets')}
+        value="presets"
+        controls={authoringMode === 'presets' ? modePanelId('presets') : undefined}
+      >
         Presets
       </Segment>
     {/if}
     {#if modeIsAllowed('cron')}
-      <Segment id={modeTabId('cron')} value="cron" controls={modePanelId('cron')}>Cron</Segment>
+      <Segment
+        id={modeTabId('cron')}
+        value="cron"
+        controls={authoringMode === 'cron' ? modePanelId('cron') : undefined}
+      >
+        Cron
+      </Segment>
     {/if}
     {#if modeIsAllowed('interval')}
-      <Segment id={modeTabId('interval')} value="interval" controls={modePanelId('interval')}>
+      <Segment
+        id={modeTabId('interval')}
+        value="interval"
+        controls={authoringMode === 'interval' ? modePanelId('interval') : undefined}
+      >
         Interval
       </Segment>
     {/if}
