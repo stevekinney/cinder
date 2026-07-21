@@ -523,16 +523,17 @@ function runValidation(): void {
   }
   if (!rootPublishScriptUsesStagedPackers(rootManifest)) {
     fail(
-      'package.json#scripts.changeset:publish must publish Cinder then Chat through their ' +
-        'publish:release staged-artifact commands; direct `changeset publish` is unsafe.',
+      'package.json#scripts.changeset:publish must publish Markdown, then Cinder, then Chat ' +
+        'through their publish:release staged-artifact commands, in that DAG order; direct ' +
+        '`changeset publish` is unsafe.',
     );
   }
   pass('Root publish shortcut uses every staged package artifact in dependency order');
   if (!rootConsumerValidationIncludesPublicPackages(rootManifest)) {
     fail(
       'package.json#scripts.validate must run workspace validation through `turbo run validate` ' +
-        'and append the Chat packed-consumer gate, while validate:consumer must validate Cinder ' +
-        'then Chat.',
+        'and append the Chat packed-consumer gate, while validate:consumer must validate Markdown, ' +
+        'then Cinder, then Chat, in DAG order.',
     );
   }
   pass('Root validation exercises every public package as a packed consumer, in DAG order');

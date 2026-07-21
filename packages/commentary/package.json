@@ -88,7 +88,7 @@
     "build": "bun run --filter='@lostgradient/markdown' build && bun run scripts/build.ts",
     "clean": "rm -rf dist coverage node_modules/.cache",
     "lint": "bun run --filter='@lostgradient/markdown' build && oxlint --type-aware --tsconfig ./tsconfig.json",
-    "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "bun run --filter='@lostgradient/markdown' build && oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "test": "bun run --filter='@lostgradient/markdown' build && TZ=UTC LANG=en_US.UTF-8 bun test",
     "typecheck": "bun run --filter='@lostgradient/markdown' build && tsc --noEmit -p tsconfig.check.json",
     "validate": "bun run lint && bun run typecheck && bun run test && bun run build"
