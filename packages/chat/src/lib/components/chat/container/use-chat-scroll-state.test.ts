@@ -37,6 +37,17 @@ function createViewport(): HTMLElement {
   return viewport;
 }
 
+/** A transcript short enough to fit entirely within the viewport — it can never leave the bottom. */
+function createShortViewport(): HTMLElement {
+  const viewport = document.createElement('div');
+  Object.defineProperty(viewport, 'scrollHeight', { value: 200, configurable: true });
+  Object.defineProperty(viewport, 'scrollTop', { value: 0, writable: true, configurable: true });
+  Object.defineProperty(viewport, 'clientHeight', { value: 400, configurable: true });
+  viewport.scrollTo = () => {};
+  document.body.appendChild(viewport);
+  return viewport;
+}
+
 describe('useChatScrollState — withForcedLayout backstop', () => {
   test('sets data-cinder-force-visible for the duration of scrollToBottom', () => {
     const state = useChatScrollState();
@@ -296,5 +307,113 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.atBottom).toBe(true);
     state.scrollToTop(viewport);
     expect(state.atBottom).toBe(false);
+  });
+
+  test('scrollToTop preserves atBottom when the viewport cannot actually leave the bottom', () => {
+    // Regression guard (Codex review on #787): a transcript short enough to
+    // fit entirely within the viewport (scrollHeight <= clientHeight) is
+    // always "at the bottom" by definition — scrollTo({ top: 0 }) is a no-op
+    // there. Unconditionally flipping atBottom would desync it from the real
+    // (unchanged) scroll position, and a message appended right after would
+    // be wrongly marked unread.
+    const state = useChatScrollState();
+    const viewport = createShortViewport();
+
+    expect(state.atBottom).toBe(true);
+    state.scrollToTop(viewport);
+    expect(state.atBottom).toBe(true);
+  });
+
+  test('withUserScrollGuard arms its cleanup timer after action() completes, not before', () => {
+    // Regression guard (Codex review on #787): jumpToLatest's action includes
+    // a synchronous forced-layout pass that reflows every row before issuing
+    // the smooth scroll — on a large transcript that can consume a real slice
+    // of wall-clock time. Arming the cleanup timer BEFORE action() runs would
+    // start that clock too early, letting the guard expire mid-animation.
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    let clearedDuringAction = false;
+
+    state.withUserScrollGuard(() => {
+      // Simulate action() itself consuming the guard's entire duration. If
+      // the timer had been armed before action() ran, this would fire it
+      // while still inside action() — proving the bug.
+      jest.advanceTimersByTime(500);
+      clearedDuringAction = !state.isUserScrolling;
+    });
+
+    expect(clearedDuringAction).toBe(false);
+    expect(state.isUserScrolling).toBe(true);
+
+    // The timer only starts counting once action() returns.
+    jest.advanceTimersByTime(500);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('clearUserScrollGuard immediately clears isUserScrolling and cancels the pending timer', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    state.scrollToTop(viewport);
+    expect(state.isUserScrolling).toBe(true);
+
+    state.clearUserScrollGuard();
+    expect(state.isUserScrolling).toBe(false);
+
+    // The original timer must be genuinely cancelled — advancing past its
+    // deadline must not throw or do anything surprising.
+    expect(() => jest.advanceTimersByTime(600)).not.toThrow();
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('scrollToBottom supersedes a stale scrollToTop guard instead of leaving it to expire on its own schedule', () => {
+    // Regression guard (Codex review on #787): "Clear stale top-scroll guards
+    // before bottom jumps" — a bottom-directed jump whose own target already
+    // matches the auto-stick effect (so it needs no guard of its own) must
+    // still cancel an EARLIER guard from a top-scroll, or that stale guard
+    // keeps suppressing auto-stick corrections for messages appended after
+    // the user's intent already changed.
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    state.scrollToTop(viewport);
+    expect(state.isUserScrolling).toBe(true);
+
+    state.scrollToBottom(viewport);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('destroy cancels an in-flight user-scroll-guard timer so it cannot fire after teardown', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    state.scrollToTop(viewport);
+    expect(state.isUserScrolling).toBe(true);
+
+    state.destroy();
+    expect(state.isUserScrolling).toBe(false);
+
+    // The original timer must not resurrect isUserScrolling once its
+    // original deadline passes.
+    jest.advanceTimersByTime(600);
+    expect(state.isUserScrolling).toBe(false);
+  });
+
+  test('destroy cancels an in-flight withForcedLayout session without throwing when its backstop would have fired', () => {
+    jest.useFakeTimers();
+    const state = useChatScrollState();
+    const viewport = createViewport();
+
+    state.scrollToBottom(viewport);
+    expect(viewport.hasAttribute('data-cinder-force-visible')).toBe(true);
+
+    state.destroy();
+
+    // The cancelled backstop must not fire (or throw) once its original
+    // deadline passes.
+    expect(() => jest.advanceTimersByTime(600)).not.toThrow();
   });
 });

@@ -247,6 +247,11 @@
     },
   });
 
+  // Cancel any in-flight forced-layout/user-scroll-guard timers on unmount —
+  // without this, a scroll animation still settling when the component tears
+  // down could fire its cleanup against a gone-away viewport.
+  $effect(() => () => scrollState.destroy());
+
   const unreadState = useChatUnreadState({
     onUnreadIndicatorChange: (event) => {
       // Update the bindable props at the mutation site rather than via a $effect.
@@ -260,14 +265,17 @@
     onJumpToLatest: handleJumpToLatest,
     onJumpToStart: () => {
       if (isVirtualized) {
-        // Leaving the bottom deliberately — set atBottom synchronously rather
-        // than waiting for the real scroll listener's rAF-deferred recompute,
-        // so a message that arrives before that recompute runs doesn't read a
-        // stale `atBottom: true` and skip the unread indicator. Also update the
-        // bindable prop so a `bind:atBottom` consumer reflects the new state
-        // immediately (matching the pattern in the submit auto-scroll path).
-        scrollState.setAtBottom(false);
-        atBottom = false;
+        // Leaving the bottom deliberately — but only if the viewport can
+        // actually move (see the matching comment in scrollToTop() below for
+        // why a transcript that fits entirely within the viewport must NOT
+        // have atBottom flipped). Set synchronously rather than waiting for
+        // the real scroll listener's rAF-deferred recompute, and update the
+        // bindable prop too (matching the submit auto-scroll path).
+        const canLeaveBottom = chatVirtualizer.scrollSize > (viewport?.clientHeight ?? 0);
+        if (canLeaveBottom) {
+          scrollState.setAtBottom(false);
+          atBottom = false;
+        }
         scrollState.withUserScrollGuard(() => {
           chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
         });
@@ -882,10 +890,22 @@
 
   function handleJumpToLatest(): void {
     if (isVirtualized) {
+      // Supersede any stale guard from an earlier top-scroll (scrollToTop()/
+      // Home) that hasn't expired yet. This jump's own target (the bottom)
+      // already matches what the auto-stick-to-bottom effect wants, so it
+      // needs no guard of its own — but leaving the OLDER guard active would
+      // keep suppressing that effect's correction for up to its remaining
+      // duration, even though the user's intent has already moved on.
+      scrollState.clearUserScrollGuard();
       chatVirtualizer.scrollToIndex(Math.max(0, renderRows.length - 1), {
         align: 'end',
         behavior: scrollState.getScrollBehavior(),
       });
+      // Reached the bottom — sync both the internal helper and the bindable
+      // prop synchronously (matching the submit auto-scroll path) rather than
+      // waiting for the real scroll listener's rAF-deferred recompute.
+      scrollState.setAtBottom(true);
+      atBottom = true;
       unreadState.markAllAsRead();
       onjumptolatest?.();
       tick().then(() => {
@@ -1424,7 +1444,15 @@
   // ==========================================================================
 
   export function scrollToBottom(): void {
+    // Reaching the bottom — sync both the internal helper and the bindable
+    // prop synchronously (matching the submit auto-scroll path) rather than
+    // waiting for the real scroll listener's rAF-deferred recompute.
+    scrollState.setAtBottom(true);
+    atBottom = true;
     if (isVirtualized) {
+      // Supersede any stale guard from an earlier top-scroll — see the same
+      // comment in handleJumpToLatest's virtualized branch.
+      scrollState.clearUserScrollGuard();
       chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, {
         behavior: scrollState.getScrollBehavior(),
       });
@@ -1434,24 +1462,35 @@
   }
 
   export function scrollToTop(): void {
-    // Leaving the bottom deliberately — update the bindable prop synchronously
-    // rather than waiting for the real scroll listener's rAF-deferred
-    // recompute, so a message that arrives before that recompute runs doesn't
-    // read a stale `atBottom: true` and skip the unread indicator (matching
-    // the pattern in the submit auto-scroll path, which sets both
-    // scrollState.setAtBottom() and the bindable together).
-    atBottom = false;
     if (isVirtualized) {
+      // Leaving the bottom deliberately — but only if the viewport can
+      // actually move. A transcript short enough to fit entirely within the
+      // viewport is always "at the bottom" by definition: scrollToOffset(0)
+      // is a no-op there, so flipping atBottom would desync it from the real
+      // (unchanged) position, and a message appended right after would be
+      // wrongly marked unread. Set synchronously rather than waiting for the
+      // real scroll listener's rAF-deferred recompute (matching the pattern
+      // in the submit auto-scroll path, which sets both scrollState and the
+      // bindable together).
+      const canLeaveBottom = chatVirtualizer.scrollSize > (viewport?.clientHeight ?? 0);
+      if (canLeaveBottom) {
+        scrollState.setAtBottom(false);
+        atBottom = false;
+      }
       // Guard against the auto-stick-to-bottom $effect.pre (Scroll Anchoring
       // section, above) fighting this animation: it re-fires on every
       // virtualizer remeasurement, and without this guard it would keep
       // snapping the viewport back toward the bottom mid-scroll since
       // `isUserScrolling` was never set for this branch.
-      scrollState.setAtBottom(false);
       scrollState.withUserScrollGuard(() => {
         chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
       });
     } else {
+      // Same canLeaveBottom reasoning as the virtualized branch above.
+      const canLeaveBottom = !!viewport && viewport.scrollHeight > viewport.clientHeight;
+      if (canLeaveBottom) {
+        atBottom = false;
+      }
       scrollState.scrollToTop(viewport);
     }
   }
