@@ -79,6 +79,7 @@ test.describe('chat action buttons', () => {
     try {
       const copyButton = page.locator('.chat-message-copy').first();
       await expect(copyButton).toBeVisible();
+      await copyButton.scrollIntoViewIfNeeded();
 
       expect(await colorAlpha(copyButton, 'backgroundColor')).toBeGreaterThan(0);
       expect(await colorAlpha(copyButton, 'borderTopColor')).toBeGreaterThan(0);
@@ -97,6 +98,11 @@ test.describe('chat action buttons', () => {
         });
       });
 
+      const actionableRow = copyButton.locator(
+        'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
+      );
+      await expect(actionableRow).toHaveCSS('margin-block-end', `${TOUCH_TARGET_MIN + 4}px`);
+
       const hitTarget = await copyButton.evaluate((element) => {
         const box = element.getBoundingClientRect();
         const target = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
@@ -107,6 +113,11 @@ test.describe('chat action buttons', () => {
         };
       });
       expect(hitTarget.isCopyButton, JSON.stringify(hitTarget)).toBe(true);
+
+      const emptyToolRow = page.locator('.chat-message-wrapper[data-role="tool-call"]').first();
+      await expect(emptyToolRow).toBeVisible();
+      await expect(emptyToolRow.locator('.chat-message-actions > *')).toHaveCount(0);
+      await expect(emptyToolRow).toHaveCSS('margin-block-end', '0px');
 
       await copyButton.click();
       // CopyButton signals the copied state via `data-cinder-copied` attribute.

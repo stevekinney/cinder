@@ -106,6 +106,17 @@ describe('chat message action buttons', () => {
     expect(resetBlock).toContain('bottom: auto');
   });
 
+  test('narrow footer space is reserved only when actions render content', () => {
+    const mediaIdx = source.indexOf('@media (max-width: 480px)');
+    expect(mediaIdx).toBeGreaterThan(-1);
+    const narrowBlock = source.slice(mediaIdx, source.indexOf('\n  }', mediaIdx) + 4);
+
+    expect(narrowBlock).toContain(
+      '.chat-message-wrapper:has(> .chat-message-footer .chat-message-actions > :global(*))',
+    );
+    expect(narrowBlock).not.toMatch(/\.chat-message-wrapper\s*\{[^}]*margin-block-end:/s);
+  });
+
   // Regression for #777: a `display: none` footer on tool-paired rows can
   // never be resurrected by the shared `:hover`/`:focus-within` rule (which
   // only toggles opacity/pointer-events), making retry/edit/copy and any
