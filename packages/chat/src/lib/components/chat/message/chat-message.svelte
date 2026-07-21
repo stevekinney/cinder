@@ -793,6 +793,7 @@
     .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
     .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
       top: 100%;
+      bottom: auto;
       inset-inline-start: 0;
       inset-inline-end: auto;
       transform: none;

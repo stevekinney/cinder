@@ -100,6 +100,10 @@ describe('chat message action buttons', () => {
     );
     expect(resetBlock).toContain('padding-top: var(--cinder-space-1)');
     expect(resetBlock).not.toContain('margin-top: var(--cinder-space-1)');
+    // Ensures `bottom: 0` from the user/assistant desktop side-footer rules is
+    // cleared, preventing both `top` and `bottom` being set simultaneously and
+    // collapsing/overconstraining the below-bubble footer box.
+    expect(resetBlock).toContain('bottom: auto');
   });
 
   // Regression for #777: a `display: none` footer on tool-paired rows can
