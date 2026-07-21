@@ -481,8 +481,11 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const meta = await validateMetaSchema(schema, draft);
       // A newer action (another apply, an undo, a reload, …) superseded
       // this one while Ajv was loading — abandon rather than commit stale
-      // state or clobber whatever that newer action already wrote.
-      if (epoch !== validationEpoch) return false;
+      // state or clobber whatever that newer action already wrote. Also
+      // recheck readonly directly: a parent can flip it while this await is
+      // in flight, and unlike other mutations that starts a new epoch,
+      // setReadonly doesn't — so it has to be checked explicitly here.
+      if (epoch !== validationEpoch || readonly) return false;
       if (!meta.valid) {
         metaResult = meta;
         recomputeStatus();
@@ -505,8 +508,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
       if (epoch === validationEpoch) {
         compileResult = compile;
         recomputeStatus();
+        emitValidation(buildResult());
       }
-      emitValidation(buildResult());
       return true;
     },
 

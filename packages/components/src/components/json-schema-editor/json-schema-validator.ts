@@ -81,17 +81,35 @@ let ajv2019ClassPromise: Promise<typeof Ajv2019> | null = null;
 let ajv2020ClassPromise: Promise<typeof Ajv2020> | null = null;
 
 function loadAjv(): Promise<typeof Ajv> {
-  ajvClassPromise ??= import('ajv').then((module) => module.default);
+  ajvClassPromise ??= import('ajv')
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      // Don't cache a rejection — a transient failure (network hiccup,
+      // dropped chunk) shouldn't permanently block every later validation
+      // in this session.
+      ajvClassPromise = null;
+      throw error;
+    });
   return ajvClassPromise;
 }
 
 function loadAjv2019(): Promise<typeof Ajv2019> {
-  ajv2019ClassPromise ??= import('ajv/dist/2019.js').then((module) => module.default);
+  ajv2019ClassPromise ??= import('ajv/dist/2019.js')
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      ajv2019ClassPromise = null;
+      throw error;
+    });
   return ajv2019ClassPromise;
 }
 
 function loadAjv2020(): Promise<typeof Ajv2020> {
-  ajv2020ClassPromise ??= import('ajv/dist/2020.js').then((module) => module.default);
+  ajv2020ClassPromise ??= import('ajv/dist/2020.js')
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      ajv2020ClassPromise = null;
+      throw error;
+    });
   return ajv2020ClassPromise;
 }
 

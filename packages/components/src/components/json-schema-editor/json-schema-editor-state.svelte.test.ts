@@ -116,6 +116,26 @@ describe('createEditorState — JSON draft / Apply', () => {
     state.discardJsonDraft();
     expect(state.jsonDraftIsDirty).toBe(false);
   });
+
+  // Regression (Codex review): applyJsonDraft only checked `readonly`
+  // before its first await. If a parent flipped readonly to true while the
+  // Ajv-backed meta-schema check was still in flight, the commit went
+  // through anyway once it resolved — readonly must also be rechecked
+  // after the await, since setReadonly doesn't bump validationEpoch the
+  // way other mutations do.
+  test('applyJsonDraft does not commit if readonly flips true while it is in flight', async () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+
+    state.setJsonDraftText('{"type":"number"}');
+    const applyPromise = state.applyJsonDraft();
+    // Synchronous window before the first `await` inside applyJsonDraft
+    // resolves — flipping readonly here must still be observed.
+    state.setReadonly(true);
+    const applied = await applyPromise;
+
+    expect(applied).toBe(false);
+    expect(state.committedSchema).toEqual({ type: 'string' });
+  });
 });
 
 describe('createEditorState — form commits', () => {
