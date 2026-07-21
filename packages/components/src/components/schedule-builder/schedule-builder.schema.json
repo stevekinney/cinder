@@ -42,6 +42,13 @@
       "description": "How many upcoming fires to request from `computeNextFires`. Defaults to 5.",
       "minimum": 1
     },
+    "allowedModes": {
+      "type": "array",
+      "items": {
+        "enum": ["cron", "interval", "presets"]
+      },
+      "description": "Authoring modes to expose. Defaults to `['presets', 'cron', 'interval']`.\nUse `['cron']` for cron-only consumers; the component then renders only\ncron fields and never emits an interval value."
+    },
     "timezoneLabel": {
       "type": "string",
       "description": "Timezone label rendered in the always-visible timezone display slot."

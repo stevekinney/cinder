@@ -95,6 +95,14 @@ describe('ScheduleBuilder', () => {
       expect(root?.getAttribute('data-sb-mode')).toBe('presets');
       expect(container.querySelector('[data-sb-panel="presets"]')).not.toBeNull();
     });
+
+    test('renders every authoring mode by default', () => {
+      const { getByRole } = render(ScheduleBuilder, {});
+
+      expect(getByRole('tab', { name: 'Presets' })).not.toBeNull();
+      expect(getByRole('tab', { name: 'Cron' })).not.toBeNull();
+      expect(getByRole('tab', { name: 'Interval' })).not.toBeNull();
+    });
   });
 
   describe('initial authoring mode', () => {
@@ -144,6 +152,39 @@ describe('ScheduleBuilder', () => {
       );
       expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('30');
       expect((getByLabelText('Hour') as HTMLInputElement).value).toBe('14');
+    });
+  });
+
+  describe('allowed modes', () => {
+    test('renders only cron authoring when allowedModes is cron-only', () => {
+      const { container, getByLabelText, getByRole, queryByRole } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+      });
+
+      expect(container.querySelector('[data-sb-panel="cron"]')).not.toBeNull();
+      expect(container.querySelector('[data-sb-panel="presets"]')).toBeNull();
+      expect(container.querySelector('[data-sb-panel="interval"]')).toBeNull();
+      expect(getByRole('tab', { name: 'Cron', selected: true })).not.toBeNull();
+      expect(queryByRole('tab', { name: 'Presets' })).toBeNull();
+      expect(queryByRole('tab', { name: 'Interval' })).toBeNull();
+      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('*/15');
+    });
+
+    test('cron-only authoring emits only cron values', async () => {
+      const onchange = mock();
+      const { getByLabelText } = render(ScheduleBuilder, {
+        allowedModes: ['cron'],
+        onchange,
+      });
+
+      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      await fireEvent.input(minuteField, { target: { value: '0' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      for (const call of onchange.mock.calls) {
+        const emitted = call[0] as ScheduleValue;
+        expect(emitted.mode).toBe('cron');
+      }
     });
   });
 
