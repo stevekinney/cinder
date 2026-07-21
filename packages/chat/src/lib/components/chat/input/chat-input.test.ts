@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { resolve } from 'node:path';
 import { mount, tick, unmount } from 'svelte';
+import { compile } from 'svelte/compiler';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 
@@ -12,6 +14,26 @@ const { default: ChatInput } = await import('./chat-input.svelte');
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+});
+
+test('server compilation does not retain lifecycle hooks from the external Svelte runtime', async () => {
+  const sourcePath = resolve(import.meta.dir, 'chat-input.svelte');
+  const source = await Bun.file(sourcePath).text();
+  const serverCode = compile(source, {
+    filename: sourcePath,
+    generate: 'server',
+    runes: true,
+  }).js.code;
+  const clientCode = compile(source, {
+    filename: sourcePath,
+    generate: 'client',
+    runes: true,
+  }).js.code;
+  const actionRegistrationMarker = '$.action(';
+
+  expect(clientCode).toContain(actionRegistrationMarker);
+  expect(serverCode).not.toContain(actionRegistrationMarker);
+  expect(serverCode).not.toContain('onDestroy');
 });
 
 describe('ChatInput', () => {
