@@ -682,8 +682,48 @@ describe('createBarModel', () => {
       mode: 'grouped',
     });
 
-    expect(model.geometry.marginLeft).toBeGreaterThan(48);
-    expect(model.geometry.marginLeft + (model.categoryTicks[0]?.x ?? 0)).toBeGreaterThan(0);
+    expect(model.geometry.marginLeft).toBe(124);
+    expect(model.categoryTicks[0]).toMatchObject({
+      label: 'Completed',
+      fullLabel: 'Completed',
+    });
+  });
+
+  test('reserves enough horizontal label space for wide glyphs', () => {
+    const model = createBarModel({
+      data: [{ status: 'WWWWWWWWWW', count: 9 }],
+      categoryKey: 'status',
+      series: [{ id: 'count', label: 'Count', valueKey: 'count' }],
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+      orientation: 'horizontal',
+      mode: 'grouped',
+    });
+
+    expect(model.geometry.marginLeft).toBe(136);
+    expect(model.categoryTicks[0]?.label).toBe('WWWWWWWWWW');
+  });
+
+  test('truncates extreme horizontal labels without removing the plot', () => {
+    const fullLabel = 'W'.repeat(40);
+    const model = createBarModel({
+      data: [{ status: fullLabel, count: 9 }],
+      categoryKey: 'status',
+      series: [{ id: 'count', label: 'Count', valueKey: 'count' }],
+      hiddenSeriesIds: [],
+      width: 320,
+      height: 280,
+      orientation: 'horizontal',
+      mode: 'grouped',
+    });
+
+    expect(model.geometry.marginLeft).toBe(128);
+    expect(model.geometry.plotWidth).toBe(176);
+    expect(model.categoryTicks[0]).toMatchObject({
+      label: 'WWWWWWWW…',
+      fullLabel,
+    });
   });
 
   test('stacked domain reflects visible series only', () => {

@@ -124,6 +124,7 @@ export type BarChartModel = {
   categoryTicks: Array<{
     categoryKey: string;
     label: string;
+    fullLabel: string;
     x: number;
     y: number;
   }>;
@@ -596,11 +597,11 @@ export function createBarModel(options: {
   const categoryLabels = sortedCategories.map((category, index) =>
     formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
   );
-  const geometry = createGeometry(
-    width,
-    height,
-    orientation === 'horizontal' ? estimateHorizontalCategoryLabelMargin(categoryLabels) : 48,
-  );
+  const horizontalCategoryLabelLayout =
+    orientation === 'horizontal'
+      ? createHorizontalCategoryLabelLayout(categoryLabels, width)
+      : undefined;
+  const geometry = createGeometry(width, height, horizontalCategoryLabelLayout?.marginLeft);
   // Domain is computed from visible series only — same convention as cartesian
   // charts — so the value scale shrinks correctly when a series is hidden.
   const valueDomain = createPaddedDomain(
@@ -640,7 +641,9 @@ export function createBarModel(options: {
     const categoryPosition = categoryScale(category.key) ?? 0;
     return {
       categoryKey: category.key,
-      label: categoryLabels[index] ?? category.label,
+      label:
+        horizontalCategoryLabelLayout?.labels[index] ?? categoryLabels[index] ?? category.label,
+      fullLabel: categoryLabels[index] ?? category.label,
       x: orientation === 'vertical' ? categoryPosition + categoryScale.bandwidth() / 2 : -8,
       y:
         orientation === 'vertical'
@@ -825,7 +828,17 @@ export function legendVisible(legendPosition: ChartLegendPosition, seriesCount: 
   return legendPosition !== 'none' && seriesCount > 0;
 }
 
-function createGeometry(width: number, height: number, marginLeft = 48): ChartGeometry {
+const DEFAULT_CHART_MARGIN_LEFT = 48;
+const HORIZONTAL_CATEGORY_LABEL_CHARACTER_WIDTH = 12;
+const HORIZONTAL_CATEGORY_LABEL_GAP = 8;
+const HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING = 8;
+const MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION = 0.4;
+
+function createGeometry(
+  width: number,
+  height: number,
+  marginLeft = DEFAULT_CHART_MARGIN_LEFT,
+): ChartGeometry {
   const marginTop = 16;
   const marginRight = 16;
   const marginBottom = 36;
@@ -839,12 +852,49 @@ function createGeometry(width: number, height: number, marginLeft = 48): ChartGe
   };
 }
 
-function estimateHorizontalCategoryLabelMargin(labels: string[]): number {
-  const longestLabel = labels.reduce(
-    (longest, label) => (label.length > longest.length ? label : longest),
-    '',
+function createHorizontalCategoryLabelLayout(
+  labels: string[],
+  chartWidth: number,
+): { labels: string[]; marginLeft: number } {
+  const maximumMarginLeft = Math.max(
+    DEFAULT_CHART_MARGIN_LEFT,
+    Math.floor(chartWidth * MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION),
   );
-  return Math.max(48, longestLabel.length * 8 + 16);
+  const requestedMarginLeft =
+    Math.max(0, ...labels.map(estimateHorizontalCategoryLabelWidth)) +
+    HORIZONTAL_CATEGORY_LABEL_GAP +
+    HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING;
+  const marginLeft = Math.min(
+    maximumMarginLeft,
+    Math.max(DEFAULT_CHART_MARGIN_LEFT, requestedMarginLeft),
+  );
+  const availableLabelWidth = Math.max(
+    0,
+    marginLeft - HORIZONTAL_CATEGORY_LABEL_GAP - HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING,
+  );
+
+  return {
+    marginLeft,
+    labels: labels.map((label) => truncateHorizontalCategoryLabel(label, availableLabelWidth)),
+  };
+}
+
+function estimateHorizontalCategoryLabelWidth(label: string): number {
+  return Array.from(label).length * HORIZONTAL_CATEGORY_LABEL_CHARACTER_WIDTH;
+}
+
+function truncateHorizontalCategoryLabel(label: string, availableWidth: number): string {
+  if (estimateHorizontalCategoryLabelWidth(label) <= availableWidth) return label;
+
+  const availableCharacterCount = Math.floor(
+    availableWidth / HORIZONTAL_CATEGORY_LABEL_CHARACTER_WIDTH,
+  );
+  if (availableCharacterCount <= 0) return '';
+  if (availableCharacterCount === 1) return '…';
+
+  return `${Array.from(label)
+    .slice(0, availableCharacterCount - 1)
+    .join('')}…`;
 }
 
 function normalizeNumericValue(
