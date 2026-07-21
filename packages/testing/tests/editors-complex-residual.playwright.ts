@@ -97,6 +97,17 @@ test.describe('chat action buttons', () => {
         });
       });
 
+      const hitTarget = await copyButton.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const target = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return {
+          className: target instanceof HTMLElement ? target.className : null,
+          isCopyButton: target === element || element.contains(target),
+          tagName: target?.tagName ?? null,
+        };
+      });
+      expect(hitTarget.isCopyButton, JSON.stringify(hitTarget)).toBe(true);
+
       await copyButton.click();
       // CopyButton signals the copied state via `data-cinder-copied` attribute.
       const successButton = page.locator('.chat-message-copy[data-cinder-copied]').first();

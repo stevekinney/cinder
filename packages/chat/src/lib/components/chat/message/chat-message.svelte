@@ -785,6 +785,10 @@
    * the role-specific desktop rules above ([data-role='…'] = 0-1-1), so the
    * media query actually wins inside its breakpoint. */
   @media (max-width: 480px) {
+    .chat-message-wrapper {
+      margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
+    }
+
     .chat-message-wrapper[data-role='user'] .chat-message-footer,
     .chat-message-wrapper[data-role='assistant'] .chat-message-footer,
     .chat-message-wrapper[data-role='system'] .chat-message-footer,
