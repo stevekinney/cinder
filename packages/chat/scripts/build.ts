@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
-import { parsePackageManifest, peerExternalSpecifiers } from './pack-for-publish.ts';
+import { parsePackageManifest, runtimeExternalSpecifiers } from './pack-for-publish.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 
@@ -57,7 +57,7 @@ const serverCssNoopPlugin: BunPlugin = {
 const packageManifest = parsePackageManifest(
   await Bun.file(join(PACKAGE_ROOT, 'package.json')).text(),
 );
-const peerExternals = peerExternalSpecifiers(packageManifest);
+const runtimeExternals = runtimeExternalSpecifiers(packageManifest);
 async function buildServerEntries() {
   const previousNodeEnvironment = process.env['NODE_ENV'];
   process.env['NODE_ENV'] = 'production';
@@ -70,7 +70,7 @@ async function buildServerEntries() {
       target: 'node',
       format: 'esm',
       splitting: true,
-      external: peerExternals,
+      external: runtimeExternals,
       naming: {
         entry: '[dir]/[name].[ext]',
         chunk: '_chunks/[name]-[hash].[ext]',

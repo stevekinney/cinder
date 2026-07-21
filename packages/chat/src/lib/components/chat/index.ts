@@ -42,14 +42,19 @@ export {
 } from './builders.ts';
 
 // Streaming conversation builders — keep the immutable snapshot and Chat's
-// imperative streaming surface in sync through the package's
-// `conversationalist` peer dependency.
+// imperative streaming surface in sync through the package's own
+// `conversationalist` dependency.
 export {
   appendStreamingMessage,
   cancelStreamingMessage,
   finalizeStreamingMessage,
   updateStreamingMessage,
 } from 'conversationalist/streaming';
+
+// Conversationalist runtime helper — validates that values a consumer builds
+// by hand (message content, metadata, tool call arguments) are JSON-compatible
+// before handing them to the builders above.
+export { isJSONValue } from 'conversationalist';
 
 // Conversation data model — published Conversationalist shapes Chat renders.
 // Public so consumers can type the `conversation` prop and construct messages

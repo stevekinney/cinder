@@ -167,28 +167,27 @@
     "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run components:check && bun run build",
     "validate:consumer": "bun run scripts/validate-consumer.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "conversationalist": "^0.2.1 || ^0.4.1",
+    "zod": "4.4.1"
+  },
   "devDependencies": {
     "@lostgradient/cinder": "workspace:*",
     "@sveltejs/package": "^2.5.8",
     "@testing-library/svelte": "^5.2.7",
     "@types/bun": "^1.3.11",
     "ajv": "^8",
-    "conversationalist": "^0.4.1",
     "happy-dom": "^15.11.7",
     "oxlint": "^1.56.0",
     "postcss": "^8.5.15",
     "prettier": "^3.8.1",
     "svelte": "~5.56.0",
     "svelte-check": "^4.0.0",
-    "typescript": "^5.9.0",
-    "zod": "4.4.1"
+    "typescript": "^5.9.0"
   },
   "peerDependencies": {
     "@lostgradient/cinder": "^0.16.0",
-    "conversationalist": "^0.2.1 || ^0.4.1",
-    "svelte": ">=5.56.0 <6",
-    "zod": "4.4.1"
+    "svelte": ">=5.56.0 <6"
   },
   "engines": {
     "bun": ">=1.3.0"

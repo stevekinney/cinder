@@ -2,7 +2,7 @@
 
 Components for product interfaces.
 
-The core package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The Chat domain suite is published separately as `@lostgradient/chat`, with Cinder and its other runtime libraries supplied by the consuming application as peer dependencies.
+The core package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The Chat domain suite is published separately as `@lostgradient/chat`, with Cinder and Svelte supplied by the consuming application as peer dependencies. Chat's own conversation-model dependency (`conversationalist`) ships with it — the consuming application never installs that directly.
 
 Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data fetching layer, global state provider, or theme provider. The package is SSR-safe.
 
@@ -16,11 +16,13 @@ bun add @lostgradient/cinder svelte lucide-svelte
 It uses Lucide for its own component chrome, but it does not provide a general icon library for
 your application-specific icons.
 
-Install the Chat domain suite separately when you need it:
+Install the Chat domain suite separately when you need it, alongside the Cinder install above:
 
 ```bash
-bun add @lostgradient/chat @lostgradient/cinder conversationalist zod svelte
+bun add @lostgradient/chat
 ```
+
+Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
 
 Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
 use optional peer dependencies. Install them only when your app imports

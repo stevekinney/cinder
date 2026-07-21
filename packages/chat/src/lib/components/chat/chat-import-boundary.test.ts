@@ -170,7 +170,7 @@ describe('chat import boundary', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('the public chat barrel is the only runtime boundary for streaming builders', async () => {
+  it('the public chat barrel is the only runtime boundary for streaming builders and isJSONValue', async () => {
     const source = await Bun.file(`${CHAT_ROOT}/index.ts`).text();
     const specifiers = collectModuleSpecifiers(`${CHAT_ROOT}/index.ts`, source).filter(
       ({ specifier, typeOnly }) =>
@@ -182,6 +182,7 @@ describe('chat import boundary', () => {
     expect(specifiers).toEqual([
       { specifier: `${CONVERSATIONALIST_PACKAGE}/versioning`, typeOnly: false },
       { specifier: `${CONVERSATIONALIST_PACKAGE}/streaming`, typeOnly: false },
+      { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false },
     ]);
   });
 });
