@@ -1,0 +1,67 @@
+name: browser-tests-skip
+
+# Mirror-skip workflow for browser-tests.yaml's required status checks.
+#
+# `typecheck` and `playwright` (browser-tests.yaml) are required status
+# checks on `main` (see docs/validation-topology.md's "Branch protection"
+# section). browser-tests.yaml stays path-filtered — it's expensive
+# (Chromium install, a full Playwright run) — but a required check with a
+# path filter leaves any PR whose changes match NONE of that filter with the
+# check stuck at "Expected" forever, permanently blocking the merge.
+#
+# This workflow triggers on the exact INVERSE path set (`paths-ignore`
+# mirroring browser-tests.yaml's `paths`, entry for entry, negations
+# included) and reports the identical `typecheck`/`playwright` job names with
+# a job that succeeds immediately. For any given diff at least one of the two
+# workflows fires for each required name — sometimes both (accepted; the skip
+# job costs a few seconds of runner time), never neither.
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'packages/components/src/**'
+      - 'packages/components/components.json'
+      - 'packages/components/package.json'
+      - 'packages/components/scripts/**'
+      - 'packages/chat/**'
+      - 'packages/*/package.json'
+      - 'packages/*/scripts/**'
+      - 'packages/*/tsconfig*.json'
+      - 'packages/commentary/src/**'
+      - 'packages/diff/src/**'
+      - 'packages/markdown/src/**'
+      - 'packages/playground/src/**'
+      - 'packages/playground/scripts/**'
+      - 'packages/testing/**'
+      - '.github/workflows/browser-tests.yaml'
+      - 'package.json'
+      - 'bun.lock'
+      - 'bun.lockb'
+      - 'bunfig.toml'
+      - '.npmrc'
+      - 'tsconfig*.json'
+      - '!packages/**/*.md'
+      - '!packages/**/README*'
+      - '!packages/**/CHANGELOG*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-tests-skip-${{ github.ref }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Skip (no browser-test-relevant files changed)
+        run: echo "browser-tests.yaml's path filter did not match this diff; reporting an instant pass for the required 'typecheck' check."
+
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Skip (no browser-test-relevant files changed)
+        run: echo "browser-tests.yaml's path filter did not match this diff; reporting an instant pass for the required 'playwright' check."
