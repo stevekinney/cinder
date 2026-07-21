@@ -4,11 +4,15 @@
   "properties": {
     "collapsed": {
       "type": "boolean",
-      "description": "Whether the sidebar is collapsed. Bindable via `bind:collapsed`. Default `false`.\n\nOn desktop (>= md breakpoint) `collapsed=true` switches the sidebar to\nicon-only mode. Below the md breakpoint the sidebar renders inside a\n`<Drawer>` and `collapsed=true` means the drawer is closed."
+      "description": "Whether the sidebar is collapsed. Bindable via `bind:collapsed`. Default `false`.\n\nAbove `mobileBreakpoint`, `collapsed=true` switches the sidebar to\nicon-only mode. At or below `mobileBreakpoint`, the sidebar renders inside a\n`<Drawer>` and `collapsed=true` means the drawer is closed."
     },
     "label": {
       "type": "string",
       "description": "Accessible name for the outer landmark and the mobile drawer. Required —\ndefaults to `'Sidebar'` for convenience but must be unique per page. The\ninner `<nav>` landmark derives its own accessible name from this value\nby appending `' navigation'` so screen readers can distinguish the\nouter complementary region from the inner navigation region."
+    },
+    "mobileBreakpoint": {
+      "type": "string",
+      "description": "Viewport width below which the sidebar switches from the inline aside to\nthe mobile drawer. Accepts a simple CSS length such as `'47.99rem'` or\n`'1024px'`. Default `'47.99rem'`."
     },
     "class": {
       "type": "string",

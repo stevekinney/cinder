@@ -155,6 +155,47 @@ describe('Sidebar (desktop / inline aside)', () => {
     expect(container.querySelector('aside')?.hasAttribute('data-cinder-collapsed')).toBe(true);
   });
 
+  test('uses the default mobile breakpoint on the desktop aside', () => {
+    const { container } = render(Sidebar, {
+      props: { navigation: listSnippet('items') },
+    });
+    const aside = container.querySelector('aside');
+    expect(aside?.getAttribute('data-cinder-sidebar-mobile-breakpoint')).toBe(
+      SIDEBAR_MOBILE_BREAKPOINT,
+    );
+    expect(aside?.getAttribute('style')).toContain(
+      `--cinder-sidebar-mobile-breakpoint: ${SIDEBAR_MOBILE_BREAKPOINT};`,
+    );
+  });
+
+  test('custom mobile breakpoint lands on the desktop aside presentation contract', () => {
+    const mock = installMatchMediaMock(false, '(max-width: 64rem)');
+    try {
+      const { container } = render(Sidebar, {
+        props: { mobileBreakpoint: '64rem', navigation: listSnippet('items') },
+      });
+      const aside = container.querySelector('aside');
+      const style = container.querySelector('style[data-cinder-sidebar-breakpoint-style]');
+      expectQueryWasUsed(mock, '(max-width: 64rem)');
+      expect(aside?.getAttribute('data-cinder-sidebar-mobile-breakpoint')).toBe('64rem');
+      expect(aside?.getAttribute('style')).toContain('--cinder-sidebar-mobile-breakpoint: 64rem;');
+      expect(style?.textContent).toContain('@media (max-width: 64rem)');
+      expect(style?.textContent).toContain(
+        '.cinder-sidebar--desktop[data-cinder-sidebar-mobile-breakpoint="64rem"]',
+      );
+    } finally {
+      mock.restore();
+    }
+  });
+
+  test('invalid mobile breakpoint throws on initial render', () => {
+    expect(() => {
+      render(Sidebar, {
+        props: { mobileBreakpoint: '64rem) { * { color: red }', navigation: listSnippet('items') },
+      });
+    }).toThrow();
+  });
+
   test('aria-label in rest spread cannot override the component-owned label', () => {
     const { container } = render(Sidebar, {
       props: {
@@ -254,11 +295,11 @@ describe('Sidebar SSR responsive fallback', () => {
     const escapedBreakpoint = SIDEBAR_MOBILE_BREAKPOINT.replace('.', '\\.');
     expect(css).toMatch(
       new RegExp(
-        `@media\\s*\\(\\s*max-width:\\s*${escapedBreakpoint}\\s*\\)[\\s\\S]*?\\.cinder-sidebar--desktop\\[data-cinder-ssr-mobile-fallback\\]\\s*{\\s*display:\\s*none;\\s*}`,
+        `@media\\s*\\(\\s*max-width:\\s*${escapedBreakpoint}\\s*\\)[\\s\\S]*?\\.cinder-sidebar--desktop\\[data-cinder-sidebar-mobile-breakpoint='${escapedBreakpoint}'\\]\\[data-cinder-ssr-mobile-fallback\\]\\s*{\\s*display:\\s*none;\\s*}`,
       ),
     );
     expect(css).toMatch(
-      /\.cinder-sidebar--desktop\[data-cinder-collapsed\]\s*{\s*display:\s*none;\s*}/,
+      /\.cinder-sidebar--desktop\[data-cinder-sidebar-mobile-breakpoint='47\.99rem'\]\[data-cinder-collapsed\]\s*{\s*display:\s*none;\s*}/,
     );
   });
 });
@@ -307,11 +348,14 @@ describe('Sidebar context', () => {
 
 type Listener = (event: { matches: boolean }) => void;
 
-function installMatchMediaMock(initialMatches: boolean) {
+function installMatchMediaMock(
+  initialMatches: boolean,
+  matchingQuery = SIDEBAR_MOBILE_MEDIA_QUERY,
+) {
   const queries: string[] = [];
   const list = {
     matches: initialMatches,
-    media: SIDEBAR_MOBILE_MEDIA_QUERY,
+    media: matchingQuery,
     onchange: null as Listener | null,
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -324,7 +368,7 @@ function installMatchMediaMock(initialMatches: boolean) {
   (window as unknown as { matchMedia: typeof window.matchMedia }).matchMedia = ((query: string) => {
     queries.push(query);
 
-    if (query === SIDEBAR_MOBILE_MEDIA_QUERY) {
+    if (query === matchingQuery) {
       return list as unknown as MediaQueryList;
     }
 
@@ -350,6 +394,13 @@ function installMatchMediaMock(initialMatches: boolean) {
 
 function expectMobileQueryWasUsed(mock: ReturnType<typeof installMatchMediaMock>): void {
   expect(mock.queries).toContain(SIDEBAR_MOBILE_MEDIA_QUERY);
+}
+
+function expectQueryWasUsed(
+  mock: ReturnType<typeof installMatchMediaMock>,
+  expectedQuery: string,
+): void {
+  expect(mock.queries).toContain(expectedQuery);
 }
 
 // happy-dom doesn't implement HTMLDialogElement.showModal / close — stub them
@@ -507,6 +558,18 @@ describe('Sidebar (mobile / drawer)', () => {
     const wrapper = container.querySelector('.cinder-sidebar.cinder-sidebar--mobile');
     // collapsed=true with mobile=true → drawer closed → wrapper not rendered
     expect(wrapper).toBeNull();
+  });
+
+  test('custom mobile breakpoint controls the MediaQuery and mobile wrapper presentation', () => {
+    const customQuery = '(max-width: 64rem)';
+    mock = installMatchMediaMock(true, customQuery);
+    const { container } = render(Sidebar, {
+      props: { mobileBreakpoint: '64rem', navigation: listSnippet('items') },
+    });
+    expectQueryWasUsed(mock, customQuery);
+    const wrapper = container.querySelector('dialog .cinder-sidebar.cinder-sidebar--mobile');
+    expect(wrapper?.getAttribute('data-cinder-sidebar-mobile-breakpoint')).toBe('64rem');
+    expect(wrapper?.getAttribute('style')).toContain('--cinder-sidebar-mobile-breakpoint: 64rem;');
   });
 });
 

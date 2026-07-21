@@ -22,7 +22,7 @@
   import { setSidebarContext, type SidebarContextValue } from '../../_internal/sidebar-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import Drawer from '../drawer/drawer.svelte';
-  import { SIDEBAR_MOBILE_MEDIA_QUERY } from './sidebar.constants.ts';
+  import { SIDEBAR_MOBILE_BREAKPOINT } from './sidebar.constants.ts';
 
   type SidebarRuntimeProps = SidebarProps & {
     'aria-label'?: unknown;
@@ -33,6 +33,7 @@
     id: sidebarId,
     collapsed = $bindable(false),
     label = 'Sidebar',
+    mobileBreakpoint = SIDEBAR_MOBILE_BREAKPOINT,
     class: className,
     brand: brandSnippet,
     navigation: navigationSnippet,
@@ -54,15 +55,26 @@
   // identically-named landmarks.
   const navigationLabel = $derived(`${validatedLabel} navigation`);
 
+  const validatedMobileBreakpoint = $derived.by(() => {
+    const value = mobileBreakpoint.trim();
+    if (!isSimpleCssLength(value)) {
+      throw new Error('Sidebar mobileBreakpoint must be a CSS length such as "47.99rem".');
+    }
+    return value;
+  });
+
+  const mobileMediaQuery = $derived(`(max-width: ${validatedMobileBreakpoint})`);
+  const responsiveFallbackCss = $derived(
+    `@media (max-width: ${validatedMobileBreakpoint}) { .cinder-sidebar--desktop[data-cinder-sidebar-mobile-breakpoint="${validatedMobileBreakpoint}"][data-cinder-ssr-mobile-fallback], .cinder-sidebar--desktop[data-cinder-sidebar-mobile-breakpoint="${validatedMobileBreakpoint}"][data-cinder-collapsed] { display: none; } }`,
+  );
+
   // The fully-parenthesized form is required — `window.matchMedia` rejects
   // bare media feature expressions on Firefox and Safari.
   // Keep the fallback explicit for SSR-contract test environments that resolve
   // the client MediaQuery build while `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   const usesSsrResponsiveFallback = !hasMatchMedia;
-  const mobile = hasMatchMedia
-    ? new MediaQuery(SIDEBAR_MOBILE_MEDIA_QUERY, false)
-    : { current: false };
+  const mobile = $derived(hasMatchMedia ? new MediaQuery(mobileMediaQuery, false).current : false);
 
   const context: SidebarContextValue = {
     get collapsed() {
@@ -70,6 +82,12 @@
     },
   };
   setSidebarContext(context);
+
+  function isSimpleCssLength(value: string): boolean {
+    return /^(?:0|(?:\d+|\d*\.\d+)(?:px|rem|em|ch|vw|vh|vmin|vmax|svw|svh|lvw|lvh|dvw|dvh|cqw|cqh|cqi|cqb|cqmin|cqmax|%))$/.test(
+      value.trim(),
+    );
+  }
 </script>
 
 {#snippet sidebarContents(isMobile: boolean)}
@@ -96,7 +114,11 @@
   {/if}
 {/snippet}
 
-{#if mobile.current}
+<svelte:element this={'style'} data-cinder-sidebar-breakpoint-style>
+  {responsiveFallbackCss}
+</svelte:element>
+
+{#if mobile}
   <Drawer
     {...rest}
     bind:open={
@@ -110,7 +132,11 @@
     title={validatedLabel}
     id={sidebarId}
   >
-    <div class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}>
+    <div
+      class={classNames('cinder-sidebar', 'cinder-sidebar--mobile', className)}
+      data-cinder-sidebar-mobile-breakpoint={validatedMobileBreakpoint}
+      style:--cinder-sidebar-mobile-breakpoint={validatedMobileBreakpoint}
+    >
       {@render sidebarContents(true)}
     </div>
   </Drawer>
@@ -120,8 +146,10 @@
     {...rest}
     class={classNames('cinder-sidebar', 'cinder-sidebar--desktop', className)}
     aria-label={validatedLabel}
+    data-cinder-sidebar-mobile-breakpoint={validatedMobileBreakpoint}
     data-cinder-collapsed={collapsed ? '' : undefined}
     data-cinder-ssr-mobile-fallback={usesSsrResponsiveFallback ? '' : undefined}
+    style:--cinder-sidebar-mobile-breakpoint={validatedMobileBreakpoint}
   >
     {@render sidebarContents(false)}
   </aside>
