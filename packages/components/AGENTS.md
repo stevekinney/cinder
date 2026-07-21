@@ -21,12 +21,15 @@ sidecar and runnable examples.
 ### Quickstart
 
 ```bash
-bun add @lostgradient/cinder svelte lucide-svelte
+bun add @lostgradient/cinder svelte
 ```
 
-`svelte` and `lucide-svelte` are peer dependencies. Cinder uses Lucide for its
-own component chrome, but it does not provide a general icon library for your
-application-specific icons.
+`svelte` is a peer dependency. Cinder uses Lucide (`lucide-svelte`) for its own
+component chrome, but bundles its own pinned copy as a regular dependency
+rather than a peer — this keeps the icon markup Cinder renders on the server
+identical to what it renders in the browser regardless of which `lucide-svelte`
+version your application installs for its own icons. Cinder does not provide a
+general icon library for your application-specific icons.
 
 Two import shapes, pick one per file:
 

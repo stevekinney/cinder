@@ -1,5 +1,30 @@
 /// <reference lib="dom" />
-/** Full server-render-and-hydrate regression coverage for the public Chat tree. */
+/**
+ * Full server-render-and-hydrate regression coverage for the public Chat tree.
+ *
+ * These tests rule out the `createConversation` timestamp theory floated in
+ * issue #756 (a differing `createdAt`/`updatedAt` between SSR and hydration):
+ * Chat never renders conversation timestamps, so a differing clock cannot
+ * produce a mismatch.
+ *
+ * They do NOT reproduce #756's actual `hydration_mismatch`. The real cause is
+ * a `@lostgradient/cinder` build/packaging bug: `lucide-svelte` was a loosely
+ * ranged peer dependency, so Cinder's prebuilt SSR bundle (built once, at
+ * Cinder's own `lucide-svelte` version) could render different icon SVG
+ * markup than a consuming app's client bundle (compiled fresh, at whatever
+ * `lucide-svelte` version that app's package manager resolved) whenever
+ * Lucide's icon artwork changed between those two versions. This harness
+ * compiles both the server and client side from the SAME workspace source
+ * against the SAME single `lucide-svelte` install, so it structurally cannot
+ * exercise a cross-version divergence — see the packed-tarball,
+ * real-SvelteKit-dev-server, real-browser regression in
+ * `packages/components/scripts/validate-consumers.ts`
+ * (`sveltekit-consumer`'s `/chat-layout` route, which now pins a
+ * `lucide-svelte` version in that fixture deliberately newer than Cinder's
+ * own, to keep exercising the skew) and the fix itself in
+ * `packages/components/package.json` (`lucide-svelte` moved from
+ * `peerDependencies` to a pinned, exact-version `dependencies` entry).
+ */
 import { afterAll, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
