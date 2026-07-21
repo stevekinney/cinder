@@ -155,6 +155,9 @@
   function handleComposerInput(nextValue: string, event?: Event): void {
     const composerElement = event ? getComposerElement(event) : anchor;
     if (!event && suppressCommittedSelectionSync) {
+      // Selection commits written back through ChatInput/Chat.insertAtRange()
+      // report the new value without a DOM input event. Keep the menu closed
+      // while syncing the bound value/caret for that programmatic write-back.
       if (composerElement) anchor = composerElement;
       lastSyncedValue = nextValue;
       value = nextValue;
