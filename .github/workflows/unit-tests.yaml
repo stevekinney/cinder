@@ -295,6 +295,24 @@ jobs:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
         run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat $AFFECTED
 
+      # @cinder/diff, @cinder/markdown, and @cinder/commentary are bundled
+      # into @lostgradient/cinder but published nowhere on their own, so
+      # unlike @lostgradient/chat (covered below) and @lostgradient/cinder
+      # (covered by the scoped test:changed step further down) they had no
+      # dedicated CI test step of their own. Before pre-push was thinned to a
+      # fast, fail-open sanity check, its local dispatch covered these three
+      # on the pushing branch pre-merge; CI must own that entirely now (see
+      # docs/validation-topology.md's "Push-layer inversion"). `--affected`
+      # (via turbo, diffing against TURBO_SCM_BASE) makes this near-free when
+      # none of the three changed -- their `dist/` is already fresh from the
+      # "Build workspace (affected)" step above (turbo builds them
+      # transparently to satisfy cinder's `^build` dependency, filter or not),
+      # so a skip here is a cache hit, not a rebuild.
+      - name: Run private package unit tests (affected)
+        env:
+          AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
+        run: bunx turbo run test --filter=@cinder/diff --filter=@cinder/markdown --filter=@cinder/commentary $AFFECTED
+
       - name: Run Chat unit tests with coverage (affected)
         env:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
