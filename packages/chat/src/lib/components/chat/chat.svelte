@@ -32,27 +32,15 @@
 
   const mergedClassName = $derived(classNames(className));
 
-  function getAtBottom(): boolean {
-    return atBottom;
-  }
-
-  function setAtBottom(value: boolean): void {
+  function handleAtBottomBindingChange(value: boolean): void {
     atBottom = value;
   }
 
-  function getUnreadCount(): number {
-    return unreadCount;
-  }
-
-  function setUnreadCount(value: number): void {
+  function handleUnreadCountBindingChange(value: number): void {
     unreadCount = value;
   }
 
-  function getNewMessageIndicatorVisible(): boolean {
-    return newMessageIndicatorVisible;
-  }
-
-  function setNewMessageIndicatorVisible(value: boolean): void {
+  function handleNewMessageIndicatorVisibleBindingChange(value: boolean): void {
     newMessageIndicatorVisible = value;
   }
 
@@ -130,9 +118,12 @@
 
 <ChatImplementation
   bind:this={impl}
-  bind:atBottom={getAtBottom, setAtBottom}
-  bind:unreadCount={getUnreadCount, setUnreadCount}
-  bind:newMessageIndicatorVisible={getNewMessageIndicatorVisible, setNewMessageIndicatorVisible}
+  {atBottom}
+  {unreadCount}
+  {newMessageIndicatorVisible}
+  onatbottombindingchange={handleAtBottomBindingChange}
+  onunreadcountbindingchange={handleUnreadCountBindingChange}
+  onnewmessageindicatorvisiblebindingchange={handleNewMessageIndicatorVisibleBindingChange}
   class={mergedClassName}
   {...rest}
 />

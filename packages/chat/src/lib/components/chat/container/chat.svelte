@@ -9,6 +9,14 @@
   // redeclaring it, so the public type and the `$props()` shape can never drift.
   import type { ChatAnnounceLevel, ChatProps } from '../chat.types.ts';
 
+  // The public wrapper uses callbacks instead of component bindings so SSR can
+  // render this subtree once while still forwarding bindable state changes.
+  type ChatImplementationProps = ChatProps & {
+    onatbottombindingchange?: (value: boolean) => void;
+    onunreadcountbindingchange?: (value: number) => void;
+    onnewmessageindicatorvisiblebindingchange?: (value: boolean) => void;
+  };
+
   export type { ChatAnnounceLevel, ChatProps };
   export type {
     ChatScrollStateChangeEvent,
@@ -76,6 +84,9 @@
     atBottom = $bindable(true),
     unreadCount = $bindable(0),
     newMessageIndicatorVisible = $bindable(false),
+    onatbottombindingchange,
+    onunreadcountbindingchange,
+    onnewmessageindicatorvisiblebindingchange,
     class: className,
     surfaceMode = 'default',
     density = 'comfortable',
@@ -135,7 +146,22 @@
     composerAriaActiveDescendant,
     composerAriaAutocomplete,
     ...rest
-  }: ChatProps = $props();
+  }: ChatImplementationProps = $props();
+
+  function updateAtBottomBinding(value: boolean): void {
+    atBottom = value;
+    onatbottombindingchange?.(value);
+  }
+
+  function updateUnreadCountBinding(value: number): void {
+    unreadCount = value;
+    onunreadcountbindingchange?.(value);
+  }
+
+  function updateNewMessageIndicatorVisibleBinding(value: boolean): void {
+    newMessageIndicatorVisible = value;
+    onnewmessageindicatorvisiblebindingchange?.(value);
+  }
 
   // ==========================================================================
   // Refs and Internal State
@@ -242,7 +268,7 @@
       // The sentinel fires when the user reaches the bottom via
       // IntersectionObserver, which does not emit onScrollStateChange.
       // Update the bindable prop here so it stays in sync with the sentinel path.
-      atBottom = true;
+      updateAtBottomBinding(true);
       if (unreadState.unreadCount > 0 || unreadState.newMessageIndicatorVisible) {
         unreadState.markAllAsRead();
       }
@@ -257,8 +283,8 @@
   const unreadState = useChatUnreadState({
     onUnreadIndicatorChange: (event) => {
       // Update the bindable props at the mutation site rather than via a $effect.
-      unreadCount = event.unreadCount;
-      newMessageIndicatorVisible = event.newMessageIndicatorVisible;
+      updateUnreadCountBinding(event.unreadCount);
+      updateNewMessageIndicatorVisibleBinding(event.newMessageIndicatorVisible);
       onunreadindicatorchange?.(event);
     },
   });
@@ -276,7 +302,7 @@
         const canLeaveBottom = chatVirtualizer.scrollSize > (viewport?.clientHeight ?? 0);
         if (canLeaveBottom) {
           scrollState.setAtBottom(false);
-          atBottom = false;
+          updateAtBottomBinding(false);
         }
         scrollState.withUserScrollGuard(() => {
           chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
@@ -705,7 +731,7 @@
     clearHistoryAnchorAfterScroll(event.scrollTop);
 
     // Update the bindable prop at the mutation site rather than via a $effect.
-    atBottom = event.atBottom;
+    updateAtBottomBinding(event.atBottom);
 
     onscrollstatechange?.(event);
   }
@@ -916,7 +942,7 @@
       // prop synchronously (matching the submit auto-scroll path) rather than
       // waiting for the real scroll listener's rAF-deferred recompute.
       scrollState.setAtBottom(true);
-      atBottom = true;
+      updateAtBottomBinding(true);
       unreadState.markAllAsRead();
       onjumptolatest?.();
       tick().then(() => {
@@ -997,7 +1023,7 @@
     // updates the internal helper state; the bindable must be written explicitly
     // (matching the pattern in handleScrollStateChange and onReachBottom).
     scrollState.setAtBottom(true);
-    atBottom = true;
+    updateAtBottomBinding(true);
     tick().then(() => {
       if (isVirtualized) {
         chatVirtualizer.scrollToOffset(chatVirtualizer.scrollSize, { behavior: 'instant' });
@@ -1459,7 +1485,7 @@
     // prop synchronously (matching the submit auto-scroll path) rather than
     // waiting for the real scroll listener's rAF-deferred recompute.
     scrollState.setAtBottom(true);
-    atBottom = true;
+    updateAtBottomBinding(true);
     if (isVirtualized) {
       // Supersede any stale guard from an earlier top-scroll — see the same
       // comment in handleJumpToLatest's virtualized branch.
@@ -1486,7 +1512,7 @@
       const canLeaveBottom = chatVirtualizer.scrollSize > (viewport?.clientHeight ?? 0);
       if (canLeaveBottom) {
         scrollState.setAtBottom(false);
-        atBottom = false;
+        updateAtBottomBinding(false);
       }
       // Guard against the auto-stick-to-bottom $effect.pre (Scroll Anchoring
       // section, above) fighting this animation: it re-fires on every
@@ -1500,7 +1526,7 @@
       // Same canLeaveBottom reasoning as the virtualized branch above.
       const canLeaveBottom = !!viewport && viewport.scrollHeight > viewport.clientHeight;
       if (canLeaveBottom) {
-        atBottom = false;
+        updateAtBottomBinding(false);
       }
       scrollState.scrollToTop(viewport);
     }
