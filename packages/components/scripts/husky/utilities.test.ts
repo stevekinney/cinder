@@ -545,12 +545,9 @@ describe('parsePushRefs', () => {
  * `phaseMaxConcurrency` is the side-effect-free seam extracted so this test
  * can assert the concurrency policy without importing a hook entry path
  * (which has module-scope side effects: isContinuousIntegration → process.exit,
- * stdin read). Originally added for issue #364 (pre-push and pre-commit test
- * phases raced shared-dist rebuilds); pre-push no longer runs a local test
- * phase at all — CI owns that now — so pre-commit's parallel per-package
- * typecheck is the only current caller. The policy is kept general across all
- * three `GateScript` values (not narrowed to `typecheck`) so a future local
- * gate script inherits the same bounded concurrency instead of reinventing it.
+ * stdin read). The policy is kept general across all three `GateScript` values
+ * (not narrowed to pre-commit's `typecheck`) so a future local gate script
+ * inherits the same bounded concurrency instead of reinventing it.
  */
 describe('phaseMaxConcurrency', () => {
   function withHardwareConcurrency(value: number, run: () => void): void {
@@ -575,7 +572,7 @@ describe('phaseMaxConcurrency', () => {
     }
   }
 
-  it('returns a value greater than 1 for test (dependency closure is pre-built, so inline rebuilds hash-skip)', () => {
+  it('returns a value greater than 1 for test', () => {
     withHardwareConcurrency(2, () => {
       expect(phaseMaxConcurrency('test')).toBeGreaterThan(1);
     });
@@ -615,12 +612,13 @@ describe('phaseMaxConcurrency', () => {
 /**
  * `runWithConcurrencyPool` is the *mechanism* the `phaseMaxConcurrency` policy
  * feeds. The policy tests above only prove each phase asks for a given
- * concurrency — they do NOT prove the runner honors it. Both hooks' `runJobs`
- * delegate to this pool, so a future edit that passed a hardcoded literal
- * instead of `phaseMaxConcurrency(script)` would still leave the policy tests
- * green. These tests close that gap: they instrument the worker to record the
- * maximum number of overlapping invocations and assert the pool never exceeds
- * the cap — with `maxConcurrency === 1` the overlap is strictly 1.
+ * concurrency — they do NOT prove the runner honors it. The pre-commit
+ * `runJobs` helper delegates to this pool, so a future edit that passed a
+ * hardcoded literal instead of `phaseMaxConcurrency(script)` would still
+ * leave the policy tests green. These tests close that gap: they instrument
+ * the worker to record the maximum number of overlapping invocations and
+ * assert the pool never exceeds the cap — with `maxConcurrency === 1` the
+ * overlap is strictly 1.
  */
 describe('runWithConcurrencyPool', () => {
   /**
@@ -649,7 +647,7 @@ describe('runWithConcurrencyPool', () => {
     return { results, maxObserved };
   }
 
-  it('runs strictly one at a time when maxConcurrency is 1 (the #364 guarantee)', async () => {
+  it('runs strictly one at a time when maxConcurrency is 1', async () => {
     const { results, maxObserved } = await observeOverlap(6, 1);
     expect(maxObserved).toBe(1);
     // Results stay in input order regardless of pool scheduling.
@@ -706,7 +704,7 @@ describe('withGateLock', () => {
   async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
     const directory = await mkdtemp(join(tmpdir(), 'cinder-gate-lock-'));
     try {
-      return await test(join(directory, 'pre-push-gate.lock'));
+      return await test(join(directory, 'local-validation-gate.lock'));
     } finally {
       await rm(directory, { force: true, recursive: true });
     }

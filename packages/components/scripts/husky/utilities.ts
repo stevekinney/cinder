@@ -57,18 +57,10 @@ export type GateScript = 'lint' | 'typecheck' | 'test';
  * All three gate scripts — lint, typecheck, and test — share the same
  * CPU-bound cap, kept general (rather than hardcoded to pre-commit's actual
  * `typecheck`-only usage) so a future gate script inherits the same policy for
- * free. Issue #364 was a race between concurrent test jobs' inline
- * `bun run --filter=<dep> build` steps, which wiped and re-emitted the shared
- * upstream `dist/` directories (e.g. `@cinder/markdown`, `@cinder/diff`) out
- * from under each other, yielding non-deterministic
- * `error: "<name>" is not declared in this file`. That race no longer applies
- * locally — pre-push (the hook that ran the test phase) has been thinned to a
- * fast, fail-open sanity check with no test job of its own; CI now owns the
- * dependency-closure-aware test run. The `test` case in {@link GateScript}
- * and this function's equal-across-scripts policy are kept anyway, since
- * `check:pipeline-coverage` and CI jobs still reason about the same script
- * names, and a future local test dispatch should inherit this cap rather than
- * reinvent it.
+ * free. The `test` case in {@link GateScript} and this function's
+ * equal-across-scripts policy are kept because `check:pipeline-coverage` and
+ * CI jobs still reason about the same script names, and a future local test
+ * dispatch should inherit this cap rather than reinvent it.
  */
 export function phaseMaxConcurrency(_script: GateScript): number {
   // CPU-bound default (up to 4 workers). The `?? 1` guards environments where
@@ -488,7 +480,7 @@ function releaseGateLockSync(lockPath: string, token: string) {
 }
 
 /**
- * Run an expensive local validation gate under a shared repository lock so
+ * Run expensive local validation work under a shared repository lock so
  * concurrent invocations from linked worktrees do not stack full
  * workspace-scale work (builds, installs, generated-artifact writes) on top
  * of one another.
@@ -609,15 +601,12 @@ export async function withGateLock<T>(
 /**
  * Serialize expensive local validation gates across worktrees.
  *
- * `pre-push` no longer holds this lock — it was thinned to a fast, fail-open
- * sanity check with no expensive critical section left to serialize (CI now
- * owns the scoped test/lint/typecheck run pre-push used to gate). The lock
- * remains for the scripts that still do heavy, disk-mutating local work
- * outside of CI: `test-changed.ts` (`bun run test:changed`),
+ * The lock remains for scripts that do heavy, disk-mutating local work:
+ * `test-changed.ts` (`bun run test:changed`),
  * `generate-component-artifacts.ts` (`components:generate`), and
  * `validate-consumers.ts` (`validate:consumer`) each call this directly when
- * run standalone, so concurrent worktrees don't stack full builds/installs on
- * top of one another. The marker below lets a script that's already inside
+ * run standalone, so concurrent worktrees do not stack full builds/installs
+ * on top of one another. The marker below lets a script that's already inside
  * one of those locked runs call another without deadlocking on the same lock.
  */
 export async function withLocalValidationGateLock<T>(
