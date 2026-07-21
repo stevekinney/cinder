@@ -18,5 +18,10 @@
     "filePath": "src/components/sidebar/sidebar.css",
     "query": "@media (max-width: 47.99rem)",
     "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/sidebar/sidebar.svelte",
+    "query": "@media (max-width: $",
+    "allowedCount": 1
   }
 ]

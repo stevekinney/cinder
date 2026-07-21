@@ -8,12 +8,13 @@
  * client-only load/error state (image) does NOT appear in the server output,
  * so there is no hydration mismatch and no client-only markup leaks into SSR.
  *
- * Why we recompile inside the helper: the test runtime preloads the Bun Svelte
+ * Why this helper owns a server build: the test runtime preloads the Bun Svelte
  * plugin in `generate: 'client'` mode (see `scripts/preload.ts`). The client
  * compilation cannot be fed to `svelte/server`'s `render()` — it expects a live
  * effect tree. So this helper reads the `.svelte` source directly, compiles it
  * with `generate: 'server'`, writes the JS to a temp file next to the source,
- * dynamic-imports it, and feeds that into `render()`.
+ * dynamic-imports it, and feeds that into `render()`. Builds are memoized by
+ * source path because component fixtures are immutable during a test process.
  *
  * Why we rewrite the bare `svelte` import: the test process runs under the
  * `browser` export condition, which resolves `svelte` to its client build.
@@ -86,6 +87,53 @@ function serverCompilePlugin(): BunPlugin {
   };
 }
 
+const serverBuildCache = new Map<string, Promise<string>>();
+const serverBuildCounts = new Map<string, number>();
+
+function buildServerCode(sourcePath: string): Promise<string> {
+  const cached = serverBuildCache.get(sourcePath);
+  if (cached) return cached;
+
+  serverBuildCounts.set(sourcePath, (serverBuildCounts.get(sourcePath) ?? 0) + 1);
+  const pending = (async () => {
+    const build = await Bun.build({
+      entrypoints: [sourcePath],
+      target: 'bun',
+      conditions: ['svelte'],
+      external: ['svelte', 'svelte/*'],
+      plugins: [serverCompilePlugin()],
+    });
+    if (!build.success) {
+      const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
+      throw new Error(`server-render: server build failed for ${sourcePath}\n${logText}`);
+    }
+    const artifact = build.outputs[0];
+    if (!artifact) throw new Error(`server-render: no server artifact for ${sourcePath}`);
+    return artifact.text();
+  })();
+
+  serverBuildCache.set(sourcePath, pending);
+  void pending.catch(() => {
+    if (serverBuildCache.get(sourcePath) === pending) serverBuildCache.delete(sourcePath);
+  });
+  return pending;
+}
+
+/** Compile a component's reusable server graph during fixture setup. */
+export async function prepareServerRenderSource(sourcePath: string): Promise<void> {
+  await buildServerCode(sourcePath);
+}
+
+/** Test-only cache probes for the fixture-setup regression suite. */
+export const __serverRenderBuildCacheForTests = {
+  evict(sourcePath: string): void {
+    serverBuildCache.delete(sourcePath);
+  },
+  buildCount(sourcePath: string): number {
+    return serverBuildCounts.get(sourcePath) ?? 0;
+  },
+};
+
 /**
  * Render `sourcePath`'s component on the server and return the emitted HTML.
  *
@@ -97,19 +145,7 @@ export async function renderToServerHtml<Props extends Record<string, unknown>>(
   sourcePath: string,
   props: Props = {} as Props,
 ): Promise<string> {
-  const build = await Bun.build({
-    entrypoints: [sourcePath],
-    target: 'bun',
-    conditions: ['svelte'],
-    external: ['svelte', 'svelte/*'],
-    plugins: [serverCompilePlugin()],
-  });
-  if (!build.success) {
-    const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
-    throw new Error(`server-render: server build failed for ${sourcePath}\n${logText}`);
-  }
-  const artifact = build.outputs[0];
-  if (!artifact) throw new Error(`server-render: no server artifact for ${sourcePath}`);
+  const compiledServerCode = await buildServerCode(sourcePath);
 
   // Resolve Svelte's server index and repoint the compiled module's bare
   // `svelte` imports at it. The temp module is imported in a `browser`-condition
@@ -154,7 +190,7 @@ export async function renderToServerHtml<Props extends Record<string, unknown>>(
       '',
     ].join('\n'),
   );
-  let code = await artifact.text();
+  let code = compiledServerCode;
   code = code
     .replaceAll(
       /from\s*['"]svelte\/internal\/server['"]/g,
