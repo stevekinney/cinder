@@ -149,7 +149,7 @@
     if (composerElement) anchor = composerElement;
     lastSyncedValue = nextValue;
     value = nextValue;
-    caretIndex = composerElement?.selectionEnd ?? nextValue.length;
+    caretIndex = composerElement?.selectionEnd ?? caretIndex;
   }
 
   function dismiss({ restoreFocus = true }: { restoreFocus?: boolean } = {}): void {
@@ -184,6 +184,8 @@
       syncComposerValueAndCaret(composerElement, composerElement.value);
       return;
     }
+    // Only clear the external-value suppression once we know this selection
+    // event came from the composer we track; unrelated/null targets are a no-op.
     suppressNextValueSync = false;
     syncComposerSelectionAfterNativeNavigation(composerElement);
   }
