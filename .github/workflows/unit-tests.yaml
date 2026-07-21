@@ -58,6 +58,8 @@ on:
       - 'bunfig.toml'
       - '.npmrc'
       - 'tsconfig*.json'
+      - 'turbo.json'
+      - '.oxlintrc.json'
       - '!packages/**/*.md'
       - '!packages/**/README*'
       - '!packages/**/CHANGELOG*'
@@ -93,6 +95,8 @@ on:
       - 'bunfig.toml'
       - '.npmrc'
       - 'tsconfig*.json'
+      - 'turbo.json'
+      - '.oxlintrc.json'
       - '!packages/**/*.md'
       - '!packages/**/README*'
       - '!packages/**/CHANGELOG*'
@@ -111,6 +115,9 @@ concurrency:
 
 env:
   BUN_VERSION: 1.3.13
+  # Read by `turbo run --affected`; harmless on push/workflow_dispatch runs
+  # since those invocations omit --affected entirely.
+  TURBO_SCM_BASE: origin/${{ github.base_ref }}
 
 jobs:
   scope:
@@ -171,11 +178,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # turbo run --affected diffs against TURBO_SCM_BASE, which needs
+          # full history to resolve a merge base (mirrors the `scope` job's
+          # checkout above).
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Restore Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
 
       - name: Restore Bun install cache
         id: bun-cache-restore
@@ -247,8 +267,11 @@ jobs:
       # stylelint runs across all package CSS/Svelte sources, mirroring the
       # invocation in the root package.json `lint` script.
       - name: Lint (workspace)
+        # Full (not --affected) on every run: the workflow comment above
+        # measures this at ~4s across all packages, cheap enough to run
+        # unconditionally rather than risk a scoping gap on a blocking gate.
         run: |
-          bun run --filter='*' lint
+          bunx turbo run lint
           bun run --filter=@lostgradient/cinder lint:invariants
           bun run --filter=@lostgradient/cinder validate:release-workflow
           bunx stylelint 'packages/**/src/**/*.{css,svelte}'
@@ -275,11 +298,21 @@ jobs:
         run: |
           bun run --filter=@lostgradient/cinder components:check
           bun run --filter=@lostgradient/chat components:check
-          bun run --filter=@lostgradient/cinder build
-          bun run --filter=@lostgradient/chat build
 
-      - name: Run Chat unit tests with coverage
-        run: bun run --filter=@lostgradient/chat test:coverage
+      # Scoped to the pull request's affected packages via `turbo run
+      # --affected` (diffing against TURBO_SCM_BASE) so a chat-only PR stops
+      # building cinder and vice versa. Push/workflow_dispatch runs the full
+      # graph — same as before turbo, and the redundant safety net main-green
+      # also runs.
+      - name: Build workspace (affected)
+        env:
+          AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
+        run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat $AFFECTED
+
+      - name: Run Chat unit tests with coverage (affected)
+        env:
+          AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
+        run: bunx turbo run test:coverage --filter=@lostgradient/chat $AFFECTED
 
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
@@ -289,8 +322,10 @@ jobs:
         # Per-package dependency scoping is the deferred follow-up.
         env:
           # CINDER_TEST_MODE is the explicit signal: `full` → test-changed.ts runs
-          # the full suite without touching git (the checkout here is shallow).
-          # `filtered` → CINDER_TEST_COMPONENTS carries the scoped slug list.
+          # the full suite without touching git. `filtered` → CINDER_TEST_COMPONENTS
+          # carries the scoped slug list. (The checkout is full-history as of the
+          # turbo --affected adoption above, but test-changed.ts still uses the
+          # explicit signal rather than doing its own git diff.)
           CINDER_TEST_MODE: ${{ needs.scope.outputs.mode }}
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
         run: |

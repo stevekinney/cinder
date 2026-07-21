@@ -90,8 +90,9 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason:
       'oxlint. pre-commit runs lint-staged (oxlint invoked directly on staged files, not the ' +
       '`lint` script by name) so it is NOT counted here. The package-level `lint` script itself is ' +
-      "invoked by pre-push (scoped), unit-tests.yaml (`--filter='*' lint`, unconditional), " +
-      'and main-green (`bun run lint`). Release deliberately does not rerun source lint.',
+      'invoked by pre-push (scoped), unit-tests.yaml (`turbo run lint`, unconditional, fans out ' +
+      'to every workspace package), and main-green (`bun run lint`). Release deliberately does ' +
+      'not rerun source lint.',
   },
   'lint:invariants': {
     layers: ['unit-tests', 'main-green'],
@@ -115,7 +116,7 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason:
       'External binary, not a `bun run <name>` package.json script. unit-tests.yaml runs it ' +
       'directly (`bunx stylelint`, unconditional, over all package CSS/Svelte sources); main-green ' +
-      'reaches it through the ROOT `lint` script (`bun run --filter=\'*\' lint && stylelint "…"`) — ' +
+      'reaches it through the ROOT `lint` script (`turbo run lint && stylelint "…"`) — ' +
       'NOT the components-package `lint` (plain oxlint), a distinct resolution scope from every ' +
       "other row in this table; pre-push's `runStylelint` invokes the resolved local binary over the " +
       'changed CSS/Svelte file list. Deliberately excludes pre-commit for the same reason `lint` ' +
@@ -433,7 +434,7 @@ function filterTargetsPackage(filter: string | undefined, packageName: string): 
   return filter === packageName || filter === '*';
 }
 
-function extractBunRunInvocations(body: string): BunRunInvocation[] {
+function extractPlainBunRunInvocations(body: string): BunRunInvocation[] {
   const found: BunRunInvocation[] = [];
   const pattern =
     /\bbun\s+run\s+(?:(?:--filter(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+)))\s+)?([A-Za-z0-9:_.-]+)/g;
@@ -444,6 +445,51 @@ function extractBunRunInvocations(body: string): BunRunInvocation[] {
     found.push({ filter: normalizeFilter(match[1] ?? match[2] ?? match[3]), name });
   }
   return found;
+}
+
+/**
+ * `turbo run <name> [--filter=<pkg> ...]` invocations (with an optional
+ * `bunx`/`npx` runner prefix, matched loosely since the pattern isn't
+ * anchored to the start of `body`). Turbo, unlike `bun run --filter`, accepts
+ * `--filter` repeated for multiple packages — so unlike
+ * {@link extractPlainBunRunInvocations} this yields one {@link BunRunInvocation}
+ * per filter found, or a single synthetic `filter: '*'` entry (matching bun's
+ * `--filter='*'` wildcard, already handled by {@link filterTargetsPackage})
+ * when no `--filter` is present — a bare `turbo run lint` fans out to every
+ * workspace package with a `lint` script, the same as the `--filter='*'` form
+ * it replaced.
+ */
+function extractTurboRunInvocations(body: string): BunRunInvocation[] {
+  const found: BunRunInvocation[] = [];
+  const invocationPattern =
+    /\bturbo\s+run\s+([A-Za-z0-9:_.-]+)((?:\s+--filter(?:=|\s+)(?:"[^"]+"|'[^']+'|\S+))*)/g;
+  const filterPattern = /--filter(?:=|\s+)(?:"([^"]+)"|'([^']+)'|(\S+))/g;
+
+  let match: RegExpExecArray | null;
+  while ((match = invocationPattern.exec(body)) !== null) {
+    const name = match[1];
+    const filtersText = match[2];
+    if (name === undefined) continue;
+
+    const filters: string[] = [];
+    let filterMatch: RegExpExecArray | null;
+    filterPattern.lastIndex = 0;
+    while ((filterMatch = filterPattern.exec(filtersText ?? '')) !== null) {
+      const filter = normalizeFilter(filterMatch[1] ?? filterMatch[2] ?? filterMatch[3]);
+      if (filter !== undefined) filters.push(filter);
+    }
+
+    if (filters.length === 0) {
+      found.push({ filter: '*', name });
+      continue;
+    }
+    for (const filter of filters) found.push({ filter, name });
+  }
+  return found;
+}
+
+function extractBunRunInvocations(body: string): BunRunInvocation[] {
+  return [...extractPlainBunRunInvocations(body), ...extractTurboRunInvocations(body)];
 }
 
 function scopeForWorkflowInvocation(
