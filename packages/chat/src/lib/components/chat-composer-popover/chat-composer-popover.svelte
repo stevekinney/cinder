@@ -142,6 +142,16 @@
     }
   }
 
+  function syncComposerValueAndCaret(
+    composerElement: HTMLTextAreaElement | HTMLInputElement | null,
+    nextValue: string,
+  ): void {
+    if (composerElement) anchor = composerElement;
+    lastSyncedValue = nextValue;
+    value = nextValue;
+    caretIndex = composerElement?.selectionEnd ?? nextValue.length;
+  }
+
   function dismiss({ restoreFocus = true }: { restoreFocus?: boolean } = {}): void {
     if (!open && !activeMatch && !activeItemId) return;
     clearComposerSyncTimer();
@@ -160,10 +170,7 @@
       // report the new value without a DOM input event. Only suppress that
       // specific programmatic write-back so the committed item can keep a
       // trigger prefix like `/stop` without immediately reopening the menu.
-      if (composerElement) anchor = composerElement;
-      lastSyncedValue = nextValue;
-      value = nextValue;
-      caretIndex = composerElement?.selectionEnd ?? nextValue.length;
+      syncComposerValueAndCaret(composerElement, nextValue);
       return;
     }
     suppressNextValueSync = false;
@@ -174,10 +181,7 @@
     const composerElement = getComposerElement(event);
     if (!composerElement) return;
     if (suppressCommittedSelectionSync) {
-      anchor = composerElement;
-      lastSyncedValue = composerElement.value;
-      value = composerElement.value;
-      caretIndex = composerElement.selectionEnd ?? composerElement.value.length;
+      syncComposerValueAndCaret(composerElement, composerElement.value);
       return;
     }
     suppressNextValueSync = false;

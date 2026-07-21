@@ -463,6 +463,11 @@
     oncomposerinput?.(value, event);
   }
 
+  function normalizeRangeIndex(index: number, length: number): number {
+    if (!Number.isFinite(index)) return 0;
+    return Math.min(Math.max(Math.trunc(index), 0), length);
+  }
+
   // =========================================================================
   // Imperative API
   // =========================================================================
@@ -494,12 +499,8 @@
     if (!editorElement) return;
 
     const length = editorElement.value.length;
-    const replacementStart = Number.isFinite(range.start)
-      ? Math.min(Math.max(Math.trunc(range.start), 0), length)
-      : 0;
-    const replacementEnd = Number.isFinite(range.end)
-      ? Math.min(Math.max(Math.trunc(range.end), 0), length)
-      : 0;
+    const replacementStart = normalizeRangeIndex(range.start, length);
+    const replacementEnd = normalizeRangeIndex(range.end, length);
     editorElement.setRangeText(text, replacementStart, replacementEnd, 'end');
     const caret = replacementStart + text.length;
     const nextValue = editorElement.value;
