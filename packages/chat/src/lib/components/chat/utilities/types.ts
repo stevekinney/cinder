@@ -167,11 +167,13 @@ export type StepMessagePart = {
  * after the assistant's final answer.
  *
  * Renders as a button chip inside a `role="toolbar"` container. Selecting a
- * chip calls `onselect(label)`, clears the suggestion set from the DOM, and
- * moves focus to the composer input. The suggestion set is derived from
- * `message.metadata['cinder:suggestions']` (a JSONValue array of strings) or
- * the explicit `messageSuggestions` prop on Chat. It is UI-only and never
- * written back to the transcript.
+ * chip calls the selection callback with its label and moves focus to the
+ * composer input; Chat does not remove the suggestion set automatically.
+ * Consumers that want one-shot suggestions must track the selection and have
+ * the `messageSuggestions` prop return `[]` for that message. The suggestion
+ * set is derived from `message.metadata['cinder:suggestions']` (a JSONValue
+ * array of strings) or the explicit `messageSuggestions` prop on Chat. It is
+ * UI-only and never written back to the transcript.
  */
 export type SuggestionMessagePart = {
   type: 'suggestion';
