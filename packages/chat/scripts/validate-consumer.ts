@@ -200,7 +200,7 @@ async function assertImportClosure(
   manifest: PackageManifest,
   installedChatRoot: string,
 ): Promise<void> {
-  const declaredPeers = new Set([
+  const declaredRuntimeSpecifiers = new Set([
     ...Object.keys(manifest.peerDependencies ?? {}),
     ...Object.keys(manifest.dependencies ?? {}),
   ]);
@@ -223,7 +223,7 @@ async function assertImportClosure(
         ) {
           continue;
         }
-        if (!declaredPeers.has(barePackageName(specifier))) {
+        if (!declaredRuntimeSpecifiers.has(barePackageName(specifier))) {
           violations.push(`${relativePath}: ${specifier}`);
         }
       }
