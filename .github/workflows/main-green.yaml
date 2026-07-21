@@ -17,6 +17,13 @@ concurrency:
 
 env:
   BUN_VERSION: 1.3.13
+  # main-green is the full-execution safety net for environment/time-dependent
+  # breakage on otherwise-unchanged code (nightly cron, pushes that don't touch
+  # a given package). A restored .turbo cache would let turbo replay those cache
+  # hits instead of re-executing — exactly the case this workflow exists to
+  # catch — so force real execution here. unit-tests.yaml deliberately keeps
+  # cache hits; do not add this there.
+  TURBO_FORCE: 'true'
 
 jobs:
   workspace-gates:
