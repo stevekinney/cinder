@@ -75,12 +75,22 @@ const emptyConversation: ConversationHistory = {
 };
 
 describe('Chat hydration', () => {
-  // Uses the DEFAULT `now` environment hook — no injected clock. The sibling
-  // test below pins `now`, which quietly sidesteps the scenario issue #756
-  // reported (`createConversation({ id })` with nothing else). Chat's
-  // conversation timestamps are never rendered, so a differing `createdAt`
-  // cannot produce a mismatch — but that is a property worth holding, not
-  // assuming, since anything that started rendering them would regress SSR.
+  // Uses the DEFAULT `now` environment hook rather than an injected clock, so
+  // the shape issue #756 described (`createConversation({ id })` with nothing
+  // else) is at least represented here.
+  //
+  // Neither test reproduces the reporter's actual divergence, and it is worth
+  // being explicit about why: `renderThenHydrate` hands the SAME props object
+  // to both the server render and the hydrate, so `createConversation` runs
+  // once. The reporter's app runs it twice — once server-side, once during
+  // client component init — and only two separate calls can disagree.
+  //
+  // What this test does hold is the property that makes that divergence
+  // harmless: no conversation timestamp reaches the markup, so SSR output
+  // cannot vary with the clock. That is asserted rather than assumed, because
+  // anything that started rendering one would make the reporter's theory
+  // correct. (The real cause turned out to be elsewhere entirely — an
+  // SSR/client version skew in a prebuilt icon dependency.)
   test('hydrates a default-environment createConversation without a mismatch warning', async () => {
     const conversation = createConversation({ id: 'real-clock-conversation' });
     const result = await renderThenHydrate(Chat, sourcePath, {
