@@ -885,6 +885,88 @@ describe('behavior', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+
+describe('selection', () => {
+  test('marks the selected step row by id', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+      selectedStepId: runningStep.id,
+    });
+
+    const selected = container.querySelector<HTMLElement>('[data-cinder-selected]');
+    expect(selected?.getAttribute('data-cinder-path')).toBe(runningStep.id);
+    expect(selected?.textContent).toContain(runningStep.label);
+
+    const pending = container.querySelector<HTMLElement>(`[data-cinder-path="${pendingStep.id}"]`);
+    expect(pending?.hasAttribute('data-cinder-selected')).toBe(false);
+  });
+
+  test('fires onStepSelect when a top-level step row is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const { container } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    const row = container.querySelector<HTMLElement>(`[data-cinder-path="${runningStep.id}"]`);
+    expect(row).not.toBeNull();
+    await fireEvent.click(row as HTMLElement);
+
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
+  test('fires onStepSelect when a nested child step row is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const steps: RunStep[] = [
+      {
+        id: 'parent',
+        label: 'Parent',
+        status: 'running',
+        children: [{ id: 'child', label: 'Child', status: 'succeeded' }],
+      },
+    ];
+    const { container } = render(RunStepTimeline, {
+      steps,
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    const row = container.querySelector<HTMLElement>('[data-cinder-path="parent/child"]');
+    expect(row).not.toBeNull();
+    await fireEvent.click(row as HTMLElement);
+
+    expect(selectedStepIds).toEqual(['child']);
+  });
+
+  test('fires onStepSelect when a branch-lane step row is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const branch: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'race',
+      label: 'Race',
+      lanes: [
+        {
+          id: 'blue',
+          label: 'Blue',
+          steps: [{ id: 'blue-deploy', label: 'Deploy blue', status: 'succeeded' }],
+        },
+      ],
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [branch] as RunStepTimelineEntry[],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    const row = container.querySelector<HTMLElement>('[data-cinder-path="blue-deploy"]');
+    expect(row).not.toBeNull();
+    await fireEvent.click(row as HTMLElement);
+
+    expect(selectedStepIds).toEqual(['blue-deploy']);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Accessibility
 // ---------------------------------------------------------------------------
 

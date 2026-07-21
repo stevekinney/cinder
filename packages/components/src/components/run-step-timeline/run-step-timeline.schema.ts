@@ -8,6 +8,18 @@ const schema = {
       type: 'string',
       description: 'Accessible label for the timeline list.',
     },
+    selectedStepId: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description:
+        'Step id to visually mark as selected.\nAccepts `null` so consumers can clear linked selection without omitting\nthe prop.',
+    },
     class: {
       type: 'string',
       description: 'Additional CSS classes applied to the root element.',
@@ -1012,6 +1024,11 @@ const schema = {
         name: 'children',
         reason: 'function-or-snippet',
         description: 'Optional per-step body content rendered after the step metadata.',
+      },
+      {
+        name: 'onStepSelect',
+        reason: 'function-or-snippet',
+        description: 'Fired when the user clicks anywhere in a rendered step row.',
       },
     ],
   },

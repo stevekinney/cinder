@@ -477,6 +477,16 @@ export type RunStepTimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class
    */
   label?: string | undefined;
   /**
+   * Step id to visually mark as selected.
+   * Accepts `null` so consumers can clear linked selection without omitting
+   * the prop.
+   */
+  selectedStepId?: string | null | undefined;
+  /**
+   * Fired when the user clicks anywhere in a rendered step row.
+   */
+  onStepSelect?: ((stepId: string) => void) | undefined;
+  /**
    * Optional per-step body content rendered after the step metadata.
    */
   children?: Snippet<[RunStep]> | undefined;
@@ -492,6 +502,12 @@ export interface RunStepTimelineSchemaProps {
   steps: RunStepTimelineSchemaEntry[];
   /** Accessible label for the timeline list. */
   label?: string | undefined;
+  /**
+   * Step id to visually mark as selected.
+   * Accepts `null` so consumers can clear linked selection without omitting
+   * the prop.
+   */
+  selectedStepId?: string | null | undefined;
   /** Additional CSS classes applied to the root element. */
   class?: string | undefined;
 }

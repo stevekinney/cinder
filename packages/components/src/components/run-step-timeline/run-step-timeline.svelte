@@ -81,6 +81,7 @@
   import Link from '../link/link.svelte';
   import Progress from '../progress/progress.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
+  import type { Attachment } from 'svelte/attachments';
   import type {
     RunStepBranchLane,
     RunStepTimelineEntry,
@@ -111,6 +112,8 @@
   let {
     steps,
     label,
+    selectedStepId,
+    onStepSelect,
     class: className,
     children,
     'aria-label': ariaLabel,
@@ -379,6 +382,18 @@
   function laneStateLabel(lane: RunStepBranchLane): string {
     return lane.outcome === undefined ? 'racing' : laneOutcomeLabel(lane.outcome).toLowerCase();
   }
+
+  function handleStepSelect(stepId: string): void {
+    onStepSelect?.(stepId);
+  }
+
+  function createStepSelectionAttachment(stepId: string): Attachment<HTMLLIElement> {
+    return (node) => {
+      const handleClick = (): void => handleStepSelect(stepId);
+      node.addEventListener('click', handleClick);
+      return () => node.removeEventListener('click', handleClick);
+    };
+  }
 </script>
 
 {#snippet stepItem(row: RenderedStepRow)}
@@ -386,6 +401,7 @@
   {@const terminal = isTerminal(step.status)}
   {@const metadata = metadataItems(step)}
   <li
+    {@attach createStepSelectionAttachment(step.id)}
     class="cinder-run-step-timeline__item"
     data-cinder-status={step.status}
     data-cinder-depth={row.depth}
@@ -393,6 +409,8 @@
     data-cinder-terminal={terminal ? '' : undefined}
     data-cinder-rewound={step.rewound ? '' : undefined}
     data-cinder-compensation={row.compensatesLabel !== undefined ? '' : undefined}
+    data-cinder-selected={selectedStepId === step.id ? '' : undefined}
+    data-cinder-selectable={onStepSelect === undefined ? undefined : ''}
     data-cinder-connector-after={row.connectorAfter}
     aria-current={row.ariaCurrent ? 'step' : undefined}
     style:--_cinder-rst-depth={row.depth}

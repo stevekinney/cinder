@@ -55,6 +55,16 @@
     display: none;
   }
 
+  .cinder-run-step-timeline__item[data-cinder-selectable] {
+    cursor: pointer;
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
+    border-radius: var(--cinder-radius-md);
+    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cinder-accent), transparent 55%);
+  }
+
   /* ----------------------------------------
    * Event layout: marker column + content column
    * ---------------------------------------- */
@@ -354,6 +364,12 @@
     /* Ensure connector lines are visible in high-contrast mode */
     .cinder-run-step-timeline__item::before {
       background: ButtonText;
+    }
+
+    .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
+      outline: 1px solid Highlight;
+      background: Canvas;
+      box-shadow: none;
     }
   }
 }

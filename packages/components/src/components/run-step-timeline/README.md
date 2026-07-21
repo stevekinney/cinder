@@ -186,6 +186,8 @@ Set `rewound: true` on a step that was speculatively executed and then unwound. 
 ```
 steps      RunStep[]          required  Ordered list of steps to render.
 label      string             optional  Accessible label for the list (aria-label).
+selectedStepId string | null  optional  Step id to visually mark as selected.
+onStepSelect (stepId) => void optional  Fired when a rendered step row is clicked.
 class      string             optional  Additional CSS classes on the root ol element.
 children   Snippet<[RunStep]> optional  Per-step body content rendered after step metadata.
 ```
