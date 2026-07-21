@@ -11,7 +11,7 @@ const schema = {
     value: {
       type: 'string',
       description:
-        "Current composer value. Bind this to ChatInput, or pass Chat's oncomposerinput callback.",
+        "Current composer value. Keep this synchronized through ChatInput binding or Chat's oncomposerinput.",
     },
     triggers: {
       type: 'array',

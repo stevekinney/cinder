@@ -493,9 +493,21 @@
   export function insertAtRange(range: { start: number; end: number }, text: string): void {
     if (!editorElement) return;
 
-    const originalLength = editorElement.value.length;
+    const previousSelection = {
+      start: editorElement.selectionStart,
+      end: editorElement.selectionEnd,
+      direction: editorElement.selectionDirection,
+    };
+    editorElement.setSelectionRange(range.start, range.start);
+    const replacementStart = Number.isFinite(editorElement.selectionStart)
+      ? editorElement.selectionStart
+      : 0;
+    editorElement.setSelectionRange(
+      previousSelection.start,
+      previousSelection.end,
+      previousSelection.direction,
+    );
     editorElement.setRangeText(text, range.start, range.end, 'end');
-    const replacementStart = Math.min(Math.max(Math.trunc(range.start), 0), originalLength);
     const caret = replacementStart + text.length;
     const nextValue = editorElement.value;
     flushSync(() => {

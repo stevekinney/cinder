@@ -150,6 +150,11 @@ describe('ChatInput', () => {
       expect(composer.selectionStart).toBe(6);
       expect(composer.selectionEnd).toBe(6);
 
+      api.insertAtRange({ start: Number.NaN, end: Number.NaN }, '>');
+      expect(api.getValue()).toBe('>hello!');
+      expect(composer.selectionStart).toBe(1);
+      expect(composer.selectionEnd).toBe(1);
+
       let rangeError: unknown;
       try {
         api.insertAtRange({ start: 4, end: 2 }, '?');
@@ -158,7 +163,7 @@ describe('ChatInput', () => {
       }
       expect(rangeError).toBeDefined();
       expect((rangeError as Error).constructor.name).toBe('DOMException');
-      expect(api.getValue()).toBe('hello!');
+      expect(api.getValue()).toBe('>hello!');
 
       unmount(instance);
       target.remove();
