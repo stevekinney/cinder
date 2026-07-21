@@ -415,20 +415,23 @@ async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void>
   const svelteCheckRoot = join(workspaceRoot, 'node_modules', 'svelte-check');
   if (!existsSync(typescriptRoot)) fail('workspace peer is unavailable: typescript');
   if (!existsSync(svelteCheckRoot)) fail('workspace peer is unavailable: svelte-check');
-  await mkdir(join(fixture.nodeModules, '.bin'), { recursive: true });
   // Explicit link type, matching `linkModule` above: on Windows a directory
   // symlink without 'junction' needs elevated permissions and fails outright.
   const directoryLinkType = process.platform === 'win32' ? 'junction' : 'dir';
   await symlink(typescriptRoot, join(fixture.nodeModules, 'typescript'), directoryLinkType);
   await symlink(svelteCheckRoot, join(fixture.nodeModules, 'svelte-check'), directoryLinkType);
-  // The .bin entry is a FILE, so it takes the default type rather than 'dir'.
-  await symlink(
-    join(workspaceRoot, 'node_modules', '.bin', 'svelte-check'),
-    join(fixture.nodeModules, '.bin', 'svelte-check'),
-  );
 
-  const svelteCheck = join(fixture.nodeModules, '.bin', 'svelte-check');
-  await run(svelteCheck, ['--tsconfig', svelteCheckTsconfigPath], fixture.root);
+  // Run the workspace's own binary rather than symlinking it into the
+  // fixture's `.bin`. A FILE symlink is a separate Windows problem from the
+  // directory links above — it needs Developer Mode or elevation, and
+  // 'junction' does not apply to files. Since the only goal is executing
+  // svelte-check against the fixture, invoking it directly with `cwd` set to
+  // the fixture sidesteps the issue entirely; module resolution still happens
+  // from the fixture through the directory links above.
+  const svelteCheck = join(workspaceRoot, 'node_modules', 'svelte-check', 'bin', 'svelte-check');
+  if (!existsSync(svelteCheck)) fail('workspace svelte-check binary is unavailable');
+  const node = Bun.which('node') ?? process.execPath;
+  await run(node, [svelteCheck, '--tsconfig', svelteCheckTsconfigPath], fixture.root);
 }
 
 async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
