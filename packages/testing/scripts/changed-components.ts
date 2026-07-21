@@ -197,6 +197,30 @@ export function decide(
   return { mode: 'filtered', components: [...components].toSorted() };
 }
 
+// Every extracted package's known component names, flattened into one set.
+// `decide()` only ever emits a slug here once it is a KNOWN slug (the graph
+// force-fulls on anything unknown), so subtracting this set from a filtered
+// `components` list is safe: what's left is exactly the slugs `@lostgradient/cinder`'s
+// own `loadKnownSlugs()` (packages/components/src/components/**) can resolve.
+const extractedSlugs = new Set(
+  extractedComponentSources.flatMap((source) => source.componentNames ?? []),
+);
+
+/**
+ * Narrow a filtered scope's combined slug list (which spans every package
+ * `changed-components.ts` knows about — cinder plus each extracted package) down
+ * to the slugs `@lostgradient/cinder`'s own `test:changed` can resolve.
+ *
+ * `browser-tests.yaml` keeps using the combined `components` output as-is: its
+ * Playwright manifest already spans every package. `unit-tests.yaml` scopes
+ * `@lostgradient/cinder`'s unit suite specifically, so it needs this narrower
+ * set — passing it an extracted package's slug (e.g. `chat`) would fail loud
+ * (by design), not silently skip, so this filter must not be skipped either.
+ */
+export function cinderOnlyComponents(components: readonly string[]): string[] {
+  return components.filter((slug) => !extractedSlugs.has(slug));
+}
+
 /**
  * Partition the raw changed-file list into (all, deleted). A path is "deleted"
  * when it does not exist on disk at HEAD — the working tree CI checked out.
@@ -216,10 +240,16 @@ function partitionDeleted(changedFiles: string[]): { all: string[]; deleted: str
 async function emit(decision: Decision): Promise<void> {
   const githubOutput = process.env['GITHUB_OUTPUT'];
   const componentsValue = decision.mode === 'filtered' ? decision.components.join(',') : '';
+  // `unit-tests.yaml` scopes @lostgradient/cinder specifically (unlike
+  // browser-tests.yaml's combined Playwright manifest), so it gets its own
+  // narrowed output rather than reusing `components` for a different package.
+  const cinderComponentsValue =
+    decision.mode === 'filtered' ? cinderOnlyComponents(decision.components).join(',') : '';
   const payload = [
     `mode=${decision.mode}`,
     `component_scope_mode=${decision.mode}`,
     `components=${componentsValue}`,
+    `cinder_components=${cinderComponentsValue}`,
     '',
   ].join('\n');
 

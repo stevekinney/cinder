@@ -127,6 +127,11 @@ jobs:
     outputs:
       mode: ${{ steps.decide.outputs.mode }}
       components: ${{ steps.decide.outputs.components }}
+      # Narrowed to just the slugs @lostgradient/cinder's own test:changed can
+      # resolve — `components` above can also carry an extracted package's
+      # slugs (e.g. @lostgradient/chat's `chat*` family), which cinder's
+      # component graph has never heard of and correctly rejects as unknown.
+      cinder_components: ${{ steps.decide.outputs.cinder_components }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -159,6 +164,7 @@ jobs:
             echo "Non-PR event ($EVENT_NAME): running full unit suite."
             echo "mode=full" >> "$GITHUB_OUTPUT"
             echo "components=" >> "$GITHUB_OUTPUT"
+            echo "cinder_components=" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -320,6 +326,19 @@ jobs:
         # NOT run here — they keep their authoritative coverage in `main-green`
         # (and the ~11-min playground suite would otherwise tax every PR).
         # Per-package dependency scoping is the deferred follow-up.
+        #
+        # `needs.scope.outputs.components` can carry an extracted package's
+        # slugs (e.g. @lostgradient/chat's `chat*` family — already fully
+        # covered above by "Run Chat unit tests with coverage") alongside, or
+        # instead of, cinder's own. `cinder_components` is pre-narrowed by
+        # changed-components.ts to just the slugs cinder's own `test:changed`
+        # can resolve; passing it the combined list would hard-error on any
+        # extracted-package slug (unknown to cinder's component graph — see
+        # #788). A filtered scope that narrows to NOTHING for cinder (a PR
+        # touching only an extracted package) skips this step outright, rather
+        # than passing test-changed.ts an empty CINDER_TEST_COMPONENTS — which
+        # would fall back to a local `git diff` against this job's shallow
+        # (non-fetch-depth-0) checkout.
         env:
           # CINDER_TEST_MODE is the explicit signal: `full` → test-changed.ts runs
           # the full suite without touching git. `filtered` → CINDER_TEST_COMPONENTS
@@ -327,8 +346,12 @@ jobs:
           # turbo --affected adoption above, but test-changed.ts still uses the
           # explicit signal rather than doing its own git diff.)
           CINDER_TEST_MODE: ${{ needs.scope.outputs.mode }}
-          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.components || '' }}
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.mode == 'filtered' && needs.scope.outputs.cinder_components || '' }}
         run: |
+          if [ "$CINDER_TEST_MODE" = "filtered" ] && [ -z "${CINDER_TEST_COMPONENTS:-}" ]; then
+            echo "Filtered scope has no @lostgradient/cinder components (changes belong to another package, e.g. chat) — skipping cinder-scoped unit tests."
+            exit 0
+          fi
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Scoped unit tests: $CINDER_TEST_COMPONENTS"
           else
