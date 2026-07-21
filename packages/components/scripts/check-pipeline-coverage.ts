@@ -35,10 +35,10 @@
  * token search plus resolution through either script manifest's `bun run
  * <entry>` chains (see {@link EXTERNAL_BINARY_COMMANDS}).
  *
- * Husky hook sources are being edited concurrently by another task, so the
- * hook layers are intentionally best-effort: if a hook file can't be read or
- * its script chain can't be confidently resolved, this script WARNS for those
- * two layers only rather than failing the whole run.
+ * Husky hook sources are actively maintained separately from this script, so
+ * the hook layers are intentionally best-effort: if a hook file can't be read
+ * or its script chain can't be confidently resolved, this script WARNS for
+ * those two layers only rather than failing the whole run.
  */
 
 import { load as loadYaml } from 'js-yaml';
@@ -86,44 +86,46 @@ export type DeclarationRow = {
  */
 export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   lint: {
-    layers: ['pre-push', 'unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'oxlint. pre-commit runs lint-staged (oxlint invoked directly on staged files, not the ' +
-      '`lint` script by name) so it is NOT counted here. The package-level `lint` script itself is ' +
-      'invoked by pre-push (scoped), unit-tests.yaml (`turbo run lint`, unconditional, fans out ' +
-      'to every workspace package), and main-green (`bun run lint`). Release deliberately does ' +
-      'not rerun source lint.',
+      '`lint` script by name) so it is NOT counted here. pre-push no longer runs it either — it was ' +
+      'thinned to a fast, fail-open sanity check with no lint/typecheck/test dispatch of its own; CI ' +
+      'owns this now. The package-level `lint` script itself is invoked by unit-tests.yaml ' +
+      '(`turbo run lint`, unconditional, fans out to every workspace package) and main-green ' +
+      '(`bun run lint`). Release deliberately does not rerun source lint.',
   },
   'lint:invariants': {
     layers: ['unit-tests', 'main-green'],
     reason:
       "cinder's custom tree-walk invariant checks. Explicitly called out in unit-tests.yaml " +
       'and main-green (not folded into the `lint` sweep). ' +
-      'Not run at commit/push time by name — pre-commit/pre-push scope to typecheck/test, not this chain.',
+      'Not run at commit time by name — pre-commit scopes to typecheck only. Not run by pre-push, ' +
+      'which no longer runs any lint/typecheck/test chain locally.',
   },
   typecheck: {
-    layers: ['pre-commit', 'pre-push', 'browser-tests', 'main-green'],
+    layers: ['pre-commit', 'browser-tests', 'main-green'],
     reason:
       'Per-package typecheck. pre-commit escalates to full workspace typecheck on root-config ' +
-      'changes (else scoped per touched package); pre-push includes it in the scoped/full job set; ' +
-      'browser-tests.yaml has a dedicated `typecheck` job running `bun run typecheck` against a ' +
-      'fresh checkout (independent of the scope decision); main-green runs the workspace typecheck. ' +
-      'unit-tests.yaml deliberately does NOT run typecheck (that ' +
+      'changes (else scoped per touched package); browser-tests.yaml has a dedicated `typecheck` job ' +
+      'running `bun run typecheck` against a fresh checkout (independent of the scope decision); ' +
+      'main-green runs the workspace typecheck. pre-push no longer runs it — CI (browser-tests, ' +
+      'main-green) is the backstop now. unit-tests.yaml deliberately does NOT run typecheck (that ' +
       'job is lint + aggregator + components:check + test).',
   },
   stylelint: {
-    layers: ['pre-push', 'unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'External binary, not a `bun run <name>` package.json script. unit-tests.yaml runs it ' +
       'directly (`bunx stylelint`, unconditional, over all package CSS/Svelte sources); main-green ' +
       'reaches it through the ROOT `lint` script (`turbo run lint && stylelint "…"`) — ' +
       'NOT the components-package `lint` (plain oxlint), a distinct resolution scope from every ' +
-      "other row in this table; pre-push's `runStylelint` invokes the resolved local binary over the " +
-      'changed CSS/Svelte file list. Deliberately excludes pre-commit for the same reason `lint` ' +
-      "does: pre-commit's lint-staged runs `stylelint --fix` directly on staged files, not through " +
-      'either named `lint` script, so it is not counted as a layer here (same editorial policy as ' +
-      "the `lint` row above). NOT run by release (root `validate` only fans into each package's own " +
-      '`validate`, none of which invoke stylelint) or browser-tests/changeset-guard.',
+      'other row in this table. Deliberately excludes pre-commit for the same reason `lint` does: ' +
+      "pre-commit's lint-staged runs `stylelint --fix` directly on staged files, not through either " +
+      'named `lint` script, so it is not counted as a layer here (same editorial policy as the ' +
+      "`lint` row above). pre-push's file-scoped `runStylelint` was removed along with the rest of " +
+      'its local lint/typecheck/test dispatch. NOT run by release (root `validate` only fans into ' +
+      "each package's own `validate`, none of which invoke stylelint) or browser-tests/changeset-guard.",
   },
   'check:no-cycle-imports': {
     layers: ['unit-tests', 'main-green'],
@@ -228,36 +230,39 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'on the publish and dry-run paths.',
   },
   test: {
-    layers: ['pre-push'],
+    layers: [],
     reason:
-      'The component package test suite. NOT run at commit time by design — pre-commit.ts is ' +
-      'explicit that tests are deferred to pre-push (which owns a scoped, dependency-closure-aware ' +
-      'run). main-green must NOT call this bare full-suite script because it serializes the whole ' +
-      'workspace test graph into one timeout-prone step; it runs the chunkable `test:changed` full ' +
-      'suite instead, and unit-tests.yaml runs the scoped `test:changed` variant, not this literal ' +
-      'script name.',
+      'The component package bare test suite. NOT run at commit time by design — pre-commit.ts is ' +
+      'explicit that tests are deferred entirely to CI. pre-push no longer runs it either (it ran ' +
+      'the scoped `test:changed` variant for this package, never the bare script). main-green must ' +
+      'NOT call this bare full-suite script because it serializes the whole workspace test graph ' +
+      'into one timeout-prone step; it runs the chunkable `test:changed` full suite instead, and ' +
+      'unit-tests.yaml runs the scoped `test:changed` variant, not this literal script name.',
   },
   'test:changed': {
-    layers: ['pre-push', 'unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green'],
     reason:
-      'The dependency-closure-scoped test runner. pre-push always calls it via `prePushPackageScript` ' +
-      'for the components package; unit-tests.yaml calls it directly in "Run component unit tests (scoped)"; ' +
-      'main-green calls it with CINDER_TEST_MODE=full and a four-way chunk matrix so the full component ' +
-      'suite stays authoritative without reintroducing a single long-running workspace test step.',
+      'The dependency-closure-scoped test runner. unit-tests.yaml calls it directly in "Run component ' +
+      'unit tests (scoped)"; main-green calls it with CINDER_TEST_MODE=full and a four-way chunk ' +
+      'matrix so the full component suite stays authoritative without reintroducing a single ' +
+      'long-running workspace test step. pre-push no longer calls it — it was thinned to a fast, ' +
+      'fail-open sanity check with no test dispatch of its own.',
   },
   'test:coverage': {
     layers: [],
     reason: 'Local/package full-suite coverage + ratchet. Not part of any CI gate.',
   },
   [`${chatPackageName}#lint`]: {
-    layers: ['pre-push', 'unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green'],
     reason:
-      'Chat package oxlint. Pre-push scopes by touched workspace; unit-tests and main-green reach it through the workspace lint scripts.',
+      'Chat package oxlint. unit-tests and main-green reach it through the workspace lint scripts. ' +
+      'pre-push no longer scopes lint by touched workspace.',
   },
   [`${chatPackageName}#typecheck`]: {
-    layers: ['pre-commit', 'pre-push', 'browser-tests', 'main-green'],
+    layers: ['pre-commit', 'browser-tests', 'main-green'],
     reason:
-      'Chat package typecheck follows the same workspace and hook gates as every typed package.',
+      'Chat package typecheck follows the same commit-time and CI gates as every typed package. ' +
+      'pre-push no longer typechecks touched workspaces — browser-tests and main-green are the backstop.',
   },
   [`${chatPackageName}#components:check`]: {
     layers: ['unit-tests', 'main-green'],
@@ -265,10 +270,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'Chat generated metadata and exports are checked before merge and in the authoritative main gate.',
   },
   [`${chatPackageName}#build`]: {
-    layers: ['pre-push', 'unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green'],
     reason:
-      'The extracted public package builds in the touched-workspace pre-push gate, before merge, ' +
-      'and on the authoritative main gate.',
+      'The extracted public package builds before merge and on the authoritative main gate. ' +
+      "pre-push's touched-workspace pre-build step was removed along with its test dispatch.",
   },
   [`${chatPackageName}#platform:audit`]: {
     layers: ['main-green'],
@@ -291,8 +296,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason: 'The release artifact gate applies the dedicated Chat tarball budget.',
   },
   [`${chatPackageName}#test`]: {
-    layers: ['pre-push'],
-    reason: 'The fast Chat suite runs from the touched-workspace pre-push gate.',
+    layers: [],
+    reason:
+      'The bare Chat suite. Not run by any layer by name — CI covers Chat coverage-producing tests ' +
+      'via `test:coverage`, and pre-push no longer runs a touched-workspace test gate.',
   },
   [`${chatPackageName}#test:coverage`]: {
     layers: ['unit-tests', 'main-green'],
@@ -761,15 +768,13 @@ export async function loadParsedSources(): Promise<ParsedSources> {
 
 /**
  * Simple token search for hook layers: hooks invoke scripts via
- * `runHookCommand('bun', ['run', script])` array arguments and helper
- * functions (`prePushPackageScript(...)`), never as a `bun run <name>` shell
- * string — so the workflow-oriented {@link layerInvokesCommand} structurally
- * cannot see them. Per the task's tolerance policy for these two
- * concurrently-edited files, this is deliberately a plain substring/word-
- * boundary search for the script name as a quoted string literal, not an AST
- * walk — good enough to catch `'typecheck'` / `'test:changed'` appearing as a
- * hook job's script argument, without hard-failing on hook-internal shape
- * changes.
+ * `runHookCommand('bun', ['run', script])` array arguments, never as a
+ * `bun run <name>` shell string — so the workflow-oriented
+ * {@link layerInvokesCommand} structurally cannot see them. This is
+ * deliberately a plain substring/word-boundary search for the script name as
+ * a quoted string literal, not an AST walk — good enough to catch
+ * `'typecheck'` / `'test:changed'` appearing as a hook job's script argument,
+ * without hard-failing on hook-internal shape changes.
  */
 function hookInvokesCommand(hookText: string, command: string): boolean {
   const escaped = escapeRegExp(command);

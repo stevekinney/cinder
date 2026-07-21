@@ -1,4 +1,4 @@
 {
   "preCommitWarnMilliseconds": 60000,
-  "prePushWarnMilliseconds": 540000
+  "prePushWarnMilliseconds": 10000
 }

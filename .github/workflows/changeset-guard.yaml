@@ -7,21 +7,20 @@ name: changeset-guard
 # their path filters — so a PR that ONLY edits a changeset to a `major` bump would
 # not trigger them, and the policy violation would otherwise surface on `main`
 # instead of failing on the branch that introduced it. This workflow runs the guard
-# directly on exactly those changes.
+# directly, unconditionally.
 #
 # The guard parses changesets with `@changesets/parse` (the same parser Changesets
-# uses), so the job installs dependencies before running. Edits to this workflow
-# file itself are included in the path filter so a PR that neuters the guard still
-# triggers it.
+# uses), so the job installs dependencies before running.
+#
+# `pull_request` has NO path filter — "Pre-1.0 changeset bump guard" is a
+# required status check on `main` (see docs/validation-topology.md's "Branch
+# protection" section), and a path filter would leave a PR whose changes don't
+# touch any of the filtered paths with this required check stuck at "Expected"
+# forever. The guard itself is cheap (install + a single script), so running it
+# unconditionally is affordable.
 
 on:
-  pull_request:
-    paths:
-      - '.changeset/**'
-      - 'packages/components/package.json'
-      - 'packages/chat/package.json'
-      - 'packages/components/scripts/check-changeset-prerelease-bumps.ts'
-      - '.github/workflows/changeset-guard.yaml'
+  pull_request: {}
   workflow_dispatch: {}
 
 permissions:

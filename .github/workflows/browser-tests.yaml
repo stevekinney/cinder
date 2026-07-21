@@ -1,36 +1,21 @@
 name: browser-tests
 
 on:
-  # Browser tests are expensive; start them only for changes that can affect
-  # rendered component behavior, the playground examples they exercise, or this
-  # workflow itself. Component-scoping still decides full versus filtered once the
-  # workflow starts.
-  pull_request:
-    paths:
-      - 'packages/components/src/**'
-      - 'packages/components/components.json'
-      - 'packages/components/package.json'
-      - 'packages/components/scripts/**'
-      - 'packages/chat/**'
-      - 'packages/*/package.json'
-      - 'packages/*/scripts/**'
-      - 'packages/*/tsconfig*.json'
-      - 'packages/commentary/src/**'
-      - 'packages/diff/src/**'
-      - 'packages/markdown/src/**'
-      - 'packages/playground/src/**'
-      - 'packages/playground/scripts/**'
-      - 'packages/testing/**'
-      - '.github/workflows/browser-tests.yaml'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bun.lockb'
-      - 'bunfig.toml'
-      - '.npmrc'
-      - 'tsconfig*.json'
-      - '!packages/**/*.md'
-      - '!packages/**/README*'
-      - '!packages/**/CHANGELOG*'
+  # `typecheck` and `playwright` are required status checks on `main` (see
+  # docs/validation-topology.md's "Branch protection" section). This trigger
+  # used to carry a `paths:` filter so browser tests (Chromium install, a
+  # full Playwright run) only started for changes that can affect rendered
+  # component behavior — but a required check backed by a path-filtered
+  # workflow leaves any PR whose diff matches none of the filter stuck at
+  # "Expected" forever, permanently blocking merge.
+  #
+  # `pull_request` now runs unconditionally instead. The equivalent
+  # filtering moved into the `scope` job as a computed `relevant` output —
+  # `typecheck`/`playwright` gate on it via `if:`. A job skipped via `if:`
+  # reports conclusion "skipped", which GitHub treats as satisfying a
+  # required status check, so every PR still reports both required names
+  # (fast, if skipped) while the expensive work only runs when relevant.
+  pull_request: {}
   push:
     branches:
       - main
@@ -54,6 +39,8 @@ on:
       - 'bun.lock'
       - 'bun.lockb'
       - 'bunfig.toml'
+      - 'packages/*/bunfig.toml'
+      - 'turbo.json'
       - '.npmrc'
       - 'tsconfig*.json'
       - '!packages/**/*.md'
@@ -120,6 +107,7 @@ jobs:
     outputs:
       component_scope_mode: ${{ steps.decide.outputs.component_scope_mode }}
       components: ${{ steps.decide.outputs.components }}
+      relevant: ${{ steps.relevance.outputs.relevant }}
     steps:
       - name: Validate dispatch source ref
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.source_ref != ''
@@ -183,18 +171,142 @@ jobs:
           # loudly.
           printf '%s\n' "$changed" | bun run packages/testing/scripts/changed-components.ts
 
+      - name: Decide whether this diff is browser-test relevant
+        id: relevance
+        # This workflow no longer declares an `on.pull_request.paths` filter
+        # (see docs/validation-topology.md's "Branch protection" section): a
+        # required check backed by a path-filtered workflow leaves any PR
+        # whose diff matches none of the filter stuck at "Expected" forever.
+        # The equivalent filtering now happens HERE, in code, as a job output
+        # instead of a workflow trigger — `typecheck`/`playwright` gate on
+        # `needs.scope.outputs.relevant` via `if:` below. A job skipped via
+        # `if:` reports conclusion "skipped", and GitHub treats a skipped
+        # check run as satisfying a required status check — so every PR
+        # still reports both required names, but the expensive jobs actually
+        # only run when relevant. One workflow, one job name each — no
+        # duplicate-named mirror workflow, so no risk of the "ambiguous
+        # status check results" GitHub warns same-named checks across
+        # workflows can cause.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            # push (already path-filtered at the workflow level, unchanged)
+            # and workflow_dispatch always run the real jobs.
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Reimplements, in code, the path list this workflow used to declare
+          # at `on.pull_request.paths` (last-match-wins, following the same
+          # ordering rule as GitHub's real path-filter algorithm — a later
+          # pattern overrides an earlier one, so a `!`-prefixed negation
+          # excludes a path only if nothing after it re-includes it).
+          #
+          # This is a best-effort SUPERSET of GitHub's real path-filter
+          # matching, not an exact mirror: bash's `[[ str == pattern ]]` gives
+          # `*` and `**` identical semantics (both cross `/`), whereas
+          # GitHub's own filter treats a single `*` as single-segment and only
+          # `**` as crossing directories. That divergence only ever makes this
+          # check MORE inclusive than GitHub's real filter would be (matching
+          # a few extra deeply-nested paths for a `packages/*/…` pattern) —
+          # which fails safe toward running `typecheck`/`playwright`, never
+          # toward skipping them incorrectly.
+          PATTERNS=(
+            'packages/components/src/**'
+            'packages/components/components.json'
+            'packages/components/package.json'
+            'packages/components/scripts/**'
+            'packages/chat/**'
+            'packages/*/package.json'
+            'packages/*/scripts/**'
+            'packages/*/tsconfig*.json'
+            'packages/commentary/src/**'
+            'packages/diff/src/**'
+            'packages/markdown/src/**'
+            'packages/playground/src/**'
+            'packages/playground/scripts/**'
+            'packages/testing/**'
+            '.github/workflows/browser-tests.yaml'
+            'package.json'
+            'bun.lock'
+            'bun.lockb'
+            'bunfig.toml'
+            'packages/*/bunfig.toml'
+            'turbo.json'
+            '.npmrc'
+            'tsconfig*.json'
+            '!packages/**/*.md'
+            '!packages/**/README*'
+            '!packages/**/CHANGELOG*'
+          )
+
+          is_relevant_file() {
+            local file="$1"
+            local matched=false
+            for pattern in "${PATTERNS[@]}"; do
+              local negate=false
+              local candidate="$pattern"
+              if [[ "$candidate" == !* ]]; then
+                negate=true
+                candidate="${candidate#!}"
+              fi
+              if [[ "$file" == $candidate ]]; then
+                if [ "$negate" = true ]; then matched=false; else matched=true; fi
+              fi
+            done
+            [ "$matched" = true ]
+          }
+
+          # Fail SAFE to relevant=true on any error deriving the diff — a
+          # missed edge here must never silently skip typecheck/playwright,
+          # only ever skip them when we're SURE the diff is irrelevant.
+          relevant=true
+          if changed=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
+            relevant=false
+            while IFS= read -r file; do
+              [ -z "$file" ] && continue
+              if is_relevant_file "$file"; then
+                relevant=true
+                break
+              fi
+            done <<< "$changed"
+          fi
+
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+
   typecheck:
+    needs: scope
+    # `!cancelled()` + explicit result/output checks, NOT the bare
+    # `needs.scope.outputs.relevant == 'true'` this used to read: by default a
+    # job with `needs: scope` is silently SKIPPED if `scope` fails for ANY
+    # reason (e.g. `changed-components.ts` erroring before the "Decide
+    # whether this diff is browser-test relevant" step even runs) — and a
+    # skipped required check satisfies branch protection. That would be a
+    # fail-OPEN hole: an unhealthy `scope` job would silently let a real
+    # regression merge instead of blocking it. `!cancelled()` forces this
+    # condition to evaluate regardless of `scope`'s success/failure, so a
+    # `scope` failure runs this job (fail safe) instead of skipping it (fail
+    # open) — only a scope job that SUCCEEDED and explicitly determined the
+    # diff irrelevant skips this one.
+    #
+    # Deliberately `!cancelled()`, NOT `always()`: GitHub documents that a
+    # truthy `always()` condition keeps a job from being cancelled even when
+    # the workflow is cancelled (e.g. a newer push superseding this run via
+    # the `browser-tests-${{ github.ref }}` concurrency group) — so an
+    # `always()`-gated Playwright/typecheck job would keep burning its full
+    # runner budget on an already-superseded run. `!cancelled()` gives the
+    # same "run despite scope failing" behavior without disabling
+    # cancellation.
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
     # Runs the workspace typecheck against a fresh checkout — explicitly does
     # NOT pre-build cinder. Catches the regression class where `cinder/<name>`
     # imports stop resolving via the package's exports map (svelte/types
     # condition mismatch, missing customConditions, dropped source-export, etc).
     # See packages/playground/tsconfig.json for context.
-    #
-    # Intentionally does NOT depend on `scope`: typecheck runs the same command
-    # regardless of which components changed, so it has no need for scope's
-    # outputs. Gating on `scope` would silently skip this job whenever scope
-    # fails for unrelated reasons (e.g. `changed-components.ts` errors, shallow
-    # clone `git diff` issues) — defeating the regression-catching purpose.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -222,6 +334,17 @@ jobs:
 
   playwright:
     needs: scope
+    # See the `typecheck` job's comment: `!cancelled()` + explicit
+    # result/output checks so a `scope` job FAILURE runs this job (fail safe)
+    # instead of silently skipping it (fail open, since a skipped required
+    # check still satisfies branch protection), while still respecting
+    # cancellation from a superseding push — unlike `always()`, which GitHub
+    # documents as keeping a job from being cancelled, and would otherwise
+    # let an obsolete 30-minute Playwright run keep consuming its full
+    # runner budget after a newer push already superseded it. Only a `scope`
+    # job that succeeded and explicitly determined the diff irrelevant skips
+    # this one.
+    if: "!cancelled() && (needs.scope.result != 'success' || needs.scope.outputs.relevant == 'true')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
