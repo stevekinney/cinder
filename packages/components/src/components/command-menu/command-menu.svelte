@@ -65,6 +65,11 @@
   const showEmpty = $derived(
     mounted && open && commandList.registrationsReady && commandList.registrations.length === 0,
   );
+  // Only render an aria-describedby/geometry hook when the empty state is
+  // actually rendered (showEmpty AND an `empty` snippet was passed) — a
+  // dangling aria-describedby pointing at a nonexistent id is invalid ARIA.
+  const showEmptyState = $derived(showEmpty && Boolean(empty));
+  const emptyStateId = $derived(`${commandList.listboxId}-empty`);
   const caretAnchor = $derived.by<VirtualElement | null>(() => {
     const anchorElement = anchor;
     const currentCaretIndex = caretIndex;
@@ -179,12 +184,14 @@
       id={commandList.listboxId}
       role="listbox"
       aria-label={label}
+      aria-describedby={showEmptyState ? emptyStateId : undefined}
       class="cinder-command-menu__listbox"
+      data-cinder-empty={showEmptyState || undefined}
     >
       {@render items({ query })}
     </ul>
-    {#if showEmpty && empty}
-      <div class="cinder-command-menu__empty" role="status">
+    {#if showEmptyState && empty}
+      <div id={emptyStateId} class="cinder-command-menu__empty" role="status">
         {@render empty()}
       </div>
     {/if}
