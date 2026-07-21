@@ -337,7 +337,7 @@ function assertDiscriminatorWorks(): Promise<void> {
     if (off === on) {
       throw new Error(
         'hydration-safety: the BROWSER build-flag discriminator is not working — the ' +
-          '`{#if BROWSER}` sentinel rendered identically under both build conditions. ' +
+          '`esm-env` probe bundled identically under both build conditions. ' +
           'Every check would be a false negative. Investigate esm-env resolution / Bun.build ' +
           'conditions before trusting any `buildFlagInvariant` result.',
       );
