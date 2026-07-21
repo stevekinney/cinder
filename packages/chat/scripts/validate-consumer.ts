@@ -15,7 +15,16 @@ import {
 
 const packageRoot = join(import.meta.dir, '..');
 const workspaceRoot = resolve(packageRoot, '../..');
-const requiredPeers = ['@lostgradient/cinder', 'conversationalist', 'svelte', 'zod'] as const;
+// Host-supplied runtime singletons — the fixture symlinks these into its
+// top-level node_modules the way a real host app would after installing
+// them directly.
+const requiredPeers = ['@lostgradient/cinder', 'svelte'] as const;
+// Chat's own conversation-model dependencies — the fixture symlinks these
+// into the *installed chat package's own* node_modules, simulating what a
+// package manager does automatically for a regular `dependencies` entry
+// (nested resolution), never into the fixture's top-level node_modules. A
+// host app never provides these.
+const requiredOwnDependencies = ['conversationalist', 'zod'] as const;
 
 type ValidationFixture = {
   root: string;
@@ -39,10 +48,9 @@ async function run(command: string, arguments_: string[], cwd = packageRoot): Pr
 }
 
 function assertPackedManifest(manifest: PackageManifest): void {
-  assertSourceManifest({ ...manifest, dependencies: manifest.dependencies ?? {} });
-  if (manifest.dependencies !== undefined) {
-    fail('packed manifest must omit dependencies');
-  }
+  // assertSourceManifest enforces the exact `dependencies` contract
+  // (conversationalist + zod) and the exact peer set.
+  assertSourceManifest(manifest);
   if (manifest.devDependencies !== undefined) fail('packed manifest must omit devDependencies');
   if (manifest.optionalDependencies !== undefined) {
     fail('packed manifest must omit optionalDependencies');
@@ -86,42 +94,75 @@ async function assertPackedFileSet(installedChatRoot: string): Promise<void> {
   }
 }
 
-async function assertNoBundledPeerProvenance(
+/**
+ * Neither host-supplied peers nor Chat-owned dependencies should ever be
+ * inlined into the published server bundle — both resolve from
+ * `node_modules` at install time instead.
+ */
+async function assertNoBundledRuntimeProvenance(
   manifest: PackageManifest,
   installedChatRoot: string,
 ): Promise<void> {
-  const bundledPeers = new Set<string>();
+  const bundledSpecifiers = new Set<string>();
   const serverSourceGlob = new Glob('dist/server/**/*.js');
+  const runtimeSpecifiers = [
+    ...Object.keys(manifest.peerDependencies ?? {}),
+    ...Object.keys(manifest.dependencies ?? {}),
+  ];
   for await (const relativePath of serverSourceGlob.scan({ cwd: installedChatRoot })) {
     const bundledSource = await Bun.file(join(installedChatRoot, relativePath)).text();
     const source = bundledSource.replaceAll('\\', '/');
-    for (const peer of Object.keys(manifest.peerDependencies ?? {})) {
-      if (source.includes(`/node_modules/${peer}/`)) bundledPeers.add(peer);
+    for (const specifier of runtimeSpecifiers) {
+      if (source.includes(`/node_modules/${specifier}/`)) bundledSpecifiers.add(specifier);
     }
   }
-  if (bundledPeers.size > 0) {
+  if (bundledSpecifiers.size > 0) {
     fail(
-      `packed server artifact bundles declared peers: ${[...bundledPeers].toSorted().join(', ')}`,
+      `packed server artifact bundles declared runtime imports: ${[...bundledSpecifiers].toSorted().join(', ')}`,
     );
   }
 }
 
-async function linkPeer(
-  peer: (typeof requiredPeers)[number],
-  fixtureNodeModules: string,
+async function linkModule(
+  specifier: string,
+  destinationRoot: string,
+  sourceOverride?: string,
 ): Promise<void> {
-  const source =
-    peer === '@lostgradient/cinder'
-      ? join(workspaceRoot, 'packages', 'components')
-      : join(workspaceRoot, 'node_modules', ...peer.split('/'));
-  if (!existsSync(source)) fail(`workspace peer is unavailable: ${peer}`);
+  const source = sourceOverride ?? join(workspaceRoot, 'node_modules', ...specifier.split('/'));
+  if (!existsSync(source)) fail(`workspace module is unavailable: ${specifier}`);
 
-  const destination = join(fixtureNodeModules, ...peer.split('/'));
+  const destination = join(destinationRoot, ...specifier.split('/'));
   await mkdir(dirname(destination), { recursive: true });
   await symlink(source, destination, process.platform === 'win32' ? 'junction' : 'dir');
 }
 
-async function installPackedArtifact(
+/** Links a host-supplied peer into the fixture's top-level node_modules, simulating a real host install. */
+async function linkPeer(
+  peer: (typeof requiredPeers)[number],
+  fixtureNodeModules: string,
+): Promise<void> {
+  const sourceOverride =
+    peer === '@lostgradient/cinder' ? join(workspaceRoot, 'packages', 'components') : undefined;
+  await linkModule(peer, fixtureNodeModules, sourceOverride);
+}
+
+/**
+ * Links a Chat-owned dependency into the *installed chat package's own*
+ * node_modules — never the fixture's top-level node_modules. This is what
+ * proves the fix: a host app that never installed `conversationalist` or
+ * `zod` itself can still resolve them, because they arrive nested under
+ * `@lostgradient/chat` the way a package manager installs any other regular
+ * `dependencies` entry.
+ */
+async function linkOwnDependency(
+  dependency: (typeof requiredOwnDependencies)[number],
+  installedChatRoot: string,
+): Promise<void> {
+  await linkModule(dependency, join(installedChatRoot, 'node_modules'));
+}
+
+/** Extracts the packed tarball only — no linking yet, so the pure-artifact assertions below inspect exactly what was published. */
+async function extractPackedArtifact(
   tarballPath: string,
   fixture: ValidationFixture,
 ): Promise<PackageManifest> {
@@ -135,11 +176,18 @@ async function installPackedArtifact(
 
   await mkdir(dirname(fixture.installedChatRoot), { recursive: true });
   await rename(extractedPackage, fixture.installedChatRoot);
-  for (const peer of requiredPeers) await linkPeer(peer, fixture.nodeModules);
 
   return parsePackageManifest(
     await Bun.file(join(fixture.installedChatRoot, 'package.json')).text(),
   );
+}
+
+/** Links the fixture's simulated install graph: host peers at the top level, Chat's own dependencies nested under it. */
+async function linkFixtureDependencyGraph(fixture: ValidationFixture): Promise<void> {
+  for (const peer of requiredPeers) await linkPeer(peer, fixture.nodeModules);
+  for (const dependency of requiredOwnDependencies) {
+    await linkOwnDependency(dependency, fixture.installedChatRoot);
+  }
 }
 
 function barePackageName(specifier: string): string {
@@ -152,7 +200,10 @@ async function assertImportClosure(
   manifest: PackageManifest,
   installedChatRoot: string,
 ): Promise<void> {
-  const declaredPeers = new Set(Object.keys(manifest.peerDependencies ?? {}));
+  const declaredPeers = new Set([
+    ...Object.keys(manifest.peerDependencies ?? {}),
+    ...Object.keys(manifest.dependencies ?? {}),
+  ]);
   const violations: string[] = [];
   const sourceGlob = new Glob('dist/**/*.{js,svelte,css}');
   for await (const relativePath of sourceGlob.scan({ cwd: installedChatRoot })) {
@@ -265,7 +316,7 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `import '@lostgradient/chat/composer-popover/styles';\n` +
       `import '@lostgradient/chat/conversation-header/styles';\n` +
       `import '@lostgradient/chat/conversation-list/styles';\n` +
-      `import Chat, { appendAssistantMessage, appendUserMessage, createConversation, getMessageText } from '@lostgradient/chat';\n` +
+      `import Chat, { appendAssistantMessage, appendUserMessage, createConversation, getMessageText, isJSONValue } from '@lostgradient/chat';\n` +
       `import type { ChatSubmitEvent, ConversationHistory, MultiModalContent } from '@lostgradient/chat';\n` +
       `const userContent: MultiModalContent = { type: 'text', text: 'Hello' };\n` +
       `const assistantContent: MultiModalContent = { type: 'text', text: 'Hi there' };\n` +
@@ -276,6 +327,7 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `const submitEvent: ChatSubmitEvent = { message: { role: 'user', content: 'Follow up' }, attachments: [] };\n` +
       `const firstMessage = conversation.messages[conversation.ids[0] ?? ''];\n` +
       `if (firstMessage === undefined) throw new Error('expected a first conversation message');\n` +
+      `if (!isJSONValue(conversation.metadata)) throw new Error('expected conversation metadata to be a JSON value');\n` +
       `void [Chat, conversation, getMessageText(firstMessage), submitEvent];\n`,
   );
   await Bun.write(
@@ -389,16 +441,17 @@ export async function validateConsumer(): Promise<void> {
     process.stdout.write('[validate-consumer] building @lostgradient/chat…\n');
     await run('bun', ['run', 'build']);
     const { tarballPath } = await packForPublish();
-    const packedManifest = await installPackedArtifact(tarballPath, fixture);
+    const packedManifest = await extractPackedArtifact(tarballPath, fixture);
     assertPackedManifest(packedManifest);
     assertPackedExports(packedManifest, fixture.installedChatRoot);
     await assertPackedFileSet(fixture.installedChatRoot);
-    await assertNoBundledPeerProvenance(packedManifest, fixture.installedChatRoot);
+    await assertNoBundledRuntimeProvenance(packedManifest, fixture.installedChatRoot);
     await assertImportClosure(packedManifest, fixture.installedChatRoot);
+    await linkFixtureDependencyGraph(fixture);
     await buildConsumerEntries(fixture);
     await runPlainNodeConsumer(fixture);
     process.stdout.write(
-      `[validate-consumer] OK — isolated peer-only artifact, import closure, client build, plugin SSR, and plain-Node SSR verified.\n`,
+      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, and plain-Node SSR verified without a host-installed conversationalist/zod.\n`,
     );
   } finally {
     await rm(fixtureRoot, { recursive: true, force: true });

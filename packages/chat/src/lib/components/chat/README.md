@@ -103,15 +103,18 @@ complete finite stream without assuming a particular model provider.
 
 ## Conversation data contract
 
-Chat declares `@lostgradient/cinder`, `conversationalist`, `svelte`, and `zod`
-as peer dependencies. Host applications install those
-peers alongside `@lostgradient/chat`, then import the conversation types,
-builders, and `CURRENT_SCHEMA_VERSION` from `@lostgradient/chat`.
+Chat declares `@lostgradient/cinder` and `svelte` as peer dependencies — host
+applications install those alongside `@lostgradient/chat`. `conversationalist`
+(and its own `zod` dependency) is an implementation detail Chat owns: it
+ships as a regular dependency of `@lostgradient/chat`, installs
+automatically, and is never something a host application adds or
+version-picks directly. Import the conversation types, builders,
+`CURRENT_SCHEMA_VERSION`, and `isJSONValue` from `@lostgradient/chat` rather
+than importing `conversationalist` yourself.
 
-The exported schema version comes from the installed `conversationalist` peer.
-Histories produced by an older compatible schema can render as-is; a newer
-schema requires upgrading `conversationalist` and, when necessary,
-`@lostgradient/chat`.
+The exported schema version comes from the `conversationalist` version Chat
+depends on. Histories produced by an older compatible schema can render
+as-is; a newer schema requires upgrading `@lostgradient/chat`.
 
 ## Layout and sizing
 

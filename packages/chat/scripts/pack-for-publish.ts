@@ -27,7 +27,16 @@ export type PackageManifest = {
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-staging');
-const REQUIRED_PEERS = new Set(['@lostgradient/cinder', 'conversationalist', 'svelte', 'zod']);
+// `@lostgradient/cinder` and `svelte` are host-supplied runtime singletons: a
+// consuming app must control which copy renders. `conversationalist` and
+// `zod` are implementation details of Chat's conversation model — Chat owns
+// them as regular dependencies so host apps never install or version-pick
+// them directly.
+const REQUIRED_PEERS = new Set(['@lostgradient/cinder', 'svelte']);
+const REQUIRED_DEPENDENCIES: Record<string, string> = {
+  conversationalist: '^0.2.1 || ^0.4.1',
+  zod: '4.4.1',
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -87,8 +96,14 @@ function tarballFileName(manifest: Pick<PackageManifest, 'name' | 'version'>): s
 }
 
 export function assertSourceManifest(manifest: PackageManifest): void {
-  if (Object.keys(manifest.dependencies ?? {}).length > 0) {
-    throw new Error('@lostgradient/chat must not declare production dependencies');
+  const dependencies = manifest.dependencies ?? {};
+  const dependencyMismatch =
+    Object.keys(dependencies).length !== Object.keys(REQUIRED_DEPENDENCIES).length ||
+    Object.entries(REQUIRED_DEPENDENCIES).some(([name, range]) => dependencies[name] !== range);
+  if (dependencyMismatch) {
+    throw new Error(
+      `production dependency contract mismatch (expected exactly ${JSON.stringify(REQUIRED_DEPENDENCIES)}, got ${JSON.stringify(dependencies)})`,
+    );
   }
   const peers = new Set(Object.keys(manifest.peerDependencies ?? {}));
   const missing = [...REQUIRED_PEERS].filter((peer) => !peers.has(peer));
@@ -100,11 +115,21 @@ export function assertSourceManifest(manifest: PackageManifest): void {
   }
 }
 
-/** Keep every runtime peer external in generated server bundles, including subpath imports. */
-export function peerExternalSpecifiers(
-  manifest: Pick<PackageManifest, 'peerDependencies'>,
+/**
+ * Keep every runtime import external in generated server bundles, including
+ * subpath imports — both host-supplied peers (`@lostgradient/cinder`,
+ * `svelte`) and Chat-owned dependencies (`conversationalist`, `zod`). Neither
+ * category should be inlined into the published dist; both resolve from
+ * `node_modules` at install time.
+ */
+export function runtimeExternalSpecifiers(
+  manifest: Pick<PackageManifest, 'peerDependencies' | 'dependencies'>,
 ): string[] {
-  return Object.keys(manifest.peerDependencies ?? {}).flatMap((peer) => [peer, `${peer}/*`]);
+  const names = [
+    ...Object.keys(manifest.peerDependencies ?? {}),
+    ...Object.keys(manifest.dependencies ?? {}),
+  ];
+  return names.flatMap((name) => [name, `${name}/*`]);
 }
 
 function publishedExport(entry: string | ConditionalExport): string | ConditionalExport {
@@ -144,7 +169,8 @@ export function buildPublishedManifest(source: PackageManifest): PackageManifest
     ],
   };
 
-  delete published.dependencies;
+  // `dependencies` is retained: it is how npm/bun install conversationalist
+  // and zod for a host application without that host declaring them itself.
   delete published.devDependencies;
   delete published.optionalDependencies;
   delete published.scripts;

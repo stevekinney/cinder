@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import {
   assertSourceManifest,
   buildPublishedManifest,
-  peerExternalSpecifiers,
+  runtimeExternalSpecifiers,
   type PackageManifest,
 } from './pack-for-publish.ts';
 
@@ -34,22 +34,23 @@ describe('Chat package ownership boundary', () => {
     }
   });
 
-  test('keeps every Chat runtime integration peer-only', () => {
+  test('keeps host-supplied runtime singletons peer-only and owns its conversation-model dependencies', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
-    expect(chatManifest.dependencies).toEqual({});
-    expect(chatManifest.peerDependencies).toEqual({
-      '@lostgradient/cinder': '^0.16.0',
+    expect(chatManifest.dependencies).toEqual({
       conversationalist: '^0.2.1 || ^0.4.1',
-      svelte: '>=5.56.0 <6',
       zod: '4.4.1',
     });
-    expect(peerExternalSpecifiers(chatManifest)).toEqual([
+    expect(chatManifest.peerDependencies).toEqual({
+      '@lostgradient/cinder': '^0.16.0',
+      svelte: '>=5.56.0 <6',
+    });
+    expect(runtimeExternalSpecifiers(chatManifest)).toEqual([
       '@lostgradient/cinder',
       '@lostgradient/cinder/*',
-      'conversationalist',
-      'conversationalist/*',
       'svelte',
       'svelte/*',
+      'conversationalist',
+      'conversationalist/*',
       'zod',
       'zod/*',
     ]);
@@ -91,7 +92,7 @@ describe('Chat package ownership boundary', () => {
     const published = buildPublishedManifest(chatManifest);
     const serialized = JSON.stringify(published);
 
-    expect(published.dependencies).toBeUndefined();
+    expect(published.dependencies).toEqual(chatManifest.dependencies);
     expect(published.devDependencies).toBeUndefined();
     expect(published.scripts).toBeUndefined();
     expect(serialized).not.toContain('workspace:');
