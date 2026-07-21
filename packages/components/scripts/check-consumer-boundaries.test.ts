@@ -37,7 +37,7 @@ describe('consumer boundary guard', () => {
     ).toEqual([]);
   });
 
-  test('allows any shared test helper under src/test/ only from tests', () => {
+  test('allows a flat shared test helper .ts file directly under src/test/ only from tests', () => {
     const source =
       "import { readRootTokenNames } from '../../components/src/test/token-introspection.ts';";
     expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts')).toEqual(
@@ -46,6 +46,20 @@ describe('consumer boundary guard', () => {
     expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.ts')).toHaveLength(
       1,
     );
+  });
+
+  test('rejects src/test/fixtures/** even from tests — fixtures import private component source', () => {
+    // A test-helper exemption scoped to the whole `src/test/` directory would let a
+    // playground test reach `src/test/fixtures/*.svelte` and transitively depend on
+    // private component source (fixtures like `access-gate-dynamic-fixture.svelte`
+    // import `../../components/access-gate/access-gate.svelte` directly) — exactly
+    // the reach-in this guard exists to prevent. The exemption must stay scoped to
+    // flat `.ts` helper files directly under `src/test/`, not the directory as a whole.
+    const source =
+      "import Fixture from '../../components/src/test/fixtures/access-gate-dynamic-fixture.svelte';";
+    expect(
+      findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
   });
 
   test('rejects multiline imports and selectors', () => {
