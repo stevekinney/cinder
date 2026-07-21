@@ -105,6 +105,11 @@ describe('Tabs ARIA structure', () => {
 });
 
 describe('Tabs responsive CSS', () => {
+  test('tab buttons stay single-line so the tab list scrolls as one strip', () => {
+    expect(tabsCss).toMatch(/\.cinder-tab\s*\{[^}]*flex-shrink:\s*0;/);
+    expect(tabsCss).toMatch(/\.cinder-tab\s*\{[^}]*white-space:\s*nowrap;/);
+  });
+
   test('vertical tab layout collapses through a component container query', () => {
     expect(tabsCss).toContain('container-name: cinder-tabs;');
     expect(tabsCss).toContain('@container cinder-tabs (max-width: 30rem)');
