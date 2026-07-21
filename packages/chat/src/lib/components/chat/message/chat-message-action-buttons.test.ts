@@ -62,11 +62,14 @@ describe('chat message action buttons', () => {
   });
 
   test('below-bubble footer spacing is an in-box hover bridge', () => {
-    const footerRule = extractRule(source, '\n  .chat-message-footer {');
+    // Use a line-start regex so the lookup is not sensitive to indentation.
+    const footerRule = extractRule(source, /(?:^|\n)\s*\.chat-message-footer\s*\{/);
     expect(footerRule).toContain('padding-top: var(--cinder-space-1)');
     expect(footerRule).not.toContain('margin-top: var(--cinder-space-1)');
 
-    const desktopRules = source.slice(0, source.indexOf('@media (max-width: 480px)'));
+    const mediaIdx = source.indexOf('@media (max-width: 480px)');
+    expect(mediaIdx).toBeGreaterThan(-1);
+    const desktopRules = source.slice(0, mediaIdx);
     for (const role of ['developer', 'system', 'snapshot', 'tool-call', 'tool-result']) {
       expect(desktopRules).not.toContain(
         `.chat-message-wrapper[data-role='${role}'] .chat-message-footer {`,
@@ -140,10 +143,17 @@ describe('chat message action buttons', () => {
   });
 });
 
-function extractRule(text: string, opening: string): string {
-  const start = text.indexOf(opening);
-  if (start === -1) throw new Error(`rule not found: ${opening}`);
-  const bodyStart = start + opening.length;
+function extractRule(text: string, opening: string | RegExp): string {
+  if (typeof opening === 'string') {
+    const start = text.indexOf(opening);
+    if (start === -1) throw new Error(`rule not found: ${opening}`);
+    const bodyStart = start + opening.length;
+    const end = text.indexOf('}', bodyStart);
+    return text.slice(bodyStart, end);
+  }
+  const match = opening.exec(text);
+  if (!match) throw new Error(`rule not found: ${opening}`);
+  const bodyStart = match.index + match[0].length;
   const end = text.indexOf('}', bodyStart);
   return text.slice(bodyStart, end);
 }
