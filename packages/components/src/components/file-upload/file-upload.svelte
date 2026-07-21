@@ -279,7 +279,7 @@
           stroke-linejoin="round"
         />
       </svg>
-      Drag files here or {triggerLabel}
+      Drag files here, or use the {triggerLabel} button.
     </span>
     <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
   </div>
