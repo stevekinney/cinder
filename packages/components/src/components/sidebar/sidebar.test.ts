@@ -178,7 +178,9 @@ describe('Sidebar (desktop / inline aside)', () => {
       expectQueryWasUsed(mock, '(max-width: 64rem)');
       expect(aside?.getAttribute('data-cinder-sidebar-mobile-breakpoint')).toBe('64rem');
       expect(aside?.getAttribute('style')).toContain('--cinder-sidebar-mobile-breakpoint: 64rem;');
-      expect(container.querySelector('style[data-cinder-sidebar-breakpoint-style]')).toBeNull();
+      expect(
+        container.querySelector('style[data-cinder-sidebar-breakpoint-style]')?.textContent,
+      ).toContain('@media (max-width: 64rem)');
     } finally {
       mock.restore();
     }

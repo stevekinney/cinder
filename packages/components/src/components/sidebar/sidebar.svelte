@@ -75,7 +75,7 @@
   // Keep the fallback explicit for SSR-contract test environments where
   // `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
-  let syncedMobileMediaQuery = $state(hasMatchMedia);
+  let syncedMobileMediaQuery = $state(false);
   let mobile = $state(hasMatchMedia ? window.matchMedia(mobileMediaQuery).matches : false);
   $effect(() => {
     if (!hasMatchMedia) return undefined;
