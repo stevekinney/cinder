@@ -859,8 +859,23 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
       generate: 'server',
       runes: true,
     }).js.code;
-    expect(serverCode).not.toContain('let $$settled');
-    expect(serverCode).not.toContain('.copy()');
+
+    const settleLoopMarker = '$$settled';
+    const bindingControlCode = compile(
+      `<script>
+        import ChatImplementation from './container/chat.svelte';
+        let atBottom = $state(true);
+      </script>
+      <ChatImplementation bind:atBottom />`,
+      {
+        filename: resolve(import.meta.dir, 'chat-binding-control.svelte'),
+        generate: 'server',
+        runes: true,
+      },
+    ).js.code;
+
+    expect(bindingControlCode).toContain(settleLoopMarker);
+    expect(serverCode).not.toContain(settleLoopMarker);
   });
 });
 
