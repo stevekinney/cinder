@@ -101,7 +101,19 @@ test.describe('chat action buttons', () => {
       const actionableRow = copyButton.locator(
         'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
       );
-      await expect(actionableRow).toHaveCSS('margin-block-end', `${TOUCH_TARGET_MIN + 4}px`);
+      const space1Px = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.cssText =
+          'position:absolute;width:var(--cinder-space-1);visibility:hidden;pointer-events:none';
+        document.body.appendChild(probe);
+        const px = parseFloat(getComputedStyle(probe).width);
+        probe.remove();
+        return px;
+      });
+      await expect(actionableRow).toHaveCSS(
+        'margin-block-end',
+        `${TOUCH_TARGET_MIN + space1Px}px`,
+      );
 
       const hitTarget = await copyButton.evaluate((element) => {
         const box = element.getBoundingClientRect();
