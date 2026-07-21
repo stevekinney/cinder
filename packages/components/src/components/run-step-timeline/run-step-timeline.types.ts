@@ -487,7 +487,7 @@ export type RunStepTimelineProps = Omit<HTMLAttributes<HTMLOListElement>, 'class
    * Fired when the user activates a rendered step row.
    * Receives that row's rendered path key.
    */
-  onStepSelect?: ((stepId: string) => void) | undefined;
+  onStepSelect?: ((pathKey: string) => void) | undefined;
   /**
    * Optional per-step body content rendered after the step metadata.
    */

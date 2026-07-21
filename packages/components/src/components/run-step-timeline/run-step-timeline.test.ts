@@ -965,7 +965,9 @@ describe('selection', () => {
       steps: [pendingStep, runningStep],
       onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
     });
-    await fireEvent.click(row!);
+    const selectableRow = stepRowByPath(container, runningStep.id);
+    expect(selectableRow).toBeDefined();
+    await fireEvent.click(selectableRow!);
 
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
