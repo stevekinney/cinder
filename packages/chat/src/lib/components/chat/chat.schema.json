@@ -269,7 +269,7 @@
       {
         "name": "readReceipts",
         "reason": "unknown-shape",
-        "description": "Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. The adapter's\n`onReadReceipt` push handler populates the same state when an adapter is wired.\nDefault `undefined` (no receipts shown)."
+        "description": "Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. While defined,\nincluding as an empty `Map`, this prop determines the visible receipts instead\nof adapter-derived state. Adapter events still call `onreadreceipt`, and their\nderived state may continue accumulating and become visible if this prop later\nbecomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived\nstate. Default `undefined` (no receipts shown until adapter state is available)."
       },
       {
         "name": "row",
@@ -279,7 +279,7 @@
       {
         "name": "typingParticipants",
         "reason": "unknown-shape",
-        "description": "Participants who are currently typing. Out-of-band UI state — NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. The adapter's\n`onTypingChange` push handler feeds the same indicator when an adapter is\nwired. Default `undefined` (indicator hidden)."
+        "description": "Participants who are currently typing. Out-of-band UI state — NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. While defined,\nincluding as an empty array, this prop determines the visible indicator instead\nof adapter-derived state. Adapter events still call `ontypingchange`, and their\nderived state may continue updating and become visible if this prop later becomes\n`undefined`. Omit the prop or pass `undefined` to show adapter-derived state.\nDefault `undefined` (indicator hidden until adapter state is available)."
       },
       {
         "name": "viewportAttachment",

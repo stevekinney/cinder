@@ -54,6 +54,19 @@ const props = { id: 'consumer-chat', conversation } satisfies Pick<
   'id' | 'conversation'
 >;
 
+// With exactOptionalPropertyTypes enabled, explicit undefined must remain a
+// supported way to return controlled indicator state to the adapter path.
+const explicitlyUncontrolledProps = {
+  typingParticipants: undefined,
+  readReceipts: undefined,
+} satisfies Pick<ChatProps, 'typingParticipants' | 'readReceipts'>;
+const explicitlyUncontrolledComponentProps = {
+  id: 'consumer-chat',
+  conversation,
+  typingParticipants: undefined,
+  readReceipts: undefined,
+} satisfies ChatComponentProps;
+
 // The public Chat wrapper forwards the inner imperative streaming/scroll API
 // (beginStreaming/pushToken/endStreaming/scrollToBottom/scrollToTop/focusInput).
 // A type-level assertion of that method surface is intentionally NOT made here:
@@ -71,6 +84,13 @@ test('Chat publicly accepts a ConversationHistory conversation prop', () => {
   expect(conversationPropIsHistory).toBe(true);
   expect(historyAssignableToProp).toBe(true);
   expect(props.conversation.id).toBe('consumer-conversation');
+});
+
+test('Chat indicator props explicitly accept undefined', () => {
+  expect(explicitlyUncontrolledProps.typingParticipants).toBeUndefined();
+  expect(explicitlyUncontrolledProps.readReceipts).toBeUndefined();
+  expect(explicitlyUncontrolledComponentProps.typingParticipants).toBeUndefined();
+  expect(explicitlyUncontrolledComponentProps.readReceipts).toBeUndefined();
 });
 
 // `ChatAttachment` was previously importable only by deriving it from

@@ -177,19 +177,25 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   /**
    * Participants who are currently typing. Out-of-band UI state — NOT stored on
    * `Message`. Pass an array of {@link TypingParticipant} objects; the component
-   * renders a per-participant typing indicator above the input. The adapter's
-   * `onTypingChange` push handler feeds the same indicator when an adapter is
-   * wired. Default `undefined` (indicator hidden).
+   * renders a per-participant typing indicator above the input. While defined,
+   * including as an empty array, this prop determines the visible indicator instead
+   * of adapter-derived state. Adapter events still call `ontypingchange`, and their
+   * derived state may continue updating and become visible if this prop later becomes
+   * `undefined`. Omit the prop or pass `undefined` to show adapter-derived state.
+   * Default `undefined` (indicator hidden until adapter state is available).
    */
-  typingParticipants?: TypingParticipant[];
+  typingParticipants?: TypingParticipant[] | undefined;
   /**
    * Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.
    * Pass a `Map` keyed by message id with a {@link ReadReceipt} value; the
-   * component renders a receipt badge on USER messages only. The adapter's
-   * `onReadReceipt` push handler populates the same state when an adapter is wired.
-   * Default `undefined` (no receipts shown).
+   * component renders a receipt badge on USER messages only. While defined,
+   * including as an empty `Map`, this prop determines the visible receipts instead
+   * of adapter-derived state. Adapter events still call `onreadreceipt`, and their
+   * derived state may continue accumulating and become visible if this prop later
+   * becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived
+   * state. Default `undefined` (no receipts shown until adapter state is available).
    */
-  readReceipts?: Map<string, ReadReceipt>;
+  readReceipts?: Map<string, ReadReceipt> | undefined;
   /**
    * Optional command/transport boundary around `conversation`. Its methods take
    * precedence over the matching callback props (e.g. `sendMessage` over
