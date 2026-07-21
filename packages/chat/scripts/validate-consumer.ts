@@ -380,7 +380,13 @@ async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void>
       `  bind:newMessageIndicatorVisible\n` +
       `/>\n`,
   );
-  await Bun.write(join(fixture.root, 'svelte.config.js'), `export default {};\n`);
+  // `.mjs`, not `.js`. The scratch fixture root has no `package.json`, so a
+  // `.js` config is parsed as CommonJS and `export default` is a syntax error
+  // under plain Node — an `.mjs` extension is unambiguous regardless of the
+  // surrounding package type. Cheap insurance: this failure would surface as a
+  // config-load error long before `svelte-check` ever reached `App.svelte`,
+  // making the consumer regression guard silently useless off Bun.
+  await Bun.write(join(fixture.root, 'svelte.config.mjs'), `export default {};\n`);
   const svelteCheckTsconfigPath = join(fixture.root, 'svelte-check-tsconfig.json');
   await Bun.write(
     svelteCheckTsconfigPath,
