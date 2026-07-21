@@ -423,6 +423,13 @@ export function createEditorState(options: CreateEditorStateOptions) {
     get validationStatus() {
       return validationStatus;
     },
+    /**
+     * `result.valid` is optimistic while `result.status === 'pending'` —
+     * on a cold mount, or any time a validation cycle has just started, the
+     * async Ajv check hasn't resolved yet and `valid` still reflects
+     * whatever the last settled check found (`true` by default). Gate on
+     * `status`, not `valid` alone.
+     */
     get validationResult(): JsonSchemaValidationResult {
       return buildResult();
     },

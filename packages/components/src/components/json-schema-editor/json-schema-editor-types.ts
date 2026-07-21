@@ -92,7 +92,14 @@ export type JsonSchemaValidationStatus = 'valid' | 'invalid' | 'pending';
 
 export type JsonSchemaValidationResult = {
   status: JsonSchemaValidationStatus;
-  /** Meta-schema valid. Always meaningful, even when status is `pending`. */
+  /**
+   * Meta-schema valid. Only a settled answer once a cheap synchronous shape
+   * check has ruled out `status === 'invalid'` cases (no schema, non-object)
+   * — for a plausibly-valid shape, `valid` stays optimistic (reflects
+   * whatever the previous check found, or `true` on a cold mount before the
+   * first Ajv chunk has resolved) until `status` moves off `'pending'`.
+   * Gate on `status`, not `valid` alone.
+   */
   valid: boolean;
   errors: JsonSchemaValidationError[];
   /** `null` when compile is deferred or not yet run. */
