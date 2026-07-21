@@ -7,10 +7,10 @@
 Install the package and its peer dependencies together:
 
 ```bash
-bun add @lostgradient/chat @lostgradient/cinder lucide-svelte svelte
+bun add @lostgradient/chat @lostgradient/cinder svelte
 ```
 
-The supported Svelte peer range is `>=5.56.0 <6`; this package is developed against Svelte `5.56.0`. `@lostgradient/cinder` and `svelte` are peer dependencies — your application supplies a single copy of each. Cinder also requires `lucide-svelte` for its component icons. Chat's conversation model is built on `conversationalist`, which Chat declares as its own regular dependency: it is installed automatically with `@lostgradient/chat` and you never need to `bun add` it (or `zod`, one of its dependencies) yourself. Import the conversation types, builders, and `CURRENT_SCHEMA_VERSION` from `@lostgradient/chat` rather than from `conversationalist` directly.
+The supported Svelte peer range is `>=5.56.0 <6`; this package is developed against Svelte `5.56.0`. `@lostgradient/cinder` and `svelte` are peer dependencies — your application supplies a single copy of each. Cinder bundles its own pinned `lucide-svelte` as a regular dependency rather than a peer, so you no longer need to install it just to satisfy Cinder or Chat's former peer requirement — if your app also renders Lucide icons directly, keep your own `lucide-svelte` dependency for that. Chat's conversation model is built on `conversationalist`, which Chat declares as its own regular dependency: it is installed automatically with `@lostgradient/chat` and you never need to `bun add` it (or `zod`, one of its dependencies) yourself. Import the conversation types, builders, and `CURRENT_SCHEMA_VERSION` from `@lostgradient/chat` rather than from `conversationalist` directly.
 
 Import Cinder's global styles once in your application, then import Chat from the package root:
 
