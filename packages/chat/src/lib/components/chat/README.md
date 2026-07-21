@@ -103,10 +103,14 @@ complete finite stream without assuming a particular model provider.
 
 > [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
 > Chat opens `subscribe` from inside its internal mount `$effect`, so a
-> synchronous `$state` write inside `subscribe` (or inside a handler it invokes
-> synchronously before returning) can throw `effect_update_depth_exceeded`.
-> Defer such writes with `queueMicrotask` or `tick()`. See the
-> `ChatAdapter.subscribe` JSDoc for the full explanation and a working example.
+> synchronous `$state` write inside `subscribe` can throw
+> `effect_update_depth_exceeded`. Defer it with `queueMicrotask` or `tick()`.
+> The same applies if `subscribe` replays a buffered event by calling a handler
+> (`onMessage`, `onTypingChange`, etc.) synchronously before returning — defer
+> the CALL to the handler itself, not just any write of your own, since
+> `onTypingChange`/`onReadReceipt` write Chat's own internal state before your
+> code runs at all. See the `ChatAdapter.subscribe` and `ChatPushHandlers`
+> JSDoc for the full explanation and working examples.
 
 ## Conversation data contract
 

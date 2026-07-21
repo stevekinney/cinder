@@ -66,8 +66,9 @@ export type ChatReadReceiptEvent = {
  * callback prop, and that consumer callback may write `$state` too — neither
  * of those writes is something the adapter author controls or can "defer"
  * from inside their own code. Defer the CALL to the handler itself instead
- * (e.g. `queueMicrotask(() => handlers.onMessage(message))`), the same way
- * {@link ChatAdapter.subscribe} defers a synchronous write of its own.
+ * (e.g. `queueMicrotask(() => handlers.onMessage(message))`) — the same
+ * technique {@link ChatAdapter.subscribe}'s own doc uses for a synchronous
+ * `$state` write inside `subscribe` itself.
  */
 export type ChatPushHandlers = {
   /** A new (or updated) message arrived. Forwarded to the consumer; Chat does not mutate the transcript. */
