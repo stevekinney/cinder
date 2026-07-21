@@ -399,7 +399,12 @@ async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void>
           target: 'ESNext',
           skipLibCheck: true,
         },
-        include: ['svelte-check-src'],
+        // An explicit .svelte glob, not a bare directory include: `svelte-check`
+        // resolves included files the way `tsc` does, which does not treat
+        // `.svelte` as a recognized extension by default. A bare directory
+        // entry risks silently matching nothing, which would make this whole
+        // step a no-op that always reports zero errors.
+        include: ['svelte-check-src/**/*.svelte'],
       },
       null,
       2,
