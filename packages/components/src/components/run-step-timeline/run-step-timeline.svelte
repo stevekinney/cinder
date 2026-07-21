@@ -384,8 +384,14 @@
   }
 
   function isInteractiveDescendant(node: HTMLLIElement, eventTarget: EventTarget | null): boolean {
-    if (!(eventTarget instanceof Element)) return false;
-    const interactiveTarget = eventTarget.closest(
+    const targetElement =
+      eventTarget instanceof Element
+        ? eventTarget
+        : eventTarget instanceof Node
+          ? eventTarget.parentElement
+          : null;
+    if (targetElement === null) return false;
+    const interactiveTarget = targetElement.closest(
       'a[href], button, input, label, select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [tabindex]:not([tabindex="-1"])',
     );
     return (

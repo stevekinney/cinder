@@ -1022,7 +1022,14 @@ describe('selection', () => {
       children: childControl,
     });
 
-    await fireEvent.click(getByText('Retry'));
+    const label = getByText('Retry');
+    const textNode = Array.from(label.childNodes).find(
+      (child) => child.nodeType === Node.TEXT_NODE,
+    );
+    expect(textNode).toBeDefined();
+
+    await fireEvent.click(label);
+    await fireEvent.click(textNode!);
     expect(selectedStepIds).toEqual([]);
     await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
     expect(selectedStepIds).toEqual([runningStep.id]);
