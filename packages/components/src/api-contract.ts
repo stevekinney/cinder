@@ -294,6 +294,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
       disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
       name: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      triggerLabel: { optional: true, type_kind: 'TSStringKeyword', default: L('Choose files') },
       files: { optional: true, type_kind: 'TSArrayType', default: NO_DEFAULT },
       onchange: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
       onreject: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },

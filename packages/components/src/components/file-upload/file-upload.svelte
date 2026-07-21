@@ -259,10 +259,6 @@
     if (progress === undefined) return 0;
     return Math.max(0, Math.min(100, progress));
   }
-
-  function sentenceCaseTriggerLabel(label: string): string {
-    return label.length === 0 ? label : `${label[0]!.toLowerCase()}${label.slice(1)}`;
-  }
 </script>
 
 {#snippet defaultIdle()}
@@ -283,7 +279,7 @@
           stroke-linejoin="round"
         />
       </svg>
-      Drag files here or {sentenceCaseTriggerLabel(triggerLabel)}
+      Drag files here, or use the {triggerLabel} button.
     </span>
     <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
   </div>
