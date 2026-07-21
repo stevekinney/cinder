@@ -375,23 +375,35 @@
     return currentIndex;
   }
 
-  function laneRows(lane: RunStepBranchLane): RenderedStepLike[] {
-    return flattenSteps(lane.steps, '');
+  function laneRows(groupPathKey: string, lane: RunStepBranchLane): RenderedStepLike[] {
+    return flattenSteps(lane.steps, `${groupPathKey}/%lane/${escapeStepPathSegment(lane.id)}`);
   }
 
   function laneStateLabel(lane: RunStepBranchLane): string {
     return lane.outcome === undefined ? 'racing' : laneOutcomeLabel(lane.outcome).toLowerCase();
   }
 
-  function handleStepSelect(stepId: string): void {
-    onStepSelect?.(stepId);
+  function handleStepSelect(stepPathKey: string): void {
+    onStepSelect?.(stepPathKey);
   }
 
-  function createStepSelectionAttachment(stepId: string): Attachment<HTMLLIElement> {
+  function createStepSelectionAttachment(stepPathKey: string): Attachment<HTMLLIElement> {
     return (node) => {
-      const handleClick = (): void => handleStepSelect(stepId);
+      if (onStepSelect === undefined) return;
+
+      const handleClick = (): void => handleStepSelect(stepPathKey);
+      const handleKeydown = (event: KeyboardEvent): void => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        handleStepSelect(stepPathKey);
+      };
+
       node.addEventListener('click', handleClick);
-      return () => node.removeEventListener('click', handleClick);
+      node.addEventListener('keydown', handleKeydown);
+      return () => {
+        node.removeEventListener('click', handleClick);
+        node.removeEventListener('keydown', handleKeydown);
+      };
     };
   }
 </script>
@@ -400,8 +412,9 @@
   {@const step = row.step}
   {@const terminal = isTerminal(step.status)}
   {@const metadata = metadataItems(step)}
+  {@const selected = selectedStepId === row.pathKey}
   <li
-    {@attach createStepSelectionAttachment(step.id)}
+    {@attach createStepSelectionAttachment(row.pathKey)}
     class="cinder-run-step-timeline__item"
     data-cinder-status={step.status}
     data-cinder-depth={row.depth}
@@ -409,11 +422,14 @@
     data-cinder-terminal={terminal ? '' : undefined}
     data-cinder-rewound={step.rewound ? '' : undefined}
     data-cinder-compensation={row.compensatesLabel !== undefined ? '' : undefined}
-    data-cinder-selected={selectedStepId === step.id ? '' : undefined}
+    data-cinder-selected={selected ? '' : undefined}
     data-cinder-selectable={onStepSelect === undefined ? undefined : ''}
     data-cinder-connector-after={row.connectorAfter}
     aria-current={row.ariaCurrent ? 'step' : undefined}
+    aria-pressed={onStepSelect === undefined ? undefined : selected ? 'true' : 'false'}
+    role={onStepSelect === undefined ? undefined : 'button'}
     style:--_cinder-rst-depth={row.depth}
+    tabindex={onStepSelect === undefined ? undefined : 0}
   >
     <div class="cinder-run-step-timeline__event">
       <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
@@ -635,7 +651,7 @@
                       class="cinder-run-step-timeline cinder-run-step-timeline__lane-steps"
                       aria-label={`${lane.label ?? lane.id} steps`}
                     >
-                      {@render stepRail(laneRows(lane))}
+                      {@render stepRail(laneRows(entry.pathKey, lane))}
                     </ol>
                   </li>
                 {/each}

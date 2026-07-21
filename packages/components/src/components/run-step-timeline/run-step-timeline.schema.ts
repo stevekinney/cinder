@@ -1028,7 +1028,8 @@ const schema = {
       {
         name: 'onStepSelect',
         reason: 'function-or-snippet',
-        description: 'Fired when the user clicks anywhere in a rendered step row.',
+        description:
+          "Fired when the user activates a rendered step row.\nReceives that row's rendered path key.",
       },
     ],
   },
