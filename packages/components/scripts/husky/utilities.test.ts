@@ -1548,11 +1548,13 @@ describe('withGateLock', () => {
       );
       let liveChecks = 0;
       let malformedChecks = 0;
+      let now = 0;
 
       await expect(
         withGateLock(async () => 'should not run', {
           beforeMalformedLockStat: () => {
             malformedChecks++;
+            if (malformedChecks > 1) now = 5;
           },
           isProcessAlive: () => {
             if (++liveChecks === 20) writeFileSync(lockPath, '{');
@@ -1560,6 +1562,7 @@ describe('withGateLock', () => {
           },
           lockPath,
           malformedLockGraceMilliseconds: 1_000,
+          now: () => now,
           retryMilliseconds: 1,
           waitMilliseconds: 5,
         }),

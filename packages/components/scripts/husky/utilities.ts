@@ -546,6 +546,7 @@ type GateLockOptions = {
   readonly isProcessAlive?: (pid: number) => boolean;
   readonly lockPath?: string;
   readonly malformedLockGraceMilliseconds?: number;
+  readonly now?: () => number;
   readonly retryMilliseconds?: number;
   readonly resendSignal?: (signal: NodeJS.Signals) => void;
   readonly waitMilliseconds?: number;
@@ -666,6 +667,7 @@ export async function withGateLock<T>(
   const retryMilliseconds = options.retryMilliseconds ?? DEFAULT_GATE_LOCK_RETRY_MILLISECONDS;
   const waitMilliseconds = options.waitMilliseconds ?? DEFAULT_GATE_LOCK_WAIT_MILLISECONDS;
   const processAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+  const now = options.now ?? Date.now;
   const resendSignal = options.resendSignal ?? ((signal) => process.kill(process.pid, signal));
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   let malformedLockStartedAt: number | null = null;
@@ -714,7 +716,7 @@ export async function withGateLock<T>(
 
       const existingLock = await readGateLock(lockPath);
       if (existingLock === null) {
-        malformedLockStartedAt ??= Date.now();
+        malformedLockStartedAt ??= now();
         await options.beforeMalformedLockStat?.();
         let existingLockAgeMilliseconds = 0;
         try {
@@ -736,10 +738,7 @@ export async function withGateLock<T>(
           warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
           waitingMessageState = 'malformed';
         }
-        if (
-          malformedLockStartedAt !== null &&
-          Date.now() - malformedLockStartedAt >= waitMilliseconds
-        ) {
+        if (malformedLockStartedAt !== null && now() - malformedLockStartedAt >= waitMilliseconds) {
           throw new Error(
             `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
             { cause: caught },
