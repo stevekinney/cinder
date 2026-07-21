@@ -23,7 +23,7 @@ import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
 import type { ChatAdapter, ChatPushHandlers } from './chat-adapter.ts';
-import { SubscribeEventLog } from './subscribe-event-log.svelte.ts';
+import { SubscribeEventLog } from '../../../test/subscribe-event-log.svelte.ts';
 
 setupHappyDom();
 
