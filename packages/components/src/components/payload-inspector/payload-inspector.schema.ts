@@ -18,6 +18,16 @@ const schema = {
       description:
         'Maximum byte size before the tree view is replaced with an oversize\nplaceholder. Defaults to 1,048,576 (1 MB).',
     },
+    initialDepth: {
+      type: 'number',
+      description:
+        'Initial collapse depth for the JSON tree. Nodes deeper than this start\ncollapsed. Defaults to 1.',
+    },
+    maxDepth: {
+      type: 'number',
+      description:
+        'Hard depth cap for the JSON tree. Nodes deeper than this never render\ntheir children. Defaults to 50.',
+    },
     label: {
       type: 'string',
       description: 'Visible header label for the inspector. Defaults to "Payload inspector".',

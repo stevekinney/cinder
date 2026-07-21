@@ -26,6 +26,16 @@ export type PayloadInspectorProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 
    */
   maxBytes?: number;
   /**
+   * Initial collapse depth for the JSON tree. Nodes deeper than this start
+   * collapsed. Defaults to 1.
+   */
+  initialDepth?: number;
+  /**
+   * Hard depth cap for the JSON tree. Nodes deeper than this never render
+   * their children. Defaults to 50.
+   */
+  maxDepth?: number;
+  /**
    * Custom parser applied when `value` is a string. Receives the raw string
    * and must return a parsed value or throw. Defaults to JSON.parse. Use this
    * to support alternative serialization formats.
@@ -66,6 +76,16 @@ export type PayloadInspectorSchemaProps = {
    * placeholder. Defaults to 1,048,576 (1 MB).
    */
   maxBytes?: number;
+  /**
+   * Initial collapse depth for the JSON tree. Nodes deeper than this start
+   * collapsed. Defaults to 1.
+   */
+  initialDepth?: number;
+  /**
+   * Hard depth cap for the JSON tree. Nodes deeper than this never render
+   * their children. Defaults to 50.
+   */
+  maxDepth?: number;
   /**
    * Visible header label for the inspector. Defaults to "Payload inspector".
    */
