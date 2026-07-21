@@ -15,7 +15,7 @@
    * @avoidWhen You only need to pick a single point in time, not a recurrence — use date-picker instead. | date-picker
    * @related date-picker, segmented-control, input, time-field
    * @a11yPattern WAI-ARIA Tabs
-   * @a11yNote The three authoring modes (presets, cron, interval) are a tablist; each cron field reports validity via aria-invalid and an associated hint/error.
+   * @a11yNote The available authoring modes render as a tablist; each cron field reports validity via aria-invalid and an associated hint/error.
    */
   export type {
     ScheduleAuthoringMode,
