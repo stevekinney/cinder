@@ -196,6 +196,14 @@ describe('Sidebar (desktop / inline aside)', () => {
     }).toThrow();
   });
 
+  test('percentage mobile breakpoint throws on initial render', () => {
+    expect(() => {
+      render(Sidebar, {
+        props: { mobileBreakpoint: '100%', navigation: listSnippet('items') },
+      });
+    }).toThrow();
+  });
+
   test('aria-label in rest spread cannot override the component-owned label', () => {
     const { container } = render(Sidebar, {
       props: {
