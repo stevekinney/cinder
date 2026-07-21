@@ -17,6 +17,13 @@ concurrency:
 
 env:
   BUN_VERSION: 1.3.13
+  # main-green is the full-execution safety net for environment/time-dependent
+  # breakage on otherwise-unchanged code (nightly cron, pushes that don't touch
+  # a given package). A restored .turbo cache would let turbo replay those cache
+  # hits instead of re-executing — exactly the case this workflow exists to
+  # catch — so force real execution here. unit-tests.yaml deliberately keeps
+  # cache hits; do not add this there.
+  TURBO_FORCE: 'true'
 
 jobs:
   workspace-gates:
@@ -32,6 +39,14 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      - name: Restore Turbo cache
+        uses: actions/cache@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Cache Bun install
         uses: actions/cache@v6
         with:
@@ -43,6 +58,10 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # No --affected here: main-green is the full-suite safety net (the doc's
+      # explicit non-goal is scoping this workflow), so `bun run lint` /
+      # `bun run typecheck` below resolve to the turbo-backed root scripts
+      # running unfiltered across every workspace package.
       - name: Lint workspace
         run: bun run lint
 
@@ -86,26 +105,24 @@ jobs:
       # — keep this filter list in sync with that test's `toEqual` assertion.
       - name: Build playground bundle dependencies
         run: >-
-          bun run
+          bunx turbo run build
           --filter=@cinder/diff
           --filter=@cinder/markdown
           --filter=@cinder/commentary
           --filter=@lostgradient/cinder
           --filter=@lostgradient/chat
-          build
 
       - name: Test non-Cinder workspaces
         run: >-
-          bun run
+          bunx turbo run test
           --filter=@cinder/diff
           --filter=@cinder/markdown
           --filter=@cinder/commentary
           --filter=@cinder/playground
           --filter=@cinder/testing
-          test
 
       - name: Test Chat package with coverage
-        run: bun run --filter=@lostgradient/chat test:coverage
+        run: bunx turbo run test:coverage --filter=@lostgradient/chat
 
       # Non-blocking trend signal, not a gate: always exits 0 for the RSS
       # number itself (only a genuine test failure inside the canary's own
