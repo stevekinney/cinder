@@ -756,8 +756,9 @@ export async function withGateLock<T>(
 
       if (!waitingMessagePrinted) {
         warning(
-          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…\n` +
-            `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command`,
+          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}, lock created ${existingLock.createdAt}). Waiting without an age timeout while that PID remains alive…\n` +
+            `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command\n` +
+            `  If that PID is not a pre-push gate, verify it before manually removing ${lockPath}.`,
         );
         waitingMessagePrinted = true;
       }

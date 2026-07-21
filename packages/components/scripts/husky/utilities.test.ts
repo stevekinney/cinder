@@ -1509,8 +1509,10 @@ describe('withGateLock', () => {
         expect(await holder.exited).toBe(0);
         expect(await Bun.file(lockPath).exists()).toBe(false);
       } finally {
-        if (isProcessAlive(holder.pid)) holder.stdin.end();
-        killProcessGroup(holder.pid);
+        if (isProcessAlive(holder.pid)) {
+          holder.stdin.end();
+          killProcessGroup(holder.pid);
+        }
         await holder.exited;
       }
     });
