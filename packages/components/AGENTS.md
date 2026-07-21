@@ -27,8 +27,11 @@ bun add @lostgradient/cinder svelte
 `svelte` is a peer dependency. Cinder uses Lucide (`lucide-svelte`) for its own
 component chrome, but bundles its own pinned copy as a regular dependency
 rather than a peer — this keeps the icon markup Cinder renders on the server
-identical to what it renders in the browser regardless of which `lucide-svelte`
-version your application installs for its own icons. Cinder does not provide a
+consistent with its own client build without depending on which
+`lucide-svelte` version — if any — your application installs for its own
+icons. (A bundler that dedupes Cinder's pinned copy onto a different version
+your app requests can still cause the two to diverge; see the
+`@lostgradient/cinder` changeset for that edge case.) Cinder does not provide a
 general icon library for your application-specific icons.
 
 Two import shapes, pick one per file:
