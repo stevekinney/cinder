@@ -1,10 +1,10 @@
 // CANONICAL SOURCE for `buildCache`. This file lives under `components`; the
-// four upstream packages (diff, markdown, editor, commentary) each carry a
-// byte-identical copy at `packages/<pkg>/scripts/lib/build-cache.ts` — five
+// three upstream packages (diff, markdown, commentary) each carry a
+// byte-identical copy at `packages/<pkg>/scripts/lib/build-cache.ts` — four
 // copies total. The duplication exists for the same reason
 // `atomic-swap-dist.ts` is duplicated: each package's tsconfig has
 // `rootDir: "."`, so a cross-package import would put a source file outside
-// that package's root and break its typecheck. Keep all five copies in sync:
+// that package's root and break its typecheck. Keep all four copies in sync:
 // `build-cache.duplication.test.ts` asserts they are byte-for-byte identical,
 // so drift fails the suite.
 import { existsSync } from 'node:fs';
@@ -42,8 +42,8 @@ type DirectoryReader = typeof readdir;
  *     workspace dependencies this package vendors or type-checks against. A
  *     rebuilt dependency changes these bytes, which changes this hash, which
  *     invalidates this package — the mechanism that makes the skip check safe
- *     across the diff → markdown → editor → commentary chain (and
- *     components, which vendors all four).
+ *     across the diff → markdown → commentary chain (and
+ *     components, which vendors all three).
  */
 export type BuildCacheInputs = {
   packageRoot: string;

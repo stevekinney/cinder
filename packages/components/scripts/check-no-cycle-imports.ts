@@ -1,15 +1,15 @@
 /**
- * Cycle-prevention guard for the four `@cinder/*` workspace packages
- * (`markdown`, `editor`, `commentary`, `diff`).
+ * Cycle-prevention guard for the three `@cinder/*` workspace packages
+ * (`markdown`, `commentary`, `diff`).
  *
  * The `@lostgradient/cinder` package re-exports each upstream package's public surface
- * under `@lostgradient/cinder/<pkg>/<subpath>`. If any of the four upstream packages were
+ * under `@lostgradient/cinder/<pkg>/<subpath>`. If any of the three upstream packages were
  * to import `@lostgradient/cinder` or `@lostgradient/cinder/<subpath>`, that would create a runtime
  * resolution cycle (`@lostgradient/cinder` → `@cinder/<pkg>` → `@lostgradient/cinder`), a type-emission
  * cycle (the published `.d.ts` would reference an unresolved `@lostgradient/cinder`), and
  * an init-order hazard.
  *
- * This script walks `packages/{markdown,editor,commentary,diff}/src/**` and
+ * This script walks `packages/{markdown,commentary,diff}/src/**` and
  * fails on any source file that imports `@lostgradient/cinder` or `@lostgradient/cinder/...`. Run as
  * part of `bun run validate` (and CI) so violations fail loudly on the
  * branch that introduced them.
@@ -28,7 +28,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = resolve(scriptDirectory, '..', '..', '..');
 
 /** Workspace packages whose `src/` must never import `@lostgradient/cinder` or `@lostgradient/cinder/*`. */
-const RESTRICTED_PACKAGES = ['markdown', 'editor', 'commentary', 'diff'] as const;
+const RESTRICTED_PACKAGES = ['markdown', 'commentary', 'diff'] as const;
 
 /**
  * Matches `from '@lostgradient/cinder'` and `from '@lostgradient/cinder/...'` (single or double quoted),

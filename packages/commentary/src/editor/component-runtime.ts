@@ -14,6 +14,10 @@
  * two paths into one and eliminates the duplicate.
  */
 
+export type {
+  PlaceholderCompletionConfiguration,
+  PlaceholderDecorationConfiguration,
+} from '@cinder/markdown/templates/types';
 export { createEditorAttachment } from './attach.js';
 export {
   applyLinkToSelection,
@@ -43,10 +47,4 @@ export {
 export { setEditorReadonly } from './editor.js';
 export { getShortcutDisplay } from './keymap-plugin.js';
 export { DEFAULT_DEBOUNCE_MS } from './types.js';
-export type {
-  EditorHandle,
-  EditorSelection,
-  EditorState,
-  PlaceholderCompletionConfiguration,
-  PlaceholderDecorationConfiguration,
-} from './types.js';
+export type { EditorHandle, EditorSelection, EditorState } from './types.js';

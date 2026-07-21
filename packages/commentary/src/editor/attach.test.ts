@@ -53,6 +53,18 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
+/**
+ * The `Attachment` type allows a `void | (() => void)` return, but
+ * `createEditorAttachment` always returns a cleanup function. Narrow it once
+ * here instead of asserting at every call site.
+ */
+function expectDetachFunction(detach: void | (() => void)): () => void {
+  if (typeof detach !== 'function') {
+    throw new Error('expected the attachment to return a detach function');
+  }
+  return detach;
+}
+
 describe('createEditorAttachment', () => {
   beforeEach(() => {
     resolveCreatedEditor = undefined;
@@ -64,7 +76,7 @@ describe('createEditorAttachment', () => {
   test('destroys the editor when initialization resolves after detach', async () => {
     const onready = mock((_state: EditorState) => {});
     const attachment = createEditorAttachment(createAttachmentOptions({ onready }));
-    const detach = attachment(createEditorElement());
+    const detach = expectDetachFunction(attachment(createEditorElement()));
 
     detach();
 
@@ -84,7 +96,7 @@ describe('createEditorAttachment', () => {
 
     try {
       const attachment = createEditorAttachment(createAttachmentOptions());
-      const detach = attachment(createEditorElement());
+      const detach = expectDetachFunction(attachment(createEditorElement()));
 
       detach();
       rejectCreatedEditor?.(new Error('late Milkdown initialization failure'));

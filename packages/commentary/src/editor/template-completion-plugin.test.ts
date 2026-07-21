@@ -8,8 +8,12 @@
  * a real DOM runtime.
  */
 
+import type {
+  PlaceholderCandidate,
+  PlaceholderCompletionConfiguration,
+} from '@cinder/markdown/templates/types';
 import { Schema } from '@milkdown/kit/prose/model';
-import type { Plugin } from '@milkdown/kit/prose/state';
+import type { Plugin, Transaction } from '@milkdown/kit/prose/state';
 import { EditorState, TextSelection } from '@milkdown/kit/prose/state';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
@@ -25,7 +29,6 @@ import {
   mergeCandidates,
   templateCompletionPluginKey,
 } from './template-completion-plugin.js';
-import type { PlaceholderCandidate, PlaceholderCompletionConfiguration } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Test schema
@@ -218,7 +221,7 @@ async function createCompletionHarness(
     dom: {
       parentElement: document.body,
     },
-    dispatch(transaction) {
+    dispatch(transaction: Transaction) {
       const previousState = state;
       state = state.apply(transaction);
       pluginView.update?.(view as unknown as EditorView, previousState);
@@ -316,14 +319,14 @@ describe('filterAndSortCandidates', () => {
     const result = filterAndSortCandidates(candidates, 'input.name');
 
     expect(result).toHaveLength(1);
-    expect(result[0].path).toBe('input.name');
+    expect(result[0]!.path).toBe('input.name');
   });
 
   it('matches partial path segments', () => {
     const result = filterAndSortCandidates(candidates, 'config.t');
 
     expect(result).toHaveLength(1);
-    expect(result[0].path).toBe('config.timeout');
+    expect(result[0]!.path).toBe('config.timeout');
   });
 
   it('returns empty array when candidates list is empty', () => {
@@ -345,7 +348,7 @@ describe('mergeCandidates', () => {
     const merged = mergeCandidates(staticCandidates, asyncCandidates);
 
     expect(merged).toHaveLength(1);
-    expect(merged[0].description).toBe('Static description');
+    expect(merged[0]!.description).toBe('Static description');
   });
 
   it('appends unique async candidates after static ones', () => {
@@ -355,9 +358,9 @@ describe('mergeCandidates', () => {
     const merged = mergeCandidates(staticCandidates, asyncCandidates);
 
     expect(merged).toHaveLength(3);
-    expect(merged[0].path).toBe('input.name');
-    expect(merged[1].path).toBe('input.age');
-    expect(merged[2].path).toBe('input.address');
+    expect(merged[0]!.path).toBe('input.name');
+    expect(merged[1]!.path).toBe('input.age');
+    expect(merged[2]!.path).toBe('input.address');
   });
 
   it('handles empty static and non-empty async candidates', () => {
@@ -391,8 +394,8 @@ describe('mergeCandidates', () => {
     const merged = mergeCandidates(staticCandidates, asyncCandidates);
 
     expect(merged).toHaveLength(2);
-    expect(merged[0].path).toBe('a');
-    expect(merged[1].path).toBe('b');
+    expect(merged[0]!.path).toBe('a');
+    expect(merged[1]!.path).toBe('b');
   });
 
   it('deduplicates within async candidates themselves', () => {
@@ -401,8 +404,8 @@ describe('mergeCandidates', () => {
     const merged = mergeCandidates([], asyncCandidates);
 
     expect(merged).toHaveLength(2);
-    expect(merged[0].path).toBe('a');
-    expect(merged[1].path).toBe('b');
+    expect(merged[0]!.path).toBe('a');
+    expect(merged[1]!.path).toBe('b');
   });
 });
 

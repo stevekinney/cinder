@@ -8,7 +8,7 @@
  * @module
  */
 
-import { renderMarkdown } from '@cinder/markdown/rendering';
+import { renderMarkdown } from '../rendering/index.js';
 import { resolveTemplatePlaceholders } from './template-placeholders.js';
 
 /**

@@ -1,9 +1,8 @@
 /**
  * Derives `@lostgradient/cinder/<pkg>/<subpath>` re-exports from the public `exports` map of
- * each `@cinder/*` workspace package (`markdown`, `editor`, `commentary`,
- * `diff`).
+ * each `@cinder/*` workspace package (`markdown`, `commentary`, `diff`).
  *
- * The four workspace packages stay on disk as source-only inputs. Their
+ * The three workspace packages stay on disk as source-only inputs. Their
  * public sub-paths are mechanically mirrored into `@lostgradient/cinder`'s exports map as
  * `./<pkg>/<subpath>` entries, and a thin re-export file is generated under
  * `packages/components/src/<pkg>/<subpath>.ts`. The cinder build bundles
@@ -11,8 +10,26 @@
  * has zero runtime dependency on `@cinder/*`.
  *
  * Acceptance criterion: every public sub-path in each upstream
- * `package.json#exports` appears in cinder's exports map. CI fails on drift
- * (see `generate-exports.ts`'s check mode).
+ * `package.json#exports` appears in cinder's exports map, EXCEPT the
+ * `CINDER_KEY_OVERRIDES` entries below. CI fails on drift (see
+ * `generate-exports.ts`'s check mode).
+ *
+ * ## The former `@cinder/editor` subpaths
+ *
+ * `@cinder/editor` was dissolved (see `docs/decisions/package-boundaries.md`,
+ * Phase 1): its headless placeholder trio moved into `@cinder/markdown`'s
+ * `templates/` directory, and its ProseMirror/Milkdown half moved into
+ * `@cinder/commentary`'s `editor/` directory. Cinder's published surface is
+ * frozen for this move — every `./editor/*` cinder subpath must keep
+ * resolving to the same symbol set it always did — so the six former
+ * `@cinder/editor` subpaths are preserved via `CINDER_KEY_OVERRIDES`,
+ * remapping specific markdown/commentary subpaths back onto `./editor/*`
+ * cinder keys instead of their natural `./markdown/*` / `./commentary/*`
+ * mirror. Two markdown subpaths (`./templates/placeholder-security`,
+ * `./templates/types`) exist only to let commentary's composite
+ * `editor/index.ts` re-compose the old barrel from both packages — they are
+ * real `@cinder/markdown` surface but have no old-cinder equivalent, so they
+ * are suppressed (mapped to `null`) rather than mirrored as new cinder keys.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -28,12 +45,38 @@ const WORKSPACE_ROOT = join(scriptDirectory, '..', '..', '..', '..');
 const COMPONENTS_PACKAGE_ROOT = join(scriptDirectory, '..', '..');
 
 /**
- * The four `@cinder/*` workspace packages whose public exports flow through
+ * The three `@cinder/*` workspace packages whose public exports flow through
  * `@lostgradient/cinder/<pkg>/*`. Order is significant only for deterministic output.
  */
-export const UPSTREAM_PACKAGES = ['markdown', 'editor', 'commentary', 'diff'] as const;
+export const UPSTREAM_PACKAGES = ['markdown', 'commentary', 'diff'] as const;
 
 export type UpstreamPackageName = (typeof UPSTREAM_PACKAGES)[number];
+
+/**
+ * Overrides the mechanically-derived cinder key for specific upstream
+ * subpaths, keyed by `${pkg}:${upstreamSubpath}`.
+ *
+ *   - A string value replaces the default `./<pkg>/<subpath>` cinder key
+ *     (and the generated shim's location under `packages/components/src/`)
+ *     with the given key instead. Used to keep the six former
+ *     `@cinder/editor` subpaths at `./editor/*` after the packages that now
+ *     own their source (`@cinder/markdown`, `@cinder/commentary`) changed.
+ *   - `null` suppresses the subpath entirely from cinder's mirror — it stays
+ *     real, resolvable `@cinder/*` surface, just not re-exported through
+ *     `@lostgradient/cinder`. Used for markdown subpaths that exist purely so
+ *     `@cinder/commentary` can import them (they have no old-cinder
+ *     equivalent, so mirroring them would grow cinder's published surface).
+ */
+export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map([
+  ['markdown:./templates/sanitize-html', './editor/sanitize-html'],
+  ['markdown:./templates/template-placeholders', './editor/template-placeholders'],
+  ['markdown:./templates/template-render', './editor/template-render'],
+  ['markdown:./templates/placeholder-security', null],
+  ['markdown:./templates/types', null],
+  ['commentary:./editor', './editor'],
+  ['commentary:./editor/component-runtime', './editor/component-runtime'],
+  ['commentary:./editor/test-utilities', './editor/test-utilities'],
+]);
 
 /**
  * Shape of an upstream `exports` entry. The upstream packages use the
@@ -98,6 +141,18 @@ export type UpstreamReexport = {
    * (e.g. `markdown/index.js`).
    */
   distRelativePath: string;
+  /**
+   * Path relative to `packages/components/dist/` where the upstream
+   * package's OWN build output actually lands after step 5c copies its
+   * `dist/**` verbatim (e.g. `markdown/templates/sanitize-html.js`) — i.e.
+   * the un-overridden `${pkg}/<subpath>.js` path. Equal to
+   * `distRelativePath` unless `CINDER_KEY_OVERRIDES` remaps this subpath, in
+   * which case `build.ts` writes a thin `export *` redirect shim at
+   * `distRelativePath` pointing back at this real vendored file, rather than
+   * duplicating (and breaking the internal relative-import graph of) the
+   * compiled output.
+   */
+  vendoredDistRelativePath: string;
   /** Import specifier used inside the re-export file (e.g. `@cinder/markdown/pipeline`). */
   upstreamSpecifier: string;
 };
@@ -131,6 +186,13 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
         );
       }
 
+      // A suppressed subpath is real `@cinder/*` surface (resolvable via its
+      // own package's exports map) but must not flow through to cinder — see
+      // `CINDER_KEY_OVERRIDES`.
+      const overrideKey = `${pkg}:${upstreamSubpath}`;
+      const override = CINDER_KEY_OVERRIDES.get(overrideKey);
+      if (override === null) continue;
+
       // Decide whether the upstream entry points at a directory-style entry
       // (e.g. `./src/pipeline/index.ts`) — in that case our re-export file
       // becomes `<subpath>/index.ts`. Otherwise the file matches the subpath.
@@ -142,14 +204,34 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
       let cinderKey: string;
       let upstreamSpecifier: string;
       if (upstreamSubpath === '.') {
+        upstreamSpecifier = `@cinder/${pkg}`;
+      } else {
+        const stripped = upstreamSubpath.replace(/^\.\//, '');
+        upstreamSpecifier = `@cinder/${pkg}/${stripped}`;
+      }
+
+      // The natural (never overridden) location, always computed the same
+      // way regardless of `CINDER_KEY_OVERRIDES` — this is where the
+      // upstream package's own `dist/**` actually lands after step 5c's
+      // verbatim copy.
+      const naturalBaseRelative =
+        upstreamSubpath === '.'
+          ? `${pkg}/index`
+          : isDirectoryEntry
+            ? `${pkg}/${upstreamSubpath.replace(/^\.\//, '')}/index`
+            : `${pkg}/${upstreamSubpath.replace(/^\.\//, '')}`;
+
+      if (override !== undefined) {
+        cinderKey = override;
+        const overrideStripped = override.replace(/^\.\//, '');
+        baseRelative = isDirectoryEntry ? `${overrideStripped}/index` : overrideStripped;
+      } else if (upstreamSubpath === '.') {
         baseRelative = `${pkg}/index`;
         cinderKey = `./${pkg}`;
-        upstreamSpecifier = `@cinder/${pkg}`;
       } else {
         const stripped = upstreamSubpath.replace(/^\.\//, '');
         baseRelative = isDirectoryEntry ? `${pkg}/${stripped}/index` : `${pkg}/${stripped}`;
         cinderKey = `./${pkg}/${stripped}`;
-        upstreamSpecifier = `@cinder/${pkg}/${stripped}`;
       }
 
       out.push({
@@ -159,6 +241,7 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
         sourceRelativePath: `${baseRelative}.ts`,
         sourceEntrypoint: baseRelative,
         distRelativePath: `${baseRelative}.js`,
+        vendoredDistRelativePath: `${naturalBaseRelative}.js`,
         upstreamSpecifier,
       });
     }

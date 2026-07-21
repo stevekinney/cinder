@@ -115,7 +115,7 @@ describe('pipeline contract: push stays parallel and scoped', () => {
     expect(prePushPackageScript('@lostgradient/cinder', 'typecheck')).toBe('typecheck');
   });
 
-  it('BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER is exactly the diff→markdown→editor→commentary→components chain (behavior-based)', () => {
+  it('BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER is exactly the diff→markdown→commentary→components chain (behavior-based)', () => {
     // preBuildDependencyClosure (pre-push.ts) walks this list as a prefix, not a
     // graph, to decide what must build before the test phase runs (the actual
     // #364 fix). If a future package reorders its dependencies against this
@@ -124,7 +124,6 @@ describe('pipeline contract: push stays parallel and scoped', () => {
     expect(BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
-      '@cinder/editor',
       '@cinder/commentary',
       '@lostgradient/cinder',
     ]);
