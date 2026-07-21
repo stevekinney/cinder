@@ -8,8 +8,8 @@ export type SidebarProps = Omit<
   /**
    * Whether the sidebar is collapsed. Bindable via `bind:collapsed`. Default `false`.
    *
-   * On desktop (>= md breakpoint) `collapsed=true` switches the sidebar to
-   * icon-only mode. Below the md breakpoint the sidebar renders inside a
+   * Above `mobileBreakpoint`, `collapsed=true` switches the sidebar to
+   * icon-only mode. At or below `mobileBreakpoint`, the sidebar renders inside a
    * `<Drawer>` and `collapsed=true` means the drawer is closed.
    */
   collapsed?: boolean;
@@ -21,6 +21,12 @@ export type SidebarProps = Omit<
    * outer complementary region from the inner navigation region.
    */
   label?: string;
+  /**
+   * Viewport width below which the sidebar switches from the inline aside to
+   * the mobile drawer. Accepts a simple CSS length such as `'47.99rem'` or
+   * `'1024px'`. Default `'47.99rem'`.
+   */
+  mobileBreakpoint?: string;
   /** Additional CSS class merged with `.cinder-sidebar`. */
   class?: string;
   /** Optional branding region rendered above the navigation. */
