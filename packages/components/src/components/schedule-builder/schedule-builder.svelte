@@ -10,7 +10,6 @@
    * @tag form
    * @useWhen Letting a user define when a job or notification recurs, supplying your own date/cron library to compute upcoming fire times.
    * @useWhen You want a friendly presets UI (every N, daily, weekly, monthly) that still round-trips to a portable cron or interval value.
-   * @useWhen You need to restrict authoring to cron-only recurrence values for a backend that cannot persist intervals.
    * @avoidWhen You need overlap policy, jitter, or backfill controls — those belong to the consumer's surrounding form. | invocation-rule-builder
    * @avoidWhen You only need to pick a single point in time, not a recurrence — use date-picker instead. | date-picker
    * @related date-picker, segmented-control, input, time-field
