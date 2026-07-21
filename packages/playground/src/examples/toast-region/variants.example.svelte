@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'All four variants';
   export const description =
-    'info and success route to the polite (status) region; warning and danger route to the assertive (alert) region.';
+    'info, success, and warning route to the polite (status) region; danger routes to the assertive (alert) region.';
 </script>
 
 <script lang="ts">

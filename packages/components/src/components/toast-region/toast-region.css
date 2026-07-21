@@ -15,7 +15,7 @@
     z-index: var(--cinder-z-toast);
     pointer-events: none;
     /* Stack the two aria-live channels in the same visual column. Each channel
-   * is independent — a polite info and an assertive warning may sit
+   * is independent — a polite warning and an assertive danger toast may sit
    * side-by-side visually but route to different SR-announcement queues. */
   }
 

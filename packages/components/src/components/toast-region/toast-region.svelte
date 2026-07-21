@@ -79,7 +79,7 @@
     hydrated = true;
   });
 
-  // Two regions, two stacks. Polite for info/success; assertive for warning/danger.
+  // Two regions, two stacks. Polite for non-urgent feedback; assertive for danger.
   let politeStack: InternalToastItem[] = $state([]);
   let assertiveStack: InternalToastItem[] = $state([]);
 
@@ -97,7 +97,7 @@
   let generationCounter = 0;
 
   function isPolite(variant: ToastVariant): boolean {
-    return variant === 'info' || variant === 'success';
+    return variant === 'info' || variant === 'success' || variant === 'warning';
   }
 
   function getCurrentStack(variant: ToastVariant): InternalToastItem[] {

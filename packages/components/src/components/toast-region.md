@@ -1,6 +1,6 @@
 # ToastRegion
 
-A region-scoped queue for transient notifications. `<ToastRegion>` owns the two stacked aria-live regions (polite for `info`/`success`, assertive for `warning`/`danger`); `useToast()` returns the dispatcher API to any descendant. See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the ARIA contract.
+A region-scoped queue for transient notifications. `<ToastRegion>` owns the two stacked aria-live regions (polite for `info`/`success`/`warning`, assertive for `danger`); `useToast()` returns the dispatcher API to any descendant. See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the ARIA contract.
 
 ## Placement
 
@@ -60,12 +60,12 @@ Import the hook from the toast-region subpath. Call `useToast()` from anywhere i
 
 ## Variant routing (polite vs assertive)
 
-`variant` is not just a visual prop — it picks which live region the toast announces through. Polite variants (`info`, `success`) queue behind the user's current screen-reader focus; assertive variants (`warning`, `danger`) interrupt. See the [Two regions, two priorities](./toast-region.a11y.md#two-regions-two-priorities) table in the a11y doc for the exact ARIA mapping.
+`variant` is not just a visual prop — it picks which live region the toast announces through. Polite variants (`info`, `success`, `warning`) queue behind the user's current screen-reader focus; the assertive `danger` variant interrupts. See the [Two regions, two priorities](./toast-region.a11y.md#two-regions-two-priorities) table in the a11y doc for the exact ARIA mapping.
 
 `maxStack` applies _per stack_: a region can hold up to `maxStack` polite toasts **and** `maxStack` assertive toasts simultaneously.
 
 > [!TIP]
-> Match urgency to variant. `success` ("Saved") is informational and belongs on the polite stack. `danger` ("Failed to save") interrupts because the user needs to know _now_. Reserve `warning` for conditions the user must address before continuing — session expiry, unsaved-changes risk — not ambient status updates; if no action is required, `info` is more honest.
+> Match urgency to variant. `success` ("Saved") is informational and belongs on the polite stack. `warning` ("Session expires soon") is notable but non-interrupting. `danger` ("Failed to save") interrupts because the user needs to know _now_.
 
 ## `show()` return value
 

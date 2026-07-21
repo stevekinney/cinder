@@ -72,7 +72,7 @@
     {
       "id": "variants",
       "title": "All four variants",
-      "description": "info and success route to the polite (status) region; warning and danger route to the assertive (alert) region.",
+      "description": "info, success, and warning route to the polite (status) region; danger routes to the assertive (alert) region.",
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { ToastRegion, useToast } from '@lostgradient/cinder/toast-region';\n</script>\n\n<ToastRegion>\n  {#snippet children()}\n    {@const toast = useToast()}\n    <div class=\"example-preview-row\">\n      <Button\n        label=\"Info\"\n        onclick={() => toast.show('A new version is available.', { variant: 'info' })}\n      />\n      <Button\n        label=\"Success\"\n        onclick={() => toast.show('Saved your changes.', { variant: 'success' })}\n      />\n      <Button\n        variant=\"secondary\"\n        label=\"Warning\"\n        onclick={() => toast.show('Your session expires in 5 minutes.', { variant: 'warning' })}\n      />\n      <Button\n        variant=\"danger\"\n        label=\"Danger\"\n        onclick={() => toast.show('Failed to save your changes.', { variant: 'danger' })}\n      />\n    </div>\n  {/snippet}\n</ToastRegion>\n"
     }
   ]
