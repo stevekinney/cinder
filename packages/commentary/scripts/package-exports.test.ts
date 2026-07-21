@@ -26,6 +26,9 @@ describe('@cinder/commentary package export build contract', () => {
       `${packageRoot}/src/session/index.ts`,
       `${packageRoot}/src/session/types.ts`,
       `${packageRoot}/src/shared/anchor-types.ts`,
+      `${packageRoot}/src/editor/index.ts`,
+      `${packageRoot}/src/editor/component-runtime.ts`,
+      `${packageRoot}/src/editor/test-utilities.ts`,
     ]);
   });
 
@@ -54,6 +57,12 @@ describe('@cinder/commentary package export build contract', () => {
       `${packageRoot}/dist/session/types.d.ts`,
       `${packageRoot}/dist/shared/anchor-types.js`,
       `${packageRoot}/dist/shared/anchor-types.d.ts`,
+      `${packageRoot}/dist/editor/index.js`,
+      `${packageRoot}/dist/editor/index.d.ts`,
+      `${packageRoot}/dist/editor/component-runtime.js`,
+      `${packageRoot}/dist/editor/component-runtime.d.ts`,
+      `${packageRoot}/dist/editor/test-utilities.js`,
+      `${packageRoot}/dist/editor/test-utilities.d.ts`,
     ]);
   });
 });

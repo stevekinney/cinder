@@ -277,6 +277,88 @@ describe('checkPipelineCoverage', () => {
     expect(result.violations).toEqual([]);
   });
 
+  it("resolves a bare `turbo run <name>` workflow step through the ROOT script chain, treating the missing --filter as the same wildcard as `--filter='*'`", () => {
+    const table: Record<string, DeclarationRow> = {
+      lint: { layers: ['main-green'], reason: 'test fixture — reached via root `turbo run lint`' },
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts: { lint: 'oxlint' },
+      rootScripts: { lint: 'turbo run lint && stylelint "packages/**"' },
+      workflowText: {
+        'unit-tests': '',
+        'browser-tests': '',
+        'main-green': 'bunx turbo run lint',
+        release: '',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it('resolves a package-qualified `turbo run <name> --filter=<pkg>` workflow step, including repeated --filter flags turbo allows but bun does not', () => {
+    const table: Record<string, DeclarationRow> = {
+      '@lostgradient/chat#build': {
+        layers: ['unit-tests'],
+        reason:
+          'test fixture — reached via a multi-package `turbo run build --filter=... --filter=...`',
+      },
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts: {},
+      publicPackageScripts: {
+        '@lostgradient/cinder': { build: 'bun run scripts/build.ts' },
+        '@lostgradient/chat': { build: 'bun run scripts/build.ts' },
+      },
+      rootScripts: {},
+      workflowText: {
+        'unit-tests':
+          'bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat',
+        'browser-tests': '',
+        'main-green': '',
+        release: '',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it('does not let a `turbo run <name> --filter=<other-pkg>` step falsely cover an unlisted package', () => {
+    const table: Record<string, DeclarationRow> = {
+      '@lostgradient/chat#build': {
+        layers: ['unit-tests'],
+        reason: 'test fixture — Chat is not among the --filter targets below',
+      },
+    };
+    const result = checkPipelineCoverage(table, {
+      packageScripts: {},
+      publicPackageScripts: {
+        '@lostgradient/cinder': { build: 'bun run scripts/build.ts' },
+        '@lostgradient/chat': { build: 'bun run scripts/build.ts' },
+      },
+      rootScripts: {},
+      workflowText: {
+        'unit-tests': 'bunx turbo run build --filter=@lostgradient/cinder',
+        'browser-tests': '',
+        'main-green': '',
+        release: '',
+        'changeset-guard': '',
+      },
+      hookText: {},
+    });
+
+    expect(result.violations).toContainEqual(
+      expect.objectContaining({
+        command: '@lostgradient/chat#build',
+        kind: 'missing',
+        layer: 'unit-tests',
+      }),
+    );
+  });
+
   it('flags an external-binary command as missing when the layer never reaches it through either manifest', () => {
     const table: Record<string, DeclarationRow> = {
       stylelint: { layers: ['release'], reason: 'test fixture — falsely declared for release' },

@@ -57,21 +57,45 @@ describe('validate-release-workflow changeset guards', () => {
   });
 
   test('builds Cinder before Chat in fresh-checkout coverage workflows', () => {
+    // Both workflows now build Cinder and Chat through a single `turbo run
+    // build --filter=... --filter=...` invocation rather than two sequential
+    // `bun run --filter=<pkg> build` commands — Cinder-before-Chat ordering
+    // is enforced structurally by turbo's dependency graph (`build`
+    // `dependsOn: ["^build"]`, and Chat depends on Cinder), not by which
+    // `--filter` flag appears first in the command text. What this test can
+    // still pin textually: a turbo build step exists covering both packages,
+    // and Chat's coverage test step appears after it in the workflow file.
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     for (const workflowName of ['unit-tests.yaml', 'main-green.yaml']) {
       const workflow = readFileSync(
         join(workspaceRoot, '.github', 'workflows', workflowName),
         'utf8',
       );
-      const cinderBuildIndex = workflow.indexOf('bun run --filter=@lostgradient/cinder build');
-      const chatBuildIndex = workflow.indexOf('bun run --filter=@lostgradient/chat build');
-      const chatCoverageIndex = workflow.indexOf(
-        'bun run --filter=@lostgradient/chat test:coverage',
-      );
+      const buildStepIndex = workflow.indexOf('turbo run build');
+      expect(buildStepIndex).toBeGreaterThan(-1);
 
-      expect(cinderBuildIndex).toBeGreaterThan(-1);
-      expect(chatBuildIndex).toBeGreaterThan(cinderBuildIndex);
-      expect(chatCoverageIndex).toBeGreaterThan(chatBuildIndex);
+      // Bound the search to the build step's OWN block — the next `- name:`
+      // step (at the same indentation as a job step) or end of file —
+      // instead of "anywhere later in the workflow". Without this bound, a
+      // regression to a Chat-only build filter would still pass by matching
+      // `--filter=@lostgradient/cinder` from an unrelated later step (e.g.
+      // an audit or test step).
+      const nextStepMatch = /\n {6}- name:/.exec(workflow.slice(buildStepIndex));
+      const buildStepEnd =
+        nextStepMatch === undefined || nextStepMatch === null
+          ? workflow.length
+          : buildStepIndex + nextStepMatch.index;
+      const buildStepBlock = workflow.slice(buildStepIndex, buildStepEnd);
+
+      // Both packages must be filter targets of the SAME build step — not
+      // just Chat — or a regression to a Chat-only filter would still pass.
+      expect(buildStepBlock).toContain('--filter=@lostgradient/cinder');
+      expect(buildStepBlock).toContain('--filter=@lostgradient/chat');
+
+      const chatCoverageIndex = workflow.indexOf(
+        'turbo run test:coverage --filter=@lostgradient/chat',
+      );
+      expect(chatCoverageIndex).toBeGreaterThan(buildStepIndex);
     }
   });
 
@@ -94,22 +118,31 @@ describe('validate-release-workflow changeset guards', () => {
 
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest(`bun run --sequential --filter='*' validate && ${chat}`, `${cinder} && ${chat}`),
+        manifest(`turbo run validate --concurrency=1 && ${chat}`, `${cinder} && ${chat}`),
       ),
     ).toBe(true);
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest(`bun run --sequential --filter='*' validate && ${chat}`, cinder),
+        manifest(`turbo run validate --concurrency=1 && ${chat}`, cinder),
       ),
     ).toBe(false);
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest("bun run --sequential --filter='*' validate", `${cinder} && ${chat}`),
+        manifest('turbo run validate --concurrency=1', `${cinder} && ${chat}`),
       ),
     ).toBe(false);
     expect(
       rootConsumerValidationIncludesPublicPackages(
         manifest(`bun run --filter='*' validate && ${chat}`, `${cinder} && ${chat}`),
+      ),
+    ).toBe(false);
+    // A `turbo run validate` missing `--concurrency=1` must fail: without it,
+    // turbo parallelizes independent packages by default, reintroducing the
+    // concurrent-load fragility the old --sequential flag guarded against
+    // (the playground's dev-server-backed validate step in particular).
+    expect(
+      rootConsumerValidationIncludesPublicPackages(
+        manifest(`turbo run validate && ${chat}`, `${cinder} && ${chat}`),
       ),
     ).toBe(false);
   });

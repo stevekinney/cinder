@@ -386,7 +386,7 @@ export function computeDeprecatedExperimentalAliases(
 
 /**
  * Compute the cinder-side exports entries for every public sub-path of the
- * four `@cinder/*` workspace packages. Each entry mirrors the conditional
+ * three `@cinder/*` workspace packages. Each entry mirrors the conditional
  * shape used by component sub-paths so in-repo Svelte tooling resolves the
  * generated `.ts` source while published consumers resolve `dist/`.
  */
@@ -664,7 +664,7 @@ async function main(): Promise<void> {
 
   // Derive upstream re-exports first so the forbidden-key guard knows which
   // keys are legitimate even when they contain segments like `test-utilities`
-  // (a public `@cinder/editor` sub-path) that would otherwise trip the
+  // (a public `@cinder/commentary/editor` sub-path) that would otherwise trip the
   // pattern.
   const upstreamReexports = await deriveUpstreamReexports();
   const upstreamAllowList = new Set(upstreamReexports.map((r) => r.cinderKey));

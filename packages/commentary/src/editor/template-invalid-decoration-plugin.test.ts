@@ -9,6 +9,7 @@
  * (no DOM required).
  */
 
+import type { PlaceholderCandidate } from '@cinder/markdown/templates/types';
 import { Schema } from '@milkdown/kit/prose/model';
 import { describe, expect, it } from 'bun:test';
 
@@ -16,7 +17,6 @@ import {
   buildInvalidTokenDecorations,
   textOffsetToDocumentPosition,
 } from './template-invalid-decoration-plugin.js';
-import type { PlaceholderCandidate } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Test schema — minimal ProseMirror schema sufficient for document creation.
@@ -39,7 +39,7 @@ const schema = new Schema({
       group: 'block',
       parseDOM: [{ tag: 'h1', attrs: { level: 1 } }],
       toDOM(node) {
-        return [`h${node.attrs.level}`, 0];
+        return [`h${node.attrs['level']}`, 0];
       },
     },
     text: { group: 'inline' },
@@ -172,7 +172,7 @@ describe('buildInvalidTokenDecorations', () => {
     expect(decorations).toHaveLength(1);
 
     const attributes = getDecorationAttributes(decorations[0]);
-    expect(attributes.class).toBe(DEFAULT_INVALID_CLASS);
+    expect(attributes['class']).toBe(DEFAULT_INVALID_CLASS);
     expect(attributes['data-placeholder-validation-reason']).toBe('unknown_placeholder');
   });
 
@@ -187,7 +187,7 @@ describe('buildInvalidTokenDecorations', () => {
     expect(decorations).toHaveLength(1);
 
     const attributes = getDecorationAttributes(decorations[0]);
-    expect(attributes.class).toBe(DEFAULT_INVALID_CLASS);
+    expect(attributes['class']).toBe(DEFAULT_INVALID_CLASS);
     expect(attributes['data-placeholder-validation-reason']).toBe('malformed_token');
   });
 
@@ -202,7 +202,7 @@ describe('buildInvalidTokenDecorations', () => {
     expect(decorations).toHaveLength(1);
 
     const attributes = getDecorationAttributes(decorations[0]);
-    expect(attributes.class).toBe(DEFAULT_INVALID_CLASS);
+    expect(attributes['class']).toBe(DEFAULT_INVALID_CLASS);
     expect(attributes['data-placeholder-validation-reason']).toBe('invalid_path_format');
   });
 
@@ -236,7 +236,7 @@ describe('buildInvalidTokenDecorations', () => {
 
     expect(decorations).toHaveLength(1);
     const attributes = getDecorationAttributes(decorations[0]);
-    expect(attributes.class).toBe(customClass);
+    expect(attributes['class']).toBe(customClass);
   });
 
   it('only decorates invalid tokens when valid and invalid tokens are mixed', () => {
@@ -290,8 +290,8 @@ describe('buildInvalidTokenDecorations', () => {
     const decorations = buildInvalidTokenDecorations(doc, candidates, DEFAULT_INVALID_CLASS);
 
     expect(decorations).toHaveLength(1);
-    expect(decorations[0].from).toBe(3);
-    expect(decorations[0].to).toBe(10);
+    expect(decorations[0]!.from).toBe(3);
+    expect(decorations[0]!.to).toBe(10);
   });
 
   it('computes correct positions for tokens in a second paragraph', () => {
@@ -312,8 +312,8 @@ describe('buildInvalidTokenDecorations', () => {
     const decorations = buildInvalidTokenDecorations(doc, candidates, DEFAULT_INVALID_CLASS);
 
     expect(decorations).toHaveLength(1);
-    expect(decorations[0].from).toBe(8);
-    expect(decorations[0].to).toBe(15);
+    expect(decorations[0]!.from).toBe(8);
+    expect(decorations[0]!.to).toBe(15);
   });
 
   it('handles multiple invalid tokens in the same paragraph', () => {
@@ -327,12 +327,12 @@ describe('buildInvalidTokenDecorations', () => {
     expect(decorations).toHaveLength(2);
 
     // First token: "{{bad1}}" at text offset 0..8 => doc position 1..9
-    expect(decorations[0].from).toBe(1);
-    expect(decorations[0].to).toBe(9);
+    expect(decorations[0]!.from).toBe(1);
+    expect(decorations[0]!.to).toBe(9);
 
     // Second token: "{{bad2}}" at text offset 13, endOffset 21 => doc position 14..22
-    expect(decorations[1].from).toBe(14);
-    expect(decorations[1].to).toBe(22);
+    expect(decorations[1]!.from).toBe(14);
+    expect(decorations[1]!.to).toBe(22);
   });
 
   it('works with heading nodes (not just paragraphs)', () => {

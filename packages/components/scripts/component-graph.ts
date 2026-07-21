@@ -46,12 +46,11 @@ export const workspaceRoot = resolve(componentsPackageRoot, '..', '..');
 /**
  * Source roots scanned to build the graph. Components live in the first;
  * the sibling `@cinder/*` packages are included because a handful of
- * components import from `../../editor`, `../../markdown`, etc., and a change
- * in those packages must reach its component dependents.
+ * components import from `../../markdown`, `../../commentary`, etc., and a
+ * change in those packages must reach its component dependents.
  */
 export const SCANNED_ROOTS: readonly string[] = [
   'packages/components/src',
-  'packages/editor/src',
   'packages/markdown/src',
   'packages/diff/src',
   'packages/commentary/src',
@@ -797,7 +796,6 @@ function isTraceableSharedModule(repoRelativePath: string): boolean {
     path.startsWith('packages/components/src/schemas/') ||
     path.startsWith('packages/components/src/highlighters/') ||
     path === 'packages/components/src/schema-types.ts' ||
-    path.startsWith('packages/editor/src/') ||
     path.startsWith('packages/markdown/src/') ||
     path.startsWith('packages/diff/src/') ||
     path.startsWith('packages/commentary/src/')

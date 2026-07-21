@@ -63,13 +63,11 @@ const graphPackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/cinder', 'packages/components/', [
     '@cinder/commentary',
     '@cinder/diff',
-    '@cinder/editor',
     '@cinder/markdown',
     '@cinder/testing',
   ]),
   pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
-  pkg('@cinder/editor', 'packages/editor/', ['@cinder/markdown']),
-  pkg('@cinder/commentary', 'packages/commentary/', ['@cinder/editor', '@cinder/markdown']),
+  pkg('@cinder/commentary', 'packages/commentary/', ['@cinder/markdown']),
   pkg('@lostgradient/chat', 'packages/chat/', ['@lostgradient/cinder']),
   pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/chat', '@lostgradient/cinder']),
   pkg('@cinder/diff', 'packages/diff/'),
@@ -469,7 +467,6 @@ describe('loadWorkspacePackages', () => {
     const names = packages.map((p) => p.name).toSorted();
     expect(names).toContain('@cinder/diff');
     expect(names).toContain('@cinder/markdown');
-    expect(names).toContain('@cinder/editor');
     expect(names).toContain('@cinder/commentary');
     expect(names).toContain('@cinder/playground');
     expect(names).toContain('@cinder/testing');
@@ -533,20 +530,9 @@ describe('expandToDependents', () => {
     ]);
   });
 
-  it('expands @cinder/editor to editor + commentary + cinder + playground', () => {
-    expect(expand('@cinder/editor')).toEqual([
-      '@cinder/commentary',
-      '@cinder/editor',
-      '@cinder/playground',
-      '@lostgradient/chat',
-      '@lostgradient/cinder',
-    ]);
-  });
-
-  it('expands @cinder/markdown to markdown + editor + commentary + cinder + playground', () => {
+  it('expands @cinder/markdown to markdown + commentary + cinder + playground', () => {
     expect(expand('@cinder/markdown')).toEqual([
       '@cinder/commentary',
-      '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
       '@lostgradient/chat',
@@ -558,7 +544,6 @@ describe('expandToDependents', () => {
     expect(expand('@cinder/diff')).toEqual([
       '@cinder/commentary',
       '@cinder/diff',
-      '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
       '@lostgradient/chat',
@@ -588,10 +573,11 @@ describe('expandToDependents', () => {
   });
 
   it('is cycle-safe and dedupes across multiple touched packages', () => {
-    expect(sorted(expandToDependents(graphPackages, ['@cinder/diff', '@cinder/editor']))).toEqual([
+    expect(
+      sorted(expandToDependents(graphPackages, ['@cinder/diff', '@cinder/commentary'])),
+    ).toEqual([
       '@cinder/commentary',
       '@cinder/diff',
-      '@cinder/editor',
       '@cinder/markdown',
       '@cinder/playground',
       '@lostgradient/chat',
@@ -616,19 +602,18 @@ describe('buildableForwardClosure', () => {
   // strictly backward" invariant `buildableForwardClosure` relies on) fails
   // loudly here instead of silently under-building the pre-push pre-build
   // step and reopening the #364 race as a CI flake.
-  it('closes @cinder/editor to diff + markdown + editor (its upstream chain)', () => {
-    expect(buildableForwardClosure(new Set(['@cinder/editor']))).toEqual([
+  it('closes @cinder/commentary to diff + markdown + commentary (its upstream chain)', () => {
+    expect(buildableForwardClosure(new Set(['@cinder/commentary']))).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
-      '@cinder/editor',
+      '@cinder/commentary',
     ]);
   });
 
-  it('closes @lostgradient/cinder to the full five-package chain', () => {
+  it('closes @lostgradient/cinder to the full four-package chain', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
-      '@cinder/editor',
       '@cinder/commentary',
       '@lostgradient/cinder',
     ]);
@@ -1016,9 +1001,9 @@ describe('scoped job derivation (real workspace)', () => {
       '@lostgradient/cinder typecheck',
     ]);
     // Negative: no playground *lint* (closure is typecheck/test only), and no
-    // markdown/editor/commentary/diff jobs at all.
+    // markdown/commentary/diff jobs at all.
     expect(jobs).not.toContain('@cinder/playground lint');
-    expect(jobs.some((j) => /@cinder\/(markdown|editor|commentary|diff)/.test(j))).toBe(false);
+    expect(jobs.some((j) => /@cinder\/(markdown|commentary|diff)/.test(j))).toBe(false);
   });
 
   it('scopes a leaf @cinder/commentary change without dragging in unrelated siblings', async () => {
@@ -1026,7 +1011,7 @@ describe('scoped job derivation (real workspace)', () => {
     const jobs = planScopedJobs(workspace, ['packages/commentary/src/index.ts']);
     // commentary is a consumer leaf, but cinder dev-depends on it and playground
     // depends on cinder, so the closure is commentary + cinder + playground.
-    expect(jobs.some((j) => /@cinder\/(markdown|editor|diff)/.test(j))).toBe(false);
+    expect(jobs.some((j) => /@cinder\/(markdown|diff)/.test(j))).toBe(false);
     expect(jobs).toContain('@cinder/commentary lint');
     expect(jobs).toContain('@lostgradient/cinder typecheck');
     expect(jobs).toContain('@cinder/playground test');

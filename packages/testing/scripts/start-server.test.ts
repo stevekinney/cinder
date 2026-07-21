@@ -90,7 +90,6 @@ describe('playground bundle dependency build preflight', () => {
     expect(playgroundBundleDependencyBuildPackages()).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
-      '@cinder/editor',
       '@cinder/commentary',
       '@lostgradient/cinder',
       '@lostgradient/chat',

@@ -70,6 +70,36 @@
       "bun": "./src/utilities/sort-keys.ts",
       "import": "./dist/utilities/sort-keys.js",
       "default": "./dist/utilities/sort-keys.js"
+    },
+    "./templates/sanitize-html": {
+      "types": "./src/templates/sanitize-html.ts",
+      "bun": "./src/templates/sanitize-html.ts",
+      "import": "./dist/templates/sanitize-html.js",
+      "default": "./dist/templates/sanitize-html.js"
+    },
+    "./templates/template-placeholders": {
+      "types": "./src/templates/template-placeholders.ts",
+      "bun": "./src/templates/template-placeholders.ts",
+      "import": "./dist/templates/template-placeholders.js",
+      "default": "./dist/templates/template-placeholders.js"
+    },
+    "./templates/template-render": {
+      "types": "./src/templates/template-render.ts",
+      "bun": "./src/templates/template-render.ts",
+      "import": "./dist/templates/template-render.js",
+      "default": "./dist/templates/template-render.js"
+    },
+    "./templates/placeholder-security": {
+      "types": "./src/templates/placeholder-security.ts",
+      "bun": "./src/templates/placeholder-security.ts",
+      "import": "./dist/templates/placeholder-security.js",
+      "default": "./dist/templates/placeholder-security.js"
+    },
+    "./templates/types": {
+      "types": "./src/templates/types.ts",
+      "bun": "./src/templates/types.ts",
+      "import": "./dist/templates/types.js",
+      "default": "./dist/templates/types.js"
     }
   },
   "scripts": {

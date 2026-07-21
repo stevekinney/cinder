@@ -1,10 +1,10 @@
 // CANONICAL SOURCE for `atomicSwapDist`. This file lives under `components`;
-// the four upstream packages (diff, markdown, editor, commentary) each carry a
-// byte-identical copy at `packages/<pkg>/scripts/lib/atomic-swap-dist.ts` — five
+// the three upstream packages (diff, markdown, commentary) each carry a
+// byte-identical copy at `packages/<pkg>/scripts/lib/atomic-swap-dist.ts` — four
 // copies total. The duplication exists because a cross-package import would put
 // a source file outside that package's `rootDir: "."` and break its typecheck.
 // A `paths` mapping does not lift that restriction — only a built/referenced
-// project would, which is heavier than the duplication. Keep all five copies in
+// project would, which is heavier than the duplication. Keep all four copies in
 // sync: `atomic-swap-dist.duplication.test.ts` asserts they are byte-for-byte
 // identical, so drift fails the suite.
 import { renameSync, rmSync } from 'node:fs';
