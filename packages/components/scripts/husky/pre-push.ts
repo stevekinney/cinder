@@ -116,7 +116,8 @@ try {
       'Root node_modules is a SYMLINK to another checkout. Bun resolves one dependency tree ' +
         'under two path prefixes from here, which makes local SSR/hydration tests fail with ' +
         '"Unseekable reading file: .../esm-env/index.js" — deterministic, and not your change. ' +
-        'Fix: rm node_modules && bun install (then `git restore bun.lock` if it was rewritten).',
+        'Fix: rm node_modules && bun install. If that rewrites bun.lock, review the diff rather ' +
+        'than discarding it — it may be a genuinely needed update rather than install noise.',
     );
   } else if (topology === 'invalid') {
     warning(
