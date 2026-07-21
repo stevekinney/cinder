@@ -99,6 +99,9 @@ describe('FileUpload rendering', () => {
       props: { id: 'history-import', triggerLabel: 'Import history JSON' },
     });
     expect(container.querySelector('button')?.textContent).toBe('Import history JSON');
+    expect(container.querySelector('.cinder-file-upload__eyebrow')?.textContent).toContain(
+      'import history JSON',
+    );
   });
 
   test('forwards accept, multiple, name, disabled, required, and webkitdirectory to the input', () => {
