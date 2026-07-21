@@ -100,7 +100,7 @@ describe('FileUpload rendering', () => {
     });
     expect(container.querySelector('button')?.textContent).toBe('Import history JSON');
     expect(container.querySelector('.cinder-file-upload__eyebrow')?.textContent).toContain(
-      'import history JSON',
+      'Import history JSON',
     );
   });
 
