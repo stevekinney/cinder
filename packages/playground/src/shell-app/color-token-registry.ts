@@ -20,6 +20,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-accent-text-hover', label: 'Accent text hover' },
       { name: '--cinder-accent-hover', label: 'Accent fill hover' },
       { name: '--cinder-accent-active', label: 'Accent fill active' },
+      { name: '--cinder-accent-active-on-fill', label: 'Accent active on fill' },
     ],
   },
   {
@@ -80,6 +81,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-surface-inset', label: 'Inset surface' },
       { name: '--cinder-surface-hover', label: 'Surface hover' },
       { name: '--cinder-surface-pressed', label: 'Surface pressed' },
+      { name: '--cinder-surface-inverse', label: 'Inverse surface' },
     ],
   },
   {
@@ -91,6 +93,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-text-subtle', label: 'Subtle text' },
       { name: '--cinder-text-disabled', label: 'Disabled text' },
       { name: '--cinder-fill-disabled', label: 'Disabled fill' },
+      { name: '--cinder-text-inverse', label: 'Inverse text' },
     ],
   },
   {
@@ -100,6 +103,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-border', label: 'Border' },
       { name: '--cinder-border-muted', label: 'Muted border' },
       { name: '--cinder-border-strong', label: 'Strong border' },
+      { name: '--cinder-border-inverse', label: 'Inverse border' },
     ],
   },
   {
@@ -108,6 +112,7 @@ export const COLOR_TOKEN_GROUPS = [
     tokens: [
       { name: '--cinder-ring-offset-color', label: 'Ring offset color' },
       { name: '--cinder-ring-color', label: 'Ring color' },
+      { name: '--cinder-ring-on-accent', label: 'Ring on accent' },
     ],
   },
   {

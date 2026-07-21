@@ -4,7 +4,11 @@ const TOKEN_NAME = '--cinder-accent';
 const SUCCESS_TOKEN_NAME = '--cinder-success';
 const DANGER_TOKEN_NAME = '--cinder-danger';
 const SURFACE_TOKEN_NAME = '--cinder-surface';
-const EXPECTED_COLOR_TOKEN_COUNT = 56;
+// Must match `COLOR_TOKEN_NAMES.length` in
+// `packages/playground/src/shell-app/color-token-registry.ts`, which
+// `color-token-registry.test.ts` pins independently. Registering a token in the
+// panel changes both.
+const EXPECTED_COLOR_TOKEN_COUNT = 61;
 const LIGHT_ADVANCED_OVERRIDE = 'oklch(60% 0.2 195)';
 const LIGHT_BULK_OVERRIDE = '#118833';
 const DARK_BULK_OVERRIDE = '#884422';
