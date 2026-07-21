@@ -11,11 +11,16 @@
  *
  * tryCompile uses a fresh Ajv instance per call so iterating on a schema
  * with a stable $id never trips the "schema already exists" cache error.
+ *
+ * Ajv (~120KB across the three draft builds) is dynamically imported on
+ * first use rather than declared as a static dependency — mirrors the
+ * pattern in schema-form/schema-form-validation.ts. Both exported
+ * validation functions are therefore async.
  */
 
-import Ajv from 'ajv';
-import Ajv2019 from 'ajv/dist/2019.js';
-import Ajv2020 from 'ajv/dist/2020.js';
+import type Ajv from 'ajv';
+import type Ajv2019 from 'ajv/dist/2019.js';
+import type Ajv2020 from 'ajv/dist/2020.js';
 
 import type {
   JsonSchemaDraft,
@@ -68,22 +73,71 @@ function resolveDraft(draft: JsonSchemaDraft | undefined): JsonSchemaKnownDraft 
   return draft;
 }
 
+// Dynamically imported Ajv constructors, cached so repeated validation calls
+// don't re-import. Each promise resolves once; concurrent callers await the
+// same in-flight import rather than triggering duplicate requests.
+let ajvClassPromise: Promise<typeof Ajv> | null = null;
+let ajv2019ClassPromise: Promise<typeof Ajv2019> | null = null;
+let ajv2020ClassPromise: Promise<typeof Ajv2020> | null = null;
+
+function loadAjv(): Promise<typeof Ajv> {
+  ajvClassPromise ??= import('ajv')
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      // Don't cache a rejection — a transient failure (network hiccup,
+      // dropped chunk) shouldn't permanently block every later validation
+      // in this session.
+      ajvClassPromise = null;
+      throw error;
+    });
+  return ajvClassPromise;
+}
+
+function loadAjv2019(): Promise<typeof Ajv2019> {
+  ajv2019ClassPromise ??= import('ajv/dist/2019.js')
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      ajv2019ClassPromise = null;
+      throw error;
+    });
+  return ajv2019ClassPromise;
+}
+
+function loadAjv2020(): Promise<typeof Ajv2020> {
+  ajv2020ClassPromise ??= import('ajv/dist/2020.js')
+    .then((module) => module.default)
+    .catch((error: unknown) => {
+      ajv2020ClassPromise = null;
+      throw error;
+    });
+  return ajv2020ClassPromise;
+}
+
 // Long-lived meta-schema validators. Safe to share — they don't compile the
 // user's schema, only validate against the meta-schema.
 let metaAjv2020: Ajv2020 | null = null;
 let metaAjv2019: Ajv2019 | null = null;
 let metaAjv07: Ajv | null = null;
 
-function getMetaValidator(draft: JsonSchemaKnownDraft): Ajv | Ajv2020 | Ajv2019 {
+async function getMetaValidator(draft: JsonSchemaKnownDraft): Promise<Ajv | Ajv2020 | Ajv2019> {
   if (draft === '2020-12') {
-    if (!metaAjv2020) metaAjv2020 = new Ajv2020({ strict: false, allErrors: true });
+    if (!metaAjv2020) {
+      const Ajv2020Class = await loadAjv2020();
+      metaAjv2020 = new Ajv2020Class({ strict: false, allErrors: true });
+    }
     return metaAjv2020;
   }
   if (draft === '2019-09') {
-    if (!metaAjv2019) metaAjv2019 = new Ajv2019({ strict: false, allErrors: true });
+    if (!metaAjv2019) {
+      const Ajv2019Class = await loadAjv2019();
+      metaAjv2019 = new Ajv2019Class({ strict: false, allErrors: true });
+    }
     return metaAjv2019;
   }
-  if (!metaAjv07) metaAjv07 = new Ajv({ strict: false, allErrors: true });
+  if (!metaAjv07) {
+    const AjvClass = await loadAjv();
+    metaAjv07 = new AjvClass({ strict: false, allErrors: true });
+  }
   return metaAjv07;
 }
 
@@ -102,10 +156,10 @@ function ajvErrorsToValidationErrors(
  * Validate a schema document against the meta-schema for the chosen draft.
  * Boolean schemas (true / false) are always valid full-document schemas.
  */
-export function validateMetaSchema(
+export async function validateMetaSchema(
   schema: unknown,
   draft?: JsonSchemaDraft,
-): { valid: boolean; errors: JsonSchemaValidationError[] } {
+): Promise<{ valid: boolean; errors: JsonSchemaValidationError[] }> {
   if (typeof schema === 'boolean') return { valid: true, errors: [] };
   if (!isObject(schema)) {
     return {
@@ -115,18 +169,20 @@ export function validateMetaSchema(
   }
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
-  const ajv = getMetaValidator(resolved);
   try {
+    // getMetaValidator's dynamic import can reject (e.g. the module fails
+    // to load); ajv.validateSchema can throw synchronously (a schema
+    // referencing a meta-schema URI the instance doesn't know about, e.g.
+    // cross-draft $schema references). Both are schema-validation failures
+    // from the caller's perspective, not unhandled exceptions — the editor
+    // should surface either as a validation error, not crash the host.
+    const ajv = await getMetaValidator(resolved);
     const valid = ajv.validateSchema(schema);
     return {
       valid: Boolean(valid),
       errors: ajvErrorsToValidationErrors(ajv.errors),
     };
   } catch (error) {
-    // Ajv throws synchronously when a schema references a meta-schema URI the
-    // instance doesn't know about (e.g. cross-draft $schema references). Treat
-    // as an invalid schema rather than an unhandled exception — the editor
-    // should surface this as a validation error, not crash the host.
     return {
       valid: false,
       errors: [
@@ -147,26 +203,33 @@ export function validateMetaSchema(
  * Each call uses a fresh Ajv instance so repeated compilation of a schema
  * with a stable $id does not collide with Ajv's internal cache.
  */
-export function tryCompile(
+export async function tryCompile(
   schema: unknown,
   draft?: JsonSchemaDraft,
-): { ok: true } | { ok: false; error: string } {
+): Promise<{ ok: true } | { ok: false; error: string }> {
   if (typeof schema === 'boolean') return { ok: true };
   if (!isObject(schema)) {
     return { ok: false, error: 'Schema must be an object or boolean' };
   }
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
-  let ajv: Ajv | Ajv2020 | Ajv2019;
-  if (resolved === '2020-12') {
-    ajv = new Ajv2020({ strict: false, addUsedSchema: false });
-  } else if (resolved === '2019-09') {
-    ajv = new Ajv2019({ strict: false, addUsedSchema: false });
-  } else {
-    ajv = new Ajv({ strict: false, addUsedSchema: false });
-  }
-
   try {
+    // The dynamic Ajv-class import can reject as readily as ajv.compile can
+    // throw — both are covered by this one try/catch so tryCompile always
+    // resolves to { ok } rather than letting an import failure surface as
+    // an unhandled rejection.
+    let ajv: Ajv | Ajv2020 | Ajv2019;
+    if (resolved === '2020-12') {
+      const Ajv2020Class = await loadAjv2020();
+      ajv = new Ajv2020Class({ strict: false, addUsedSchema: false });
+    } else if (resolved === '2019-09') {
+      const Ajv2019Class = await loadAjv2019();
+      ajv = new Ajv2019Class({ strict: false, addUsedSchema: false });
+    } else {
+      const AjvClass = await loadAjv();
+      ajv = new AjvClass({ strict: false, addUsedSchema: false });
+    }
+
     ajv.compile(schema);
     return { ok: true };
   } catch (error) {

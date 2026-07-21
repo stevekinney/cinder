@@ -29,7 +29,7 @@
     <Alert variant="warning">
       <p>The JSON view has uncommitted changes. Apply or discard them to edit in the form.</p>
       <div class="cinder-jse-dirty-actions">
-        <Button variant="primary" size="sm" onclick={() => state.applyJsonDraft()}>
+        <Button variant="primary" size="sm" onclick={() => void state.applyJsonDraft()}>
           Apply JSON
         </Button>
         <Button variant="secondary" size="sm" onclick={() => state.discardJsonDraft()}>

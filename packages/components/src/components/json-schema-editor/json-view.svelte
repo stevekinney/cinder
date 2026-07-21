@@ -15,18 +15,49 @@
   import Button from '../button/button.svelte';
   import Textarea from '../textarea/textarea.svelte';
 
+  import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';
   import { tryParseJson, validateMetaSchema } from './json-schema-validator.ts';
 
-  let { state, idPrefix, class: className }: JsonViewProps = $props();
+  // Aliased to `editorState`, not `state` — a local variable literally named
+  // `state` shadows the `$state` rune identifier, so `$state(...)` below
+  // would compile as a legacy store auto-subscription to that variable
+  // instead of the rune call. json-schema-toolbar.svelte uses the same
+  // alias for the same reason.
+  let { state: editorState, idPrefix, class: className }: JsonViewProps = $props();
 
-  // Live (synchronous) parse + meta-schema status for the current draft.
-  // The state container only debounces validation against the *committed*
-  // schema; the JSON view runs an immediate cheap check on the *draft* so
-  // the user gets instant feedback while typing.
-  const draftParse = $derived(tryParseJson(state.jsonDraftText));
-  const draftMeta = $derived.by(() => {
-    if (!draftParse.ok) return null;
-    return validateMetaSchema(draftParse.value, state.activeDraft);
+  // Parse is synchronous; the meta-schema check is not (validateMetaSchema
+  // dynamically imports Ajv), so it's tracked as state updated from an
+  // effect rather than a $derived. The state container only debounces
+  // validation against the *committed* schema; this runs an immediate check
+  // on the *draft* so the user gets feedback on the current text without
+  // waiting for the debounce window.
+  const draftParse = $derived(tryParseJson(editorState.jsonDraftText));
+
+  let draftMeta = $state<{ valid: boolean; errors: JsonSchemaValidationError[] } | null>(null);
+
+  $effect(() => {
+    const parse = draftParse;
+    const activeDraft = editorState.activeDraft;
+
+    if (!parse.ok) {
+      draftMeta = null;
+      return;
+    }
+
+    // Reset before validating the new draft — otherwise a previously-valid
+    // result lingers until this resolves, which can briefly enable Apply
+    // and hide errors for content that hasn't actually been checked yet.
+    draftMeta = null;
+
+    // Guard against out-of-order resolution: if the draft changes again
+    // before this validation call resolves, ignore the stale result.
+    let cancelled = false;
+    void validateMetaSchema(parse.value, activeDraft).then((result) => {
+      if (!cancelled) draftMeta = result;
+    });
+    return () => {
+      cancelled = true;
+    };
   });
 
   const draftErrorMessage = $derived.by(() => {
@@ -38,25 +69,33 @@
   });
 
   const canApply = $derived(
-    !state.readonly && state.jsonDraftIsDirty && draftParse.ok && draftMeta?.valid === true,
+    !editorState.readonly &&
+      editorState.jsonDraftIsDirty &&
+      draftParse.ok &&
+      draftMeta?.valid === true,
   );
 
-  const canDiscard = $derived(state.jsonDraftIsDirty && !state.readonly);
+  const canDiscard = $derived(editorState.jsonDraftIsDirty && !editorState.readonly);
 </script>
 
 <div class={classNames('cinder-jse-json-view', className)}>
   <div class="cinder-jse-json-view__toolbar">
-    {#if state.jsonDraftIsDirty}
+    {#if editorState.jsonDraftIsDirty}
       <Badge variant="warning">Draft modified — Apply to commit</Badge>
     {/if}
-    <Button variant="primary" size="sm" disabled={!canApply} onclick={() => state.applyJsonDraft()}>
+    <Button
+      variant="primary"
+      size="sm"
+      disabled={!canApply}
+      onclick={() => void editorState.applyJsonDraft()}
+    >
       Apply
     </Button>
     <Button
       variant="secondary"
       size="sm"
       disabled={!canDiscard}
-      onclick={() => state.discardJsonDraft()}
+      onclick={() => editorState.discardJsonDraft()}
     >
       Discard
     </Button>
@@ -65,11 +104,12 @@
   <Textarea
     id={`${idPrefix}-textarea`}
     label="JSON"
-    value={state.jsonDraftText}
-    disabled={state.readonly}
+    value={editorState.jsonDraftText}
+    disabled={editorState.readonly}
     rows={20}
     class="cinder-jse-json-view__textarea"
-    oninput={(event: Event) => state.setJsonDraftText((event.target as HTMLTextAreaElement).value)}
+    oninput={(event: Event) =>
+      editorState.setJsonDraftText((event.target as HTMLTextAreaElement).value)}
   />
 
   {#if draftErrorMessage}

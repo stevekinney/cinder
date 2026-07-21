@@ -35,57 +35,61 @@ describe('detectDraft', () => {
 });
 
 describe('validateMetaSchema', () => {
-  test('valid 2020-12 schema passes', () => {
-    const result = validateMetaSchema({ type: 'string' });
+  test('valid 2020-12 schema passes', async () => {
+    const result = await validateMetaSchema({ type: 'string' });
     expect(result.valid).toBe(true);
     expect(result.errors).toEqual([]);
   });
 
-  test('boolean schemas pass', () => {
-    expect(validateMetaSchema(true).valid).toBe(true);
-    expect(validateMetaSchema(false).valid).toBe(true);
+  test('boolean schemas pass', async () => {
+    const trueResult = await validateMetaSchema(true);
+    const falseResult = await validateMetaSchema(false);
+    expect(trueResult.valid).toBe(true);
+    expect(falseResult.valid).toBe(true);
   });
 
-  test('schema with type array passes', () => {
-    expect(validateMetaSchema({ type: ['string', 'null'] }).valid).toBe(true);
+  test('schema with type array passes', async () => {
+    const result = await validateMetaSchema({ type: ['string', 'null'] });
+    expect(result.valid).toBe(true);
   });
 
-  test('schema with no type passes (matches anything)', () => {
-    expect(validateMetaSchema({}).valid).toBe(true);
+  test('schema with no type passes (matches anything)', async () => {
+    const result = await validateMetaSchema({});
+    expect(result.valid).toBe(true);
   });
 
-  test('schema with bogus type is flagged', () => {
-    const result = validateMetaSchema({ type: 'not-a-type' });
+  test('schema with bogus type is flagged', async () => {
+    const result = await validateMetaSchema({ type: 'not-a-type' });
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
   });
 
-  test('oneOf with sibling type both pass', () => {
-    const result = validateMetaSchema({
+  test('oneOf with sibling type both pass', async () => {
+    const result = await validateMetaSchema({
       type: 'object',
       oneOf: [{ required: ['a'] }, { required: ['b'] }],
     });
     expect(result.valid).toBe(true);
   });
 
-  test('Draft-07 schema validated against draft-07 passes', () => {
-    const result = validateMetaSchema(
+  test('Draft-07 schema validated against draft-07 passes', async () => {
+    const result = await validateMetaSchema(
       { $schema: 'http://json-schema.org/draft-07/schema#', type: 'string' },
       'draft-07',
     );
     expect(result.valid).toBe(true);
   });
 
-  test('2019-09 schema validated against draft 2019-09 passes', () => {
-    const result = validateMetaSchema(
+  test('2019-09 schema validated against draft 2019-09 passes', async () => {
+    const result = await validateMetaSchema(
       { $schema: 'https://json-schema.org/draft/2019-09/schema', type: 'string' },
       '2019-09',
     );
     expect(result.valid).toBe(true);
   });
 
-  test('non-object schemas are invalid', () => {
-    const result = validateMetaSchema('not a schema');
+  test('non-object schemas are invalid', async () => {
+    const result = await validateMetaSchema('not a schema');
     expect(result).toEqual({
       valid: false,
       errors: [{ path: '', message: 'Schema must be an object or boolean', keyword: '' }],
@@ -97,8 +101,8 @@ describe('validateMetaSchema', () => {
   // because the meta-schema URI in $schema wasn't registered on the chosen
   // validator. The editor's debounced timers would fire after a test teardown
   // and the unhandled throw poisoned subsequent tests.
-  test('mismatched $schema vs draft override returns invalid rather than throwing', () => {
-    const result = validateMetaSchema(
+  test('mismatched $schema vs draft override returns invalid rather than throwing', async () => {
+    const result = await validateMetaSchema(
       { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'string' },
       'draft-07',
     );
@@ -108,47 +112,52 @@ describe('validateMetaSchema', () => {
 });
 
 describe('tryCompile', () => {
-  test('valid schema compiles', () => {
-    const result = tryCompile({ type: 'string' });
+  test('valid schema compiles', async () => {
+    const result = await tryCompile({ type: 'string' });
     expect(result.ok).toBe(true);
   });
 
-  test('flags an unresolved $ref even when meta-schema validation passes', () => {
+  test('flags an unresolved $ref even when meta-schema validation passes', async () => {
     const schema = { $ref: '#/$defs/missing' };
-    expect(validateMetaSchema(schema).valid).toBe(true);
-    const result = tryCompile(schema);
+    const metaResult = await validateMetaSchema(schema);
+    expect(metaResult.valid).toBe(true);
+    const result = await tryCompile(schema);
     expect(result.ok).toBe(false);
   });
 
-  test('repeated compilation of a schema with $id does not collide', () => {
+  test('repeated compilation of a schema with $id does not collide', async () => {
     const schema = {
       $id: 'https://example.com/person',
       type: 'object',
       properties: { name: { type: 'string' } },
     };
-    expect(tryCompile(schema).ok).toBe(true);
-    expect(tryCompile(schema).ok).toBe(true);
-    expect(tryCompile(schema).ok).toBe(true);
+    const first = await tryCompile(schema);
+    const second = await tryCompile(schema);
+    const third = await tryCompile(schema);
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    expect(third.ok).toBe(true);
   });
 
-  test('2019-09 schemas compile through the matching AJV instance', () => {
-    const result = tryCompile(
+  test('2019-09 schemas compile through the matching AJV instance', async () => {
+    const result = await tryCompile(
       { $schema: 'https://json-schema.org/draft/2019-09/schema', type: 'string' },
       '2019-09',
     );
     expect(result.ok).toBe(true);
   });
 
-  test('draft-07 schemas compile through the matching AJV instance', () => {
-    const result = tryCompile(
+  test('draft-07 schemas compile through the matching AJV instance', async () => {
+    const result = await tryCompile(
       { $schema: 'http://json-schema.org/draft-07/schema#', type: 'string' },
       'draft-07',
     );
     expect(result.ok).toBe(true);
   });
 
-  test('non-object schemas do not compile', () => {
-    expect(tryCompile('not a schema').ok).toBe(false);
+  test('non-object schemas do not compile', async () => {
+    const result = await tryCompile('not a schema');
+    expect(result.ok).toBe(false);
   });
 });
 

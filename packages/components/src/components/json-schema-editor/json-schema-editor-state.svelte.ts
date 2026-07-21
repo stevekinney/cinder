@@ -55,6 +55,32 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+/**
+ * Synchronous-only slice of what `validateMetaSchema` would say: catches
+ * the shapes it can reject without touching Ajv (no schema at all,
+ * non-object/boolean). Returns null when the shape is plausible and the
+ * real answer has to wait for the async check.
+ *
+ * Used to seed `metaResult` before a validation cycle goes 'pending' —
+ * without this, a known-bad draft (unparseable JSON, a bare array) would
+ * keep reporting whatever `metaResult.valid` happened to be from the
+ * *previous* schema until the async check catches up, which is exactly
+ * the stale-state window `onvalidate` consumers shouldn't see.
+ */
+function cheapMetaShapeCheck(
+  schema: unknown,
+): { valid: boolean; errors: JsonSchemaValidationError[] } | null {
+  if (schema === null) return { valid: false, errors: [] };
+  if (typeof schema === 'boolean') return { valid: true, errors: [] };
+  if (typeof schema !== 'object' || Array.isArray(schema)) {
+    return {
+      valid: false,
+      errors: [{ path: '', message: 'Schema must be an object or boolean', keyword: '' }],
+    };
+  }
+  return null;
+}
+
 export function createEditorState(options: CreateEditorStateOptions) {
   // ---- Original (baseline) ----
   let originalRawText = $state('');
@@ -94,11 +120,19 @@ export function createEditorState(options: CreateEditorStateOptions) {
   let metaDebounceHandle: ReturnType<typeof setTimeout> | null = null;
   let compileDebounceHandle: ReturnType<typeof setTimeout> | null = null;
 
+  // validateMetaSchema/tryCompile dynamically import Ajv, so every
+  // validation pass is now async. clearTimers() cancels pending *timers*
+  // but not an already-in-flight validation promise, so bumping this epoch
+  // is what actually invalidates stale in-flight work: any async callback
+  // checks its captured epoch against the current one before writing state.
+  let validationEpoch = 0;
+
   function clearTimers() {
     if (metaDebounceHandle !== null) clearTimeout(metaDebounceHandle);
     if (compileDebounceHandle !== null) clearTimeout(compileDebounceHandle);
     metaDebounceHandle = null;
     compileDebounceHandle = null;
+    validationEpoch += 1;
   }
 
   function emitValidation(result: JsonSchemaValidationResult) {
@@ -152,22 +186,67 @@ export function createEditorState(options: CreateEditorStateOptions) {
     return committed;
   }
 
-  function runMetaValidation() {
+  /**
+   * Resolve meta-schema validity for the current draft and, if no newer
+   * validation cycle has started in the meantime (see `validationEpoch`),
+   * write the result. Callers that need the raw result synchronously (e.g.
+   * `applyJsonDraft`, which gates a commit on it) should call
+   * `validateMetaSchema` directly instead.
+   */
+  async function runMetaValidation(epoch: number) {
     const schema = schemaToValidate();
     if (schema === null) {
+      if (epoch !== validationEpoch) return;
       metaResult = { valid: false, errors: [] };
       return;
     }
-    metaResult = validateMetaSchema(schema, detectActiveDraft(schema));
+    const result = await validateMetaSchema(schema, detectActiveDraft(schema));
+    if (epoch !== validationEpoch) return;
+    metaResult = result;
   }
 
-  function runCompile() {
+  async function runCompile(epoch: number) {
     const schema = schemaToValidate();
     if (schema === null) {
+      if (epoch !== validationEpoch) return;
       compileResult = null;
       return;
     }
-    compileResult = tryCompile(schema, detectActiveDraft(schema));
+    const result = await tryCompile(schema, detectActiveDraft(schema));
+    if (epoch !== validationEpoch) return;
+    compileResult = result;
+  }
+
+  /**
+   * Refresh both meta-schema and compile status for the schema currently
+   * committed/drafted, then recompute the overall status and emit. Used by
+   * every mutating action (commit, undo, redo, revert, …) that doesn't need
+   * to gate its own outcome on the result — those actions apply immediately
+   * and this just brings the reported validation status up to date.
+   */
+  async function refreshValidation(epoch: number) {
+    await Promise.all([runMetaValidation(epoch), runCompile(epoch)]);
+    if (epoch !== validationEpoch) return;
+    recomputeStatus();
+    emitValidation(buildResult());
+  }
+
+  /**
+   * Cancel in-flight validation, start a new epoch, and announce 'pending'.
+   * Clears `compileResult` (its `null` state is already what marks
+   * `recomputeStatus`/`buildResult` as pending) and seeds `metaResult` with
+   * whatever a cheap synchronous check can determine, so the pending emit
+   * never reports validity left over from a different schema.
+   */
+  function beginValidationCycle(): number {
+    clearTimers();
+    const epoch = validationEpoch;
+    const cheapMeta = cheapMetaShapeCheck(schemaToValidate());
+    if (cheapMeta) metaResult = cheapMeta;
+    compileResult = null;
+    validationStatus = 'pending';
+    emitValidation(buildResult({ status: 'pending' }));
+    return epoch;
   }
 
   function recomputeStatus() {
@@ -192,16 +271,15 @@ export function createEditorState(options: CreateEditorStateOptions) {
   }
 
   function scheduleValidation() {
-    clearTimers();
-
-    // Pending until debounce window resolves
-    validationStatus = 'pending';
-    emitValidation(buildResult({ status: 'pending' }));
+    const epoch = beginValidationCycle();
 
     metaDebounceHandle = setTimeout(() => {
-      runMetaValidation();
-      recomputeStatus();
-      emitValidation(buildResult());
+      void (async () => {
+        await runMetaValidation(epoch);
+        if (epoch !== validationEpoch) return;
+        recomputeStatus();
+        emitValidation(buildResult());
+      })();
     }, META_DEBOUNCE_MS);
 
     // Skip compile for very large drafts — Ajv.compile is O(schema-size)
@@ -215,9 +293,12 @@ export function createEditorState(options: CreateEditorStateOptions) {
     }
 
     compileDebounceHandle = setTimeout(() => {
-      runCompile();
-      recomputeStatus();
-      emitValidation(buildResult());
+      void (async () => {
+        await runCompile(epoch);
+        if (epoch !== validationEpoch) return;
+        recomputeStatus();
+        emitValidation(buildResult());
+      })();
     }, COMPILE_DEBOUNCE_MS);
   }
 
@@ -259,10 +340,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
       jsonDraftText = schemaResult.rawText || '';
     }
 
-    runMetaValidation();
-    runCompile();
-    recomputeStatus();
-    emitValidation(buildResult());
+    const epoch = beginValidationCycle();
+    void refreshValidation(epoch);
   }
 
   loadFrom(options.schema, options.original);
@@ -344,6 +423,13 @@ export function createEditorState(options: CreateEditorStateOptions) {
     get validationStatus() {
       return validationStatus;
     },
+    /**
+     * `result.valid` is optimistic while `result.status === 'pending'` —
+     * on a cold mount, or any time a validation cycle has just started, the
+     * async Ajv check hasn't resolved yet and `valid` still reflects
+     * whatever the last settled check found (`true` by default). Gate on
+     * `status`, not `valid` alone.
+     */
     get validationResult(): JsonSchemaValidationResult {
       return buildResult();
     },
@@ -363,17 +449,25 @@ export function createEditorState(options: CreateEditorStateOptions) {
     },
 
     discardJsonDraft() {
-      clearTimers();
       jsonDraftText = committedCanonicalText;
-      runMetaValidation();
-      runCompile();
-      recomputeStatus();
-      emitValidation(buildResult());
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
     },
 
-    applyJsonDraft(): boolean {
+    /**
+     * Apply the JSON draft as the committed schema. Async because the
+     * meta-schema check that gates the commit dynamically imports Ajv on
+     * first use — the commit itself only happens once that check resolves,
+     * so this can no longer report its outcome synchronously. Callers that
+     * only need to trigger the apply (the toolbar's Apply button) can call
+     * it without awaiting; callers that need the resulting boolean must
+     * await it.
+     */
+    async applyJsonDraft(): Promise<boolean> {
       if (readonly) return false;
       clearTimers();
+      const epoch = validationEpoch;
+
       const parsed = tryParseJson(jsonDraftText);
       if (!parsed.ok) return false;
 
@@ -381,8 +475,30 @@ export function createEditorState(options: CreateEditorStateOptions) {
       if (typeof value !== 'boolean' && !isPlainRecord(value)) return false;
 
       const schema = value as JsonSchemaValue;
-      const meta = validateMetaSchema(schema, detectActiveDraft(schema));
-      if (!meta.valid) return false;
+      const draft = detectActiveDraft(schema);
+
+      // Clear the previous compile result before announcing 'pending' — its
+      // `null` state is what recomputeStatus/buildResult treat as pending,
+      // so leaving a stale one behind would let a status recompute reuse
+      // compile info from whatever schema was committed before this draft.
+      compileResult = null;
+      validationStatus = 'pending';
+      emitValidation(buildResult({ status: 'pending' }));
+
+      const meta = await validateMetaSchema(schema, draft);
+      // A newer action (another apply, an undo, a reload, …) superseded
+      // this one while Ajv was loading — abandon rather than commit stale
+      // state or clobber whatever that newer action already wrote. Also
+      // recheck readonly directly: a parent can flip it while this await is
+      // in flight, and unlike other mutations that starts a new epoch,
+      // setReadonly doesn't — so it has to be checked explicitly here.
+      if (epoch !== validationEpoch || readonly) return false;
+      if (!meta.valid) {
+        metaResult = meta;
+        recomputeStatus();
+        emitValidation(buildResult());
+        return false;
+      }
 
       if (history) {
         history.commit(schema, { label: 'apply JSON' });
@@ -392,11 +508,15 @@ export function createEditorState(options: CreateEditorStateOptions) {
         history = useHistory<JsonSchemaValue>(applyOptions);
       }
       jsonDraftText = serialise(history.current);
-      runMetaValidation();
-      runCompile();
-      recomputeStatus();
+      metaResult = meta;
       emitChange();
-      emitValidation(buildResult());
+
+      const compile = await tryCompile(schema, draft);
+      if (epoch === validationEpoch) {
+        compileResult = compile;
+        recomputeStatus();
+        emitValidation(buildResult());
+      }
       return true;
     },
 
@@ -405,47 +525,37 @@ export function createEditorState(options: CreateEditorStateOptions) {
       commitOptions?: { coalesceKey?: string; label?: string },
     ) {
       if (!history || readonly || jsonDraftIsDirty) return;
-      clearTimers();
       history.commit(next, commitOptions);
       jsonDraftText = serialise(history.current);
-      runMetaValidation();
-      runCompile();
-      recomputeStatus();
       emitChange();
-      emitValidation(buildResult());
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
     },
 
     undo(): string | undefined {
       if (!history || readonly) return undefined;
-      clearTimers();
       const left = history.undo();
       if (!left) return undefined;
       jsonDraftText = serialise(history.current);
-      runMetaValidation();
-      runCompile();
-      recomputeStatus();
       emitChange();
-      emitValidation(buildResult());
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
       return left.label;
     },
 
     redo(): string | undefined {
       if (!history || readonly) return undefined;
-      clearTimers();
       const moved = history.redo();
       if (!moved) return undefined;
       jsonDraftText = serialise(history.current);
-      runMetaValidation();
-      runCompile();
-      recomputeStatus();
       emitChange();
-      emitValidation(buildResult());
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
       return moved.label;
     },
 
     revert() {
       if (readonly) return;
-      clearTimers();
       if (originalSchema !== null) {
         const revertOptions: { initial: JsonSchemaValue; maxDepth?: number } = {
           initial: originalSchema,
@@ -453,15 +563,14 @@ export function createEditorState(options: CreateEditorStateOptions) {
         if (options.maxHistory !== undefined) revertOptions.maxDepth = options.maxHistory;
         history = useHistory<JsonSchemaValue>(revertOptions);
         jsonDraftText = originalCanonicalText;
-        runMetaValidation();
-        runCompile();
-        recomputeStatus();
         emitChange();
-        emitValidation(buildResult());
+        const epoch = beginValidationCycle();
+        void refreshValidation(epoch);
         options.onrevert?.({ restoredFrom: 'original-schema' });
       } else {
         history = null;
         jsonDraftText = originalRawText;
+        clearTimers();
         metaResult = { valid: false, errors: [] };
         compileResult = null;
         recomputeStatus();
@@ -473,10 +582,8 @@ export function createEditorState(options: CreateEditorStateOptions) {
     /** Update the active draft override; recomputes validation. */
     setDraftOverride(next: JsonSchemaKnownDraft | undefined) {
       draftOverride = next;
-      runMetaValidation();
-      runCompile();
-      recomputeStatus();
-      emitValidation(buildResult());
+      const epoch = beginValidationCycle();
+      void refreshValidation(epoch);
     },
 
     /** Live-update the readonly flag (used to re-sync the prop after mount). */
@@ -484,7 +591,6 @@ export function createEditorState(options: CreateEditorStateOptions) {
 
     /** Reload from a new schema/original pair — used by schemaKey-triggered reset. */
     reload(schemaInput: JsonSchemaValue | string, originalInput?: JsonSchemaValue | string) {
-      clearTimers();
       loadFrom(schemaInput, originalInput);
     },
 
