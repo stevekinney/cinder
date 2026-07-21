@@ -16,10 +16,10 @@
  *     cannot accidentally deploy a version branch to production.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
- *   - Both public packages have consumer validation, package-weight, and
- *     publish commands, and neither publish step has NODE_AUTH_TOKEN or
- *     NPM_TOKEN in its `env:` block
- *     (precise, well-messaged check).
+ *   - Every public package (markdown, cinder, chat, in DAG order) has consumer
+ *     validation, package-weight, and publish commands, and no publish step has
+ *     NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block (precise, well-messaged
+ *     check).
  *   - NODE_AUTH_TOKEN / NPM_TOKEN do NOT appear anywhere else in release.yaml
  *     either — a token in a JOB-level or WORKFLOW-level `env:` block would be
  *     inherited by the publish step without appearing in the step's own lines,
@@ -59,7 +59,17 @@ const deployPlaygroundWorkflowPath = join(
 );
 const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
-const PUBLIC_PACKAGE_NAMES = ['@lostgradient/cinder', '@lostgradient/chat'] as const;
+/**
+ * Every published package, in required publish DAG order: markdown has no
+ * internal peer contract with the other two and publishes first; cinder next;
+ * chat peers on cinder's minor and publishes last (see
+ * docs/decisions/package-boundaries.md).
+ */
+const PUBLIC_PACKAGE_NAMES = [
+  '@lostgradient/markdown',
+  '@lostgradient/cinder',
+  '@lostgradient/chat',
+] as const;
 const REQUIRED_RELEASE_SCRIPTS = [
   'validate:consumer',
   'package:weight:check',
@@ -253,47 +263,65 @@ export function findMissingPublicPackageReleaseCommands(workflow: unknown): stri
   );
 }
 
-/** Cinder must publish before Chat because Chat peers on the new Cinder minor. */
-export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
-  const executableScripts = workflowRunScripts(workflow).join('\n');
-  const cinderIndex = executableScripts.indexOf(
-    'bun run --filter=@lostgradient/cinder publish:release',
+/**
+ * Return the indices at which each package's command appears in `haystack`
+ * (in `PUBLIC_PACKAGE_NAMES` order), or `undefined` for any package whose
+ * command is missing.
+ */
+function findOrderedIndices(
+  haystack: string,
+  commandFor: (packageName: (typeof PUBLIC_PACKAGE_NAMES)[number]) => string,
+): number[] | undefined {
+  const indices = PUBLIC_PACKAGE_NAMES.map((packageName) =>
+    haystack.indexOf(commandFor(packageName)),
   );
-  const chatIndex = executableScripts.indexOf(
-    'bun run --filter=@lostgradient/chat publish:release',
-  );
-  return cinderIndex !== -1 && chatIndex !== -1 && cinderIndex < chatIndex;
+  return indices.every((index) => index !== -1) ? indices : undefined;
 }
 
-/** The root publish shortcut must use the same staged artifact path as CI. */
+/** Every command's indices must appear in strictly increasing order (the DAG order). */
+function isStrictlyIncreasing(indices: readonly number[]): boolean {
+  return indices.every((index, position) => position === 0 || indices[position - 1]! < index);
+}
+
+/** Markdown, then Cinder, then Chat — Chat peers on Cinder's minor, Cinder vendors Markdown's dist. */
+export function publicPackagePublishOrderIsValid(workflow: unknown): boolean {
+  const executableScripts = workflowRunScripts(workflow).join('\n');
+  const indices = findOrderedIndices(
+    executableScripts,
+    (packageName) => `bun run --filter=${packageName} publish:release`,
+  );
+  return indices !== undefined && isStrictlyIncreasing(indices);
+}
+
+/** The root publish shortcut must use the same staged artifact path as CI, in DAG order. */
 export function rootPublishScriptUsesStagedPackers(manifest: unknown): boolean {
   if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
   const publishScript = manifest['scripts']['changeset:publish'];
   if (typeof publishScript !== 'string') return false;
 
-  const cinderCommand = 'bun run --filter=@lostgradient/cinder publish:release';
-  const chatCommand = 'bun run --filter=@lostgradient/chat publish:release';
-  const cinderIndex = publishScript.indexOf(cinderCommand);
-  const chatIndex = publishScript.indexOf(chatCommand);
+  const indices = findOrderedIndices(
+    publishScript,
+    (packageName) => `bun run --filter=${packageName} publish:release`,
+  );
   return (
-    cinderIndex !== -1 &&
-    chatIndex !== -1 &&
-    cinderIndex < chatIndex &&
+    indices !== undefined &&
+    isStrictlyIncreasing(indices) &&
     !publishScript.includes('changeset publish')
   );
 }
 
-/** The documented root gate must exercise both public packages as packed consumers. */
+/** The documented root gate must exercise every public package as a packed consumer, in DAG order. */
 export function rootConsumerValidationIncludesPublicPackages(manifest: unknown): boolean {
   if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
   const validateScript = manifest['scripts']['validate'];
   const consumerScript = manifest['scripts']['validate:consumer'];
   if (typeof validateScript !== 'string' || typeof consumerScript !== 'string') return false;
 
-  const cinderCommand = 'bun run --filter=@lostgradient/cinder validate:consumer';
+  const consumerIndices = findOrderedIndices(
+    consumerScript,
+    (packageName) => `bun run --filter=${packageName} validate:consumer`,
+  );
   const chatCommand = 'bun run --filter=@lostgradient/chat validate:consumer';
-  const cinderIndex = consumerScript.indexOf(cinderCommand);
-  const chatIndex = consumerScript.indexOf(chatCommand);
   return (
     // --concurrency=1 preserves the serialization the old --sequential flag
     // gave: turbo parallelizes independent packages by default, and the
@@ -301,9 +329,8 @@ export function rootConsumerValidationIncludesPublicPackages(manifest: unknown):
     // under concurrent load.
     validateScript.includes('turbo run validate --concurrency=1') &&
     validateScript.includes(chatCommand) &&
-    cinderIndex !== -1 &&
-    chatIndex !== -1 &&
-    cinderIndex < chatIndex
+    consumerIndices !== undefined &&
+    isStrictlyIncreasing(consumerIndices)
   );
 }
 
@@ -480,11 +507,13 @@ function runValidation(): void {
         missingPublicPackageReleaseCommands.map((command) => `  - ${command}`).join('\n'),
     );
   }
-  pass('Both public packages have validation, weight, and publish gates');
+  pass('Every public package has validation, weight, and publish gates');
   if (!publicPackagePublishOrderIsValid(parsedWorkflow)) {
-    fail('release.yaml must publish @lostgradient/cinder before @lostgradient/chat.');
+    fail(
+      'release.yaml must publish markdown, then cinder, then chat (the peer/vendoring DAG order).',
+    );
   }
-  pass('Cinder publishes before Chat');
+  pass('Markdown, Cinder, and Chat publish in DAG order');
 
   let rootManifest: unknown;
   try {
@@ -498,7 +527,7 @@ function runValidation(): void {
         'publish:release staged-artifact commands; direct `changeset publish` is unsafe.',
     );
   }
-  pass('Root publish shortcut uses both staged package artifacts in dependency order');
+  pass('Root publish shortcut uses every staged package artifact in dependency order');
   if (!rootConsumerValidationIncludesPublicPackages(rootManifest)) {
     fail(
       'package.json#scripts.validate must run workspace validation through `turbo run validate` ' +
@@ -506,7 +535,7 @@ function runValidation(): void {
         'then Chat.',
     );
   }
-  pass('Root validation exercises both public packages as packed consumers');
+  pass('Root validation exercises every public package as a packed consumer, in DAG order');
 
   let parsedManualReleaseWorkflow: unknown;
   try {
@@ -578,7 +607,7 @@ function runValidation(): void {
     }
   }
 
-  pass('No NODE_AUTH_TOKEN or NPM_TOKEN in either public-package publish step');
+  pass('No NODE_AUTH_TOKEN or NPM_TOKEN in any public-package publish step');
 
   // ── Guard 4: no token env vars ANYWHERE in release.yaml ─────────────────────
   // The step-scoped check above is precise, but a token placed in a `env:` block
