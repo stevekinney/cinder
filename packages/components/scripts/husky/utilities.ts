@@ -669,7 +669,7 @@ export async function withGateLock<T>(
   const resendSignal = options.resendSignal ?? ((signal) => process.kill(process.pid, signal));
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   let malformedLockStartedAt: number | null = null;
-  let waitingMessagePrinted = false;
+  let waitingMessageState: 'malformed' | 'live' | null = null;
   let lockAcquired = false;
   let interruptedSignal: NodeJS.Signals | null = null;
 
@@ -732,9 +732,9 @@ export async function withGateLock<T>(
           malformedLockStartedAt = null;
           continue;
         }
-        if (!waitingMessagePrinted) {
+        if (waitingMessageState !== 'malformed') {
           warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
-          waitingMessagePrinted = true;
+          waitingMessageState = 'malformed';
         }
         if (
           malformedLockStartedAt !== null &&
@@ -757,13 +757,13 @@ export async function withGateLock<T>(
         continue;
       }
 
-      if (!waitingMessagePrinted) {
+      if (waitingMessageState !== 'live') {
         warning(
           `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}, lock created ${existingLock.createdAt}). Waiting without an age timeout while that PID remains alive…\n` +
             `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command\n` +
             `  If that PID is not a pre-push gate, verify it before manually removing ${lockPath}.`,
         );
-        waitingMessagePrinted = true;
+        waitingMessageState = 'live';
       }
 
       await Bun.sleep(retryMilliseconds);

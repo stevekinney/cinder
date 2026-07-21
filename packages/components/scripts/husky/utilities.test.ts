@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import { existsSync, writeFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -1567,6 +1567,49 @@ describe('withGateLock', () => {
 
       expect(malformedChecks).toBeGreaterThan(1);
       expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('prints live-holder guidance after a malformed lock becomes valid', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+      const messages: string[] = [];
+      const consoleLog = spyOn(console, 'log').mockImplementation((message) => {
+        messages.push(String(message));
+      });
+      let lockCompleted = false;
+      let liveChecks = 0;
+
+      try {
+        const result = await withGateLock(async () => 'acquired after transition', {
+          beforeMalformedLockStat: async () => {
+            if (lockCompleted) return;
+            lockCompleted = true;
+            await writeFile(
+              lockPath,
+              JSON.stringify({
+                createdAt: new Date().toISOString(),
+                pid: 123,
+                repositoryRoot: 'other-checkout',
+                token: 'completed-lock',
+              }),
+            );
+          },
+          isProcessAlive: () => ++liveChecks === 1,
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          retryMilliseconds: 1,
+          waitMilliseconds: 100,
+        });
+
+        expect(result).toBe('acquired after transition');
+        expect(messages.some((message) => message.includes('preparing its lock file'))).toBe(true);
+        expect(messages.some((message) => message.includes('Waiting without an age timeout'))).toBe(
+          true,
+        );
+      } finally {
+        consoleLog.mockRestore();
+      }
     });
   });
 
