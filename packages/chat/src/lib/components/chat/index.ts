@@ -51,8 +51,8 @@ export {
   updateStreamingMessage,
 } from 'conversationalist/streaming';
 
-// Conversationalist runtime helper — validates values a consumer builds by
-// hand (message content, metadata, tool call arguments) are JSON-compatible
+// Conversationalist runtime helper — validates that values a consumer builds
+// by hand (message content, metadata, tool call arguments) are JSON-compatible
 // before handing them to the builders above.
 export { isJSONValue } from 'conversationalist';
 

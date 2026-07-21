@@ -16,10 +16,10 @@ bun add @lostgradient/cinder svelte lucide-svelte
 It uses Lucide for its own component chrome, but it does not provide a general icon library for
 your application-specific icons.
 
-Install the Chat domain suite separately when you need it:
+Install the Chat domain suite separately when you need it, alongside the Cinder install above:
 
 ```bash
-bun add @lostgradient/chat @lostgradient/cinder svelte
+bun add @lostgradient/chat
 ```
 
 Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
