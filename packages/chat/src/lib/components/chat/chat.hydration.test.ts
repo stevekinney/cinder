@@ -50,7 +50,32 @@ const emptyConversation: ConversationHistory = {
 };
 
 describe('Chat hydration', () => {
-  test('hydrates a createConversation snapshot without a mismatch warning', async () => {
+  // Uses the DEFAULT `now` environment hook — no injected clock. The sibling
+  // test below pins `now`, which quietly sidesteps the scenario issue #756
+  // reported (`createConversation({ id })` with nothing else). Chat's
+  // conversation timestamps are never rendered, so a differing `createdAt`
+  // cannot produce a mismatch — but that is a property worth holding, not
+  // assuming, since anything that started rendering them would regress SSR.
+  test('hydrates a default-environment createConversation without a mismatch warning', async () => {
+    const conversation = createConversation({ id: 'real-clock-conversation' });
+    const result = await renderThenHydrate(Chat, sourcePath, {
+      id: 'real-clock-chat',
+      conversation,
+    });
+
+    try {
+      expect(
+        result.warnings.filter((warning) => warning.toLowerCase().includes('hydration')),
+      ).toEqual([]);
+      // The load-bearing assertion: no ISO-8601 timestamp reaches the markup,
+      // so SSR output cannot vary with the clock.
+      expect(result.ssrHtml).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
+    } finally {
+      result.cleanup();
+    }
+  });
+
+  test('hydrates a fixed-clock createConversation snapshot without a mismatch warning', async () => {
     const conversation = createConversation(
       {
         id: 'default-environment-conversation',
