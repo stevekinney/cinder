@@ -187,6 +187,16 @@ const runtimeDependencyExternals = [
   '@modelcontextprotocol/sdk',
   '@modelcontextprotocol/sdk/*',
   '@shikijs/rehype',
+  // The Shiki adapter (`highlighters/shiki/index.ts`) resolves languages and
+  // themes via `shiki/langs` / `shiki/themes` and builds its highlighter via
+  // `shiki/core` + `@shikijs/engine-oniguruma` (see that file's module JSDoc
+  // for why). Those subpaths must stay external alongside the bare `shiki`
+  // entry below — `splitting: false` means an un-externalized subpath gets
+  // inlined whole into this single output file, defeating the adapter's
+  // lazy per-language/per-theme dynamic imports and vendoring every bundled
+  // grammar (~10 MB) into cinder's own published dist.
+  '@shikijs/engine-oniguruma',
+  'shiki/*',
   '@milkdown/kit',
   '@milkdown/prose',
   '@milkdown/kit/*',
