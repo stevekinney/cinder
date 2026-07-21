@@ -10,10 +10,85 @@ import {
 import {
   COLOR_TOKEN_GROUPS,
   COLOR_TOKEN_NAMES,
-  findColorTokenDeclarations,
-  findUnregisteredColorTokens,
   isSafeColorTokenValue,
 } from './color-token-registry.ts';
+
+/** Token names whose value shape (shadows, gradients) means they can never be
+ * a themeable solid/translucent color, regardless of what they reference. */
+const NON_COLOR_TOKEN_NAME_PATTERN = /shadow|gradient/;
+
+/** Value shapes that mark a declaration as directly color-valued: an
+ * OKLCH/`color-mix()`/`light-dark()` call, or the `transparent` keyword. */
+const DIRECT_COLOR_VALUE_PATTERN = /oklch|color-mix|light-dark|transparent/i;
+
+/** A value that is nothing but a `var(--cinder-x)` reference, optionally with a
+ * fallback. These are invisible to the direct value-shape scan, so they are
+ * resolved through their target below. */
+const ALIAS_VALUE_PATTERN = /^var\(\s*(--cinder-[a-z0-9-]+)/;
+
+/** Strip CSS comments so a commented-out declaration is never mistaken for a
+ * real one — `extractRootBlock` returns the raw `:root` body, comments and all. */
+function stripCssComments(source: string): string {
+  return source.replaceAll(/\/\*[\s\S]*?\*\//g, '');
+}
+
+/**
+ * Every `--cinder-*` custom property declared directly in a `:root { … }` body
+ * whose value marks it as color-valued, mapped to its raw declared value.
+ *
+ * Resolves alias chains: a token declared as `var(--cinder-other)` carries no
+ * color function of its own, so a direct value-shape scan would miss it
+ * entirely. Following the alias to a directly color-valued token catches the
+ * pure-alias color tokens this guard exists to notice. Cycles and aliases that
+ * bottom out in a non-color value are simply not treated as colors.
+ */
+function findColorTokenDeclarations(rootBlock: string): Map<string, string> {
+  const allDeclarations = new Map<string, string>();
+  for (const match of stripCssComments(rootBlock).matchAll(
+    /(--cinder-[a-z0-9-]+)\s*:\s*([^;]+);/g,
+  )) {
+    const [, name, value] = match;
+    if (name === undefined || value === undefined) continue;
+    allDeclarations.set(name, value.trim());
+  }
+
+  function resolvesToColor(name: string, seen: Set<string>): boolean {
+    if (seen.has(name)) return false;
+    seen.add(name);
+
+    const value = allDeclarations.get(name);
+    if (value === undefined) return false;
+    if (DIRECT_COLOR_VALUE_PATTERN.test(value)) return true;
+
+    const alias = ALIAS_VALUE_PATTERN.exec(value)?.[1];
+    return alias === undefined ? false : resolvesToColor(alias, seen);
+  }
+
+  const colorDeclarations = new Map<string, string>();
+  for (const [name, value] of allDeclarations) {
+    if (NON_COLOR_TOKEN_NAME_PATTERN.test(name)) continue;
+    if (!resolvesToColor(name, new Set())) continue;
+    colorDeclarations.set(name, value);
+  }
+
+  return colorDeclarations;
+}
+
+/**
+ * The reverse of `COLOR_TOKEN_NAMES`' own drift guard: every color-valued token
+ * declared in `:root` must be either registered in `COLOR_TOKEN_GROUPS` or
+ * listed in `optOutTokenNames` as a conscious, commented exclusion. A token in
+ * neither set is a silent omission from the playground's color panel.
+ */
+function findUnregisteredColorTokens(
+  rootBlock: string,
+  registeredTokenNames: ReadonlySet<string>,
+  optOutTokenNames: ReadonlySet<string>,
+): string[] {
+  return [...findColorTokenDeclarations(rootBlock).keys()].filter(
+    (name) => !registeredTokenNames.has(name) && !optOutTokenNames.has(name),
+  );
+}
 
 /**
  * Color-valued tokens declared in `tokens-base.css`'s `:root` block that are
@@ -41,6 +116,11 @@ const INTENTIONALLY_UNREGISTERED_COLOR_TOKENS = new Set([
   // light-dark() value instead of a var() alias, which is why it's the only
   // one of the three caught by the color-value-shape scan in the first place.
   '--cinder-button-border',
+  // Component-scoped button surface/foreground. Pure `var()` aliases, so the
+  // direct value-shape scan never saw them — only alias resolution surfaces
+  // them, and they belong with --cinder-button-border above.
+  '--cinder-button-bg',
+  '--cinder-button-fg',
 ]);
 
 const TOKENS_BASE_PATH = join(
@@ -94,9 +174,9 @@ describe('color token registry', () => {
     );
     expect(registeredAndOptedOut).toEqual([]);
 
-    const colorTokenNames = findColorTokenDeclarations(rootBlock);
+    const colorTokenDeclarations = findColorTokenDeclarations(rootBlock);
     const staleOptOuts = [...INTENTIONALLY_UNREGISTERED_COLOR_TOKENS].filter(
-      (name) => !colorTokenNames.has(name),
+      (name) => !colorTokenDeclarations.has(name),
     );
     expect(staleOptOuts).toEqual([]);
 
