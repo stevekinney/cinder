@@ -6,9 +6,9 @@ import {
   hookDurationWarning,
   info,
   isContinuousIntegration,
+  nodeModulesTopology,
   parsePushRefs,
   readHookDurationBaseline,
-  repairSymlinkedNodeModules,
   REPO_ROOT,
   success,
   warning,
@@ -84,7 +84,7 @@ if (parsed.updates.length === 0) {
 }
 
 /**
- * Heal a symlinked root `node_modules`, warning only — never blocking.
+ * Name a symlinked root `node_modules`, warning only — never blocking.
  *
  * Some worktree tooling provisions `<worktree>/node_modules` as a symlink to
  * the primary checkout to save disk. That aliases one dependency tree under two
@@ -95,37 +95,35 @@ if (parsed.updates.length === 0) {
  * worktrees only.
  *
  * This hook runs no tests, so the symlink cannot break *this* push — but it
- * silently poisons every LOCAL suite the developer or agent runs afterwards,
- * and the raw error points at a healthy file, so it reads as flakiness and
- * costs hours to trace. Detection is one `lstat` and the repair is a few
- * seconds, so healing it here is nearly free and saves the next local run.
+ * silently poisons every LOCAL suite run afterwards, and the raw error points
+ * at a healthy 156-byte file, so it reads as flakiness and costs hours to
+ * trace. Naming it is the entire value.
  *
- * Consistent with this hook's fail-open contract, every outcome is a warning:
- * a failed repair restores the symlink and reports, and any unexpected error is
- * swallowed. Nothing here can fail a push.
+ * Deliberately detect-only. An earlier revision repaired the tree in place
+ * (displace the symlink, reinstall, restore on failure). Every defect review
+ * found lived in that repair — staging-path races between concurrent hooks,
+ * two distinct interrupted-repair states, install failures leaving no
+ * dependency tree at all — while detection, one `lstat`, was never wrong. The
+ * repair also could not run in the state it most needed to: recovering a
+ * stranded symlink requires importing this module, which itself needs
+ * `node_modules`. Saving the developer one `bun install` is not worth a
+ * mutation path that can leave a checkout with no dependencies.
  */
 try {
-  const repair = await repairSymlinkedNodeModules();
-  if (repair.repaired) {
-    warning('Root node_modules was a symlink (worktree provisioning); reinstalled a real tree');
-    if (repair.lockfileChanged) {
-      warning('That install also rewrote bun.lock — review it before committing');
-    }
-  } else if (repair.reason === 'install-failed') {
+  const topology = nodeModulesTopology();
+  if (topology === 'symlinked') {
     warning(
-      `Reinstalling node_modules failed (exit ${repair.exitCode}); the symlink was restored. ` +
-        'Local test runs may fail oddly until you run `bun install` at the repository root.',
+      'Root node_modules is a SYMLINK to another checkout. Bun resolves one dependency tree ' +
+        'under two path prefixes from here, which makes local SSR/hydration tests fail with ' +
+        '"Unseekable reading file: .../esm-env/index.js" — deterministic, and not your change. ' +
+        'Fix: rm node_modules && bun install (then `git restore bun.lock` if it was rewritten).',
     );
-  } else if (repair.reason === 'invalid') {
+  } else if (topology === 'invalid') {
     warning(
       'Root node_modules is neither a directory nor a symlink. Remove it and run `bun install`.',
     );
-  } else if (repair.reason === 'lockfile-dirty') {
-    warning(
-      'Root node_modules is a symlink, but bun.lock has uncommitted changes so it was left alone ' +
-        '— reinstalling could rewrite your lockfile edits. Commit or discard bun.lock, then run ' +
-        '`bun install` at the repository root.',
-    );
+  } else if (topology === 'missing') {
+    warning('No node_modules at the repository root — run `bun install` before running tests.');
   }
 } catch (cause) {
   const reason = cause instanceof Error ? cause.message : String(cause);

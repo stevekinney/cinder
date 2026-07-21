@@ -1,4 +1,3 @@
-import { $ } from 'bun';
 import { describe, expect, it } from 'bun:test';
 import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
@@ -29,7 +28,6 @@ import {
   parsePushRefs,
   phaseMaxConcurrency,
   prePushPackageScript,
-  repairSymlinkedNodeModules,
   REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
@@ -1672,25 +1670,6 @@ describe('withLocalValidationGateLock', () => {
   });
 });
 
-/**
- * Make a temp directory a real git repository.
- *
- * `isLockfileDirty` fails closed — it throws rather than reporting "clean" when
- * git cannot answer — so any fixture that reaches the repair path has to be a
- * genuine repo, not a bare temp directory.
- */
-async function initGitFixture(directory: string): Promise<void> {
-  const result = await $`git init --quiet`.cwd(directory).nothrow().quiet();
-  // Checked, not swallowed: a silently-failed `git init` would surface later as
-  // a confusing `isLockfileDirty` error from deep inside the repair rather than
-  // as "the fixture could not be set up".
-  if (result.exitCode !== 0) {
-    throw new Error(
-      `git init failed for fixture ${directory} (exit ${result.exitCode}): ${result.stderr.toString().trim()}`,
-    );
-  }
-}
-
 describe('nodeModulesTopology', () => {
   it('reports a real directory as real', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'cinder-node-modules-real-'));
@@ -1738,207 +1717,6 @@ describe('nodeModulesTopology', () => {
       );
 
       expect(nodeModulesTopology(directory)).toBe('symlinked');
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-});
-
-describe('repairSymlinkedNodeModules', () => {
-  it('leaves a real node_modules untouched', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-real-'));
-    try {
-      await mkdir(join(directory, 'node_modules'));
-
-      expect(await repairSymlinkedNodeModules(directory)).toEqual({
-        repaired: false,
-        reason: 'already-real',
-      });
-      expect(nodeModulesTopology(directory)).toBe('real');
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  it('does not attempt an install when node_modules is absent', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-missing-'));
-    try {
-      expect(await repairSymlinkedNodeModules(directory)).toEqual({
-        repaired: false,
-        reason: 'missing',
-      });
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  it('replaces a symlinked node_modules with a real tree', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-symlink-'));
-    try {
-      const target = join(directory, 'primary-node-modules');
-      await mkdir(target);
-      await symlink(
-        target,
-        join(directory, 'node_modules'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-      // A package.json with no dependencies keeps `bun install` fast while
-      // still exercising the real rm-then-install path.
-      await writeFile(join(directory, 'package.json'), JSON.stringify({ name: 'repair-fixture' }));
-      // `isLockfileDirty` fails closed, so the fixture must be a real repo —
-      // a bare temp directory would make git error and abort the repair.
-      await initGitFixture(directory);
-
-      const result = await repairSymlinkedNodeModules(directory);
-
-      expect(result.repaired).toBe(true);
-      // Assert the end state is specifically 'real'. A weaker
-      // `not.toBe('symlinked')` would also pass when the install failed and
-      // left no node_modules at all.
-      expect(nodeModulesTopology(directory)).toBe('real');
-      // The symlink target must survive — repairing a worktree must never
-      // delete the primary checkout's dependency tree it pointed at.
-      expect(existsSync(target)).toBe(true);
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  // The symlink is removed before the install runs, so a failed install leaves
-  // the checkout with NO dependency tree. Reporting success there would hand
-  // the gate a guaranteed-broken run and bury the real cause.
-  it('reports install failure instead of claiming a successful repair', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-install-fail-'));
-    try {
-      const target = join(directory, 'primary-node-modules');
-      await mkdir(target);
-      await symlink(
-        target,
-        join(directory, 'node_modules'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-      await initGitFixture(directory);
-
-      const result = await repairSymlinkedNodeModules(directory, { install: async () => 1 });
-
-      expect(result).toEqual({ repaired: false, reason: 'install-failed', exitCode: 1 });
-      expect(existsSync(target)).toBe(true);
-      // A failed install must leave the checkout no worse than it found it. The
-      // symlink is restored rather than deleted — no dependency tree at all
-      // would be strictly worse than the aliased one we started from.
-      expect(nodeModulesTopology(directory)).toBe('symlinked');
-      // And the staging path must not be left behind.
-      expect(existsSync(join(directory, '.node_modules.cinder-repair-1234-5678'))).toBe(false);
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  // Reinstalling could rewrite uncommitted lockfile edits. Silently eating
-  // someone's lockfile work to fix a symlink is a bad trade, so the repair
-  // declines rather than proceeding.
-  it('declines to repair while bun.lock has uncommitted changes', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-lock-dirty-'));
-    try {
-      const target = join(directory, 'primary-node-modules');
-      await mkdir(target);
-      await symlink(
-        target,
-        join(directory, 'node_modules'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-      await initGitFixture(directory);
-      await writeFile(join(directory, 'bun.lock'), '{"lockfileVersion": 1}');
-      await $`git add bun.lock`.cwd(directory).nothrow().quiet();
-
-      expect(await repairSymlinkedNodeModules(directory)).toEqual({
-        repaired: false,
-        reason: 'lockfile-dirty',
-      });
-      // The tree must be left exactly as found.
-      expect(nodeModulesTopology(directory)).toBe('symlinked');
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  // If an earlier run died between moving the symlink aside and finishing the
-  // install, node_modules is absent and the symlink is parked at the staging
-  // path. Without recovery, every later run reports `missing` forever.
-  it('recovers a symlink stranded at the staging path by an interrupted run', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-stranded-'));
-    try {
-      const target = join(directory, 'primary-node-modules');
-      await mkdir(target);
-      await symlink(
-        target,
-        join(directory, '.node_modules.cinder-repair-1234-5678'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-      await initGitFixture(directory);
-      expect(nodeModulesTopology(directory)).toBe('missing');
-
-      // Dirty lockfile keeps this from running a real install — the assertion
-      // that matters is that the stranded symlink got moved back into place.
-      await writeFile(join(directory, 'bun.lock'), '{"lockfileVersion": 1}');
-      await $`git add bun.lock`.cwd(directory).nothrow().quiet();
-
-      const result = await repairSymlinkedNodeModules(directory);
-
-      expect(result).toEqual({ repaired: false, reason: 'lockfile-dirty' });
-      expect(nodeModulesTopology(directory)).toBe('symlinked');
-      expect(existsSync(join(directory, '.node_modules.cinder-repair-1234-5678'))).toBe(false);
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  // The other half of the interrupted-repair matrix: the install finished but
-  // cleanup did not, so node_modules is real while staging debris remains. The
-  // tree may be half-populated, so accepting it as 'already-real' would keep a
-  // broken checkout broken.
-  it('re-runs the install when a staged repair is left beside a real node_modules', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-staged-real-'));
-    try {
-      await mkdir(join(directory, 'node_modules'));
-      const target = join(directory, 'primary-node-modules');
-      await mkdir(target);
-      await symlink(
-        target,
-        join(directory, '.node_modules.cinder-repair-99-1'),
-        process.platform === 'win32' ? 'junction' : 'dir',
-      );
-      await initGitFixture(directory);
-
-      let installs = 0;
-      const result = await repairSymlinkedNodeModules(directory, {
-        install: async () => {
-          installs += 1;
-          return 0;
-        },
-      });
-
-      expect(installs).toBe(1);
-      expect(result.repaired).toBe(true);
-      // Debris cleared, real tree kept.
-      expect(existsSync(join(directory, '.node_modules.cinder-repair-99-1'))).toBe(false);
-      expect(nodeModulesTopology(directory)).toBe('real');
-    } finally {
-      await rm(directory, { force: true, recursive: true });
-    }
-  });
-
-  it('reports a non-directory node_modules as invalid rather than repairing it', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'cinder-repair-invalid-'));
-    try {
-      await writeFile(join(directory, 'node_modules'), 'not a directory');
-
-      expect(await repairSymlinkedNodeModules(directory)).toEqual({
-        repaired: false,
-        reason: 'invalid',
-      });
-      // A stray file must never be silently deleted by the repair path.
-      expect(existsSync(join(directory, 'node_modules'))).toBe(true);
     } finally {
       await rm(directory, { force: true, recursive: true });
     }

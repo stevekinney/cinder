@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { capitalCase } from 'change-case';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { lstatSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { lstatSync, readFileSync, rmSync } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -51,8 +51,15 @@ export const error = (msg: string) => console.error(chalk.red(msg));
  *
  * `symlinked` is the broken shape: some worktree tooling provisions
  * `<worktree>/node_modules` as a symlink to the primary checkout's tree to save
- * disk. That aliases one dependency tree under two path prefixes, which breaks
- * Bun at runtime — see `repairSymlinkedNodeModules` for the failure mode.
+ * disk. That aliases one dependency tree under two path prefixes, and Bun's
+ * module cache keys on the path — so one package can be loaded twice under two
+ * identities and the cache serves one module's bytes under another's.
+ *
+ * In this repo it surfaces as SSR/hydration tests failing with
+ * `Unseekable reading file: .../node_modules/esm-env/index.js`,
+ * deterministically, in worktrees only. The error points at a healthy file, so
+ * it reads as flakiness or corruption and costs hours to trace. Naming it is
+ * the whole value here; the fix is a plain `bun install`.
  */
 export type NodeModulesTopology = 'real' | 'symlinked' | 'missing' | 'invalid';
 
@@ -76,191 +83,6 @@ export function nodeModulesTopology(repositoryRoot = REPO_ROOT): NodeModulesTopo
     if (errnoCode(caught) === 'ENOENT') return 'missing';
     throw caught;
   }
-}
-
-export type NodeModulesRepair =
-  | {
-      readonly repaired: false;
-      readonly reason: 'already-real' | 'missing' | 'invalid' | 'lockfile-dirty';
-    }
-  | { readonly repaired: false; readonly reason: 'install-failed'; readonly exitCode: number }
-  | { readonly repaired: true; readonly lockfileChanged: boolean };
-
-/** Seam so tests can drive the install-failure path without breaking `bun`. */
-export type NodeModulesRepairOptions = {
-  readonly install?: (repositoryRoot: string) => Promise<number>;
-};
-
-async function runBunInstall(repositoryRoot: string): Promise<number> {
-  const result = await $`bun install`.cwd(repositoryRoot).nothrow().quiet();
-  return result.exitCode;
-}
-
-/**
- * Does `bun.lock` have uncommitted changes?
- *
- * Used only to tell whether the repair's own install rewrote the lockfile, so
- * that can be surfaced to the developer. Fails closed — see below — because a
- * silent "clean" would misreport the repair as having changed nothing.
- */
-async function isLockfileDirty(repositoryRoot: string): Promise<boolean> {
-  const result = await $`git status --porcelain -- bun.lock`.cwd(repositoryRoot).nothrow().quiet();
-  // Fail closed. Returning `false` on a git failure would report "clean"
-  // without having determined anything, and the caller treats clean as
-  // permission to proceed — so a broken git invocation would silently disable
-  // the very guard this exists to enforce.
-  if (result.exitCode !== 0) {
-    const detail = result.stderr.toString().trim();
-    throw new Error(
-      `Could not determine whether bun.lock is dirty (git exited ${result.exitCode})` +
-        (detail.length > 0 ? `: ${detail}` : ''),
-    );
-  }
-
-  return result.stdout.toString().trim().length > 0;
-}
-
-/** Shared prefix for per-run staging paths, so orphans stay discoverable. */
-const STAGED_REPAIR_PREFIX = '.node_modules.cinder-repair-';
-
-/** Staging entries left behind by an interrupted repair, if any. */
-function findStagedRepairPaths(repositoryRoot: string): string[] {
-  try {
-    return readdirSync(repositoryRoot)
-      .filter((entry) => entry.startsWith(STAGED_REPAIR_PREFIX))
-      .map((entry) => join(repositoryRoot, entry));
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Replace a symlinked root `node_modules` with a real install, in place.
- *
- * ## Why this exists
- *
- * When `<worktree>/node_modules` is a symlink to the primary checkout, a single
- * package can be loaded through two different path strings that resolve to the
- * same inode — once under the worktree prefix and once under the canonical
- * primary prefix. Bun's module cache keys on the path, so the two aliases
- * collide and it serves one module's bytes under another's identity.
- *
- * Concretely, in this repo it surfaced as SSR/hydration tests failing with
- * `Unseekable reading file: .../node_modules/esm-env/index.js`, and sometimes
- * as Bun parsing `esm-env`'s *package.json* as JavaScript. The trigger is
- * `src/test/hydrate.ts`, which writes its temp SSR module inside the worktree
- * but resolves Svelte's internals via `import.meta.resolve` — which
- * canonicalizes to the primary prefix, straddling both trees in one process.
- *
- * The failure is deterministic and worktree-only. Local test runs are how
- * developers and agents actually work in this repo — `pre-push` deliberately
- * runs no tests (see `docs/validation-topology.md`) — so a symlinked worktree
- * silently poisons every local suite until someone reinstalls by hand.
- * Diagnosing it from the raw error costs hours, so we repair rather than
- * merely report.
- *
- * ## Failure is reported, and non-destructive
- *
- * The symlink is moved aside rather than deleted, so a failed install restores
- * it instead of leaving the checkout with no dependency tree at all — which
- * would be strictly worse than the aliased tree we started from. The install's
- * exit code is checked and surfaced either way, so the caller can report an
- * unrepaired worktree instead of implying it was healed.
- *
- * ## Lockfile handling: report, never revert
- *
- * Materializing a real tree can rewrite `bun.lock`. An earlier version of this
- * function reverted that rewrite as install noise, gated on the working tree
- * being clean. That was wrong: a commit can already have changed a
- * `package.json` without the matching lockfile update, leaving the working tree
- * clean — so the revert would discard a genuinely-needed regeneration.
- *
- * "Noise" and "the lockfile was actually stale" are not reliably
- * distinguishable here, and discarding the second is far worse than tolerating
- * the first. So the rewrite is left in place and reported; the developer
- * decides whether to commit or discard it.
- *
- * A worktree whose `bun.lock` is *already* dirty is left alone entirely: the
- * install could rewrite or normalize those uncommitted edits, and silently
- * eating someone's lockfile work to fix a symlink is a bad trade. That case
- * reports `lockfile-dirty` so the caller can tell the developer to deal with
- * the lockfile first.
- */
-export async function repairSymlinkedNodeModules(
-  repositoryRoot = REPO_ROOT,
-  options: NodeModulesRepairOptions = {},
-): Promise<NodeModulesRepair> {
-  const nodeModulesPath = join(repositoryRoot, 'node_modules');
-  // Per-run staging path, never a shared one. `pre-push` is fail-open and holds
-  // no lock, so two hooks can repair the same worktree concurrently; with a
-  // single shared path the second process's cleanup would delete the first's
-  // only restore source, and a failed install would then leave the checkout
-  // with no `node_modules` at all.
-  const displacedSymlinkPath = join(
-    repositoryRoot,
-    `${STAGED_REPAIR_PREFIX}${process.pid}-${Date.now()}`,
-  );
-
-  // Reconcile any leftovers from an interrupted earlier run before classifying
-  // anything. A repair can die in two places, and each strands a different
-  // shape:
-  //   - between the rename and the install: `node_modules` is gone and the
-  //     symlink sits at a staging path. Without recovery, every later run
-  //     reports `missing` forever and never puts it back.
-  //   - after the install but before cleanup: `node_modules` is real but a
-  //     staging entry remains, and the tree may be only partially populated.
-  //     Returning `already-real` there would accept a possibly-broken install
-  //     and leave the debris behind.
-  const staged = findStagedRepairPaths(repositoryRoot);
-  if (staged.length > 0) {
-    if (nodeModulesTopology(repositoryRoot) === 'missing') {
-      // Restore one, discard any others — a second staged entry can only come
-      // from a concurrent run that also failed, and its symlink target is the
-      // same tree.
-      const [restoreFrom, ...surplus] = staged;
-      if (restoreFrom !== undefined) renameSync(restoreFrom, nodeModulesPath);
-      for (const path of surplus) rmSync(path, { force: true, recursive: true });
-    } else {
-      // The install ran but cleanup did not. Drop the debris and re-run the
-      // install below so a half-populated tree self-heals rather than being
-      // silently accepted.
-      for (const path of staged) rmSync(path, { force: true, recursive: true });
-      const install = options.install ?? runBunInstall;
-      const exitCode = await install(repositoryRoot);
-      if (exitCode !== 0) return { repaired: false, reason: 'install-failed', exitCode };
-      return { repaired: true, lockfileChanged: await isLockfileDirty(repositoryRoot) };
-    }
-  }
-
-  const topology = nodeModulesTopology(repositoryRoot);
-  if (topology === 'real') return { repaired: false, reason: 'already-real' };
-  if (topology === 'missing') return { repaired: false, reason: 'missing' };
-  if (topology === 'invalid') return { repaired: false, reason: 'invalid' };
-
-  const lockfileWasDirty = await isLockfileDirty(repositoryRoot);
-  if (lockfileWasDirty) return { repaired: false, reason: 'lockfile-dirty' };
-
-  // Move the symlink aside rather than deleting it outright, so a failed
-  // install can put it back. Without this, a failure left the checkout with no
-  // dependency tree at all — strictly worse than the aliased tree we started
-  // with, and enough to break unrelated tooling until someone reinstalled by
-  // hand.
-  renameSync(nodeModulesPath, displacedSymlinkPath);
-
-  const install = options.install ?? runBunInstall;
-  const exitCode = await install(repositoryRoot);
-  if (exitCode !== 0) {
-    rmSync(nodeModulesPath, { force: true, recursive: true });
-    renameSync(displacedSymlinkPath, nodeModulesPath);
-    return { repaired: false, reason: 'install-failed', exitCode };
-  }
-
-  rmSync(displacedSymlinkPath, { force: true, recursive: true });
-
-  // Any dirt here is the repair's own doing: we bailed out above if the
-  // lockfile was already dirty.
-  const lockfileChanged = await isLockfileDirty(repositoryRoot);
-  return { repaired: true, lockfileChanged };
 }
 
 export type GateScript = 'lint' | 'typecheck' | 'test';
