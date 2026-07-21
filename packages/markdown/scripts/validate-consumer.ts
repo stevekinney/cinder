@@ -63,7 +63,11 @@ async function assertPackedFileSet(installedRoot: string): Promise<void> {
     const normalizedPath = relativePath.replaceAll('\\', '/');
     const fileName = normalizedPath.split('/').at(-1) ?? normalizedPath;
     if (
-      /\.(?:test|spec)\.[^.]+$/u.test(fileName) ||
+      // `[^/]+$` (not `[^.]+$`) so a multi-dot extension — e.g. a stray
+      // `index.test.d.ts` declaration file for a test module — still
+      // matches; the old pattern only recognized a single-segment
+      // extension and silently let those through.
+      /\.(?:test|spec)\.[^/]+$/u.test(fileName) ||
       /(?:^|[-.])fixtures?(?:[-.]|$)/u.test(fileName) ||
       normalizedPath.includes('/test/') ||
       normalizedPath.endsWith('.map')
