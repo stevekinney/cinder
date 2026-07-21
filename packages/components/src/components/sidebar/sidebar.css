@@ -10,8 +10,6 @@
  * ======================================== */
 
   .cinder-sidebar {
-    --cinder-sidebar-mobile-breakpoint: 47.99rem;
-
     display: flex;
     flex-direction: column;
     inline-size: 16rem;
