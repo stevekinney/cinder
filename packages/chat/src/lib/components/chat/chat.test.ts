@@ -856,6 +856,8 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
 
     const serverCode = compile(source, {
       filename: resolve(import.meta.dir, 'chat.svelte'),
+      css: 'external',
+      dev: false,
       generate: 'server',
       runes: true,
     }).js.code;
@@ -869,6 +871,8 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
       <ChatImplementation bind:atBottom />`,
       {
         filename: resolve(import.meta.dir, 'chat-binding-control.svelte'),
+        css: 'external',
+        dev: false,
         generate: 'server',
         runes: true,
       },

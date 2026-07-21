@@ -5,8 +5,8 @@
   import type { ChatAttachment } from '../input/chat-attachment.ts';
 
   // `ChatProps` is owned by `../chat.types.ts` (the analyzer + schema generator
-  // read that symbol). The implementation imports it from there rather than
-  // redeclaring it, so the public type and the `$props()` shape can never drift.
+  // read that symbol). The implementation extends it only with private callbacks
+  // used by the public wrapper's binding bridge.
   import type { ChatAnnounceLevel, ChatProps } from '../chat.types.ts';
 
   // The public wrapper uses callbacks instead of component bindings so SSR can

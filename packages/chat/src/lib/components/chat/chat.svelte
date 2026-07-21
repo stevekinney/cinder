@@ -118,12 +118,12 @@
 
 <ChatImplementation
   bind:this={impl}
+  {...rest}
   {atBottom}
   {unreadCount}
   {newMessageIndicatorVisible}
+  class={mergedClassName}
   onatbottombindingchange={handleAtBottomBindingChange}
   onunreadcountbindingchange={handleUnreadCountBindingChange}
   onnewmessageindicatorvisiblebindingchange={handleNewMessageIndicatorVisibleBindingChange}
-  class={mergedClassName}
-  {...rest}
 />
