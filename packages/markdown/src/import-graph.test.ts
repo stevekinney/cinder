@@ -118,29 +118,48 @@ function pickConditionTarget(entry: unknown): string | undefined {
 }
 
 /**
- * Resolve a workspace package subpath (e.g. `@lostgradient/markdown/diff/line-diff`)
- * to an absolute SOURCE file path via that package's `exports` map. Returns
- * undefined for non-workspace (external) packages — those are leaves we only
- * check by name.
- *
+ * Confirm `specifier` names an actual workspace package — not merely a
+ * bare import whose leaf segment happens to collide with a
+ * `packages/<dir>` directory name (e.g. some hypothetical external
+ * `@some-scope/markdown` while `packages/markdown` exists in this repo).
  * Workspace-ness is decided structurally rather than by a hardcoded scope
- * prefix: every workspace package lives at `packages/<dir>`, where `<dir>` is
- * the LAST path segment of its npm name (`@lostgradient/markdown` → `markdown`,
- * `@cinder/commentary` → `commentary`). We try that directory and confirm its
- * `package.json#name` matches the specifier's package name exactly, so an
- * unrelated third-party scoped package sharing a leaf name can't false-positive
- * as a workspace edge.
+ * prefix: every workspace package lives at `packages/<dir>`, where `<dir>`
+ * is the LAST path segment of its npm name (`@lostgradient/markdown` →
+ * `markdown`, `@cinder/commentary` → `commentary`). We try that directory
+ * and confirm its `package.json#name` matches the specifier's package name
+ * EXACTLY — directory existence alone is not sufficient, since an unrelated
+ * third-party scoped package sharing a leaf name would otherwise
+ * false-positive as a workspace edge.
+ *
+ * Returns the package directory only on a confirmed name match; `undefined`
+ * for anything else (no such directory, or a name mismatch — i.e. a
+ * same-leaf-name external package).
  */
-function resolveWorkspaceSubpath(specifier: string): string | undefined {
+function resolveWorkspacePackageDirectory(specifier: string): string | undefined {
   if (!specifier.startsWith('@')) return undefined;
   const segments = specifier.split('/');
   const packageDirName = segments[1]; // '@scope/name/sub' → segments = ['@scope','name','sub']
   if (packageDirName === undefined) return undefined;
   const packageQualifiedName = `@${segments[0]!.slice(1)}/${packageDirName}`;
-  const subpath = specifier.slice(packageQualifiedName.length); // '' or '/diff/line-diff'
   const packageDir = join(PACKAGES_DIR, packageDirName);
   const packageJson = readPackageJson(packageDir);
-  if (!packageJson?.exports || packageJson.name !== packageQualifiedName) return undefined;
+  if (packageJson?.name !== packageQualifiedName) return undefined;
+  return packageDir;
+}
+
+/**
+ * Resolve a workspace package subpath (e.g. `@lostgradient/markdown/diff/line-diff`)
+ * to an absolute SOURCE file path via that package's `exports` map. Returns
+ * undefined for non-workspace (external) packages — those are leaves we only
+ * check by name.
+ */
+function resolveWorkspaceSubpath(specifier: string): string | undefined {
+  const packageDir = resolveWorkspacePackageDirectory(specifier);
+  if (!packageDir) return undefined;
+  const packageJson = readPackageJson(packageDir);
+  if (!packageJson?.exports) return undefined;
+  const packageQualifiedName = packageJson.name!;
+  const subpath = specifier.slice(packageQualifiedName.length); // '' or '/diff/line-diff'
 
   const exportKey = subpath === '' ? '.' : `.${subpath}`;
   const entry = packageJson.exports[exportKey];
@@ -341,10 +360,13 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
         continue;
       }
       if (specifier.startsWith('@')) {
-        const packageDirName = specifier.split('/')[1];
-        const looksLikeWorkspacePackage =
-          packageDirName !== undefined && existsSync(join(PACKAGES_DIR, packageDirName));
-        if (looksLikeWorkspacePackage) {
+        // Confirmed by package.json#name, not just directory existence — a
+        // same-leaf-name external package (e.g. some `@scope/markdown` that
+        // isn't our `@lostgradient/markdown`) must fall through to the
+        // external-leaf branch below, not be treated as an unresolvable
+        // internal edge.
+        const isWorkspacePackage = resolveWorkspacePackageDirectory(specifier) !== undefined;
+        if (isWorkspacePackage) {
           const next = resolveWorkspaceSubpath(specifier);
           if (!next) {
             throw new Error(
@@ -438,15 +460,39 @@ describe('import-graph leanness', () => {
   });
 
   describe('Worker rendering is opt-in', () => {
-    it('@cinder/markdown/rendering does not reach the Worker modules', () => {
-      const { filesReached } = reachFromSubpath('@cinder/markdown/rendering');
+    it('@lostgradient/markdown/rendering does not reach the Worker modules', () => {
+      const { filesReached } = reachFromSubpath('@lostgradient/markdown/rendering');
       expect([...filesReached].some((file) => file.endsWith('/render-async.ts'))).toBe(false);
       expect([...filesReached].some((file) => file.endsWith('/render-worker.ts'))).toBe(false);
     });
 
-    it('@cinder/markdown/rendering/async reaches the Worker modules', () => {
-      const { filesReached } = reachFromSubpath('@cinder/markdown/rendering/async');
+    it('@lostgradient/markdown/rendering/async reaches the Worker modules', () => {
+      const { filesReached } = reachFromSubpath('@lostgradient/markdown/rendering/async');
       expect([...filesReached].some((file) => file.endsWith('/render-async.ts'))).toBe(true);
+    });
+  });
+
+  describe('workspace-package detection is name-based, not directory-existence-based', () => {
+    // Regression: `packages/markdown` really exists on disk, so a specifier
+    // whose leaf segment happens to match it — but whose SCOPE doesn't — must
+    // NOT be treated as an internal workspace edge. Before this fix,
+    // `looksLikeWorkspacePackage` only checked directory existence and would
+    // have made `reachFromSubpath` throw "Unresolvable workspace import" for
+    // an external package like this, even though it isn't ours at all.
+    it('does not resolve a same-leaf-name external package as a workspace directory', () => {
+      expect(resolveWorkspacePackageDirectory('@totally-unrelated-scope/markdown')).toBeUndefined();
+    });
+
+    it('does resolve the real @lostgradient/markdown specifier to its package directory', () => {
+      expect(resolveWorkspacePackageDirectory('@lostgradient/markdown')).toBe(
+        join(PACKAGES_DIR, 'markdown'),
+      );
+    });
+
+    it('returns undefined for a package.json#name mismatch even with a subpath appended', () => {
+      expect(
+        resolveWorkspacePackageDirectory('@totally-unrelated-scope/markdown/rendering'),
+      ).toBeUndefined();
     });
   });
 
