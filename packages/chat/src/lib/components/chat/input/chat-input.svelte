@@ -493,10 +493,14 @@
   export function insertAtRange(range: { start: number; end: number }, text: string): void {
     if (!editorElement) return;
 
+    const length = editorElement.value.length;
     const replacementStart = Number.isFinite(range.start)
-      ? Math.min(Math.max(Math.trunc(range.start), 0), editorElement.value.length)
+      ? Math.min(Math.max(Math.trunc(range.start), 0), length)
       : 0;
-    editorElement.setRangeText(text, range.start, range.end, 'end');
+    const replacementEnd = Number.isFinite(range.end)
+      ? Math.min(Math.max(Math.trunc(range.end), 0), length)
+      : 0;
+    editorElement.setRangeText(text, replacementStart, replacementEnd, 'end');
     const caret = replacementStart + text.length;
     const nextValue = editorElement.value;
     flushSync(() => {
