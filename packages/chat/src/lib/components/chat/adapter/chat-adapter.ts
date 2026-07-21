@@ -131,10 +131,23 @@ export type ChatAdapter = {
    * },
    * ```
    *
-   * `tick()` works the same way if you need to wait for a specific point in
-   * Svelte's own update cycle instead. Handlers invoked later, out-of-band, as
-   * real transport events arrive are NOT subject to this constraint — by then
-   * Chat's mount effect has already finished running.
+   * `tick()` also defers the write, if you need Svelte's own update cycle
+   * rather than a microtask. Do NOT `await` it here — `subscribe` must return
+   * its teardown function synchronously, so awaiting would make `subscribe`
+   * async and break that contract. Kick it off without awaiting instead:
+   *
+   * ```ts
+   * subscribe: (conversationId, handlers) => {
+   *   void tick().then(() => {
+   *     eventLog = [...eventLog, `subscribed to "${conversationId}"`];
+   *   });
+   *   return transport.open(conversationId, handlers);
+   * },
+   * ```
+   *
+   * Handlers invoked later, out-of-band, as real transport events arrive are
+   * NOT subject to this constraint — by then Chat's mount effect has already
+   * finished running.
    */
   subscribe?: (conversationId: string, handlers: ChatPushHandlers) => () => void;
   /** Approve an action-required tool call by id. (UI wired by the tool-approval task.) */
