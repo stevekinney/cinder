@@ -106,11 +106,13 @@ complete finite stream without assuming a particular model provider.
 Chat declares `@lostgradient/cinder` and `svelte` as peer dependencies — host
 applications install those alongside `@lostgradient/chat`. `conversationalist`
 (and its own `zod` dependency) is an implementation detail Chat owns: it
-ships as a regular dependency of `@lostgradient/chat`, installs
-automatically, and is never something a host application adds or
-version-picks directly. Import the conversation types, builders,
+ships as a regular dependency of `@lostgradient/chat` and installs
+automatically, so using Chat never requires a host application to add or
+version-pick it. Import the conversation types, builders,
 `CURRENT_SCHEMA_VERSION`, and `isJSONValue` from `@lostgradient/chat` rather
-than importing `conversationalist` yourself.
+than importing `conversationalist` yourself. An application that uses
+`conversationalist` APIs beyond what Chat re-exports may still depend on it
+directly — that is supported, it just is not something Chat requires.
 
 The exported schema version comes from the `conversationalist` version Chat
 depends on. Histories produced by an older compatible schema can render
