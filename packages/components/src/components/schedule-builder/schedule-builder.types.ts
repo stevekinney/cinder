@@ -79,7 +79,7 @@ export type ScheduleBuilderProps = Omit<
    * Use `['cron']` for cron-only consumers; the component then renders only
    * cron fields and never emits an interval value.
    */
-  allowedModes?: ScheduleAuthoringMode[] | undefined;
+  allowedModes?: readonly ScheduleAuthoringMode[] | undefined;
   /**
    * Injected next-fires computation. The component passes the current value and
    * the requested count and renders whatever fires the consumer returns. When
@@ -139,7 +139,7 @@ export type ScheduleBuilderSchemaProps = {
    * Use `['cron']` for cron-only consumers; the component then renders only
    * cron fields and never emits an interval value.
    */
-  allowedModes?: ScheduleAuthoringMode[] | undefined;
+  allowedModes?: readonly ScheduleAuthoringMode[] | undefined;
   /** Timezone label rendered in the always-visible timezone display slot. */
   timezoneLabel?: string | undefined;
   /** Accessible label for the whole control. Defaults to "Schedule". */

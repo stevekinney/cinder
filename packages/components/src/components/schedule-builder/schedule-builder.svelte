@@ -153,7 +153,7 @@
   }
 
   function normalizeAllowedModes(
-    candidateModes: ScheduleAuthoringMode[] | undefined,
+    candidateModes: readonly ScheduleAuthoringMode[] | undefined,
   ): ScheduleAuthoringMode[] {
     if (candidateModes === undefined) return [...AUTHORING_MODES];
     const normalized = AUTHORING_MODES.filter((mode) => candidateModes.includes(mode));
