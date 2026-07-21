@@ -381,15 +381,23 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
     // imports that is missing from that build's `external` list gets
     // inlined whole into cinder's own published `dist/highlighters/shiki/index.js`
     // — vendoring every bundled grammar (~10 MB) into cinder's package
-    // regardless of what a consumer ever highlights. Build this file
-    // in isolation with exactly the externals `scripts/build.ts` declares
-    // and assert the output stays tiny (our own adapter code only, no
-    // vendored Shiki internals).
+    // regardless of what a consumer ever highlights.
+    //
+    // This is two separate, complementary checks rather than one — they are
+    // NOT reading the same list, so a change to `scripts/build.ts` alone
+    // cannot silently desync this test:
+    //   1. Below: regex-check that `scripts/build.ts`'s SOURCE TEXT contains
+    //      each required specifier as its own quoted string literal
+    //      (independent of quote style/formatting, so a prettier pass alone
+    //      can't break it).
+    //   2. Further down: build THIS file with a copy of that same external
+    //      list, hand-kept in sync with `scripts/build.ts` (not read from
+    //      it), and assert output stays tiny. If `scripts/build.ts` and this
+    //      hard-coded copy drift apart, check 1 still catches a REMOVED
+    //      entry, and check 2 still catches what actually happens to THIS
+    //      file's build output under whatever list is written here.
     const buildScriptPath = resolvePath(import.meta.dir, '../../../scripts/build.ts');
     const buildScriptSource = await Bun.file(buildScriptPath).text();
-    // Regex-based rather than exact-substring so this survives quote-style or
-    // formatting changes to the externals list — it only pins that each
-    // specifier appears as its own quoted string literal somewhere in the file.
     for (const required of ['@shikijs/engine-oniguruma', 'shiki/\\*', 'shiki']) {
       const pattern = new RegExp(`['"]${required}['"]`);
       expect(
@@ -401,6 +409,9 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
     const entryPath = resolvePath(import.meta.dir, 'index.ts');
     const outdirectory = `${import.meta.dir}/.build-weight-probe-${process.pid}`;
     try {
+      // Kept in sync with `scripts/build.ts`'s `runtimeDependencyExternals`
+      // by hand — see the comment above for why that's an acceptable,
+      // covered gap rather than reading the list dynamically.
       const result = await Bun.build({
         entrypoints: [entryPath],
         outdir: outdirectory,

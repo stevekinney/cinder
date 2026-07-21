@@ -195,7 +195,7 @@ async function ensureThemesLoaded(
 
 /**
  * Best-effort load of any languages `guessEmbeddedLanguages` finds embedded
- * in `code` (fenced fences inside Markdown, `<script lang="...">` inside
+ * in `code` (fenced code blocks inside Markdown, `<script lang="...">` inside
  * Svelte/Vue/HTML, etc.) — mirrors the auto-load behavior Shiki's own
  * singleton `codeToHtml` shorthand provided. A guess that doesn't name a
  * real Shiki language, or that fails to load, is swallowed: it only affects
