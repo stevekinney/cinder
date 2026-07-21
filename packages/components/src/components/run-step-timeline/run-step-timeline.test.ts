@@ -1038,6 +1038,24 @@ describe('selection', () => {
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
+  test('does not select a row when a custom ARIA child control is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const childControl = createRawSnippet(() => ({
+      render: () => '<span role="checkbox" aria-checked="false" tabindex="0">Retry</span>',
+      setup: () => {},
+    }));
+    const { container, getByRole } = render(RunStepTimeline, {
+      steps: [runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+      children: childControl,
+    });
+
+    await fireEvent.click(getByRole('checkbox', { name: 'Retry' }));
+    expect(selectedStepIds).toEqual([]);
+    await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
   test('fires onStepSelect when a nested child step row is clicked', async () => {
     const selectedStepIds: string[] = [];
     const steps: RunStep[] = [

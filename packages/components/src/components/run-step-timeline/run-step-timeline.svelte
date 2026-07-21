@@ -392,7 +392,7 @@
           : null;
     if (targetElement === null) return false;
     const interactiveTarget = targetElement.closest(
-      'a[href], button, input, label, select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [tabindex]:not([tabindex="-1"])',
+      'a[href], button, input, label, select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="checkbox"], [role="combobox"], [role="link"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="radio"], [role="searchbox"], [role="slider"], [role="spinbutton"], [role="switch"], [role="tab"], [role="textbox"], [role="treeitem"], [tabindex]:not([tabindex="-1"])',
     );
     return (
       interactiveTarget !== null && interactiveTarget !== node && node.contains(interactiveTarget)
