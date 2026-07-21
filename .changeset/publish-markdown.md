@@ -1,6 +1,7 @@
 ---
 '@lostgradient/markdown': minor
 '@lostgradient/cinder': minor
+'@lostgradient/chat': patch
 '@cinder/commentary': patch
 ---
 
@@ -22,4 +23,8 @@ itself stays a direct dependency of both packages, as before.
 in-repo consumer, but this is a breaking change for any external consumer of those aliases, hence
 the minor (not patch) bump on `@lostgradient/cinder`, which pre-1.0 treats a breaking removal as a
 minor per semver's own pre-1.0 carve-out. `@cinder/commentary`'s `workspace:*` dependency on
-markdown is repointed to the new package name.
+markdown is repointed to the new package name. `@lostgradient/chat`'s `peerDependencies` on
+`@lostgradient/cinder` widens from `^0.16.0` to `^0.16.0 || ^0.17.0` — cinder's minor bump here
+would otherwise leave chat's declared peer range unsatisfied against the version this release
+actually produces, per `.changeset/README.md`'s "keep that peer range aligned with the Cinder
+version released alongside it" contract.
