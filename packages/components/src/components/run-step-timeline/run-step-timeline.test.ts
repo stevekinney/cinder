@@ -18,6 +18,12 @@ const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
 const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
 
+function stepRowByPath(container: HTMLElement, pathKey: string): HTMLElement | undefined {
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-cinder-path]')).find(
+    (row) => row.getAttribute('data-cinder-path') === pathKey,
+  );
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
@@ -899,7 +905,7 @@ describe('selection', () => {
     expect(selected?.getAttribute('data-cinder-path')).toBe(runningStep.id);
     expect(selected?.textContent).toContain(runningStep.label);
 
-    const pending = container.querySelector<HTMLElement>(`[data-cinder-path="${pendingStep.id}"]`);
+    const pending = stepRowByPath(container, pendingStep.id);
     expect(pending?.hasAttribute('data-cinder-selected')).toBe(false);
   });
 
@@ -936,7 +942,7 @@ describe('selection', () => {
       onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
     });
 
-    const row = container.querySelector<HTMLElement>(`[data-cinder-path="${runningStep.id}"]`);
+    const row = stepRowByPath(container, runningStep.id);
     expect(row).not.toBeNull();
     await fireEvent.click(row as HTMLElement);
 
@@ -951,7 +957,7 @@ describe('selection', () => {
       selectedStepId: runningStep.id,
     });
 
-    const row = container.querySelector<HTMLElement>(`[data-cinder-path="${runningStep.id}"]`);
+    const row = stepRowByPath(container, runningStep.id);
     expect(row?.getAttribute('role')).toBe('button');
     expect(row?.getAttribute('tabindex')).toBe('0');
     expect(row?.getAttribute('aria-pressed')).toBe('true');
@@ -976,7 +982,7 @@ describe('selection', () => {
       onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
     });
 
-    const row = container.querySelector<HTMLElement>('[data-cinder-path="parent/child"]');
+    const row = stepRowByPath(container, 'parent/child');
     expect(row).not.toBeNull();
     await fireEvent.click(row as HTMLElement);
 
@@ -1002,9 +1008,7 @@ describe('selection', () => {
       onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
     });
 
-    const row = container.querySelector<HTMLElement>(
-      '[data-cinder-path="%branch/race/%lane/blue/blue-deploy"]',
-    );
+    const row = stepRowByPath(container, '%branch/race/%lane/blue/blue-deploy');
     expect(row).not.toBeNull();
     await fireEvent.click(row as HTMLElement);
 

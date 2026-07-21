@@ -59,6 +59,13 @@
     cursor: pointer;
   }
 
+  .cinder-run-step-timeline__item[data-cinder-selectable]:focus-visible
+    .cinder-run-step-timeline__event {
+    border-radius: var(--cinder-radius-md);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
   .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
     border-radius: var(--cinder-radius-md);
     background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
@@ -369,6 +376,12 @@
     .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
       outline: 1px solid Highlight;
       background: Canvas;
+      box-shadow: none;
+    }
+
+    .cinder-run-step-timeline__item[data-cinder-selectable]:focus-visible
+      .cinder-run-step-timeline__event {
+      outline: var(--cinder-ring-width) solid ButtonText;
       box-shadow: none;
     }
   }
