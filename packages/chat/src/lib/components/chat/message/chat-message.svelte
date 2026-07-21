@@ -5,20 +5,6 @@
   import type { MessagePartOverride } from './chat-message-parts.ts';
   import type { StepInfo } from '../utilities/types.ts';
 
-  /**
-   * Role labels for display purposes.
-   * Maps message roles to human-readable labels.
-   */
-  export const ROLE_LABELS: Record<Message['role'], string> = {
-    user: 'You',
-    assistant: 'Assistant',
-    system: 'System',
-    developer: 'Developer',
-    'tool-call': 'Tool Call',
-    'tool-result': 'Tool Result',
-    snapshot: 'Snapshot',
-  };
-
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
     /** The message to render */
     message: Message;
@@ -98,7 +84,11 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { deriveMessageParts, getMessageText } from '../utilities/utilities.ts';
+  import {
+    deriveMessageParts,
+    getMessageRoleLabel,
+    getMessageText,
+  } from '../utilities/utilities.ts';
   import { Pencil, RotateCcw } from '@lostgradient/cinder/icons';
   import CopyButton from '@lostgradient/cinder/copy-button';
   import ChatMessagePartsRenderer from './chat-message-parts-renderer.svelte';
@@ -179,7 +169,7 @@
   // (copy, edit, the Show more/less control) — the rendered body itself flows
   // through deriveMessageParts + the parts renderer below.
   const textContent = $derived(getMessageText(message));
-  const roleLabel = $derived(ROLE_LABELS[message.role] ?? message.role);
+  const roleLabel = $derived(getMessageRoleLabel(message));
 
   // Role detection — kept for wrapper-level layout + a11y (data-tool-pair,
   // aria-label). The body branches that used to live here are now derived parts.

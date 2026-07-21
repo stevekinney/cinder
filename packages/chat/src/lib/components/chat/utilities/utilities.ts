@@ -452,7 +452,7 @@ export function deriveMessageParts(
  */
 export function getMessageRoleLabel(message: Message): string {
   const labels: Record<Message['role'], string> = {
-    user: 'User',
+    user: 'You',
     assistant: 'Assistant',
     system: 'System',
     developer: 'Developer',
