@@ -11,6 +11,7 @@ import {
   REPO_ROOT,
   success,
   warning,
+  type ParsedPushRefs,
 } from './utilities.ts';
 
 if (isContinuousIntegration()) {
@@ -61,7 +62,7 @@ header('Pre-push: fast sanity checks (fails open)');
 
 const stdinText = await Bun.stdin.text();
 
-let parsed;
+let parsed: ParsedPushRefs;
 try {
   parsed = parsePushRefs(stdinText);
 } catch (cause) {
@@ -84,10 +85,16 @@ if (parsed.updates.length === 0) {
 /**
  * Best-effort, non-blocking changeset hint: warn when this push touches
  * published-package source without adding a changeset, so a developer or
- * agent can add one before opening the PR instead of learning about it from
- * CI. `changeset-guard.yaml` is the real enforcement point — this is purely a
- * heads-up, so any failure here (shallow clone, missing `origin/main`, no
- * network) is swallowed rather than escalated.
+ * agent can add one before opening the PR instead of forgetting entirely.
+ *
+ * Nothing in CI actually enforces "a changeset exists" — `changeset-guard.yaml`
+ * runs `check-changeset-prerelease-bumps.ts`, which only validates the BUMP
+ * LEVEL of changesets that already exist (no disallowed `major` bumps
+ * pre-1.0); it has no opinion on whether a changeset was added at all. This
+ * hint is the only signal for a missing changeset anywhere in the pipeline,
+ * so its wording must not claim CI will catch it. Any failure reading the
+ * diff here (shallow clone, missing `origin/main`, no network) is swallowed
+ * rather than escalated — this must never block or slow down the push.
  */
 try {
   const diff = await $`git diff --name-only origin/main...HEAD`.cwd(REPO_ROOT).nothrow().quiet();
@@ -103,7 +110,8 @@ try {
     );
     if (touchesPublishedSource && !hasChangeset) {
       warning(
-        'No changeset detected for published-package source changes; changeset-guard in CI will check this before merge.',
+        'No changeset detected for published-package source changes. Nothing in CI checks that ' +
+          'one exists (only that existing changesets use the right bump level) — add one now if this change needs a release note.',
       );
     }
   }
