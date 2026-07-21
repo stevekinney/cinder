@@ -75,6 +75,12 @@ export type ScheduleBuilderProps = Omit<
    */
   onchange?: ((value: ScheduleValue) => void) | undefined;
   /**
+   * Authoring modes to expose. Defaults to `['presets', 'cron', 'interval']`.
+   * Use `['cron']` for cron-only consumers; the component then renders only
+   * cron fields and never emits an interval value.
+   */
+  allowedModes?: readonly ScheduleAuthoringMode[] | undefined;
+  /**
    * Injected next-fires computation. The component passes the current value and
    * the requested count and renders whatever fires the consumer returns. When
    * omitted, the preview list is hidden (the component ships no date logic).
@@ -128,6 +134,12 @@ export type ScheduleBuilderSchemaProps = {
    * How many upcoming fires to request from `computeNextFires`. Defaults to 5.
    */
   previewCount?: number | undefined;
+  /**
+   * Authoring modes to expose. Defaults to `['presets', 'cron', 'interval']`.
+   * Use `['cron']` for cron-only consumers; the component then renders only
+   * cron fields and never emits an interval value.
+   */
+  allowedModes?: readonly ScheduleAuthoringMode[] | undefined;
   /** Timezone label rendered in the always-visible timezone display slot. */
   timezoneLabel?: string | undefined;
   /** Accessible label for the whole control. Defaults to "Schedule". */

@@ -14,7 +14,7 @@
    * @avoidWhen You only need to pick a single point in time, not a recurrence — use date-picker instead. | date-picker
    * @related date-picker, segmented-control, input, time-field
    * @a11yPattern WAI-ARIA Tabs
-   * @a11yNote The three authoring modes (presets, cron, interval) are a tablist; each cron field reports validity via aria-invalid and an associated hint/error.
+   * @a11yNote The available authoring modes render as a tablist; each cron field reports validity via aria-invalid and an associated hint/error.
    */
   export type {
     ScheduleAuthoringMode,
@@ -66,6 +66,12 @@
    */
   type PresetKind = 'every' | 'daily' | 'weekly' | 'monthly';
 
+  const AUTHORING_MODES = [
+    'presets',
+    'cron',
+    'interval',
+  ] as const satisfies readonly ScheduleAuthoringMode[];
+
   const PRESET_EVERY_UNIT_OPTIONS = [
     { value: 'minutes', label: 'Minutes' },
     { value: 'hours', label: 'Hours' },
@@ -85,6 +91,7 @@
   let {
     value,
     onchange,
+    allowedModes,
     computeNextFires,
     previewCount = 5,
     timezoneLabel,
@@ -125,7 +132,15 @@
   // re-render or an echoed `onchange` — again whenever the CONSUMER hands in a
   // genuinely different `value` (see the resync `$effect` below `lastKnownValue`).
   // ---------------------------------------------------------------------------
-  const seedValue = value ?? defaultScheduleValue();
+  function initialValue(): ScheduleValue {
+    return value ?? defaultScheduleValue();
+  }
+
+  function initialAllowedModes(): ScheduleAuthoringMode[] {
+    return normalizeAllowedModes(allowedModes);
+  }
+
+  const seedValue = initialValue();
 
   /** Structural equality for the small `ScheduleValue` discriminated union. */
   function scheduleValuesEqual(a: ScheduleValue, b: ScheduleValue): boolean {
@@ -135,6 +150,20 @@
       return a.every === b.every && a.unit === b.unit;
     }
     return false;
+  }
+
+  function normalizeAllowedModes(
+    candidateModes: readonly ScheduleAuthoringMode[] | undefined,
+  ): ScheduleAuthoringMode[] {
+    if (candidateModes === undefined) return [...AUTHORING_MODES];
+    const normalized = AUTHORING_MODES.filter((mode) => candidateModes.includes(mode));
+    return normalized.length > 0 ? normalized : [...AUTHORING_MODES];
+  }
+
+  const resolvedAllowedModes = $derived(normalizeAllowedModes(allowedModes));
+
+  function modeIsAllowed(mode: ScheduleAuthoringMode): boolean {
+    return resolvedAllowedModes.includes(mode);
   }
 
   /**
@@ -147,12 +176,28 @@
    * seeded from the value, so the summary and preview are correct immediately
    * instead of showing the presets default.
    */
-  function initialAuthoringMode(candidateValue: ScheduleValue | undefined): ScheduleAuthoringMode {
-    if (candidateValue === undefined) return 'presets';
-    if (candidateValue.mode === 'cron') return 'cron';
-    return candidateValue.unit === 'minutes' || candidateValue.unit === 'hours'
-      ? 'presets'
-      : 'interval';
+  function initialAuthoringMode(
+    candidateValue: ScheduleValue | undefined,
+    candidateAllowedModes: ScheduleAuthoringMode[],
+  ): ScheduleAuthoringMode {
+    if (candidateValue?.mode === 'interval') {
+      const presetsCanRepresentInterval =
+        candidateValue.unit === 'minutes' || candidateValue.unit === 'hours';
+      if (presetsCanRepresentInterval && candidateAllowedModes.includes('presets')) {
+        return 'presets';
+      }
+      if (candidateAllowedModes.includes('interval')) return 'interval';
+    }
+
+    const preferredMode =
+      candidateValue === undefined
+        ? 'presets'
+        : candidateValue.mode === 'cron'
+          ? 'cron'
+          : 'interval';
+    return candidateAllowedModes.includes(preferredMode)
+      ? preferredMode
+      : candidateAllowedModes[0]!;
   }
 
   /**
@@ -164,12 +209,15 @@
    * arbitrary cron expression (only `valueToInterval` exists), so both the
    * initial seed and a resync reset them to the same neutral defaults.
    */
-  function seedFieldsFromValue(seededValue: ScheduleValue) {
+  function seedFieldsFromValue(
+    seededValue: ScheduleValue,
+    candidateAllowedModes: ScheduleAuthoringMode[],
+  ) {
     const interval = valueToInterval(seededValue);
     const isMinutesOrHours =
       interval !== undefined && (interval.unit === 'minutes' || interval.unit === 'hours');
     return {
-      authoringMode: initialAuthoringMode(seededValue),
+      authoringMode: initialAuthoringMode(seededValue, candidateAllowedModes),
       cronFields: valueToCronFields(seededValue),
       intervalEvery: interval?.every ?? 15,
       intervalUnit: interval?.unit ?? ('minutes' as ScheduleIntervalUnit),
@@ -184,7 +232,7 @@
     };
   }
 
-  const initialSeed = seedFieldsFromValue(seedValue);
+  const initialSeed = seedFieldsFromValue(seedValue, initialAllowedModes());
 
   let authoringMode = $state<ScheduleAuthoringMode>(initialSeed.authoringMode);
   let presetKind = $state<PresetKind>(initialSeed.presetKind);
@@ -298,7 +346,11 @@
    * independent of whatever this component's own local edits have done to
    * `lastKnownValue`. See the effect below for why that distinction matters.
    */
-  let previousValueProp: ScheduleValue | undefined = value;
+  function initialValueProp(): ScheduleValue | undefined {
+    return value;
+  }
+
+  let previousValueProp: ScheduleValue | undefined = initialValueProp();
 
   /**
    * Two-way-controlled sync: when the CONSUMER hands in a `value` that is
@@ -354,7 +406,7 @@
     // the UI in the browsed mode. Content equality still guards the echo case for
     // defined values (parent handing back exactly what we just emitted is a no-op).
     if (incoming !== undefined && scheduleValuesEqual(resolved, lastKnownValue)) return;
-    const seed = seedFieldsFromValue(resolved);
+    const seed = seedFieldsFromValue(resolved, resolvedAllowedModes);
     authoringMode = seed.authoringMode;
     cronFields = seed.cronFields;
     intervalEvery = seed.intervalEvery;
@@ -368,6 +420,23 @@
     presetMonthlyDay = seed.presetMonthlyDay;
     presetMonthlyTime = seed.presetMonthlyTime;
     lastKnownValue = resolved;
+  });
+
+  $effect(() => {
+    if (resolvedAllowedModes.includes(authoringMode)) return;
+    const seed = seedFieldsFromValue(lastKnownValue, resolvedAllowedModes);
+    authoringMode = seed.authoringMode;
+    cronFields = seed.cronFields;
+    intervalEvery = seed.intervalEvery;
+    intervalUnit = seed.intervalUnit;
+    presetKind = seed.presetKind;
+    presetEveryValue = seed.presetEveryValue;
+    presetEveryUnit = seed.presetEveryUnit;
+    presetDailyTime = seed.presetDailyTime;
+    presetWeeklyDays = seed.presetWeeklyDays;
+    presetWeeklyTime = seed.presetWeeklyTime;
+    presetMonthlyDay = seed.presetMonthlyDay;
+    presetMonthlyTime = seed.presetMonthlyTime;
   });
 
   /**
@@ -409,6 +478,7 @@
    */
   function handleAuthoringModeChange(nextMode: ScheduleAuthoringMode): void {
     if (nextMode === authoringMode) return;
+    if (!modeIsAllowed(nextMode)) return;
     authoringMode = nextMode;
     if (nextMode === 'cron') {
       cronFields = valueToCronFields(lastKnownValue);
@@ -426,7 +496,7 @@
       // Daily/weekly/monthly and non-divisor/day/week intervals have no
       // general inverse, so they fall back to the same neutral defaults used
       // everywhere else a value gets seeded into the preset fields.
-      const seed = seedFieldsFromValue(lastKnownValue);
+      const seed = seedFieldsFromValue(lastKnownValue, resolvedAllowedModes);
       presetKind = seed.presetKind;
       presetEveryValue = seed.presetEveryValue;
       presetEveryUnit = seed.presetEveryUnit;
@@ -548,13 +618,33 @@
     onchange={handleAuthoringModeChange}
     class="cinder-schedule-builder__mode-switch"
   >
-    <Segment id={modeTabId('presets')} value="presets" controls={modePanelId('presets')}>
-      Presets
-    </Segment>
-    <Segment id={modeTabId('cron')} value="cron" controls={modePanelId('cron')}>Cron</Segment>
-    <Segment id={modeTabId('interval')} value="interval" controls={modePanelId('interval')}>
-      Interval
-    </Segment>
+    {#if modeIsAllowed('presets')}
+      <Segment
+        id={modeTabId('presets')}
+        value="presets"
+        controls={authoringMode === 'presets' ? modePanelId('presets') : undefined}
+      >
+        Presets
+      </Segment>
+    {/if}
+    {#if modeIsAllowed('cron')}
+      <Segment
+        id={modeTabId('cron')}
+        value="cron"
+        controls={authoringMode === 'cron' ? modePanelId('cron') : undefined}
+      >
+        Cron
+      </Segment>
+    {/if}
+    {#if modeIsAllowed('interval')}
+      <Segment
+        id={modeTabId('interval')}
+        value="interval"
+        controls={authoringMode === 'interval' ? modePanelId('interval') : undefined}
+      >
+        Interval
+      </Segment>
+    {/if}
   </SegmentedControl>
 
   {#if authoringMode === 'presets'}

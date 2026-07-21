@@ -4066,7 +4066,7 @@
       "a11y": {
         "pattern": "WAI-ARIA Tabs",
         "notes": [
-          "The three authoring modes (presets, cron, interval) are a tablist; each cron field reports validity via aria-invalid and an associated hint/error."
+          "The available authoring modes render as a tablist; each cron field reports validity via aria-invalid and an associated hint/error."
         ]
       }
     },
