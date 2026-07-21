@@ -52,6 +52,14 @@ export type ChatReadReceiptEvent = {
  * concern state Chat does NOT own (the consumer owns `conversation`), so Chat
  * forwards them verbatim to the matching pass-through callback props. It never
  * mutates `conversation` in response.
+ *
+ * These handlers are ordinarily invoked later, out-of-band, as real transport
+ * events arrive — by which point Chat's mount `$effect` has already finished
+ * running, so a synchronous `$state` write inside a handler is safe. The one
+ * exception: if `subscribe` itself calls a handler SYNCHRONOUSLY before
+ * returning (e.g. replaying a buffered event during setup), that call still
+ * runs inside the same `$effect` `subscribe` was invoked from — see the
+ * {@link ChatAdapter.subscribe} doc for what that means for `$state` writes.
  */
 export type ChatPushHandlers = {
   /** A new (or updated) message arrived. Forwarded to the consumer; Chat does not mutate the transcript. */
@@ -99,6 +107,34 @@ export type ChatAdapter = {
    * Subscribe to real-time events for a conversation. Receives the conversation
    * id (so the transport knows which channel to open) plus the push handlers,
    * and returns an unsubscribe function Chat calls on teardown.
+   *
+   * Chat calls `subscribe` from inside its own internal mount `$effect` (it
+   * re-subscribes when the adapter reference or the conversation id changes).
+   * That means `subscribe` runs WHILE that effect is still settling, so a
+   * SYNCHRONOUS `$state` write inside `subscribe` (e.g. logging that it was
+   * called, for a debug panel) can re-enter Svelte's effect flush and throw
+   * `effect_update_depth_exceeded` — even a trivial, no-op `subscribe` that
+   * writes state directly can trigger it as soon as another reactive update
+   * (like composer input) is in flight alongside the mount-time call.
+   *
+   * Defer any `$state` write performed inside `subscribe` (or inside a handler
+   * `subscribe` invokes synchronously before returning — see
+   * {@link ChatPushHandlers}) out of the current flush, for example with
+   * `queueMicrotask`:
+   *
+   * ```ts
+   * subscribe: (conversationId, handlers) => {
+   *   queueMicrotask(() => {
+   *     eventLog = [...eventLog, `subscribed to "${conversationId}"`];
+   *   });
+   *   return transport.open(conversationId, handlers);
+   * };
+   * ```
+   *
+   * `tick()` works the same way if you need to wait for a specific point in
+   * Svelte's own update cycle instead. Handlers invoked later, out-of-band, as
+   * real transport events arrive are NOT subject to this constraint — by then
+   * Chat's mount effect has already finished running.
    */
   subscribe?: (conversationId: string, handlers: ChatPushHandlers) => () => void;
   /** Approve an action-required tool call by id. (UI wired by the tool-approval task.) */

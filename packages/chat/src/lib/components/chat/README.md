@@ -101,6 +101,13 @@ snapshot for each token, finalize it before `endStreaming`, and cancel it when
 the backend fails. The package's Adapter-driven streaming example uses a
 complete finite stream without assuming a particular model provider.
 
+> [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
+> Chat opens `subscribe` from inside its internal mount `$effect`, so a
+> synchronous `$state` write inside `subscribe` (or inside a handler it invokes
+> synchronously before returning) can throw `effect_update_depth_exceeded`.
+> Defer such writes with `queueMicrotask` or `tick()`. See the
+> `ChatAdapter.subscribe` JSDoc for the full explanation and a working example.
+
 ## Conversation data contract
 
 Chat declares `@lostgradient/cinder` and `svelte` as peer dependencies — host
