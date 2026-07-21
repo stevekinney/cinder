@@ -1,9 +1,10 @@
 /**
  * Shared `tokens-base.css` `:root` introspection for tests. Internal — not
- * part of the public package surface (see `src/test/README` conventions:
- * these helpers live outside `package.json#exports` and are reached via the
- * `packages/components/src/test/*` relative-import allowance that
- * `check-consumer-boundaries.ts` carves out for test files).
+ * part of the public package surface: these helpers live outside
+ * `package.json#exports`, alongside other test-only infrastructure like
+ * `src/test/happy-dom.ts` and `src/test/css.ts`, and are reached from
+ * `packages/playground` test files via the `packages/components/src/test/*`
+ * relative-import allowance that `check-consumer-boundaries.ts` carves out.
  *
  * Parsing is done with PostCSS (a real CSS tokenizer) rather than a
  * hand-rolled regex, so the result is correct regardless of indentation and
