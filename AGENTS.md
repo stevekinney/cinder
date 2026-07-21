@@ -78,6 +78,7 @@ Run `components:generate` after changing component source metadata, examples, co
 - **Svelte 5:** The public peer range is `svelte >=5.56.0 <6`.
 - **Styles:** The base stylesheet is `@lostgradient/cinder/styles`; component CSS is opt-in through `@lostgradient/cinder/<component>/styles`, or all-in through `@lostgradient/cinder/styles/all`.
 - **Generated metadata:** `packages/components/components.json` is the source for machine-readable component discovery. Component READMEs, schemas, variables, examples, constraints, and package exports are generated from component source and sidecars.
+- **Worktrees need a real `node_modules`:** never symlink a worktree's root `node_modules` to another checkout's. Doing so aliases one dependency tree under two path prefixes, which collides Bun's path-keyed module cache — local SSR/hydration test runs then fail deterministically with `Unseekable reading file: .../node_modules/esm-env/index.js` (or Bun parsing a package's `package.json` as JavaScript), pointing at a healthy file and reading like flakiness. Run a real `bun install` in each worktree. `pre-push` detects a symlinked tree and repairs it automatically, but only warns — per the fail-open push layer in [`docs/validation-topology.md`](./docs/validation-topology.md), nothing in that hook can fail a push, so a repair heals the _next_ local run rather than the current push.
 
 ## Documentation
 

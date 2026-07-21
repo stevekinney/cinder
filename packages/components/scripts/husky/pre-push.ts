@@ -8,6 +8,7 @@ import {
   isContinuousIntegration,
   parsePushRefs,
   readHookDurationBaseline,
+  repairSymlinkedNodeModules,
   REPO_ROOT,
   success,
   warning,
@@ -80,6 +81,49 @@ if (parsed.updates.length === 0) {
     );
   }
   process.exit(0);
+}
+
+/**
+ * Heal a symlinked root `node_modules`, warning only — never blocking.
+ *
+ * Some worktree tooling provisions `<worktree>/node_modules` as a symlink to
+ * the primary checkout to save disk. That aliases one dependency tree under two
+ * path prefixes, and Bun's module cache keys on the path, so a package can be
+ * loaded twice under two identities and the cache serves one module's bytes
+ * under another's. It surfaces as SSR/hydration tests failing with
+ * `Unseekable reading file: .../esm-env/index.js`, deterministically, in
+ * worktrees only.
+ *
+ * This hook runs no tests, so the symlink cannot break *this* push — but it
+ * silently poisons every LOCAL suite the developer or agent runs afterwards,
+ * and the raw error points at a healthy file, so it reads as flakiness and
+ * costs hours to trace. Detection is one `lstat` and the repair is a few
+ * seconds, so healing it here is nearly free and saves the next local run.
+ *
+ * Consistent with this hook's fail-open contract, every outcome is a warning:
+ * a failed repair restores the symlink and reports, and any unexpected error is
+ * swallowed. Nothing here can fail a push.
+ */
+try {
+  const repair = await repairSymlinkedNodeModules();
+  if (repair.repaired) {
+    warning('Root node_modules was a symlink (worktree provisioning); reinstalled a real tree');
+    if (repair.lockfileChanged) {
+      warning('That install also rewrote bun.lock — review it before committing');
+    }
+  } else if (repair.reason === 'install-failed') {
+    warning(
+      `Reinstalling node_modules failed (exit ${repair.exitCode}); the symlink was restored. ` +
+        'Local test runs may fail oddly until you run `bun install` at the repository root.',
+    );
+  } else if (repair.reason === 'invalid') {
+    warning(
+      'Root node_modules is neither a directory nor a symlink. Remove it and run `bun install`.',
+    );
+  }
+} catch (cause) {
+  const reason = cause instanceof Error ? cause.message : String(cause);
+  warning(`Could not check the node_modules layout (${reason}); continuing`);
 }
 
 /**

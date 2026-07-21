@@ -3,7 +3,7 @@ import chalk from 'chalk';
 import { capitalCase } from 'change-case';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, rmSync } from 'node:fs';
+import { lstatSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -46,29 +46,196 @@ export const success = (msg: string) => console.log(chalk.green(msg));
 export const warning = (msg: string) => console.log(chalk.yellow(msg));
 export const error = (msg: string) => console.error(chalk.red(msg));
 
+/**
+ * Outcome of inspecting a checkout's root `node_modules` topology.
+ *
+ * `symlinked` is the broken shape: some worktree tooling provisions
+ * `<worktree>/node_modules` as a symlink to the primary checkout's tree to save
+ * disk. That aliases one dependency tree under two path prefixes, which breaks
+ * Bun at runtime — see `repairSymlinkedNodeModules` for the failure mode.
+ */
+export type NodeModulesTopology = 'real' | 'symlinked' | 'missing' | 'invalid';
+
+/**
+ * Classify a checkout's root `node_modules` without following the link.
+ *
+ * `lstat` (not `stat`) is the whole point: a symlinked `node_modules` resolves
+ * to a perfectly healthy directory, so anything that follows the link reports
+ * success and misses the defect entirely.
+ *
+ * Anything that is neither a symlink nor a directory — a stray regular file at
+ * that path, say — is `invalid` rather than `real`. Calling it `real` would
+ * wave through an obviously broken tree.
+ */
+export function nodeModulesTopology(repositoryRoot = REPO_ROOT): NodeModulesTopology {
+  try {
+    const stats = lstatSync(join(repositoryRoot, 'node_modules'));
+    if (stats.isSymbolicLink()) return 'symlinked';
+    return stats.isDirectory() ? 'real' : 'invalid';
+  } catch (caught) {
+    if (errnoCode(caught) === 'ENOENT') return 'missing';
+    throw caught;
+  }
+}
+
+export type NodeModulesRepair =
+  | { readonly repaired: false; readonly reason: 'already-real' | 'missing' | 'invalid' }
+  | { readonly repaired: false; readonly reason: 'install-failed'; readonly exitCode: number }
+  | { readonly repaired: true; readonly lockfileChanged: boolean };
+
+/** Seam so tests can drive the install-failure path without breaking `bun`. */
+export type NodeModulesRepairOptions = {
+  readonly install?: (repositoryRoot: string) => Promise<number>;
+};
+
+async function runBunInstall(repositoryRoot: string): Promise<number> {
+  const result = await $`bun install`.cwd(repositoryRoot).nothrow().quiet();
+  return result.exitCode;
+}
+
+/**
+ * Does `bun.lock` have uncommitted changes?
+ *
+ * Used only to tell whether the repair's own install rewrote the lockfile, so
+ * that can be surfaced to the developer. Fails closed — see below — because a
+ * silent "clean" would misreport the repair as having changed nothing.
+ */
+async function isLockfileDirty(repositoryRoot: string): Promise<boolean> {
+  const result = await $`git status --porcelain -- bun.lock`.cwd(repositoryRoot).nothrow().quiet();
+  // Fail closed. Returning `false` on a git failure would report "clean"
+  // without having determined anything, and the caller treats clean as
+  // permission to proceed — so a broken git invocation would silently disable
+  // the very guard this exists to enforce.
+  if (result.exitCode !== 0) {
+    const detail = result.stderr.toString().trim();
+    throw new Error(
+      `Could not determine whether bun.lock is dirty (git exited ${result.exitCode})` +
+        (detail.length > 0 ? `: ${detail}` : ''),
+    );
+  }
+
+  return result.stdout.toString().trim().length > 0;
+}
+
+/**
+ * Replace a symlinked root `node_modules` with a real install, in place.
+ *
+ * ## Why this exists
+ *
+ * When `<worktree>/node_modules` is a symlink to the primary checkout, a single
+ * package can be loaded through two different path strings that resolve to the
+ * same inode — once under the worktree prefix and once under the canonical
+ * primary prefix. Bun's module cache keys on the path, so the two aliases
+ * collide and it serves one module's bytes under another's identity.
+ *
+ * Concretely, in this repo it surfaced as SSR/hydration tests failing with
+ * `Unseekable reading file: .../node_modules/esm-env/index.js`, and sometimes
+ * as Bun parsing `esm-env`'s *package.json* as JavaScript. The trigger is
+ * `src/test/hydrate.ts`, which writes its temp SSR module inside the worktree
+ * but resolves Svelte's internals via `import.meta.resolve` — which
+ * canonicalizes to the primary prefix, straddling both trees in one process.
+ *
+ * The failure is deterministic and worktree-only. Local test runs are how
+ * developers and agents actually work in this repo — `pre-push` deliberately
+ * runs no tests (see `docs/validation-topology.md`) — so a symlinked worktree
+ * silently poisons every local suite until someone reinstalls by hand.
+ * Diagnosing it from the raw error costs hours, so we repair rather than
+ * merely report.
+ *
+ * ## Failure is reported, and non-destructive
+ *
+ * The symlink is moved aside rather than deleted, so a failed install restores
+ * it instead of leaving the checkout with no dependency tree at all — which
+ * would be strictly worse than the aliased tree we started from. The install's
+ * exit code is checked and surfaced either way; the caller must abort the push,
+ * because reporting success would hand the gate a guaranteed-broken run and
+ * bury the cause.
+ *
+ * ## Lockfile handling: report, never revert
+ *
+ * Materializing a real tree can rewrite `bun.lock`. An earlier version of this
+ * function reverted that rewrite as install noise, gated on the working tree
+ * being clean. That was wrong: a commit can already have changed a
+ * `package.json` without the matching lockfile update, leaving the working tree
+ * clean — so the revert would discard a genuinely-needed regeneration and let
+ * the push ship a stale lockfile that the gate never validated against.
+ *
+ * "Noise" and "the lockfile was actually stale" are not reliably
+ * distinguishable here, and discarding the second is far worse than tolerating
+ * the first. So the rewrite is left in place and reported; the developer
+ * decides whether to commit or discard it.
+ *
+ * Callers must invoke this under the local validation gate lock: it mutates a
+ * tree shared by every worktree, so two concurrent pre-push hooks would
+ * otherwise race on the same `rm` + install.
+ */
+export async function repairSymlinkedNodeModules(
+  repositoryRoot = REPO_ROOT,
+  options: NodeModulesRepairOptions = {},
+): Promise<NodeModulesRepair> {
+  const topology = nodeModulesTopology(repositoryRoot);
+  if (topology === 'real') return { repaired: false, reason: 'already-real' };
+  if (topology === 'missing') return { repaired: false, reason: 'missing' };
+  if (topology === 'invalid') return { repaired: false, reason: 'invalid' };
+
+  const lockfileWasDirty = await isLockfileDirty(repositoryRoot);
+
+  // Move the symlink aside rather than deleting it outright, so a failed
+  // install can put it back. Without this, a failure left the checkout with no
+  // dependency tree at all — strictly worse than the aliased tree we started
+  // with, and enough to break unrelated tooling until someone reinstalled by
+  // hand.
+  const nodeModulesPath = join(repositoryRoot, 'node_modules');
+  const displacedSymlinkPath = join(repositoryRoot, '.node_modules.cinder-repair');
+  rmSync(displacedSymlinkPath, { force: true });
+  renameSync(nodeModulesPath, displacedSymlinkPath);
+
+  const install = options.install ?? runBunInstall;
+  const exitCode = await install(repositoryRoot);
+  if (exitCode !== 0) {
+    rmSync(nodeModulesPath, { force: true, recursive: true });
+    renameSync(displacedSymlinkPath, nodeModulesPath);
+    return { repaired: false, reason: 'install-failed', exitCode };
+  }
+
+  rmSync(displacedSymlinkPath, { force: true });
+
+  // Only report a lockfile change the repair itself introduced — a lockfile the
+  // caller had already modified is their own work, not something to flag.
+  const lockfileChanged = !lockfileWasDirty && (await isLockfileDirty(repositoryRoot));
+  return { repaired: true, lockfileChanged };
+}
+
 export type GateScript = 'lint' | 'typecheck' | 'test';
+export type PrePushPackageScript = GateScript | 'test:changed';
+
+export function prePushPackageScript(
+  packageName: string,
+  script: GateScript,
+): PrePushPackageScript {
+  if (packageName === '@lostgradient/cinder' && script === 'test') return 'test:changed';
+  return script;
+}
 
 /**
  * The maximum number of jobs that may run concurrently for a given gate
  * script. This is the side-effect-free seam the regression test imports to
- * assert the concurrency policy without triggering the gate entry path's
- * process.exit / stdin-read side effects.
+ * assert each phase's concurrency policy without triggering the gate entry
+ * path's process.exit / stdin-read / lock side effects.
  *
- * All three gate scripts — lint, typecheck, and test — share the same
- * CPU-bound cap, kept general (rather than hardcoded to pre-commit's actual
- * `typecheck`-only usage) so a future gate script inherits the same policy for
- * free. Issue #364 was a race between concurrent test jobs' inline
+ * All three gate scripts — lint, typecheck, and test — now share the same
+ * CPU-bound cap. Issue #364 was a race between concurrent test jobs' inline
  * `bun run --filter=<dep> build` steps, which wiped and re-emitted the shared
  * upstream `dist/` directories (e.g. `@cinder/markdown`, `@cinder/diff`) out
  * from under each other, yielding non-deterministic
- * `error: "<name>" is not declared in this file`. That race no longer applies
- * locally — pre-push (the hook that ran the test phase) has been thinned to a
- * fast, fail-open sanity check with no test job of its own; CI now owns the
- * dependency-closure-aware test run. The `test` case in {@link GateScript}
- * and this function's equal-across-scripts policy are kept anyway, since
- * `check:pipeline-coverage` and CI jobs still reason about the same script
- * names, and a future local test dispatch should inherit this cap rather than
- * reinvent it.
+ * `error: "<name>" is not declared in this file`. That race is closed at the
+ * source now: the caller pre-builds the full dependency closure once, in
+ * dependency order, before dispatching the test phase (see
+ * `preBuildDependencyClosure` in pre-push.ts), so every inline rebuild inside
+ * a test script observes unchanged inputs and hash-skips near-instantly (see
+ * `shouldSkipBuild` in each package's `scripts/lib/build-cache.ts`) — there is
+ * nothing left to race. The test phase can therefore run at the same
+ * concurrency as the read-only lint/typecheck phases.
  */
 export function phaseMaxConcurrency(_script: GateScript): number {
   // CPU-bound default (up to 4 workers). The `?? 1` guards environments where
@@ -81,7 +248,11 @@ export function phaseMaxConcurrency(_script: GateScript): number {
  * Run `items` through a bounded async pool, invoking `worker(item, index)` for
  * each and returning the results in input order. At most `maxConcurrency`
  * workers run at once — this is the *mechanism* that {@link phaseMaxConcurrency}
- * feeds (currently pre-commit's parallel per-package typecheck).
+ * feeds. The historical #364 race (concurrent test jobs' inline builds
+ * fighting over shared `dist/` directories) is now closed upstream by
+ * pre-building the dependency closure once before the test phase runs, so this
+ * pool can run the test phase at the same bounded concurrency as lint and
+ * typecheck.
  *
  * The concurrency floor is defensive. A non-finite `maxConcurrency` — e.g. a
  * caller computing `Math.min(navigator.hardwareConcurrency, 4)` where
@@ -89,7 +260,7 @@ export function phaseMaxConcurrency(_script: GateScript): number {
  * `NaN` would make `Math.min(concurrency, items.length)` `NaN`, start zero
  * workers, and silently resolve every item to `undefined` — a false green.
  * `Number.isFinite` rejects `NaN`/±Infinity; `Math.max(1, …)` then guards
- * `0`/negatives. This binding lives in ONE place so the hook's job runner and
+ * `0`/negatives. This binding lives in ONE place so both hooks' job runners and
  * the regression test share the same guarantee.
  */
 export async function runWithConcurrencyPool<Item, Result>(
@@ -115,6 +286,120 @@ export async function runWithConcurrencyPool<Item, Result>(
   }
   await Promise.all(workers);
   return results;
+}
+
+export type GateFailure = {
+  readonly script: GateScript;
+  readonly scope: string;
+  readonly lines: readonly string[];
+};
+
+const FAILURE_MARKERS: readonly RegExp[] = [
+  /^x\s+\S/,
+  /^\(fail\)\s+/,
+  /\berror TS\d+:/,
+  /^\S.*:\d+:\d+\s+error\s+/,
+  /^\d+:\d+\s+.+\s{2,}[a-z-]+$/,
+  /^\d+:\d+\s+[^\w\s]\s+/,
+];
+
+const FILE_PATH_LINE = /^(?:\.?\/)?[\w@./-]+\.[\w-]+$/;
+const LINE_COLUMN_DIAGNOSTIC = /^\d+:\d+\s+/;
+const LOCATION_DIAGNOSTIC = /:\d+:\d+$/;
+const CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC = /:\d+:\d+\s+/;
+const TRUNCATED_FAILURES_LINE = /^\.\.\.and (?<count>\d+) more failure lines$/;
+
+function parseWorkspaceOutputLine(line: string): {
+  readonly scope: string | null;
+  readonly message: string;
+} {
+  const match = /^(?<scope>(?:@[\w-]+\/)?[\w-]+)\s+(?:lint|typecheck|test):\s*(?<message>.*)$/.exec(
+    line,
+  );
+  return {
+    scope: match?.groups?.['scope'] ?? null,
+    message: match?.groups?.['message'] ?? line,
+  };
+}
+
+function normalizeOutputLines(output: string): string[] {
+  return output
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+export function summarizeFailures(output: string, maxLines = 5): string[] {
+  const lines = normalizeOutputLines(output).map((line) => parseWorkspaceOutputLine(line).message);
+  let currentPath: string | null = null;
+  const contextualLines = lines.map((line) => {
+    if (FILE_PATH_LINE.test(line)) {
+      currentPath = line;
+      return line;
+    }
+
+    const oxlintLocation = /^,-\[(?<location>[^\]]+)\]$/.exec(line);
+    if (oxlintLocation?.groups?.['location']) {
+      return oxlintLocation.groups['location'];
+    }
+
+    if (currentPath && LINE_COLUMN_DIAGNOSTIC.test(line)) {
+      return `${currentPath}:${line}`;
+    }
+
+    return line;
+  });
+  const matched = contextualLines.filter(
+    (line) =>
+      FAILURE_MARKERS.some((marker) => marker.test(line)) ||
+      LOCATION_DIAGNOSTIC.test(line) ||
+      CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC.test(line),
+  );
+  const summary = matched.length > 0 ? matched : lines.slice(-maxLines);
+  if (summary.length <= maxLines) return summary;
+
+  return [...summary.slice(0, maxLines), `...and ${summary.length - maxLines} more failure lines`];
+}
+
+export function inferFailureScope(output: string): string {
+  const scopes = new Set<string>();
+  for (const line of normalizeOutputLines(output)) {
+    const parsed = parseWorkspaceOutputLine(line);
+    if (parsed.scope && FAILURE_MARKERS.some((marker) => marker.test(parsed.message))) {
+      scopes.add(parsed.scope);
+    }
+  }
+
+  if (scopes.size === 1) return [...scopes][0] ?? 'workspace';
+  if (scopes.size > 1) return 'multiple packages';
+  return 'workspace';
+}
+
+export function formatFailureSummary(failures: readonly GateFailure[]): string[] {
+  const lines = ['PRE-PUSH FAILED'];
+  for (const failure of failures) {
+    const omittedCount = failure.lines.reduce((count, line) => {
+      const match = TRUNCATED_FAILURES_LINE.exec(line);
+      return count + Number(match?.groups?.['count'] ?? 0);
+    }, 0);
+    const count =
+      failure.lines.filter((line) => !TRUNCATED_FAILURES_LINE.test(line)).length + omittedCount;
+    const noun = count === 1 ? 'failure' : 'failures';
+    lines.push(`  ${failure.script} -> ${failure.scope}: ${count} ${noun}`);
+    for (const line of failure.lines) {
+      lines.push(`    ${line}`);
+    }
+  }
+  return lines;
+}
+
+export async function writePrePushLog(output: string, now = new Date()): Promise<string> {
+  const tmpDir = join(REPO_ROOT, 'tmp');
+  await mkdir(tmpDir, { recursive: true });
+  const timestamp = now.toISOString().replaceAll(':', '-').replaceAll('.', '-');
+  const logPath = join(tmpDir, `pre-push-${timestamp}.log`);
+  await Bun.write(logPath, output);
+  return logPath;
 }
 
 type HookSignal = 'SIGINT' | 'SIGTERM' | 'SIGHUP';
@@ -488,10 +773,9 @@ function releaseGateLockSync(lockPath: string, token: string) {
 }
 
 /**
- * Run an expensive local validation gate under a shared repository lock so
- * concurrent invocations from linked worktrees do not stack full
- * workspace-scale work (builds, installs, generated-artifact writes) on top
- * of one another.
+ * Run a hook gate under a shared repository lock so duplicate pushes from
+ * linked worktrees do not stack full workspace validations on top of one
+ * another.
  */
 export async function withGateLock<T>(
   run: () => Promise<T>,
@@ -560,19 +844,17 @@ export async function withGateLock<T>(
           throw statError;
         }
         if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
-          warning('Removing stale malformed local validation gate lock.');
+          warning('Removing stale malformed pre-push gate lock.');
           await rm(lockPath, { force: true });
           continue;
         }
         if (!waitingMessagePrinted) {
-          warning(
-            'Another local validation gate is preparing its lock file. Waiting for it to finish…',
-          );
+          warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
           waitingMessagePrinted = true;
         }
         if (Date.now() - startedAt >= waitMilliseconds) {
           throw new Error(
-            `Another local validation gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
+            `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
             { cause: caught },
           );
         }
@@ -581,14 +863,14 @@ export async function withGateLock<T>(
       }
 
       if (!processAlive(existingLock.pid)) {
-        warning('Removing stale local validation gate lock.');
+        warning('Removing stale pre-push gate lock.');
         await rm(lockPath, { force: true });
         continue;
       }
 
       if (!waitingMessagePrinted) {
         warning(
-          `Another local validation gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…\n` +
+          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}). Waiting for it to finish…\n` +
             `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command`,
         );
         waitingMessagePrinted = true;
@@ -596,7 +878,7 @@ export async function withGateLock<T>(
 
       if (Date.now() - startedAt >= waitMilliseconds) {
         throw new Error(
-          `Another local validation gate is already running (pid ${existingLock.pid}); waited ${waitMilliseconds}ms for ${lockPath}.`,
+          `Another pre-push gate is already running (pid ${existingLock.pid}); waited ${waitMilliseconds}ms for ${lockPath}.`,
           { cause: caught },
         );
       }
@@ -609,16 +891,10 @@ export async function withGateLock<T>(
 /**
  * Serialize expensive local validation gates across worktrees.
  *
- * `pre-push` no longer holds this lock — it was thinned to a fast, fail-open
- * sanity check with no expensive critical section left to serialize (CI now
- * owns the scoped test/lint/typecheck run pre-push used to gate). The lock
- * remains for the scripts that still do heavy, disk-mutating local work
- * outside of CI: `test-changed.ts` (`bun run test:changed`),
- * `generate-component-artifacts.ts` (`components:generate`), and
- * `validate-consumers.ts` (`validate:consumer`) each call this directly when
- * run standalone, so concurrent worktrees don't stack full builds/installs on
- * top of one another. The marker below lets a script that's already inside
- * one of those locked runs call another without deadlocking on the same lock.
+ * `pre-push` holds this lock around the entire gate. Child scripts such as
+ * `test:changed`, `components:check`, and `validate:consumer` inherit the
+ * marker below, so they do not deadlock by trying to re-acquire the same lock.
+ * Direct invocations still acquire the repository-local lock.
  */
 export async function withLocalValidationGateLock<T>(
   run: () => Promise<T>,
@@ -665,10 +941,8 @@ export async function printGitStatistics(refA: string, refB: string) {
  * `dir` is the path prefix used to match staged files (always trailing-slashed).
  * `dependencies` holds the names of *other workspace packages* this package
  * depends on (union of `dependencies`/`devDependencies`/`peerDependencies`,
- * filtered to known workspace names) — internal workspace dependency-graph
- * metadata, kept on the type for any future consumer that needs it (no
- * current husky hook expands a reverse-dependency closure locally; CI's
- * scoping lives in `component-graph.ts` / `changed-components.ts`).
+ * filtered to known workspace names) — the edges used to expand a touched set
+ * to its reverse-dependency closure in the pre-push gate.
  */
 export type WorkspacePackage = {
   readonly name: string;
@@ -766,6 +1040,98 @@ export async function loadWorkspacePackages(): Promise<readonly WorkspacePackage
   }));
 }
 
+/**
+ * Expand a set of touched package names to its **reverse-dependency closure**:
+ * the touched packages plus every package that transitively *depends on* one of
+ * them. A pre-push gate must validate dependents because a change to a package
+ * can break a dependent's typecheck/test without that package's own gates
+ * failing. Names not present in `packages` (deleted packages, typos) pass
+ * through unchanged. Cycle-safe via the visited set.
+ */
+export function expandToDependents(
+  packages: readonly WorkspacePackage[],
+  touchedNames: Iterable<string>,
+): Set<string> {
+  // dependents[X] = packages that list X in their dependencies.
+  const dependents = new Map<string, Set<string>>();
+  for (const pkg of packages) {
+    for (const dependency of pkg.dependencies) {
+      let set = dependents.get(dependency);
+      if (set === undefined) {
+        set = new Set<string>();
+        dependents.set(dependency, set);
+      }
+      set.add(pkg.name);
+    }
+  }
+
+  const closure = new Set<string>();
+  const queue = [...touchedNames];
+  while (queue.length > 0) {
+    const name = queue.pop()!;
+    if (closure.has(name)) continue;
+    closure.add(name);
+    for (const dependent of dependents.get(name) ?? []) {
+      if (!closure.has(dependent)) queue.push(dependent);
+    }
+  }
+  return closure;
+}
+
+/**
+ * The workspace packages with a hash-skippable `build` script (each has its
+ * own `scripts/build.ts` + `scripts/lib/build-cache.ts`), listed in dependency
+ * order: `@cinder/diff` has no internal workspace dependencies, `@cinder/markdown`
+ * depends on `@cinder/diff`, `@cinder/commentary` depends on `@cinder/markdown`,
+ * and `@lostgradient/cinder` (components) depends on all three. `@cinder/editor`
+ * was dissolved (see `docs/decisions/package-boundaries.md`, Phase 1): its
+ * headless half moved into `@cinder/markdown`, its ProseMirror half into
+ * `@cinder/commentary`. `@cinder/testing` and `@cinder/playground` have no
+ * `build` script and are excluded.
+ *
+ * This list is explicit rather than derived from {@link loadWorkspacePackages}
+ * because `WorkspacePackage` does not track which packages are buildable, and
+ * the dependency chain here is small and fixed — deriving it generically would
+ * add a `hasBuild` field and a topo-sort for a four-node chain that has not
+ * changed since #364.
+ */
+export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
+  '@cinder/diff',
+  '@cinder/markdown',
+  '@cinder/commentary',
+  '@lostgradient/cinder',
+];
+
+/**
+ * Given the packages a pre-push test phase is about to run against, return
+ * the buildable **forward-dependency closure** — those packages plus every
+ * buildable package upstream of them (the packages they depend on) — in
+ * dependency order. This is the mirror of {@link expandToDependents}: that
+ * function walks *downstream* to find what a change might break;
+ * this one walks *upstream* to find what must be built first so a test job's
+ * inline rebuild step has nothing left to do.
+ *
+ * Because {@link BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER} is already a valid
+ * topological order for this fixed four-package chain (verified against each
+ * package's actual `dependencies`: diff has none, markdown depends only on
+ * diff, commentary on markdown, and components on all three), the forward
+ * closure of any subset of it is exactly the list's prefix ending at the
+ * latest touched package's index — no graph walk needed. If that invariant
+ * ever breaks (a future package reorders its dependencies against this
+ * list), the fix is to update `BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER` to
+ * match the new topological order; the tests for this function pin the
+ * current chain's exact prefixes so a silent mismatch would fail loudly
+ * instead of quietly under-building.
+ */
+export function buildableForwardClosure(testPackageNames: ReadonlySet<string>): readonly string[] {
+  let lastTouchedIndex = -1;
+  for (const [index, name] of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER.entries()) {
+    if (testPackageNames.has(name)) lastTouchedIndex = index;
+  }
+  if (lastTouchedIndex === -1) return [];
+  return BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER.slice(0, lastTouchedIndex + 1);
+}
+
 // Extensions that trigger typecheck/test when modified. `.svelte` and `.css`
 // are project-specific (Svelte components, component-scoped styles); `.json`
 // catches in-package config such as tsconfig.json. Markdown is excluded
@@ -837,8 +1203,7 @@ const HIGH_IMPACT_ROOT: readonly string[] = [
  * warrants a full workspace validation instead of scoped per-package checks.
  * Pure path predicate — it matches exact repo-root-relative paths against
  * `HIGH_IMPACT_ROOT` and has no coupling to the staged tree, so it is safe to
- * call with any file list (pre-commit calls it with staged files; nothing
- * else does today, since pre-push no longer runs scoped/full local gates).
+ * call with either staged files (pre-commit) or a push range (pre-push).
  */
 export function hasRootConfigurationChanges(files: readonly string[]): boolean {
   return files.some((f) => HIGH_IMPACT_ROOT.includes(f));
@@ -906,6 +1271,170 @@ export function parsePushRefs(stdin: string): ParsedPushRefs {
   }
 
   return { updates, deletionCount, ignoredBlankCount };
+}
+
+/** Whether a ref update introduces a brand-new branch (no remote tip yet). */
+export const isNewBranch = (update: PushRefUpdate): boolean => update.remoteSha === ZERO_SHA;
+
+/**
+ * The git operations the range helpers need, injected so the pure range logic
+ * can be unit-tested with fakes instead of a real repository.
+ */
+export type GitRunner = {
+  /** `git merge-base <a> <b>`; throws if there is no common ancestor. */
+  mergeBase(a: string, b: string): Promise<string>;
+  /** `git merge-base --is-ancestor <ancestor> <descendant>`. */
+  isAncestor(ancestor: string, descendant: string): Promise<boolean>;
+  /** `git diff --name-only <range>`. */
+  diffNames(range: string): Promise<string[]>;
+  /** `git diff --name-status <range>`. */
+  diffNameStatus(range: string): Promise<string[]>;
+};
+
+/**
+ * The default branch a new-branch push is compared against. Overridable via
+ * `CINDER_PUSH_BASE_REF` for repositories that branch from something other than
+ * `origin/main` (release branches, a differently named remote, stacked
+ * branches). If the configured ref can't be resolved, `rangeForUpdate` throws
+ * and the caller fails safe to the full suite — so a wrong value is slow, never
+ * unsound.
+ */
+export const pushBaseRef = (): string => Bun.env['CINDER_PUSH_BASE_REF'] ?? 'origin/main';
+
+/**
+ * Resolve the `<base>..<localSha>` range to diff for a single ref update.
+ *
+ * - New branch: base is `merge-base <pushBaseRef()> <localSha>`.
+ * - Fast-forward update: base is the existing `remoteSha` (two-dot diff).
+ * - Non-fast-forward (rebase/force-push): base is
+ *   `merge-base <remoteSha> <localSha>` so a rewritten branch still diffs from
+ *   the point it diverged rather than producing a disconnected two-dot diff.
+ *
+ * Any `merge-base` failure propagates as a throw so the caller falls back to
+ * the full suite.
+ */
+async function rangeForUpdate(update: PushRefUpdate, git: GitRunner): Promise<string> {
+  if (isNewBranch(update)) {
+    const base = await git.mergeBase(pushBaseRef(), update.localSha);
+    return `${base}..${update.localSha}`;
+  }
+  if (await git.isAncestor(update.remoteSha, update.localSha)) {
+    return `${update.remoteSha}..${update.localSha}`;
+  }
+  const base = await git.mergeBase(update.remoteSha, update.localSha);
+  return `${base}..${update.localSha}`;
+}
+
+/**
+ * Union the names of every file changed across all pushed ref updates. Throws
+ * (via {@link rangeForUpdate}) if a range cannot be derived, so the caller can
+ * fail safe to the full suite.
+ */
+export async function changedFilesForRange(
+  updates: readonly PushRefUpdate[],
+  git: GitRunner,
+): Promise<Set<string>> {
+  const changed = new Set<string>();
+  for (const update of updates) {
+    const range = await rangeForUpdate(update, git);
+    for (const file of await git.diffNames(range)) {
+      if (file.length > 0) changed.add(file);
+    }
+  }
+  return changed;
+}
+
+const CSS_LIKE_PATTERN = /\.(css|svelte)$/i;
+
+/**
+ * The changed `.css`/`.svelte` files that still exist on disk, suitable for
+ * handing to stylelint. Uses `--name-status` so renames/copies resolve to the
+ * **destination** path and deletions are dropped; `fileExists` is injected so
+ * the helper stays pure and unit-testable. An unrecognized status throws so the
+ * caller fails safe to the full suite.
+ */
+export async function changedCssLikeFiles(
+  updates: readonly PushRefUpdate[],
+  git: GitRunner,
+  fileExists: (path: string) => boolean | Promise<boolean>,
+): Promise<string[]> {
+  const candidates = new Set<string>();
+  for (const update of updates) {
+    const range = await rangeForUpdate(update, git);
+    for (const rawLine of await git.diffNameStatus(range)) {
+      const line = rawLine.trim();
+      if (line.length === 0) continue;
+      const fields = line.split(/\t+/);
+      const status = fields[0] ?? '';
+      const code = status[0];
+      if (code === 'D') continue; // deleted — nothing to lint
+      let path: string | undefined;
+      if (code === 'A' || code === 'M' || code === 'T') {
+        path = fields[1]; // single path
+      } else if (code === 'R' || code === 'C') {
+        path = fields[2]; // rename/copy → destination
+      } else {
+        // Anything else (including unmerged `U`) is unexpected here — throw so
+        // the caller fails safe to the full suite rather than silently mis-scope.
+        throw new Error(`Unrecognized diff status '${status}' in: ${line}`);
+      }
+      if (path === undefined || path.length === 0) {
+        // A known status with a missing path means the diff output is malformed
+        // (e.g. an `R`/`C` line whose destination field never arrived, so
+        // `fields[2]` is undefined). Dropping it would silently lose stylelint
+        // coverage, so fail safe by throwing.
+        throw new Error(`Diff status '${status}' missing its path in: ${line}`);
+      }
+      if (CSS_LIKE_PATTERN.test(path)) candidates.add(path);
+    }
+  }
+
+  const existing: string[] = [];
+  for (const path of candidates) {
+    if (await fileExists(path)) existing.push(path);
+  }
+  return existing.toSorted();
+}
+
+/**
+ * Whether a path lives inside one of the loaded workspace packages. Matches
+ * against the normalized package directory (no trailing slash) so a file
+ * exactly at the package root or anywhere beneath it counts.
+ */
+export function isUnderWorkspace(path: string, packages: readonly WorkspacePackage[]): boolean {
+  return packages.some((pkg) => {
+    const dir = pkg.dir.replace(/\/$/, '');
+    return path === dir || path.startsWith(`${dir}/`);
+  });
+}
+
+const DOC_BASENAME_PATTERN = /^(README|CHANGELOG)/i;
+
+/**
+ * Whether a path is *clearly documentation* and safe to ignore when deciding
+ * whether a push with no touched packages can skip the gates. Path-anchored,
+ * not basename-only, so a nested fixture such as
+ * `packages/markdown/test/fixtures/README-edge-case.md` is **not** treated as
+ * documentation and will instead escalate to the full suite.
+ *
+ * Ignorable:
+ * - a repo-root `README*` / `CHANGELOG*`,
+ * - a `README*` / `CHANGELOG*` directly under a package root,
+ * - anything under a package's `docs/` directory.
+ */
+export function isIgnorableDoc(path: string, packages: readonly WorkspacePackage[]): boolean {
+  if (!path.includes('/')) {
+    return DOC_BASENAME_PATTERN.test(path); // repo-root doc
+  }
+  for (const pkg of packages) {
+    const dir = pkg.dir.replace(/\/$/, '');
+    if (path.startsWith(`${dir}/docs/`)) return true;
+    const rest = path.startsWith(`${dir}/`) ? path.slice(dir.length + 1) : undefined;
+    if (rest !== undefined && !rest.includes('/') && DOC_BASENAME_PATTERN.test(rest)) {
+      return true; // README*/CHANGELOG* directly under the package root
+    }
+  }
+  return false;
 }
 
 /**
