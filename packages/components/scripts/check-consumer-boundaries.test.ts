@@ -37,7 +37,7 @@ describe('consumer boundary guard', () => {
     ).toEqual([]);
   });
 
-  test('allows a flat shared test helper .ts file directly under src/test/ only from tests', () => {
+  test('allows the token-introspection helper (explicit allowlist) only from tests', () => {
     const source =
       "import { readRootTokenNames } from '../../components/src/test/token-introspection.ts';";
     expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts')).toEqual(
@@ -49,12 +49,10 @@ describe('consumer boundary guard', () => {
   });
 
   test('rejects src/test/fixtures/** even from tests — fixtures import private component source', () => {
-    // A test-helper exemption scoped to the whole `src/test/` directory would let a
-    // playground test reach `src/test/fixtures/*.svelte` and transitively depend on
-    // private component source (fixtures like `access-gate-dynamic-fixture.svelte`
-    // import `../../components/access-gate/access-gate.svelte` directly) — exactly
-    // the reach-in this guard exists to prevent. The exemption must stay scoped to
-    // flat `.ts` helper files directly under `src/test/`, not the directory as a whole.
+    // Only the two allowlisted helpers are exempt; everything else under
+    // src/test/ is still policed, including fixtures like
+    // `access-gate-dynamic-fixture.svelte`, which imports
+    // `../../components/access-gate/access-gate.svelte` directly.
     const source =
       "import Fixture from '../../components/src/test/fixtures/access-gate-dynamic-fixture.svelte';";
     expect(
@@ -63,15 +61,30 @@ describe('consumer boundary guard', () => {
   });
 
   test('rejects src/test/*.test.ts even from tests — co-located tests import private component source', () => {
-    // A flat-file exemption that doesn't also exclude `.test.ts` would let a
-    // playground test import a component test co-located in `src/test/` (e.g.
-    // `hydrate.test.ts`, which imports `../components/input/input.svelte`) and
-    // transitively reach private component source through it. Both
-    // `token-introspection.test.ts` (this PR) and `hydrate.test.ts` (pre-existing)
-    // must stay rejected.
+    // Component tests co-located in src/test/ (e.g. `hydrate.test.ts`, which
+    // imports `../components/input/input.svelte`) are not on the allowlist and
+    // stay rejected, same as `token-introspection.test.ts` added in this PR.
     const cases = [
       "import { readRootTokenNames } from '../../components/src/test/token-introspection.test.ts';",
       "import { renderThenHydrate } from '../../components/src/test/hydrate.test.ts';",
+    ];
+    for (const source of cases) {
+      expect(
+        findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+      ).toHaveLength(1);
+    }
+  });
+
+  test('rejects src/test/index.ts and server-render.ts even from tests — dynamic sourcePath helpers can reach private component source at runtime', () => {
+    // These flat, non-test files would have passed a filename-pattern exemption
+    // ("any flat .ts under src/test/ that isn't *.test.ts"), but their exported
+    // helpers (renderThenHydrate, renderToServerHtml) accept an arbitrary
+    // sourcePath string at runtime and dynamically import it — a static import
+    // specifier check can never see what path a playground test passes in at
+    // the call site. Only an explicit allowlist (not a pattern) closes this off.
+    const cases = [
+      "import { renderThenHydrate } from '../../components/src/test/index.ts';",
+      "import { renderToServerHtml } from '../../components/src/test/server-render.ts';",
     ];
     for (const source of cases) {
       expect(
