@@ -48,7 +48,7 @@ export function findConsumerBoundaryViolations(
       importTarget === 'packages/components/src/index.ts' ||
       ((normalizedFilePath.endsWith('.test.ts') ||
         normalizedFilePath === 'packages/playground/scripts/preload.ts') &&
-        importTarget === 'packages/components/src/test/happy-dom.ts')
+        importTarget.startsWith('packages/components/src/test/'))
     ) {
       return;
     }

@@ -37,6 +37,17 @@ describe('consumer boundary guard', () => {
     ).toEqual([]);
   });
 
+  test('allows any shared test helper under src/test/ only from tests', () => {
+    const source =
+      "import { readRootTokenNames } from '../../components/src/test/token-introspection.ts';";
+    expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts')).toEqual(
+      [],
+    );
+    expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.ts')).toHaveLength(
+      1,
+    );
+  });
+
   test('rejects multiline imports and selectors', () => {
     const privateImport = `await import(\n  '../../components/src/components/button/index.ts'\n);`;
     const privateSelector = `container.querySelector(\n  '.cinder-button__icon'\n);`;
