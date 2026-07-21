@@ -109,9 +109,11 @@ export {
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
+  pairToolCallsWithResults,
   type ChatExportOptions,
   type DeliveryStatus,
 } from './utilities/index.ts';
+export type { StepInfo } from './utilities/types.ts';
 
 // Input
 export {

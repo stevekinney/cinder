@@ -252,11 +252,12 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const serverEntryPath = join(fixture.root, 'server.ts');
   await Bun.write(
     clientEntryPath,
-    `import Chat, { ArtifactPanel } from '@lostgradient/chat';\n` +
+    `import Chat, { ArtifactPanel, pairToolCallsWithResults } from '@lostgradient/chat';\n` +
       `import ChatComposerPopover from '@lostgradient/chat/composer-popover';\n` +
       `import ChatConversationHeader from '@lostgradient/chat/conversation-header';\n` +
       `import ChatConversationList from '@lostgradient/chat/conversation-list';\n` +
-      `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n`,
+      `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n` +
+      `if (pairToolCallsWithResults([]).length !== 0) throw new Error('expected no tool-call pairs');\n`,
   );
   await Bun.write(
     serverEntryPath,
@@ -316,8 +317,8 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `import '@lostgradient/chat/composer-popover/styles';\n` +
       `import '@lostgradient/chat/conversation-header/styles';\n` +
       `import '@lostgradient/chat/conversation-list/styles';\n` +
-      `import Chat, { appendAssistantMessage, appendUserMessage, createConversation, getMessageText, isJSONValue } from '@lostgradient/chat';\n` +
-      `import type { ChatSubmitEvent, ConversationHistory, MultiModalContent } from '@lostgradient/chat';\n` +
+      `import Chat, { appendAssistantMessage, appendUserMessage, createConversation, getMessageText, isJSONValue, pairToolCallsWithResults } from '@lostgradient/chat';\n` +
+      `import type { ChatSubmitEvent, ConversationHistory, MultiModalContent, StepInfo } from '@lostgradient/chat';\n` +
       `const userContent: MultiModalContent = { type: 'text', text: 'Hello' };\n` +
       `const assistantContent: MultiModalContent = { type: 'text', text: 'Hi there' };\n` +
       `const conversation: ConversationHistory = appendAssistantMessage(\n` +
@@ -325,10 +326,11 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `  [assistantContent],\n` +
       `);\n` +
       `const submitEvent: ChatSubmitEvent = { message: { role: 'user', content: 'Follow up' }, attachments: [] };\n` +
+      `const step: StepInfo = { title: 'Inspect', content: 'Read the transcript', status: 'done' };\n` +
       `const firstMessage = conversation.messages[conversation.ids[0] ?? ''];\n` +
       `if (firstMessage === undefined) throw new Error('expected a first conversation message');\n` +
       `if (!isJSONValue(conversation.metadata)) throw new Error('expected conversation metadata to be a JSON value');\n` +
-      `void [Chat, conversation, getMessageText(firstMessage), submitEvent];\n`,
+      `void [Chat, conversation, getMessageText(firstMessage), pairToolCallsWithResults([]), step, submitEvent];\n`,
   );
   await Bun.write(
     tsconfigPath,
