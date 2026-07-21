@@ -58,8 +58,16 @@ export type ChatReadReceiptEvent = {
  * running, so a synchronous `$state` write inside a handler is safe. The one
  * exception: if `subscribe` itself calls a handler SYNCHRONOUSLY before
  * returning (e.g. replaying a buffered event during setup), that call still
- * runs inside the same `$effect` `subscribe` was invoked from — see the
- * {@link ChatAdapter.subscribe} doc for what that means for `$state` writes.
+ * runs inside the same `$effect` `subscribe` was invoked from.
+ *
+ * That matters even if the replaying code contains no `$state` write of its
+ * own: `onTypingChange` and `onReadReceipt` write to Chat's OWN internal
+ * typing/read-receipt state before forwarding to the matching consumer
+ * callback prop, and that consumer callback may write `$state` too — neither
+ * of those writes is something the adapter author controls or can "defer"
+ * from inside their own code. Defer the CALL to the handler itself instead
+ * (e.g. `queueMicrotask(() => handlers.onMessage(message))`), the same way
+ * {@link ChatAdapter.subscribe} defers a synchronous write of its own.
  */
 export type ChatPushHandlers = {
   /** A new (or updated) message arrived. Forwarded to the consumer; Chat does not mutate the transcript. */
