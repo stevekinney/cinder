@@ -387,12 +387,26 @@
     onStepSelect?.(stepPathKey);
   }
 
+  function isInteractiveDescendant(node: HTMLLIElement, eventTarget: EventTarget | null): boolean {
+    if (!(eventTarget instanceof Element)) return false;
+    const interactiveTarget = eventTarget.closest(
+      'a[href], button, input, select, textarea, summary, [role="button"], [role="link"]',
+    );
+    return (
+      interactiveTarget !== null && interactiveTarget !== node && node.contains(interactiveTarget)
+    );
+  }
+
   function createStepSelectionAttachment(stepPathKey: string): Attachment<HTMLLIElement> {
     return (node) => {
       if (onStepSelect === undefined) return;
 
-      const handleClick = (): void => handleStepSelect(stepPathKey);
+      const handleClick = (event: MouseEvent): void => {
+        if (isInteractiveDescendant(node, event.target)) return;
+        handleStepSelect(stepPathKey);
+      };
       const handleKeydown = (event: KeyboardEvent): void => {
+        if (event.target !== node) return;
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
         handleStepSelect(stepPathKey);
@@ -426,8 +440,6 @@
     data-cinder-selectable={onStepSelect === undefined ? undefined : ''}
     data-cinder-connector-after={row.connectorAfter}
     aria-current={row.ariaCurrent ? 'step' : undefined}
-    aria-pressed={onStepSelect === undefined ? undefined : selected ? 'true' : 'false'}
-    role={onStepSelect === undefined ? undefined : 'button'}
     style:--_cinder-rst-depth={row.depth}
     tabindex={onStepSelect === undefined ? undefined : 0}
   >

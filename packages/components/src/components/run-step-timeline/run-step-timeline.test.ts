@@ -958,13 +958,35 @@ describe('selection', () => {
     });
 
     const row = stepRowByPath(container, runningStep.id);
-    expect(row?.getAttribute('role')).toBe('button');
     expect(row?.getAttribute('tabindex')).toBe('0');
-    expect(row?.getAttribute('aria-pressed')).toBe('true');
     await fireEvent.keyDown(row as HTMLElement, { key: 'Enter' });
     await fireEvent.keyDown(row as HTMLElement, { key: ' ' });
 
     expect(selectedStepIds).toEqual([runningStep.id, runningStep.id]);
+  });
+
+  test('does not select a row when nested controls are activated', async () => {
+    const selectedStepIds: string[] = [];
+    const step: RunStep = {
+      id: 'inspect',
+      label: 'Inspect result',
+      status: 'running',
+      link: { label: 'Open logs', href: '/logs' },
+      details: [{ id: 'stdout', label: 'Output', content: 'Ready' }],
+    };
+    const { container, getByRole } = render(RunStepTimeline, {
+      steps: [step],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    await fireEvent.click(getByRole('link', { name: 'Open logs' }));
+    await fireEvent.keyDown(getByRole('link', { name: 'Open logs' }), { key: 'Enter' });
+    await fireEvent.click(getByRole('button', { name: 'Output' }));
+    await fireEvent.keyDown(getByRole('button', { name: 'Output' }), { key: 'Enter' });
+
+    expect(selectedStepIds).toEqual([]);
+    await fireEvent.click(stepRowByPath(container, 'inspect') as HTMLElement);
+    expect(selectedStepIds).toEqual(['inspect']);
   });
 
   test('fires onStepSelect when a nested child step row is clicked', async () => {

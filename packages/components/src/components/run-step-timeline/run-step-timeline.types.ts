@@ -505,9 +505,10 @@ export interface RunStepTimelineSchemaProps {
   /** Accessible label for the timeline list. */
   label?: string | undefined;
   /**
-   * Step id to visually mark as selected.
+   * Rendered step path key to visually mark as selected.
    * Accepts `null` so consumers can clear linked selection without omitting
-   * the prop.
+   * the prop. Use the value passed to `onStepSelect`, or a row's
+   * `data-cinder-path` attribute, for nested or branch-lane steps.
    */
   selectedStepId?: string | null | undefined;
   /** Additional CSS classes applied to the root element. */
