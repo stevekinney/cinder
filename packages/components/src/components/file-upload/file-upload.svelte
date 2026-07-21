@@ -38,6 +38,7 @@
     required,
     name,
     class: className,
+    triggerLabel = 'Choose files',
     files,
     idle,
     dragActive,
@@ -339,7 +340,7 @@
       disabled={field.disabled}
       onclick={openPicker}
     >
-      Choose files
+      {triggerLabel}
     </button>
   </div>
 

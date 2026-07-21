@@ -94,7 +94,14 @@ describe('FileUpload rendering', () => {
     expect(container.querySelector('button')?.textContent).toBe('Choose files');
   });
 
-  test('forwards accept, multiple, name, disabled, and required to the input', () => {
+  test('renders custom picker trigger text', () => {
+    const { container } = render(FileUpload, {
+      props: { id: 'history-import', triggerLabel: 'Import history JSON' },
+    });
+    expect(container.querySelector('button')?.textContent).toBe('Import history JSON');
+  });
+
+  test('forwards accept, multiple, name, disabled, required, and webkitdirectory to the input', () => {
     const { container } = render(FileUpload, {
       props: {
         id: 'attachments',
@@ -103,6 +110,7 @@ describe('FileUpload rendering', () => {
         name: 'attachments',
         disabled: true,
         required: true,
+        webkitdirectory: true,
       },
     });
     const input = container.querySelector('#attachments') as HTMLInputElement;
@@ -111,6 +119,7 @@ describe('FileUpload rendering', () => {
     expect(input.getAttribute('name')).toBe('attachments');
     expect(input.disabled).toBe(true);
     expect(input.required).toBe(true);
+    expect(input.hasAttribute('webkitdirectory')).toBe(true);
   });
 
   test('merges aria-describedby from FormField context and the consumer', () => {
@@ -292,7 +301,7 @@ describe('FileUpload drag state and accessibility', () => {
       createFile('bad.mov', 'video/quicktime', 2 * 1024 * 1024),
     ];
     const { container } = render(FileUpload, {
-      props: { id: 'upload', maxSize: 1024, multiple: true },
+      props: { id: 'upload', maxSize: 1024, multiple: true, triggerLabel: 'Import files' },
     });
     const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
     await fireEvent(dropzone, createDropEvent('drop', files));
@@ -331,8 +340,10 @@ describe('FileUpload drag state and accessibility', () => {
     expect(dropzone.getAttribute('aria-labelledby')).toBe('resume-label');
   });
 
-  test('visible button trigger opens the native picker path', async () => {
-    const { container } = render(FileUpload, { props: { id: 'upload' } });
+  test('visible button trigger opens the native picker path with custom text', async () => {
+    const { container } = render(FileUpload, {
+      props: { id: 'upload', triggerLabel: 'Choose directory' },
+    });
     const input = container.querySelector('#upload') as HTMLInputElement;
     const button = container.querySelector('button') as HTMLButtonElement;
     const click = mock(() => {});
@@ -343,7 +354,7 @@ describe('FileUpload drag state and accessibility', () => {
     });
     input.click = click as unknown as typeof input.click;
     await fireEvent.click(button);
-    expect(button.textContent).toBe('Choose files');
+    expect(button.textContent).toBe('Choose directory');
     expect(input.value).toBe('');
     expect(click).toHaveBeenCalledTimes(1);
   });

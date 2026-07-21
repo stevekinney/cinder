@@ -28,6 +28,10 @@ const schema = {
       type: 'number',
       description: 'Maximum allowed file size in bytes.',
     },
+    triggerLabel: {
+      type: 'string',
+      description: 'Visible text for the picker trigger button. Default `Choose files`.',
+    },
   },
   additionalProperties: false,
   metadata: {
