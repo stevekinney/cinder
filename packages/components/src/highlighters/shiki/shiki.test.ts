@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
+import { rm } from 'node:fs/promises';
 import { resolve as resolvePath } from 'node:path';
 
-import { $ } from 'bun';
 import { afterEach, describe, expect, test } from 'bun:test';
 import ts from 'typescript';
 
@@ -160,6 +160,7 @@ describe('shikiHighlighter — happy path', () => {
               'github-light': async () => ({}),
               'github-dark': async () => ({}),
             },
+            guessEmbeddedLanguages: () => [],
           }) as unknown as Awaited<ReturnType<NonNullable<Parameters<typeof shikiHighlighter>[1]>>>,
       );
       const first = await highlight('const x = 1;', 'javascript');
@@ -348,6 +349,32 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
     expect(html).toMatch(/<span[^>]*style=/);
   });
 
+  test('loads embedded grammars for compound languages (Markdown with a fenced TypeScript block)', async () => {
+    // The previous `import('shiki').codeToHtml` shorthand auto-loaded
+    // grammars embedded in the source via `guessEmbeddedLanguages` (fenced
+    // code inside Markdown, `<script lang="...">` inside Svelte/Vue/HTML).
+    // `ensureLanguageLoaded` alone only loads the requested top-level
+    // language, so a Markdown document whose fenced block requests a
+    // grammar Markdown itself doesn't declare (`typescript`, here) needs
+    // the embedded-language loader to still highlight that nested region.
+    const highlight = shikiHighlighter();
+    const html = await highlight('```typescript\nconst x: number = 1;\n```\n', 'markdown');
+    expect(html.startsWith('<pre')).toBe(true);
+    // Without the embedded grammar loaded, Shiki tokenizes the fenced
+    // region as one flat run — every token shares Markdown's single plain-
+    // text color. With `typescript` loaded, `const`/`number` get the
+    // theme's distinct keyword/type colors. So more than one unique
+    // `color:` value appearing is the signal that the embedded TypeScript
+    // grammar actually tokenized the fence content, not just Markdown's own
+    // outer grammar (which alone would still emit *a* styled `<span>`, just
+    // always the same color — a weaker assertion this regression would slip
+    // through).
+    const colors = new Set(
+      Array.from(html.matchAll(/color:#[0-9A-Fa-f]{6}/g), (match) => match[0]),
+    );
+    expect(colors.size).toBeGreaterThan(1);
+  });
+
   test("cinder's own build externalizes every Shiki subpath this adapter imports", async () => {
     // The real regression this issue guards against: `scripts/build.ts` runs
     // with `splitting: false`, so any Shiki-family specifier THIS file
@@ -360,10 +387,14 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
     // vendored Shiki internals).
     const buildScriptPath = resolvePath(import.meta.dir, '../../../scripts/build.ts');
     const buildScriptSource = await Bun.file(buildScriptPath).text();
-    for (const required of ['@shikijs/engine-oniguruma', "'shiki/*'", "'shiki',"]) {
+    // Regex-based rather than exact-substring so this survives quote-style or
+    // formatting changes to the externals list — it only pins that each
+    // specifier appears as its own quoted string literal somewhere in the file.
+    for (const required of ['@shikijs/engine-oniguruma', 'shiki/\\*', 'shiki']) {
+      const pattern = new RegExp(`['"]${required}['"]`);
       expect(
-        buildScriptSource.includes(required),
-        `scripts/build.ts must externalize ${required} for the Shiki adapter`,
+        pattern.test(buildScriptSource),
+        `scripts/build.ts must externalize a '${required}' specifier for the Shiki adapter`,
       ).toBe(true);
     }
 
@@ -384,7 +415,7 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
       // bundle (~10 MB) means a subpath leaked into the output uninlined.
       expect(totalBytes).toBeLessThan(100_000);
     } finally {
-      await $`rm -rf ${outdirectory}`.quiet();
+      await rm(outdirectory, { recursive: true, force: true });
     }
   });
 });

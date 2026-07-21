@@ -153,6 +153,15 @@ type ShikiModule = {
   highlighter: HighlighterCore;
   bundledLanguages: BundledLanguages;
   bundledThemes: BundledThemes;
+  /**
+   * Shiki's heuristic embedded-language detector (fenced code inside
+   * Markdown, `<script lang="...">` inside Svelte/Vue/HTML, etc.) — the same
+   * function the previous singleton `codeToHtml` shorthand used to auto-load
+   * nested grammars. Threaded through here (rather than imported separately
+   * in `highlight()`) so injected test loaders can opt out without needing
+   * their own `shiki/core` import.
+   */
+  guessEmbeddedLanguages: (code: string, lang: string) => string[];
 };
 
 type ShikiModuleLoader = () => Promise<ShikiModule>;
@@ -185,6 +194,66 @@ async function ensureThemesLoaded(
 }
 
 /**
+ * Best-effort load of any languages `guessEmbeddedLanguages` finds embedded
+ * in `code` (fenced fences inside Markdown, `<script lang="...">` inside
+ * Svelte/Vue/HTML, etc.) — mirrors the auto-load behavior Shiki's own
+ * singleton `codeToHtml` shorthand provided. A guess that doesn't name a
+ * real Shiki language, or that fails to load, is swallowed: it only affects
+ * whether nested regions get highlighted, never whether the top-level
+ * `normalizedLang` result renders.
+ */
+async function loadGuessedEmbeddedLanguages(
+  shiki: ShikiModule,
+  code: string,
+  lang: string,
+): Promise<void> {
+  for (const guessed of shiki.guessEmbeddedLanguages(code, lang)) {
+    if (!Object.hasOwn(shiki.bundledLanguages, guessed)) continue;
+    try {
+      await ensureLanguageLoaded(shiki, guessed);
+    } catch {
+      // Best-effort — an embedded grammar that fails to load only costs
+      // that nested region its highlighting, not the whole block.
+    }
+  }
+}
+
+/**
+ * The `HighlighterCore` (and its Oniguruma/WASM engine) is expensive to
+ * build and safe to share: language and theme registries only grow, so
+ * every `shikiHighlighter()` instance that uses the default loader shares
+ * one process-wide instance rather than each paying for its own WASM
+ * engine and re-fetching grammars/themes another instance already loaded —
+ * matching the sharing the previous singleton-based `shiki` shorthand gave
+ * for free. A `moduleLoader` passed in for testing bypasses this cache
+ * entirely (see `shikiHighlighter`'s second parameter).
+ */
+let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
+
+function getSharedShikiModule(): Promise<ShikiModule> {
+  sharedShikiModule ??= createRetryingLoaderCache(async (): Promise<ShikiModule> => {
+    const [{ createOnigurumaEngine }, coreModule, langsModule, themesModule] = await Promise.all([
+      import('@shikijs/engine-oniguruma'),
+      import('shiki/core'),
+      import('shiki/langs'),
+      import('shiki/themes'),
+    ]);
+    const highlighter = await coreModule.createHighlighterCore({
+      themes: [],
+      langs: [],
+      engine: createOnigurumaEngine(import('shiki/wasm')),
+    });
+    return {
+      highlighter,
+      bundledLanguages: langsModule.bundledLanguages,
+      bundledThemes: themesModule.bundledThemes,
+      guessEmbeddedLanguages: coreModule.guessEmbeddedLanguages,
+    };
+  });
+  return sharedShikiModule();
+}
+
+/**
  * Create a Shiki-backed {@link Highlighter} suitable for
  * `<CodeBlock highlighter={...} />`. See module-level JSDoc for the
  * full behavior contract.
@@ -203,33 +272,21 @@ export function shikiHighlighter(
   const loadShiki = createRetryingLoaderCache(
     moduleLoader ??
       (async (): Promise<ShikiModule> => {
-        const [{ createOnigurumaEngine }, { createHighlighterCore }, langsModule, themesModule] =
-          await Promise.all([
-            import('@shikijs/engine-oniguruma'),
-            import('shiki/core'),
-            import('shiki/langs'),
-            import('shiki/themes'),
-          ]);
-        const highlighter = await createHighlighterCore({
-          themes: [],
-          langs: [],
-          engine: createOnigurumaEngine(import('shiki/wasm')),
-        });
-        const shikiModule: ShikiModule = {
-          highlighter,
-          bundledLanguages: langsModule.bundledLanguages,
-          bundledThemes: themesModule.bundledThemes,
-        };
+        const shikiModule = await getSharedShikiModule();
 
         // Optional preload — if the consumer named specific languages, load
-        // them (and the configured theme) up front so Shiki resolves and
-        // caches them before the first real call. Failures here are
-        // non-fatal; per-call language lookup will still try (and fall back
-        // to plaintext on its own miss).
+        // the configured theme once and each named language, so Shiki
+        // resolves and caches them before the first real call. Failures
+        // here are non-fatal; per-call language lookup will still try (and
+        // fall back to plaintext on its own miss).
         if (langs !== undefined) {
+          try {
+            await ensureThemesLoaded(shikiModule, theme);
+          } catch {
+            // Swallow — the per-call path below logs and falls back.
+          }
           for (const lang of langs) {
             try {
-              await ensureThemesLoaded(shikiModule, theme);
               await ensureLanguageLoaded(shikiModule, lang);
             } catch {
               // Swallow — the per-call path below logs and falls back.
@@ -279,6 +336,7 @@ export function shikiHighlighter(
     try {
       await ensureLanguageLoaded(shiki, normalizedLang);
       await ensureThemesLoaded(shiki, theme);
+      await loadGuessedEmbeddedLanguages(shiki, code, normalizedLang);
       const html = shiki.highlighter.codeToHtml(code, {
         lang: normalizedLang,
         ...buildThemeOption(theme),
