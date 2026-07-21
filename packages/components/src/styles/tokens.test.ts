@@ -10,18 +10,10 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
+import { extractRootBlock } from '../test/token-introspection.ts';
+
 const TOKENS_DIR = join(import.meta.dir, 'tokens');
 const TOKENS_BASE_PATH = join(import.meta.dir, 'tokens-base.css');
-
-function extractRootBlock(css: string): string {
-  const rootMatch = css.match(/^\s*:root\s*\{([\s\S]*?)\n\}/m);
-
-  if (!rootMatch?.[1]) {
-    throw new Error('Could not find :root { ... } block in tokens-base.css');
-  }
-
-  return rootMatch[1];
-}
 
 function extractReducedMotionRootBlock(css: string): string {
   const reducedMotionMatch = css.match(

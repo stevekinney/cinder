@@ -6,6 +6,34 @@ const playgroundRoots = ['packages/playground/src', 'packages/playground/scripts
 
 const sourceImportPattern =
   /(?:from\s*|(?:import|require|import\.meta\.glob)\s*\(\s*(?:\/\*[\s\S]*?\*\/\s*)*|import\s+)(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
+// Explicit allowlist of shared test helpers that `packages/playground` test
+// files (and `scripts/preload.ts`) may reach into directly, alongside the
+// `happy-dom.ts` precedent this follows.
+//
+// This started as a filename PATTERN (any flat, non-`.test.ts` file directly
+// under `src/test/`) but that kept reopening the same class of bypass as new
+// cases surfaced during review:
+//   - `src/test/fixtures/**` — Svelte fixtures that import private component
+//     source directly (e.g. an `access-gate-*-fixture.svelte` importing
+//     `../../components/access-gate/access-gate.svelte`).
+//   - `src/test/*.test.ts` — component tests co-located in this directory
+//     (e.g. `hydrate.test.ts`) that import private component source to test
+//     it.
+//   - `src/test/index.ts` and `src/test/server-render.ts` — the barrel
+//     re-exports `renderThenHydrate`/`renderToServerHtml`, both of which
+//     accept an arbitrary `sourcePath` string at runtime and dynamically
+//     import it. A pattern that allows the FILE can't see what path gets
+//     passed to it at the call site, so it can't rule out a playground test
+//     passing a private `src/components/**/*.svelte` path through as data
+//     rather than as a static import specifier.
+//
+// An explicit allowlist closes all three off at once: only the two helpers
+// playground tests actually use are reachable, and adding a new one requires
+// a conscious edit here rather than just dropping a flat file in `src/test/`.
+const sharedTestHelperAllowlist = new Set([
+  'packages/components/src/test/happy-dom.ts',
+  'packages/components/src/test/token-introspection.ts',
+]);
 const internalSelectorPattern =
   /\.cinder-(?:[a-z0-9-]+|\$\{[^}]+\})(?:__[a-z0-9_${}-]+|--[a-z0-9_${}-]+)/i;
 const selectorCallPattern =
@@ -48,7 +76,7 @@ export function findConsumerBoundaryViolations(
       importTarget === 'packages/components/src/index.ts' ||
       ((normalizedFilePath.endsWith('.test.ts') ||
         normalizedFilePath === 'packages/playground/scripts/preload.ts') &&
-        importTarget === 'packages/components/src/test/happy-dom.ts')
+        sharedTestHelperAllowlist.has(importTarget))
     ) {
       return;
     }

@@ -13,30 +13,12 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
+import { readRootTokenNames } from '../test/token-introspection.ts';
+
 const PACKAGE_ROOT = join(import.meta.dir, '..', '..');
 const REPO_ROOT = join(PACKAGE_ROOT, '..', '..');
 const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');
 const TOKENS_DOC = join(REPO_ROOT, 'docs', 'tokens.md');
-
-function extractCssTokens(css: string): Set<string> {
-  // Pull just the `:root { ... }` block. The file also has scoped redeclarations
-  // (`:root[data-theme='dark']`, the prefers-reduced-motion override, etc.) that
-  // would otherwise inflate the token set with duplicates.
-  const rootMatch = css.match(/^\s*:root\s*\{([\s\S]*?)\n\}/m);
-  const rootBody = rootMatch?.[1];
-  if (!rootBody) {
-    throw new Error('Could not find :root { ... } block in tokens-base.css');
-  }
-  // Strip CSS block comments so a `/* --cinder-future: reserved */` aside in the
-  // source never gets counted as a real declaration.
-  const stripped = rootBody.replace(/\/\*[\s\S]*?\*\//g, '');
-  const tokens = new Set<string>();
-  const declarationPattern = /--cinder-[a-z0-9-]+(?=\s*:)/g;
-  for (const match of stripped.matchAll(declarationPattern)) {
-    tokens.add(match[0]);
-  }
-  return tokens;
-}
 
 function extractDocTokens(markdown: string): Set<string> {
   // Doc lists tokens as inline code in table rows: `` `--cinder-space-4` ``.
@@ -58,7 +40,7 @@ describe('docs/tokens.md drift', () => {
       readFile(TOKENS_DOC, 'utf8'),
     ]);
 
-    const cssTokens = extractCssTokens(css);
+    const cssTokens = readRootTokenNames(css);
     const docTokens = extractDocTokens(doc);
 
     // Sanity floor: a parser regression that silently returns a tiny set would

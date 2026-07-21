@@ -37,6 +37,62 @@ describe('consumer boundary guard', () => {
     ).toEqual([]);
   });
 
+  test('allows the token-introspection helper (explicit allowlist) only from tests', () => {
+    const source =
+      "import { readRootTokenNames } from '../../components/src/test/token-introspection.ts';";
+    expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts')).toEqual(
+      [],
+    );
+    expect(findConsumerBoundaryViolations(source, 'packages/playground/src/app.ts')).toHaveLength(
+      1,
+    );
+  });
+
+  test('rejects src/test/fixtures/** even from tests — fixtures import private component source', () => {
+    // Only the two allowlisted helpers are exempt; everything else under
+    // src/test/ is still policed, including fixtures like
+    // `access-gate-dynamic-fixture.svelte`, which imports
+    // `../../components/access-gate/access-gate.svelte` directly.
+    const source =
+      "import Fixture from '../../components/src/test/fixtures/access-gate-dynamic-fixture.svelte';";
+    expect(
+      findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+    ).toHaveLength(1);
+  });
+
+  test('rejects src/test/*.test.ts even from tests — co-located tests import private component source', () => {
+    // Component tests co-located in src/test/ (e.g. `hydrate.test.ts`, which
+    // imports `../components/input/input.svelte`) are not on the allowlist and
+    // stay rejected, same as `token-introspection.test.ts` added in this PR.
+    const cases = [
+      "import { readRootTokenNames } from '../../components/src/test/token-introspection.test.ts';",
+      "import { renderThenHydrate } from '../../components/src/test/hydrate.test.ts';",
+    ];
+    for (const source of cases) {
+      expect(
+        findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+      ).toHaveLength(1);
+    }
+  });
+
+  test('rejects src/test/index.ts and server-render.ts even from tests — dynamic sourcePath helpers can reach private component source at runtime', () => {
+    // These flat, non-test files would have passed a filename-pattern exemption
+    // ("any flat .ts under src/test/ that isn't *.test.ts"), but their exported
+    // helpers (renderThenHydrate, renderToServerHtml) accept an arbitrary
+    // sourcePath string at runtime and dynamically import it — a static import
+    // specifier check can never see what path a playground test passes in at
+    // the call site. Only an explicit allowlist (not a pattern) closes this off.
+    const cases = [
+      "import { renderThenHydrate } from '../../components/src/test/index.ts';",
+      "import { renderToServerHtml } from '../../components/src/test/server-render.ts';",
+    ];
+    for (const source of cases) {
+      expect(
+        findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+      ).toHaveLength(1);
+    }
+  });
+
   test('rejects multiline imports and selectors', () => {
     const privateImport = `await import(\n  '../../components/src/components/button/index.ts'\n);`;
     const privateSelector = `container.querySelector(\n  '.cinder-button__icon'\n);`;

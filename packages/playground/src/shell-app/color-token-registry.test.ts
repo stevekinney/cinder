@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
+import { readRootTokenNames } from '../../../components/src/test/token-introspection.ts';
 import {
   COLOR_TOKEN_GROUPS,
   COLOR_TOKEN_NAMES,
@@ -19,17 +20,6 @@ const TOKENS_BASE_PATH = join(
   'styles',
   'tokens-base.css',
 );
-
-function extractRootTokenNames(css: string): Set<string> {
-  const rootMatch = css.match(/^\s*:root\s*\{([\s\S]*?)\n\}/m);
-  const rootBody = rootMatch?.[1];
-  if (rootBody === undefined) {
-    throw new Error('Could not find :root block in tokens-base.css');
-  }
-
-  const stripped = rootBody.replace(/\/\*[\s\S]*?\*\//g, '');
-  return new Set([...stripped.matchAll(/(--cinder-[a-z0-9-]+)\s*:/g)].map((match) => match[1]!));
-}
 
 describe('color token registry', () => {
   test('contains the expected global color-token inventory', () => {
@@ -50,7 +40,7 @@ describe('color token registry', () => {
 
   test('every registered token is declared in tokens-base.css', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
-    const rootTokenNames = extractRootTokenNames(css);
+    const rootTokenNames = readRootTokenNames(css);
 
     const missing = COLOR_TOKEN_NAMES.filter((tokenName) => !rootTokenNames.has(tokenName));
 
