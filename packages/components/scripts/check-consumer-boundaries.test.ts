@@ -62,6 +62,24 @@ describe('consumer boundary guard', () => {
     ).toHaveLength(1);
   });
 
+  test('rejects src/test/*.test.ts even from tests — co-located tests import private component source', () => {
+    // A flat-file exemption that doesn't also exclude `.test.ts` would let a
+    // playground test import a component test co-located in `src/test/` (e.g.
+    // `hydrate.test.ts`, which imports `../components/input/input.svelte`) and
+    // transitively reach private component source through it. Both
+    // `token-introspection.test.ts` (this PR) and `hydrate.test.ts` (pre-existing)
+    // must stay rejected.
+    const cases = [
+      "import { readRootTokenNames } from '../../components/src/test/token-introspection.test.ts';",
+      "import { renderThenHydrate } from '../../components/src/test/hydrate.test.ts';",
+    ];
+    for (const source of cases) {
+      expect(
+        findConsumerBoundaryViolations(source, 'packages/playground/src/app.test.ts'),
+      ).toHaveLength(1);
+    }
+  });
+
   test('rejects multiline imports and selectors', () => {
     const privateImport = `await import(\n  '../../components/src/components/button/index.ts'\n);`;
     const privateSelector = `container.querySelector(\n  '.cinder-button__icon'\n);`;

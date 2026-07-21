@@ -8,13 +8,18 @@ const sourceImportPattern =
   /(?:from\s*|(?:import|require|import\.meta\.glob)\s*\(\s*(?:\/\*[\s\S]*?\*\/\s*)*|import\s+)(['"`])((?:\\.|(?!\1)[\s\S])*?)\1/g;
 // Shared test helper modules such as `src/test/happy-dom.ts` and
 // `src/test/token-introspection.ts` — flat `.ts` files directly under
-// `src/test/`, never a nested path. Deliberately excludes `src/test/fixtures/**`:
-// those Svelte fixtures import PRIVATE component source themselves (e.g. an
-// `access-gate-*-fixture.svelte` importing `../../components/access-gate/access-gate.svelte`),
-// so allowing playground tests to reach *those* would let a playground test
-// transitively depend on private component source through the fixture —
-// exactly the reach-in this guard exists to prevent.
-const sharedTestHelperPattern = /^packages\/components\/src\/test\/[^/]+\.ts$/;
+// `src/test/`, never a nested path, and never a `.test.ts` or `.d.ts` file.
+// Two things this deliberately excludes, both because they'd let a playground
+// test transitively depend on PRIVATE component source through an
+// intermediary — exactly the reach-in this guard exists to prevent:
+//   - `src/test/fixtures/**`: Svelte fixtures that import private component
+//     source directly (e.g. an `access-gate-*-fixture.svelte` importing
+//     `../../components/access-gate/access-gate.svelte`).
+//   - `src/test/*.test.ts`: component tests co-located in this directory
+//     (e.g. `hydrate.test.ts`) that import private component source to test
+//     it — a shared-helper exemption is not meant to cover test files.
+const sharedTestHelperPattern =
+  /^packages\/components\/src\/test\/(?!.*\.(?:test|d)\.ts$)[^/]+\.ts$/;
 const internalSelectorPattern =
   /\.cinder-(?:[a-z0-9-]+|\$\{[^}]+\})(?:__[a-z0-9_${}-]+|--[a-z0-9_${}-]+)/i;
 const selectorCallPattern =
