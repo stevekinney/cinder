@@ -144,6 +144,21 @@ jobs:
 
   unit-tests:
     needs: scope
+    # `always()` so a `scope` job FAILURE (e.g. `changed-components.ts`
+    # erroring) still runs this job instead of the default GitHub behavior —
+    # silently SKIPPING every job that `needs` a failed job. `unit-tests` is
+    # a required status check (see docs/validation-topology.md's "Branch
+    # protection" section) and a skipped check run satisfies branch
+    # protection, so an unhealthy `scope` job would otherwise let a PR merge
+    # with no lint/build/test signal at all. This job's own steps already
+    # degrade safely when `scope`'s outputs are missing (the unconditional
+    # lint/aggregator/components:check steps don't read them at all; the
+    # final scoped-test step falls back to the full suite when
+    # `needs.scope.outputs.mode` isn't `'filtered'`), so running unconditionally
+    # is safe, not merely safe-ish. Only skips if `scope` itself was
+    # cancelled (normally because a newer push is already superseding this
+    # whole run via the concurrency group above).
+    if: always() && needs.scope.result != 'cancelled'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
