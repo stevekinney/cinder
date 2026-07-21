@@ -61,6 +61,44 @@ describe('chat message action buttons', () => {
     expect(resetBlock).not.toMatch(/(^|\s)right:\s*auto/);
   });
 
+  test('below-bubble footer spacing is an in-box hover bridge', () => {
+    const footerRule = extractRule(source, '\n  .chat-message-footer {');
+    expect(footerRule).toContain('padding-top: var(--cinder-space-1)');
+    expect(footerRule).not.toContain('margin-top: var(--cinder-space-1)');
+
+    const desktopRules = source.slice(0, source.indexOf('@media (max-width: 480px)'));
+    for (const role of ['developer', 'system', 'snapshot', 'tool-call', 'tool-result']) {
+      expect(desktopRules).not.toContain(
+        `.chat-message-wrapper[data-role='${role}'] .chat-message-footer {`,
+      );
+    }
+
+    const toolPairRule = extractRule(
+      source,
+      '.chat-message-wrapper[data-tool-pair] .chat-message-footer {',
+    );
+    expect(toolPairRule).not.toMatch(/(?:margin|padding)-top:/);
+  });
+
+  test('desktop side footers clear the below-bubble bridge', () => {
+    for (const role of ['user', 'assistant']) {
+      const rule = extractRule(
+        source,
+        `.chat-message-wrapper[data-role='${role}'] .chat-message-footer {`,
+      );
+      expect(rule).toContain('padding-top: 0');
+    }
+  });
+
+  test('narrow side footers restore the below-bubble hover bridge', () => {
+    const resetBlock = extractRule(
+      source,
+      ".chat-message-wrapper[data-role='snapshot'] .chat-message-footer {",
+    );
+    expect(resetBlock).toContain('padding-top: var(--cinder-space-1)');
+    expect(resetBlock).not.toContain('margin-top: var(--cinder-space-1)');
+  });
+
   // Regression for #777: a `display: none` footer on tool-paired rows can
   // never be resurrected by the shared `:hover`/`:focus-within` rule (which
   // only toggles opacity/pointer-events), making retry/edit/copy and any
@@ -84,6 +122,12 @@ describe('chat message action buttons', () => {
     // assertion.
     expect(source).toMatch(
       /\.chat-message-wrapper:hover\s+\.chat-message-footer\s*,\s*\.chat-message-wrapper:focus-within\s+\.chat-message-footer\s*\{/,
+    );
+  });
+
+  test('keyboard focus within any message wrapper still reveals its footer', () => {
+    expect(source).toMatch(
+      /\.chat-message-wrapper:focus-within\s+\.chat-message-footer\s*\{[^}]*opacity:\s*1;[^}]*pointer-events:\s*auto;/s,
     );
   });
 
