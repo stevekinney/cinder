@@ -76,9 +76,9 @@
   // `window.matchMedia` is unavailable.
   const hasMatchMedia = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
   let syncedMobileMediaQuery = $state(hasMatchMedia);
-  let mobile = $state(false);
+  let mobile = $state(hasMatchMedia ? window.matchMedia(mobileMediaQuery).matches : false);
   $effect(() => {
-    if (!hasMatchMedia) return;
+    if (!hasMatchMedia) return undefined;
     const list = window.matchMedia(mobileMediaQuery);
     const update = () => {
       mobile = list.matches;
@@ -93,10 +93,13 @@
       };
     }
 
-    list.addListener(update);
-    return () => {
-      list.removeListener(update);
-    };
+    if (typeof list.addListener === 'function') {
+      list.addListener(update);
+      return () => {
+        list.removeListener(update);
+      };
+    }
+    return undefined;
   });
   const usesSsrResponsiveFallback = $derived(!syncedMobileMediaQuery);
   const rendersCustomResponsiveFallbackStyle = $derived(
