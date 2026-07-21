@@ -45,6 +45,8 @@ export type FileUploadProps = Omit<
   name?: string;
   /** Additional classes merged with `.cinder-file-upload`. */
   class?: string;
+  /** Visible text for the picker trigger button. Default `Choose files`. */
+  triggerLabel?: string;
   /** Consumer-driven file rows, including upload progress and error states. */
   files?: FileUploadEntry[];
   /** Replaces the default resting-state dropzone body. */

@@ -38,6 +38,7 @@
     required,
     name,
     class: className,
+    triggerLabel = 'Choose files',
     files,
     idle,
     dragActive,
@@ -258,6 +259,10 @@
     if (progress === undefined) return 0;
     return Math.max(0, Math.min(100, progress));
   }
+
+  function sentenceCaseTriggerLabel(label: string): string {
+    return label.length === 0 ? label : `${label[0]!.toLowerCase()}${label.slice(1)}`;
+  }
 </script>
 
 {#snippet defaultIdle()}
@@ -278,7 +283,7 @@
           stroke-linejoin="round"
         />
       </svg>
-      Drag files here or choose files
+      Drag files here or {sentenceCaseTriggerLabel(triggerLabel)}
     </span>
     <p class="cinder-file-upload__hint">Drop files on this area or use the native file picker.</p>
   </div>
@@ -339,7 +344,7 @@
       disabled={field.disabled}
       onclick={openPicker}
     >
-      Choose files
+      {triggerLabel}
     </button>
   </div>
 
