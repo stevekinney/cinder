@@ -202,9 +202,11 @@ describe('useToast api', () => {
     api!.show('Watch out', { variant: 'warning' });
     await waitFor(() => {
       const polite = container.querySelector('[role="status"]');
-      expect(polite?.textContent).toContain('Watch out');
+      expect(polite).not.toBeNull();
+      expect(polite!.textContent).toContain('Watch out');
       const assertive = container.querySelector('[role="alert"]');
-      expect(assertive?.textContent).not.toContain('Watch out');
+      expect(assertive).not.toBeNull();
+      expect(assertive!.textContent).not.toContain('Watch out');
     });
   });
 
@@ -396,7 +398,8 @@ describe('useToast api', () => {
     api!.show('Heads up', { icon, variant: 'warning', duration: 0 });
     await waitFor(() => {
       const polite = container.querySelector('[role="status"]');
-      const iconWrapper = polite?.querySelector('.cinder-toast__icon');
+      expect(polite).not.toBeNull();
+      const iconWrapper = polite!.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
       expect(iconWrapper?.querySelector('[data-testid="assertive-icon"]')).not.toBeNull();
     });
@@ -1137,7 +1140,8 @@ describe('toast variant icons', () => {
     api!.show('Caution', { variant: 'warning', duration: 0, showIcon: true });
     await waitFor(() => {
       const polite = container.querySelector('[role="status"]');
-      const iconWrapper = polite?.querySelector('.cinder-toast__icon');
+      expect(polite).not.toBeNull();
+      const iconWrapper = polite!.querySelector('.cinder-toast__icon');
       expect(iconWrapper).not.toBeNull();
       const svg = iconWrapper?.querySelector('svg');
       expect(svg).not.toBeNull();
