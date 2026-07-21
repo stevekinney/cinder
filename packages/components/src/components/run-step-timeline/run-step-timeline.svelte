@@ -383,10 +383,6 @@
     return lane.outcome === undefined ? 'racing' : laneOutcomeLabel(lane.outcome).toLowerCase();
   }
 
-  function handleStepSelect(stepPathKey: string): void {
-    onStepSelect?.(stepPathKey);
-  }
-
   function isInteractiveDescendant(node: HTMLLIElement, eventTarget: EventTarget | null): boolean {
     if (!(eventTarget instanceof Element)) return false;
     const interactiveTarget = eventTarget.closest(
@@ -397,19 +393,22 @@
     );
   }
 
-  function createStepSelectionAttachment(stepPathKey: string): Attachment<HTMLLIElement> {
+  function createStepSelectionAttachment(
+    stepPathKey: string,
+    stepSelect: RunStepTimelineProps['onStepSelect'],
+  ): Attachment<HTMLLIElement> {
     return (node) => {
-      if (onStepSelect === undefined) return;
+      if (stepSelect === undefined) return;
 
       const handleClick = (event: MouseEvent): void => {
         if (isInteractiveDescendant(node, event.target)) return;
-        handleStepSelect(stepPathKey);
+        stepSelect(stepPathKey);
       };
       const handleKeydown = (event: KeyboardEvent): void => {
         if (event.target !== node) return;
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        handleStepSelect(stepPathKey);
+        stepSelect(stepPathKey);
       };
 
       node.addEventListener('click', handleClick);
@@ -428,7 +427,7 @@
   {@const metadata = metadataItems(step)}
   {@const selected = selectedStepId === row.pathKey}
   <li
-    {@attach createStepSelectionAttachment(row.pathKey)}
+    {@attach createStepSelectionAttachment(row.pathKey, onStepSelect)}
     class="cinder-run-step-timeline__item"
     data-cinder-status={step.status}
     data-cinder-depth={row.depth}

@@ -950,6 +950,26 @@ describe('selection', () => {
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
+  test('fires onStepSelect after row selection is enabled post-mount', async () => {
+    const selectedStepIds: string[] = [];
+    const { container, rerender } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+    });
+
+    const row = stepRowByPath(container, runningStep.id);
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
+    expect(selectedStepIds).toEqual([]);
+
+    await rerender({
+      steps: [pendingStep, runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+    await fireEvent.click(row!);
+
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
   test('fires onStepSelect when a selectable step row is keyboard activated', async () => {
     const selectedStepIds: string[] = [];
     const { container } = render(RunStepTimeline, {
