@@ -81,6 +81,7 @@
   import Link from '../link/link.svelte';
   import Progress from '../progress/progress.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
+  import type { Attachment } from 'svelte/attachments';
   import type {
     RunStepBranchLane,
     RunStepTimelineEntry,
@@ -111,6 +112,8 @@
   let {
     steps,
     label,
+    selectedStepId,
+    onStepSelect,
     class: className,
     children,
     'aria-label': ariaLabel,
@@ -372,12 +375,42 @@
     return currentIndex;
   }
 
-  function laneRows(lane: RunStepBranchLane): RenderedStepLike[] {
-    return flattenSteps(lane.steps, '');
+  function laneRows(groupPathKey: string, lane: RunStepBranchLane): RenderedStepLike[] {
+    return flattenSteps(lane.steps, `${groupPathKey}/%lane/${escapeStepPathSegment(lane.id)}`);
   }
 
   function laneStateLabel(lane: RunStepBranchLane): string {
     return lane.outcome === undefined ? 'racing' : laneOutcomeLabel(lane.outcome).toLowerCase();
+  }
+
+  function isInteractiveDescendant(node: HTMLLIElement, eventTarget: EventTarget | null): boolean {
+    const targetElement =
+      eventTarget instanceof Element
+        ? eventTarget
+        : eventTarget instanceof Node
+          ? eventTarget.parentElement
+          : null;
+    if (targetElement === null) return false;
+    const interactiveTarget = targetElement.closest(
+      'a[href], button, input, label, select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="checkbox"], [role="combobox"], [role="link"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="option"], [role="radio"], [role="searchbox"], [role="slider"], [role="spinbutton"], [role="switch"], [role="tab"], [role="textbox"], [role="treeitem"], [tabindex]:not([tabindex="-1"])',
+    );
+    return (
+      interactiveTarget !== null && interactiveTarget !== node && node.contains(interactiveTarget)
+    );
+  }
+
+  function createStepSelectionAttachment(stepPathKey: string): Attachment<HTMLLIElement> {
+    return (node) => {
+      const handleClick = (event: MouseEvent): void => {
+        if (isInteractiveDescendant(node, event.target)) return;
+        onStepSelect?.(stepPathKey);
+      };
+
+      node.addEventListener('click', handleClick);
+      return () => {
+        node.removeEventListener('click', handleClick);
+      };
+    };
   }
 </script>
 
@@ -385,7 +418,9 @@
   {@const step = row.step}
   {@const terminal = isTerminal(step.status)}
   {@const metadata = metadataItems(step)}
+  {@const selected = selectedStepId === row.pathKey}
   <li
+    {@attach createStepSelectionAttachment(row.pathKey)}
     class="cinder-run-step-timeline__item"
     data-cinder-status={step.status}
     data-cinder-depth={row.depth}
@@ -393,10 +428,21 @@
     data-cinder-terminal={terminal ? '' : undefined}
     data-cinder-rewound={step.rewound ? '' : undefined}
     data-cinder-compensation={row.compensatesLabel !== undefined ? '' : undefined}
+    data-cinder-selected={selected ? '' : undefined}
+    data-cinder-selectable={onStepSelect === undefined ? undefined : ''}
     data-cinder-connector-after={row.connectorAfter}
     aria-current={row.ariaCurrent ? 'step' : undefined}
     style:--_cinder-rst-depth={row.depth}
   >
+    {#if onStepSelect !== undefined}
+      <button
+        type="button"
+        class="cinder-run-step-timeline__selection-control"
+        aria-label={`Select ${step.label}`}
+        aria-pressed={selected}
+        onclick={() => onStepSelect?.(row.pathKey)}
+      ></button>
+    {/if}
     <div class="cinder-run-step-timeline__event">
       <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
         <StatusDot
@@ -617,7 +663,7 @@
                       class="cinder-run-step-timeline cinder-run-step-timeline__lane-steps"
                       aria-label={`${lane.label ?? lane.id} steps`}
                     >
-                      {@render stepRail(laneRows(lane))}
+                      {@render stepRail(laneRows(entry.pathKey, lane))}
                     </ol>
                   </li>
                 {/each}

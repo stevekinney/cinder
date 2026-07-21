@@ -8,6 +8,18 @@ const schema = {
       type: 'string',
       description: 'Accessible label for the timeline list.',
     },
+    selectedStepId: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'null',
+        },
+      ],
+      description:
+        "Rendered step path key to visually mark as selected.\nAccepts `null` so consumers can clear linked selection without omitting\nthe prop. Use the value passed to `onStepSelect`, or a row's\n`data-cinder-path` attribute, for nested or branch-lane steps.",
+    },
     class: {
       type: 'string',
       description: 'Additional CSS classes applied to the root element.',
@@ -1012,6 +1024,12 @@ const schema = {
         name: 'children',
         reason: 'function-or-snippet',
         description: 'Optional per-step body content rendered after the step metadata.',
+      },
+      {
+        name: 'onStepSelect',
+        reason: 'function-or-snippet',
+        description:
+          "Fired when the user activates a rendered step row.\nReceives that row's rendered path key.",
       },
     ],
   },

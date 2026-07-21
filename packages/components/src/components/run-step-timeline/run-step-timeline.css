@@ -55,11 +55,43 @@
     display: none;
   }
 
+  .cinder-run-step-timeline__item[data-cinder-selectable] {
+    cursor: pointer;
+  }
+
+  .cinder-run-step-timeline__selection-control {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-selectable]:has(
+      .cinder-run-step-timeline__selection-control:focus-visible
+    )
+    .cinder-run-step-timeline__event {
+    border-radius: var(--cinder-radius-md);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
+    border-radius: var(--cinder-radius-md);
+    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cinder-accent), transparent 55%);
+  }
+
   /* ----------------------------------------
    * Event layout: marker column + content column
    * ---------------------------------------- */
 
   .cinder-run-step-timeline__event {
+    position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: var(--_cinder-rst-rail-size) 1fr;
     gap: var(--cinder-space-3);
@@ -354,6 +386,20 @@
     /* Ensure connector lines are visible in high-contrast mode */
     .cinder-run-step-timeline__item::before {
       background: ButtonText;
+    }
+
+    .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
+      outline: 1px solid Highlight;
+      background: Canvas;
+      box-shadow: none;
+    }
+
+    .cinder-run-step-timeline__item[data-cinder-selectable]:has(
+        .cinder-run-step-timeline__selection-control:focus-visible
+      )
+      .cinder-run-step-timeline__event {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      box-shadow: none;
     }
   }
 }

@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
+import { createRawSnippet } from 'svelte';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   RunStep,
@@ -17,6 +18,12 @@ setupHappyDom();
 const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
 const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
+
+function stepRowByPath(container: HTMLElement, pathKey: string): HTMLElement | undefined {
+  return Array.from(container.querySelectorAll<HTMLElement>('[data-cinder-path]')).find(
+    (row) => row.getAttribute('data-cinder-path') === pathKey,
+  );
+}
 
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
@@ -881,6 +888,220 @@ describe('behavior', () => {
     for (const item of items) {
       expect(item.hasAttribute('data-cinder-terminal')).toBe(false);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Selection
+// ---------------------------------------------------------------------------
+
+describe('selection', () => {
+  test('marks the selected step row by rendered path', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+      selectedStepId: runningStep.id,
+    });
+
+    const selected = container.querySelector<HTMLElement>('[data-cinder-selected]');
+    expect(selected?.getAttribute('data-cinder-path')).toBe(runningStep.id);
+    expect(selected?.textContent).toContain(runningStep.label);
+
+    const pending = stepRowByPath(container, pendingStep.id);
+    expect(pending?.hasAttribute('data-cinder-selected')).toBe(false);
+  });
+
+  test('scopes selected rows by nested path', () => {
+    const steps: RunStep[] = [
+      {
+        id: 'parent-a',
+        label: 'Parent A',
+        status: 'succeeded',
+        children: [{ id: 'shared', label: 'Shared A', status: 'succeeded' }],
+      },
+      {
+        id: 'parent-b',
+        label: 'Parent B',
+        status: 'running',
+        children: [{ id: 'shared', label: 'Shared B', status: 'running' }],
+      },
+    ];
+    const { container } = render(RunStepTimeline, {
+      steps,
+      selectedStepId: 'parent-b/shared',
+    });
+
+    const selected = container.querySelectorAll<HTMLElement>('[data-cinder-selected]');
+    expect(selected.length).toBe(1);
+    expect(selected[0]?.getAttribute('data-cinder-path')).toBe('parent-b/shared');
+    expect(selected[0]?.textContent).toContain('Shared B');
+  });
+
+  test('fires onStepSelect when a top-level step row is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const { container } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    const row = stepRowByPath(container, runningStep.id);
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
+
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
+  test('fires onStepSelect after row selection is enabled post-mount', async () => {
+    const selectedStepIds: string[] = [];
+    const { container, rerender } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+    });
+
+    const row = stepRowByPath(container, runningStep.id);
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
+    expect(selectedStepIds).toEqual([]);
+
+    await rerender({
+      steps: [pendingStep, runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+    const selectableRow = stepRowByPath(container, runningStep.id);
+    expect(selectableRow).toBeDefined();
+    await fireEvent.click(selectableRow!);
+
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
+  test('fires onStepSelect from the selectable step row control', async () => {
+    const selectedStepIds: string[] = [];
+    const { container, getByRole } = render(RunStepTimeline, {
+      steps: [pendingStep, runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+      selectedStepId: runningStep.id,
+    });
+
+    const row = stepRowByPath(container, runningStep.id);
+    expect(row?.hasAttribute('tabindex')).toBe(false);
+    const selectionControl = getByRole('button', { name: 'Select Run integration tests' });
+    expect(selectionControl.getAttribute('aria-pressed')).toBe('true');
+    await fireEvent.click(selectionControl);
+
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
+  test('does not select a row when nested controls are activated', async () => {
+    const selectedStepIds: string[] = [];
+    const step: RunStep = {
+      id: 'inspect',
+      label: 'Inspect result',
+      status: 'running',
+      link: { label: 'Open logs', href: '/logs' },
+      details: [{ id: 'stdout', label: 'Output', content: 'Ready' }],
+    };
+    const { container, getByRole } = render(RunStepTimeline, {
+      steps: [step],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    await fireEvent.click(getByRole('link', { name: 'Open logs' }));
+    await fireEvent.keyDown(getByRole('link', { name: 'Open logs' }), { key: 'Enter' });
+    await fireEvent.click(getByRole('button', { name: 'Output' }));
+    await fireEvent.keyDown(getByRole('button', { name: 'Output' }), { key: 'Enter' });
+
+    expect(selectedStepIds).toEqual([]);
+    await fireEvent.click(stepRowByPath(container, 'inspect') as HTMLElement);
+    expect(selectedStepIds).toEqual(['inspect']);
+  });
+
+  test('does not select a row when a labeled child control is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const childControl = createRawSnippet(() => ({
+      render: () => '<label><input type="checkbox" /> Retry</label>',
+      setup: () => {},
+    }));
+    const { container, getByText } = render(RunStepTimeline, {
+      steps: [runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+      children: childControl,
+    });
+
+    const label = getByText('Retry');
+    const textNode = Array.from(label.childNodes).find(
+      (child) => child.nodeType === Node.TEXT_NODE,
+    );
+    expect(textNode).toBeDefined();
+
+    await fireEvent.click(label);
+    await fireEvent.click(textNode!);
+    expect(selectedStepIds).toEqual([]);
+    await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
+  test('does not select a row when a custom ARIA child control is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const childControl = createRawSnippet(() => ({
+      render: () => '<span role="checkbox" aria-checked="false" tabindex="0">Retry</span>',
+      setup: () => {},
+    }));
+    const { container, getByRole } = render(RunStepTimeline, {
+      steps: [runningStep],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+      children: childControl,
+    });
+
+    await fireEvent.click(getByRole('checkbox', { name: 'Retry' }));
+    expect(selectedStepIds).toEqual([]);
+    await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
+    expect(selectedStepIds).toEqual([runningStep.id]);
+  });
+
+  test('fires onStepSelect when a nested child step row is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const steps: RunStep[] = [
+      {
+        id: 'parent',
+        label: 'Parent',
+        status: 'running',
+        children: [{ id: 'child', label: 'Child', status: 'succeeded' }],
+      },
+    ];
+    const { container } = render(RunStepTimeline, {
+      steps,
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    const row = stepRowByPath(container, 'parent/child');
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
+
+    expect(selectedStepIds).toEqual(['parent/child']);
+  });
+
+  test('fires onStepSelect when a branch-lane step row is clicked', async () => {
+    const selectedStepIds: string[] = [];
+    const branch: RunStepBranchGroup = {
+      kind: 'branch',
+      id: 'race',
+      label: 'Race',
+      lanes: [
+        {
+          id: 'blue',
+          label: 'Blue',
+          steps: [{ id: 'blue-deploy', label: 'Deploy blue', status: 'succeeded' }],
+        },
+      ],
+    };
+    const { container } = render(RunStepTimeline, {
+      steps: [branch] as RunStepTimelineEntry[],
+      onStepSelect: (stepId: string) => selectedStepIds.push(stepId),
+    });
+
+    const row = stepRowByPath(container, '%branch/race/%lane/blue/blue-deploy');
+    expect(row).toBeDefined();
+    await fireEvent.click(row!);
+
+    expect(selectedStepIds).toEqual(['%branch/race/%lane/blue/blue-deploy']);
   });
 });
 
