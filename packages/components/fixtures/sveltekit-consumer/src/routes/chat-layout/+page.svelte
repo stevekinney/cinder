@@ -1,6 +1,6 @@
 <script lang="ts">
-  import Chat, { createConversation, type ConversationHistory } from '@lostgradient/chat';
   import '../../app.css';
+  import Chat, { createConversation, type ConversationHistory } from '@lostgradient/chat';
 
   let conversation = $state<ConversationHistory>(
     createConversation({ id: 'consumer-chat-layout' }),
