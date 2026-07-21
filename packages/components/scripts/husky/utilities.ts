@@ -736,7 +736,10 @@ export async function withGateLock<T>(
           warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
           waitingMessagePrinted = true;
         }
-        if (Date.now() - malformedLockStartedAt >= waitMilliseconds) {
+        if (
+          malformedLockStartedAt !== null &&
+          Date.now() - malformedLockStartedAt >= waitMilliseconds
+        ) {
           throw new Error(
             `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
             { cause: caught },
