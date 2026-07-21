@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -1505,7 +1505,7 @@ describe('withGateLock', () => {
         });
 
         expect(result).toBe('acquired after holder exited');
-        expect(liveChecks).toBe(10);
+        expect(liveChecks).toBeGreaterThanOrEqual(10);
         expect(await holder.exited).toBe(0);
         expect(await Bun.file(lockPath).exists()).toBe(false);
       } finally {
@@ -1529,6 +1529,41 @@ describe('withGateLock', () => {
         }),
       ).rejects.toThrow('malformed lock');
 
+      expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('starts a fresh bounded wait when a live lock is replaced by a malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 123,
+          repositoryRoot: 'other-checkout',
+          token: 'live-then-malformed',
+        }),
+      );
+      let liveChecks = 0;
+      let malformedChecks = 0;
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          beforeMalformedLockStat: () => {
+            malformedChecks++;
+          },
+          isProcessAlive: () => {
+            if (++liveChecks === 20) writeFileSync(lockPath, '{');
+            return true;
+          },
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('malformed lock');
+
+      expect(malformedChecks).toBeGreaterThan(1);
       expect(await readFile(lockPath, 'utf8')).toBe('{');
     });
   });

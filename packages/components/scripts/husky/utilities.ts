@@ -668,7 +668,7 @@ export async function withGateLock<T>(
   const processAlive = options.isProcessAlive ?? defaultIsProcessAlive;
   const resendSignal = options.resendSignal ?? ((signal) => process.kill(process.pid, signal));
   const token = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const startedAt = Date.now();
+  let malformedLockStartedAt: number | null = null;
   let waitingMessagePrinted = false;
   let lockAcquired = false;
   let interruptedSignal: NodeJS.Signals | null = null;
@@ -714,24 +714,29 @@ export async function withGateLock<T>(
 
       const existingLock = await readGateLock(lockPath);
       if (existingLock === null) {
+        malformedLockStartedAt ??= Date.now();
         await options.beforeMalformedLockStat?.();
         let existingLockAgeMilliseconds = 0;
         try {
           existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);
         } catch (statError) {
-          if (errnoCode(statError) === 'ENOENT') continue;
+          if (errnoCode(statError) === 'ENOENT') {
+            malformedLockStartedAt = null;
+            continue;
+          }
           throw statError;
         }
         if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
           warning('Removing stale malformed pre-push gate lock.');
           await rm(lockPath, { force: true });
+          malformedLockStartedAt = null;
           continue;
         }
         if (!waitingMessagePrinted) {
           warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
           waitingMessagePrinted = true;
         }
-        if (Date.now() - startedAt >= waitMilliseconds) {
+        if (Date.now() - malformedLockStartedAt >= waitMilliseconds) {
           throw new Error(
             `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
             { cause: caught },
@@ -740,6 +745,8 @@ export async function withGateLock<T>(
         await Bun.sleep(retryMilliseconds);
         continue;
       }
+
+      malformedLockStartedAt = null;
 
       if (!processAlive(existingLock.pid)) {
         warning('Removing stale pre-push gate lock.');
