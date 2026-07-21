@@ -17,9 +17,19 @@ import {
  * a themeable solid/translucent color, regardless of what they reference. */
 const NON_COLOR_TOKEN_NAME_PATTERN = /shadow|gradient/;
 
-/** Value shapes that mark a declaration as directly color-valued: an
- * OKLCH/`color-mix()`/`light-dark()` call, or the `transparent` keyword. */
-const DIRECT_COLOR_VALUE_PATTERN = /oklch|color-mix|light-dark|transparent/i;
+/**
+ * Value shapes that mark a declaration as directly color-valued.
+ *
+ * Deliberately covers every syntax `isSafeColorTokenValue` accepts, not just
+ * the ones `tokens-base.css` happens to use today: a future token written as
+ * `#fff`, `rgb(…)`, `hsl(…)`, `oklab(…)` or `currentcolor` is exactly the kind
+ * of edit this guard exists to catch, and a narrower pattern would wave it
+ * through. `shadow`/`gradient` names are filtered separately by
+ * NON_COLOR_TOKEN_NAME_PATTERN, so the function list below does not need to
+ * exclude them.
+ */
+const DIRECT_COLOR_VALUE_PATTERN =
+  /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark)\s*\(|\b(?:transparent|currentcolor|black|white)\b/i;
 
 /** A value that is nothing but a `var(--cinder-x)` reference, optionally with a
  * fallback. These are invisible to the direct value-shape scan, so they are
