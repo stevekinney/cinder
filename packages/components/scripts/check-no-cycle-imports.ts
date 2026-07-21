@@ -5,7 +5,7 @@
  * The `@lostgradient/cinder` package re-exports each upstream package's public surface
  * under `@lostgradient/cinder/<pkg>/<subpath>`. If either upstream package were
  * to import `@lostgradient/cinder` or `@lostgradient/cinder/<subpath>`, that would create a runtime
- * resolution cycle (`@lostgradient/cinder` → `@cinder/<pkg>` → `@lostgradient/cinder`), a type-emission
+ * resolution cycle (`@lostgradient/cinder` → `@lostgradient/markdown` or `@cinder/commentary` → `@lostgradient/cinder`), a type-emission
  * cycle (the published `.d.ts` would reference an unresolved `@lostgradient/cinder`), and
  * an init-order hazard.
  *
@@ -33,8 +33,9 @@ const RESTRICTED_PACKAGES = ['markdown', 'commentary'] as const;
 /**
  * Matches `from '@lostgradient/cinder'` and `from '@lostgradient/cinder/...'` (single or double quoted),
  * dynamic `import('@lostgradient/cinder')` calls, and bare-side-effect `import '@lostgradient/cinder'`.
- * Deliberately does NOT match `@cinder/*` — those are the upstream packages
- * importing each other, which is allowed.
+ * Deliberately does NOT match the upstream packages themselves
+ * (`@lostgradient/markdown`, `@cinder/commentary`) — those importing each
+ * other is allowed.
  */
 const FORBIDDEN_IMPORT_PATTERN =
   /(?:from\s*|import\s*\(\s*|import\s+)(['"])@lostgradient\/cinder(?:\/[^'"]*)?\1/g;
@@ -87,8 +88,8 @@ async function main(): Promise<void> {
   process.stderr.write(
     'check-no-cycle-imports — forbidden imports detected.\n' +
       'The upstream workspace packages must NEVER import `@lostgradient/cinder` or `@lostgradient/cinder/*` — ' +
-      'doing so creates a resolution cycle (cinder → @cinder/<pkg> → cinder). ' +
-      'Use a relative path or `@cinder/<other>` instead.\n\n',
+      'doing so creates a resolution cycle (cinder → upstream package → cinder). ' +
+      'Use a relative path or a sibling upstream package (`@lostgradient/markdown`, `@cinder/commentary`) instead.\n\n',
   );
   for (const violation of allViolations) {
     process.stderr.write(

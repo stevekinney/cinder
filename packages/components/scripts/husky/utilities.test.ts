@@ -341,41 +341,41 @@ describe('runHookCommand', () => {
 
 describe('isSourceFile', () => {
   it('treats supported extensions as source', () => {
-    expect(isSourceFile('packages/diff/src/index.ts')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/index.ts')).toBe(true);
     expect(isSourceFile('packages/components/src/Button.tsx')).toBe(true);
     expect(isSourceFile('packages/components/src/Button.svelte')).toBe(true);
     expect(isSourceFile('packages/components/src/button.css')).toBe(true);
-    expect(isSourceFile('packages/diff/tsconfig.json')).toBe(true);
+    expect(isSourceFile('packages/markdown/tsconfig.json')).toBe(true);
   });
 
   it('excludes markdown outright', () => {
     expect(isSourceFile('README.md')).toBe(false);
-    expect(isSourceFile('packages/diff/docs/intro.md')).toBe(false);
-    expect(isSourceFile('packages/diff/CHANGELOG.md')).toBe(false);
+    expect(isSourceFile('packages/markdown/docs/intro.md')).toBe(false);
+    expect(isSourceFile('packages/markdown/CHANGELOG.md')).toBe(false);
   });
 
   it('excludes README and CHANGELOG documents lacking a source extension', () => {
-    expect(isSourceFile('packages/diff/README')).toBe(false);
-    expect(isSourceFile('packages/diff/CHANGELOG')).toBe(false);
-    expect(isSourceFile('packages/diff/Readme.txt')).toBe(false);
+    expect(isSourceFile('packages/markdown/README')).toBe(false);
+    expect(isSourceFile('packages/markdown/CHANGELOG')).toBe(false);
+    expect(isSourceFile('packages/markdown/Readme.txt')).toBe(false);
   });
 
   it('does NOT exclude source files whose basename starts with readme or changelog', () => {
     // Regression for the round-1 bug where the basename check ran before the
     // extension check and silently dropped these files.
-    expect(isSourceFile('packages/diff/src/changelog-helpers.ts')).toBe(true);
-    expect(isSourceFile('packages/diff/src/readme-generator.tsx')).toBe(true);
-    expect(isSourceFile('packages/diff/src/Readme.svelte')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/changelog-helpers.ts')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/readme-generator.tsx')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/Readme.svelte')).toBe(true);
   });
 
   it('rejects unknown extensions', () => {
-    expect(isSourceFile('packages/diff/src/index.rs')).toBe(false);
-    expect(isSourceFile('packages/diff/Makefile')).toBe(false);
+    expect(isSourceFile('packages/markdown/src/index.rs')).toBe(false);
+    expect(isSourceFile('packages/markdown/Makefile')).toBe(false);
   });
 
   it('is case-insensitive on extensions and basenames', () => {
-    expect(isSourceFile('packages/diff/src/Index.TS')).toBe(true);
-    expect(isSourceFile('packages/diff/README.MD')).toBe(false);
+    expect(isSourceFile('packages/markdown/src/Index.TS')).toBe(true);
+    expect(isSourceFile('packages/markdown/README.MD')).toBe(false);
   });
 });
 
@@ -439,13 +439,15 @@ describe('hasRootConfigurationChanges', () => {
   });
 
   it('returns false for nested files of the same name', () => {
-    // packages/diff/tsconfig.json must NOT escalate to a full workspace run.
-    expect(hasRootConfigurationChanges(['packages/diff/tsconfig.json'])).toBe(false);
-    expect(hasRootConfigurationChanges(['packages/diff/package.json'])).toBe(false);
+    // packages/markdown/tsconfig.json must NOT escalate to a full workspace run.
+    expect(hasRootConfigurationChanges(['packages/markdown/tsconfig.json'])).toBe(false);
+    expect(hasRootConfigurationChanges(['packages/markdown/package.json'])).toBe(false);
   });
 
   it('returns false when only non-root files are staged', () => {
-    expect(hasRootConfigurationChanges(['packages/diff/src/index.ts', 'README.md'])).toBe(false);
+    expect(hasRootConfigurationChanges(['packages/markdown/src/index.ts', 'README.md'])).toBe(
+      false,
+    );
   });
 
   it('returns false on an empty staged list', () => {
@@ -454,10 +456,10 @@ describe('hasRootConfigurationChanges', () => {
 
   it('is a pure path predicate (works on push-range file lists, not just staged)', () => {
     // No staged context — exact root-relative paths still classify correctly.
-    expect(hasRootConfigurationChanges(['packages/diff/src/x.ts', 'bun.lock'])).toBe(true);
-    expect(hasRootConfigurationChanges(['packages/diff/src/x.ts', 'packages/diff/README.md'])).toBe(
-      false,
-    );
+    expect(hasRootConfigurationChanges(['packages/markdown/src/x.ts', 'bun.lock'])).toBe(true);
+    expect(
+      hasRootConfigurationChanges(['packages/markdown/src/x.ts', 'packages/markdown/README.md']),
+    ).toBe(false);
   });
 });
 
