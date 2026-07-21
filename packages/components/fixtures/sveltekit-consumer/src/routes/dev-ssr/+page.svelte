@@ -40,9 +40,6 @@
   </Card>
 
   <Sidebar label="Project navigation">
-    {#snippet brand()}
-      <strong data-dev-ssr-sidebar-brand>Cinder workspace</strong>
-    {/snippet}
     {#snippet navigation()}
       <SideNavigation ariaLabel="Workflow selection" data-dev-ssr-sidebar-navigation>
         <SideNavigationItem href="/dev-ssr" active={true}>

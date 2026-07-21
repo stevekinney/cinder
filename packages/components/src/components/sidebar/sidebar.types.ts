@@ -29,8 +29,6 @@ export type SidebarProps = Omit<
   mobileBreakpoint?: string;
   /** Additional CSS class merged with `.cinder-sidebar`. */
   class?: string;
-  /** Optional branding region rendered above the navigation. */
-  brand?: Snippet;
   /**
    * Navigation region. Typically a `<SideNavigation>` subtree. Optional — when
    * omitted, no `<nav>` landmark is rendered (so the sidebar can serve as app chrome

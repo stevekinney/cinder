@@ -155,7 +155,6 @@ describe('scoped theme tokens', () => {
 
     expect(sidebarCss).toContain('background: var(--cinder-surface);');
     expect(sidebarCss).toContain('border-inline-end: 1px solid var(--cinder-border);');
-    expect(sidebarCss).toContain('border-block-end: 1px solid var(--cinder-border);');
     expect(sidebarCss).toContain('border-block-start: 1px solid var(--cinder-border);');
     expect(navigationItemCss).toContain('color: var(--cinder-text-muted);');
     expect(navigationItemCss).toContain('color: var(--cinder-text);');
