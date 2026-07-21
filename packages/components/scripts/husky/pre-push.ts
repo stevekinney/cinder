@@ -6,6 +6,7 @@ import {
   hookDurationWarning,
   info,
   isContinuousIntegration,
+  nodeModulesTopology,
   parsePushRefs,
   readHookDurationBaseline,
   REPO_ROOT,
@@ -80,6 +81,54 @@ if (parsed.updates.length === 0) {
     );
   }
   process.exit(0);
+}
+
+/**
+ * Name a symlinked root `node_modules`, warning only — never blocking.
+ *
+ * Some worktree tooling provisions `<worktree>/node_modules` as a symlink to
+ * the primary checkout to save disk. That aliases one dependency tree under two
+ * path prefixes, and Bun's module cache keys on the path, so a package can be
+ * loaded twice under two identities and the cache serves one module's bytes
+ * under another's. It surfaces as SSR/hydration tests failing with
+ * `Unseekable reading file: .../esm-env/index.js`, deterministically, in
+ * worktrees only.
+ *
+ * This hook runs no tests, so the symlink cannot break *this* push — but it
+ * silently poisons every LOCAL suite run afterwards, and the raw error points
+ * at a healthy 156-byte file, so it reads as flakiness and costs hours to
+ * trace. Naming it is the entire value.
+ *
+ * Deliberately detect-only. An earlier revision repaired the tree in place
+ * (displace the symlink, reinstall, restore on failure). Every defect review
+ * found lived in that repair — staging-path races between concurrent hooks,
+ * two distinct interrupted-repair states, install failures leaving no
+ * dependency tree at all — while detection, one `lstat`, was never wrong. The
+ * repair also could not run in the state it most needed to: recovering a
+ * stranded symlink requires importing this module, which itself needs
+ * `node_modules`. Saving the developer one `bun install` is not worth a
+ * mutation path that can leave a checkout with no dependencies.
+ */
+try {
+  const topology = nodeModulesTopology();
+  if (topology === 'symlinked') {
+    warning(
+      'Root node_modules is a SYMLINK to another checkout. Bun resolves one dependency tree ' +
+        'under two path prefixes from here, which makes local SSR/hydration tests fail with ' +
+        '"Unseekable reading file: .../esm-env/index.js" — deterministic, and not your change. ' +
+        'Fix: rm node_modules && bun install. If that rewrites bun.lock, review the diff rather ' +
+        'than discarding it — it may be a genuinely needed update rather than install noise.',
+    );
+  } else if (topology === 'invalid') {
+    warning(
+      'Root node_modules is neither a directory nor a symlink. Remove it and run `bun install`.',
+    );
+  } else if (topology === 'missing') {
+    warning('No node_modules at the repository root — run `bun install` before running tests.');
+  }
+} catch (cause) {
+  const reason = cause instanceof Error ? cause.message : String(cause);
+  warning(`Could not check the node_modules layout (${reason}); continuing`);
 }
 
 /**
