@@ -23,6 +23,12 @@ test.describe('command menu empty state', () => {
     const listbox = page.locator('.cinder-command-menu').getByRole('listbox');
     await expect(listbox).toBeVisible();
 
+    // `aria-describedby` is populated only once `registrationsReady` flips
+    // true, which `createCommandListState.refreshRegistrationsReady()` queues
+    // on a microtask. Reading the attribute straight after `toBeVisible()` can
+    // therefore observe `null`. Poll for it instead of racing that microtask.
+    await expect(listbox).toHaveAttribute('aria-describedby', /\S/);
+
     const describedById = await listbox.getAttribute('aria-describedby');
     expect(describedById).toBeTruthy();
 
