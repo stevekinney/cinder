@@ -36,7 +36,8 @@ Persistent side panel that houses navigation, filters, or supplementary page con
 
 <!-- generated:variables:start -->
 
-- `--cinder-sidebar-mobile-breakpoint`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

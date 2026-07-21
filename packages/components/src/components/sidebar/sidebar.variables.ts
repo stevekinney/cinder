@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-sidebar-mobile-breakpoint'];
+const variables: readonly string[] = [];
 
 export default variables;
