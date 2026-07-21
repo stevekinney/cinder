@@ -73,24 +73,37 @@ self-merge by design in this repository once their own PR's checks are green.
 Required status checks have a sharp edge with path-filtered workflows: a PR
 whose changed files match none of a required check's trigger paths leaves
 that check permanently "Expected" and the PR unmergeable. `unit-tests.yaml`'s
-`pull_request` path filters were removed entirely so it always runs.
-`browser-tests.yaml` stays path-filtered (it is expensive — Chromium install,
-full Playwright run) but is paired with `browser-tests-skip.yaml`, a mirror
-workflow with the identical `typecheck`/`playwright` job names triggered on
-the logical inverse of that path set, whose jobs succeed immediately. The
-inverse is built with `paths:` (`**` plus explicit `!`-negations of every
-real trigger, then re-including the doc patterns the real workflow itself
-excludes) rather than `paths-ignore:` — GitHub's docs reserve `paths-ignore`
-for exclude-only lists and don't support negation inside it, so mirroring
-`browser-tests.yaml`'s path list verbatim into a `paths-ignore` (negations
-included) would silently leave BOTH workflows skipped for a PR touching only
-a doc file under a real-trigger directory (e.g. `packages/chat/README.md`) —
-exactly the stuck-check trap this workflow exists to close. For any diff, at
-least one of the two workflows reports each required check name — sometimes
-both (accepted; the skip job costs a few seconds of runner time) — but never
-neither. `changeset-guard.yaml`'s path filter was removed the
-same way `unit-tests.yaml`'s was (it's cheap enough to run unconditionally
-rather than needing a mirror workflow).
+and `changeset-guard.yaml`'s `pull_request` path filters were removed
+entirely so they always run — both are cheap enough to afford unconditionally.
+
+`browser-tests.yaml` is not cheap (Chromium install, a full Playwright run),
+so it keeps the equivalent filtering but moves it from the workflow trigger
+into the `scope` job, as a computed `relevant` output — `typecheck` and
+`playwright` gate on `needs.scope.outputs.relevant` via `if:` instead of an
+`on.pull_request.paths` list. The `scope` job derives `relevant` in code
+(a bash reimplementation of the same last-match-wins path-pattern algorithm
+the removed `paths:` filter used, failing SAFE to `relevant=true` on any
+error deriving the diff), so a PR whose diff doesn't touch anything
+browser-test-relevant still triggers the workflow but skips the two
+expensive jobs.
+
+This works because of one specific GitHub behavior: a job skipped via `if:`
+reports conclusion `"skipped"`, and GitHub treats a skipped check run as
+satisfying a required status check — it does not block merging and does not
+leave the check stuck "Expected". So every PR reports both required names
+(`typecheck`, `playwright`) exactly once, from exactly one workflow, whether
+skipped or run for real.
+
+An earlier version of this used a second workflow (`browser-tests-skip.yaml`)
+mirroring `browser-tests.yaml`'s trigger paths and reporting the same two
+job names on the logical inverse path set, so at least one of the two
+workflows would always report each name. That was the wrong call: GitHub's
+own docs warn that "using the same job name in multiple workflows can cause
+ambiguous status check results and block pull requests from being merged" —
+and that's exactly what happened in practice on the PR that introduced this
+topology: every individual check run showed `success`, but the pull
+request's merge state stayed `blocked` until the duplicate-named workflow
+was replaced with the single-workflow, `if:`-gated pattern described above.
 
 ## The guardrails
 
