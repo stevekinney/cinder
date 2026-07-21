@@ -17,52 +17,17 @@ name: unit-tests
 
 on:
   # Unit tests own component source, package test/build scripts, and this
-  # workflow's scoping behavior. Other workflows have their own targeted gates
-  # and should not start the unit suite by themselves.
-  pull_request:
-    paths:
-      - 'packages/components/**'
-      - 'packages/chat/**'
-      - 'packages/*/package.json'
-      - 'packages/*/scripts/**'
-      - 'packages/*/tsconfig*.json'
-      - 'packages/commentary/src/**'
-      - 'packages/diff/src/**'
-      - 'packages/markdown/src/**'
-      - 'packages/playground/src/discover.ts'
-      - 'packages/playground/src/examples/**'
-      # Broadens the lint gate (bun run --filter='*' lint, lint:invariants,
-      # check:pipeline-coverage, etc.) to the rest of these packages' sources,
-      # not just the scoping-relevant files above. This means more PRs will
-      # start the (heavier) unit-test job than strictly need scoped component
-      # coverage — accepted tradeoff so the blocking lint gate can't be
-      # skipped by a PR that only touches playground or testing sources.
-      - 'packages/playground/src/**'
-      - 'packages/testing/**'
-      - 'packages/testing/scripts/changed-components.ts'
-      - 'packages/testing/src/helpers/component-filter.ts'
-      - '.github/workflows/unit-tests.yaml'
-      # check:pipeline-coverage (run in the Lint step below) parses these
-      # workflows to detect dropped/duplicated gates; a PR editing them must
-      # trigger this workflow so the guard runs pre-merge, not just post-merge.
-      - '.github/workflows/release.yaml'
-      - '.github/workflows/release-manual.yaml'
-      - '.github/workflows/main-green.yaml'
-      - '.github/workflows/browser-tests.yaml'
-      - '.github/workflows/changeset-guard.yaml'
-      - '.github/workflows/deploy-playground.yaml'
-      - '.changeset/**'
-      - 'package.json'
-      - 'bun.lock'
-      - 'bun.lockb'
-      - 'bunfig.toml'
-      - '.npmrc'
-      - 'tsconfig*.json'
-      - 'turbo.json'
-      - '.oxlintrc.json'
-      - '!packages/**/*.md'
-      - '!packages/**/README*'
-      - '!packages/**/CHANGELOG*'
+  # workflow's scoping behavior.
+  #
+  # `pull_request` runs unconditionally — NO path filter. `unit-tests` and
+  # `typecheck` (browser-tests.yaml) are required status checks on `main`
+  # (see docs/validation-topology.md's "Branch protection" section); a path
+  # filter here would leave a PR whose changes match none of the filtered
+  # paths (e.g. a root lint-config-only edit) with a required check stuck at
+  # "Expected" forever, permanently blocking the merge. Running unconditionally
+  # is the direct fix — a no-op PR pays a full (if fast) run instead of being
+  # unmergeable.
+  pull_request: {}
   push:
     branches:
       - main

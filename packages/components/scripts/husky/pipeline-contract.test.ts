@@ -2,30 +2,25 @@ import { describe, expect, it } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import {
-  BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER,
-  phaseMaxConcurrency,
-  prePushPackageScript,
-  REPO_ROOT,
-  type GateScript,
-} from './utilities.ts';
+import { REPO_ROOT } from './utilities.ts';
 
 /**
  * Pins the shape of the validation pipeline described in
  * `docs/validation-topology.md`: pre-commit stays cheap (lockfile + lint-staged
- * + typecheck only), pre-push runs a parallel, scoped lint/typecheck/test, and
- * the package-level scripts compose the way both hooks assume. Every assertion
- * below explains, in its failure message, WHY the invariant exists — so a
- * change that regresses the topology fails loudly instead of quietly
- * reintroducing a fixed problem (slow commits, a serialized test phase, a
- * `rm -rf dist` race, or a gate silently missing from a layer it needs to run
- * in).
+ * + typecheck only), pre-push stays a fast, fail-open sanity check with no
+ * expensive gate of its own (PR CI + branch protection own that job now), and
+ * the package-level scripts compose the way pre-commit assumes. Every
+ * assertion below explains, in its failure message, WHY the invariant exists —
+ * so a change that regresses the topology fails loudly instead of quietly
+ * reintroducing a fixed problem (slow commits, a resurrected local gate lock,
+ * a `rm -rf dist` race, or a gate silently missing from a layer it needs to
+ * run in).
  *
  * `pre-commit.ts` and `pre-push.ts` are entry scripts (top-level
- * `process.exit`, stdin reads, lock acquisition) and must never be imported
- * from a test process — assertions that need their structure read the source
- * text instead and are noted as source-based, in contrast to the
- * behavior-based assertions that import and call real exported functions.
+ * `process.exit`, stdin reads) and must never be imported from a test process
+ * — assertions that need their structure read the source text instead and are
+ * noted as source-based, in contrast to the behavior-based assertions that
+ * import and call real exported functions.
  */
 
 const huskyDirectory = join(REPO_ROOT, 'packages/components/scripts/husky');
@@ -81,52 +76,35 @@ describe('pipeline contract: commit stays cheap', () => {
   });
 });
 
-describe('pipeline contract: push stays parallel and scoped', () => {
-  it('phaseMaxConcurrency treats every gate script identically (behavior-based)', () => {
-    // Equality across phases is the invariant with teeth: issue #364 was fixed by
-    // pre-building the dependency closure before the test phase, specifically so
-    // the test phase no longer needs `if (script === 'test') return 1`-style
-    // serialization. Re-introducing a per-script special case here would
-    // silently reopen that regression. See docs/validation-topology.md.
-    const scripts: readonly GateScript[] = ['lint', 'typecheck', 'test'];
-    const concurrencies = scripts.map((script) => phaseMaxConcurrency(script));
-    expect(new Set(concurrencies).size).toBe(1);
-
-    // `>1` only holds on a multi-core box; asserting it unconditionally would
-    // flake on a single-core CI runner. Guard on the actual hardware value so
-    // the assertion still catches an accidental `return 1` on real developer
-    // machines without becoming environment-flaky.
-    const hardwareConcurrency = navigator.hardwareConcurrency;
-    if (hardwareConcurrency > 1) {
-      expect(concurrencies[0]).toBeGreaterThan(1);
-    } else {
-      expect(concurrencies[0]).toBe(1);
-    }
+describe('pipeline contract: push stays thin and fails open (source-based: entry script, never imported)', () => {
+  it('pre-push.ts dispatches no lint/typecheck/test job', async () => {
+    const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-push.ts')).text());
+    // The scoped/full lint+typecheck+test dispatch (and the package builds that
+    // fed it) moved to CI entirely. Re-adding a job dispatch here would
+    // reintroduce the multi-minute local gate that serialized concurrent
+    // worktree pushes behind a shared lock. See docs/validation-topology.md.
+    expect(source).not.toMatch(/bun run --filter/);
+    expect(source).not.toMatch(/'test:changed'/);
+    expect(source).not.toMatch(/runWithConcurrencyPool/);
   });
 
-  it("prePushPackageScript maps @lostgradient/cinder's test to test:changed (behavior-based)", () => {
-    // @lostgradient/cinder's full `test` script is slow; pre-push must run the
-    // scoped `test:changed` variant instead, or every push touching cinder pays
-    // for the full component suite. See docs/validation-topology.md.
-    expect(prePushPackageScript('@lostgradient/cinder', 'test')).toBe('test:changed');
-    // Every other package's test script is unmodified.
-    expect(prePushPackageScript('@cinder/diff', 'test')).toBe('test');
-    expect(prePushPackageScript('@lostgradient/cinder', 'lint')).toBe('lint');
-    expect(prePushPackageScript('@lostgradient/cinder', 'typecheck')).toBe('typecheck');
+  it('pre-push.ts never acquires the local validation gate lock', async () => {
+    const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-push.ts')).text());
+    // With no expensive critical section left to serialize, pre-push must not
+    // reach for withGateLock/withLocalValidationGateLock — that lock still
+    // protects the OTHER scripts that do heavy local work standalone
+    // (test-changed.ts, generate-component-artifacts.ts, validate-consumers.ts),
+    // but pre-push queuing behind it would resurrect exactly the cross-worktree
+    // serialization this change removes.
+    expect(source).not.toMatch(/GateLock/);
   });
 
-  it('BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER is exactly the diff→markdown→commentary→components chain (behavior-based)', () => {
-    // preBuildDependencyClosure (pre-push.ts) walks this list as a prefix, not a
-    // graph, to decide what must build before the test phase runs (the actual
-    // #364 fix). If a future package reorders its dependencies against this
-    // list, the forward-closure prefix logic silently under-builds instead of
-    // failing — so this list must stay pinned to the exact topological order.
-    expect(BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER).toEqual([
-      '@cinder/diff',
-      '@cinder/markdown',
-      '@cinder/commentary',
-      '@lostgradient/cinder',
-    ]);
+  it('pre-push.ts fails open: every exit path is 0', async () => {
+    const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-push.ts')).text());
+    // The old hook failed safe to a full validation run on any ambiguity; this
+    // hook fails OPEN instead — warn and let the push through — because PR CI
+    // and required branch-protection status checks are the real backstop now.
+    expect(source).not.toMatch(/process\.exit\(1\)/);
   });
 });
 
@@ -212,6 +190,22 @@ describe('pipeline contract: package script composition (source-based: reads pac
   });
 });
 
+// The buildable packages, in dependency order: `@cinder/diff` has no internal
+// workspace dependencies, `@cinder/markdown` depends on `@cinder/diff`,
+// `@cinder/commentary` depends on `@cinder/markdown` (dissolved
+// `@cinder/editor` — see docs/decisions/package-boundaries.md Phase 1 —
+// dropped out of this chain entirely, #793), and `@lostgradient/cinder`
+// (components) depends on all three. Inlined here (not imported from
+// utilities.ts) because no hook derives a build closure from this list
+// locally anymore — CI's `--filter` build steps do the equivalent hash-skip
+// check independently, so this is purely a fixture for the assertion below.
+const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER = [
+  '@cinder/diff',
+  '@cinder/markdown',
+  '@cinder/commentary',
+  '@lostgradient/cinder',
+] as const;
+
 describe('pipeline contract: builds stay skippable (source-based: reads each build.ts)', () => {
   for (const packageName of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER) {
     it(`${packageName}/scripts/build.ts imports from lib/build-cache`, async () => {
@@ -220,10 +214,10 @@ describe('pipeline contract: builds stay skippable (source-based: reads each bui
         : 'components';
       const buildScriptPath = join(REPO_ROOT, 'packages', packageDirectory, 'scripts/build.ts');
       const source = await Bun.file(buildScriptPath).text();
-      // build-cache.ts's content-hash skip is what makes preBuildDependencyClosure
-      // (pre-push.ts) cheap on a hot path: without it, every push would pay a
-      // full rebuild of the entire buildable chain instead of hash-skipping
-      // unchanged packages.
+      // build-cache.ts's content-hash skip is what keeps every CI job's inline
+      // `bun run --filter=<dep> build` step cheap: without it, every job would
+      // pay a full rebuild of the entire buildable chain instead of
+      // hash-skipping unchanged packages.
       expect(source).toMatch(/from ['"]\.\/lib\/build-cache\.ts['"]/);
     });
   }
