@@ -13,7 +13,7 @@ import type {
   ChatSubmitEvent,
   ChatUnreadIndicatorChangeEvent,
 } from './container/chat-events.ts';
-import type { ConversationHistory, Message } from './conversation-model.ts';
+import type { ConversationHistory, Message, ToolCallPair } from './conversation-model.ts';
 import type { ChatAttachment } from './input/chat-attachment.ts';
 import type { MessagePartOverride } from './message/chat-message-parts.ts';
 import type { StepInfo } from './utilities/types.ts';
@@ -53,11 +53,25 @@ export type ReadReceipt = {
 export type ChatAnnounceLevel = 'polite' | 'assertive';
 
 /**
- * Full-row override snippet. Inversion of control: receives the message AND a
+ * Context shared by every snippet that renders a visible message row.
+ *
+ * Paired tool-result messages do not render duplicate rows. Instead, the visible
+ * tool-call row receives the resolved pair, including its result, through
+ * `toolCallPair`. Non-tool-call rows receive `undefined`.
+ */
+export type ChatRowContext = {
+  /** The message that owns the visible row. */
+  message: Message;
+  /** The tool call and its folded result for a visible tool-call row. */
+  toolCallPair: ToolCallPair | undefined;
+};
+
+/**
+ * Full-row override snippet. Inversion of control: receives the row context AND a
  * `renderDefault` snippet that renders the built-in row, so a consumer can wrap
  * or replace a row while still delegating to the default when it chooses.
  */
-export type ChatRowOverride = Snippet<[message: Message, renderDefault: Snippet]>;
+export type ChatRowOverride = Snippet<[context: ChatRowContext, renderDefault: Snippet]>;
 
 /**
  * Feature-capability flags for the Chat component. Grouped here so consumers
@@ -158,12 +172,15 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   empty?: Snippet;
   /** List of suggested starter prompt strings shown as clickable buttons in the default empty state. Clicking a prompt submits it immediately as a user message. Has no effect when a custom `empty` snippet is provided. */
   emptyPrompts?: string[];
-  messageActions?: Snippet<[Message]>;
-  messageStatus?: Snippet<[Message]>;
+  /** Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`. */
+  messageActions?: Snippet<[context: ChatRowContext]>;
+  /** Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`. */
+  messageStatus?: Snippet<[context: ChatRowContext]>;
   /**
-   * Full-row override. Renders an entire message row; receives the message and
+   * Full-row override. Renders an entire message row; receives the shared row context and
    * a `renderDefault` snippet for the built-in row (inversion of control), so a
-   * consumer can wrap or fully replace specific rows.
+   * consumer can wrap or fully replace specific rows. Paired tool results are
+   * folded into the visible tool-call row's `toolCallPair`.
    */
   row?: ChatRowOverride;
   /**

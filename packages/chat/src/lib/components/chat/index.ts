@@ -18,6 +18,8 @@ export type {
   ChatAnnounceLevel,
   ChatCapabilities,
   ChatProps,
+  ChatRowContext,
+  ChatRowOverride,
   ReadReceipt,
   TypingParticipant,
 } from './chat.types.ts';

@@ -16,7 +16,7 @@
 
 <div style="height: 20rem;">
   <Chat id="delegation-chat" {conversation}>
-    {#snippet row(message, renderDefault)}
+    {#snippet row({ message }, renderDefault)}
       <div class="row-wrapper" data-role={message.role}>
         {#if delegate}
           {@render renderDefault()}

@@ -1668,6 +1668,10 @@
     {@const pairs = message.toolCall?.id
       ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
       : []}
+    {@const rowContext = {
+      message,
+      toolCallPair: pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0],
+    }}
     {@const isStreamingMessage = streamingMessageId === message.id}
     {@const isCurrentSearchMatch =
       searchState.isOpen &&
@@ -1719,12 +1723,12 @@
       >
         {#snippet actions()}
           {#if messageActions}
-            {@render messageActions(message)}
+            {@render messageActions(rowContext)}
           {/if}
         {/snippet}
         {#snippet status()}
           {#if messageStatus}
-            {@render messageStatus(message)}
+            {@render messageStatus(rowContext)}
           {:else if receipt}
             <ChatReadReceipt {receipt} />
           {/if}
@@ -1733,7 +1737,7 @@
     {/snippet}
 
     {#if row}
-      {@render row(message, renderDefaultRow)}
+      {@render row(rowContext, renderDefaultRow)}
     {:else}
       {@render renderDefaultRow()}
     {/if}
