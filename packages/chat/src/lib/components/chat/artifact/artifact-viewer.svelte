@@ -1,6 +1,4 @@
 <script lang="ts" module>
-  import type { ArtifactViewerProps } from './artifact-viewer.types.ts';
-
   /**
    * Wrap SVG content in a minimal HTML document for sandboxed iframe rendering.
    * This is the safe approach: the SVG runs in a sandboxed origin rather than
@@ -13,6 +11,8 @@
 </script>
 
 <script lang="ts">
+  import type { ArtifactViewerProps } from './artifact-viewer.types.ts';
+
   let { type, content, language, title, mermaidRenderer }: ArtifactViewerProps = $props();
 
   const svgDocument = $derived(type === 'svg' ? wrapSvgInHtml(content) : '');
