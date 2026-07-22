@@ -54,7 +54,7 @@ export type ChatComposerPopoverItemSnippetContext<TItem extends ChatComposerPopo
 export type ChatComposerPopoverProps<TItem extends ChatComposerPopoverItem> = {
   /** Unique identifier used for the listbox and item ids. */
   id: string;
-  /** Current composer value. Bind this to the same value as ChatInput. */
+  /** Current composer value. Keep this synchronized through ChatInput binding or Chat's oncomposerinput. */
   value?: string;
   /** Consumer-owned command or mention definitions. */
   items: readonly TItem[];

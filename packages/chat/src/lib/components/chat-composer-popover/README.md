@@ -36,6 +36,36 @@ Chat composer-bound slash-command and mention listbox primitive.
 </ChatComposerPopover>
 ```
 
+When the composer is the full `Chat` surface, commit a selection with the
+public range API. `insertAtRange()` updates the popover's bound value through
+`oncomposerinput`, so no synthetic DOM event is needed:
+
+```svelte
+<script lang="ts">
+  import { Chat, createConversation } from '@lostgradient/chat';
+  import ChatComposerPopover from '@lostgradient/chat/composer-popover';
+
+  const conversation = createConversation({ id: 'assistant' });
+  const commands = [
+    { value: 'help', label: 'Help', insert: '/help ' },
+    { value: 'new', label: 'New conversation', insert: '/new ' },
+  ];
+  let chat: ReturnType<typeof Chat> | undefined;
+  let value = $state('');
+</script>
+
+<ChatComposerPopover
+  id="composer-commands"
+  bind:value
+  items={commands}
+  onselect={(selection) => chat?.insertAtRange(selection.range, selection.item.insert)}
+>
+  {#snippet composer(composerProps)}
+    <Chat bind:this={chat} id="assistant-chat" {conversation} {...composerProps} />
+  {/snippet}
+</ChatComposerPopover>
+```
+
 ## Related
 
 - [`Chat`](../chat/README.md) — full conversation surface and composer.

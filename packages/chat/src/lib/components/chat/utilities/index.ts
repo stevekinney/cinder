@@ -17,6 +17,7 @@ export {
   type ToolResultMessagePart,
 } from './types.ts';
 export {
+  CINDER_ARTIFACT_METADATA_KEY,
   CINDER_REASONING_METADATA_KEY,
   CINDER_STEPS_METADATA_KEY,
   CINDER_SUGGESTIONS_METADATA_KEY,
@@ -26,6 +27,7 @@ export {
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
+  resolveMessageArtifact,
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,

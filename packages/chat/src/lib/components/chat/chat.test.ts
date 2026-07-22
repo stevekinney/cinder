@@ -78,6 +78,7 @@ type TestConversation = import('./conversation-model.ts').ConversationHistory;
 type TestMessage = import('./conversation-model.ts').Message;
 type TestRole = import('./conversation-model.ts').MessageRole;
 type TestToolResult = import('./conversation-model.ts').ToolResult;
+type TestChatRowContext = import('./index.ts').ChatRowContext;
 
 let testMessageCounter = 0;
 
@@ -168,16 +169,17 @@ function textSnippet(text: string) {
 }
 
 function messageIdSnippet(attributeName: string) {
-  return createRawSnippet<[TestMessage]>((message) => ({
-    render: () => `<span data-${attributeName}="${message().id}">${message().id}</span>`,
+  return createRawSnippet<[TestChatRowContext]>((context) => ({
+    render: () =>
+      `<span data-${attributeName}="${context().message.id}">${context().message.id}</span>`,
     setup: () => {},
   }));
 }
 
 function replacingRowSnippet() {
-  return createRawSnippet<[TestMessage]>((message) => ({
+  return createRawSnippet<[TestChatRowContext]>((context) => ({
     render: () =>
-      `<article data-custom-row="${message().id}">Custom ${message().role} row</article>`,
+      `<article data-custom-row="${context().message.id}">Custom ${context().message.role} row</article>`,
     setup: () => {},
   }));
 }
@@ -544,6 +546,103 @@ describe('Chat — slot composition', () => {
     expect(container.querySelector(`[data-message-action="${messageId}"]`)).not.toBeNull();
     expect(container.querySelector(`[data-message-status="${messageId}"]`)).not.toBeNull();
     expect(container.textContent).toContain('Message with extra controls');
+  });
+
+  test('folds a paired tool result into every visible tool-call row snippet context', () => {
+    const now = new Date().toISOString();
+    const toolCall: NonNullable<TestMessage['toolCall']> = {
+      id: 'call-exports-check',
+      name: 'exports_check',
+      arguments: { package: '@lostgradient/cinder' },
+    };
+    const toolResult: TestToolResult = {
+      callId: toolCall.id,
+      outcome: 'success',
+      content: { status: 'ok', drift: false },
+    };
+    const conversation: TestConversation = {
+      ...createConversation({ id: 'conversation-paired-tool-result-context' }),
+      ids: ['tool-call-message', 'tool-result-message'],
+      messages: {
+        'tool-call-message': {
+          id: 'tool-call-message',
+          role: 'tool-call',
+          content: '',
+          position: 0,
+          createdAt: now,
+          metadata: {},
+          hidden: false,
+          toolCall,
+        },
+        'tool-result-message': {
+          id: 'tool-result-message',
+          role: 'tool-result',
+          content: '',
+          position: 1,
+          createdAt: now,
+          metadata: {
+            'cinder:artifact': {
+              type: 'code',
+              content: '{ "status": "ok" }',
+              language: 'json',
+              title: 'Exports report',
+            },
+          },
+          hidden: false,
+          toolResult,
+        },
+      },
+      updatedAt: now,
+    };
+
+    const contextSnippet = (name: string) =>
+      createRawSnippet<[TestChatRowContext]>((getContext) => ({
+        render: () => {
+          const context = getContext();
+          const result = context.toolCallPair?.result;
+          const content = result?.content as Record<string, unknown> | undefined;
+          const status = content?.['status'];
+          return `<span data-row-context="${name}" data-message-id="${context.message?.id ?? ''}" data-result-status="${typeof status === 'string' ? status : ''}" data-artifact-type="${context.artifact?.type ?? ''}" data-artifact-title="${context.artifact?.title ?? ''}"></span>`;
+        },
+        setup: () => {},
+      }));
+
+    const { container } = render(Chat, {
+      props: {
+        id: 'chat-paired-tool-result-context',
+        conversation,
+        messageActions: contextSnippet('actions') as never,
+        messageStatus: contextSnippet('status') as never,
+      },
+    });
+
+    expect(container.querySelectorAll('.chat-message-wrapper[data-role="tool-call"]')).toHaveLength(
+      1,
+    );
+    expect(
+      container.querySelectorAll('.chat-message-wrapper[data-role="tool-result"]'),
+    ).toHaveLength(0);
+    for (const name of ['actions', 'status']) {
+      const snippet = container.querySelector(`[data-row-context="${name}"]`);
+      expect(snippet?.getAttribute('data-message-id')).toBe('tool-call-message');
+      expect(snippet?.getAttribute('data-result-status')).toBe('ok');
+      expect(snippet?.getAttribute('data-artifact-type')).toBe('code');
+      expect(snippet?.getAttribute('data-artifact-title')).toBe('Exports report');
+    }
+
+    const row = contextSnippet('row');
+    const rowRender = render(Chat, {
+      props: {
+        id: 'chat-paired-tool-result-row-context',
+        conversation,
+        row: row as never,
+      },
+    });
+    const rowSnippet = rowRender.container.querySelector('[data-row-context="row"]');
+    expect(rowSnippet?.getAttribute('data-message-id')).toBe('tool-call-message');
+    expect(rowSnippet?.getAttribute('data-result-status')).toBe('ok');
+    expect(rowSnippet?.getAttribute('data-artifact-type')).toBe('code');
+    expect(rowSnippet?.getAttribute('data-artifact-title')).toBe('Exports report');
   });
 
   test('a row override can replace the built-in message row', () => {

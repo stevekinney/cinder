@@ -5,7 +5,11 @@ import { describe, expect, it } from 'bun:test';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { isModuleNotFoundError } from './mcp.ts';
+import {
+  importOptionalMcpDependency,
+  isModuleNotFoundError,
+  MCP_OPTIONAL_DEPENDENCIES_MESSAGE,
+} from './mcp-dependencies.ts';
 
 const cliDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(cliDirectory, '../..');
@@ -160,5 +164,31 @@ describe('isModuleNotFoundError', () => {
     expect(isModuleNotFoundError(new TypeError('unexpected token'))).toBe(false);
     expect(isModuleNotFoundError('not an Error instance')).toBe(false);
     expect(isModuleNotFoundError(undefined)).toBe(false);
+  });
+});
+
+describe('importOptionalMcpDependency', () => {
+  it('returns a loaded optional dependency', async () => {
+    expect(await importOptionalMcpDependency(async () => 'loaded')).toBe('loaded');
+  });
+
+  it('rewrites only module-not-found failures and preserves their cause', async () => {
+    const missing = new Error("Cannot find package 'zod'");
+    const rewritten = await importOptionalMcpDependency(async () => {
+      throw missing;
+    }).then(
+      () => undefined,
+      (error: unknown) => error,
+    );
+    expect(rewritten).toBeInstanceOf(Error);
+    expect((rewritten as Error).message).toBe(MCP_OPTIONAL_DEPENDENCIES_MESSAGE);
+    expect((rewritten as Error).cause).toBe(missing);
+
+    const internalFailure = new Error('dependency initialization failed');
+    await expect(
+      importOptionalMcpDependency(async () => {
+        throw internalFailure;
+      }),
+    ).rejects.toBe(internalFailure);
   });
 });

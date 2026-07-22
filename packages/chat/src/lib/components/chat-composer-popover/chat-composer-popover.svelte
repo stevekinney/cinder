@@ -75,6 +75,7 @@
   let composerSyncTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSyncedValue = $state(value);
   let suppressNextValueSync = false;
+  let suppressCommittedSelectionSync = false;
 
   const emptyContent = $derived(empty);
   const query = $derived(activeMatch?.query ?? '');
@@ -141,6 +142,17 @@
     }
   }
 
+  /** Sync bound composer value/caret only, without reopening/dismissing from trigger analysis. */
+  function syncComposerValueAndCaret(
+    composerElement: HTMLTextAreaElement | HTMLInputElement | null,
+    nextValue: string,
+  ): void {
+    if (composerElement) anchor = composerElement;
+    lastSyncedValue = nextValue;
+    value = nextValue;
+    caretIndex = composerElement?.selectionEnd ?? caretIndex;
+  }
+
   function dismiss({ restoreFocus = true }: { restoreFocus?: boolean } = {}): void {
     if (!open && !activeMatch && !activeItemId) return;
     clearComposerSyncTimer();
@@ -152,14 +164,30 @@
   }
 
   function handleComposerInput(nextValue: string, event?: Event): void {
+    const composerElement = event ? getComposerElement(event) : anchor;
+    const isProgrammaticWriteBack = !event;
+    if (isProgrammaticWriteBack && suppressCommittedSelectionSync) {
+      // Selection commits written back through ChatInput/Chat.insertAtRange()
+      // report the new value without a DOM input event. Only suppress that
+      // specific programmatic write-back so the committed item can keep a
+      // trigger prefix like `/stop` without immediately reopening the menu.
+      syncComposerValueAndCaret(composerElement, nextValue);
+      return;
+    }
     suppressNextValueSync = false;
-    updateFromComposer(event ? getComposerElement(event) : anchor, nextValue);
+    updateFromComposer(composerElement, nextValue);
   }
 
   function handleComposerSelectionChange(event: Event): void {
-    suppressNextValueSync = false;
     const composerElement = getComposerElement(event);
     if (!composerElement) return;
+    if (suppressCommittedSelectionSync) {
+      syncComposerValueAndCaret(composerElement, composerElement.value);
+      return;
+    }
+    // Only clear the external-value suppression once we know this selection
+    // event came from the composer we track; unrelated/null targets are a no-op.
+    suppressNextValueSync = false;
     syncComposerSelectionAfterNativeNavigation(composerElement);
   }
 
@@ -268,8 +296,10 @@
     activeMatch = null;
     anchor?.focus();
     suppressNextValueSync = true;
+    suppressCommittedSelectionSync = true;
     queueMicrotask(() => {
       suppressNextValueSync = false;
+      suppressCommittedSelectionSync = false;
     });
     onselect?.(detail);
   }

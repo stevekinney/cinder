@@ -163,6 +163,8 @@ const schema = {
       {
         name: 'messageActions',
         reason: 'function-or-snippet',
+        description:
+          'Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`, including resolved tool pairs and artifact metadata.',
       },
       {
         name: 'messagePart',
@@ -179,6 +181,8 @@ const schema = {
       {
         name: 'messageStatus',
         reason: 'function-or-snippet',
+        description:
+          'Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`, including resolved tool pairs and artifact metadata.',
       },
       {
         name: 'messageSteps',
@@ -226,7 +230,7 @@ const schema = {
         name: 'oncomposerinput',
         reason: 'function-or-snippet',
         description:
-          "Called with the composer's current plain-text value on every composer\ninput event. The optional event exposes the textarea for composer-bound\noverlays without reaching into `.chat-input-editor` DOM directly.",
+          "Called with the composer's current plain-text value after user input or\n`insertAtRange()`. The optional event exposes the textarea for\ncomposer-bound overlays without reaching into `.chat-input-editor` DOM\ndirectly; programmatic range insertion omits the event.",
       },
       {
         name: 'oncomposerkeydown',
@@ -316,7 +320,7 @@ const schema = {
         name: 'row',
         reason: 'function-or-snippet',
         description:
-          'Full-row override. Renders an entire message row; receives the message and\na `renderDefault` snippet for the built-in row (inversion of control), so a\nconsumer can wrap or fully replace specific rows.',
+          "Full-row override. Renders an entire message row; receives the shared row context and\na `renderDefault` snippet for the built-in row (inversion of control), so a\nconsumer can wrap or fully replace specific rows. Paired tool results are\nfolded into the visible tool-call row's `toolCallPair`, with validated\n`cinder:artifact` metadata available as `artifact`.",
       },
       {
         name: 'typingParticipants',

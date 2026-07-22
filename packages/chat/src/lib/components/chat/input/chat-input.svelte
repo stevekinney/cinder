@@ -58,7 +58,7 @@
     onsubmit?: (message: MessageInput, attachments: ChatAttachment[]) => void;
     /** Called when stop is requested (transforms send button into stop button when sending=true) */
     onstop?: (() => void) | undefined;
-    /** Called with the composer's current plain-text value on every input event. */
+    /** Called when user input or insertAtRange changes the composer's plain-text value. */
     oncomposerinput?: ((value: string, event?: Event) => void) | undefined;
     /**
      * Called before ChatInput's internal Enter-to-send handling when a keydown
@@ -105,7 +105,7 @@
    * ```
    */
 
-  import { onDestroy } from 'svelte';
+  import { flushSync, onDestroy } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
   import { createIdFactory, useStableId } from '../../../utilities/id-factory.ts';
@@ -463,6 +463,11 @@
     oncomposerinput?.(value, event);
   }
 
+  /** Apply the Web IDL unsigned-long coercion used by textarea range methods. */
+  function toUnsignedLong(index: number): number {
+    return index >>> 0;
+  }
+
   // =========================================================================
   // Imperative API
   // =========================================================================
@@ -487,6 +492,24 @@
 
   export function getEditorElement(): HTMLTextAreaElement | null {
     return editorElement;
+  }
+
+  /** Replace a composer range using native textarea range semantics. */
+  export function insertAtRange(range: { start: number; end: number }, text: string): void {
+    if (!editorElement) return;
+
+    const previousValue = editorElement.value;
+    const replacementStart = Math.min(toUnsignedLong(range.start), previousValue.length);
+    const replacementEnd = Math.min(toUnsignedLong(range.end), previousValue.length);
+    editorElement.setRangeText(text, replacementStart, replacementEnd, 'end');
+    const nextValue = editorElement.value;
+    const caret = nextValue.length - (previousValue.length - replacementEnd);
+    flushSync(() => {
+      value = nextValue;
+    });
+    editorElement.focus();
+    editorElement.setSelectionRange(caret, caret);
+    oncomposerinput?.(value);
   }
 
   export function addFiles(files: File[]): void {

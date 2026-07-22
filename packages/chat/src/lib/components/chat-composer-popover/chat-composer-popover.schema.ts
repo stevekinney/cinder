@@ -10,7 +10,8 @@ const schema = {
     },
     value: {
       type: 'string',
-      description: 'Current composer value. Bind this to the same value as ChatInput.',
+      description:
+        "Current composer value. Keep this synchronized through ChatInput binding or Chat's oncomposerinput.",
     },
     triggers: {
       type: 'array',

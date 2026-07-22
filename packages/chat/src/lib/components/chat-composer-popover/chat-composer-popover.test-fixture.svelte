@@ -21,6 +21,7 @@
     onDismissed?: () => void;
     onSubmitted?: (message: MessageInput) => void;
     replaceWithSelectedCommand?: boolean;
+    replaceWithSelectedCommandImperatively?: boolean;
     throwOnSelected?: boolean;
   };
 
@@ -31,6 +32,7 @@
     onDismissed = () => {},
     onSubmitted = () => {},
     replaceWithSelectedCommand = false,
+    replaceWithSelectedCommandImperatively = false,
     throwOnSelected = false,
   }: Props = $props();
   const commands = $derived(
@@ -47,6 +49,12 @@
   }
 
   let value = $state(initialComposerValue());
+  let composerApi = $state<
+    | {
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
+      }
+    | undefined
+  >(undefined);
 
   function handleSelected(selection: ChatComposerPopoverSelection<TestComposerCommand>): void {
     onSelected(selection);
@@ -55,6 +63,9 @@
     }
     if (replaceWithSelectedCommand) {
       value = `/${selection.item.value}`;
+    }
+    if (replaceWithSelectedCommandImperatively) {
+      composerApi?.insertAtRange(selection.range, `/${selection.item.value}`);
     }
   }
 </script>
@@ -68,6 +79,7 @@
 >
   {#snippet composer(composerProps)}
     <ChatInput
+      bind:this={composerApi}
       id="test-chat-input"
       bind:value
       allowAttachments={false}
