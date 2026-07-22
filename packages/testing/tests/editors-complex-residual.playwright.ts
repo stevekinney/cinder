@@ -46,6 +46,7 @@ async function openTouchPage(
   browser: Browser,
   route: string,
   theme: 'light' | 'dark',
+  viewport = { width: 414, height: 896 },
 ): Promise<{ page: Page; dispose: () => Promise<void> }> {
   const context = await browser.newContext({
     baseURL: PLAYGROUND_URL,
@@ -53,7 +54,7 @@ async function openTouchPage(
     reducedMotion: 'reduce',
     hasTouch: true,
     isMobile: true,
-    viewport: { width: 414, height: 896 },
+    viewport,
   });
   await context.addInitScript(
     ([key, value]) => {
@@ -150,6 +151,45 @@ test.describe('chat action buttons', () => {
         (element) => getComputedStyle(element).color,
       );
       expect(successColor).not.toBe(restingColor);
+    } finally {
+      await dispose();
+    }
+  });
+
+  test('wide touch layouts reserve only below-bubble action rows', async ({ browser }) => {
+    const { page, dispose } = await openTouchPage(browser, '/page/chat?snapshot=1', 'light', {
+      width: 768,
+      height: 1024,
+    });
+    try {
+      const space1Px = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.cssText =
+          'position:absolute;width:var(--cinder-space-1);visibility:hidden;pointer-events:none';
+        document.body.appendChild(probe);
+        const px = parseFloat(getComputedStyle(probe).width);
+        probe.remove();
+        return px;
+      });
+
+      const toolPairRow = page.locator('.chat-message-wrapper[data-tool-pair]').first();
+      await expect(toolPairRow).toBeVisible();
+      await toolPairRow.locator('.chat-message-actions').evaluate((actions) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Test action';
+        actions.appendChild(button);
+      });
+      await expect(toolPairRow).toHaveCSS('margin-block-end', `${TOUCH_TARGET_MIN + space1Px}px`);
+
+      const assistantCopyButton = page
+        .locator('.chat-message-wrapper[data-role="assistant"] .chat-message-copy')
+        .first();
+      await expect(assistantCopyButton).toBeVisible();
+      const assistantRow = assistantCopyButton.locator(
+        'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
+      );
+      await expect(assistantRow).toHaveCSS('margin-block-end', '0px');
     } finally {
       await dispose();
     }
