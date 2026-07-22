@@ -836,6 +836,34 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     expect(drafts).toEqual([{ count: 'abc' }]);
   });
 
+  test('does not submit a stale numeric value while malformed editor text is visible', async () => {
+    const submitted: unknown[] = [];
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: 'abc' } });
+    await submit(formFrom(container));
+    await flush();
+
+    expect(submitted).toEqual([]);
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+  });
+
   test('does not report programmatic numeric input while submission is pending', async () => {
     const drafts: unknown[] = [];
     let finishSubmit: (() => void) | undefined;

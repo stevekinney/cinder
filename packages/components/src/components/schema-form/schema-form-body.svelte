@@ -75,6 +75,9 @@
   let rawDrafts = $state<Record<string, string>>(
     seedRawDrafts(initialModel.field, initialFormValue),
   );
+  let parsedRawDrafts = $state<
+    Record<string, { ok: true; value: unknown } | { ok: false; message: string }>
+  >({});
   let numericDrafts = $state<Record<string, string>>({});
   let touchedValidationSequences = $state<Record<string, number>>({});
   let serializedValue = $state('');
@@ -152,10 +155,10 @@
       if (draft !== undefined) nextValue = setValueAtPath(nextValue, field.path, draft);
     }
     for (const field of currentJsonFields(model.field, formValue)) {
-      const draft = rawDrafts[pathKey(field.path)];
-      if (draft === undefined) continue;
-      const parsed = parseJsonDraft(field.path, draft);
-      nextValue = setValueAtPath(nextValue, field.path, parsed.ok ? parsed.value : draft);
+      const key = pathKey(field.path);
+      const parsed = parsedRawDrafts[key];
+      if (parsed === undefined) continue;
+      nextValue = setValueAtPath(nextValue, field.path, parsed.ok ? parsed.value : rawDrafts[key]);
     }
     return pruneUndefined(nextValue) as SchemaFormOutput;
   }
@@ -240,6 +243,11 @@
     if (submitting) return;
     const key = pathKey(field.path);
     rawDrafts = { ...rawDrafts, [key]: next };
+    const parsed = parseJsonDraft(field.path, next);
+    parsedRawDrafts = {
+      ...parsedRawDrafts,
+      [key]: parsed.ok ? parsed : { ok: false, message: parsed.issue.message },
+    };
     bumpTouchedValidationSequence(field.path);
     if (errors[key]) {
       const { [key]: _removed, ...remaining } = errors;
@@ -289,6 +297,7 @@
       false,
     );
     rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
+    parsedRawDrafts = reindexArrayPathState(parsedRawDrafts, field.path, index);
     numericDrafts = reindexArrayPathState(numericDrafts, field.path, index);
     errors = reindexArrayPathState(errors, field.path, index);
     touchedValidationSequences = bumpPathValidationSequences(
@@ -428,13 +437,12 @@
     let nextValue = formValue;
     const issues: SchemaFormValidationIssue[] = [];
     for (const field of currentJsonFields(model.field, formValue)) {
-      const draft = rawDrafts[pathKey(field.path)];
-      if (draft === undefined) continue;
-      const parsed = parseJsonDraft(field.path, draft);
+      const parsed = parsedRawDrafts[pathKey(field.path)];
+      if (parsed === undefined) continue;
       if (parsed.ok) {
         nextValue = setValueAtPath(nextValue, field.path, parsed.value);
       } else {
-        issues.push(parsed.issue);
+        issues.push({ path: field.path, message: parsed.message });
       }
     }
     return { value: nextValue, issues };
@@ -500,7 +508,12 @@
         return;
       }
 
-      const candidate = pruneUndefined(raw.value);
+      let candidate = raw.value;
+      for (const field of currentNumericFields(model.field, formValue)) {
+        const draft = numericDrafts[pathKey(field.path)];
+        if (draft !== undefined) candidate = setValueAtPath(candidate, field.path, draft);
+      }
+      candidate = pruneUndefined(candidate);
       const result = await validateSchemaValue(schema, candidate);
       if (!result.valid) {
         await reportSubmitIssues(result.issues, submitId);
