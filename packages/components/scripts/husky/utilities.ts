@@ -710,7 +710,7 @@ export async function printGitStatistics(refA: string, refB: string) {
  * `dependencies` holds the names of *other workspace packages* this package
  * depends on (union of `dependencies`/`devDependencies`/`peerDependencies`,
  * filtered to known workspace names) — the edges used to expand a touched set
- * to its reverse-dependency closure in the pre-push gate.
+ * to its reverse-dependency closure in local validation.
  */
 export type WorkspacePackage = {
   readonly name: string;
@@ -811,7 +811,7 @@ export async function loadWorkspacePackages(): Promise<readonly WorkspacePackage
 /**
  * Expand a set of touched package names to its **reverse-dependency closure**:
  * the touched packages plus every package that transitively *depends on* one of
- * them. A pre-push gate must validate dependents because a change to a package
+ * them. Local validation must validate dependents because a change to a package
  * can break a dependent's typecheck/test without that package's own gates
  * failing. Names not present in `packages` (deleted packages, typos) pass
  * through unchanged. Cycle-safe via the visited set.

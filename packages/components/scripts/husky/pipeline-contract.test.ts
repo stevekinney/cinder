@@ -130,6 +130,7 @@ describe('pipeline contract: removed pre-push helpers stay removed', () => {
       'writePrePushLog',
       'preBuildDependencyClosure',
       'pre-push-gate',
+      'pre-push gate',
     ]) {
       expect(source).not.toContain(removedName);
     }
