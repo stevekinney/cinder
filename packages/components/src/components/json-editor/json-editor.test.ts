@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -85,6 +85,28 @@ describe('JsonEditor', () => {
 
     expect(editor.getAttribute('aria-invalid')).toBe('true');
     expect(view.getByRole('alert').textContent).toBe('Payloads are unavailable.');
+  });
+
+  test('skips parsing while an external error owns feedback and resumes when it clears', async () => {
+    const parse = spyOn(JSON, 'parse');
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"large":true}',
+      error: 'Payloads are unavailable.',
+    });
+
+    expect(parse).not.toHaveBeenCalled();
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{"large":true}',
+      error: '',
+    });
+
+    expect(parse).toHaveBeenCalledWith('{"large":true}');
+    parse.mockRestore();
   });
 
   test('treats an empty external error as cleared validation state', async () => {
