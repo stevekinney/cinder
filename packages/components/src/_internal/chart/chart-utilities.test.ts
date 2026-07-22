@@ -689,7 +689,7 @@ describe('createBarModel', () => {
     });
   });
 
-  test('reserves enough horizontal label space for wide glyphs', () => {
+  test('reserves horizontal label space from estimated character width', () => {
     const model = createBarModel({
       data: [{ status: 'WWWWWWWWWW', count: 9 }],
       categoryKey: 'status',

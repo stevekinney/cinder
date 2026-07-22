@@ -644,7 +644,10 @@ export function createBarModel(options: {
       label:
         horizontalCategoryLabelLayout?.labels[index] ?? categoryLabels[index] ?? category.label,
       fullLabel: categoryLabels[index] ?? category.label,
-      x: orientation === 'vertical' ? categoryPosition + categoryScale.bandwidth() / 2 : -8,
+      x:
+        orientation === 'vertical'
+          ? categoryPosition + categoryScale.bandwidth() / 2
+          : -HORIZONTAL_CATEGORY_LABEL_GAP,
       y:
         orientation === 'vertical'
           ? geometry.plotHeight + 20
@@ -860,10 +863,12 @@ function createHorizontalCategoryLabelLayout(
     DEFAULT_CHART_MARGIN_LEFT,
     Math.floor(chartWidth * MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION),
   );
+  let longestLabelWidth = 0;
+  for (const label of labels) {
+    longestLabelWidth = Math.max(longestLabelWidth, estimateHorizontalCategoryLabelWidth(label));
+  }
   const requestedMarginLeft =
-    Math.max(0, ...labels.map(estimateHorizontalCategoryLabelWidth)) +
-    HORIZONTAL_CATEGORY_LABEL_GAP +
-    HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING;
+    longestLabelWidth + HORIZONTAL_CATEGORY_LABEL_GAP + HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING;
   const marginLeft = Math.min(
     maximumMarginLeft,
     Math.max(DEFAULT_CHART_MARGIN_LEFT, requestedMarginLeft),
