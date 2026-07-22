@@ -602,6 +602,7 @@ function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): Propert
         'running',
         'succeeded',
         'failed',
+        'timed-out',
         'cancelled',
         'skipped',
         'retrying',

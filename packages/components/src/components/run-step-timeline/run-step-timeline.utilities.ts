@@ -84,6 +84,7 @@ export function statusDotStatus(status: RunStepStatus): StatusDotStatus {
     case 'succeeded':
       return 'success';
     case 'failed':
+    case 'timed-out':
       return 'danger';
     case 'running':
       return 'online';
@@ -111,6 +112,8 @@ export function statusLabel(status: RunStepStatus): string {
       return 'Succeeded';
     case 'failed':
       return 'Failed';
+    case 'timed-out':
+      return 'Timed out';
     case 'cancelled':
       return 'Cancelled';
     case 'skipped':
@@ -128,6 +131,7 @@ export function badgeVariant(status: RunStepStatus): RunStepBadgeVariant {
     case 'succeeded':
       return 'success';
     case 'failed':
+    case 'timed-out':
       return 'danger';
     case 'running':
       return 'info';
@@ -147,7 +151,11 @@ export function badgeVariant(status: RunStepStatus): RunStepBadgeVariant {
 /** Whether this status is a terminal state (no further changes expected). */
 export function isTerminal(status: RunStepStatus): boolean {
   return (
-    status === 'succeeded' || status === 'failed' || status === 'cancelled' || status === 'skipped'
+    status === 'succeeded' ||
+    status === 'failed' ||
+    status === 'timed-out' ||
+    status === 'cancelled' ||
+    status === 'skipped'
   );
 }
 

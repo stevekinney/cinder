@@ -74,6 +74,15 @@ const failedStep: RunStep = {
   ],
 };
 
+const timedOutStep: RunStep = {
+  id: 'step-timed-out',
+  label: 'Wait for worker response',
+  status: 'timed-out',
+  startTime: '2026-06-01T10:00:00Z',
+  endTime: '2026-06-01T10:05:00Z',
+  duration: '5m 0s',
+};
+
 const cancelledStep: RunStep = {
   id: 'step-cancelled',
   label: 'Deploy to production',
@@ -402,6 +411,29 @@ describe('structure', () => {
     expect(statusBadge?.getAttribute('data-cinder-variant')).toBe('accent');
     expect(statusBadge?.getAttribute('aria-label')).toBe('Status: Waiting approval');
     expect(statusDot?.getAttribute('data-cinder-status')).toBe('accent');
+  });
+
+  test('timed out renders as a distinct terminal danger status', () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [timedOutStep],
+    });
+    const item = container.querySelector<HTMLElement>('.cinder-run-step-timeline__item');
+    const statusBadge = item?.querySelector<HTMLElement>('.cinder-run-step-timeline__status');
+    const statusDot = item?.querySelector<HTMLElement>('.cinder-status-dot');
+
+    expect(item?.getAttribute('data-cinder-status')).toBe('timed-out');
+    expect(item?.hasAttribute('data-cinder-terminal')).toBe(true);
+    expect(statusBadge?.textContent?.trim()).toBe('Timed out');
+    expect(statusBadge?.getAttribute('data-cinder-variant')).toBe('danger');
+    expect(statusBadge?.getAttribute('aria-label')).toBe('Status: Timed out');
+    expect(statusDot?.getAttribute('data-cinder-status')).toBe('danger');
+  });
+
+  test('schema accepts the timed-out status', () => {
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(runStepTimelineSchema);
+
+    expect(validate({ steps: [timedOutStep] })).toBe(true);
   });
 
   test('renders legacy step fixtures without requiring new props', () => {

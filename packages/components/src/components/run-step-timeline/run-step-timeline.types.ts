@@ -12,6 +12,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * - `running`   — currently executing within its lane.
  * - `succeeded` — completed successfully.
  * - `failed`    — completed with a terminal error.
+ * - `timed-out` — exceeded its allowed execution time.
  * - `cancelled` — was stopped before it could complete.
  * - `skipped`   — bypassed intentionally (e.g. conditional branch).
  * - `retrying`  — a prior attempt failed; a new attempt is in progress.
@@ -22,6 +23,7 @@ export type RunStepStatus =
   | 'running'
   | 'succeeded'
   | 'failed'
+  | 'timed-out'
   | 'cancelled'
   | 'skipped'
   | 'retrying'
