@@ -13,7 +13,8 @@
  * test, which is worse than a redundant full run):
  *
  *   - We model static imports, side-effect imports, `export … from` /
- *     `export * from` re-exports, and STRING-LITERAL dynamic `import('…')`.
+ *     `export * from` re-exports, STRING-LITERAL dynamic `import('…')`, and
+ *     CSS `@import` dependencies.
  *   - A COMPUTED dynamic import (`import(variable)`) creates an edge the graph
  *     cannot see. Any such import outside a tiny known-safe harness allow-list
  *     forces the FULL suite, and {@link assertNoUnmodellableImports} keeps the
@@ -136,6 +137,9 @@ const STATIC_IMPORT_PATTERN =
 /** Matches a side-effect `import '…';` (no clause), e.g. `import './styles.css';`. */
 const SIDE_EFFECT_IMPORT_PATTERN = /(?:^|[\n;{}>])\s*import\s+(['"])([^'"]+)\1/g;
 
+/** Matches quoted CSS `@import` rules, with or without `url(...)`. */
+const CSS_IMPORT_PATTERN = /@import\s+(?:url\(\s*)?(['"])([^'"]+)\1\s*\)?/g;
+
 /**
  * Matches EVERY dynamic `import(` call, tolerating a comment between the
  * keyword and the paren (`import /* … *​/ (…)`). Group 1 is the raw argument
@@ -184,6 +188,13 @@ export function extractImports(content: string): ExtractedImports {
       const specifier = match[2];
       if (specifier !== undefined) specifiers.add(specifier);
     }
+  }
+
+  CSS_IMPORT_PATTERN.lastIndex = 0;
+  let cssMatch: RegExpExecArray | null;
+  while ((cssMatch = CSS_IMPORT_PATTERN.exec(content)) !== null) {
+    const specifier = cssMatch[2];
+    if (specifier !== undefined) specifiers.add(specifier);
   }
 
   let hasUnmodellableImport = false;
@@ -819,7 +830,7 @@ function isTraceableSharedModule(repoRelativePath: string): boolean {
  */
 export async function loadSourceFiles(): Promise<Map<string, string>> {
   const files = new Map<string, string>();
-  const glob = new Glob('**/*.{ts,tsx,svelte,mts,cts,js,mjs,cjs}');
+  const glob = new Glob('**/*.{ts,tsx,svelte,mts,cts,js,mjs,cjs,css}');
 
   for (const root of SCANNED_ROOTS) {
     const absoluteRoot = join(workspaceRoot, root);

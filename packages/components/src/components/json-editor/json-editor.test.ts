@@ -7,6 +7,7 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: JsonEditor } = await import('./json-editor.svelte');
+const { default: schema } = await import('./json-editor.schema.ts');
 
 afterEach(() => {
   cleanup();
@@ -14,6 +15,11 @@ afterEach(() => {
 });
 
 describe('JsonEditor', () => {
+  test('documents supported native validation and disabled props in its public schema', () => {
+    expect(schema.properties).toHaveProperty('disabled');
+    expect(schema.properties).toHaveProperty('required');
+  });
+
   test('emits each proposed string value without taking ownership of controlled state', async () => {
     const onValueChange = mock();
     const view = render(JsonEditor, {

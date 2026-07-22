@@ -46,6 +46,18 @@ describe('extractImports', () => {
     expect(specifiers).toEqual(['./styles.css']);
   });
 
+  it('extracts CSS @import dependencies', () => {
+    const { specifiers, hasUnmodellableImport } = extractImports(`
+      @import '../json-editor/json-editor.css';
+      @import url('../button/button.css');
+    `);
+    expect(specifiers.toSorted()).toEqual([
+      '../button/button.css',
+      '../json-editor/json-editor.css',
+    ]);
+    expect(hasUnmodellableImport).toBe(false);
+  });
+
   it('extracts export … from and export * from re-exports', () => {
     const content = `
       export { Thing } from './thing.ts';
@@ -293,6 +305,16 @@ describe('buildImportGraph + dependentsClosure', () => {
     const graph = buildImportGraph(publicImports);
     const closure = dependentsClosure(graph, [`${C}/json-editor/json-editor.svelte`]);
     expect(closure).toContain(`${C}/approval-card/approval-card.svelte`);
+  });
+
+  it('tracks component style dependents imported through CSS', () => {
+    const styleImports = new Map<string, string>([
+      [`${C}/json-editor/json-editor.css`, `.cinder-json-editor { display: block; }`],
+      [`${C}/approval-card/approval-card.css`, `@import '../json-editor/json-editor.css';`],
+    ]);
+    const graph = buildImportGraph(styleImports);
+    const closure = dependentsClosure(graph, [`${C}/json-editor/json-editor.css`]);
+    expect(closure).toContain(`${C}/approval-card/approval-card.css`);
   });
 
   it('computes the transitive dependents closure', () => {

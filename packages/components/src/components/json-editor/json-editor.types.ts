@@ -16,6 +16,10 @@ export type JsonEditorProps = Omit<
   error?: string;
   /** Number of visible text rows. Defaults to 8. */
   rows?: number;
+  /** Disables the editor. Passed through to the native textarea. */
+  disabled?: boolean;
+  /** Marks the editor as required. Passed through to the native textarea. */
+  required?: boolean;
   /** Whether valid JSON should render an announced success message. Defaults to true. */
   showValidFeedback?: boolean;
   /** Called with the proposed JSON source whenever the user edits the textarea. */

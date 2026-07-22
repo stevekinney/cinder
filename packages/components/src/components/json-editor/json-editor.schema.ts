@@ -4,6 +4,14 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    disabled: {
+      type: 'boolean',
+      description: 'Disables the editor. Passed through to the native textarea.',
+    },
+    required: {
+      type: 'boolean',
+      description: 'Marks the editor as required. Passed through to the native textarea.',
+    },
     rows: {
       type: 'number',
       description: 'Number of visible text rows. Defaults to 8.',
