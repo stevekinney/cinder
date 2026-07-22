@@ -259,7 +259,14 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
       `if (!rendered.html.includes('Hi')) throw new Error('rendering#renderMarkdown failed');`,
       `if (!isSafeUrl('https://example.com')) throw new Error('utilities/safe-url failed');`,
       `if (JSON.stringify(sortKeys({ b: 1, a: 2 })) !== '{"a":2,"b":1}') throw new Error('utilities/sort-keys failed');`,
-      `if (sanitizeHtml('<script>x</script>hi').includes('<script>')) throw new Error('templates/sanitize-html failed');`,
+      // sanitizeHtml requires DOMParser, which plain Node does not provide.
+      // Its documented behavior there is to fail closed (return ''), not to
+      // pass the input through unsanitized — assert that explicitly rather
+      // than checking the input doesn't reappear, which would pass
+      // vacuously against either a correct empty-string result or a
+      // hypothetical unsanitized-passthrough bug.
+      `if (typeof DOMParser !== 'undefined') throw new Error('expected no DOMParser under plain Node — fixture assumption is stale');`,
+      `if (sanitizeHtml('<script>x</script>hi') !== '') throw new Error('templates/sanitize-html did not fail closed without DOMParser');`,
       `const templated = renderTemplate('Hello {{name}}', { name: 'World' });`,
       `if (!templated.includes('World')) throw new Error('templates/template-render failed');`,
       `console.log('markdown consumer OK');`,

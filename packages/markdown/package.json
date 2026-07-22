@@ -21,7 +21,9 @@
   },
   "license": "MIT",
   "author": "Steve Kinney <hello@stevekinney.net>",
-  "sideEffects": false,
+  "sideEffects": [
+    "**/render-worker.js"
+  ],
   "type": "module",
   "exports": {
     ".": {
