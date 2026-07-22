@@ -87,6 +87,20 @@ describe('JsonEditor', () => {
     expect(view.getByRole('alert').textContent).toBe('Payloads are unavailable.');
   });
 
+  test('updates parse feedback immediately from typed text before controlled state responds', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+    });
+    const editor = view.getByLabelText('Payload');
+
+    await fireEvent.input(editor, { target: { value: '{' } });
+
+    expect(editor.getAttribute('aria-invalid')).toBe('true');
+    expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+  });
+
   test('keeps native multiline keyboard input and does not trap Tab', async () => {
     const onchange = mock();
     const view = render(JsonEditor, {

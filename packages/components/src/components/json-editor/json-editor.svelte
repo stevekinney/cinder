@@ -39,10 +39,16 @@
     ...rest
   }: JsonEditorProps = $props();
 
+  let draftValue = $state(value);
+
+  $effect(() => {
+    draftValue = value;
+  });
+
   const descriptionId = $derived(description ? `${id}-description` : undefined);
   const parseIsValid = $derived.by(() => {
     try {
-      JSON.parse(value);
+      JSON.parse(draftValue);
       return true;
     } catch {
       return false;
@@ -72,7 +78,10 @@
     class="cinder-json-editor__textarea"
     aria-describedby={describedBy}
     aria-invalid={ariaInvalid}
-    oninput={(event) => onchange?.(event.currentTarget.value)}
+    oninput={(event) => {
+      draftValue = event.currentTarget.value;
+      onchange?.(draftValue);
+    }}
     {@attach (element) => {
       if (autofocus) element.focus();
     }}
