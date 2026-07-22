@@ -49,6 +49,7 @@
   });
 
   const descriptionId = $derived(description ? `${id}-description` : undefined);
+  const externalError = $derived(error || undefined);
   const parseIsValid = $derived.by(() => {
     try {
       JSON.parse(draftValue);
@@ -57,9 +58,10 @@
       return false;
     }
   });
-  const feedbackIsError = $derived(Boolean(error) || !parseIsValid);
+  const feedbackIsError = $derived(Boolean(externalError) || !parseIsValid);
   const feedbackText = $derived(
-    error ?? (!parseIsValid ? 'Enter valid JSON.' : showValidFeedback ? 'Valid JSON.' : undefined),
+    externalError ??
+      (!parseIsValid ? 'Enter valid JSON.' : showValidFeedback ? 'Valid JSON.' : undefined),
   );
   const feedbackId = $derived(feedbackText ? `${id}-feedback` : undefined);
   const describedBy = $derived(composeDescribedBy(descriptionId, feedbackId, consumerDescribedBy));

@@ -87,6 +87,26 @@ describe('JsonEditor', () => {
     expect(view.getByRole('alert').textContent).toBe('Payloads are unavailable.');
   });
 
+  test('treats an empty external error as cleared validation state', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+      error: '',
+    });
+
+    expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      error: '',
+    });
+
+    expect(view.getByRole('status').textContent).toBe('Valid JSON.');
+  });
+
   test('updates parse feedback immediately from typed text before controlled state responds', async () => {
     const view = render(JsonEditor, {
       id: 'payload',
