@@ -601,18 +601,20 @@
         </span>
         {#if !effectiveReadonly && rule.conditions.length === 0}
           <p class="cinder-invocation-rule-builder__validation" role="status">
-            Add at least one condition or this rule will always fire.
+            {flatConditions
+              ? 'Add at least one condition.'
+              : 'Add at least one condition or this rule will always fire.'}
           </p>
         {/if}
 
         {#if effectiveReadonly}
           <div
             class="cinder-invocation-rule-builder__summary"
-            aria-label={`Conditions for ${rule.label}`}
+            aria-label={flatConditions ? 'Conditions' : `Conditions for ${rule.label}`}
           >
             {#if rule.conditions.length === 0}
               <p class="cinder-invocation-rule-builder__empty">
-                No conditions — rule always fires.
+                {flatConditions ? 'No conditions.' : 'No conditions — rule always fires.'}
               </p>
             {:else}
               {#each rule.conditions as condition (condition.id)}

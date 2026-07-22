@@ -1530,6 +1530,25 @@ describe('InvocationRuleBuilder', () => {
       expect(heading?.textContent).toBe('Conditions');
     });
 
+    test('uses rule-agnostic empty-state copy and accessible names', () => {
+      const editable = renderFlatConditionsBuilder([]);
+      expect(editable.container.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+        'Add at least one condition.',
+      );
+
+      const readonly = renderFlatConditionsBuilder([], { readonly: true });
+      expect(
+        readonly.container
+          .querySelector('.cinder-invocation-rule-builder__summary')
+          ?.getAttribute('aria-label'),
+      ).toBe('Conditions');
+      expect(
+        readonly.container
+          .querySelector('.cinder-invocation-rule-builder__empty')
+          ?.textContent?.trim(),
+      ).toBe('No conditions.');
+    });
+
     test('emits the direct conditions array and a change without rule metadata', async () => {
       const { container, onchange } = renderFlatConditionsBuilder([
         makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
