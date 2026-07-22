@@ -7,28 +7,30 @@ landmark; below the `md` breakpoint (~767px) it renders inside a `<Drawer>`.
 ## Landmark structure
 
 - Outer container is `<aside>` with a required `aria-label` (defaults to "Sidebar").
-- The inner navigation list lives inside a nested `<nav>` element whose
-  accessible name is derived by appending `" navigation"` to `label`. So
-  with `label="Workspace"` the `<aside>` is announced as "Workspace,
-  complementary" and the inner `<nav>` as "Workspace navigation". The two
-  landmarks are distinct in the landmarks list — the component owns this
-  separation; consumers do not pass two labels.
+- The `navigation` snippet renders inside a structural `<div>`, not another
+  landmark. Navigation content owns its landmark and accessible name. The
+  recommended `<SideNavigation ariaLabel="Workspace navigation">` composition
+  therefore produces one navigation landmark alongside the outer complementary
+  landmark, without nesting `<nav>` elements.
 - If the page contains more than one `<aside>` or more than one navigation
   landmark, pass a unique `label` per Sidebar instance. The default
   "Sidebar" is fine for a single-sidebar page but collides on dashboards with
   primary + contextual sidebars.
 - Below the `md` breakpoint the `<aside>` is replaced by `<Drawer>`. The drawer
   carries its own `<dialog role="dialog" aria-modal="true">` and an internal
-  heading sourced from `label`; the inner `<nav>` is still present inside
-  the drawer body with the same derived `" navigation"` label.
+  heading sourced from `label`; the navigation snippet keeps ownership of its
+  landmark and accessible name inside the drawer body.
 
 ## ARIA attributes
 
 | Prop / source                                            | Attribute on aside / drawer                  |
 | -------------------------------------------------------- | -------------------------------------------- |
 | `label` (default `'Sidebar'`)                            | `aria-label` on `<aside>` (or drawer `<h2>`) |
-| `label` (derived `"${label} navigation"`)                | `aria-label` on inner `<nav>`                |
 | Passing `aria-label` or `aria-labelledby` via rest props | Stripped — the required prop always wins     |
+
+`Sidebar.label` does not name navigation content. Pass an accessible name to
+the component rendered in the `navigation` snippet, such as
+`SideNavigation.ariaLabel`.
 
 An empty or whitespace-only `label` throws at render time. This is a hard
 fail because a landmark with no accessible name is worse than no landmark — it

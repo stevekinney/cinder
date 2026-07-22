@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, mount, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import { renderToServerHtml } from '../../test/server-render.ts';
@@ -9,6 +9,7 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Sidebar } = await import('./sidebar.svelte');
+const { default: SideNavigation } = await import('../side-navigation/side-navigation.svelte');
 const { SIDEBAR_MOBILE_BREAKPOINT, SIDEBAR_MOBILE_MEDIA_QUERY } = await import('./index.ts');
 const SIDEBAR_SOURCE = new URL('./sidebar.svelte', import.meta.url).pathname;
 
@@ -80,33 +81,54 @@ describe('Sidebar (desktop / inline aside)', () => {
     expect(aside?.classList.contains('my-sidebar')).toBe(true);
   });
 
-  test('renders <nav> inside the aside with a distinct aria-label', () => {
+  test('renders a structural navigation wrapper inside the aside', () => {
     const { container } = render(Sidebar, {
       props: { label: 'Workspace', navigation: listSnippet('items') },
     });
-    const nav = container.querySelector('aside nav.cinder-sidebar__nav');
-    expect(nav).not.toBeNull();
-    // The inner <nav> landmark gets a distinct accessible name so it is not
-    // announced identically to the outer <aside> complementary landmark.
-    expect(nav?.getAttribute('aria-label')).toBe('Workspace navigation');
+    expect(container.querySelector('aside div.cinder-sidebar__nav')).not.toBeNull();
   });
 
-  test('outer aside aria-label is distinct from inner nav aria-label', () => {
+  test('the structural navigation wrapper does not create a landmark', () => {
     const { container } = render(Sidebar, {
       props: { label: 'Workspace', navigation: listSnippet('items') },
     });
-    const aside = container.querySelector('aside');
-    const nav = container.querySelector('aside nav.cinder-sidebar__nav');
-    expect(aside?.getAttribute('aria-label')).toBe('Workspace');
-    expect(nav?.getAttribute('aria-label')).not.toBe(aside?.getAttribute('aria-label'));
+    expect(container.querySelector('aside')?.getAttribute('aria-label')).toBe('Workspace');
+    expect(container.querySelector('aside nav')).toBeNull();
   });
 
-  test('renders navigation snippet inside the nav', () => {
+  test('renders navigation snippet inside the structural wrapper', () => {
     const { container } = render(Sidebar, {
       props: { navigation: listSnippet('payload') },
     });
-    const nav = container.querySelector('aside nav.cinder-sidebar__nav');
-    expect(nav?.textContent ?? '').toContain('payload');
+    const wrapper = container.querySelector('aside .cinder-sidebar__nav');
+    expect(wrapper?.textContent ?? '').toContain('payload');
+  });
+
+  test('composes with SideNavigation as exactly one navigation landmark', () => {
+    const navigation = createRawSnippet(() => ({
+      render: () => `<div class="side-navigation-host"></div>`,
+      setup: (node: Element) => {
+        const instance = mount(SideNavigation, {
+          target: node,
+          props: {
+            ariaLabel: 'Workspace navigation',
+            children: createRawSnippet(() => ({
+              render: () => `<li>Dashboard</li>`,
+              setup: () => {},
+            })),
+          },
+        });
+        return () => unmount(instance);
+      },
+    }));
+
+    const { container } = render(Sidebar, {
+      props: { label: 'Workspace', navigation },
+    });
+
+    expect(container.querySelectorAll('nav')).toHaveLength(1);
+    expect(container.querySelector('nav nav')).toBeNull();
+    expect(container.querySelector('nav')?.getAttribute('aria-label')).toBe('Workspace navigation');
   });
 
   test('omits footer region when no footer snippet is provided', () => {
@@ -520,14 +542,15 @@ describe('Sidebar (mobile / drawer)', () => {
     expect(wrapper?.classList.contains('my-sidebar')).toBe(true);
   });
 
-  test('mobile nav landmark has the distinct navigation label', () => {
+  test('mobile branch uses a structural navigation wrapper', () => {
     mock = installMatchMediaMock(true);
     const { container } = render(Sidebar, {
       props: { label: 'Workspace', navigation: listSnippet('items') },
     });
     expectMobileQueryWasUsed(mock);
-    const nav = container.querySelector('dialog nav.cinder-sidebar__nav');
-    expect(nav?.getAttribute('aria-label')).toBe('Workspace navigation');
+    const wrapper = container.querySelector('dialog div.cinder-sidebar__nav');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.hasAttribute('aria-label')).toBe(false);
   });
 
   test('mobile branch forwards rest attributes onto the drawer dialog', () => {
@@ -889,16 +912,11 @@ describe('Sidebar collapsed CSS contract', () => {
 });
 
 describe('Sidebar — optional navigation snippet', () => {
-  test('omitting navigation renders no <nav> landmark (no empty navigation region)', () => {
-    // navigation is now optional (Snippet?). Without it, the <nav> landmark must be
-    // absent entirely — an empty <nav> is an a11y violation (screen readers announce
-    // a navigation region with no destinations). Render with a real label and NO
-    // navigation prop (every other test passes navigation; this one deliberately omits it).
+  test('omitting navigation renders no empty structural wrapper', () => {
     const { container } = render(Sidebar, {
       props: { label: 'Main' },
     });
-    // The <aside> renders, but there is no <nav> child because navigation was omitted.
     expect(container.querySelector('aside')).not.toBeNull();
-    expect(container.querySelector('nav')).toBeNull();
+    expect(container.querySelector('.cinder-sidebar__nav')).toBeNull();
   });
 });

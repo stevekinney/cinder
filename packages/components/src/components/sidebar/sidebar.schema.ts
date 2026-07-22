@@ -12,7 +12,7 @@ const schema = {
     label: {
       type: 'string',
       description:
-        "Accessible name for the outer landmark and the mobile drawer. Required —\ndefaults to `'Sidebar'` for convenience but must be unique per page. The\ninner `<nav>` landmark derives its own accessible name from this value\nby appending `' navigation'` so screen readers can distinguish the\nouter complementary region from the inner navigation region.",
+        "Accessible name for the outer landmark and the mobile drawer. Defaults to\n`'Sidebar'` for convenience but must be unique per page. Navigation content\nowns its own accessible name; for example, use `SideNavigation.ariaLabel`.",
     },
     mobileBreakpoint: {
       type: 'string',
@@ -36,7 +36,7 @@ const schema = {
         name: 'navigation',
         reason: 'function-or-snippet',
         description:
-          "Navigation region. Typically a `<SideNavigation>` subtree. Optional — when\nomitted, no `<nav>` landmark is rendered (so the sidebar can serve as app chrome\nwithout a navigation list, and an empty `<nav>` isn't announced to screen readers).",
+          'Navigation content. Typically a `<SideNavigation>` subtree, which owns the\nnavigation landmark and its accessible name. Optional so the sidebar can\nserve as app chrome without a navigation list.',
       },
     ],
   },

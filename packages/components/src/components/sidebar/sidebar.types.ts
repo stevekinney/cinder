@@ -14,11 +14,9 @@ export type SidebarProps = Omit<
    */
   collapsed?: boolean;
   /**
-   * Accessible name for the outer landmark and the mobile drawer. Required —
-   * defaults to `'Sidebar'` for convenience but must be unique per page. The
-   * inner `<nav>` landmark derives its own accessible name from this value
-   * by appending `' navigation'` so screen readers can distinguish the
-   * outer complementary region from the inner navigation region.
+   * Accessible name for the outer landmark and the mobile drawer. Defaults to
+   * `'Sidebar'` for convenience but must be unique per page. Navigation content
+   * owns its own accessible name; for example, use `SideNavigation.ariaLabel`.
    */
   label?: string;
   /**
@@ -30,9 +28,9 @@ export type SidebarProps = Omit<
   /** Additional CSS class merged with `.cinder-sidebar`. */
   class?: string;
   /**
-   * Navigation region. Typically a `<SideNavigation>` subtree. Optional — when
-   * omitted, no `<nav>` landmark is rendered (so the sidebar can serve as app chrome
-   * without a navigation list, and an empty `<nav>` isn't announced to screen readers).
+   * Navigation content. Typically a `<SideNavigation>` subtree, which owns the
+   * navigation landmark and its accessible name. Optional so the sidebar can
+   * serve as app chrome without a navigation list.
    */
   navigation?: Snippet;
   /** Optional footer region (e.g. user account, sign-out). */
