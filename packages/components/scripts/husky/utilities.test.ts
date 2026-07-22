@@ -12,12 +12,10 @@ import {
   cleanupHookProcesses,
   defaultGateLockPath,
   expandToDependents,
-  formatFailureSummary,
   gateLockPathForCommonDirectory,
   getTouchedPackages,
   gitCommonDirectory,
   hasRootConfigurationChanges,
-  inferFailureScope,
   isIgnorableDoc,
   isNewBranch,
   isSourceFile,
@@ -31,7 +29,6 @@ import {
   REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
-  summarizeFailures,
   withGateLock,
   withLocalValidationGateLock,
   type GitRunner,
@@ -1019,162 +1016,13 @@ describe('scoped job derivation (real workspace)', () => {
   });
 });
 
-describe('summarizeFailures', () => {
-  it('extracts Bun test failure markers', () => {
-    const summary = summarizeFailures(`
-      102 pass
-      (fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate [12.00ms]
-      Expected: <= 85
-    `);
-
-    expect(summary).toEqual([
-      '(fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate [12.00ms]',
-    ]);
-  });
-
-  it('removes Bun workspace prefixes from failure details', () => {
-    const summary = summarizeFailures(`
-      cinder test: (fail) Button > renders disabled state [4.00ms]
-    `);
-
-    expect(summary).toEqual(['(fail) Button > renders disabled state [4.00ms]']);
-  });
-
-  it('extracts TypeScript diagnostics', () => {
-    const summary = summarizeFailures(`
-      packages/components/src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.
-      Found 1 error.
-    `);
-
-    expect(summary).toEqual([
-      "packages/components/src/index.ts(10,5): error TS2322: Type 'string' is not assignable to type 'number'.",
-    ]);
-  });
-
-  it('extracts linter diagnostics', () => {
-    const summary = summarizeFailures(`
-      packages/components/src/button.css
-        10:3  ✖  Unexpected unknown property "colour"  property-no-unknown
-      1 problem (1 error, 0 warnings)
-    `);
-
-    expect(summary).toEqual([
-      'packages/components/src/button.css:10:3  ✖  Unexpected unknown property "colour"  property-no-unknown',
-    ]);
-  });
-
-  it('extracts Oxlint formatter diagnostics', () => {
-    const summary = summarizeFailures(`
-      x Unexpected token
-      ,-[tmp/review-fixtures/unused.ts:1:11]
-      1 | const x = ;
-      :           ^
-      \`----
-      Found 0 warnings and 1 error.
-    `);
-
-    expect(summary).toEqual(['x Unexpected token', 'tmp/review-fixtures/unused.ts:1:11']);
-  });
-
-  it('falls back to the last non-empty output lines', () => {
-    const summary = summarizeFailures(`
-      starting gate
-      something went wrong
-      no known marker
-    `);
-
-    expect(summary).toEqual(['starting gate', 'something went wrong', 'no known marker']);
-  });
-
-  it('limits long summaries', () => {
-    const summary = summarizeFailures(
-      `
-        (fail) first
-        (fail) second
-        (fail) third
-        (fail) fourth
-      `,
-      2,
-    );
-
-    expect(summary).toEqual(['(fail) first', '(fail) second', '...and 2 more failure lines']);
-  });
-});
-
-describe('inferFailureScope', () => {
-  it('names the package when Bun prefixes failure output', () => {
-    const scope = inferFailureScope(`
-      @lostgradient/cinder test: (fail) Button > renders disabled state [4.00ms]
-    `);
-
-    expect(scope).toBe('@lostgradient/cinder');
-  });
-
-  it('falls back to workspace when no package prefix is present', () => {
-    expect(inferFailureScope('(fail) root suite')).toBe('workspace');
-  });
-
-  it('reports multiple packages when several package-prefixed failures appear', () => {
-    const scope = inferFailureScope(`
-      cinder test: (fail) Button > renders disabled state [4.00ms]
-      @cinder/playground test: (fail) discoverSidebarComponents > caps entries [12.00ms]
-    `);
-
-    expect(scope).toBe('multiple packages');
-  });
-});
-
-describe('formatFailureSummary', () => {
-  it('names the failing gate, scope, and concise details', () => {
-    const summary = formatFailureSummary([
-      {
-        script: 'test',
-        scope: 'workspace',
-        lines: [
-          '(fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate',
-        ],
-      },
-    ]);
-
-    expect(summary).toEqual([
-      'PRE-PUSH FAILED',
-      '  test -> workspace: 1 failure',
-      '    (fail) discoverSidebarComponents > keeps the sidebar at or below the 85-entry product gate',
-    ]);
-  });
-
-  it('counts omitted failure lines without counting the truncation line as a failure', () => {
-    const summary = formatFailureSummary([
-      {
-        script: 'test',
-        scope: 'workspace',
-        lines: ['(fail) first', '(fail) second', '...and 2 more failure lines'],
-      },
-    ]);
-
-    expect(summary).toEqual([
-      'PRE-PUSH FAILED',
-      '  test -> workspace: 4 failures',
-      '    (fail) first',
-      '    (fail) second',
-      '    ...and 2 more failure lines',
-    ]);
-  });
-});
-
 /**
- * Regression test for issue #364 — pre-push and pre-commit test phases raced
- * shared-dist rebuilds.
- *
- * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-push.ts
+ * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-commit.ts
  * so this test can assert the policy without importing the gate entry path
  * (which has module-scope side effects: isContinuousIntegration → process.exit,
- * stdin read, gate lock). The race is now closed upstream: pre-push pre-builds
- * the full dependency closure once, in dependency order, before dispatching
- * the test phase (see `preBuildDependencyClosure` in pre-push.ts), so every
- * package's inline `bun run --filter=<dep> build` step hash-skips against
- * unchanged inputs instead of racing a rebuild. With nothing left to race, the
- * test phase shares the same bounded concurrency as lint and typecheck.
+ * stdin read). The policy is kept general across all three `GateScript` values
+ * (not narrowed to pre-commit's `typecheck`) so a future local gate script
+ * inherits the same bounded concurrency instead of reinventing it.
  */
 describe('phaseMaxConcurrency', () => {
   function withHardwareConcurrency(value: number, run: () => void): void {
@@ -1199,7 +1047,7 @@ describe('phaseMaxConcurrency', () => {
     }
   }
 
-  it('returns a value greater than 1 for test (dependency closure is pre-built, so inline rebuilds hash-skip)', () => {
+  it('returns a value greater than 1 for test', () => {
     withHardwareConcurrency(2, () => {
       expect(phaseMaxConcurrency('test')).toBeGreaterThan(1);
     });
@@ -1239,12 +1087,13 @@ describe('phaseMaxConcurrency', () => {
 /**
  * `runWithConcurrencyPool` is the *mechanism* the `phaseMaxConcurrency` policy
  * feeds. The policy tests above only prove each phase asks for a given
- * concurrency — they do NOT prove the runner honors it. Both hooks' `runJobs`
- * delegate to this pool, so a future edit that passed a hardcoded literal
- * instead of `phaseMaxConcurrency(script)` would still leave the policy tests
- * green. These tests close that gap: they instrument the worker to record the
- * maximum number of overlapping invocations and assert the pool never exceeds
- * the cap — with `maxConcurrency === 1` the overlap is strictly 1.
+ * concurrency — they do NOT prove the runner honors it. The pre-commit
+ * `runJobs` helper delegates to this pool, so a future edit that passed a
+ * hardcoded literal instead of `phaseMaxConcurrency(script)` would still
+ * leave the policy tests green. These tests close that gap: they instrument
+ * the worker to record the maximum number of overlapping invocations and
+ * assert the pool never exceeds the cap — with `maxConcurrency === 1` the
+ * overlap is strictly 1.
  */
 describe('runWithConcurrencyPool', () => {
   /**
@@ -1273,7 +1122,7 @@ describe('runWithConcurrencyPool', () => {
     return { results, maxObserved };
   }
 
-  it('runs strictly one at a time when maxConcurrency is 1 (the #364 guarantee)', async () => {
+  it('runs strictly one at a time when maxConcurrency is 1', async () => {
     const { results, maxObserved } = await observeOverlap(6, 1);
     expect(maxObserved).toBe(1);
     // Results stay in input order regardless of pool scheduling.
@@ -1330,7 +1179,7 @@ describe('withGateLock', () => {
   async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
     const directory = await mkdtemp(join(tmpdir(), 'cinder-gate-lock-'));
     try {
-      return await test(join(directory, 'pre-push-gate.lock'));
+      return await test(join(directory, 'local-validation-gate.lock'));
     } finally {
       await rm(directory, { force: true, recursive: true });
     }

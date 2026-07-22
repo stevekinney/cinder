@@ -118,6 +118,25 @@ describe('pipeline contract: push stays thin and fails open (source-based: entry
   });
 });
 
+describe('pipeline contract: removed pre-push helpers stay removed', () => {
+  it('does not retain dead digest helpers or their old dependency-closure story', async () => {
+    const source = await Bun.file(join(huskyDirectory, 'utilities.ts')).text();
+
+    for (const removedName of [
+      'GateFailure',
+      'summarizeFailures',
+      'inferFailureScope',
+      'formatFailureSummary',
+      'writePrePushLog',
+      'preBuildDependencyClosure',
+      'pre-push-gate',
+      'pre-push gate',
+    ]) {
+      expect(source).not.toContain(removedName);
+    }
+  });
+});
+
 describe('pipeline contract: package script composition (source-based: reads packages/*/package.json)', () => {
   const KNOWN_LINT_INVARIANTS_CHECKS = [
     'check:no-cycle-imports',
@@ -169,7 +188,7 @@ describe('pipeline contract: package script composition (source-based: reads pac
     expect(validate).toBeDefined();
     // `validate` is the full pre-publish/CI gate; dropping either segment would
     // let a published release ship past a lint or invariant regression that
-    // pre-commit/pre-push only check in scoped form.
+    // the lightweight local hooks do not check in full.
     expect(chainIncludesScript(validate ?? '', 'lint')).toBe(true);
     expect(chainIncludesScript(validate ?? '', 'lint:invariants')).toBe(true);
   });

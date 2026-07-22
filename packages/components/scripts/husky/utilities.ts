@@ -102,19 +102,13 @@ export function prePushPackageScript(
  * assert each phase's concurrency policy without triggering the gate entry
  * path's process.exit / stdin-read / lock side effects.
  *
- * All three gate scripts — lint, typecheck, and test — now share the same
- * CPU-bound cap. Issue #364 was a race between concurrent test jobs' inline
- * `bun run --filter=<dep> build` steps, which wiped and re-emitted the shared
- * upstream `dist/` directories (e.g. `@cinder/markdown`, `@cinder/diff`) out
- * from under each other, yielding non-deterministic
- * `error: "<name>" is not declared in this file`. That race is closed at the
- * source now: the caller pre-builds the full dependency closure once, in
- * dependency order, before dispatching the test phase (see
- * `preBuildDependencyClosure` in pre-push.ts), so every inline rebuild inside
- * a test script observes unchanged inputs and hash-skips near-instantly (see
- * `shouldSkipBuild` in each package's `scripts/lib/build-cache.ts`) — there is
- * nothing left to race. The test phase can therefore run at the same
- * concurrency as the read-only lint/typecheck phases.
+ * All three gate scripts — lint, typecheck, and test — share the same
+ * CPU-bound cap, kept general (rather than hardcoded to pre-commit's actual
+ * `typecheck`-only usage) so a future gate script inherits the same policy for
+ * free. The `test` case in {@link GateScript} and this function's
+ * equal-across-scripts policy are kept because `check:pipeline-coverage` and
+ * CI jobs still reason about the same script names, and a future local test
+ * dispatch should inherit this cap rather than reinvent it.
  */
 export function phaseMaxConcurrency(_script: GateScript): number {
   // CPU-bound default (up to 4 workers). The `?? 1` guards environments where
@@ -127,11 +121,7 @@ export function phaseMaxConcurrency(_script: GateScript): number {
  * Run `items` through a bounded async pool, invoking `worker(item, index)` for
  * each and returning the results in input order. At most `maxConcurrency`
  * workers run at once — this is the *mechanism* that {@link phaseMaxConcurrency}
- * feeds. The historical #364 race (concurrent test jobs' inline builds
- * fighting over shared `dist/` directories) is now closed upstream by
- * pre-building the dependency closure once before the test phase runs, so this
- * pool can run the test phase at the same bounded concurrency as lint and
- * typecheck.
+ * feeds.
  *
  * The concurrency floor is defensive. A non-finite `maxConcurrency` — e.g. a
  * caller computing `Math.min(navigator.hardwareConcurrency, 4)` where
@@ -165,120 +155,6 @@ export async function runWithConcurrencyPool<Item, Result>(
   }
   await Promise.all(workers);
   return results;
-}
-
-export type GateFailure = {
-  readonly script: GateScript;
-  readonly scope: string;
-  readonly lines: readonly string[];
-};
-
-const FAILURE_MARKERS: readonly RegExp[] = [
-  /^x\s+\S/,
-  /^\(fail\)\s+/,
-  /\berror TS\d+:/,
-  /^\S.*:\d+:\d+\s+error\s+/,
-  /^\d+:\d+\s+.+\s{2,}[a-z-]+$/,
-  /^\d+:\d+\s+[^\w\s]\s+/,
-];
-
-const FILE_PATH_LINE = /^(?:\.?\/)?[\w@./-]+\.[\w-]+$/;
-const LINE_COLUMN_DIAGNOSTIC = /^\d+:\d+\s+/;
-const LOCATION_DIAGNOSTIC = /:\d+:\d+$/;
-const CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC = /:\d+:\d+\s+/;
-const TRUNCATED_FAILURES_LINE = /^\.\.\.and (?<count>\d+) more failure lines$/;
-
-function parseWorkspaceOutputLine(line: string): {
-  readonly scope: string | null;
-  readonly message: string;
-} {
-  const match = /^(?<scope>(?:@[\w-]+\/)?[\w-]+)\s+(?:lint|typecheck|test):\s*(?<message>.*)$/.exec(
-    line,
-  );
-  return {
-    scope: match?.groups?.['scope'] ?? null,
-    message: match?.groups?.['message'] ?? line,
-  };
-}
-
-function normalizeOutputLines(output: string): string[] {
-  return output
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
-
-export function summarizeFailures(output: string, maxLines = 5): string[] {
-  const lines = normalizeOutputLines(output).map((line) => parseWorkspaceOutputLine(line).message);
-  let currentPath: string | null = null;
-  const contextualLines = lines.map((line) => {
-    if (FILE_PATH_LINE.test(line)) {
-      currentPath = line;
-      return line;
-    }
-
-    const oxlintLocation = /^,-\[(?<location>[^\]]+)\]$/.exec(line);
-    if (oxlintLocation?.groups?.['location']) {
-      return oxlintLocation.groups['location'];
-    }
-
-    if (currentPath && LINE_COLUMN_DIAGNOSTIC.test(line)) {
-      return `${currentPath}:${line}`;
-    }
-
-    return line;
-  });
-  const matched = contextualLines.filter(
-    (line) =>
-      FAILURE_MARKERS.some((marker) => marker.test(line)) ||
-      LOCATION_DIAGNOSTIC.test(line) ||
-      CONTEXTUAL_LINE_COLUMN_DIAGNOSTIC.test(line),
-  );
-  const summary = matched.length > 0 ? matched : lines.slice(-maxLines);
-  if (summary.length <= maxLines) return summary;
-
-  return [...summary.slice(0, maxLines), `...and ${summary.length - maxLines} more failure lines`];
-}
-
-export function inferFailureScope(output: string): string {
-  const scopes = new Set<string>();
-  for (const line of normalizeOutputLines(output)) {
-    const parsed = parseWorkspaceOutputLine(line);
-    if (parsed.scope && FAILURE_MARKERS.some((marker) => marker.test(parsed.message))) {
-      scopes.add(parsed.scope);
-    }
-  }
-
-  if (scopes.size === 1) return [...scopes][0] ?? 'workspace';
-  if (scopes.size > 1) return 'multiple packages';
-  return 'workspace';
-}
-
-export function formatFailureSummary(failures: readonly GateFailure[]): string[] {
-  const lines = ['PRE-PUSH FAILED'];
-  for (const failure of failures) {
-    const omittedCount = failure.lines.reduce((count, line) => {
-      const match = TRUNCATED_FAILURES_LINE.exec(line);
-      return count + Number(match?.groups?.['count'] ?? 0);
-    }, 0);
-    const count =
-      failure.lines.filter((line) => !TRUNCATED_FAILURES_LINE.test(line)).length + omittedCount;
-    const noun = count === 1 ? 'failure' : 'failures';
-    lines.push(`  ${failure.script} -> ${failure.scope}: ${count} ${noun}`);
-    for (const line of failure.lines) {
-      lines.push(`    ${line}`);
-    }
-  }
-  return lines;
-}
-
-export async function writePrePushLog(output: string, now = new Date()): Promise<string> {
-  const tmpDir = join(REPO_ROOT, 'tmp');
-  await mkdir(tmpDir, { recursive: true });
-  const timestamp = now.toISOString().replaceAll(':', '-').replaceAll('.', '-');
-  const logPath = join(tmpDir, `pre-push-${timestamp}.log`);
-  await Bun.write(logPath, output);
-  return logPath;
 }
 
 type HookSignal = 'SIGINT' | 'SIGTERM' | 'SIGHUP';
@@ -653,9 +529,10 @@ function releaseGateLockSync(lockPath: string, token: string) {
 }
 
 /**
- * Run a hook gate under a shared repository lock so duplicate pushes from
- * linked worktrees do not stack full workspace validations on top of one
- * another.
+ * Run expensive local validation work under a shared repository lock so
+ * concurrent invocations from linked worktrees do not stack full
+ * workspace-scale work (builds, installs, generated-artifact writes) on top
+ * of one another.
  */
 export async function withGateLock<T>(
   run: () => Promise<T>,
@@ -729,18 +606,20 @@ export async function withGateLock<T>(
           throw statError;
         }
         if (existingLockAgeMilliseconds >= malformedLockGraceMilliseconds) {
-          warning('Removing stale malformed pre-push gate lock.');
+          warning('Removing stale malformed local validation gate lock.');
           await rm(lockPath, { force: true });
           malformedLockStartedAt = null;
           continue;
         }
         if (waitingMessageState !== 'malformed') {
-          warning('Another pre-push gate is preparing its lock file. Waiting for it to finish…');
+          warning(
+            'Another local validation gate is preparing its lock file. Waiting for it to finish…',
+          );
           waitingMessageState = 'malformed';
         }
         if (malformedLockStartedAt !== null && now() - malformedLockStartedAt >= waitMilliseconds) {
           throw new Error(
-            `Another pre-push gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
+            `Another local validation gate left a malformed lock at ${lockPath}; waited ${waitMilliseconds}ms before giving up.`,
             { cause: caught },
           );
         }
@@ -751,16 +630,16 @@ export async function withGateLock<T>(
       malformedLockStartedAt = null;
 
       if (!processAlive(existingLock.pid)) {
-        warning('Removing stale pre-push gate lock.');
+        warning('Removing stale local validation gate lock.');
         await rm(lockPath, { force: true });
         continue;
       }
 
       if (waitingMessageState !== 'live') {
         warning(
-          `Another pre-push gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}, lock created ${existingLock.createdAt}). Waiting without an age timeout while that PID remains alive…\n` +
+          `Another local validation gate is already running for ${existingLock.repositoryRoot} (pid ${existingLock.pid}, lock created ${existingLock.createdAt}). Waiting without an age timeout while that PID remains alive…\n` +
             `  Inspect with: ps -p ${existingLock.pid} -o pid,ppid,etime,stat,command\n` +
-            `  If that PID is not a pre-push gate, verify it before manually removing ${lockPath}.`,
+            `  If that PID is not a local validation gate, verify it before manually removing ${lockPath}.`,
         );
         waitingMessageState = 'live';
       }
@@ -773,10 +652,13 @@ export async function withGateLock<T>(
 /**
  * Serialize expensive local validation gates across worktrees.
  *
- * `pre-push` holds this lock around the entire gate. Child scripts such as
- * `test:changed`, `components:check`, and `validate:consumer` inherit the
- * marker below, so they do not deadlock by trying to re-acquire the same lock.
- * Direct invocations still acquire the repository-local lock.
+ * The lock remains for scripts that do heavy, disk-mutating local work:
+ * `test-changed.ts` (`bun run test:changed`),
+ * `generate-component-artifacts.ts` (`components:generate`), and
+ * `validate-consumers.ts` (`validate:consumer`) each call this directly when
+ * run standalone, so concurrent worktrees do not stack full builds/installs
+ * on top of one another. The marker below lets a script that's already inside
+ * one of those locked runs call another without deadlocking on the same lock.
  */
 export async function withLocalValidationGateLock<T>(
   run: () => Promise<T>,
@@ -824,7 +706,7 @@ export async function printGitStatistics(refA: string, refB: string) {
  * `dependencies` holds the names of *other workspace packages* this package
  * depends on (union of `dependencies`/`devDependencies`/`peerDependencies`,
  * filtered to known workspace names) — the edges used to expand a touched set
- * to its reverse-dependency closure in the pre-push gate.
+ * to its reverse-dependency closure in local validation.
  */
 export type WorkspacePackage = {
   readonly name: string;
@@ -925,7 +807,7 @@ export async function loadWorkspacePackages(): Promise<readonly WorkspacePackage
 /**
  * Expand a set of touched package names to its **reverse-dependency closure**:
  * the touched packages plus every package that transitively *depends on* one of
- * them. A pre-push gate must validate dependents because a change to a package
+ * them. Local validation must validate dependents because a change to a package
  * can break a dependent's typecheck/test without that package's own gates
  * failing. Names not present in `packages` (deleted packages, typos) pass
  * through unchanged. Cycle-safe via the visited set.
