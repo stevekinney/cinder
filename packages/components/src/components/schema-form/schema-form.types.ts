@@ -42,7 +42,8 @@ export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> 
   /**
    * Called after each edit with the complete current draft, before schema validation.
    * The draft can be schema-invalid and does not change the seed-only `value` contract.
-   * Temporarily unparseable JSON fields are reported as their current raw text.
+   * In-progress numeric editors and temporarily unparseable JSON fields are reported as
+   * their current raw text until the value commits or parses successfully.
    */
   ondraftchange?: SchemaFormDraftChangeHandler;
 };

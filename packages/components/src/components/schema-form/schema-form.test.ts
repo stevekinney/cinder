@@ -740,6 +740,36 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     expect(drafts).toEqual([{ raw: '{' }, { raw: { ok: false } }]);
   });
+
+  test('emits numeric editor text before NumberInput commits its typed value', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: '12' } });
+
+    expect(drafts).toEqual([{ count: '12' }]);
+
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect(drafts.at(-1)).toEqual({ count: 12 });
+  });
 });
 
 describe('SchemaForm — initialization without write-back $effect', () => {

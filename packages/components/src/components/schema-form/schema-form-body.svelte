@@ -75,6 +75,7 @@
   let rawDrafts = $state<Record<string, string>>(
     seedRawDrafts(initialModel.field, initialFormValue),
   );
+  let numericDrafts = $state<Record<string, string>>({});
   let touchedValidationSequences = $state<Record<string, number>>({});
   let serializedValue = $state('');
   let submitting = $state(false);
@@ -146,6 +147,10 @@
 
   function currentDraft(): SchemaFormOutput {
     let nextValue = formValue;
+    for (const field of currentNumericFields(model.field, formValue)) {
+      const draft = numericDrafts[pathKey(field.path)];
+      if (draft !== undefined) nextValue = setValueAtPath(nextValue, field.path, draft);
+    }
     for (const field of currentJsonFields(model.field, formValue)) {
       const draft = rawDrafts[pathKey(field.path)];
       if (draft === undefined) continue;
@@ -163,6 +168,10 @@
     if (submitting) return;
     formValue = setValueAtPath(formValue, path, next);
     const key = pathKey(path);
+    if (numericDrafts[key] !== undefined) {
+      const { [key]: _removedDraft, ...remainingDrafts } = numericDrafts;
+      numericDrafts = remainingDrafts;
+    }
     bumpTouchedValidationSequence(path);
     if (errors[key]) {
       const { [key]: _removed, ...remaining } = errors;
@@ -234,6 +243,15 @@
     reportDraftChange();
   }
 
+  function handleFieldInput(field: SchemaFormField, event: Event) {
+    bumpTouchedValidationSequence(field.path);
+    if (field.kind !== 'number' && field.kind !== 'integer') return;
+    if (!(event.target instanceof HTMLInputElement)) return;
+    numericDrafts = { ...numericDrafts, [pathKey(field.path)]: event.target.value };
+    setSerializedValue('');
+    reportDraftChange();
+  }
+
   function arrayRows(field: SchemaFormField): Array<{ key: string; index: number }> {
     const values = arrayValueAtPath(formValue, field.path);
     const keys = arrayKeys[pathKey(field.path)] ?? [];
@@ -264,6 +282,7 @@
       false,
     );
     rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
+    numericDrafts = reindexArrayPathState(numericDrafts, field.path, index);
     errors = reindexArrayPathState(errors, field.path, index);
     touchedValidationSequences = bumpPathValidationSequences(
       reindexArrayPathState(touchedValidationSequences, field.path, index),
@@ -351,6 +370,23 @@
 
     function visit(candidate: SchemaFormField) {
       if (candidate.kind === 'json') fields.push(candidate);
+      for (const child of candidate.fields) visit(child);
+      if (candidate.kind === 'array' && candidate.item) {
+        for (const [index] of arrayValueAtPath(currentValue, candidate.path).entries()) {
+          visit(rebaseFieldPath(candidate.item, [...candidate.path, String(index)]));
+        }
+      }
+    }
+
+    visit(field);
+    return fields;
+  }
+
+  function currentNumericFields(field: SchemaFormField, currentValue: unknown): SchemaFormField[] {
+    const fields: SchemaFormField[] = [];
+
+    function visit(candidate: SchemaFormField) {
+      if (candidate.kind === 'number' || candidate.kind === 'integer') fields.push(candidate);
       for (const child of candidate.fields) visit(child);
       if (candidate.kind === 'array' && candidate.item) {
         for (const [index] of arrayValueAtPath(currentValue, candidate.path).entries()) {
@@ -568,10 +604,7 @@
       </button>
     </fieldset>
   {:else}
-    <div
-      class="cinder-schema-form__field"
-      oninput={() => bumpTouchedValidationSequence(field.path)}
-    >
+    <div class="cinder-schema-form__field" oninput={(event) => handleFieldInput(field, event)}>
       {#if field.kind === 'string'}
         <Input
           {id}
