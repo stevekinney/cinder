@@ -1,0 +1,127 @@
+/// <reference lib="dom" />
+import { afterEach, describe, expect, mock, test } from 'bun:test';
+
+import { setupHappyDom } from '../../test/happy-dom.ts';
+
+setupHappyDom();
+
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { default: JsonEditor } = await import('./json-editor.svelte');
+
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
+describe('JsonEditor', () => {
+  test('emits each proposed string value without taking ownership of controlled state', async () => {
+    const onchange = mock();
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"before":true}',
+      onchange,
+    });
+
+    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+    await fireEvent.input(editor, { target: { value: '{"after":true}' } });
+
+    expect(onchange).toHaveBeenCalledWith('{"after":true}');
+  });
+
+  test('synchronizes the native textarea when the external value changes', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"version":1}',
+    });
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{"version":2}',
+    });
+
+    expect((view.getByLabelText('Payload') as HTMLTextAreaElement).value).toBe('{"version":2}');
+  });
+
+  test('announces valid JSON and wires the description to the textarea', () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      description: 'Enter the request body.',
+      value: '{"valid":true}',
+    });
+
+    const editor = view.getByLabelText('Payload');
+    const description = view.getByText('Enter the request body.');
+    const status = view.getByRole('status');
+
+    expect(status.textContent).toBe('Valid JSON.');
+    expect(editor.getAttribute('aria-invalid')).toBeNull();
+    expect(editor.getAttribute('aria-describedby')?.split(' ')).toEqual([
+      description.id,
+      status.id,
+    ]);
+  });
+
+  test('announces invalid JSON and gives an external error precedence', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+    });
+
+    const editor = view.getByLabelText('Payload');
+    expect(editor.getAttribute('aria-invalid')).toBe('true');
+    expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      error: 'Payloads are unavailable.',
+    });
+
+    expect(editor.getAttribute('aria-invalid')).toBe('true');
+    expect(view.getByRole('alert').textContent).toBe('Payloads are unavailable.');
+  });
+
+  test('keeps native multiline keyboard input and does not trap Tab', async () => {
+    const onchange = mock();
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      onchange,
+    });
+    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+
+    const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    editor.dispatchEvent(tabEvent);
+    await fireEvent.input(editor, { target: { value: '{\n  "line": 2\n}' } });
+
+    expect(tabEvent.defaultPrevented).toBe(false);
+    expect(onchange).toHaveBeenCalledWith('{\n  "line": 2\n}');
+  });
+
+  test('can suppress success text while retaining invalid parse feedback', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      showValidFeedback: false,
+    });
+
+    expect(view.queryByRole('status')).toBeNull();
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+      showValidFeedback: false,
+    });
+
+    expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+  });
+});

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import JsonEditor from '@lostgradient/cinder/json-editor';
   import Button from '../button/button.svelte';
   import { formatEditableArguments, parseJsonText } from './approval-card-state.ts';
   import type { ApprovalResolution, ApprovalResolutionDecision } from './approval-card.types.ts';
@@ -20,10 +21,7 @@
     $props();
 
   const reasonId = $derived(`${idBase}-resolution-reason`);
-  const editorId = $derived(`${idBase}-edited-arguments`);
   const editRegionId = $derived(`${idBase}-edit-region`);
-  const editDescriptionId = $derived(`${idBase}-edit-description`);
-  const editErrorId = $derived(`${idBase}-edit-error`);
 
   let resolutionReason = $state('');
   let rememberResolution = $state(false);
@@ -150,31 +148,17 @@
 
   {#if editingArguments && canEditArguments}
     <div id={editRegionId} class="cinder-approval-card__editor">
-      <label class="cinder-approval-card__control-label" for={editorId}>
-        Edited arguments JSON
-      </label>
-      <p id={editDescriptionId} class="cinder-approval-card__muted">
-        Approving sends the parsed JSON below instead of the original arguments.
-      </p>
-      <textarea
-        id={editorId}
-        class="cinder-approval-card__textarea"
-        bind:value={editedArgumentsText}
-        rows="8"
-        spellcheck="false"
-        aria-describedby={editParseResult.ok
-          ? editDescriptionId
-          : `${editDescriptionId} ${editErrorId}`}
-        aria-invalid={editParseResult.ok ? undefined : 'true'}
-        {@attach (element) => {
-          element.focus();
-        }}
-      ></textarea>
-      {#if !editParseResult.ok}
-        <p id={editErrorId} class="cinder-approval-card__error" role="alert">
-          {editParseResult.message}
-        </p>
-      {/if}
+      <JsonEditor
+        id={`${idBase}-edited-arguments`}
+        label="Edited arguments JSON"
+        description="Approving sends the parsed JSON below instead of the original arguments."
+        value={editedArgumentsText}
+        onchange={(value) => (editedArgumentsText = value)}
+        {...!editParseResult.ok ? { error: editParseResult.message } : {}}
+        rows={8}
+        showValidFeedback={false}
+        autofocus
+      />
       <div class="cinder-approval-card__editor-actions">
         <Button
           type="button"
