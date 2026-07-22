@@ -40,3 +40,26 @@ Chat's component stylesheet is included by the component entry. Applications tha
 - `@lostgradient/chat/conversation-list` — conversation navigation, summaries, unread counts, and selection.
 
 Each component entry also publishes `/schema`, `/variables`, `/styles`, and `/examples` artifacts. The package-wide machine-readable index is available from `@lostgradient/chat/manifest`.
+
+## Rendering Mermaid artifacts
+
+`ArtifactViewer` renders HTML and SVG in sandboxed iframes and renders code as escaped source. Mermaid stays consumer-owned so applications can choose their Mermaid version, configuration, and security policy. Without a renderer, Mermaid artifacts show their source and an explicit fallback note.
+
+Pass a `mermaidRenderer` snippet to delegate only the Mermaid branch to an application component:
+
+```svelte
+<script lang="ts">
+  import { ArtifactViewer } from '@lostgradient/chat';
+  import MermaidDiagram from './mermaid-diagram.svelte';
+
+  const content = 'graph TD; Request-->Response;';
+</script>
+
+{#snippet mermaidRenderer(source, contentType)}
+  <MermaidDiagram {source} ariaLabel={`${contentType} diagram`} />
+{/snippet}
+
+<ArtifactViewer type="mermaid" {content} {mermaidRenderer} />
+```
+
+The snippet has type `Snippet<[content: string, type: 'mermaid']>`. `ArtifactViewer` invokes it only when `type` is `mermaid`; HTML, SVG, and code continue through the built-in renderers. The application-owned component is responsible for loading Mermaid, handling asynchronous rendering and errors, and applying its required content-safety policy.

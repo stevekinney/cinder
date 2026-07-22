@@ -1,13 +1,4 @@
 <script lang="ts" module>
-  export type ArtifactContentType = 'html' | 'svg' | 'code' | 'mermaid';
-
-  export type ArtifactViewerProps = {
-    type: ArtifactContentType;
-    content: string;
-    language?: string;
-    title?: string;
-  };
-
   /**
    * Wrap SVG content in a minimal HTML document for sandboxed iframe rendering.
    * This is the safe approach: the SVG runs in a sandboxed origin rather than
@@ -20,7 +11,9 @@
 </script>
 
 <script lang="ts">
-  let { type, content, language, title }: ArtifactViewerProps = $props();
+  import type { ArtifactViewerProps } from './artifact-viewer.types.ts';
+
+  let { type, content, language, title, mermaidRenderer }: ArtifactViewerProps = $props();
 
   const svgDocument = $derived(type === 'svg' ? wrapSvgInHtml(content) : '');
 </script>
@@ -47,10 +40,14 @@
   </div>
 {:else if type === 'mermaid'}
   <div class="artifact-viewer artifact-viewer-mermaid">
-    <pre class="artifact-code-block" data-language="mermaid"><code>{content}</code></pre>
-    <p class="artifact-mermaid-note" aria-live="polite">
-      Mermaid diagram source. Install the Mermaid library to render diagrams.
-    </p>
+    {#if mermaidRenderer}
+      {@render mermaidRenderer(content, 'mermaid')}
+    {:else}
+      <pre class="artifact-code-block" data-language="mermaid"><code>{content}</code></pre>
+      <p class="artifact-mermaid-note" aria-live="polite">
+        No Mermaid renderer was provided. Showing diagram source.
+      </p>
+    {/if}
   </div>
 {/if}
 
