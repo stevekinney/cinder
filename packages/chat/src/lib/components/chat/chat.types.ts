@@ -7,13 +7,14 @@ import type {
   ChatAdapterErrorEvent,
   ChatReadReceiptEvent,
 } from './adapter/chat-adapter.ts';
+import type { ChatArtifact } from './artifact/artifact-viewer.types.ts';
 import type {
   ChatScrollStateChangeEvent,
   ChatStopGeneratingEvent,
   ChatSubmitEvent,
   ChatUnreadIndicatorChangeEvent,
 } from './container/chat-events.ts';
-import type { ConversationHistory, Message } from './conversation-model.ts';
+import type { ConversationHistory, Message, ToolCallPair } from './conversation-model.ts';
 import type { ChatAttachment } from './input/chat-attachment.ts';
 import type { MessagePartOverride } from './message/chat-message-parts.ts';
 import type { StepInfo } from './utilities/types.ts';
@@ -53,11 +54,29 @@ export type ReadReceipt = {
 export type ChatAnnounceLevel = 'polite' | 'assertive';
 
 /**
- * Full-row override snippet. Inversion of control: receives the message AND a
+ * Context shared by every snippet that renders a visible message row.
+ *
+ * Paired tool-result messages do not render duplicate rows. Instead, the visible
+ * tool-call row receives the resolved pair, including its result, through
+ * `toolCallPair`. Valid `cinder:artifact` metadata is exposed through `artifact`;
+ * for a tool-call row, metadata on its folded result message is used when the
+ * visible message does not define an artifact itself.
+ */
+export type ChatRowContext = {
+  /** The message that owns the visible row. */
+  message: Message;
+  /** The tool call and its folded result for a visible tool-call row. */
+  toolCallPair: ToolCallPair | undefined;
+  /** Validated artifact metadata from the visible message or its folded tool result. */
+  artifact: ChatArtifact | undefined;
+};
+
+/**
+ * Full-row override snippet. Inversion of control: receives the row context AND a
  * `renderDefault` snippet that renders the built-in row, so a consumer can wrap
  * or replace a row while still delegating to the default when it chooses.
  */
-export type ChatRowOverride = Snippet<[message: Message, renderDefault: Snippet]>;
+export type ChatRowOverride = Snippet<[context: ChatRowContext, renderDefault: Snippet]>;
 
 /**
  * Feature-capability flags for the Chat component. Grouped here so consumers
@@ -158,12 +177,16 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   empty?: Snippet;
   /** List of suggested starter prompt strings shown as clickable buttons in the default empty state. Clicking a prompt submits it immediately as a user message. Has no effect when a custom `empty` snippet is provided. */
   emptyPrompts?: string[];
-  messageActions?: Snippet<[Message]>;
-  messageStatus?: Snippet<[Message]>;
+  /** Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`, including resolved tool pairs and artifact metadata. */
+  messageActions?: Snippet<[context: ChatRowContext]>;
+  /** Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`, including resolved tool pairs and artifact metadata. */
+  messageStatus?: Snippet<[context: ChatRowContext]>;
   /**
-   * Full-row override. Renders an entire message row; receives the message and
+   * Full-row override. Renders an entire message row; receives the shared row context and
    * a `renderDefault` snippet for the built-in row (inversion of control), so a
-   * consumer can wrap or fully replace specific rows.
+   * consumer can wrap or fully replace specific rows. Paired tool results are
+   * folded into the visible tool-call row's `toolCallPair`, with validated
+   * `cinder:artifact` metadata available as `artifact`.
    */
   row?: ChatRowOverride;
   /**
@@ -263,9 +286,10 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onattachmentremove?: (attachment: ChatAttachment) => void;
   onattachmentfailure?: (file: File, error: string) => void;
   /**
-   * Called with the composer's current plain-text value on every composer
-   * input event. The optional event exposes the textarea for composer-bound
-   * overlays without reaching into `.chat-input-editor` DOM directly.
+   * Called with the composer's current plain-text value after user input or
+   * `insertAtRange()`. The optional event exposes the textarea for
+   * composer-bound overlays without reaching into `.chat-input-editor` DOM
+   * directly; programmatic range insertion omits the event.
    */
   oncomposerinput?: (value: string, event?: Event) => void;
   /**

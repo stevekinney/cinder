@@ -22,6 +22,7 @@ import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 import { SubscribeEventLog } from '../../../test/subscribe-event-log.svelte.ts';
+import type { ChatRowContext } from '../chat.types.ts';
 import type { ConversationHistory, Message, MessageInput } from '../conversation-model.ts';
 import type { ChatAdapter, ChatPushHandlers } from './chat-adapter.ts';
 
@@ -182,17 +183,17 @@ function prependMessageToConversation(
 }
 
 function messageIdSnippet(attributeName: string) {
-  return createRawSnippet<[Message]>((currentMessage) => ({
+  return createRawSnippet<[ChatRowContext]>((context) => ({
     render: () =>
-      `<span data-${attributeName}="${currentMessage().id}">${currentMessage().id}</span>`,
+      `<span data-${attributeName}="${context().message.id}">${context().message.id}</span>`,
     setup: () => {},
   }));
 }
 
 function replacingRowSnippet() {
-  return createRawSnippet<[Message]>((currentMessage) => ({
+  return createRawSnippet<[ChatRowContext]>((context) => ({
     render: () =>
-      `<article data-custom-row="${currentMessage().id}">Custom ${currentMessage().role} row</article>`,
+      `<article data-custom-row="${context().message.id}">Custom ${context().message.role} row</article>`,
     setup: () => {},
   }));
 }

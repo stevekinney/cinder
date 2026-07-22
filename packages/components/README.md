@@ -7,10 +7,19 @@ Use cinder when you want UI building blocks without adopting a framework-level r
 ## Install
 
 ```bash
-bun add @lostgradient/cinder svelte lucide-svelte
+bun add @lostgradient/cinder svelte
 ```
 
-`svelte` and `lucide-svelte` are required peer dependencies. Cinder uses Lucide for its own component chrome, but it does not provide a general icon library for your application-specific icons. The Chat domain suite is published separately as `@lostgradient/chat`.
+`svelte` is a required peer dependency. Cinder uses Lucide (`lucide-svelte`) for
+its own component chrome, but bundles its own pinned copy as a regular
+dependency rather than a peer, so Cinder's own server-rendered icon markup
+stays consistent with its own client build without depending on which
+`lucide-svelte` version — if any — your application installs for its own
+icons. (If your bundler's deduplication collapses Cinder's pinned copy onto a
+different version your app requests, the two can still diverge; see the
+`@lostgradient/cinder` changeset for that edge case.) Cinder does not provide
+a general icon library for your application-specific icons. The Chat domain
+suite is published separately as `@lostgradient/chat`.
 
 Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces use optional peer dependencies. Install them only when your app imports `@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`, `@lostgradient/cinder/markdown`, `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`, `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`, `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on `CodeBlock` automatic highlighting:
 

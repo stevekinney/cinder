@@ -131,6 +131,18 @@ describe('ChatComposerPopover', () => {
     expect(composer.getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('does not reopen when selection is committed through insertAtRange()', async () => {
+    render(ChatComposerPopoverFixture, { replaceWithSelectedCommandImperatively: true });
+    const composer = await typeComposer('/sto');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+    await fireEvent.keyDown(composer, { key: 'Enter' });
+
+    await waitFor(() => expect(queryListbox()).toBeNull());
+    expect(composer.value).toBe('/stop');
+    expect(composer.getAttribute('aria-expanded')).toBe('false');
+  });
+
   test('resyncs external value changes after a throwing selection handler', async () => {
     const { getByTestId } = render(ChatComposerPopoverFixture, { throwOnSelected: true });
     await typeComposer('/h');

@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Attachment } from 'svelte/attachments';
   import type { ChatAdapter, ChatCommand, ChatPushHandlers } from '../adapter/chat-adapter.ts';
-  import type { Message, MessageInput } from '../conversation-model.ts';
+  import type { Message, MessageInput, ToolResult } from '../conversation-model.ts';
   import type { ChatAttachment } from '../input/chat-attachment.ts';
 
   // `ChatProps` is owned by `../chat.types.ts` (the analyzer + schema generator
@@ -24,6 +24,7 @@
   import {
     getMessages,
     pairToolCallsWithResults,
+    resolveMessageArtifact,
     resolveMessageReasoning,
     resolveMessageSteps,
     resolveMessageSuggestions,
@@ -150,6 +151,7 @@
         getAttachments: () => ChatAttachment[];
         getValue: () => string;
         getEditorElement: () => HTMLTextAreaElement | null;
+        insertAtRange: (range: { start: number; end: number }, text: string) => void;
       }
     | undefined;
   let searchBarRef = $state<{ focusInput: () => void } | undefined>(undefined);
@@ -315,6 +317,15 @@
         existing.push(pair);
       } else {
         map.set(pair.call.id, [pair]);
+      }
+    }
+    return map;
+  });
+  const toolResultMessagesByResult = $derived.by(() => {
+    const map = new Map<ToolResult, Message>();
+    for (const message of messages) {
+      if (message.role === 'tool-result' && message.toolResult) {
+        map.set(message.toolResult, message);
       }
     }
     return map;
@@ -1514,6 +1525,11 @@
     return inputRef?.getEditorElement() ?? null;
   }
 
+  /** Replace a composer range and place focus after the inserted text. */
+  export function insertAtRange(range: { start: number; end: number }, text: string): void {
+    inputRef?.insertAtRange(range, text);
+  }
+
   /**
    * Begin streaming content for a specific message.
    * The message should already exist in the conversation.
@@ -1668,6 +1684,17 @@
     {@const pairs = message.toolCall?.id
       ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
       : []}
+    {@const toolCallPair = pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0]}
+    {@const pairedResultMessage = toolCallPair?.result
+      ? toolResultMessagesByResult.get(toolCallPair.result)
+      : undefined}
+    {@const rowContext = {
+      message,
+      toolCallPair,
+      artifact:
+        resolveMessageArtifact(message) ??
+        (pairedResultMessage ? resolveMessageArtifact(pairedResultMessage) : undefined),
+    }}
     {@const isStreamingMessage = streamingMessageId === message.id}
     {@const isCurrentSearchMatch =
       searchState.isOpen &&
@@ -1719,12 +1746,12 @@
       >
         {#snippet actions()}
           {#if messageActions}
-            {@render messageActions(message)}
+            {@render messageActions(rowContext)}
           {/if}
         {/snippet}
         {#snippet status()}
           {#if messageStatus}
-            {@render messageStatus(message)}
+            {@render messageStatus(rowContext)}
           {:else if receipt}
             <ChatReadReceipt {receipt} />
           {/if}
@@ -1733,7 +1760,7 @@
     {/snippet}
 
     {#if row}
-      {@render row(message, renderDefaultRow)}
+      {@render row(rowContext, renderDefaultRow)}
     {:else}
       {@render renderDefaultRow()}
     {/if}

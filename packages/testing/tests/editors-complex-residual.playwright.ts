@@ -46,6 +46,7 @@ async function openTouchPage(
   browser: Browser,
   route: string,
   theme: 'light' | 'dark',
+  viewport = { width: 414, height: 896 },
 ): Promise<{ page: Page; dispose: () => Promise<void> }> {
   const context = await browser.newContext({
     baseURL: PLAYGROUND_URL,
@@ -53,7 +54,7 @@ async function openTouchPage(
     reducedMotion: 'reduce',
     hasTouch: true,
     isMobile: true,
-    viewport: { width: 414, height: 896 },
+    viewport,
   });
   await context.addInitScript(
     ([key, value]) => {
@@ -72,6 +73,20 @@ async function openTouchPage(
 }
 
 test.describe('chat action buttons', () => {
+  test('narrow hover layouts do not reserve space for hidden actions', async ({ page }) => {
+    await page.setViewportSize({ width: 414, height: 896 });
+    await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+
+    expect(await page.evaluate(() => window.matchMedia('(hover: hover)').matches)).toBe(true);
+
+    const copyButton = page.locator('.chat-message-copy').first();
+    const actionableRow = copyButton.locator(
+      'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
+    );
+    await expect(actionableRow).toHaveCSS('margin-block-end', '0px');
+  });
+
   test('built-in action buttons have a visible resting affordance and touch-sized target', async ({
     browser,
   }) => {
@@ -79,6 +94,7 @@ test.describe('chat action buttons', () => {
     try {
       const copyButton = page.locator('.chat-message-copy').first();
       await expect(copyButton).toBeVisible();
+      await copyButton.scrollIntoViewIfNeeded();
 
       expect(await colorAlpha(copyButton, 'backgroundColor')).toBeGreaterThan(0);
       expect(await colorAlpha(copyButton, 'borderTopColor')).toBeGreaterThan(0);
@@ -97,6 +113,36 @@ test.describe('chat action buttons', () => {
         });
       });
 
+      const actionableRow = copyButton.locator(
+        'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
+      );
+      const space1Px = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.cssText =
+          'position:absolute;width:var(--cinder-space-1);visibility:hidden;pointer-events:none';
+        document.body.appendChild(probe);
+        const px = parseFloat(getComputedStyle(probe).width);
+        probe.remove();
+        return px;
+      });
+      await expect(actionableRow).toHaveCSS('margin-block-end', `${TOUCH_TARGET_MIN + space1Px}px`);
+
+      const hitTarget = await copyButton.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        const target = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
+        return {
+          className: target instanceof HTMLElement ? target.className : null,
+          isCopyButton: target === element || element.contains(target),
+          tagName: target?.tagName ?? null,
+        };
+      });
+      expect(hitTarget.isCopyButton, JSON.stringify(hitTarget)).toBe(true);
+
+      const emptyToolRow = page.locator('.chat-message-wrapper[data-role="tool-call"]').first();
+      await expect(emptyToolRow).toBeVisible();
+      await expect(emptyToolRow.locator('.chat-message-actions > *')).toHaveCount(0);
+      await expect(emptyToolRow).toHaveCSS('margin-block-end', '0px');
+
       await copyButton.click();
       // CopyButton signals the copied state via `data-cinder-copied` attribute.
       const successButton = page.locator('.chat-message-copy[data-cinder-copied]').first();
@@ -105,6 +151,45 @@ test.describe('chat action buttons', () => {
         (element) => getComputedStyle(element).color,
       );
       expect(successColor).not.toBe(restingColor);
+    } finally {
+      await dispose();
+    }
+  });
+
+  test('wide touch layouts reserve only below-bubble action rows', async ({ browser }) => {
+    const { page, dispose } = await openTouchPage(browser, '/page/chat?snapshot=1', 'light', {
+      width: 768,
+      height: 1024,
+    });
+    try {
+      const space1Px = await page.evaluate(() => {
+        const probe = document.createElement('div');
+        probe.style.cssText =
+          'position:absolute;width:var(--cinder-space-1);visibility:hidden;pointer-events:none';
+        document.body.appendChild(probe);
+        const px = parseFloat(getComputedStyle(probe).width);
+        probe.remove();
+        return px;
+      });
+
+      const toolPairRow = page.locator('.chat-message-wrapper[data-tool-pair]').first();
+      await expect(toolPairRow).toBeVisible();
+      await toolPairRow.locator('.chat-message-actions').evaluate((actions) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'Test action';
+        actions.appendChild(button);
+      });
+      await expect(toolPairRow).toHaveCSS('margin-block-end', `${TOUCH_TARGET_MIN + space1Px}px`);
+
+      const assistantCopyButton = page
+        .locator('.chat-message-wrapper[data-role="assistant"] .chat-message-copy')
+        .first();
+      await expect(assistantCopyButton).toBeVisible();
+      const assistantRow = assistantCopyButton.locator(
+        'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
+      );
+      await expect(assistantRow).toHaveCSS('margin-block-end', '0px');
     } finally {
       await dispose();
     }

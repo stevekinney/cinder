@@ -15,6 +15,7 @@
     appendMessages,
     appendUserMessage,
     createConversation,
+    type ChatRowContext,
     type ChatSubmitEvent,
     type ConversationHistory,
     type JSONValue,
@@ -618,7 +619,7 @@
           Harness conversation
         </div>
       {/snippet}
-      {#snippet messageActions(message: Message)}
+      {#snippet messageActions({ message }: ChatRowContext)}
         <Button
           iconOnly={true}
           label="Message action"
@@ -630,7 +631,7 @@
           ★
         </Button>
       {/snippet}
-      {#snippet messageStatus(message: Message)}
+      {#snippet messageStatus({ message }: ChatRowContext)}
         <span data-testid="harness-message-status" data-message-id={message.id}>·</span>
       {/snippet}
     </Chat>

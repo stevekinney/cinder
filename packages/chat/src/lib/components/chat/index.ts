@@ -18,6 +18,8 @@ export type {
   ChatAnnounceLevel,
   ChatCapabilities,
   ChatProps,
+  ChatRowContext,
+  ChatRowOverride,
   ReadReceipt,
   TypingParticipant,
 } from './chat.types.ts';
@@ -105,11 +107,13 @@ export type {
 
 // Utilities
 export {
+  CINDER_ARTIFACT_METADATA_KEY,
   formatMessageAsMarkdown,
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
   pairToolCallsWithResults,
+  resolveMessageArtifact,
   type ChatExportOptions,
   type DeliveryStatus,
 } from './utilities/index.ts';
@@ -165,3 +169,9 @@ export { ConversationExportActions } from './export/index.ts';
 
 // Artifact
 export { ArtifactPanel, ArtifactViewer, ChatArtifactLayout } from './artifact/index.ts';
+export type {
+  ArtifactContentType,
+  ArtifactViewerProps,
+  ChatArtifact,
+  MermaidRenderer,
+} from './artifact/index.ts';

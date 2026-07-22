@@ -1,27 +1,38 @@
-import { describe, expect, it } from 'bun:test';
-import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { describe, expect, it, spyOn } from 'bun:test';
+import { existsSync, writeFileSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  buildableForwardClosure,
+  changedCssLikeFiles,
+  changedFilesForRange,
   cleanupForHookSignal,
   cleanupHookProcesses,
   defaultGateLockPath,
+  expandToDependents,
   gateLockPathForCommonDirectory,
   getTouchedPackages,
   gitCommonDirectory,
   hasRootConfigurationChanges,
+  isIgnorableDoc,
+  isNewBranch,
   isSourceFile,
+  isUnderWorkspace,
   loadWorkspacePackages,
   LOCAL_VALIDATION_GATE_LOCK_HELD_ENV,
+  nodeModulesTopology,
   parsePushRefs,
   phaseMaxConcurrency,
+  prePushPackageScript,
   REPO_ROOT,
   runHookCommand,
   runWithConcurrencyPool,
   withGateLock,
   withLocalValidationGateLock,
+  type GitRunner,
+  type PushRefUpdate,
   type WorkspacePackage,
 } from './utilities.ts';
 
@@ -45,6 +56,23 @@ const fakePackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/cinder', 'packages/components/', [], { hasTest: false }),
 ];
 
+// A fixture mirroring the real internal dependency graph for closure tests.
+const graphPackages: readonly WorkspacePackage[] = [
+  pkg('@lostgradient/cinder', 'packages/components/', [
+    '@cinder/commentary',
+    '@cinder/diff',
+    '@cinder/markdown',
+    '@cinder/testing',
+  ]),
+  pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
+  pkg('@cinder/commentary', 'packages/commentary/', ['@cinder/markdown']),
+  pkg('@lostgradient/chat', 'packages/chat/', ['@lostgradient/cinder']),
+  pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/chat', '@lostgradient/cinder']),
+  pkg('@cinder/diff', 'packages/diff/'),
+  pkg('@cinder/testing', 'packages/testing/', [], { hasLint: false }),
+];
+
+const sorted = (names: Iterable<string>): string[] => [...names].toSorted();
 function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -476,6 +504,142 @@ describe('loadWorkspacePackages', () => {
   });
 });
 
+describe('expandToDependents', () => {
+  // NOTE: the real graph has `@lostgradient/cinder` dev-depending on every sub-package (its
+  // own tests import them), `@lostgradient/chat` depending on Cinder, and
+  // `@cinder/playground` depending on both public packages. So any sub-package
+  // change pulls in Cinder + Chat + playground as
+  // dependents. Only `@cinder/commentary` (a true leaf in the consumer
+  // direction) and `@cinder/playground` stay small. These expectations are the
+  // sound closures, computed from the graph — not the smaller sets an earlier
+  // draft assumed.
+  const expand = (name: string) => sorted(expandToDependents(graphPackages, [name]));
+
+  it('keeps @cinder/playground a leaf (nothing depends on it)', () => {
+    expect(expand('@cinder/playground')).toEqual(['@cinder/playground']);
+  });
+
+  it('expands @cinder/commentary through both public packages to playground', () => {
+    expect(expand('@cinder/commentary')).toEqual([
+      '@cinder/commentary',
+      '@cinder/playground',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('expands @cinder/markdown to markdown + commentary + cinder + playground', () => {
+    expect(expand('@cinder/markdown')).toEqual([
+      '@cinder/commentary',
+      '@cinder/markdown',
+      '@cinder/playground',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('expands @cinder/diff to the full dependent chain + cinder + playground', () => {
+    expect(expand('@cinder/diff')).toEqual([
+      '@cinder/commentary',
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/playground',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('expands @cinder/testing to testing + cinder + playground', () => {
+    expect(expand('@cinder/testing')).toEqual([
+      '@cinder/playground',
+      '@cinder/testing',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('expands cinder through chat to playground', () => {
+    expect(expand('@lostgradient/cinder')).toEqual([
+      '@cinder/playground',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('expands chat to chat + playground', () => {
+    expect(expand('@lostgradient/chat')).toEqual(['@cinder/playground', '@lostgradient/chat']);
+  });
+
+  it('is cycle-safe and dedupes across multiple touched packages', () => {
+    expect(
+      sorted(expandToDependents(graphPackages, ['@cinder/diff', '@cinder/commentary'])),
+    ).toEqual([
+      '@cinder/commentary',
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/playground',
+      '@lostgradient/chat',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('passes unknown names through unchanged', () => {
+    expect(sorted(expandToDependents(graphPackages, ['@cinder/nonexistent']))).toEqual([
+      '@cinder/nonexistent',
+    ]);
+  });
+
+  it('returns an empty set when no packages are touched', () => {
+    expect(sorted(expandToDependents(graphPackages, []))).toEqual([]);
+  });
+});
+
+describe('buildableForwardClosure', () => {
+  // Pins the exact prefixes of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER so a
+  // future reorder of that list (breaking the "every dependency points
+  // strictly backward" invariant `buildableForwardClosure` relies on) fails
+  // loudly here instead of silently under-building the pre-push pre-build
+  // step and reopening the #364 race as a CI flake.
+  it('closes @cinder/commentary to diff + markdown + commentary (its upstream chain)', () => {
+    expect(buildableForwardClosure(new Set(['@cinder/commentary']))).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/commentary',
+    ]);
+  });
+
+  it('closes @lostgradient/cinder to the full four-package chain', () => {
+    expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+      '@cinder/commentary',
+      '@lostgradient/cinder',
+    ]);
+  });
+
+  it('does not over-build past the latest touched package', () => {
+    expect(buildableForwardClosure(new Set(['@cinder/diff', '@cinder/markdown']))).toEqual([
+      '@cinder/diff',
+      '@cinder/markdown',
+    ]);
+  });
+
+  it('returns an empty list when no buildable package is touched', () => {
+    expect(buildableForwardClosure(new Set())).toEqual([]);
+    expect(buildableForwardClosure(new Set(['@cinder/testing']))).toEqual([]);
+  });
+});
+
+describe('isNewBranch', () => {
+  it('is true when the remote sha is all zeros', () => {
+    expect(isNewBranch({ localSha: 'a'.repeat(40), remoteSha: '0'.repeat(40) })).toBe(true);
+  });
+
+  it('is false when the remote sha is a real sha', () => {
+    expect(isNewBranch({ localSha: 'a'.repeat(40), remoteSha: 'b'.repeat(40) })).toBe(false);
+  });
+});
+
 describe('parsePushRefs', () => {
   const ZERO = '0'.repeat(40);
   const A = 'a'.repeat(40);
@@ -541,16 +705,324 @@ describe('parsePushRefs', () => {
   });
 });
 
+/** Build a fake GitRunner from canned responses keyed by call. */
+function fakeGit(overrides: Partial<GitRunner>): GitRunner {
+  return {
+    mergeBase: overrides.mergeBase ?? (async () => 'base'),
+    isAncestor: overrides.isAncestor ?? (async () => true),
+    diffNames: overrides.diffNames ?? (async () => []),
+    diffNameStatus: overrides.diffNameStatus ?? (async () => []),
+  };
+}
+
+describe('changedFilesForRange', () => {
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  const ZERO = '0'.repeat(40);
+
+  it('uses a two-dot range for a fast-forward update', async () => {
+    let seenRange = '';
+    const git = fakeGit({
+      isAncestor: async () => true,
+      diffNames: async (range) => {
+        seenRange = range;
+        return ['packages/diff/src/x.ts'];
+      },
+    });
+    const files = await changedFilesForRange([{ localSha: A, remoteSha: B }], git);
+    expect(seenRange).toBe(`${B}..${A}`);
+    expect([...files]).toEqual(['packages/diff/src/x.ts']);
+  });
+
+  it('uses the merge-base for a non-fast-forward (rebase) update', async () => {
+    let seenRange = '';
+    const git = fakeGit({
+      isAncestor: async () => false,
+      mergeBase: async () => 'mb',
+      diffNames: async (range) => {
+        seenRange = range;
+        return [];
+      },
+    });
+    await changedFilesForRange([{ localSha: A, remoteSha: B }], git);
+    expect(seenRange).toBe(`mb..${A}`);
+  });
+
+  it('uses merge-base against origin/main for a new branch', async () => {
+    const calls: string[] = [];
+    const git = fakeGit({
+      mergeBase: async (a, b) => {
+        calls.push(`${a}|${b}`);
+        return 'nb';
+      },
+      diffNames: async () => [],
+    });
+    await changedFilesForRange([{ localSha: A, remoteSha: ZERO }], git);
+    expect(calls).toEqual([`origin/main|${A}`]);
+  });
+
+  it('honors the CINDER_PUSH_BASE_REF override for a new branch', async () => {
+    const original = Bun.env['CINDER_PUSH_BASE_REF'];
+    Bun.env['CINDER_PUSH_BASE_REF'] = 'origin/release';
+    try {
+      const calls: string[] = [];
+      const git = fakeGit({
+        mergeBase: async (a, b) => {
+          calls.push(`${a}|${b}`);
+          return 'nb';
+        },
+        diffNames: async () => [],
+      });
+      await changedFilesForRange([{ localSha: A, remoteSha: ZERO }], git);
+      expect(calls).toEqual([`origin/release|${A}`]);
+    } finally {
+      if (original === undefined) delete Bun.env['CINDER_PUSH_BASE_REF'];
+      else Bun.env['CINDER_PUSH_BASE_REF'] = original;
+    }
+  });
+
+  it('throws when merge-base fails (→ caller falls back to full)', async () => {
+    const git = fakeGit({
+      mergeBase: async () => {
+        throw new Error('no merge base');
+      },
+      diffNames: async () => [],
+    });
+    await expect(changedFilesForRange([{ localSha: A, remoteSha: ZERO }], git)).rejects.toThrow();
+  });
+
+  it('unions changed files across multiple updates and drops blanks', async () => {
+    const git = fakeGit({
+      diffNames: async () => [
+        'packages/diff/a.ts',
+        '',
+        'packages/diff/a.ts',
+        'packages/markdown/b.ts',
+      ],
+    });
+    const files = await changedFilesForRange([{ localSha: A, remoteSha: B }], git);
+    expect(sorted(files)).toEqual(['packages/diff/a.ts', 'packages/markdown/b.ts']);
+  });
+
+  it('returns an empty set and never shells out when given no updates', async () => {
+    let called = false;
+    const git = fakeGit({
+      diffNames: async () => {
+        called = true;
+        return [];
+      },
+    });
+    const files = await changedFilesForRange([], git);
+    expect([...files]).toEqual([]);
+    expect(called).toBe(false);
+  });
+});
+
+describe('changedCssLikeFiles', () => {
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+  const update: PushRefUpdate = { localSha: A, remoteSha: B };
+  const allExist = () => true;
+
+  it('keeps modified/added css and svelte files', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => [
+        'M\tpackages/components/a.css',
+        'A\tpackages/components/b.svelte',
+      ],
+    });
+    expect(await changedCssLikeFiles([update], git, allExist)).toEqual([
+      'packages/components/a.css',
+      'packages/components/b.svelte',
+    ]);
+  });
+
+  it('drops deleted (D) css files', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => [
+        'D\tpackages/components/gone.css',
+        'M\tpackages/components/keep.css',
+      ],
+    });
+    expect(await changedCssLikeFiles([update], git, allExist)).toEqual([
+      'packages/components/keep.css',
+    ]);
+  });
+
+  it('uses the destination path for a rename (R) and copy (C)', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => [
+        'R100\tpackages/components/old.css\tpackages/components/new.css',
+        'C100\tpackages/components/src.svelte\tpackages/components/copy.svelte',
+      ],
+    });
+    expect(await changedCssLikeFiles([update], git, allExist)).toEqual([
+      'packages/components/copy.svelte',
+      'packages/components/new.css',
+    ]);
+  });
+
+  it('ignores non-css/svelte files', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['M\tpackages/components/x.ts', 'M\tpackages/components/y.css'],
+    });
+    expect(await changedCssLikeFiles([update], git, allExist)).toEqual([
+      'packages/components/y.css',
+    ]);
+  });
+
+  it('drops files that no longer exist on disk', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['M\tpackages/components/a.css', 'M\tpackages/components/b.css'],
+    });
+    const exists = (path: string) => path.endsWith('a.css');
+    expect(await changedCssLikeFiles([update], git, exists)).toEqual(['packages/components/a.css']);
+  });
+
+  it('handles a type-change (T) status the same as a modification', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['T\tpackages/components/a.css'],
+    });
+    expect(await changedCssLikeFiles([update], git, allExist)).toEqual([
+      'packages/components/a.css',
+    ]);
+  });
+
+  it('throws on an unrecognized diff status (→ caller falls back to full)', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['X\tpackages/components/weird.css'],
+    });
+    await expect(changedCssLikeFiles([update], git, allExist)).rejects.toThrow();
+  });
+
+  it('throws when a known status is missing its path (→ caller falls back to full)', async () => {
+    const git = fakeGit({
+      diffNameStatus: async () => ['R100\tpackages/components/old.css'], // no destination
+    });
+    await expect(changedCssLikeFiles([update], git, allExist)).rejects.toThrow();
+  });
+});
+
+describe('isUnderWorkspace', () => {
+  it('matches files inside a package directory', () => {
+    expect(isUnderWorkspace('packages/diff/src/x.ts', graphPackages)).toBe(true);
+    expect(isUnderWorkspace('packages/diff/fixtures/data.yaml', graphPackages)).toBe(true);
+  });
+
+  it('does not match root-level files', () => {
+    expect(isUnderWorkspace('README.md', graphPackages)).toBe(false);
+    expect(isUnderWorkspace('package.json', graphPackages)).toBe(false);
+  });
+
+  it('does not treat a directory prefix collision as a match', () => {
+    expect(isUnderWorkspace('packages/diff-extra/x.ts', graphPackages)).toBe(false);
+  });
+});
+
+describe('isIgnorableDoc', () => {
+  it('ignores repo-root README/CHANGELOG', () => {
+    expect(isIgnorableDoc('README.md', graphPackages)).toBe(true);
+    expect(isIgnorableDoc('CHANGELOG.md', graphPackages)).toBe(true);
+  });
+
+  it('ignores package-root README/CHANGELOG and docs/**', () => {
+    expect(isIgnorableDoc('packages/diff/README.md', graphPackages)).toBe(true);
+    expect(isIgnorableDoc('packages/diff/CHANGELOG.md', graphPackages)).toBe(true);
+    expect(isIgnorableDoc('packages/markdown/docs/intro.md', graphPackages)).toBe(true);
+  });
+
+  it('does NOT ignore a nested fixture named like a doc', () => {
+    expect(
+      isIgnorableDoc('packages/markdown/test/fixtures/README-edge-case.md', graphPackages),
+    ).toBe(false);
+    expect(isIgnorableDoc('packages/diff/fixtures/data.yaml', graphPackages)).toBe(false);
+  });
+
+  it('does NOT ignore a non-doc root-level file', () => {
+    expect(isIgnorableDoc('bun.lock', graphPackages)).toBe(false);
+    expect(isIgnorableDoc('package.json', graphPackages)).toBe(false);
+  });
+});
+
 /**
- * `phaseMaxConcurrency` is the side-effect-free seam extracted so this test
- * can assert the concurrency policy without importing a hook entry path
+ * Reproduce the exact scope-derivation the pre-push hook performs (lint scoped
+ * naively to touched packages; typecheck/test expanded to the reverse-dependency
+ * closure) so the motivating CSS-only acceptance criterion is asserted against
+ * the *real* workspace, not just the building blocks in isolation.
+ */
+function planScopedJobs(
+  workspace: readonly WorkspacePackage[],
+  changed: readonly string[],
+): string[] {
+  const touched = getTouchedPackages(workspace, [...changed]);
+  const byName = new Map(workspace.map((entry) => [entry.name, entry] as const));
+  const jobs: string[] = [];
+  for (const entry of touched) {
+    if (entry.hasLint) jobs.push(`${entry.name} lint`);
+  }
+  for (const name of expandToDependents(
+    workspace,
+    touched.map((entry) => entry.name),
+  )) {
+    const entry = byName.get(name);
+    if (entry === undefined) continue;
+    if (entry.hasTypecheck) jobs.push(`${name} typecheck`);
+    if (entry.hasTest) jobs.push(`${name} ${prePushPackageScript(name, 'test')}`);
+  }
+  return jobs.toSorted();
+}
+
+describe('prePushPackageScript', () => {
+  it('uses component-aware test scoping for the cinder package only', () => {
+    expect(prePushPackageScript('@lostgradient/cinder', 'test')).toBe('test:changed');
+    expect(prePushPackageScript('@lostgradient/cinder', 'typecheck')).toBe('typecheck');
+    expect(prePushPackageScript('@cinder/playground', 'test')).toBe('test');
+  });
+});
+
+describe('scoped job derivation (real workspace)', () => {
+  it('scopes a CSS-only packages/components change to cinder + playground only', async () => {
+    const workspace = await loadWorkspacePackages();
+    const jobs = planScopedJobs(workspace, [
+      'packages/components/src/components/alert.css',
+      'packages/components/src/components/callout.css',
+    ]);
+    // Positive: Cinder's three gates plus Chat and playground typecheck/test
+    // through the real reverse-dependency closure.
+    expect(jobs).toEqual([
+      '@cinder/playground test',
+      '@cinder/playground typecheck',
+      '@lostgradient/chat test',
+      '@lostgradient/chat typecheck',
+      '@lostgradient/cinder lint',
+      '@lostgradient/cinder test:changed',
+      '@lostgradient/cinder typecheck',
+    ]);
+    // Negative: no playground *lint* (closure is typecheck/test only), and no
+    // markdown/commentary/diff jobs at all.
+    expect(jobs).not.toContain('@cinder/playground lint');
+    expect(jobs.some((j) => /@cinder\/(markdown|commentary|diff)/.test(j))).toBe(false);
+  });
+
+  it('scopes a leaf @cinder/commentary change without dragging in unrelated siblings', async () => {
+    const workspace = await loadWorkspacePackages();
+    const jobs = planScopedJobs(workspace, ['packages/commentary/src/index.ts']);
+    // commentary is a consumer leaf, but cinder dev-depends on it and playground
+    // depends on cinder, so the closure is commentary + cinder + playground.
+    expect(jobs.some((j) => /@cinder\/(markdown|diff)/.test(j))).toBe(false);
+    expect(jobs).toContain('@cinder/commentary lint');
+    expect(jobs).toContain('@lostgradient/cinder typecheck');
+    expect(jobs).toContain('@cinder/playground test');
+  });
+});
+
+/**
+ * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-commit.ts
+ * so this test can assert the policy without importing the gate entry path
  * (which has module-scope side effects: isContinuousIntegration → process.exit,
- * stdin read). Originally added for issue #364 (pre-push and pre-commit test
- * phases raced shared-dist rebuilds); pre-push no longer runs a local test
- * phase at all — CI owns that now — so pre-commit's parallel per-package
- * typecheck is the only current caller. The policy is kept general across all
- * three `GateScript` values (not narrowed to `typecheck`) so a future local
- * gate script inherits the same bounded concurrency instead of reinventing it.
+ * stdin read). The policy is kept general across all three `GateScript` values
+ * (not narrowed to pre-commit's `typecheck`) so a future local gate script
+ * inherits the same bounded concurrency instead of reinventing it.
  */
 describe('phaseMaxConcurrency', () => {
   function withHardwareConcurrency(value: number, run: () => void): void {
@@ -575,7 +1047,7 @@ describe('phaseMaxConcurrency', () => {
     }
   }
 
-  it('returns a value greater than 1 for test (dependency closure is pre-built, so inline rebuilds hash-skip)', () => {
+  it('returns a value greater than 1 for test', () => {
     withHardwareConcurrency(2, () => {
       expect(phaseMaxConcurrency('test')).toBeGreaterThan(1);
     });
@@ -615,12 +1087,13 @@ describe('phaseMaxConcurrency', () => {
 /**
  * `runWithConcurrencyPool` is the *mechanism* the `phaseMaxConcurrency` policy
  * feeds. The policy tests above only prove each phase asks for a given
- * concurrency — they do NOT prove the runner honors it. Both hooks' `runJobs`
- * delegate to this pool, so a future edit that passed a hardcoded literal
- * instead of `phaseMaxConcurrency(script)` would still leave the policy tests
- * green. These tests close that gap: they instrument the worker to record the
- * maximum number of overlapping invocations and assert the pool never exceeds
- * the cap — with `maxConcurrency === 1` the overlap is strictly 1.
+ * concurrency — they do NOT prove the runner honors it. The pre-commit
+ * `runJobs` helper delegates to this pool, so a future edit that passed a
+ * hardcoded literal instead of `phaseMaxConcurrency(script)` would still
+ * leave the policy tests green. These tests close that gap: they instrument
+ * the worker to record the maximum number of overlapping invocations and
+ * assert the pool never exceeds the cap — with `maxConcurrency === 1` the
+ * overlap is strictly 1.
  */
 describe('runWithConcurrencyPool', () => {
   /**
@@ -649,7 +1122,7 @@ describe('runWithConcurrencyPool', () => {
     return { results, maxObserved };
   }
 
-  it('runs strictly one at a time when maxConcurrency is 1 (the #364 guarantee)', async () => {
+  it('runs strictly one at a time when maxConcurrency is 1', async () => {
     const { results, maxObserved } = await observeOverlap(6, 1);
     expect(maxObserved).toBe(1);
     // Results stay in input order regardless of pool scheduling.
@@ -706,7 +1179,7 @@ describe('withGateLock', () => {
   async function withTemporaryLockPath<T>(test: (lockPath: string) => Promise<T>): Promise<T> {
     const directory = await mkdtemp(join(tmpdir(), 'cinder-gate-lock-'));
     try {
-      return await test(join(directory, 'pre-push-gate.lock'));
+      return await test(join(directory, 'local-validation-gate.lock'));
     } finally {
       await rm(directory, { force: true, recursive: true });
     }
@@ -848,26 +1321,49 @@ describe('withGateLock', () => {
     });
   });
 
-  it('fails after the bounded wait when a live gate keeps the lock', async () => {
+  it('keeps waiting past the legacy timeout while the recorded holder remains alive', async () => {
     await withTemporaryLockPath(async (lockPath) => {
-      await writeFile(
-        lockPath,
-        JSON.stringify({
-          createdAt: new Date().toISOString(),
-          pid: 123,
-          repositoryRoot: 'other-checkout',
-          token: 'still-running',
-        }),
-      );
+      const legacyTimeoutMilliseconds = 5;
+      const holder = Bun.spawn(['bun', '-e', 'await Bun.stdin.text()'], {
+        stderr: 'ignore',
+        stdin: 'pipe',
+        stdout: 'ignore',
+      });
+      let liveChecks = 0;
 
-      await expect(
-        withGateLock(async () => 'should not run', {
-          isProcessAlive: () => true,
+      try {
+        await writeFile(
+          lockPath,
+          JSON.stringify({
+            createdAt: new Date(Date.now() - 10 * 60 * 1_000).toISOString(),
+            pid: holder.pid,
+            repositoryRoot: 'other-checkout',
+            token: 'still-running',
+          }),
+        );
+
+        const result = await withGateLock(async () => 'acquired after holder exited', {
+          isProcessAlive: (pid) => {
+            const alive = isProcessAlive(pid);
+            if (alive && ++liveChecks === 10) holder.stdin.end();
+            return alive;
+          },
           lockPath,
           retryMilliseconds: 1,
-          waitMilliseconds: 5,
-        }),
-      ).rejects.toThrow('Another local validation gate is already running');
+          waitMilliseconds: legacyTimeoutMilliseconds,
+        });
+
+        expect(result).toBe('acquired after holder exited');
+        expect(liveChecks).toBeGreaterThanOrEqual(10);
+        expect(await holder.exited).toBe(0);
+        expect(await Bun.file(lockPath).exists()).toBe(false);
+      } finally {
+        if (isProcessAlive(holder.pid)) {
+          holder.stdin.end();
+          killProcessGroup(holder.pid);
+        }
+        await holder.exited;
+      }
     });
   });
 
@@ -885,6 +1381,87 @@ describe('withGateLock', () => {
       ).rejects.toThrow('malformed lock');
 
       expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('starts a fresh bounded wait when a live lock is replaced by a malformed lock', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(
+        lockPath,
+        JSON.stringify({
+          createdAt: new Date().toISOString(),
+          pid: 123,
+          repositoryRoot: 'other-checkout',
+          token: 'live-then-malformed',
+        }),
+      );
+      let liveChecks = 0;
+      let malformedChecks = 0;
+      let now = 0;
+
+      await expect(
+        withGateLock(async () => 'should not run', {
+          beforeMalformedLockStat: () => {
+            malformedChecks++;
+            if (malformedChecks > 1) now = 5;
+          },
+          isProcessAlive: () => {
+            if (++liveChecks === 20) writeFileSync(lockPath, '{');
+            return true;
+          },
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          now: () => now,
+          retryMilliseconds: 1,
+          waitMilliseconds: 5,
+        }),
+      ).rejects.toThrow('malformed lock');
+
+      expect(malformedChecks).toBeGreaterThan(1);
+      expect(await readFile(lockPath, 'utf8')).toBe('{');
+    });
+  });
+
+  it('prints live-holder guidance after a malformed lock becomes valid', async () => {
+    await withTemporaryLockPath(async (lockPath) => {
+      await writeFile(lockPath, '{');
+      const messages: string[] = [];
+      const consoleLog = spyOn(console, 'log').mockImplementation((message) => {
+        messages.push(String(message));
+      });
+      let lockCompleted = false;
+      let liveChecks = 0;
+
+      try {
+        const result = await withGateLock(async () => 'acquired after transition', {
+          beforeMalformedLockStat: async () => {
+            if (lockCompleted) return;
+            lockCompleted = true;
+            await writeFile(
+              lockPath,
+              JSON.stringify({
+                createdAt: new Date().toISOString(),
+                pid: 123,
+                repositoryRoot: 'other-checkout',
+                token: 'completed-lock',
+              }),
+            );
+          },
+          isProcessAlive: () => ++liveChecks === 1,
+          lockPath,
+          malformedLockGraceMilliseconds: 1_000,
+          retryMilliseconds: 1,
+          waitMilliseconds: 100,
+        });
+
+        expect(result).toBe('acquired after transition');
+        expect(messages.some((message) => message.includes('preparing its lock file'))).toBe(true);
+        expect(messages.some((message) => message.includes('Waiting without an age timeout'))).toBe(
+          true,
+        );
+      } finally {
+        consoleLog.mockRestore();
+      }
     });
   });
 
@@ -1043,5 +1620,58 @@ describe('withLocalValidationGateLock', () => {
         await rm(lockPath, { force: true });
       }
     });
+  });
+});
+
+describe('nodeModulesTopology', () => {
+  it('reports a real directory as real', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-node-modules-real-'));
+    try {
+      await mkdir(join(directory, 'node_modules'));
+
+      expect(nodeModulesTopology(directory)).toBe('real');
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('reports a non-directory, non-symlink node_modules as invalid', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-node-modules-invalid-'));
+    try {
+      await writeFile(join(directory, 'node_modules'), 'not a directory');
+
+      expect(nodeModulesTopology(directory)).toBe('invalid');
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  it('reports an absent node_modules as missing', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-node-modules-missing-'));
+    try {
+      expect(nodeModulesTopology(directory)).toBe('missing');
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
+
+  // The regression this whole guard exists for: a symlinked node_modules
+  // resolves to a healthy directory, so anything using `stat` instead of
+  // `lstat` reports 'real' and misses the defect entirely.
+  it('reports a symlink to a healthy tree as symlinked, not real', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'cinder-node-modules-symlink-'));
+    try {
+      const target = join(directory, 'primary-node-modules');
+      await mkdir(target);
+      await symlink(
+        target,
+        join(directory, 'node_modules'),
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+
+      expect(nodeModulesTopology(directory)).toBe('symlinked');
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
   });
 });

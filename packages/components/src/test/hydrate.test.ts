@@ -17,7 +17,12 @@ import { setupHappyDom } from './happy-dom.ts';
 
 setupHappyDom();
 
-const { renderThenHydrate, __tempFileRegistryForTests } = await import('./hydrate.ts');
+const {
+  renderThenHydrate,
+  prepareHydrationSource,
+  __serverBuildCacheForTests,
+  __tempFileRegistryForTests,
+} = await import('./hydrate.ts');
 const { default: Input } = await import('../components/input/input.svelte');
 
 const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input', 'input.svelte');
@@ -108,5 +113,14 @@ describe('renderThenHydrate', () => {
       throw Object.assign(new Error('already removed'), { code: 'ENOENT' });
     });
     expect(__tempFileRegistryForTests.paths.has(path)).toBe(false);
+  });
+
+  test('prepares one cached server build for concurrent hydration fixtures', async () => {
+    __serverBuildCacheForTests.evict(INPUT_SOURCE);
+    const buildsBefore = __serverBuildCacheForTests.buildCount(INPUT_SOURCE);
+
+    await Promise.all([prepareHydrationSource(INPUT_SOURCE), prepareHydrationSource(INPUT_SOURCE)]);
+
+    expect(__serverBuildCacheForTests.buildCount(INPUT_SOURCE) - buildsBefore).toBe(1);
   });
 });

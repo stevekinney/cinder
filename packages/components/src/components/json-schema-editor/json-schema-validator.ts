@@ -22,6 +22,7 @@ import type Ajv from 'ajv';
 import type Ajv2019 from 'ajv/dist/2019.js';
 import type Ajv2020 from 'ajv/dist/2020.js';
 
+import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
 import type {
   JsonSchemaDraft,
   JsonSchemaKnownDraft,
@@ -73,45 +74,15 @@ function resolveDraft(draft: JsonSchemaDraft | undefined): JsonSchemaKnownDraft 
   return draft;
 }
 
-// Dynamically imported Ajv constructors, cached so repeated validation calls
-// don't re-import. Each promise resolves once; concurrent callers await the
-// same in-flight import rather than triggering duplicate requests.
-let ajvClassPromise: Promise<typeof Ajv> | null = null;
-let ajv2019ClassPromise: Promise<typeof Ajv2019> | null = null;
-let ajv2020ClassPromise: Promise<typeof Ajv2020> | null = null;
-
-function loadAjv(): Promise<typeof Ajv> {
-  ajvClassPromise ??= import('ajv')
-    .then((module) => module.default)
-    .catch((error: unknown) => {
-      // Don't cache a rejection — a transient failure (network hiccup,
-      // dropped chunk) shouldn't permanently block every later validation
-      // in this session.
-      ajvClassPromise = null;
-      throw error;
-    });
-  return ajvClassPromise;
-}
-
-function loadAjv2019(): Promise<typeof Ajv2019> {
-  ajv2019ClassPromise ??= import('ajv/dist/2019.js')
-    .then((module) => module.default)
-    .catch((error: unknown) => {
-      ajv2019ClassPromise = null;
-      throw error;
-    });
-  return ajv2019ClassPromise;
-}
-
-function loadAjv2020(): Promise<typeof Ajv2020> {
-  ajv2020ClassPromise ??= import('ajv/dist/2020.js')
-    .then((module) => module.default)
-    .catch((error: unknown) => {
-      ajv2020ClassPromise = null;
-      throw error;
-    });
-  return ajv2020ClassPromise;
-}
+// Reuse the shared retrying cache so concurrent imports coalesce and a
+// transient rejected import is evicted for the next validation attempt.
+const loadAjv = createRetryingLoaderCache(() => import('ajv').then((module) => module.default));
+const loadAjv2019 = createRetryingLoaderCache(() =>
+  import('ajv/dist/2019.js').then((module) => module.default),
+);
+const loadAjv2020 = createRetryingLoaderCache(() =>
+  import('ajv/dist/2020.js').then((module) => module.default),
+);
 
 // Long-lived meta-schema validators. Safe to share — they don't compile the
 // user's schema, only validate against the meta-schema.

@@ -277,7 +277,9 @@
             x={tick.x}
             y={tick.y}
             text-anchor={orientation === 'vertical' ? 'middle' : 'end'}
-            dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}>{tick.label}</text
+            dominant-baseline={orientation === 'vertical' ? undefined : 'middle'}
+            >{#if tick.label !== tick.fullLabel}<title>{tick.fullLabel}</title
+              >{/if}{tick.label}</text
           >
         {/each}
         {#if interaction.activeTarget}

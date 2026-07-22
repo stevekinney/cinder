@@ -5,6 +5,7 @@
  * content for copy/export operations.
  */
 
+import type { ChatArtifact } from '../artifact/artifact-viewer.types.ts';
 import type { Message, MultiModalContent, ToolResult } from '../conversation-model.ts';
 import type {
   ChatMessagePart,
@@ -19,6 +20,14 @@ import type {
 export const CINDER_REASONING_METADATA_KEY = 'cinder:reasoning';
 export const CINDER_STEPS_METADATA_KEY = 'cinder:steps';
 export const CINDER_SUGGESTIONS_METADATA_KEY = 'cinder:suggestions';
+export const CINDER_ARTIFACT_METADATA_KEY = 'cinder:artifact';
+
+const ARTIFACT_CONTENT_TYPES: ReadonlySet<string> = new Set<ChatArtifact['type']>([
+  'html',
+  'svg',
+  'code',
+  'mermaid',
+]);
 
 const STEP_STATUSES: ReadonlySet<string> = new Set<StepStatus>([
   'pending',
@@ -40,6 +49,22 @@ function isStepInfo(value: unknown): value is StepInfo {
     typeof value.status === 'string' &&
     STEP_STATUSES.has(value.status)
   );
+}
+
+function isChatArtifact(value: unknown): value is ChatArtifact {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (!('type' in value) || !('content' in value)) return false;
+  if (typeof value.type !== 'string' || !ARTIFACT_CONTENT_TYPES.has(value.type)) return false;
+  if (typeof value.content !== 'string') return false;
+  if ('language' in value && typeof value.language !== 'string') return false;
+  if ('title' in value && typeof value.title !== 'string') return false;
+  return true;
+}
+
+/** Resolves a validated artifact descriptor from `cinder:artifact` metadata. */
+export function resolveMessageArtifact(message: Message): ChatArtifact | undefined {
+  const candidate: unknown = message.metadata[CINDER_ARTIFACT_METADATA_KEY];
+  return isChatArtifact(candidate) ? candidate : undefined;
 }
 
 /**
@@ -443,6 +468,16 @@ export function deriveMessageParts(
   return [...bodyParts, ...imageParts];
 }
 
+const messageRoleLabels: Record<Message['role'], string> = {
+  user: 'You',
+  assistant: 'Assistant',
+  system: 'System',
+  developer: 'Developer',
+  'tool-call': 'Tool Call',
+  'tool-result': 'Tool Result',
+  snapshot: 'Snapshot',
+};
+
 /**
  * Gets the role label for a message.
  * Maps internal role values to human-readable labels.
@@ -451,16 +486,7 @@ export function deriveMessageParts(
  * @returns A human-readable role label
  */
 export function getMessageRoleLabel(message: Message): string {
-  const labels: Record<Message['role'], string> = {
-    user: 'User',
-    assistant: 'Assistant',
-    system: 'System',
-    developer: 'Developer',
-    'tool-call': 'Tool Call',
-    'tool-result': 'Tool Result',
-    snapshot: 'Snapshot',
-  };
-  return labels[message.role] ?? message.role;
+  return messageRoleLabels[message.role] ?? message.role;
 }
 
 /**
