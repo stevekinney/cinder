@@ -230,7 +230,7 @@ const schema = {
         name: 'oncomposerinput',
         reason: 'function-or-snippet',
         description:
-          "Called with the composer's current plain-text value on every composer\ninput event. The optional event exposes the textarea for composer-bound\noverlays without reaching into `.chat-input-editor` DOM directly.",
+          "Called with the composer's current plain-text value after user input or\n`insertAtRange()`. The optional event exposes the textarea for\ncomposer-bound overlays without reaching into `.chat-input-editor` DOM\ndirectly; programmatic range insertion omits the event.",
       },
       {
         name: 'oncomposerkeydown',

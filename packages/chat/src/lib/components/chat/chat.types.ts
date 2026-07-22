@@ -286,9 +286,10 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onattachmentremove?: (attachment: ChatAttachment) => void;
   onattachmentfailure?: (file: File, error: string) => void;
   /**
-   * Called with the composer's current plain-text value on every composer
-   * input event. The optional event exposes the textarea for composer-bound
-   * overlays without reaching into `.chat-input-editor` DOM directly.
+   * Called with the composer's current plain-text value after user input or
+   * `insertAtRange()`. The optional event exposes the textarea for
+   * composer-bound overlays without reaching into `.chat-input-editor` DOM
+   * directly; programmatic range insertion omits the event.
    */
   oncomposerinput?: (value: string, event?: Event) => void;
   /**
