@@ -41,6 +41,36 @@ Chat's component stylesheet is included by the component entry. Applications tha
 
 Each component entry also publishes `/schema`, `/variables`, `/styles`, and `/examples` artifacts. The package-wide machine-readable index is available from `@lostgradient/chat/manifest`.
 
+## Connecting artifacts to messages
+
+Store artifact data in `message.metadata['cinder:artifact']` using the exported `ChatArtifact` shape:
+
+```ts
+import type { MessageInput } from '@lostgradient/chat';
+
+const result: MessageInput = {
+  role: 'tool-result',
+  content: '',
+  metadata: {
+    'cinder:artifact': {
+      type: 'code',
+      content: '{ "status": "ok" }',
+      language: 'json',
+      title: 'Tool report',
+    },
+  },
+  toolResult: {
+    callId: 'call-report',
+    outcome: 'success',
+    content: { status: 'ok' },
+  },
+};
+```
+
+`ChatArtifact` contains `type`, `content`, and optional `language` and `title` fields, matching the serializable `ArtifactViewer` props. `resolveMessageArtifact(message)` validates direct metadata access. Every `ChatRowContext` also exposes `artifact`; when a paired tool-result row is folded into its tool-call row, Chat resolves artifact metadata from the hidden result message automatically. Metadata on the visible message takes precedence when both messages define an artifact.
+
+Use `messageActions` to open application-owned panel state, then render the selected descriptor with `ChatArtifactLayout` and `ArtifactViewer`. Chat does not open panels automatically because selection and close behavior belong to the containing application.
+
 ## Rendering Mermaid artifacts
 
 `ArtifactViewer` renders HTML and SVG in sandboxed iframes and renders code as escaped source. Mermaid stays consumer-owned so applications can choose their Mermaid version, configuration, and security policy. Without a renderer, Mermaid artifacts show their source and an explicit fallback note.

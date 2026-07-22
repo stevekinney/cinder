@@ -164,7 +164,7 @@ const schema = {
         name: 'messageActions',
         reason: 'function-or-snippet',
         description:
-          "Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`.",
+          'Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`, including resolved tool pairs and artifact metadata.',
       },
       {
         name: 'messagePart',
@@ -182,7 +182,7 @@ const schema = {
         name: 'messageStatus',
         reason: 'function-or-snippet',
         description:
-          "Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`.",
+          'Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`, including resolved tool pairs and artifact metadata.',
       },
       {
         name: 'messageSteps',
@@ -320,7 +320,7 @@ const schema = {
         name: 'row',
         reason: 'function-or-snippet',
         description:
-          "Full-row override. Renders an entire message row; receives the shared row context and\na `renderDefault` snippet for the built-in row (inversion of control), so a\nconsumer can wrap or fully replace specific rows. Paired tool results are\nfolded into the visible tool-call row's `toolCallPair`.",
+          "Full-row override. Renders an entire message row; receives the shared row context and\na `renderDefault` snippet for the built-in row (inversion of control), so a\nconsumer can wrap or fully replace specific rows. Paired tool results are\nfolded into the visible tool-call row's `toolCallPair`, with validated\n`cinder:artifact` metadata available as `artifact`.",
       },
       {
         name: 'typingParticipants',

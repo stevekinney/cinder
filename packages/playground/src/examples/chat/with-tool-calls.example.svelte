@@ -1,21 +1,23 @@
 <script lang="ts" module>
   export const title = 'With tool calls';
   export const description =
-    'Tool results fold into the visible tool-call row and remain available to per-row snippets.';
+    'Tool results fold into the visible row with validated artifact metadata for opening a panel.';
 </script>
 
 <script lang="ts">
   import {
     Chat,
+    ArtifactViewer,
+    ChatArtifactLayout,
     appendMessages,
     appendUserMessage,
     createConversation,
+    type ChatArtifact,
     type ChatRowContext,
-    type JSONValue,
   } from '@lostgradient/chat';
   import { Button } from '@lostgradient/cinder/button';
 
-  let inspectedResult = $state<JSONValue | undefined>();
+  let selectedArtifact = $state<ChatArtifact | undefined>();
 
   let conversation = $state(
     appendMessages(
@@ -35,6 +37,14 @@
       {
         role: 'tool-result',
         content: '',
+        metadata: {
+          'cinder:artifact': {
+            type: 'code',
+            content: '{\n  "status": "ok",\n  "drift": false\n}',
+            language: 'json',
+            title: 'Exports report',
+          },
+        },
         toolResult: {
           callId: 'call-exports-check',
           outcome: 'success',
@@ -49,22 +59,27 @@
   );
 </script>
 
-<div style="display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 0.75rem; height: 34rem;">
-  <Chat id="playground-tool-call-chat" {conversation} capabilities={{ attachments: false }}>
-    {#snippet messageActions(context: ChatRowContext)}
-      {#if context.toolCallPair?.result}
-        <Button
-          size="xs"
-          variant="ghost"
-          onclick={() => (inspectedResult = context.toolCallPair?.result?.content)}
-        >
-          Inspect result
-        </Button>
+<div style="height: 34rem;">
+  <ChatArtifactLayout
+    instanceId="tool-call-artifact"
+    open={selectedArtifact !== undefined}
+    panelTitle={selectedArtifact?.title}
+    onclose={() => (selectedArtifact = undefined)}
+  >
+    <Chat id="playground-tool-call-chat" {conversation} capabilities={{ attachments: false }}>
+      {#snippet messageActions(context: ChatRowContext)}
+        {#if context.artifact}
+          <Button size="xs" variant="ghost" onclick={() => (selectedArtifact = context.artifact)}>
+            Open artifact
+          </Button>
+        {/if}
+      {/snippet}
+    </Chat>
+
+    {#snippet panel()}
+      {#if selectedArtifact}
+        <ArtifactViewer {...selectedArtifact} />
       {/if}
     {/snippet}
-  </Chat>
-
-  {#if inspectedResult !== undefined}
-    <pre aria-live="polite">{JSON.stringify(inspectedResult, null, 2)}</pre>
-  {/if}
+  </ChatArtifactLayout>
 </div>

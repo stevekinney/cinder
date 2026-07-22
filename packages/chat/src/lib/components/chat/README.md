@@ -289,34 +289,51 @@ tool approval and drops the consumer assertive text to avoid double output.
 
 `row`, `messageActions`, and `messageStatus` receive the same
 `ChatRowContext`. The context contains the message that owns the visible row and
-an optional resolved `toolCallPair`:
+optional resolved `toolCallPair` and `artifact` values:
 
 ```svelte
 <script lang="ts">
-  import { Chat, type ChatRowContext } from '@lostgradient/chat';
+  import {
+    ArtifactViewer,
+    Chat,
+    ChatArtifactLayout,
+    type ChatArtifact,
+    type ChatRowContext,
+  } from '@lostgradient/chat';
   import { Button } from '@lostgradient/cinder/button';
+
+  let selectedArtifact = $state<ChatArtifact>();
 </script>
 
-<Chat id="assistant-chat" {conversation}>
-  {#snippet messageActions({ message, toolCallPair }: ChatRowContext)}
-    {#if toolCallPair?.result}
-      <Button
-        size="xs"
-        variant="ghost"
-        onclick={() => inspectResult(message.id, toolCallPair.result)}
-      >
-        Inspect result
-      </Button>
+<ChatArtifactLayout
+  open={selectedArtifact !== undefined}
+  panelTitle={selectedArtifact?.title}
+  onclose={() => (selectedArtifact = undefined)}
+>
+  <Chat id="assistant-chat" {conversation}>
+    {#snippet messageActions({ artifact }: ChatRowContext)}
+      {#if artifact}
+        <Button size="xs" variant="ghost" onclick={() => (selectedArtifact = artifact)}>
+          Open artifact
+        </Button>
+      {/if}
+    {/snippet}
+  </Chat>
+
+  {#snippet panel()}
+    {#if selectedArtifact}
+      <ArtifactViewer {...selectedArtifact} />
     {/if}
   {/snippet}
-</Chat>
+</ChatArtifactLayout>
 ```
 
 A paired `tool-result` message does not render a second visible row and does not
 invoke the snippets separately. Chat folds that result into the corresponding
-tool-call row's `toolCallPair`. Ordinary rows and unpaired tool-result rows
-receive `toolCallPair: undefined`, so consumers do not need an external message
-lookup to inspect a paired result.
+tool-call row's `toolCallPair` and resolves `cinder:artifact` metadata from the
+folded result into `artifact`. Metadata on the visible message takes precedence.
+Ordinary rows and unpaired tool-result rows resolve their own artifact metadata,
+so consumers do not need an external message lookup or a hand-rolled type guard.
 
 ## Guidance
 
@@ -396,10 +413,10 @@ data: content } }` when adding composer attachments to conversation state.
 | `conversation`                     | `(opaque)`                                     | yes      | —       | The conversation transcript to render. Pass a {@link ConversationHistory} snapshot; consumers holding a stateful conversation object pass its current snapshot (e.g. `conversation.current`). Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `empty`                            | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `header`                           | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `messageActions`                   | `(opaque)`                                     | no       | —       | Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `messageActions`                   | `(opaque)`                                     | no       | —       | Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`, including resolved tool pairs and artifact metadata. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `messagePart`                      | `(opaque)`                                     | no       | —       | Per-message-part override. Replaces the rendering of an individual body part (markdown, tool call, tool result) while delegating the rest to the built-ins via the `renderDefault` snippet it receives. Image parts are excluded — they render through the grouped attachment grid, not this override. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                       |
 | `messageReasoning`                 | `(opaque)`                                     | no       | —       | Override or supplement the reasoning text for a message. Called per-message; return a non-empty string to show a reasoning block, `undefined` to fall back to `message.metadata['cinder:reasoning']`, empty string to suppress reasoning. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `messageStatus`                    | `(opaque)`                                     | no       | —       | Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `messageStatus`                    | `(opaque)`                                     | no       | —       | Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`, including resolved tool pairs and artifact metadata. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `messageSteps`                     | `(opaque)`                                     | no       | —       | Override or supplement the step list for a message. Called per-message; return an array to show step indicators, `undefined` to fall back to `message.metadata['cinder:steps']`. An empty array suppresses steps. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `messageSuggestions`               | `(opaque)`                                     | no       | —       | Override or supplement the suggestion list for a message. Called per-message; return an array of label strings to show suggestion chips, `undefined` to fall back to `message.metadata['cinder:suggestions']`. An empty array suppresses suggestions. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                        |
 | `onadaptererror`                   | `(opaque)`                                     | no       | —       | Called when an adapter command fails — either a rejected promise or a synchronous throw from the method. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -426,7 +443,7 @@ data: content } }` when adding composer attachments to conversation state.
 | `ontypingchange`                   | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onTypingChange` push. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `onunreadindicatorchange`          | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `readReceipts`                     | `(opaque)`                                     | no       | —       | Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`. Pass a `Map` keyed by message id with a {@link ReadReceipt} value; the component renders a receipt badge on USER messages only. While defined, including as an empty `Map`, this prop determines the visible receipts instead of adapter-derived state. Adapter events still call `onreadreceipt`, and their derived state may continue accumulating and become visible if this prop later becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived state. Default `undefined` (no receipts shown until adapter state is available). Not expressible in JSON Schema; see the component types for the signature.   |
-| `row`                              | `(opaque)`                                     | no       | —       | Full-row override. Renders an entire message row; receives the shared row context and a `renderDefault` snippet for the built-in row (inversion of control), so a consumer can wrap or fully replace specific rows. Paired tool results are folded into the visible tool-call row's `toolCallPair`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                          |
+| `row`                              | `(opaque)`                                     | no       | —       | Full-row override. Renders an entire message row; receives the shared row context and a `renderDefault` snippet for the built-in row (inversion of control), so a consumer can wrap or fully replace specific rows. Paired tool results are folded into the visible tool-call row's `toolCallPair`, with validated `cinder:artifact` metadata available as `artifact`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                       |
 | `typingParticipants`               | `(opaque)`                                     | no       | —       | Participants who are currently typing. Out-of-band UI state — NOT stored on `Message`. Pass an array of {@link TypingParticipant} objects; the component renders a per-participant typing indicator above the input. While defined, including as an empty array, this prop determines the visible indicator instead of adapter-derived state. Adapter events still call `ontypingchange`, and their derived state may continue updating and become visible if this prop later becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived state. Default `undefined` (indicator hidden until adapter state is available). Not expressible in JSON Schema; see the component types for the signature. |
 | `viewportAttachment`               | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 

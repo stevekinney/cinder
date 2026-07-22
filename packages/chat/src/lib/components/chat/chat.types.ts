@@ -7,6 +7,7 @@ import type {
   ChatAdapterErrorEvent,
   ChatReadReceiptEvent,
 } from './adapter/chat-adapter.ts';
+import type { ChatArtifact } from './artifact/artifact-viewer.types.ts';
 import type {
   ChatScrollStateChangeEvent,
   ChatStopGeneratingEvent,
@@ -57,13 +58,17 @@ export type ChatAnnounceLevel = 'polite' | 'assertive';
  *
  * Paired tool-result messages do not render duplicate rows. Instead, the visible
  * tool-call row receives the resolved pair, including its result, through
- * `toolCallPair`. Non-tool-call rows receive `undefined`.
+ * `toolCallPair`. Valid `cinder:artifact` metadata is exposed through `artifact`;
+ * for a tool-call row, metadata on its folded result message is used when the
+ * visible message does not define an artifact itself.
  */
 export type ChatRowContext = {
   /** The message that owns the visible row. */
   message: Message;
   /** The tool call and its folded result for a visible tool-call row. */
   toolCallPair: ToolCallPair | undefined;
+  /** Validated artifact metadata from the visible message or its folded tool result. */
+  artifact: ChatArtifact | undefined;
 };
 
 /**
@@ -172,15 +177,16 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   empty?: Snippet;
   /** List of suggested starter prompt strings shown as clickable buttons in the default empty state. Clicking a prompt submits it immediately as a user message. Has no effect when a custom `empty` snippet is provided. */
   emptyPrompts?: string[];
-  /** Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`. */
+  /** Actions rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageStatus` and `row`, including resolved tool pairs and artifact metadata. */
   messageActions?: Snippet<[context: ChatRowContext]>;
-  /** Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`; paired tool results are folded into the tool-call row's `toolCallPair`. */
+  /** Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`, including resolved tool pairs and artifact metadata. */
   messageStatus?: Snippet<[context: ChatRowContext]>;
   /**
    * Full-row override. Renders an entire message row; receives the shared row context and
    * a `renderDefault` snippet for the built-in row (inversion of control), so a
    * consumer can wrap or fully replace specific rows. Paired tool results are
-   * folded into the visible tool-call row's `toolCallPair`.
+   * folded into the visible tool-call row's `toolCallPair`, with validated
+   * `cinder:artifact` metadata available as `artifact`.
    */
   row?: ChatRowOverride;
   /**
