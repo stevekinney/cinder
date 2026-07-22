@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { Attachment } from 'svelte/attachments';
   import type { ChatAdapter, ChatCommand, ChatPushHandlers } from '../adapter/chat-adapter.ts';
-  import type { Message, MessageInput } from '../conversation-model.ts';
+  import type { Message, MessageInput, ToolResult } from '../conversation-model.ts';
   import type { ChatAttachment } from '../input/chat-attachment.ts';
 
   // `ChatProps` is owned by `../chat.types.ts` (the analyzer + schema generator
@@ -24,6 +24,7 @@
   import {
     getMessages,
     pairToolCallsWithResults,
+    resolveMessageArtifact,
     resolveMessageReasoning,
     resolveMessageSteps,
     resolveMessageSuggestions,
@@ -315,6 +316,15 @@
         existing.push(pair);
       } else {
         map.set(pair.call.id, [pair]);
+      }
+    }
+    return map;
+  });
+  const toolResultMessagesByResult = $derived.by(() => {
+    const map = new Map<ToolResult, Message>();
+    for (const message of messages) {
+      if (message.role === 'tool-result' && message.toolResult) {
+        map.set(message.toolResult, message);
       }
     }
     return map;
@@ -1668,9 +1678,16 @@
     {@const pairs = message.toolCall?.id
       ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
       : []}
+    {@const toolCallPair = pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0]}
+    {@const pairedResultMessage = toolCallPair?.result
+      ? toolResultMessagesByResult.get(toolCallPair.result)
+      : undefined}
     {@const rowContext = {
       message,
-      toolCallPair: pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0],
+      toolCallPair,
+      artifact:
+        resolveMessageArtifact(message) ??
+        (pairedResultMessage ? resolveMessageArtifact(pairedResultMessage) : undefined),
     }}
     {@const isStreamingMessage = streamingMessageId === message.id}
     {@const isCurrentSearchMatch =

@@ -580,7 +580,14 @@ describe('Chat — slot composition', () => {
           content: '',
           position: 1,
           createdAt: now,
-          metadata: {},
+          metadata: {
+            'cinder:artifact': {
+              type: 'code',
+              content: '{ "status": "ok" }',
+              language: 'json',
+              title: 'Exports report',
+            },
+          },
           hidden: false,
           toolResult,
         },
@@ -595,7 +602,7 @@ describe('Chat — slot composition', () => {
           const result = context.toolCallPair?.result;
           const content = result?.content as Record<string, unknown> | undefined;
           const status = content?.['status'];
-          return `<span data-row-context="${name}" data-message-id="${context.message?.id ?? ''}" data-result-status="${typeof status === 'string' ? status : ''}"></span>`;
+          return `<span data-row-context="${name}" data-message-id="${context.message?.id ?? ''}" data-result-status="${typeof status === 'string' ? status : ''}" data-artifact-type="${context.artifact?.type ?? ''}" data-artifact-title="${context.artifact?.title ?? ''}"></span>`;
         },
         setup: () => {},
       }));
@@ -619,6 +626,8 @@ describe('Chat — slot composition', () => {
       const snippet = container.querySelector(`[data-row-context="${name}"]`);
       expect(snippet?.getAttribute('data-message-id')).toBe('tool-call-message');
       expect(snippet?.getAttribute('data-result-status')).toBe('ok');
+      expect(snippet?.getAttribute('data-artifact-type')).toBe('code');
+      expect(snippet?.getAttribute('data-artifact-title')).toBe('Exports report');
     }
 
     const row = contextSnippet('row');
@@ -632,6 +641,8 @@ describe('Chat — slot composition', () => {
     const rowSnippet = rowRender.container.querySelector('[data-row-context="row"]');
     expect(rowSnippet?.getAttribute('data-message-id')).toBe('tool-call-message');
     expect(rowSnippet?.getAttribute('data-result-status')).toBe('ok');
+    expect(rowSnippet?.getAttribute('data-artifact-type')).toBe('code');
+    expect(rowSnippet?.getAttribute('data-artifact-title')).toBe('Exports report');
   });
 
   test('a row override can replace the built-in message row', () => {

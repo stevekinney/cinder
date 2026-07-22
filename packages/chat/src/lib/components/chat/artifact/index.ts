@@ -3,6 +3,7 @@ export { default as ArtifactViewer } from './artifact-viewer.svelte';
 export type {
   ArtifactContentType,
   ArtifactViewerProps,
+  ChatArtifact,
   MermaidRenderer,
 } from './artifact-viewer.types.ts';
 export { default as ChatArtifactLayout } from './chat-artifact-layout.svelte';

@@ -2,11 +2,13 @@ import { describe, expect, it } from 'bun:test';
 
 import type { Message, MultiModalContent } from '../conversation-model.ts';
 import {
+  CINDER_ARTIFACT_METADATA_KEY,
   formatMessageAsMarkdown,
   getMessageParts,
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
+  resolveMessageArtifact,
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,
@@ -160,6 +162,47 @@ describe('messagesToMarkdown', () => {
         message({ id: 'a', role: 'assistant', content: 'Visible' }),
       ]),
     ).toBe('**Assistant:**\n\nVisible');
+  });
+});
+
+describe('resolveMessageArtifact', () => {
+  it('publishes the cinder artifact metadata key', () => {
+    expect(CINDER_ARTIFACT_METADATA_KEY).toBe('cinder:artifact');
+  });
+
+  it.each(['html', 'svg', 'code', 'mermaid'] as const)(
+    'resolves a valid %s artifact descriptor',
+    (type) => {
+      const artifact = {
+        type,
+        content: '<artifact />',
+        language: 'text',
+        title: 'Generated artifact',
+      };
+      const value = message({
+        role: 'tool-result',
+        metadata: { [CINDER_ARTIFACT_METADATA_KEY]: artifact },
+      });
+
+      expect(resolveMessageArtifact(value)).toEqual(artifact);
+    },
+  );
+
+  it.each([
+    null,
+    'diagram',
+    { type: 'image', content: 'unsupported' },
+    { type: 'code' },
+    { type: 'code', content: 42 },
+    { type: 'code', content: 'value', language: false },
+    { type: 'code', content: 'value', title: 42 },
+  ])('ignores malformed artifact metadata %#', (artifact) => {
+    const value = message({
+      role: 'assistant',
+      metadata: { [CINDER_ARTIFACT_METADATA_KEY]: artifact },
+    });
+
+    expect(resolveMessageArtifact(value)).toBeUndefined();
   });
 });
 

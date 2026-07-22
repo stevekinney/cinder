@@ -107,11 +107,13 @@ export type {
 
 // Utilities
 export {
+  CINDER_ARTIFACT_METADATA_KEY,
   formatMessageAsMarkdown,
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
   pairToolCallsWithResults,
+  resolveMessageArtifact,
   type ChatExportOptions,
   type DeliveryStatus,
 } from './utilities/index.ts';
@@ -170,5 +172,6 @@ export { ArtifactPanel, ArtifactViewer, ChatArtifactLayout } from './artifact/in
 export type {
   ArtifactContentType,
   ArtifactViewerProps,
+  ChatArtifact,
   MermaidRenderer,
 } from './artifact/index.ts';
