@@ -1,6 +1,6 @@
 <script lang="ts">
   import Button from '../button/button.svelte';
-  import JsonEditor from '../json-editor/json-editor.svelte';
+  import JsonEditor from '@lostgradient/cinder/json-editor';
   import { formatEditableArguments, parseJsonText } from './approval-card-state.ts';
   import type { ApprovalResolution, ApprovalResolutionDecision } from './approval-card.types.ts';
 

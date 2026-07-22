@@ -55,14 +55,14 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
 }
 
 describe('ApprovalCard', () => {
-  test('imports JsonEditor directly so its public barrel does not duplicate styles', () => {
+  test('imports JsonEditor through its public component subpath', () => {
     const actionsSource = readFileSync(
       new URL('./approval-card-actions.svelte', import.meta.url),
       'utf8',
     );
 
-    expect(actionsSource).toContain("from '../json-editor/json-editor.svelte'");
-    expect(actionsSource).not.toContain("from '@lostgradient/cinder/json-editor'");
+    expect(actionsSource).toContain("from '@lostgradient/cinder/json-editor'");
+    expect(actionsSource).not.toContain("from '../json-editor/json-editor.svelte'");
   });
 
   test('schema represents the required operation prop', () => {
