@@ -156,7 +156,7 @@ describe('resolveImport', () => {
   it('treats bare specifiers as external', () => {
     const exists = () => true;
     expect(resolveImport(from, 'zod', exists).kind).toBe('external');
-    expect(resolveImport(from, '@cinder/markdown', exists).kind).toBe('external');
+    expect(resolveImport(from, '@lostgradient/markdown', exists).kind).toBe('external');
     expect(resolveImport(from, 'svelte', exists).kind).toBe('external');
   });
 

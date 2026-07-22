@@ -14,8 +14,8 @@
  * @module
  */
 
-import { normalize } from '@cinder/markdown/pipeline';
-import { sanitizeHtml } from '@cinder/markdown/templates/sanitize-html';
+import { normalize } from '@lostgradient/markdown/pipeline';
+import { sanitizeHtml } from '@lostgradient/markdown/templates/sanitize-html';
 import {
   DOMParser,
   DOMSerializer,

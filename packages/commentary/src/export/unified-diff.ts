@@ -4,7 +4,7 @@
  * Produces output that can be applied with `git apply` or `patch` command.
  */
 
-import { normalize, parseFrontMatter } from '@cinder/markdown/pipeline';
+import { normalize, parseFrontMatter } from '@lostgradient/markdown/pipeline';
 import type { ReviewState } from '../comments/types.js';
 import type { UnifiedDiffOptions, UnifiedDiffResult } from './types.js';
 

@@ -219,28 +219,35 @@ describe('pipeline contract: package script composition (source-based: reads pac
   });
 });
 
-// The buildable packages, in dependency order: `@cinder/diff` has no internal
-// workspace dependencies, `@cinder/markdown` depends on `@cinder/diff`,
-// `@cinder/commentary` depends on `@cinder/markdown` (dissolved
-// `@cinder/editor` — see docs/decisions/package-boundaries.md Phase 1 —
-// dropped out of this chain entirely, #793), and `@lostgradient/cinder`
-// (components) depends on all three. Inlined here (not imported from
-// utilities.ts) because no hook derives a build closure from this list
-// locally anymore — CI's `--filter` build steps do the equivalent hash-skip
-// check independently, so this is purely a fixture for the assertion below.
+// The buildable packages, in dependency order: `@lostgradient/markdown` has no
+// internal workspace dependencies (it absorbed `@cinder/diff` in Phase 2 — see
+// docs/decisions/package-boundaries.md), `@cinder/commentary` depends on
+// `@lostgradient/markdown` (dissolved `@cinder/editor` — Phase 1 — dropped out
+// of this chain entirely, #793), and `@lostgradient/cinder` (components)
+// depends on both. Inlined here (not imported from utilities.ts) because no
+// hook derives a build closure from this list locally anymore — CI's
+// `--filter` build steps do the equivalent hash-skip check independently, so
+// this is purely a fixture for the assertion below.
 const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER = [
-  '@cinder/diff',
-  '@cinder/markdown',
+  '@lostgradient/markdown',
   '@cinder/commentary',
   '@lostgradient/cinder',
 ] as const;
 
+/** Map a buildable package name to its `packages/<dir>` directory name. */
+const PACKAGE_DIRECTORY_BY_NAME: Record<
+  (typeof BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER)[number],
+  string
+> = {
+  '@lostgradient/markdown': 'markdown',
+  '@cinder/commentary': 'commentary',
+  '@lostgradient/cinder': 'components',
+};
+
 describe('pipeline contract: builds stay skippable (source-based: reads each build.ts)', () => {
   for (const packageName of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER) {
     it(`${packageName}/scripts/build.ts imports from lib/build-cache`, async () => {
-      const packageDirectory = packageName.startsWith('@cinder/')
-        ? packageName.replace('@cinder/', '')
-        : 'components';
+      const packageDirectory = PACKAGE_DIRECTORY_BY_NAME[packageName];
       const buildScriptPath = join(REPO_ROOT, 'packages', packageDirectory, 'scripts/build.ts');
       const source = await Bun.file(buildScriptPath).text();
       // build-cache.ts's content-hash skip is what keeps every CI job's inline

@@ -1,13 +1,13 @@
 /**
  * Derives `@lostgradient/cinder/<pkg>/<subpath>` re-exports from the public `exports` map of
- * each `@cinder/*` workspace package (`markdown`, `commentary`, `diff`).
+ * each upstream workspace package (`markdown`, `commentary`).
  *
- * The three workspace packages stay on disk as source-only inputs. Their
+ * The workspace packages stay on disk as source-only inputs. Their
  * public sub-paths are mechanically mirrored into `@lostgradient/cinder`'s exports map as
  * `./<pkg>/<subpath>` entries, and a thin re-export file is generated under
  * `packages/components/src/<pkg>/<subpath>.ts`. The cinder build bundles
  * those re-export entrypoints into `dist/` so the published `@lostgradient/cinder` package
- * has zero runtime dependency on `@cinder/*`.
+ * has zero runtime dependency on either upstream package.
  *
  * Acceptance criterion: every public sub-path in each upstream
  * `package.json#exports` appears in cinder's exports map, EXCEPT the
@@ -17,7 +17,7 @@
  * ## The former `@cinder/editor` subpaths
  *
  * `@cinder/editor` was dissolved (see `docs/decisions/package-boundaries.md`,
- * Phase 1): its headless placeholder trio moved into `@cinder/markdown`'s
+ * Phase 1): its headless placeholder trio moved into `@lostgradient/markdown`'s
  * `templates/` directory, and its ProseMirror/Milkdown half moved into
  * `@cinder/commentary`'s `editor/` directory. Cinder's published surface is
  * frozen for this move — every `./editor/*` cinder subpath must keep
@@ -28,8 +28,19 @@
  * mirror. Two markdown subpaths (`./templates/placeholder-security`,
  * `./templates/types`) exist only to let commentary's composite
  * `editor/index.ts` re-compose the old barrel from both packages — they are
- * real `@cinder/markdown` surface but have no old-cinder equivalent, so they
+ * real `@lostgradient/markdown` surface but have no old-cinder equivalent, so they
  * are suppressed (mapped to `null`) rather than mirrored as new cinder keys.
+ *
+ * ## The former `@cinder/diff` package
+ *
+ * `@cinder/diff` (see `docs/decisions/package-boundaries.md`, Phase 2) folded
+ * into `@lostgradient/markdown/diff` — it was three files and sixteen lines of shim
+ * surface that existed principally to serve `@cinder/markdown`. Its old
+ * top-level cinder mirror (`./diff`, `./diff/line-diff`, `./diff/types`) is
+ * gone along with it: the real, in-repo-used surface was always
+ * `./markdown/diff/line-diff` (every component that consumes line-diff — the
+ * diff viewer and review editor — already imported that path, never the
+ * top-level alias), so nothing loses functionality, only a redundant alias.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -45,12 +56,23 @@ const WORKSPACE_ROOT = join(scriptDirectory, '..', '..', '..', '..');
 const COMPONENTS_PACKAGE_ROOT = join(scriptDirectory, '..', '..');
 
 /**
- * The three `@cinder/*` workspace packages whose public exports flow through
+ * The workspace packages whose public exports flow through
  * `@lostgradient/cinder/<pkg>/*`. Order is significant only for deterministic output.
  */
-export const UPSTREAM_PACKAGES = ['markdown', 'commentary', 'diff'] as const;
+export const UPSTREAM_PACKAGES = ['markdown', 'commentary'] as const;
 
 export type UpstreamPackageName = (typeof UPSTREAM_PACKAGES)[number];
+
+/**
+ * The actual npm package name for each upstream package. `markdown` is
+ * published as `@lostgradient/markdown` (see `docs/decisions/package-boundaries.md`,
+ * Phase 2); `commentary` is still workspace-private under the `@cinder/*`
+ * scope pending Phase 3.
+ */
+export const UPSTREAM_PACKAGE_NAMES: Record<UpstreamPackageName, string> = {
+  markdown: '@lostgradient/markdown',
+  commentary: '@cinder/commentary',
+};
 
 /**
  * Overrides the mechanically-derived cinder key for specific upstream
@@ -79,9 +101,15 @@ export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map(
 ]);
 
 /**
- * Shape of an upstream `exports` entry. The upstream packages use the
- * `types`/`bun`/`import`/`default` condition shape (see
- * `packages/<pkg>/package.json`).
+ * Shape of an upstream `exports` entry. `commentary` (still workspace-private)
+ * points `types` AND `bun` at `./src/**`, so a workspace consumer always sees
+ * fresh types and runtime with no build step. `@lostgradient/markdown`
+ * (published, see `docs/decisions/package-boundaries.md` Phase 2) keeps
+ * `types` pointing at `dist/**` like every other published sibling package —
+ * only `bun` points at `./src/**`, so a workspace `bun test`/`bun run`
+ * resolves the package's own self-imports without a build first, while
+ * `pack-for-publish.ts` drops the `bun` condition entirely from the
+ * published tarball (which has no `src/`).
  */
 type UpstreamConditionalExport = {
   types?: string;
@@ -194,21 +222,22 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
       if (override === null) continue;
 
       // Decide whether the upstream entry points at a directory-style entry
-      // (e.g. `./src/pipeline/index.ts`) — in that case our re-export file
+      // (e.g. `src/pipeline/index.ts`) — in that case our re-export file
       // becomes `<subpath>/index.ts`. Otherwise the file matches the subpath.
-      const upstreamTypes = entry.types ?? entry.bun ?? entry.import ?? entry.default;
-      const isDirectoryEntry =
-        typeof upstreamTypes === 'string' && upstreamTypes.endsWith('/index.ts');
+      // Resolved directly against the on-disk source tree rather than
+      // sniffed from the exports-map string: `@lostgradient/markdown`'s
+      // published exports point at `dist/*.d.ts` (no source condition), so
+      // there is no `.ts`-suffixed string to pattern-match against.
+      const stripped = upstreamSubpath === '.' ? '' : upstreamSubpath.replace(/^\.\//, '');
+      const isDirectoryEntry = existsSync(
+        join(WORKSPACE_ROOT, 'packages', pkg, 'src', stripped, 'index.ts'),
+      );
 
       let baseRelative: string;
       let cinderKey: string;
-      let upstreamSpecifier: string;
-      if (upstreamSubpath === '.') {
-        upstreamSpecifier = `@cinder/${pkg}`;
-      } else {
-        const stripped = upstreamSubpath.replace(/^\.\//, '');
-        upstreamSpecifier = `@cinder/${pkg}/${stripped}`;
-      }
+      const upstreamPackageName = UPSTREAM_PACKAGE_NAMES[pkg];
+      const upstreamSpecifier =
+        upstreamSubpath === '.' ? upstreamPackageName : `${upstreamPackageName}/${stripped}`;
 
       // The natural (never overridden) location, always computed the same
       // way regardless of `CINDER_KEY_OVERRIDES` — this is where the
@@ -218,8 +247,8 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
         upstreamSubpath === '.'
           ? `${pkg}/index`
           : isDirectoryEntry
-            ? `${pkg}/${upstreamSubpath.replace(/^\.\//, '')}/index`
-            : `${pkg}/${upstreamSubpath.replace(/^\.\//, '')}`;
+            ? `${pkg}/${stripped}/index`
+            : `${pkg}/${stripped}`;
 
       if (override !== undefined) {
         cinderKey = override;
@@ -229,7 +258,6 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
         baseRelative = `${pkg}/index`;
         cinderKey = `./${pkg}`;
       } else {
-        const stripped = upstreamSubpath.replace(/^\.\//, '');
         baseRelative = isDirectoryEntry ? `${pkg}/${stripped}/index` : `${pkg}/${stripped}`;
         cinderKey = `./${pkg}/${stripped}`;
       }
@@ -258,28 +286,24 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
  * Resolve the absolute on-disk path of an upstream package's source entry
  * for a given exports-map sub-path. Used by {@link reexportFileBody} to
  * introspect what the upstream module actually exports.
+ *
+ * Resolved directly against the on-disk `src/` tree (the same convention
+ * {@link deriveUpstreamReexports} uses to decide `isDirectoryEntry`) rather
+ * than read back out of the upstream package's exports map: a published
+ * package (`@lostgradient/markdown`) points its exports at `dist/*.d.ts`, which
+ * has no `.ts` source to introspect.
  */
 function resolveUpstreamSourcePath(reexport: UpstreamReexport): string {
-  const manifestPath = join(WORKSPACE_ROOT, 'packages', reexport.pkg, 'package.json');
-  const manifestRaw = readFileSync(manifestPath, 'utf-8');
-  const parsed: unknown = JSON.parse(manifestRaw);
-  if (!isUpstreamPackageManifest(parsed)) {
-    throw new Error(`Upstream package manifest has an unexpected shape: ${manifestPath}`);
-  }
-  const exportsMap = parsed.exports ?? {};
-  const entry = exportsMap[reexport.upstreamSubpath];
-  if (!entry || typeof entry === 'string') {
-    throw new Error(
-      `Cannot resolve source path for ${reexport.upstreamSpecifier}: exports entry missing or string-shorthand.`,
-    );
-  }
-  const sourceRel = entry.types ?? entry.bun ?? entry.import ?? entry.default;
-  if (typeof sourceRel !== 'string') {
-    throw new Error(
-      `Cannot resolve source path for ${reexport.upstreamSpecifier}: no usable condition.`,
-    );
-  }
-  return join(WORKSPACE_ROOT, 'packages', reexport.pkg, sourceRel);
+  const stripped =
+    reexport.upstreamSubpath === '.' ? '' : reexport.upstreamSubpath.replace(/^\.\//, '');
+  const packageSourceRoot = join(WORKSPACE_ROOT, 'packages', reexport.pkg, 'src');
+  const directoryCandidate = join(packageSourceRoot, stripped, 'index.ts');
+  if (existsSync(directoryCandidate)) return directoryCandidate;
+  const fileCandidate = join(packageSourceRoot, `${stripped || 'index'}.ts`);
+  if (existsSync(fileCandidate)) return fileCandidate;
+  throw new Error(
+    `Cannot resolve source path for ${reexport.upstreamSpecifier}: tried ${directoryCandidate} and ${fileCandidate}.`,
+  );
 }
 
 /**

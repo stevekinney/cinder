@@ -1,6 +1,6 @@
 import { join, posix } from 'node:path';
 
-import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
+import { initializeHighlighter, renderMarkdown } from '@lostgradient/markdown/rendering';
 
 import { isA11yMetadata, isAvoidWhenArray } from './component-documentation-guards.ts';
 import type {

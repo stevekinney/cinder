@@ -2,12 +2,13 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   type CommentScanState,
-  lineHasCinderResidue,
+  containsUpstreamSpecifier,
+  lineHasUpstreamSpecifierResidue,
   stripCommentsRespectingStrings,
 } from './cinder-specifier-residue.ts';
 
 function scan(line: string, state: CommentScanState = { inBlockComment: false }): boolean {
-  return lineHasCinderResidue(line, state);
+  return lineHasUpstreamSpecifierResidue(line, state);
 }
 
 function strip(line: string, state: CommentScanState = { inBlockComment: false }): string {
@@ -16,11 +17,11 @@ function strip(line: string, state: CommentScanState = { inBlockComment: false }
 
 describe('stripCommentsRespectingStrings', () => {
   test('replaces // line comments with spaces to end of line', () => {
-    const result = strip('const x = 1; // @cinder/markdown');
+    const result = strip('const x = 1; // @cinder/commentary');
     expect(result.startsWith('const x = 1; ')).toBe(true);
     expect(result).not.toContain('@cinder/');
     // Length preserved so column math doesn't shift.
-    expect(result.length).toBe('const x = 1; // @cinder/markdown'.length);
+    expect(result.length).toBe('const x = 1; // @cinder/commentary'.length);
   });
 
   test('replaces /* ... */ block comments that open and close on the same line', () => {
@@ -37,7 +38,7 @@ describe('stripCommentsRespectingStrings', () => {
 
   test('marks the rest of the line as comment when /* is unclosed', () => {
     const state: CommentScanState = { inBlockComment: false };
-    const result = strip('const x = 1; /* @cinder/markdown', state);
+    const result = strip('const x = 1; /* @cinder/commentary', state);
     expect(result).not.toContain('@cinder/');
     expect(state.inBlockComment).toBe(true);
   });
@@ -72,23 +73,23 @@ describe('stripCommentsRespectingStrings', () => {
   });
 
   test('handles escape sequences inside string literals', () => {
-    const result = strip(`const x = 'a\\'b // @cinder/markdown';`);
+    const result = strip(`const x = 'a\\'b // @cinder/commentary';`);
     // The escaped quote keeps the string open, so the `//` inside is data.
-    expect(result).toContain('@cinder/markdown');
+    expect(result).toContain('@cinder/commentary');
   });
 });
 
-describe('lineHasCinderResidue', () => {
+describe('lineHasUpstreamSpecifierResidue', () => {
   test('flags static single-quoted specifier', () => {
-    expect(scan(`import x from '@cinder/markdown';`)).toBe(true);
+    expect(scan(`import x from '@cinder/commentary';`)).toBe(true);
   });
 
   test('flags static double-quoted specifier', () => {
-    expect(scan(`import x from "@cinder/markdown";`)).toBe(true);
+    expect(scan(`import x from "@cinder/commentary";`)).toBe(true);
   });
 
   test('flags backtick-quoted no-interpolation specifier', () => {
-    expect(scan('await import(`@cinder/markdown`);')).toBe(true);
+    expect(scan('await import(`@cinder/commentary`);')).toBe(true);
   });
 
   test('flags template-literal specifier with interpolation', () => {
@@ -101,44 +102,44 @@ describe('lineHasCinderResidue', () => {
     // `inBlockComment: true` when this line is reached. The scanner returns
     // false because the entire line is inside the comment.
     const state: CommentScanState = { inBlockComment: true };
-    expect(scan(' * Mention `@cinder/markdown` in prose', state)).toBe(false);
+    expect(scan(' * Mention `@cinder/commentary` in prose', state)).toBe(false);
     expect(state.inBlockComment).toBe(true);
   });
 
   test('does not flag a `//` line comment with `@cinder/`', () => {
-    expect(scan('// see `@cinder/markdown` for details')).toBe(false);
+    expect(scan('// see `@cinder/commentary` for details')).toBe(false);
   });
 
   test('tracks multi-line block comments across calls and resumes after `*/`', () => {
     const state: CommentScanState = { inBlockComment: false };
     expect(scan('/* this comment continues', state)).toBe(false);
     expect(state.inBlockComment).toBe(true);
-    expect(scan(' * @cinder/markdown reference', state)).toBe(false);
+    expect(scan(' * @cinder/commentary reference', state)).toBe(false);
     expect(scan(' */', state)).toBe(false);
     expect(state.inBlockComment).toBe(false);
   });
 
   test('flags `/* x */ import from "@cinder/y"` — the single-line block-comment bypass case', () => {
-    expect(scan(`/* ignore */ import x from '@cinder/markdown';`)).toBe(true);
+    expect(scan(`/* ignore */ import x from '@cinder/commentary';`)).toBe(true);
   });
 
   test('flags `import x from "@cinder/y" /* trailing */`', () => {
-    expect(scan(`import x from '@cinder/markdown' /* trailing */;`)).toBe(true);
+    expect(scan(`import x from '@cinder/commentary' /* trailing */;`)).toBe(true);
   });
 
   test('does not flag a single-line block comment containing `@cinder/`', () => {
-    expect(scan(`/* see @cinder/markdown */`)).toBe(false);
+    expect(scan(`/* see @cinder/commentary */`)).toBe(false);
   });
 
   test('does not flag a line ending with `//` after stripping', () => {
-    expect(scan(`const message = 'plain'; // @cinder/markdown is unused here`)).toBe(false);
+    expect(scan(`const message = 'plain'; // @cinder/commentary is unused here`)).toBe(false);
   });
 
   test('tracks multi-line block comments and resumes scanning after `*/`', () => {
     const state: CommentScanState = { inBlockComment: false };
     expect(scan('/* opens here', state)).toBe(false);
     expect(state.inBlockComment).toBe(true);
-    expect(scan(` closes */ import x from '@cinder/markdown';`, state)).toBe(true);
+    expect(scan(` closes */ import x from '@cinder/commentary';`, state)).toBe(true);
     expect(state.inBlockComment).toBe(false);
   });
 
@@ -167,6 +168,51 @@ describe('lineHasCinderResidue', () => {
     // sequence appears inside the line, including strings — that's the
     // intentional shape; we trust that consumer JS doesn't print real
     // specifier-shaped strings as data outside of import contexts.
-    expect(scan(`const description = 'see @cinder/markdown for details';`)).toBe(false);
+    expect(scan(`const description = 'see @cinder/commentary for details';`)).toBe(false);
+  });
+
+  describe('upstream specifiers renamed outside the @cinder/ scope', () => {
+    // `@lostgradient/markdown` is the one upstream package that no longer
+    // lives under `@cinder/*` (see docs/decisions/package-boundaries.md
+    // Phase 2). A residue gate hardcoded to the `@cinder/` prefix silently
+    // stops catching this specifier the moment it's renamed out of scope —
+    // these cases are the regression this file guards against.
+    test('flags a static specifier with no subpath', () => {
+      expect(scan(`import x from '@lostgradient/markdown';`)).toBe(true);
+    });
+
+    test('flags a static specifier with a subpath', () => {
+      expect(scan(`import { render } from '@lostgradient/markdown/rendering';`)).toBe(true);
+    });
+
+    test('flags a backtick-quoted no-interpolation specifier', () => {
+      expect(scan('await import(`@lostgradient/markdown/pipeline`);')).toBe(true);
+    });
+
+    test('flags a template-literal specifier with interpolation', () => {
+      expect(scan('await import(`@lostgradient/markdown/${subpath}`);')).toBe(true);
+    });
+
+    test('does not flag it inside a `//` line comment', () => {
+      expect(scan('// see `@lostgradient/markdown` for details')).toBe(false);
+    });
+
+    test('does not flag a plain string that only mentions the package name', () => {
+      expect(scan(`const description = 'see @lostgradient/markdown for details';`)).toBe(false);
+    });
+  });
+});
+
+describe('containsUpstreamSpecifier', () => {
+  test('matches any @cinder/* specifier', () => {
+    expect(containsUpstreamSpecifier(`import x from '@cinder/commentary';`)).toBe(true);
+  });
+
+  test('matches @lostgradient/markdown even though it is outside the @cinder/ scope', () => {
+    expect(containsUpstreamSpecifier(`import x from '@lostgradient/markdown';`)).toBe(true);
+  });
+
+  test('does not match unrelated content', () => {
+    expect(containsUpstreamSpecifier(`import x from 'svelte';`)).toBe(false);
   });
 });

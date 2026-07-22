@@ -1,6 +1,6 @@
 name: release-manual
 
-# Break-glass fallback for releasing either public package if Changesets-driven
+# Break-glass fallback for releasing one of the public packages if Changesets-driven
 # `release.yaml` fails. Triggered manually from the Actions UI. The selected
 # package manifest must already be versioned, and the package-qualified tag must
 # point at that exact commit.
@@ -16,8 +16,9 @@ on:
         options:
           - cinder
           - chat
+          - markdown
       tag:
-        description: 'Package-qualified release tag (for example cinder-v0.16.0 or chat-v0.1.0).'
+        description: 'Package-qualified release tag (for example cinder-v0.16.0, chat-v0.1.0, or markdown-v0.1.0).'
         required: true
         type: string
 
@@ -51,6 +52,7 @@ jobs:
           case "$PACKAGE_SELECTION" in
             cinder) package_directory='packages/components' ;;
             chat) package_directory='packages/chat' ;;
+            markdown) package_directory='packages/markdown' ;;
             *) echo "::error::Unsupported package selection: $PACKAGE_SELECTION"; exit 1 ;;
           esac
           package_version="$(jq -er '.version' "$package_directory/package.json")"
@@ -120,6 +122,9 @@ jobs:
             chat)
               echo 'name=@lostgradient/chat' >> "$GITHUB_OUTPUT"
               ;;
+            markdown)
+              echo 'name=@lostgradient/markdown' >> "$GITHUB_OUTPUT"
+              ;;
             *)
               echo "::error::Unsupported package selection: $PACKAGE_SELECTION"
               exit 1
@@ -145,9 +150,14 @@ jobs:
       - name: Install Chromium for consumer validation
         run: bunx playwright install --with-deps chromium
 
-      # Validate both artifacts before publishing either. Chat's fixture uses
-      # the staged Cinder tarball to prove its required peer contract without
-      # falling back to the local workspace package.
+      # Validate every artifact before publishing any of them. Chat's fixture
+      # uses the staged Cinder tarball to prove its required peer contract
+      # without falling back to the local workspace package. Markdown has no
+      # peer contract with the other two, but is validated here too so the
+      # break-glass path never publishes an artifact that hasn't been proven.
+      - name: Validate Markdown package artifact
+        run: bun run --filter=@lostgradient/markdown validate:consumer
+
       - name: Validate Cinder package artifact
         run: bun run --filter=@lostgradient/cinder validate:consumer
 

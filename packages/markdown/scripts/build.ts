@@ -21,7 +21,7 @@ const buildCacheInputs = {
     `${workspaceRoot}/bun.lock`,
     `${workspaceRoot}/tsconfig.base.json`,
   ],
-  upstreamDistDirectories: [`${workspaceRoot}/packages/diff/dist`],
+  upstreamDistDirectories: [],
 };
 
 const skipDecision = await shouldSkipBuild(buildCacheInputs);
@@ -52,7 +52,7 @@ const entrypoints = [
 
 // Build into the staging directory, then promote it via `atomicSwapDist`. A
 // build never writes into `dist/` in place, so a concurrent reader (a sibling
-// package's test running `bun run --filter=@cinder/markdown build`, or a
+// package's test running `bun run --filter=@lostgradient/markdown build`, or a
 // typecheck holding dist declarations) can never observe a half-written tree.
 // NOTE: this is defense-in-depth, not the #364 fix — the husky test gate
 // serializes its test phase, and THAT is what stops concurrent same-package
@@ -69,7 +69,7 @@ const buildResult = await Bun.build({
   naming: '[dir]/[name].js',
   sourcemap: 'external',
   minify: false,
-  external: ['@cinder/*', 'svelte'],
+  external: [],
 });
 
 if (!buildResult.success) {

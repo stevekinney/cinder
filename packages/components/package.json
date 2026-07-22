@@ -6379,30 +6379,6 @@
       "import": "./src/editor/test-utilities.ts",
       "default": "./dist/editor/test-utilities.js"
     },
-    "./diff": {
-      "types": "./dist/diff/index.d.ts",
-      "browser": "./src/diff/index.ts",
-      "node": "./dist/server/diff/index.js",
-      "svelte": "./src/diff/index.ts",
-      "import": "./src/diff/index.ts",
-      "default": "./dist/diff/index.js"
-    },
-    "./diff/line-diff": {
-      "types": "./dist/diff/line-diff.d.ts",
-      "browser": "./src/diff/line-diff.ts",
-      "node": "./dist/server/diff/line-diff.js",
-      "svelte": "./src/diff/line-diff.ts",
-      "import": "./src/diff/line-diff.ts",
-      "default": "./dist/diff/line-diff.js"
-    },
-    "./diff/types": {
-      "types": "./dist/diff/types.d.ts",
-      "browser": "./src/diff/types.ts",
-      "node": "./dist/server/diff/types.js",
-      "svelte": "./src/diff/types.ts",
-      "import": "./src/diff/types.ts",
-      "default": "./dist/diff/types.js"
-    },
     "./experimental/json-viewer": {
       "types": "./dist/components/experimental/json-viewer/index.d.ts",
       "browser": "./src/components/experimental/json-viewer/index.ts",
@@ -6515,8 +6491,8 @@
     "components:promotion-check": "bun run scripts/check-promotion-readiness.ts",
     "exports:check": "bun run scripts/generate-exports.ts --check",
     "exports:generate": "bun run scripts/generate-exports.ts",
-    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
-    "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
+    "lint": "bun run --filter='@lostgradient/markdown' build && oxlint --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "bun run --filter='@lostgradient/markdown' build && oxlint --fix --type-aware --tsconfig ./tsconfig.json",
     "lint:invariants": "bun run check:no-cycle-imports && bun run check:consumer-boundaries && bun run check:no-bare-console-warn && bun run check:no-inline-match-media && bun run check:svelte-ts-runtime-types && bun run check:data-cinder-boolean-attributes && bun run check:test-cleanup && bun run tokens:literals -- --strict && bun run check:pipeline-coverage",
     "prepack": "bun run build",
     "package:weight": "bun run scripts/report-package-weight.ts",
@@ -6535,7 +6511,7 @@
     "test:memory-canary": "bun run scripts/memory-canary.ts",
     "tokens:audit": "bun run scripts/check-component-css-token-usage.ts",
     "tokens:literals": "bun run scripts/check-design-token-literals.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
+    "typecheck": "bun run --filter='@lostgradient/markdown' build && tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
     "validate": "bun run lint && bun run lint:invariants && bun run typecheck && bun run check:changeset-prerelease-bumps && bun run check:placeholder-docs && bun run test:coverage && bun run platform:audit -- --strict && bun run colors:audit -- --strict && bun run tokens:audit -- --strict && bun run aggregator:check && bun run components:check && bun run validate:workflow && bun run validate:svelte-peer && bun run validate:consumer && bun run package:weight:check -- --existing-tarball",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:release-workflow": "bun run scripts/validate-release-workflow.ts",
@@ -6578,9 +6554,8 @@
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
     "@cinder/commentary": "workspace:*",
-    "@cinder/diff": "workspace:*",
-    "@cinder/markdown": "workspace:*",
     "@cinder/testing": "workspace:*",
+    "@lostgradient/markdown": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.60.0",
     "@testing-library/jest-dom": "^6.9.1",

@@ -50,7 +50,7 @@
       "name": "@cinder/commentary",
       "version": "0.0.1",
       "dependencies": {
-        "@cinder/markdown": "workspace:*",
+        "@lostgradient/markdown": "workspace:*",
         "@milkdown/kit": "^7.17.3",
         "@milkdown/prose": "^7.17.3",
         "prosemirror-inputrules": "^1.5.1",
@@ -111,9 +111,8 @@
         "@changesets/get-release-plan": "4.0.16",
         "@changesets/parse": "0.4.3",
         "@cinder/commentary": "workspace:*",
-        "@cinder/diff": "workspace:*",
-        "@cinder/markdown": "workspace:*",
         "@cinder/testing": "workspace:*",
+        "@lostgradient/markdown": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "@playwright/test": "1.60.0",
         "@testing-library/jest-dom": "^6.9.1",
@@ -163,25 +162,15 @@
         "zod",
       ],
     },
-    "packages/diff": {
-      "name": "@cinder/diff",
-      "version": "0.0.1",
-      "dependencies": {
-        "diff-match-patch": "^1.0.5",
-      },
-      "devDependencies": {
-        "@types/bun": "^1.3.11",
-        "@types/diff-match-patch": "^1.0.36",
-        "oxlint": "^1.56.0",
-        "oxlint-tsgolint": "^0.17.0",
-        "typescript": "^5.9.0",
-      },
-    },
     "packages/markdown": {
-      "name": "@cinder/markdown",
-      "version": "0.0.1",
+      "name": "@lostgradient/markdown",
+      "version": "0.0.0",
       "dependencies": {
-        "@cinder/diff": "workspace:*",
+        "@shikijs/engine-oniguruma": "^3.21.0",
+        "@shikijs/langs": "^3.21.0",
+        "@shikijs/types": "^3.21.0",
+        "@types/mdast": "^4.0.4",
+        "@types/unist": "^3.0.0",
         "comlink": "^4.4.2",
         "diff-match-patch": "^1.0.5",
         "hast-util-sanitize": "^5.0.0",
@@ -203,8 +192,6 @@
         "@types/diff-match-patch": "^1.0.36",
         "@types/hast": "^3.0.4",
         "@types/js-yaml": "^4.0.9",
-        "@types/mdast": "^4.0.4",
-        "@types/unist": "^3.0.0",
         "oxlint": "^1.56.0",
         "oxlint-tsgolint": "^0.17.0",
         "typescript": "^5.9.0",
@@ -214,9 +201,9 @@
       "name": "@cinder/playground",
       "version": "0.0.1",
       "dependencies": {
-        "@cinder/markdown": "workspace:*",
         "@lostgradient/chat": "workspace:*",
         "@lostgradient/cinder": "workspace:*",
+        "@lostgradient/markdown": "workspace:*",
         "lucide-svelte": "^0.503.0",
         "shiki": "^3.0.0",
       },
@@ -309,10 +296,6 @@
 
     "@cinder/commentary": ["@cinder/commentary@workspace:packages/commentary"],
 
-    "@cinder/diff": ["@cinder/diff@workspace:packages/diff"],
-
-    "@cinder/markdown": ["@cinder/markdown@workspace:packages/markdown"],
-
     "@cinder/playground": ["@cinder/playground@workspace:packages/playground"],
 
     "@cinder/testing": ["@cinder/testing@workspace:packages/testing"],
@@ -370,6 +353,8 @@
     "@lostgradient/chat": ["@lostgradient/chat@workspace:packages/chat"],
 
     "@lostgradient/cinder": ["@lostgradient/cinder@workspace:packages/components"],
+
+    "@lostgradient/markdown": ["@lostgradient/markdown@workspace:packages/markdown"],
 
     "@manypkg/find-root": ["@manypkg/find-root@1.1.0", "", { "dependencies": { "@babel/runtime": "^7.5.5", "@types/node": "^12.7.1", "find-up": "^4.1.0", "fs-extra": "^8.1.0" } }, "sha512-mki5uBvhHzO8kYYix/WRy2WX8S3B5wdVSc9D6KcU5lQNglP2yt58/VfLuAK49glRXChosY8ap2oJ1qgma3GUVA=="],
 

@@ -52,7 +52,6 @@ export const workspaceRoot = resolve(componentsPackageRoot, '..', '..');
 export const SCANNED_ROOTS: readonly string[] = [
   'packages/components/src',
   'packages/markdown/src',
-  'packages/diff/src',
   'packages/commentary/src',
 ];
 
@@ -288,7 +287,7 @@ function extensionOf(path: string): string {
  * @param exists - predicate over repo-relative POSIX paths (injected so the
  *   resolver is pure/testable; the filesystem wrapper supplies the real one).
  *
- * Bare specifiers (`zod`, `@cinder/markdown`, `svelte`) are `external` — they
+ * Bare specifiers (`zod`, `@lostgradient/markdown`, `svelte`) are `external` — they
  * cannot change inside a component-source diff, so they create no edge.
  * Relative specifiers resolve to exactly one file, or `ambiguous` when two
  * plausible on-disk targets exist (e.g. both `x.svelte` and `x.svelte.ts`).
@@ -797,7 +796,6 @@ function isTraceableSharedModule(repoRelativePath: string): boolean {
     path.startsWith('packages/components/src/highlighters/') ||
     path === 'packages/components/src/schema-types.ts' ||
     path.startsWith('packages/markdown/src/') ||
-    path.startsWith('packages/diff/src/') ||
     path.startsWith('packages/commentary/src/')
   );
 }

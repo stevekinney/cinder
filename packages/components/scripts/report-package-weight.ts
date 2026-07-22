@@ -35,6 +35,12 @@ type PackageWeightBudgets = {
 };
 
 const budgetsByPackage: Record<string, PackageWeightBudgets> = {
+  '@lostgradient/markdown': {
+    packedBytes: 500_000,
+    unpackedBytes: 2_000_000,
+    fileCount: 300,
+    largestEntrypointBytes: 500_000,
+  },
   '@lostgradient/cinder': {
     packedBytes: 8_000_000,
     unpackedBytes: 32_000_000,
@@ -93,19 +99,57 @@ async function extractTarball(tarballPath: string, inspectionDirectory: string):
   return join(inspectionDirectory, 'package');
 }
 
-function recordEntrypointSize(
+/**
+ * Attribute one packed file's bytes to the "entrypoint" it belongs to, so
+ * `assertBudgets` can flag any single entrypoint that's grown too large —
+ * not just the package's aggregate weight.
+ *
+ * Two dist layouts exist across the three published packages:
+ *   - Cinder and Chat group every file for one component under
+ *     `dist/components/<name>/**` (or `dist/components/experimental/<name>/**`)
+ *     — one entrypoint per component, several files each (`.js`, `.svelte.js`,
+ *     `.css`, `.d.ts`, ...). Everything else under `dist/` for these two
+ *     packages (`dist/server/**`, the top-level vendored `dist/markdown/**`
+ *     and `dist/commentary/**` trees, root `dist/index.js`, ...) is
+ *     deliberately NOT tracked as its own entrypoint — most of it (`dist/server`
+ *     in particular) is an aggregate mirror of the entire component tree, not
+ *     a bounded feature surface, so measuring it against the same
+ *     single-component budget is meaningless and would just be noise.
+ *   - Markdown (and any package with no `dist/components/` directory at all —
+ *     it's headless, not component-based) groups files by top-level `dist/`
+ *     subdirectory instead: `dist/pipeline/**`, `dist/diff/**`,
+ *     `dist/rendering/**`, etc. Each subdirectory backs one or more of the
+ *     package's exported subpaths (`./pipeline`, `./diff`, `./diff/line-diff`, ...),
+ *     so it IS a bounded, meaningful entrypoint. Root-level files directly
+ *     under `dist/` (`dist/index.js`, the package's `.` export) roll up into
+ *     a single `dist` entrypoint.
+ *
+ * `usesComponentsLayout` is computed once per package (whether `dist/components/`
+ * exists at all — see `buildReport`), not sniffed per file, so a single package
+ * can't straddle both strategies file-by-file.
+ */
+export function recordEntrypointSize(
   entrypointSizes: Map<string, number>,
   relativePath: string,
   bytes: number,
+  usesComponentsLayout: boolean,
 ): void {
   const parts = relativePath.split('/');
-  if (parts[0] !== 'dist' || parts[1] !== 'components' || parts.length < 4) return;
-  const componentName = parts[2] === 'experimental' ? parts[3] : parts[2];
-  if (componentName === undefined) return;
-  const key =
-    parts[2] === 'experimental'
-      ? `dist/components/experimental/${componentName}`
-      : `dist/components/${componentName}`;
+  if (parts[0] !== 'dist') return;
+
+  if (usesComponentsLayout) {
+    if (parts[1] !== 'components' || parts.length < 4) return;
+    const componentName = parts[2] === 'experimental' ? parts[3] : parts[2];
+    if (componentName === undefined) return;
+    const key =
+      parts[2] === 'experimental'
+        ? `dist/components/experimental/${componentName}`
+        : `dist/components/${componentName}`;
+    entrypointSizes.set(key, (entrypointSizes.get(key) ?? 0) + bytes);
+    return;
+  }
+
+  const key = parts.length >= 3 && parts[1] !== undefined ? `dist/${parts[1]}` : 'dist';
   entrypointSizes.set(key, (entrypointSizes.get(key) ?? 0) + bytes);
 }
 
@@ -114,6 +158,7 @@ async function buildReport(
   inspectionDirectory: string,
 ): Promise<PackageWeightReport> {
   const extractedPackageRoot = await extractTarball(tarballPath, inspectionDirectory);
+  const usesComponentsLayout = existsSync(join(extractedPackageRoot, 'dist', 'components'));
   const glob = new Glob('**/*');
   const fileSizes: FileSizeEntry[] = [];
   const entrypointSizes = new Map<string, number>();
@@ -128,7 +173,7 @@ async function buildReport(
     fileCount += 1;
     unpackedBytes += stat.size;
     fileSizes.push({ path: packageRelativePath, bytes: stat.size });
-    recordEntrypointSize(entrypointSizes, packageRelativePath, stat.size);
+    recordEntrypointSize(entrypointSizes, packageRelativePath, stat.size, usesComponentsLayout);
   }
 
   fileSizes.sort((a, b) => b.bytes - a.bytes);

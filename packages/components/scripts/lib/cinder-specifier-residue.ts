@@ -1,6 +1,9 @@
+import { UPSTREAM_PACKAGE_NAMES } from './derive-upstream-reexports.ts';
+
 /**
- * Shared utilities for detecting unresolved `@cinder/*` import specifiers
- * in built JS / `.d.ts` artifacts.
+ * Shared utilities for detecting unresolved upstream-package import
+ * specifiers (`@cinder/commentary`, `@lostgradient/markdown`, ...) in built
+ * JS / `.d.ts` artifacts.
  *
  * Two gates use this:
  *   - `scripts/build.ts` — fast post-build residue grep that fails the build
@@ -13,25 +16,72 @@
  * `//` sequences inside string or template literals as data, not comments,
  * so a line like `const x = '/* @cinder/foo *\/'; import y from "@cinder/z"`
  * still surfaces the real specifier in the trailing import.
+ *
+ * The patterns stay broad on the `@cinder/*` scope — any leftover
+ * `@cinder/<subpath>` specifier is inherently wrong in built output, not
+ * just the ones this repo currently vendors — and additionally list each
+ * `UPSTREAM_PACKAGE_NAMES` entry that has moved *outside* that scope (e.g.
+ * `@lostgradient/markdown`, née `@cinder/markdown` in Phase 2 of
+ * docs/decisions/package-boundaries.md). A residue gate scoped to the
+ * literal `@cinder/` prefix alone silently stops catching a package the
+ * moment it's renamed out of that scope — which is exactly the bug this
+ * gate had until Phase 2's rename exposed it.
  */
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Upstream specifiers that no longer live under the broad `@cinder/*` scope. */
+const upstreamSpecifiersOutsideCinderScope = Object.values(UPSTREAM_PACKAGE_NAMES).filter(
+  (specifier) => !specifier.startsWith('@cinder/'),
+);
+
+const outsideCinderScopeAlternation = upstreamSpecifiersOutsideCinderScope
+  .map((specifier) => `${escapeRegExp(specifier)}(?:/[^'"\`\${}]*)?`)
+  .join('|');
+
+/** `@cinder/<anything>`, or one of the upstream specifiers renamed out of that scope. */
+const upstreamSpecifierPatternSource =
+  outsideCinderScopeAlternation.length > 0
+    ? `@cinder/[^'"\`\${}]+|(?:${outsideCinderScopeAlternation})`
+    : `@cinder/[^'"\`\${}]+`;
+
+/** Cheap substring pre-check any file-content scan should run before iterating lines. */
+export function containsUpstreamSpecifier(content: string): boolean {
+  return (
+    content.includes('@cinder/') ||
+    upstreamSpecifiersOutsideCinderScope.some((specifier) => content.includes(specifier))
+  );
+}
 
 /**
- * Match a static quoted `@cinder/<subpath>` specifier — single-quote,
- * double-quote, or backtick. The backreference enforces matching quote
- * pairs so mismatched quotes don't false-positive. Backtick is included
- * because no-interpolation template literals are valid dynamic-import
- * specifiers (`` import(`@cinder/markdown`) ``).
+ * Match a static quoted upstream-package specifier (optionally with a
+ * `/<subpath>`) — single-quote, double-quote, or backtick. The
+ * backreference enforces matching quote pairs so mismatched quotes don't
+ * false-positive. Backtick is included because no-interpolation template
+ * literals are valid dynamic-import specifiers
+ * (`` import(`@lostgradient/markdown`) ``).
  */
-export const STATIC_CINDER_SPECIFIER_PATTERN = /(['"`])@cinder\/[^'"`${}]+\1/;
+export const STATIC_UPSTREAM_SPECIFIER_PATTERN = new RegExp(
+  `(['"\`])(?:${upstreamSpecifierPatternSource})\\1`,
+);
 
 /**
- * Match a template-literal `@cinder/<...>${...}` specifier whose first
- * quasi starts with `@cinder/` and then interpolates — for example
- * `` import(`@cinder/${pkg}`) ``. The rewrite pass cannot safely transform
- * a computed specifier, so the gates must fail loudly if one appears
- * rather than silently shipping it.
+ * Match a template-literal upstream specifier that interpolates — for
+ * example `` import(`@cinder/commentary/${pkg}`) ``. The rewrite pass
+ * cannot safely transform a computed specifier, so the gates must fail
+ * loudly if one appears rather than silently shipping it.
  */
-export const DYNAMIC_CINDER_SPECIFIER_PATTERN = /`@cinder\/[^`]*\$\{/;
+const dynamicOutsideCinderScopeAlternation = upstreamSpecifiersOutsideCinderScope
+  .map((specifier) => escapeRegExp(specifier))
+  .join('|');
+const dynamicUpstreamSpecifierPatternSource =
+  dynamicOutsideCinderScopeAlternation.length > 0
+    ? `@cinder/[^\`]*\\$\\{|(?:${dynamicOutsideCinderScopeAlternation})[^\`]*\\$\\{`
+    : `@cinder/[^\`]*\\$\\{`;
+export const DYNAMIC_UPSTREAM_SPECIFIER_PATTERN = new RegExp(
+  `\`(?:${dynamicUpstreamSpecifierPatternSource})`,
+);
 
 /** State carried across lines while walking a file for residue. */
 export type CommentScanState = {
@@ -233,19 +283,19 @@ export function stripCommentsRespectingStrings(line: string, state: CommentScanS
 
 /**
  * Decide whether a single line, after string-aware comment stripping,
- * carries a real `@cinder/*` specifier. Updates `state.inBlockComment` to
- * track multi-line block comments across calls.
+ * carries a real upstream-package import specifier. Updates
+ * `state.inBlockComment` to track multi-line block comments across calls.
  *
- * The caller short-circuits via `content.includes('@cinder/')` before
+ * The caller short-circuits via `containsUpstreamSpecifier(content)` before
  * iterating the file, so the per-line cost here is only paid on files that
- * already mention the substring somewhere.
+ * already mention one of the upstream specifiers somewhere.
  */
-export function lineHasCinderResidue(rawLine: string, state: CommentScanState): boolean {
+export function lineHasUpstreamSpecifierResidue(rawLine: string, state: CommentScanState): boolean {
   const stripped = stripCommentsRespectingStrings(rawLine, state);
-  if (!stripped.includes('@cinder/')) return false;
+  if (!containsUpstreamSpecifier(stripped)) return false;
 
   return (
-    STATIC_CINDER_SPECIFIER_PATTERN.test(stripped) ||
-    DYNAMIC_CINDER_SPECIFIER_PATTERN.test(stripped)
+    STATIC_UPSTREAM_SPECIFIER_PATTERN.test(stripped) ||
+    DYNAMIC_UPSTREAM_SPECIFIER_PATTERN.test(stripped)
   );
 }

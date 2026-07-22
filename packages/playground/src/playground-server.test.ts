@@ -477,7 +477,7 @@ describe('chunks under /page-bundle/<filename>.js', () => {
 
   it("entry's hashed chunk URLs all resolve to JS", async () => {
     // Build a page bundle that's known to have dynamic imports (chat
-    // does — markdown-preview lazy-loads @cinder/markdown/rendering). The
+    // does — markdown-preview lazy-loads @lostgradient/markdown/rendering). The
     // entry response body must reference at least one hashed chunk URL,
     // and every referenced URL must resolve to 200 application/javascript.
     const entryResponse = await handleRequest(req('/page-bundle/chat.js'));

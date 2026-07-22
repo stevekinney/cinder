@@ -51,8 +51,7 @@ const pkg = (
 });
 
 const fakePackages: readonly WorkspacePackage[] = [
-  pkg('@cinder/diff', 'packages/diff/'),
-  pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
+  pkg('@lostgradient/markdown', 'packages/markdown/'),
   pkg('@lostgradient/cinder', 'packages/components/', [], { hasTest: false }),
 ];
 
@@ -342,68 +341,71 @@ describe('runHookCommand', () => {
 
 describe('isSourceFile', () => {
   it('treats supported extensions as source', () => {
-    expect(isSourceFile('packages/diff/src/index.ts')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/index.ts')).toBe(true);
     expect(isSourceFile('packages/components/src/Button.tsx')).toBe(true);
     expect(isSourceFile('packages/components/src/Button.svelte')).toBe(true);
     expect(isSourceFile('packages/components/src/button.css')).toBe(true);
-    expect(isSourceFile('packages/diff/tsconfig.json')).toBe(true);
+    expect(isSourceFile('packages/markdown/tsconfig.json')).toBe(true);
   });
 
   it('excludes markdown outright', () => {
     expect(isSourceFile('README.md')).toBe(false);
-    expect(isSourceFile('packages/diff/docs/intro.md')).toBe(false);
-    expect(isSourceFile('packages/diff/CHANGELOG.md')).toBe(false);
+    expect(isSourceFile('packages/markdown/docs/intro.md')).toBe(false);
+    expect(isSourceFile('packages/markdown/CHANGELOG.md')).toBe(false);
   });
 
   it('excludes README and CHANGELOG documents lacking a source extension', () => {
-    expect(isSourceFile('packages/diff/README')).toBe(false);
-    expect(isSourceFile('packages/diff/CHANGELOG')).toBe(false);
-    expect(isSourceFile('packages/diff/Readme.txt')).toBe(false);
+    expect(isSourceFile('packages/markdown/README')).toBe(false);
+    expect(isSourceFile('packages/markdown/CHANGELOG')).toBe(false);
+    expect(isSourceFile('packages/markdown/Readme.txt')).toBe(false);
   });
 
   it('does NOT exclude source files whose basename starts with readme or changelog', () => {
     // Regression for the round-1 bug where the basename check ran before the
     // extension check and silently dropped these files.
-    expect(isSourceFile('packages/diff/src/changelog-helpers.ts')).toBe(true);
-    expect(isSourceFile('packages/diff/src/readme-generator.tsx')).toBe(true);
-    expect(isSourceFile('packages/diff/src/Readme.svelte')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/changelog-helpers.ts')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/readme-generator.tsx')).toBe(true);
+    expect(isSourceFile('packages/markdown/src/Readme.svelte')).toBe(true);
   });
 
   it('rejects unknown extensions', () => {
-    expect(isSourceFile('packages/diff/src/index.rs')).toBe(false);
-    expect(isSourceFile('packages/diff/Makefile')).toBe(false);
+    expect(isSourceFile('packages/markdown/src/index.rs')).toBe(false);
+    expect(isSourceFile('packages/markdown/Makefile')).toBe(false);
   });
 
   it('is case-insensitive on extensions and basenames', () => {
-    expect(isSourceFile('packages/diff/src/Index.TS')).toBe(true);
-    expect(isSourceFile('packages/diff/README.MD')).toBe(false);
+    expect(isSourceFile('packages/markdown/src/Index.TS')).toBe(true);
+    expect(isSourceFile('packages/markdown/README.MD')).toBe(false);
   });
 });
 
 describe('getTouchedPackages', () => {
   it('returns the packages whose dir prefix matches staged source files', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/src/index.ts',
-      'packages/markdown/src/parser.ts',
+      'packages/markdown/src/index.ts',
+      'packages/components/src/parser.ts',
     ]);
-    expect(touched.map((p) => p.name).toSorted()).toEqual(['@cinder/diff', '@cinder/markdown']);
+    expect(touched.map((p) => p.name).toSorted()).toEqual([
+      '@lostgradient/cinder',
+      '@lostgradient/markdown',
+    ]);
   });
 
   it('ignores docs-only staged files', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/README.md',
-      'packages/diff/CHANGELOG.md',
+      'packages/markdown/README.md',
+      'packages/markdown/CHANGELOG.md',
     ]);
     expect(touched).toEqual([]);
   });
 
   it('mixes source and docs files correctly', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/README.md',
-      'packages/diff/src/index.ts',
-      'packages/markdown/docs/notes.md',
+      'packages/markdown/README.md',
+      'packages/markdown/src/index.ts',
+      'packages/components/docs/notes.md',
     ]);
-    expect(touched.map((p) => p.name)).toEqual(['@cinder/diff']);
+    expect(touched.map((p) => p.name)).toEqual(['@lostgradient/markdown']);
   });
 
   it('returns empty when no staged file matches any package', () => {
@@ -413,11 +415,11 @@ describe('getTouchedPackages', () => {
 
   it('does not double-report a package with multiple staged files', () => {
     const touched = getTouchedPackages(fakePackages, [
-      'packages/diff/src/a.ts',
-      'packages/diff/src/b.ts',
-      'packages/diff/src/c.ts',
+      'packages/markdown/src/a.ts',
+      'packages/markdown/src/b.ts',
+      'packages/markdown/src/c.ts',
     ]);
-    expect(touched.map((p) => p.name)).toEqual(['@cinder/diff']);
+    expect(touched.map((p) => p.name)).toEqual(['@lostgradient/markdown']);
   });
 });
 
@@ -437,13 +439,15 @@ describe('hasRootConfigurationChanges', () => {
   });
 
   it('returns false for nested files of the same name', () => {
-    // packages/diff/tsconfig.json must NOT escalate to a full workspace run.
-    expect(hasRootConfigurationChanges(['packages/diff/tsconfig.json'])).toBe(false);
-    expect(hasRootConfigurationChanges(['packages/diff/package.json'])).toBe(false);
+    // packages/markdown/tsconfig.json must NOT escalate to a full workspace run.
+    expect(hasRootConfigurationChanges(['packages/markdown/tsconfig.json'])).toBe(false);
+    expect(hasRootConfigurationChanges(['packages/markdown/package.json'])).toBe(false);
   });
 
   it('returns false when only non-root files are staged', () => {
-    expect(hasRootConfigurationChanges(['packages/diff/src/index.ts', 'README.md'])).toBe(false);
+    expect(hasRootConfigurationChanges(['packages/markdown/src/index.ts', 'README.md'])).toBe(
+      false,
+    );
   });
 
   it('returns false on an empty staged list', () => {
@@ -452,10 +456,10 @@ describe('hasRootConfigurationChanges', () => {
 
   it('is a pure path predicate (works on push-range file lists, not just staged)', () => {
     // No staged context — exact root-relative paths still classify correctly.
-    expect(hasRootConfigurationChanges(['packages/diff/src/x.ts', 'bun.lock'])).toBe(true);
-    expect(hasRootConfigurationChanges(['packages/diff/src/x.ts', 'packages/diff/README.md'])).toBe(
-      false,
-    );
+    expect(hasRootConfigurationChanges(['packages/markdown/src/x.ts', 'bun.lock'])).toBe(true);
+    expect(
+      hasRootConfigurationChanges(['packages/markdown/src/x.ts', 'packages/markdown/README.md']),
+    ).toBe(false);
   });
 });
 
@@ -463,8 +467,7 @@ describe('loadWorkspacePackages', () => {
   it('reads every packages/*/package.json and exposes script presence', async () => {
     const packages = await loadWorkspacePackages();
     const names = packages.map((p) => p.name).toSorted();
-    expect(names).toContain('@cinder/diff');
-    expect(names).toContain('@cinder/markdown');
+    expect(names).toContain('@lostgradient/markdown');
     expect(names).toContain('@cinder/commentary');
     expect(names).toContain('@cinder/playground');
     expect(names).toContain('@cinder/testing');
@@ -489,8 +492,6 @@ describe('loadWorkspacePackages', () => {
     expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/chat');
     // Chat composes Cinder primitives and utilities through the public package.
     expect([...byName.get('@lostgradient/chat')!.dependencies]).toContain('@lostgradient/cinder');
-    // @cinder/markdown depends on @cinder/diff.
-    expect([...byName.get('@cinder/markdown')!.dependencies]).toContain('@cinder/diff');
     // cinder dev-depends on @cinder/testing.
     expect([...byName.get('@lostgradient/cinder')!.dependencies]).toContain('@cinder/testing');
     // Every dependency name resolves to another workspace package (external

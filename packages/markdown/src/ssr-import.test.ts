@@ -1,13 +1,13 @@
 /**
- * @cinder/markdown SSR import safety.
+ * @lostgradient/markdown SSR import safety.
  *
  * Mirrors `packages/commentary/src/editor/ssr-import.test.ts` (formerly `packages/editor/src/ssr-import.test.ts`). The contract this guards:
- * importing any entry point of `@cinder/markdown` in a server (no-DOM)
+ * importing any entry point of `@lostgradient/markdown` in a server (no-DOM)
  * context must NOT touch a browser-only global at module-evaluation time.
  *
  * Why this matters: ReviewEditor and Chat statically import markdown
- * utilities (`@cinder/markdown/pipeline`, `@cinder/markdown/diff`,
- * `@cinder/markdown/rendering`). Those static imports execute during SSR, so
+ * utilities (`@lostgradient/markdown/pipeline`, `@lostgradient/markdown/diff`,
+ * `@lostgradient/markdown/rendering`). Those static imports execute during SSR, so
  * any module-eval-time `document`/`window`/`getSelection` access would throw
  * on the server before a fallback could render.
  *
@@ -54,7 +54,7 @@ function restoreBrowserGlobals(): void {
 beforeEach(removeBrowserGlobals);
 afterEach(restoreBrowserGlobals);
 
-describe('@cinder/markdown SSR import safety', () => {
+describe('@lostgradient/markdown SSR import safety', () => {
   it('imports the package barrel without needing browser globals', async () => {
     const markdownModule = await import('./index.js');
     expect(typeof markdownModule.diff).toBe('object');

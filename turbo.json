@@ -26,7 +26,7 @@
       "outputs": []
     },
     "@cinder/playground#typecheck": {
-      "dependsOn": [],
+      "dependsOn": ["@lostgradient/markdown#build"],
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
@@ -42,6 +42,14 @@
     },
     "lint": {
       "dependsOn": [],
+      "outputs": []
+    },
+    "@cinder/commentary#lint": {
+      "dependsOn": ["@lostgradient/markdown#build"],
+      "outputs": []
+    },
+    "@lostgradient/cinder#lint": {
+      "dependsOn": ["@lostgradient/markdown#build", "@cinder/commentary#build"],
       "outputs": []
     },
     "validate": {

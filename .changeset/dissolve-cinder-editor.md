@@ -1,6 +1,6 @@
 ---
 '@lostgradient/cinder': patch
-'@cinder/markdown': patch
+'@lostgradient/markdown': patch
 '@cinder/commentary': patch
 ---
 

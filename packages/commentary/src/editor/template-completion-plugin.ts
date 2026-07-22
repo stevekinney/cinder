@@ -13,7 +13,7 @@
 import type {
   PlaceholderCandidate,
   PlaceholderCompletionConfiguration,
-} from '@cinder/markdown/templates/types';
+} from '@lostgradient/markdown/templates/types';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';

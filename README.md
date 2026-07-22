@@ -167,14 +167,13 @@ Wire those pieces with your application stack and pass the resulting state, call
 
 This repository is a Bun workspace.
 
-| Workspace             | Purpose                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------- |
-| `packages/components` | Published `@lostgradient/cinder` package.                                             |
-| `packages/playground` | Private component playground and static export.                                       |
-| `packages/testing`    | Private Playwright, axe, and visual-regression harness.                               |
-| `packages/diff`       | Private diff utilities used by domain-suite components.                               |
-| `packages/markdown`   | Private Markdown pipeline, rendering, and template-placeholder utilities.             |
-| `packages/commentary` | Private review/comment anchoring and editor (ProseMirror/Milkdown) runtime utilities. |
+| Workspace             | Purpose                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `packages/components` | Published `@lostgradient/cinder` package.                                                                |
+| `packages/playground` | Private component playground and static export.                                                          |
+| `packages/testing`    | Private Playwright, axe, and visual-regression harness.                                                  |
+| `packages/markdown`   | Published `@lostgradient/markdown` package (headless Markdown pipeline, rendering, diffing, templating). |
+| `packages/commentary` | Private review/comment anchoring and editor (ProseMirror/Milkdown) runtime utilities.                    |
 
 ## Development
 

@@ -21,13 +21,16 @@ import {
 } from './validate-release-workflow.ts';
 
 describe('validate-release-workflow changeset guards', () => {
-  test('requires artifact and publish commands for both public packages', () => {
+  test('requires artifact and publish commands for every public package', () => {
     const workflow = {
       jobs: {
         release: {
           steps: [
             {
               run: [
+                'bun run --filter=@lostgradient/markdown validate:consumer',
+                'bun run --filter=@lostgradient/markdown package:weight:check -- --existing-tarball',
+                'bun run --filter=@lostgradient/markdown publish:release -- --skip-validation',
                 'bun run --filter=@lostgradient/cinder validate:consumer',
                 'bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball',
                 'bun run --filter=@lostgradient/cinder publish:release -- --skip-validation',
@@ -45,15 +48,18 @@ describe('validate-release-workflow changeset guards', () => {
     ]);
   });
 
-  test('requires Cinder to publish before Chat', () => {
+  test('requires Markdown to publish before Cinder before Chat', () => {
     const workflow = (commands: string[]) => ({
       jobs: { release: { steps: commands.map((run) => ({ run })) } },
     });
+    const markdown = 'bun run --filter=@lostgradient/markdown publish:release -- --skip-validation';
     const cinder = 'bun run --filter=@lostgradient/cinder publish:release -- --skip-validation';
     const chat = 'bun run --filter=@lostgradient/chat publish:release -- --skip-validation';
 
-    expect(publicPackagePublishOrderIsValid(workflow([cinder, chat]))).toBe(true);
-    expect(publicPackagePublishOrderIsValid(workflow([chat, cinder]))).toBe(false);
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, chat]))).toBe(true);
+    expect(publicPackagePublishOrderIsValid(workflow([chat, cinder, markdown]))).toBe(false);
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, chat, cinder]))).toBe(false);
+    expect(publicPackagePublishOrderIsValid(workflow([cinder, markdown, chat]))).toBe(false);
   });
 
   test('builds Cinder before Chat in fresh-checkout coverage workflows', () => {
@@ -101,24 +107,36 @@ describe('validate-release-workflow changeset guards', () => {
 
   test('requires the root publish shortcut to use staged package artifacts in order', () => {
     const manifest = (script: string) => ({ scripts: { 'changeset:publish': script } });
+    const markdown = 'bun run --filter=@lostgradient/markdown publish:release';
     const cinder = 'bun run --filter=@lostgradient/cinder publish:release';
     const chat = 'bun run --filter=@lostgradient/chat publish:release';
 
-    expect(rootPublishScriptUsesStagedPackers(manifest(`${cinder} && ${chat}`))).toBe(true);
+    expect(
+      rootPublishScriptUsesStagedPackers(manifest(`${markdown} && ${cinder} && ${chat}`)),
+    ).toBe(true);
     expect(rootPublishScriptUsesStagedPackers(manifest('changeset publish'))).toBe(false);
-    expect(rootPublishScriptUsesStagedPackers(manifest(`${chat} && ${cinder}`))).toBe(false);
+    expect(
+      rootPublishScriptUsesStagedPackers(manifest(`${chat} && ${cinder} && ${markdown}`)),
+    ).toBe(false);
+    expect(
+      rootPublishScriptUsesStagedPackers(manifest(`${cinder} && ${chat}`)), // missing markdown
+    ).toBe(false);
   });
 
-  test('requires the root validation gate to exercise both packed public packages', () => {
+  test('requires the root validation gate to exercise every packed public package', () => {
     const manifest = (validate: string, validateConsumer: string) => ({
       scripts: { validate, 'validate:consumer': validateConsumer },
     });
+    const markdown = 'bun run --filter=@lostgradient/markdown validate:consumer';
     const cinder = 'bun run --filter=@lostgradient/cinder validate:consumer';
     const chat = 'bun run --filter=@lostgradient/chat validate:consumer';
 
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest(`turbo run validate --concurrency=1 && ${chat}`, `${cinder} && ${chat}`),
+        manifest(
+          `turbo run validate --concurrency=1 && ${chat}`,
+          `${markdown} && ${cinder} && ${chat}`,
+        ),
       ),
     ).toBe(true);
     expect(
@@ -128,12 +146,12 @@ describe('validate-release-workflow changeset guards', () => {
     ).toBe(false);
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest('turbo run validate --concurrency=1', `${cinder} && ${chat}`),
+        manifest('turbo run validate --concurrency=1', `${markdown} && ${cinder} && ${chat}`),
       ),
     ).toBe(false);
     expect(
       rootConsumerValidationIncludesPublicPackages(
-        manifest(`bun run --filter='*' validate && ${chat}`, `${cinder} && ${chat}`),
+        manifest(`bun run --filter='*' validate && ${chat}`, `${markdown} && ${cinder} && ${chat}`),
       ),
     ).toBe(false);
     // A `turbo run validate` missing `--concurrency=1` must fail: without it,

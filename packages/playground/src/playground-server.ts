@@ -29,7 +29,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
 
-import { initializeHighlighter, renderMarkdown } from '@cinder/markdown/rendering';
+import { initializeHighlighter, renderMarkdown } from '@lostgradient/markdown/rendering';
 import type { BuildArtifact } from 'bun';
 import {
   findFixture,
@@ -613,7 +613,7 @@ const SHARED_BUILD_OPTIONS = {
   // conditions pointing at `./src/components/<name>/index.ts`, with no browser
   // source condition. The page bundles themselves are browser bundles, though,
   // so we avoid the `bun` condition here. Private workspace packages such as
-  // `@cinder/markdown` use that condition for Bun/server source entry points,
+  // `@lostgradient/markdown` use that condition for Bun/server source entry points,
   // which can break Linux browser bundling for markdown-backed components.
   conditions: ['browser', 'svelte'],
   splitting: true,

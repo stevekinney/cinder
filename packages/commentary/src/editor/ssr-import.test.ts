@@ -1,6 +1,6 @@
 /**
  * Mirrors the former `packages/editor/src/ssr-import.test.ts`, migrated here
- * when `@cinder/editor` was dissolved into `@cinder/markdown` (headless half)
+ * when `@cinder/editor` was dissolved into `@lostgradient/markdown` (headless half)
  * and `@cinder/commentary` (this ProseMirror/Milkdown half). See
  * `docs/decisions/package-boundaries.md`.
  */

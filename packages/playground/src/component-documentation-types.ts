@@ -1,4 +1,4 @@
-import type { CodeBlockInfo } from '@cinder/markdown/rendering/types';
+import type { CodeBlockInfo } from '@lostgradient/markdown/rendering/types';
 
 import type { ComponentManifest } from './types.ts';
 

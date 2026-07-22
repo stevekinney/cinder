@@ -12,7 +12,7 @@
  * 3. They were never expected to gate the suite.
  *
  * Opt in to benchmarking explicitly:
- *   RUN_MARKDOWN_BENCHMARKS=1 bun run --filter='@cinder/markdown' test src/performance.test.ts
+ *   RUN_MARKDOWN_BENCHMARKS=1 bun run --filter='@lostgradient/markdown' test src/performance.test.ts
  *
  * For ongoing benchmarking, prefer a dedicated runner (`vitest bench`,
  * `mitata`, or `bun:bench` when it ships) rather than `expect(time).toBeLessThan(...)`.

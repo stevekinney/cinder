@@ -23,7 +23,11 @@ import {
   runHookCommand,
   withLocalValidationGateLock,
 } from './husky/utilities.ts';
-import { type CommentScanState, lineHasCinderResidue } from './lib/cinder-specifier-residue.ts';
+import {
+  type CommentScanState,
+  containsUpstreamSpecifier,
+  lineHasUpstreamSpecifierResidue,
+} from './lib/cinder-specifier-residue.ts';
 import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
@@ -40,6 +44,21 @@ type WorkspaceDependencyPackage = PackageIdentity & {
   packageDirectory: string;
   tarballFileName: string;
   tarballFilePath: string;
+  /**
+   * Command that produces `tarballFilePath`. `@lostgradient/markdown` is a
+   * REAL published package with its own staged, manifest-transforming
+   * `pack-for-publish.ts` (devDependencies stripped, `bun` source condition
+   * dropped) — `release.yaml` runs `bun run --filter=@lostgradient/markdown
+   * validate:consumer` before this validator's own step, producing that
+   * exact tarball at `tarballFilePath`. A raw `bun pm pack` here would
+   * overwrite it with an unvalidated, untransformed artifact that the later
+   * "Publish validated Markdown package artifact" step (`publish:release
+   * -- --skip-validation`, which does NOT re-pack) would then ship to npm.
+   * Reuse `pack:publish` — the same staged process — for every workspace
+   * dependency package that HAS one; only workspace-private packages with no
+   * publish surface (`commentary`) fall back to a raw pack.
+   */
+  packCommand: string[];
 };
 
 function getPackFileName(identity: PackageIdentity): string {
@@ -76,16 +95,21 @@ const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
 const chatTarballFileName = getPackFileName(chatPackageIdentity);
 const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
 let chatFixtureCinderTarballFilePath = tarballFilePath;
-const workspaceDependencyPackages = ['diff', 'markdown', 'commentary'].map(
+const workspaceDependencyPackages = ['markdown', 'commentary'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
     const identity = readPackageIdentity(packageDirectory);
     const workspaceDependencyTarballFileName = getPackFileName(identity);
+    const manifest = parseJsonFile<{ scripts?: Record<string, string> }>(
+      readFileSync(join(packageDirectory, 'package.json'), 'utf8'),
+    );
+    const hasPublishPacker = manifest.scripts?.['pack:publish'] !== undefined;
     return {
       ...identity,
       packageDirectory,
       tarballFileName: workspaceDependencyTarballFileName,
       tarballFilePath: join(packageDirectory, workspaceDependencyTarballFileName),
+      packCommand: hasPublishPacker ? ['run', 'pack:publish'] : ['pm', 'pack'],
     };
   },
 );
@@ -302,13 +326,15 @@ async function packWorkspaceDependencyTarballs(): Promise<void> {
     if (existsSync(dependencyPackage.tarballFilePath)) {
       await Bun.file(dependencyPackage.tarballFilePath).delete();
     }
-    const result = await runHookCommand('bun', ['pm', 'pack'], {
+    const result = await runHookCommand('bun', dependencyPackage.packCommand, {
       cwd: dependencyPackage.packageDirectory,
       stdout: 'pipe',
       stderr: 'pipe',
     });
     if (result.exitCode !== 0) {
-      fail(`${dependencyPackage.name} bun pm pack failed: ${result.stderr}`);
+      fail(
+        `${dependencyPackage.name} bun ${dependencyPackage.packCommand.join(' ')} failed: ${result.stderr}`,
+      );
     }
     if (!existsSync(dependencyPackage.tarballFilePath)) {
       fail(
@@ -669,21 +695,22 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
 }
 
 /**
- * Run a global grep over the extracted tarball for `@cinder/*` references
- * that look like real import specifiers. Doc-comment prose and source-map
+ * Run a global grep over the extracted tarball for upstream-package
+ * references (`@cinder/commentary`, `@lostgradient/markdown`, ...) that
+ * look like real import specifiers. Doc-comment prose and source-map
  * embedded source are tolerated because they cannot break runtime
  * resolution.
  *
- * "Looks like a real import specifier" means: the `@cinder/...` token sits
+ * "Looks like a real import specifier" means: the upstream specifier sits
  * inside a single-quote, double-quote, OR backtick-quoted *static* string on
  * a non-comment line. Backticks are flagged in code positions because
- * `await import(\`@cinder/markdown/rendering\`)` is a valid runtime import
+ * `await import(\`@cinder/commentary/editor\`)` is a valid runtime import
  * — JavaScript accepts a template literal with no interpolation as a
  * dynamic-import specifier. The JSDoc/prose backtick form `` `@cinder/x` ``
  * sits on lines that start with `*` or `//` and is filtered by the comment
  * skip below.
  */
-async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<void> {
+async function assertNoQuotedUpstreamReferences(extractedRoot: string): Promise<void> {
   const packageRoot = join(extractedRoot, 'package');
   const glob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
   const offenders: string[] = [];
@@ -691,15 +718,15 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
   // so this gate and the fast post-build gate in `build.ts` share one
   // implementation. The previous inline ladder skipped any line starting
   // with `/*` even when `*/` closed on the same line, letting
-  // `/* x */ import from '@cinder/markdown'` slip through.
+  // `/* x */ import from '@lostgradient/markdown'` slip through.
   for await (const scriptPath of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, scriptPath);
     const content = await Bun.file(filePath).text();
-    if (!content.includes('@cinder/')) continue;
+    if (!containsUpstreamSpecifier(content)) continue;
     const scanState: CommentScanState = { inBlockComment: false };
     let offenderLine: string | undefined;
     for (const rawLine of content.split('\n')) {
-      if (lineHasCinderResidue(rawLine, scanState)) {
+      if (lineHasUpstreamSpecifierResidue(rawLine, scanState)) {
         offenderLine = rawLine.trim();
         break;
       }
@@ -709,7 +736,7 @@ async function assertNoQuotedCinderReferences(extractedRoot: string): Promise<vo
     }
   }
   if (offenders.length > 0) {
-    fail(`tarball contains quoted \`@cinder/*\` references in:\n  ${offenders.join('\n  ')}`);
+    fail(`tarball contains quoted upstream-package references in:\n  ${offenders.join('\n  ')}`);
   }
 }
 
@@ -835,8 +862,8 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // PR 1: `src/markdown/**`, `src/editor/**`, `src/commentary/**`, and
-    // `src/diff/**` (the generated re-export shells) stay out of the
+    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/commentary/**`
+    // (the generated re-export shells) stay out of the
     // tarball — upstream sub-paths resolve through `dist/` only. The rest
     // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
     // styles, JSON sidecars) ships because the published `svelte`
@@ -857,12 +884,11 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/test/',
       'package/scripts/',
       // Upstream re-export shells (`src/markdown/`, `src/editor/`,
-      // `src/commentary/`, `src/diff/`) resolve via `dist/_upstream/`; the
+      // `src/commentary/`) resolve via `dist/_upstream/`; the
       // shell sources are build-only inputs.
       'package/src/markdown/',
       'package/src/editor/',
       'package/src/commentary/',
-      'package/src/diff/',
     ],
   };
 }
@@ -2172,7 +2198,6 @@ async function runNodeFixture(): Promise<void> {
       '@lostgradient/cinder/markdown/rendering#renderMarkdown imported OK',
       '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl imported OK',
       '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys imported OK',
-      '@lostgradient/cinder/diff/line-diff#computeLineDiff imported OK',
     ];
     for (const marker of upstreamProbeMarkers) {
       if (!renderedOutput.includes(marker)) {
@@ -2440,7 +2465,7 @@ async function main(): Promise<void> {
   try {
     process.stdout.write('[validate-consumers] asserting packed manifest invariants…\n');
     await assertPackedManifestInvariants(tarballInspectionDirectory);
-    await assertNoQuotedCinderReferences(tarballInspectionDirectory);
+    await assertNoQuotedUpstreamReferences(tarballInspectionDirectory);
     await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
     await assertNoDanglingSourceMapComments(tarballInspectionDirectory);
     process.stdout.write('[validate-consumers] publish-path invariants OK.\n');

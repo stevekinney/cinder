@@ -8,8 +8,15 @@ import { checkComponentCss, formatViolation } from './check-component-css.ts';
 import { componentStylesSpecifier, cssImportPlugin } from './css-import-plugin.ts';
 import { DEPRECATED_EXPERIMENTAL_ALIASES } from './generate-exports.ts';
 import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
-import { lineHasCinderResidue, type CommentScanState } from './lib/cinder-specifier-residue.ts';
-import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
+import {
+  containsUpstreamSpecifier,
+  lineHasUpstreamSpecifierResidue,
+  type CommentScanState,
+} from './lib/cinder-specifier-residue.ts';
+import {
+  deriveUpstreamReexports,
+  UPSTREAM_PACKAGE_NAMES,
+} from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
@@ -98,13 +105,13 @@ if (checkResult.exitCode !== 0) {
   process.exit(1);
 }
 
-// Dependency order: diff → markdown → commentary. `markdown` vendors `diff`'s
-// dist, `commentary` vendors `markdown`'s — so the list MUST stay
-// topologically sorted (upstream before its dependents). `@cinder/editor` was
-// dissolved (see `docs/decisions/package-boundaries.md`, Phase 1): its
-// headless half moved into `markdown`, its ProseMirror half into
-// `commentary`.
-const upstreamPackageNames = ['diff', 'markdown', 'commentary'] as const;
+// Dependency order: markdown → commentary. `commentary` vendors `markdown`'s
+// dist — so the list MUST stay topologically sorted (upstream before its
+// dependents). `@cinder/editor` was dissolved (see
+// `docs/decisions/package-boundaries.md`, Phase 1): its headless half moved
+// into `markdown` (published as `@lostgradient/markdown`, Phase 2), its ProseMirror
+// half into `commentary`. `@cinder/diff` folded into `markdown` in Phase 2.
+const upstreamPackageNames = ['markdown', 'commentary'] as const;
 
 // Build each upstream package so its `dist/` is fresh — hoisted ABOVE the
 // skip check below. Each upstream build.ts has its own skip check, so this is
@@ -127,7 +134,7 @@ for (const upstreamName of upstreamPackageNames) {
   const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
   if (buildResult.exitCode !== 0) {
     process.stderr.write(
-      `Build aborted: upstream @cinder/${upstreamName} build failed (exit ${buildResult.exitCode}).\n` +
+      `Build aborted: upstream ${upstreamName} package build failed (exit ${buildResult.exitCode}).\n` +
         `${buildResult.stderr.toString()}\n`,
     );
     process.exit(1);
@@ -167,9 +174,9 @@ const components = await discoverComponents();
 const upstreamReexports = await deriveUpstreamReexports();
 
 /**
- * Entrypoints for the bundled `@cinder/*` workspace re-exports. PR 1 bundles
+ * Entrypoints for the bundled upstream workspace re-exports. PR 1 bundles
  * the upstream sources into `@lostgradient/cinder`'s `dist/` so the published package has
- * zero runtime dependency on the four private workspace packages.
+ * zero runtime dependency on the upstream workspace packages.
  */
 const upstreamReexportEntrypoints = upstreamReexports.map(
   (reexport) => `${sourceRoot}/${reexport.sourceRelativePath}`,
@@ -677,8 +684,9 @@ await emitDts({
 // upstream `dist/` output, not stale bytes from before this invocation).
 
 /**
- * Rewrite every `@cinder/<pkg>[/subpath]` import specifier in a file's
- * content to a relative path pointing at the sibling vendored upstream tree.
+ * Rewrite every upstream package import specifier (e.g. `@lostgradient/markdown[/subpath]`,
+ * `@cinder/commentary[/subpath]`) in a file's content to a relative path
+ * pointing at the sibling vendored upstream tree.
  *
  * Called for each file under `dist/<pkg>/**` after a verbatim copy. The
  * relative target depends on how deep the file lives under
@@ -689,6 +697,20 @@ type RewriteMiss = {
   file: string;
   specifier: string;
 };
+
+/** `@lostgradient/markdown` → `markdown`, `@cinder/commentary` → `commentary`, etc. */
+const upstreamFolderNameBySpecifier = new Map(
+  Object.entries(UPSTREAM_PACKAGE_NAMES).map(([folderName, specifier]) => [specifier, folderName]),
+);
+
+/** Alternation of every upstream package's npm specifier, escaped for regex use. */
+const upstreamSpecifierAlternation = Object.values(UPSTREAM_PACKAGE_NAMES)
+  .map((specifier) => specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  .join('|');
+const upstreamSpecifierPattern = new RegExp(
+  `(['"])(${upstreamSpecifierAlternation})(/[^'"]*)?\\1`,
+  'g',
+);
 
 function rewriteCrossUpstreamSpecifiers(
   content: string,
@@ -707,20 +729,22 @@ function rewriteCrossUpstreamSpecifiers(
           .join('/');
   // Node ESM under `module: nodenext` rejects extensionless relative
   // imports, so we materialize the target file path explicitly:
-  //   - `@cinder/markdown`           → `<up>/markdown/index.js`
-  //   - `@cinder/markdown/pipeline`  → `<up>/markdown/pipeline.js` if there
+  //   - `@lostgradient/markdown`           → `<up>/markdown/index.js`
+  //   - `@lostgradient/markdown/pipeline`  → `<up>/markdown/pipeline.js` if there
   //     is a `pipeline.js` file at that path, otherwise `<up>/markdown/pipeline/index.js`.
-  //   - `@cinder/markdown/diff/line-diff` → `<up>/markdown/diff/line-diff.js`.
+  //   - `@lostgradient/markdown/diff/line-diff` → `<up>/markdown/diff/line-diff.js`.
   // The disambiguation depends on whether the target subpath is a directory
   // entry or a leaf file; we resolve that lazily by checking the vendored
   // dist for an `<subpath>/index.js`. If neither candidate exists the
   // rewrite cannot produce a valid Node ESM specifier — the caller fails
   // the build via the `misses` array instead of silently emitting an
   // extensionless path that would yield a broken module (and pass the
-  // `@cinder/` residue gate because the prefix is gone).
+  // residue gate because the prefix is gone).
   return content.replace(
-    /(['"])@cinder\/(markdown|commentary|diff)(\/[^'"]*)?\1/g,
-    (_match, quote: string, pkg: string, rest: string | undefined) => {
+    upstreamSpecifierPattern,
+    (_match, quote: string, specifier: string, rest: string | undefined) => {
+      const pkg = upstreamFolderNameBySpecifier.get(specifier);
+      if (pkg === undefined) return _match;
       const subpath = rest ?? '';
       if (subpath === '') {
         return `${quote}${upwards}/${pkg}/index.js${quote}`;
@@ -740,10 +764,10 @@ function rewriteCrossUpstreamSpecifiers(
       // Record the miss; the caller will abort the build after the pass.
       // We return the original specifier shape so the post-pass residue
       // gate also sees it (defense in depth — if for some reason the
-      // miss collection isn't checked, the `@cinder/` token remains and
-      // the residue gate trips).
-      misses.push({ file: fileDistRelative, specifier: `@cinder/${pkg}${subpath}` });
-      return `${quote}@cinder/${pkg}${subpath}${quote}`;
+      // miss collection isn't checked, the original specifier token
+      // remains and the residue gate trips).
+      misses.push({ file: fileDistRelative, specifier: `${specifier}${subpath}` });
+      return `${quote}${specifier}${subpath}${quote}`;
     },
   );
 }
@@ -799,7 +823,7 @@ async function rewriteSpecifiersUnder(
     if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
     const filePath = `${root}/${relative}`;
     const original = await Bun.file(filePath).text();
-    if (!original.includes('@cinder/')) continue;
+    if (!containsUpstreamSpecifier(original)) continue;
     const rewritten = rewriteCrossUpstreamSpecifiers(original, relative, misses);
     if (rewritten !== original) {
       await Bun.write(filePath, rewritten);
@@ -869,11 +893,11 @@ await writeOverrideRedirectShims(distributionDirectory);
 await writeOverrideRedirectShims(`${distributionDirectory}/server`);
 
 // Fast residue guard: after the rewrite pass, scan every emitted JS/`.d.ts`
-// file for surviving quoted `@cinder/*` import specifiers. `validate-consumers`
-// runs the same check against the published tarball, but that flow takes
-// minutes; this one catches the same class of bug at the end of `bun run
-// build` (~ms) so a missed rewrite surfaces immediately instead of waiting
-// for the slow consumer-validation pass.
+// file for surviving quoted upstream-package import specifiers.
+// `validate-consumers` runs the same check against the published tarball,
+// but that flow takes minutes; this one catches the same class of bug at
+// the end of `bun run build` (~ms) so a missed rewrite surfaces immediately
+// instead of waiting for the slow consumer-validation pass.
 {
   // Comment-stripping + pattern logic lives in
   // `lib/cinder-specifier-residue.ts` so this gate and the slower tarball
@@ -885,11 +909,11 @@ await writeOverrideRedirectShims(`${distributionDirectory}/server`);
   for await (const relative of residueGlob.scan({ cwd: distributionDirectory })) {
     const filePath = `${distributionDirectory}/${relative}`;
     const content = await Bun.file(filePath).text();
-    if (!content.includes('@cinder/')) continue;
+    if (!containsUpstreamSpecifier(content)) continue;
     const scanState: CommentScanState = { inBlockComment: false };
     let hit = false;
     for (const rawLine of content.split('\n')) {
-      if (lineHasCinderResidue(rawLine, scanState)) {
+      if (lineHasUpstreamSpecifierResidue(rawLine, scanState)) {
         hit = true;
         break;
       }
@@ -898,11 +922,11 @@ await writeOverrideRedirectShims(`${distributionDirectory}/server`);
   }
   if (residueOffenders.length > 0) {
     process.stderr.write(
-      'Build aborted: unresolved @cinder/* specifiers remain after rewrite:\n' +
+      'Build aborted: unresolved upstream-package specifiers remain after rewrite:\n' +
         residueOffenders.map((file) => `  ${file}`).join('\n') +
         '\n' +
-        'If the offender is a computed `import(`@cinder/${...}`)`, the rewrite\n' +
-        'pass cannot safely transform it — change the upstream source to use a\n' +
+        'If the offender is a computed `import(`@lostgradient/markdown/${...}`)`, the\n' +
+        'rewrite pass cannot safely transform it — change the upstream source to use a\n' +
         'static specifier instead.\n',
     );
     process.exit(1);

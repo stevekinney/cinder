@@ -17,7 +17,7 @@
 export type {
   PlaceholderCompletionConfiguration,
   PlaceholderDecorationConfiguration,
-} from '@cinder/markdown/templates/types';
+} from '@lostgradient/markdown/templates/types';
 export { createEditorAttachment } from './attach.js';
 export {
   applyLinkToSelection,
