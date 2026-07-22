@@ -326,7 +326,7 @@ export type InvocationRuleBuilderProps = InvocationRuleBuilderBaseProps &
  * The `onchange` callback is documented but marked unsupported because
  * functions cannot be represented as JSON Schema controls.
  */
-export type InvocationRuleBuilderSchemaProps = {
+type InvocationRuleBuilderSchemaBaseProps = {
   /**
    * The current list of automation rules. Controlled — pass the updated
    * list returned from `onchange` back into this prop to commit a change.
@@ -398,3 +398,35 @@ export type InvocationRuleBuilderSchemaProps = {
   /** Additional CSS classes applied to the root element. */
   class?: string;
 };
+
+type InvocationRuleBuilderGroupedSchemaProps = {
+  /**
+   * The current list of automation rules. Controlled — pass the updated
+   * list returned from `onchange` back into this prop to commit a change.
+   */
+  rules: InvocationRule[];
+
+  /** Not accepted in grouped schema modes. */
+  conditions?: never;
+
+  /** Omit or pass `'full'` for conditions plus actions; pass `'conditions'` for conditions only. */
+  mode?: 'full' | 'conditions';
+};
+
+type InvocationRuleBuilderFlatSchemaProps = {
+  /** The direct controlled conditions list without rule-group metadata. */
+  conditions: InvocationRuleCondition[];
+
+  /** Not accepted in flat-conditions schema mode. */
+  rules?: never;
+
+  /** Render one direct implicit-AND conditions list. */
+  mode: 'flat-conditions';
+};
+
+/**
+ * Schema-driven props require the controlled state selected by `mode`, matching
+ * the generated JSON Schema conditionals.
+ */
+export type InvocationRuleBuilderSchemaProps = InvocationRuleBuilderSchemaBaseProps &
+  (InvocationRuleBuilderGroupedSchemaProps | InvocationRuleBuilderFlatSchemaProps);

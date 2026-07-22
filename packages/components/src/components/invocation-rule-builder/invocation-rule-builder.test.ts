@@ -7,6 +7,7 @@ import type {
   InvocationRule,
   InvocationRuleAction,
   InvocationRuleBuilderProps,
+  InvocationRuleBuilderSchemaProps,
   InvocationRuleCondition,
   InvocationRuleOption,
 } from './invocation-rule-builder.types.ts';
@@ -126,6 +127,61 @@ afterEach(() => cleanup());
 
 describe('InvocationRuleBuilder', () => {
   describe('schema', () => {
+    test('schema props require the controlled state selected by mode', () => {
+      const grouped = {
+        rules: [],
+        fieldOptions,
+        readonly: true,
+      } satisfies InvocationRuleBuilderSchemaProps;
+      const flat = {
+        mode: 'flat-conditions',
+        conditions: [],
+        fieldOptions,
+        readonly: true,
+      } satisfies InvocationRuleBuilderSchemaProps;
+
+      type MissingGroupedStateIsRejected = {
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+      type MissingFlatStateIsRejected = {
+        mode: 'flat-conditions';
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+      type GroupedFlatStateIsRejected = {
+        mode: 'conditions';
+        conditions: InvocationRuleCondition[];
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+      type FlatGroupedStateIsRejected = {
+        mode: 'flat-conditions';
+        rules: InvocationRule[];
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+
+      const rejectedStates: [
+        MissingGroupedStateIsRejected,
+        MissingFlatStateIsRejected,
+        GroupedFlatStateIsRejected,
+        FlatGroupedStateIsRejected,
+      ] = [true, true, true, true];
+
+      expect(grouped.rules).toEqual([]);
+      expect(flat.conditions).toEqual([]);
+      expect(rejectedStates).toEqual([true, true, true, true]);
+    });
+
     test('models readonly rules and selector options as supported input', () => {
       const ajv = new Ajv2020({ strict: false });
       const validate = ajv.compile(invocationRuleBuilderSchema);

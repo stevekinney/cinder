@@ -79,7 +79,7 @@
     ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
   );
   const effectiveReadonly = $derived(readonly || onchange === undefined);
-  const conditionsOnly = $derived(mode !== 'full');
+  const conditionsOnly = $derived(mode === 'conditions' || mode === 'flat-conditions');
   const flatConditions = $derived(mode === 'flat-conditions');
   const renderedRules = $derived(
     flatConditions
