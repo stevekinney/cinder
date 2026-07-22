@@ -6,6 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   InvocationRule,
   InvocationRuleAction,
+  InvocationRuleBuilderProps,
   InvocationRuleCondition,
   InvocationRuleOption,
 } from './invocation-rule-builder.types.ts';
@@ -105,6 +106,21 @@ function renderConditionsOnlyBuilder(
   return { ...result, onchange };
 }
 
+function renderFlatConditionsBuilder(
+  conditions: InvocationRuleCondition[] = [],
+  overrides: Record<string, unknown> = {},
+) {
+  const onchange = mock();
+  const result = render(InvocationRuleBuilder, {
+    conditions,
+    onchange,
+    fieldOptions: typedFieldOptions,
+    mode: 'flat-conditions',
+    ...overrides,
+  });
+  return { ...result, onchange };
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
@@ -117,8 +133,11 @@ describe('InvocationRuleBuilder', () => {
       // `operatorOptions`/`actionOptions` are optional: they are ignored in
       // conditions-only mode, so a conditions-only configuration validates
       // without them. They remain declared properties for full-mode usage.
-      expect(invocationRuleBuilderSchema.required).toEqual(['fieldOptions', 'readonly', 'rules']);
+      // State is mode-specific: grouped modes provide `rules`, while flat mode
+      // provides `conditions`, so neither state prop is globally required.
+      expect(invocationRuleBuilderSchema.required).toEqual(['fieldOptions', 'readonly']);
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('rules');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('conditions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('fieldOptions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('operatorOptions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('actionOptions');
@@ -133,6 +152,21 @@ describe('InvocationRuleBuilder', () => {
           fieldOptions,
           operatorOptions,
           actionOptions,
+          readonly: true,
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
+    test('models a readonly flat conditions configuration without rule metadata', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(
+        validate({
+          conditions: [makeCondition({ operator: 'eq' })],
+          fieldOptions: typedFieldOptions,
+          mode: 'flat-conditions',
           readonly: true,
         }),
       ).toBe(true);
@@ -1408,6 +1442,96 @@ describe('InvocationRuleBuilder', () => {
         expect(onchange).toHaveBeenCalledTimes(1);
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('1.');
+      });
+    });
+  });
+
+  describe('flat-conditions mode', () => {
+    test('accepts direct conditions and makes grouped rule state a type error', () => {
+      const validProps = {
+        mode: 'flat-conditions',
+        conditions: [makeCondition({ operator: 'eq' })],
+        fieldOptions: typedFieldOptions,
+        onchange: () => {},
+      } satisfies InvocationRuleBuilderProps;
+
+      expect(validProps.conditions).toHaveLength(1);
+
+      const invalidProps = {
+        mode: 'flat-conditions',
+        conditions: [],
+        rules: [makeRule()],
+        fieldOptions: typedFieldOptions,
+        onchange: () => {},
+      } as const;
+      // @ts-expect-error flat-conditions mode cannot accept rule groups
+      const _invalidContract: InvocationRuleBuilderProps = invalidProps;
+      expect(invalidProps.rules).toHaveLength(1);
+    });
+
+    test('renders condition controls without add, rename, move, or remove rule controls', () => {
+      const { container } = renderFlatConditionsBuilder([
+        makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
+      ]);
+
+      expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
+      expect(container.querySelector('[data-irb-rule-remove]')).toBeNull();
+      expect(container.querySelector('.cinder-invocation-rule-builder__rule-header')).toBeNull();
+      expect(
+        container.querySelector('.cinder-invocation-rule-builder__rule-label-input'),
+      ).toBeNull();
+      expect(container.querySelector('[data-irb-add-condition]')).not.toBeNull();
+      expect(container.querySelector('[data-irb-condition-remove]')).not.toBeNull();
+    });
+
+    test('emits the direct conditions array and a change without rule metadata', async () => {
+      const { container, onchange } = renderFlatConditionsBuilder([
+        makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
+      ]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of Conditions"]',
+      )!;
+
+      await fireEvent.input(valueInput, { target: { value: 'backend' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextConditions, change] = onchange.mock.calls[0]!;
+      expect(nextConditions).toEqual([
+        makeCondition({ field: 'label', operator: 'eq', value: 'backend' }),
+      ]);
+      expect(change).toEqual({
+        type: 'update-condition',
+        conditionId: 'c1',
+        field: 'value',
+      });
+      expect(change).not.toHaveProperty('ruleId');
+    });
+
+    test('adds and removes conditions through the direct flat contract', async () => {
+      const initialCondition = makeCondition({ field: 'label', operator: 'eq' });
+      const added = renderFlatConditionsBuilder([]);
+
+      await fireEvent.click(
+        added.container.querySelector<HTMLElement>('[data-irb-add-condition]')!,
+      );
+
+      const [addedConditions, addChange] = added.onchange.mock.calls[0]!;
+      expect(addedConditions).toHaveLength(1);
+      expect(addChange).toEqual({
+        type: 'add-condition',
+        conditionId: addedConditions[0].id,
+      });
+
+      cleanup();
+      const removed = renderFlatConditionsBuilder([initialCondition]);
+      await fireEvent.click(
+        removed.container.querySelector<HTMLElement>('[data-irb-condition-remove]')!,
+      );
+
+      expect(removed.onchange.mock.calls[0]?.[0]).toEqual([]);
+      expect(removed.onchange.mock.calls[0]?.[1]).toEqual({
+        type: 'remove-condition',
+        conditionId: 'c1',
       });
     });
   });

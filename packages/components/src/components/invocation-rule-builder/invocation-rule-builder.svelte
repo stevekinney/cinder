@@ -8,6 +8,7 @@
    * @tag rules
    * @useWhen Building a UI for configuring which agents or services run based on event conditions.
    * @useWhen You only need conditions (no actions) — pass mode="conditions" for a constrained operator set and typed value inputs.
+   * @useWhen Your data is one flat implicit-AND conditions list — pass mode="flat-conditions" without rule-group metadata.
    * @avoidWhen You need to execute, validate, or persist rules — cinder owns none of that logic.
    * @related capability-gate, steps, review-editor
    */
@@ -19,6 +20,7 @@
     InvocationRuleBuilderSchemaProps,
     InvocationRuleChange,
     InvocationRuleCondition,
+    InvocationRuleConditionChange,
     InvocationRuleConditionsOnlyOperator,
     InvocationRuleFieldType,
     InvocationRuleOption,
@@ -34,6 +36,7 @@
     InvocationRuleBuilderProps,
     InvocationRuleChange,
     InvocationRuleCondition,
+    InvocationRuleConditionChange,
     InvocationRuleFieldType,
     InvocationRuleOption,
     InvocationRuleValueChoice,
@@ -53,7 +56,8 @@
   ];
 
   let {
-    rules,
+    rules = [],
+    conditions = [],
     onchange,
     fieldOptions,
     operatorOptions,
@@ -75,7 +79,13 @@
     ariaLabelledby ? undefined : (ariaLabel ?? label ?? 'Invocation rules'),
   );
   const effectiveReadonly = $derived(readonly || onchange === undefined);
-  const conditionsOnly = $derived(mode === 'conditions');
+  const conditionsOnly = $derived(mode !== 'full');
+  const flatConditions = $derived(mode === 'flat-conditions');
+  const renderedRules = $derived(
+    flatConditions
+      ? [{ id: `${baseId}-flat`, label: 'Conditions', conditions, actions: [] }]
+      : rules,
+  );
 
   /**
    * The operator options actually rendered and used for new conditions.
@@ -218,7 +228,28 @@
           }),
         }))
       : nextRules;
-    onchange?.(rulesToEmit, change);
+    if (flatConditions) {
+      if (
+        change.type !== 'add-condition' &&
+        change.type !== 'remove-condition' &&
+        change.type !== 'update-condition'
+      ) {
+        return;
+      }
+      const { ruleId: _ruleId, ...conditionChange } = change;
+      const conditionChangeHandler = onchange as
+        | ((
+            nextConditions: InvocationRuleCondition[],
+            conditionChange: InvocationRuleConditionChange,
+          ) => void)
+        | undefined;
+      conditionChangeHandler?.(rulesToEmit[0]?.conditions ?? [], conditionChange);
+      return;
+    }
+    const ruleChangeHandler = onchange as
+      | ((nextRules: InvocationRule[], ruleChange: InvocationRuleChange) => void)
+      | undefined;
+    ruleChangeHandler?.(rulesToEmit, change);
   }
 
   /** Announcement text for the live region. */
@@ -246,7 +277,7 @@
     ruleId: string,
     updater: (rule: InvocationRule) => InvocationRule,
   ): InvocationRule[] {
-    return rules.map((rule) => (rule.id === ruleId ? updater(rule) : rule));
+    return renderedRules.map((rule) => (rule.id === ruleId ? updater(rule) : rule));
   }
 
   // ---------------------------------------------------------------------------
@@ -256,8 +287,8 @@
   function handleAddRule(): void {
     const ruleId = generateId();
     const nextRules: InvocationRule[] = [
-      ...rules,
-      { id: ruleId, label: `Rule ${rules.length + 1}`, conditions: [], actions: [] },
+      ...renderedRules,
+      { id: ruleId, label: `Rule ${renderedRules.length + 1}`, conditions: [], actions: [] },
     ];
     const change: InvocationRuleChange = { type: 'add-rule', ruleId };
     emitChange(nextRules, change);
@@ -265,7 +296,7 @@
   }
 
   function handleRemoveRule(ruleId: string, ruleLabel: string, ruleIndex: number): void {
-    const nextRules = rules.filter((rule) => rule.id !== ruleId);
+    const nextRules = renderedRules.filter((rule) => rule.id !== ruleId);
     const change: InvocationRuleChange = { type: 'remove-rule', ruleId };
     emitChange(nextRules, change);
     announce(`${ruleLabel} removed.`);
@@ -285,8 +316,8 @@
 
   function handleMoveRule(ruleId: string, fromIndex: number, direction: -1 | 1): void {
     const toIndex = fromIndex + direction;
-    if (toIndex < 0 || toIndex >= rules.length) return;
-    const nextRules = [...rules];
+    if (toIndex < 0 || toIndex >= renderedRules.length) return;
+    const nextRules = [...renderedRules];
     const [moved] = nextRules.splice(fromIndex, 1);
     nextRules.splice(toIndex, 0, moved!);
     const change: InvocationRuleChange = { type: 'move-rule', ruleId, fromIndex, toIndex };
@@ -298,7 +329,7 @@
     const nextLabel = label.trim() || 'Untitled rule';
     const { [ruleId]: _removedDraft, ...remainingDrafts } = ruleLabelDrafts;
     ruleLabelDrafts = remainingDrafts;
-    const currentLabel = rules.find((rule) => rule.id === ruleId)?.label;
+    const currentLabel = renderedRules.find((rule) => rule.id === ruleId)?.label;
     if (currentLabel === nextLabel) return;
     const nextRules = updateRules(ruleId, (rule) => ({ ...rule, label: nextLabel }));
     const change: InvocationRuleChange = { type: 'rename-rule', ruleId };
@@ -483,77 +514,80 @@
   aria-label={sectionAriaLabel}
   aria-labelledby={ariaLabelledby}
   data-irb-region={baseId}
+  data-irb-flat={flatConditions || undefined}
 >
-  {#each rules as rule, ruleIndex (rule.id)}
+  {#each renderedRules as rule, ruleIndex (rule.id)}
     <div class="cinder-invocation-rule-builder__rule" data-irb-rule={ruleIndex}>
-      <div class="cinder-invocation-rule-builder__rule-header">
-        {#if effectiveReadonly}
-          <h3 class="cinder-invocation-rule-builder__rule-label">{rule.label}</h3>
-        {:else}
-          <label class="cinder-invocation-rule-builder__rule-label-field">
-            <span class="cinder-sr-only">Rule name</span>
-            <input
-              class="cinder-invocation-rule-builder__rule-label-input"
-              value={ruleLabelDraft(rule)}
-              aria-label={`Rule name for ${rule.label}`}
-              oninput={(event) =>
-                (ruleLabelDrafts = {
-                  ...ruleLabelDrafts,
-                  [rule.id]: {
-                    baseLabel: rule.label,
-                    value: (event.target as HTMLInputElement).value,
-                  },
-                })}
-              onblur={(event) =>
-                handleRenameRule(rule.id, (event.target as HTMLInputElement).value)}
-              onkeydown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  (event.currentTarget as HTMLInputElement).blur();
-                }
-              }}
-            />
-          </label>
-        {/if}
+      {#if !flatConditions}
+        <div class="cinder-invocation-rule-builder__rule-header">
+          {#if effectiveReadonly}
+            <h3 class="cinder-invocation-rule-builder__rule-label">{rule.label}</h3>
+          {:else}
+            <label class="cinder-invocation-rule-builder__rule-label-field">
+              <span class="cinder-sr-only">Rule name</span>
+              <input
+                class="cinder-invocation-rule-builder__rule-label-input"
+                value={ruleLabelDraft(rule)}
+                aria-label={`Rule name for ${rule.label}`}
+                oninput={(event) =>
+                  (ruleLabelDrafts = {
+                    ...ruleLabelDrafts,
+                    [rule.id]: {
+                      baseLabel: rule.label,
+                      value: (event.target as HTMLInputElement).value,
+                    },
+                  })}
+                onblur={(event) =>
+                  handleRenameRule(rule.id, (event.target as HTMLInputElement).value)}
+                onkeydown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    (event.currentTarget as HTMLInputElement).blur();
+                  }
+                }}
+              />
+            </label>
+          {/if}
 
-        {#if !effectiveReadonly}
-          <div class="cinder-invocation-rule-builder__rule-controls">
-            <button
-              type="button"
-              class="cinder-invocation-rule-builder__icon-btn"
-              aria-label={`Move ${rule.label} up`}
-              disabled={ruleIndex === 0}
-              onclick={() => handleMoveRule(rule.id, ruleIndex, -1)}
-            >
-              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                <path d="M8 3l5 6H3z" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="cinder-invocation-rule-builder__icon-btn"
-              aria-label={`Move ${rule.label} down`}
-              disabled={ruleIndex === rules.length - 1}
-              onclick={() => handleMoveRule(rule.id, ruleIndex, 1)}
-            >
-              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                <path d="M8 13l-5-6h10z" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              class="cinder-invocation-rule-builder__icon-btn"
-              aria-label={`Remove ${rule.label}`}
-              data-irb-rule-remove
-              onclick={() => handleRemoveRule(rule.id, rule.label, ruleIndex)}
-            >
-              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" fill="none" />
-              </svg>
-            </button>
-          </div>
-        {/if}
-      </div>
+          {#if !effectiveReadonly}
+            <div class="cinder-invocation-rule-builder__rule-controls">
+              <button
+                type="button"
+                class="cinder-invocation-rule-builder__icon-btn"
+                aria-label={`Move ${rule.label} up`}
+                disabled={ruleIndex === 0}
+                onclick={() => handleMoveRule(rule.id, ruleIndex, -1)}
+              >
+                <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                  <path d="M8 3l5 6H3z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="cinder-invocation-rule-builder__icon-btn"
+                aria-label={`Move ${rule.label} down`}
+                disabled={ruleIndex === renderedRules.length - 1}
+                onclick={() => handleMoveRule(rule.id, ruleIndex, 1)}
+              >
+                <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                  <path d="M8 13l-5-6h10z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                class="cinder-invocation-rule-builder__icon-btn"
+                aria-label={`Remove ${rule.label}`}
+                data-irb-rule-remove
+                onclick={() => handleRemoveRule(rule.id, rule.label, ruleIndex)}
+              >
+                <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="2" fill="none" />
+                </svg>
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Conditions section -->
       <div>
@@ -813,7 +847,7 @@
     </div>
   {/each}
 
-  {#if !effectiveReadonly}
+  {#if !effectiveReadonly && !flatConditions}
     <button
       type="button"
       class="cinder-invocation-rule-builder__add-btn cinder-invocation-rule-builder__add-rule-btn"
@@ -824,7 +858,7 @@
     </button>
   {/if}
 
-  {#if rules.length === 0 && effectiveReadonly}
+  {#if renderedRules.length === 0 && effectiveReadonly}
     <p class="cinder-invocation-rule-builder__empty">No rules configured.</p>
   {/if}
 </section>

@@ -20,6 +20,14 @@
     box-shadow: var(--cinder-shadow-sm);
   }
 
+  .cinder-invocation-rule-builder[data-irb-flat] .cinder-invocation-rule-builder__rule {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
   /* Rule header row: label + move/remove controls */
   .cinder-invocation-rule-builder__rule-header {
     display: flex;

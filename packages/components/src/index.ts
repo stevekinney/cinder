@@ -480,6 +480,7 @@ export type {
   InvocationRuleBuilderProps,
   InvocationRuleChange,
   InvocationRuleCondition,
+  InvocationRuleConditionChange,
   InvocationRuleConditionsOnlyOperator,
   InvocationRuleFieldType,
   InvocationRuleOption,
