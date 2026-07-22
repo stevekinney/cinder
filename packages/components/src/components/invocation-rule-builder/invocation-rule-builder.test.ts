@@ -6,6 +6,8 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   InvocationRule,
   InvocationRuleAction,
+  InvocationRuleBuilderProps,
+  InvocationRuleBuilderSchemaProps,
   InvocationRuleCondition,
   InvocationRuleOption,
 } from './invocation-rule-builder.types.ts';
@@ -105,11 +107,81 @@ function renderConditionsOnlyBuilder(
   return { ...result, onchange };
 }
 
+function renderFlatConditionsBuilder(
+  conditions: InvocationRuleCondition[] = [],
+  overrides: Record<string, unknown> = {},
+) {
+  const onchange = mock();
+  const result = render(InvocationRuleBuilder, {
+    conditions,
+    onchange,
+    fieldOptions: typedFieldOptions,
+    mode: 'flat-conditions',
+    ...overrides,
+  });
+  return { ...result, onchange };
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('InvocationRuleBuilder', () => {
   describe('schema', () => {
+    test('schema props require the controlled state selected by mode', () => {
+      const grouped = {
+        rules: [],
+        fieldOptions,
+        readonly: true,
+      } satisfies InvocationRuleBuilderSchemaProps;
+      const flat = {
+        mode: 'flat-conditions',
+        conditions: [],
+        fieldOptions,
+        readonly: true,
+      } satisfies InvocationRuleBuilderSchemaProps;
+
+      type MissingGroupedStateIsRejected = {
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+      type MissingFlatStateIsRejected = {
+        mode: 'flat-conditions';
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+      type GroupedFlatStateIsRejected = {
+        mode: 'conditions';
+        conditions: InvocationRuleCondition[];
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+      type FlatGroupedStateIsRejected = {
+        mode: 'flat-conditions';
+        rules: InvocationRule[];
+        fieldOptions: InvocationRuleOption[];
+        readonly: true;
+      } extends InvocationRuleBuilderSchemaProps
+        ? false
+        : true;
+
+      const rejectedStates: [
+        MissingGroupedStateIsRejected,
+        MissingFlatStateIsRejected,
+        GroupedFlatStateIsRejected,
+        FlatGroupedStateIsRejected,
+      ] = [true, true, true, true];
+
+      expect(grouped.rules).toEqual([]);
+      expect(flat.conditions).toEqual([]);
+      expect(rejectedStates).toEqual([true, true, true, true]);
+    });
+
     test('models readonly rules and selector options as supported input', () => {
       const ajv = new Ajv2020({ strict: false });
       const validate = ajv.compile(invocationRuleBuilderSchema);
@@ -117,8 +189,11 @@ describe('InvocationRuleBuilder', () => {
       // `operatorOptions`/`actionOptions` are optional: they are ignored in
       // conditions-only mode, so a conditions-only configuration validates
       // without them. They remain declared properties for full-mode usage.
-      expect(invocationRuleBuilderSchema.required).toEqual(['fieldOptions', 'readonly', 'rules']);
+      // State is mode-specific: grouped modes provide `rules`, while flat mode
+      // provides `conditions`, so neither state prop is globally required.
+      expect(invocationRuleBuilderSchema.required).toEqual(['fieldOptions', 'readonly']);
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('rules');
+      expect(invocationRuleBuilderSchema.properties).toHaveProperty('conditions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('fieldOptions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('operatorOptions');
       expect(invocationRuleBuilderSchema.properties).toHaveProperty('actionOptions');
@@ -137,6 +212,60 @@ describe('InvocationRuleBuilder', () => {
         }),
       ).toBe(true);
       expect(validate.errors).toBeNull();
+    });
+
+    test('models a readonly flat conditions configuration without rule metadata', () => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(
+        validate({
+          conditions: [makeCondition({ operator: 'eq' })],
+          fieldOptions: typedFieldOptions,
+          mode: 'flat-conditions',
+          readonly: true,
+        }),
+      ).toBe(true);
+      expect(validate.errors).toBeNull();
+    });
+
+    test.each([
+      {
+        name: 'flat mode without conditions',
+        configuration: { mode: 'flat-conditions' },
+      },
+      {
+        name: 'flat mode with grouped rules',
+        configuration: { mode: 'flat-conditions', conditions: [], rules: [makeRule()] },
+      },
+      {
+        name: 'full mode with flat conditions',
+        configuration: { mode: 'full', conditions: [] },
+      },
+      {
+        name: 'conditions mode with flat conditions',
+        configuration: { mode: 'conditions', conditions: [] },
+      },
+      {
+        name: 'default full mode without rules',
+        configuration: {},
+      },
+      {
+        name: 'grouped mode with both state shapes',
+        configuration: { rules: [], conditions: [] },
+      },
+    ])('rejects $name', ({ configuration }) => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(
+        validate({
+          ...configuration,
+          fieldOptions: typedFieldOptions,
+          readonly: true,
+        }),
+      ).toBe(false);
+      expect(validate.errors).not.toBeNull();
     });
 
     test('rejects editable schema-driven configurations without onchange', () => {
@@ -1408,6 +1537,122 @@ describe('InvocationRuleBuilder', () => {
         expect(onchange).toHaveBeenCalledTimes(1);
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('1.');
+      });
+    });
+  });
+
+  describe('flat-conditions mode', () => {
+    test('accepts direct conditions and makes grouped rule state a type error', () => {
+      const validProps = {
+        mode: 'flat-conditions',
+        conditions: [makeCondition({ operator: 'eq' })],
+        fieldOptions: typedFieldOptions,
+        onchange: () => {},
+      } satisfies InvocationRuleBuilderProps;
+
+      expect(validProps.conditions).toHaveLength(1);
+
+      const invalidProps = {
+        mode: 'flat-conditions',
+        conditions: [],
+        rules: [makeRule()],
+        fieldOptions: typedFieldOptions,
+        onchange: () => {},
+      } as const;
+      // @ts-expect-error flat-conditions mode cannot accept rule groups
+      const _invalidContract: InvocationRuleBuilderProps = invalidProps;
+      expect(invalidProps.rules).toHaveLength(1);
+    });
+
+    test('renders condition controls without add, rename, move, or remove rule controls', () => {
+      const { container } = renderFlatConditionsBuilder([
+        makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
+      ]);
+
+      expect(container.querySelector('[data-irb-add-rule]')).toBeNull();
+      expect(container.querySelector('[data-irb-rule-remove]')).toBeNull();
+      expect(container.querySelector('.cinder-invocation-rule-builder__rule-header')).toBeNull();
+      expect(
+        container.querySelector('.cinder-invocation-rule-builder__rule-label-input'),
+      ).toBeNull();
+      expect(container.querySelector('[data-irb-add-condition]')).not.toBeNull();
+      expect(container.querySelector('[data-irb-condition-remove]')).not.toBeNull();
+    });
+
+    test('keeps a semantic heading for screen-reader section navigation', () => {
+      const { container } = renderFlatConditionsBuilder([]);
+      const heading = container.querySelector('h3.cinder-sr-only');
+
+      expect(heading?.textContent).toBe('Conditions');
+    });
+
+    test('uses rule-agnostic empty-state copy and accessible names', () => {
+      const editable = renderFlatConditionsBuilder([]);
+      expect(editable.container.querySelector('[role="status"]')?.textContent?.trim()).toBe(
+        'Add at least one condition.',
+      );
+
+      const readonly = renderFlatConditionsBuilder([], { readonly: true });
+      expect(
+        readonly.container
+          .querySelector('.cinder-invocation-rule-builder__summary')
+          ?.getAttribute('aria-label'),
+      ).toBe('Conditions');
+      expect(
+        readonly.container
+          .querySelector('.cinder-invocation-rule-builder__empty')
+          ?.textContent?.trim(),
+      ).toBe('No conditions.');
+    });
+
+    test('emits the direct conditions array and a change without rule metadata', async () => {
+      const { container, onchange } = renderFlatConditionsBuilder([
+        makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
+      ]);
+      const valueInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Value for condition 1 of Conditions"]',
+      )!;
+
+      await fireEvent.input(valueInput, { target: { value: 'backend' } });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextConditions, change] = onchange.mock.calls[0]!;
+      expect(nextConditions).toEqual([
+        makeCondition({ field: 'label', operator: 'eq', value: 'backend' }),
+      ]);
+      expect(change).toEqual({
+        type: 'update-condition',
+        conditionId: 'c1',
+        field: 'value',
+      });
+      expect(change).not.toHaveProperty('ruleId');
+    });
+
+    test('adds and removes conditions through the direct flat contract', async () => {
+      const initialCondition = makeCondition({ field: 'label', operator: 'eq' });
+      const added = renderFlatConditionsBuilder([]);
+
+      await fireEvent.click(
+        added.container.querySelector<HTMLElement>('[data-irb-add-condition]')!,
+      );
+
+      const [addedConditions, addChange] = added.onchange.mock.calls[0]!;
+      expect(addedConditions).toHaveLength(1);
+      expect(addChange).toEqual({
+        type: 'add-condition',
+        conditionId: addedConditions[0].id,
+      });
+
+      cleanup();
+      const removed = renderFlatConditionsBuilder([initialCondition]);
+      await fireEvent.click(
+        removed.container.querySelector<HTMLElement>('[data-irb-condition-remove]')!,
+      );
+
+      expect(removed.onchange.mock.calls[0]?.[0]).toEqual([]);
+      expect(removed.onchange.mock.calls[0]?.[1]).toEqual({
+        type: 'remove-condition',
+        conditionId: 'c1',
       });
     });
   });

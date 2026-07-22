@@ -2724,7 +2724,8 @@
       "tags": ["automation", "rules"],
       "useWhen": [
         "Building a UI for configuring which agents or services run based on event conditions.",
-        "You only need conditions (no actions) — pass mode=\"conditions\" for a constrained operator set and typed value inputs."
+        "You only need conditions (no actions) — pass mode=\"conditions\" for a constrained operator set and typed value inputs.",
+        "Your data is one flat implicit-AND conditions list — pass mode=\"flat-conditions\" without rule-group metadata."
       ],
       "avoidWhen": [
         {

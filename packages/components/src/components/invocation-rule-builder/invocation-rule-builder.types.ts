@@ -104,8 +104,10 @@ export type InvocationRuleOption = {
  *   entirely, rules never emit action descriptors, the operator set is
  *   fixed to {@link InvocationRuleConditionsOnlyOperator}, and condition
  *   value controls are inferred from each field option's `type`.
+ * - `'flat-conditions'` uses those same condition controls for one direct
+ *   implicit-AND list, without rule-group metadata or controls.
  */
-export type InvocationRuleBuilderMode = 'full' | 'conditions';
+export type InvocationRuleBuilderMode = 'full' | 'conditions' | 'flat-conditions';
 
 /**
  * The fixed operator vocabulary used in conditions-only mode
@@ -136,33 +138,36 @@ export type InvocationRuleChange =
   | { type: 'update-action'; ruleId: string; actionId: string };
 
 /**
+ * Describes a change to the direct conditions array used by
+ * `mode="flat-conditions"`. Rule identifiers are intentionally absent because
+ * the flat contract cannot represent rule groups.
+ */
+export type InvocationRuleConditionChange =
+  | { type: 'add-condition'; conditionId: string }
+  | { type: 'remove-condition'; conditionId: string }
+  | {
+      type: 'update-condition';
+      conditionId: string;
+      field: keyof InvocationRuleCondition;
+    };
+
+/**
  * Props for the InvocationRuleBuilder component.
  *
  * Cinder owns no rule execution, persistence, or validation semantics.
- * All rule state is managed externally and passed in through the `rules`
- * prop. Every user action calls `onchange` with the next rule array and
- * a change descriptor; the consumer decides what to persist.
+ * All state is managed externally. Grouped modes use `rules`, while
+ * `mode="flat-conditions"` uses a direct `conditions` array so consumers do
+ * not need to invent rule-group metadata.
  */
 type InvocationRuleBuilderBaseProps = Omit<
   HTMLAttributes<HTMLElement>,
   'class' | 'children' | 'onchange'
 > & {
   /**
-   * The current list of automation rules. Controlled — pass the updated
-   * list returned from `onchange` back into this prop to commit a change.
-   */
-  rules: InvocationRule[];
-
-  /**
    * Options for the condition field selector. Consumer-provided list of
    * fields that a condition can test, e.g. "path", "label", "author".
    */
   fieldOptions: InvocationRuleOption[];
-
-  /**
-   * Label for the "Add rule" button. Defaults to "Add rule".
-   */
-  addRuleLabel?: string;
 
   /**
    * Label for the "Add condition" button. Defaults to "Add condition".
@@ -231,47 +236,89 @@ type InvocationRuleBuilderConditionsOnlyModeProps = {
   addActionLabel?: never;
 };
 
-type InvocationRuleBuilderModeProps =
-  | InvocationRuleBuilderFullModeProps
-  | InvocationRuleBuilderConditionsOnlyModeProps;
-
 type InvocationRuleBuilderChangeHandler = (
   nextRules: InvocationRule[],
   change: InvocationRuleChange,
 ) => void;
 
+type InvocationRuleBuilderConditionChangeHandler = (
+  nextConditions: InvocationRuleCondition[],
+  change: InvocationRuleConditionChange,
+) => void;
+
+type InvocationRuleBuilderReadonlyProps<ChangeHandler> =
+  | {
+      /**
+       * Called whenever the user makes any edit. Required for editable runtime
+       * usage because editable controls must commit controlled state changes.
+       * Receives the next controlled state (pure, not mutated) and a change descriptor.
+       * Consumer owns persistence, validation, and execution.
+       */
+      onchange: ChangeHandler;
+
+      /**
+       * When false or omitted, renders editable controls. Editable mode requires
+       * `onchange` so controls cannot become interactive-but-no-op.
+       */
+      readonly?: false;
+    }
+  | {
+      /**
+       * Optional in readonly usage because no edit controls are rendered.
+       * Runtime consumers may still pass it when sharing props between modes.
+       */
+      onchange?: ChangeHandler;
+
+      /**
+       * When true, renders a readonly summary of each rule instead of editable
+       * controls.
+       */
+      readonly: true;
+    };
+
+type InvocationRuleBuilderGroupedProps = {
+  /**
+   * The current list of automation rules. Controlled — pass the updated
+   * list returned from `onchange` back into this prop to commit a change.
+   */
+  rules: InvocationRule[];
+
+  /** Not accepted in grouped modes. */
+  conditions?: never;
+
+  /** Label for the "Add rule" button. Defaults to "Add rule". */
+  addRuleLabel?: string;
+} & (InvocationRuleBuilderFullModeProps | InvocationRuleBuilderConditionsOnlyModeProps) &
+  InvocationRuleBuilderReadonlyProps<InvocationRuleBuilderChangeHandler>;
+
+type InvocationRuleBuilderFlatConditionsProps = {
+  /**
+   * Renders one direct, implicit-AND conditions list without rule headers or
+   * rule-level controls.
+   */
+  mode: 'flat-conditions';
+
+  /** The controlled flat conditions list. */
+  conditions: InvocationRuleCondition[];
+
+  /** Not accepted in flat-conditions mode. */
+  rules?: never;
+
+  /** Not accepted because flat-conditions mode has no rule controls. */
+  addRuleLabel?: never;
+
+  /** Cinder supplies the fixed eq/gt/lt/gte/lte operator set internally. */
+  operatorOptions?: never;
+
+  /** Not accepted because flat-conditions mode has no actions. */
+  actionOptions?: never;
+
+  /** Not accepted because flat-conditions mode has no actions. */
+  addActionLabel?: never;
+} & InvocationRuleBuilderReadonlyProps<InvocationRuleBuilderConditionChangeHandler>;
+
 export type InvocationRuleBuilderProps = InvocationRuleBuilderBaseProps &
-  InvocationRuleBuilderModeProps &
-  (
-    | {
-        /**
-         * Called whenever the user makes any edit. Required for editable runtime
-         * usage because editable controls must commit controlled state changes.
-         * Receives the next rule array (pure, not mutated) and a change descriptor.
-         * Consumer owns persistence, validation, and execution.
-         */
-        onchange: InvocationRuleBuilderChangeHandler;
-
-        /**
-         * When false or omitted, renders editable controls. Editable mode requires
-         * `onchange` so controls cannot become interactive-but-no-op.
-         */
-        readonly?: false;
-      }
-    | {
-        /**
-         * Optional in readonly usage because no edit controls are rendered.
-         * Runtime consumers may still pass it when sharing props between modes.
-         */
-        onchange?: InvocationRuleBuilderChangeHandler;
-
-        /**
-         * When true, renders a readonly summary of each rule instead of editable
-         * controls.
-         */
-        readonly: true;
-      }
-  );
+  (InvocationRuleBuilderGroupedProps | InvocationRuleBuilderFlatConditionsProps);
 
 /**
  * Cinder-specific schema surface for InvocationRuleBuilder.
@@ -279,12 +326,18 @@ export type InvocationRuleBuilderProps = InvocationRuleBuilderBaseProps &
  * The `onchange` callback is documented but marked unsupported because
  * functions cannot be represented as JSON Schema controls.
  */
-export type InvocationRuleBuilderSchemaProps = {
+type InvocationRuleBuilderSchemaBaseProps = {
   /**
    * The current list of automation rules. Controlled — pass the updated
    * list returned from `onchange` back into this prop to commit a change.
    */
-  rules: InvocationRule[];
+  rules?: InvocationRule[];
+
+  /**
+   * The direct controlled conditions list for `mode="flat-conditions"`.
+   * This shape contains no rule-group metadata.
+   */
+  conditions?: InvocationRuleCondition[];
 
   /**
    * Options for the condition field selector. Consumer-provided list of
@@ -294,28 +347,26 @@ export type InvocationRuleBuilderSchemaProps = {
 
   /**
    * Rendering mode. Omit or pass `'full'` for the original conditions +
-   * actions behavior; pass `'conditions'` to render conditions only. Not
-   * expressible as a schema-driven discriminant here because JSON Schema
-   * validation of this component is documented, not enforced at runtime
-   * against `operatorOptions`/`actionOptions` presence; see the component
-   * types for the full mode-discriminated prop shape.
+   * actions behavior; pass `'conditions'` for grouped conditions only, or
+   * `'flat-conditions'` for one direct conditions list. The schema requires
+   * `conditions` only in flat mode and `rules` in both grouped modes; runtime
+   * component types additionally reject mode-inapplicable option props.
    */
   mode?: InvocationRuleBuilderMode;
 
   /**
    * Options for the condition operator selector. Consumer-provided list
    * of operators, e.g. "matches", "is", "is-not", "contains". Required in
-   * full mode; optional (and ignored) when `mode` is `'conditions'`, since
-   * cinder supplies a fixed operator set in that mode — so a conditions-only
-   * configuration validates without it.
+   * full mode; optional (and ignored) in both constrained conditions modes,
+   * where cinder supplies a fixed operator set.
    */
   operatorOptions?: InvocationRuleOption[];
 
   /**
    * Options for the action target selector. Consumer-provided list of
    * targets, e.g. review-agent slugs or step identifiers. Required in full
-   * mode; optional (and ignored) when `mode` is `'conditions'`, since actions
-   * are not rendered — so a conditions-only configuration validates without it.
+   * mode; optional (and ignored) in both constrained conditions modes, where
+   * actions are not rendered.
    */
   actionOptions?: InvocationRuleOption[];
 
@@ -347,3 +398,35 @@ export type InvocationRuleBuilderSchemaProps = {
   /** Additional CSS classes applied to the root element. */
   class?: string;
 };
+
+type InvocationRuleBuilderGroupedSchemaProps = {
+  /**
+   * The current list of automation rules. Controlled — pass the updated
+   * list returned from `onchange` back into this prop to commit a change.
+   */
+  rules: InvocationRule[];
+
+  /** Not accepted in grouped schema modes. */
+  conditions?: never;
+
+  /** Omit or pass `'full'` for conditions plus actions; pass `'conditions'` for conditions only. */
+  mode?: 'full' | 'conditions';
+};
+
+type InvocationRuleBuilderFlatSchemaProps = {
+  /** The direct controlled conditions list without rule-group metadata. */
+  conditions: InvocationRuleCondition[];
+
+  /** Not accepted in flat-conditions schema mode. */
+  rules?: never;
+
+  /** Render one direct implicit-AND conditions list. */
+  mode: 'flat-conditions';
+};
+
+/**
+ * Schema-driven props require the controlled state selected by `mode`, matching
+ * the generated JSON Schema conditionals.
+ */
+export type InvocationRuleBuilderSchemaProps = InvocationRuleBuilderSchemaBaseProps &
+  (InvocationRuleBuilderGroupedSchemaProps | InvocationRuleBuilderFlatSchemaProps);

@@ -67,6 +67,33 @@
       },
       "description": "The current list of automation rules. Controlled — pass the updated\nlist returned from `onchange` back into this prop to commit a change."
     },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identifies the condition row; must be unique within its rule."
+          },
+          "field": {
+            "type": "string",
+            "description": "The field being tested, e.g. \"path\" or \"label\". Consumer-defined."
+          },
+          "operator": {
+            "type": "string",
+            "description": "The comparison operator, e.g. \"matches\" or \"is\". Consumer-defined."
+          },
+          "value": {
+            "type": "string",
+            "description": "The value being compared against. Consumer-defined."
+          }
+        },
+        "additionalProperties": false,
+        "required": ["field", "id", "operator", "value"]
+      },
+      "description": "The direct controlled conditions list for `mode=\"flat-conditions\"`.\nThis shape contains no rule-group metadata."
+    },
     "fieldOptions": {
       "type": "array",
       "items": {
@@ -110,8 +137,8 @@
       "description": "Options for the condition field selector. Consumer-provided list of\nfields that a condition can test, e.g. \"path\", \"label\", \"author\"."
     },
     "mode": {
-      "enum": ["full", "conditions"],
-      "description": "Rendering mode. Omit or pass `'full'` for the original conditions +\nactions behavior; pass `'conditions'` to render conditions only. Not\nexpressible as a schema-driven discriminant here because JSON Schema\nvalidation of this component is documented, not enforced at runtime\nagainst `operatorOptions`/`actionOptions` presence; see the component\ntypes for the full mode-discriminated prop shape."
+      "enum": ["full", "conditions", "flat-conditions"],
+      "description": "Rendering mode. Omit or pass `'full'` for the original conditions +\nactions behavior; pass `'conditions'` for grouped conditions only, or\n`'flat-conditions'` for one direct conditions list. The schema requires\n`conditions` only in flat mode and `rules` in both grouped modes; runtime\ncomponent types additionally reject mode-inapplicable option props."
     },
     "operatorOptions": {
       "type": "array",
@@ -153,7 +180,7 @@
         "additionalProperties": false,
         "required": ["label", "value"]
       },
-      "description": "Options for the condition operator selector. Consumer-provided list\nof operators, e.g. \"matches\", \"is\", \"is-not\", \"contains\". Required in\nfull mode; optional (and ignored) when `mode` is `'conditions'`, since\ncinder supplies a fixed operator set in that mode — so a conditions-only\nconfiguration validates without it."
+      "description": "Options for the condition operator selector. Consumer-provided list\nof operators, e.g. \"matches\", \"is\", \"is-not\", \"contains\". Required in\nfull mode; optional (and ignored) in both constrained conditions modes,\nwhere cinder supplies a fixed operator set."
     },
     "actionOptions": {
       "type": "array",
@@ -195,7 +222,7 @@
         "additionalProperties": false,
         "required": ["label", "value"]
       },
-      "description": "Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers. Required in full\nmode; optional (and ignored) when `mode` is `'conditions'`, since actions\nare not rendered — so a conditions-only configuration validates without it."
+      "description": "Options for the action target selector. Consumer-provided list of\ntargets, e.g. review-agent slugs or step identifiers. Required in full\nmode; optional (and ignored) in both constrained conditions modes, where\nactions are not rendered."
     },
     "readonly": {
       "const": true,
@@ -223,14 +250,50 @@
     }
   },
   "additionalProperties": false,
-  "required": ["fieldOptions", "readonly", "rules"],
+  "required": ["fieldOptions", "readonly"],
   "metadata": {
     "unsupportedProps": [
       {
         "name": "onchange",
         "reason": "function-or-snippet",
-        "description": "Called whenever the user makes any edit. Required for editable runtime\nusage because editable controls must commit controlled state changes.\nReceives the next rule array (pure, not mutated) and a change descriptor.\nConsumer owns persistence, validation, and execution."
+        "description": "Called whenever the user makes any edit. Required for editable runtime\nusage because editable controls must commit controlled state changes.\nReceives the next controlled state (pure, not mutated) and a change descriptor.\nConsumer owns persistence, validation, and execution."
       }
     ]
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "mode": {
+            "const": "flat-conditions"
+          }
+        },
+        "required": ["mode"]
+      },
+      "then": {
+        "required": ["conditions"],
+        "not": {
+          "required": ["rules"]
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "mode": {
+              "const": "flat-conditions"
+            }
+          },
+          "required": ["mode"]
+        }
+      },
+      "then": {
+        "required": ["rules"],
+        "not": {
+          "required": ["conditions"]
+        }
+      }
+    }
+  ]
 }

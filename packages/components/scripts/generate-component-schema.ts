@@ -314,6 +314,11 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
     return;
   }
 
+  if (componentName === 'invocation-rule-builder') {
+    applyInvocationRuleBuilderSchemaRules(schema);
+    return;
+  }
+
   if (componentName === 'source-diff-viewer') {
     applySourceDiffViewerSchemaRules(schema);
     return;
@@ -358,6 +363,34 @@ function applySegmentSchemaRules(schema: ComponentSchemaOutput): void {
       // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['value'],
+      },
+    },
+  ];
+}
+
+function applyInvocationRuleBuilderSchemaRules(schema: ComponentSchemaOutput): void {
+  const flatModeCondition = {
+    properties: {
+      mode: { const: 'flat-conditions' },
+    },
+    required: ['mode'],
+  };
+
+  schema.allOf = [
+    {
+      if: flatModeCondition,
+      // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['conditions'],
+        not: { required: ['rules'] },
+      },
+    },
+    {
+      if: { not: flatModeCondition },
+      // eslint-disable-next-line unicorn/no-thenable -- `then` is JSON Schema's conditional keyword here, not a Promise `.then`; this object is schema data, never awaited.
+      [JSON_SCHEMA_THEN_KEYWORD]: {
+        required: ['rules'],
+        not: { required: ['conditions'] },
       },
     },
   ];

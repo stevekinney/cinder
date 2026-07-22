@@ -10,6 +10,7 @@ export type {
   InvocationRuleBuilderSchemaProps,
   InvocationRuleChange,
   InvocationRuleCondition,
+  InvocationRuleConditionChange,
   InvocationRuleConditionsOnlyOperator,
   InvocationRuleFieldType,
   InvocationRuleOption,
