@@ -41,11 +41,35 @@
 
   let draftValue = $state(value);
   let previousValue = value;
+  let textareaNode: HTMLTextAreaElement | undefined = $state();
+  let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
 
   $effect(() => {
     if (value === previousValue) return;
     previousValue = value;
     draftValue = value;
+  });
+
+  function syncDraftAfterFormReset(): void {
+    if (resetSyncTimeout !== undefined) clearTimeout(resetSyncTimeout);
+    resetSyncTimeout = setTimeout(() => {
+      resetSyncTimeout = undefined;
+      if (textareaNode) draftValue = textareaNode.value;
+    }, 0);
+  }
+
+  $effect(() => {
+    const form = textareaNode?.form;
+    if (!form) return;
+
+    form.addEventListener('reset', syncDraftAfterFormReset);
+    return () => {
+      form.removeEventListener('reset', syncDraftAfterFormReset);
+      if (resetSyncTimeout !== undefined) {
+        clearTimeout(resetSyncTimeout);
+        resetSyncTimeout = undefined;
+      }
+    };
   });
 
   const descriptionId = $derived(description ? `${id}-description` : undefined);
@@ -84,6 +108,7 @@
     <p id={descriptionId} class="cinder-json-editor__description">{description}</p>
   {/if}
   <textarea
+    bind:this={textareaNode}
     {...rest}
     {id}
     {rows}

@@ -45,6 +45,30 @@ describe('JsonEditor', () => {
     expect((view.getByLabelText('Payload') as HTMLTextAreaElement).value).toBe('{"version":2}');
   });
 
+  test('synchronizes parse feedback after a native form reset', async () => {
+    const form = document.createElement('form');
+    form.id = 'payload-form';
+    document.body.append(form);
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      defaultValue: '{}',
+      form: form.id,
+    });
+    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+
+    await fireEvent.input(editor, { target: { value: '{' } });
+    expect(editor.getAttribute('aria-invalid')).toBe('true');
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(editor.value).toBe('{}');
+    expect(editor.hasAttribute('aria-invalid')).toBe(false);
+    expect(view.getByRole('status').textContent).toBe('Valid JSON.');
+  });
+
   test('announces valid JSON and wires the description to the textarea', () => {
     const view = render(JsonEditor, {
       id: 'payload',

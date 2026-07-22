@@ -2,8 +2,8 @@
  * Dependency-aware test scoping: the import graph that powers it.
  *
  * Cinder has ~140 components, each in its own directory under
- * `src/components/<slug>/`, and they import each other via relative paths
- * (`import Button from '../button/button.svelte'`). When a single component
+ * `src/components/<slug>/`, and they import each other through public package
+ * subpaths (`import Button from '@lostgradient/cinder/button'`). When a single component
  * changes, CI should retest that component AND every component that
  * (transitively) depends on it — not the full matrix, and not just the one
  * file. This module builds the file-level import graph, inverts it to find
@@ -297,6 +297,14 @@ export function resolveImport(
   specifier: string,
   exists: (repoRelativePath: string) => boolean,
 ): ResolveResult {
+  const publicComponentMatch = /^@lostgradient\/cinder\/([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(
+    specifier,
+  );
+  if (publicComponentMatch?.[1]) {
+    const publicEntry = `${COMPONENTS_PREFIX}${publicComponentMatch[1]}/index.ts`;
+    return exists(publicEntry) ? { kind: 'resolved', path: publicEntry } : { kind: 'external' };
+  }
+
   if (!specifier.startsWith('.')) {
     return { kind: 'external' };
   }
