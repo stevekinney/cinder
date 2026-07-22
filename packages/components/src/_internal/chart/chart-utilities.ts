@@ -124,6 +124,7 @@ export type BarChartModel = {
   categoryTicks: Array<{
     categoryKey: string;
     label: string;
+    fullLabel: string;
     x: number;
     y: number;
   }>;
@@ -531,7 +532,6 @@ export function createBarModel(options: {
   assertValidTickCount('bar-chart', xAxis);
   assertValidTickCount('bar-chart', yAxis);
 
-  const geometry = createGeometry(width, height);
   const categories: NormalizedXValue[] = [];
   const seenCategories = new Set<string>();
   const categoryKinds = new Set<string>();
@@ -594,6 +594,14 @@ export function createBarModel(options: {
   }
 
   const sortedCategories = sortXValues(categories);
+  const categoryLabels = sortedCategories.map((category, index) =>
+    formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
+  );
+  const horizontalCategoryLabelLayout =
+    orientation === 'horizontal'
+      ? createHorizontalCategoryLabelLayout(categoryLabels, width)
+      : undefined;
+  const geometry = createGeometry(width, height, horizontalCategoryLabelLayout?.marginLeft);
   // Domain is computed from visible series only — same convention as cartesian
   // charts — so the value scale shrinks correctly when a series is hidden.
   const valueDomain = createPaddedDomain(
@@ -633,8 +641,13 @@ export function createBarModel(options: {
     const categoryPosition = categoryScale(category.key) ?? 0;
     return {
       categoryKey: category.key,
-      label: formatXValue(category, orientation === 'vertical' ? xAxis : yAxis, { index }),
-      x: orientation === 'vertical' ? categoryPosition + categoryScale.bandwidth() / 2 : -8,
+      label:
+        horizontalCategoryLabelLayout?.labels[index] ?? categoryLabels[index] ?? category.label,
+      fullLabel: categoryLabels[index] ?? category.label,
+      x:
+        orientation === 'vertical'
+          ? categoryPosition + categoryScale.bandwidth() / 2
+          : -HORIZONTAL_CATEGORY_LABEL_GAP,
       y:
         orientation === 'vertical'
           ? geometry.plotHeight + 20
@@ -818,11 +831,20 @@ export function legendVisible(legendPosition: ChartLegendPosition, seriesCount: 
   return legendPosition !== 'none' && seriesCount > 0;
 }
 
-function createGeometry(width: number, height: number): ChartGeometry {
+const DEFAULT_CHART_MARGIN_LEFT = 48;
+const HORIZONTAL_CATEGORY_LABEL_CHARACTER_WIDTH = 12;
+const HORIZONTAL_CATEGORY_LABEL_GAP = 8;
+const HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING = 8;
+const MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION = 0.4;
+
+function createGeometry(
+  width: number,
+  height: number,
+  marginLeft = DEFAULT_CHART_MARGIN_LEFT,
+): ChartGeometry {
   const marginTop = 16;
   const marginRight = 16;
   const marginBottom = 36;
-  const marginLeft = 48;
   return {
     plotWidth: Math.max(1, width - marginLeft - marginRight),
     plotHeight: Math.max(1, height - marginTop - marginBottom),
@@ -831,6 +853,53 @@ function createGeometry(width: number, height: number): ChartGeometry {
     marginBottom,
     marginLeft,
   };
+}
+
+function createHorizontalCategoryLabelLayout(
+  labels: string[],
+  chartWidth: number,
+): { labels: string[]; marginLeft: number } {
+  const maximumMarginLeft = Math.max(
+    DEFAULT_CHART_MARGIN_LEFT,
+    Math.floor(chartWidth * MAXIMUM_HORIZONTAL_CATEGORY_LABEL_FRACTION),
+  );
+  let longestLabelWidth = 0;
+  for (const label of labels) {
+    longestLabelWidth = Math.max(longestLabelWidth, estimateHorizontalCategoryLabelWidth(label));
+  }
+  const requestedMarginLeft =
+    longestLabelWidth + HORIZONTAL_CATEGORY_LABEL_GAP + HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING;
+  const marginLeft = Math.min(
+    maximumMarginLeft,
+    Math.max(DEFAULT_CHART_MARGIN_LEFT, requestedMarginLeft),
+  );
+  const availableLabelWidth = Math.max(
+    0,
+    marginLeft - HORIZONTAL_CATEGORY_LABEL_GAP - HORIZONTAL_CATEGORY_LABEL_OUTER_PADDING,
+  );
+
+  return {
+    marginLeft,
+    labels: labels.map((label) => truncateHorizontalCategoryLabel(label, availableLabelWidth)),
+  };
+}
+
+function estimateHorizontalCategoryLabelWidth(label: string): number {
+  return Array.from(label).length * HORIZONTAL_CATEGORY_LABEL_CHARACTER_WIDTH;
+}
+
+function truncateHorizontalCategoryLabel(label: string, availableWidth: number): string {
+  if (estimateHorizontalCategoryLabelWidth(label) <= availableWidth) return label;
+
+  const availableCharacterCount = Math.floor(
+    availableWidth / HORIZONTAL_CATEGORY_LABEL_CHARACTER_WIDTH,
+  );
+  if (availableCharacterCount <= 0) return '';
+  if (availableCharacterCount === 1) return '…';
+
+  return `${Array.from(label)
+    .slice(0, availableCharacterCount - 1)
+    .join('')}…`;
 }
 
 function normalizeNumericValue(
