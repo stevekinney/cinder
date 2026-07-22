@@ -826,9 +826,10 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
   // "">`) even though ChatProps documents them as bindable and the internal
   // implementation implements them correctly — svelte-check correctly rejected
   // `bind:atBottom` on a consuming .svelte file as a result. See
-  // chat.svelte's `$props()` destructure and the `bind:atBottom` /
-  // `bind:unreadCount` / `bind:newMessageIndicatorVisible` directives on
-  // <ChatImplementation> for the fix.
+  // chat.svelte's `$props()` destructure and private change callbacks on
+  // <ChatImplementation> for the fix. Component bindings matter for SSR: they
+  // force a settle re-render, which runs child lifecycle registration after
+  // Svelte has cleared the active server component context.
   //
   // A runtime render-based check (a host wrapper component that binds and
   // reads the value back) reliably crashes bun:test + happy-dom + the
@@ -839,11 +840,11 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
   // instead covered by `bun run --filter=@lostgradient/chat validate:consumer`,
   // which runs `svelte-check` against the *packed, installed* artifact with a
   // real `bind:atBottom` / `bind:unreadCount` / `bind:newMessageIndicatorVisible`
-  // consumer file — the exact failure mode from the issue. The source-pattern
-  // check below guards the wrapper's implementation shape at the unit-test
-  // layer.
-  test('chat.svelte declares atBottom/unreadCount/newMessageIndicatorVisible as $bindable and forwards bind: to the implementation', async () => {
+  // consumer file — the exact failure mode from the issue. The compiler-output
+  // check below guards the wrapper's server behavior at the unit-test layer.
+  test('chat.svelte declares bindable state and avoids an SSR settle re-render', async () => {
     const { resolve } = await import('node:path');
+    const { compile } = await import('svelte/compiler');
     const source = await Bun.file(resolve(import.meta.dir, 'chat.svelte')).text();
 
     // Whitespace-tolerant: prettier runs over this file via lint-staged, so an
@@ -852,9 +853,33 @@ describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageI
     expect(source).toMatch(/atBottom\s*=\s*\$bindable\(\s*true\s*\)/);
     expect(source).toMatch(/unreadCount\s*=\s*\$bindable\(\s*0\s*\)/);
     expect(source).toMatch(/newMessageIndicatorVisible\s*=\s*\$bindable\(\s*false\s*\)/);
-    expect(source).toMatch(/bind:atBottom\b/);
-    expect(source).toMatch(/bind:unreadCount\b/);
-    expect(source).toMatch(/bind:newMessageIndicatorVisible\b/);
+
+    const serverCode = compile(source, {
+      filename: resolve(import.meta.dir, 'chat.svelte'),
+      css: 'external',
+      dev: false,
+      generate: 'server',
+      runes: true,
+    }).js.code;
+
+    const settleLoopMarker = '$$settled';
+    const bindingControlCode = compile(
+      `<script>
+        import ChatImplementation from './container/chat.svelte';
+        let atBottom = $state(true);
+      </script>
+      <ChatImplementation bind:atBottom />`,
+      {
+        filename: resolve(import.meta.dir, 'chat-binding-control.svelte'),
+        css: 'external',
+        dev: false,
+        generate: 'server',
+        runes: true,
+      },
+    ).js.code;
+
+    expect(bindingControlCode).toContain(settleLoopMarker);
+    expect(serverCode).not.toContain(settleLoopMarker);
   });
 });
 
@@ -1087,18 +1112,20 @@ describe('Chat — bindable prop sync without write-back $effect', () => {
 
     // The replacement for the scroll event path: atBottom is set inside
     // handleScrollStateChange (at the mutation site).
-    expect(source).toContain('atBottom = event.atBottom');
+    expect(source).toContain('updateAtBottomBinding(event.atBottom)');
 
     // The replacement for the IntersectionObserver sentinel path: when the
     // sentinel fires onReachBottom (without emitting onScrollStateChange),
     // the bindable atBottom must be set to true explicitly.
     // This guards against regression from handleSentinelEntry bypassing
     // handleScrollStateChange.
-    expect(source).toContain('atBottom = true');
+    expect(source).toContain('updateAtBottomBinding(true)');
 
     // The replacement: unreadCount and newMessageIndicatorVisible are set inside
     // the onUnreadIndicatorChange callback.
-    expect(source).toContain('unreadCount = event.unreadCount');
-    expect(source).toContain('newMessageIndicatorVisible = event.newMessageIndicatorVisible');
+    expect(source).toContain('updateUnreadCountBinding(event.unreadCount)');
+    expect(source).toContain(
+      'updateNewMessageIndicatorVisibleBinding(event.newMessageIndicatorVisible)',
+    );
   });
 });

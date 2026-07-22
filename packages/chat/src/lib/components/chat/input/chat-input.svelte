@@ -105,7 +105,7 @@
    * ```
    */
 
-  import { flushSync, onDestroy } from 'svelte';
+  import { flushSync } from 'svelte';
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
   import { createIdFactory, useStableId } from '../../../utilities/id-factory.ts';
@@ -521,12 +521,17 @@
   // Cleanup
   // =========================================================================
 
-  onDestroy(() => {
-    attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
-  });
+  function revokeAttachmentPreviewsOnDestroy(_form: HTMLFormElement): { destroy(): void } {
+    return {
+      destroy() {
+        attachments.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
+      },
+    };
+  }
 </script>
 
 <form
+  use:revokeAttachmentPreviewsOnDestroy
   bind:this={formElement}
   class={classNames('chat-input', isDragOver && 'chat-input-dragover', className)}
   method="POST"
