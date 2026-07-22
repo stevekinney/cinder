@@ -62,7 +62,7 @@
       "default": "./dist/rendering/index.js"
     },
     "./rendering/async": {
-      "types": "./src/rendering/async.ts",
+      "types": "./dist/rendering/async.d.ts",
       "bun": "./src/rendering/async.ts",
       "import": "./dist/rendering/async.js",
       "default": "./dist/rendering/async.js"
