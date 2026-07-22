@@ -1,7 +1,7 @@
 /**
  * Mirrors the former `packages/editor/src/ssr-import.test.ts`, migrated here
  * when `@cinder/editor` was dissolved into `@lostgradient/markdown` (headless half)
- * and `@cinder/commentary` (this ProseMirror/Milkdown half). See
+ * and `@lostgradient/editor` (this ProseMirror/Milkdown half). See
  * `docs/decisions/package-boundaries.md`.
  */
 
@@ -22,7 +22,7 @@ const RUNTIME_MILKDOWN_IMPORT_PATTERN = new RegExp(
   'g',
 );
 
-describe('@cinder/commentary editor SSR import safety', () => {
+describe('@lostgradient/editor editor SSR import safety', () => {
   it('imports the editor barrel without needing browser globals', async () => {
     const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
 

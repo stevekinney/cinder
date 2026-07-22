@@ -12,7 +12,7 @@ import { contentEquals } from '@lostgradient/markdown/pipeline';
 
 import { createEditorAttachment, DEFAULT_DEBOUNCE_MS } from './index.js';
 
-describe('@cinder/commentary editor package wiring', () => {
+describe('@lostgradient/editor editor package wiring', () => {
   it('resolves @lostgradient/markdown through the workspace export map', () => {
     expect(typeof contentEquals).toBe('function');
   });

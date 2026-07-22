@@ -2,7 +2,7 @@
  * Pure export utilities for ReviewEditor.
  *
  * These functions work with ReviewState and don't require reactive context.
- * They are stateless wrappers around the core export functions from @cinder/commentary/export.
+ * They are stateless wrappers around the core export functions from @lostgradient/editor/export.
  *
  * @module
  */
