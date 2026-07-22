@@ -1752,49 +1752,19 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Rendering the actual hunked diff content — pair with diff-viewer for the full document comparison."
+          "reason": "Rendering the actual hunked diff content — pair with `DiffViewer` from `@lostgradient/editor` for the full document comparison."
         },
         {
           "reason": "Generic numeric badges that have nothing to do with diffs — reach for stat or badge instead."
         }
       ],
-      "related": ["diff-viewer"],
+      "related": ["source-diff-viewer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/diff-statistics/schema",
         "variables": "@lostgradient/cinder/diff-statistics/variables",
         "examples": "@lostgradient/cinder/diff-statistics/examples"
-      }
-    },
-    {
-      "name": "DiffViewer",
-      "id": "diff-viewer",
-      "import": "@lostgradient/cinder/diff-viewer",
-      "exportName": "DiffViewer",
-      "category": "domain",
-      "status": "domain-suite",
-      "purpose": "Side-by-side or unified Markdown diff surface with hunk grouping, word-level inline changes, and size-based debounce gating.",
-      "tags": ["diff", "markdown", "domain-suite"],
-      "useWhen": [
-        "Comparing two Markdown documents and wanting the bundled toolbar, view-mode toggle, front-matter handling, and large-payload safeguards.",
-        "Building a review workflow that needs hunked, line-anchored Markdown diffs out of the box as a heavyweight suite."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Showing only a counts summary — use diff-statistics on its own for a lightweight presentation."
-        },
-        {
-          "reason": "Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering."
-        }
-      ],
-      "related": ["diff-statistics", "code-block"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/diff-viewer/schema",
-        "variables": "@lostgradient/cinder/diff-viewer/variables",
-        "examples": "@lostgradient/cinder/diff-viewer/examples"
       }
     },
     {
@@ -2732,7 +2702,7 @@
           "reason": "You need to execute, validate, or persist rules — cinder owns none of that logic."
         }
       ],
-      "related": ["capability-gate", "steps", "review-editor"],
+      "related": ["capability-gate", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2800,7 +2770,7 @@
           "reason": "Editing arbitrary free-form JSON with no schema semantics — use a plain code editor instead."
         }
       ],
-      "related": ["markdown-editor", "review-editor"],
+      "related": [],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3085,36 +3055,6 @@
         "schema": "@lostgradient/cinder/logo-cloud/schema",
         "variables": "@lostgradient/cinder/logo-cloud/variables",
         "examples": "@lostgradient/cinder/logo-cloud/examples"
-      }
-    },
-    {
-      "name": "MarkdownEditor",
-      "id": "markdown-editor",
-      "import": "@lostgradient/cinder/markdown-editor",
-      "exportName": "MarkdownEditor",
-      "category": "domain",
-      "status": "domain-suite",
-      "purpose": "Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, toolbar, and mark or block introspection helpers.",
-      "tags": ["markdown", "editor", "domain-suite"],
-      "useWhen": [
-        "Composing or editing Markdown documents and wanting the bundled toolbar, link-aware selection, and source or WYSIWYG mode toggle.",
-        "Building writing surfaces that need an editor handle for programmatic mark or block manipulation as part of the heavyweight suite."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle."
-        },
-        {
-          "reason": "The surface needs inline review threads on top of the editor — use review-editor for that composition."
-        }
-      ],
-      "related": ["review-editor", "code-block"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/markdown-editor/schema",
-        "variables": "@lostgradient/cinder/markdown-editor/variables",
-        "examples": "@lostgradient/cinder/markdown-editor/examples"
       }
     },
     {
@@ -4014,36 +3954,6 @@
       }
     },
     {
-      "name": "ReviewEditor",
-      "id": "review-editor",
-      "import": "@lostgradient/cinder/review-editor",
-      "exportName": "ReviewEditor",
-      "category": "domain",
-      "status": "domain-suite",
-      "purpose": "Markdown editor extended with inline review threads, anchored comments, and collaborative annotation state.",
-      "tags": ["markdown", "review", "domain-suite"],
-      "useWhen": [
-        "Building a document review experience that needs both a Markdown editor and anchored comment threads in one bundled surface.",
-        "Threading reviewer commentary against specific selections inside a long-form document."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Plain authoring with no review threads — markdown-editor is the lighter primitive."
-        },
-        {
-          "reason": "Reviewing diffs between two documents rather than annotating one — use diff-viewer instead."
-        }
-      ],
-      "related": ["markdown-editor"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/review-editor/schema",
-        "variables": "@lostgradient/cinder/review-editor/variables",
-        "examples": "@lostgradient/cinder/review-editor/examples"
-      }
-    },
-    {
       "name": "RunStepTimeline",
       "id": "run-step-timeline",
       "import": "@lostgradient/cinder/run-step-timeline",
@@ -4780,15 +4690,14 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Comparing two Markdown documents with normalization, front-matter handling, and revert affordances.",
-          "alternative": "diff-viewer"
+          "reason": "Comparing two Markdown documents with normalization, front-matter, and revert affordances — use `DiffViewer` from `@lostgradient/editor`."
         },
         {
           "reason": "Showing syntax-highlighted code samples rather than patch output.",
           "alternative": "code-block"
         }
       ],
-      "related": ["diff-viewer", "diff-statistics", "code-block"],
+      "related": ["diff-statistics", "code-block"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5616,7 +5525,7 @@
           "reason": "Collecting a single short line of text — use input instead."
         }
       ],
-      "related": ["input", "markdown-editor"],
+      "related": ["input"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

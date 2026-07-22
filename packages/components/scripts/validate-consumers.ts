@@ -56,7 +56,7 @@ type WorkspaceDependencyPackage = PackageIdentity & {
    * -- --skip-validation`, which does NOT re-pack) would then ship to npm.
    * Reuse `pack:publish` — the same staged process — for every workspace
    * dependency package that HAS one; only workspace-private packages with no
-   * publish surface (`commentary`) fall back to a raw pack.
+   * publish surface (`editor`) fall back to a raw pack.
    */
   packCommand: string[];
 };
@@ -95,7 +95,7 @@ const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
 const chatTarballFileName = getPackFileName(chatPackageIdentity);
 const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
 let chatFixtureCinderTarballFilePath = tarballFilePath;
-const workspaceDependencyPackages = ['markdown', 'commentary'].map(
+const workspaceDependencyPackages = ['markdown', 'editor'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
     const identity = readPackageIdentity(packageDirectory);
@@ -696,7 +696,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
 
 /**
  * Run a global grep over the extracted tarball for upstream-package
- * references (`@cinder/commentary`, `@lostgradient/markdown`, ...) that
+ * references (`@lostgradient/editor`, `@lostgradient/markdown`, ...) that
  * look like real import specifiers. Doc-comment prose and source-map
  * embedded source are tolerated because they cannot break runtime
  * resolution.
@@ -704,7 +704,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
  * "Looks like a real import specifier" means: the upstream specifier sits
  * inside a single-quote, double-quote, OR backtick-quoted *static* string on
  * a non-comment line. Backticks are flagged in code positions because
- * `await import(\`@cinder/commentary/editor\`)` is a valid runtime import
+ * `await import(\`@lostgradient/editor/editor\`)` is a valid runtime import
  * — JavaScript accepts a template literal with no interpolation as a
  * dynamic-import specifier. The JSDoc/prose backtick form `` `@cinder/x` ``
  * sits on lines that start with `*` or `//` and is filtered by the comment
@@ -862,7 +862,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/commentary/**`
+    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/editor/**`
     // (the generated re-export shells) stay out of the
     // tarball — upstream sub-paths resolve through `dist/` only. The rest
     // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
@@ -884,11 +884,11 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/test/',
       'package/scripts/',
       // Upstream re-export shells (`src/markdown/`, `src/editor/`,
-      // `src/commentary/`) resolve via `dist/_upstream/`; the
+      // `src/editor/`) resolve via `dist/_upstream/`; the
       // shell sources are build-only inputs.
       'package/src/markdown/',
       'package/src/editor/',
-      'package/src/commentary/',
+      'package/src/editor/',
     ],
   };
 }

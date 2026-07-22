@@ -1,6 +1,6 @@
 /**
  * Derives `@lostgradient/cinder/<pkg>/<subpath>` re-exports from the public `exports` map of
- * each upstream workspace package (`markdown`, `commentary`).
+ * each upstream workspace package (`markdown`, `editor`).
  *
  * The workspace packages stay on disk as source-only inputs. Their
  * public sub-paths are mechanically mirrored into `@lostgradient/cinder`'s exports map as
@@ -19,14 +19,14 @@
  * `@cinder/editor` was dissolved (see `docs/decisions/package-boundaries.md`,
  * Phase 1): its headless placeholder trio moved into `@lostgradient/markdown`'s
  * `templates/` directory, and its ProseMirror/Milkdown half moved into
- * `@cinder/commentary`'s `editor/` directory. Cinder's published surface is
+ * `@lostgradient/editor`'s `editor/` directory. Cinder's published surface is
  * frozen for this move — every `./editor/*` cinder subpath must keep
  * resolving to the same symbol set it always did — so the six former
  * `@cinder/editor` subpaths are preserved via `CINDER_KEY_OVERRIDES`,
- * remapping specific markdown/commentary subpaths back onto `./editor/*`
- * cinder keys instead of their natural `./markdown/*` / `./commentary/*`
+ * remapping specific markdown/editor subpaths back onto `./editor/*`
+ * cinder keys instead of their natural `./markdown/*` / `./editor/editor/*`
  * mirror. Two markdown subpaths (`./templates/placeholder-security`,
- * `./templates/types`) exist only to let commentary's composite
+ * `./templates/types`) exist only to let editor's composite
  * `editor/index.ts` re-compose the old barrel from both packages — they are
  * real `@lostgradient/markdown` surface but have no old-cinder equivalent, so they
  * are suppressed (mapped to `null`) rather than mirrored as new cinder keys.
@@ -59,19 +59,31 @@ const COMPONENTS_PACKAGE_ROOT = join(scriptDirectory, '..', '..');
  * The workspace packages whose public exports flow through
  * `@lostgradient/cinder/<pkg>/*`. Order is significant only for deterministic output.
  */
-export const UPSTREAM_PACKAGES = ['markdown', 'commentary'] as const;
+export const UPSTREAM_PACKAGES = ['markdown', 'editor'] as const;
 
 export type UpstreamPackageName = (typeof UPSTREAM_PACKAGES)[number];
 
 /**
+ * `editor` builds via `svelte-package` (it ships Svelte components alongside
+ * its headless runtime), which requires the packaged surface to live under a
+ * `src/lib/` root. `markdown` builds via plain `tsc` and keeps its source
+ * directly under `src/`. Both conventions are load-bearing for their own
+ * package's build, so the upstream-reexport resolver has to know which root
+ * each upstream package actually uses instead of assuming `src/` uniformly.
+ */
+function upstreamSourceRoot(pkg: UpstreamPackageName): string {
+  return pkg === 'editor' ? join('src', 'lib') : 'src';
+}
+
+/**
  * The actual npm package name for each upstream package. `markdown` is
  * published as `@lostgradient/markdown` (see `docs/decisions/package-boundaries.md`,
- * Phase 2); `commentary` is still workspace-private under the `@cinder/*`
+ * Phase 2); `editor` is still workspace-private under the `@cinder/*`
  * scope pending Phase 3.
  */
 export const UPSTREAM_PACKAGE_NAMES: Record<UpstreamPackageName, string> = {
   markdown: '@lostgradient/markdown',
-  commentary: '@cinder/commentary',
+  editor: '@lostgradient/editor',
 };
 
 /**
@@ -82,11 +94,11 @@ export const UPSTREAM_PACKAGE_NAMES: Record<UpstreamPackageName, string> = {
  *     (and the generated shim's location under `packages/components/src/`)
  *     with the given key instead. Used to keep the six former
  *     `@cinder/editor` subpaths at `./editor/*` after the packages that now
- *     own their source (`@cinder/markdown`, `@cinder/commentary`) changed.
+ *     own their source (`@cinder/markdown`, `@lostgradient/editor`) changed.
  *   - `null` suppresses the subpath entirely from cinder's mirror — it stays
  *     real, resolvable `@cinder/*` surface, just not re-exported through
  *     `@lostgradient/cinder`. Used for markdown subpaths that exist purely so
- *     `@cinder/commentary` can import them (they have no old-cinder
+ *     `@lostgradient/editor` can import them (they have no old-cinder
  *     equivalent, so mirroring them would grow cinder's published surface).
  */
 export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map([
@@ -95,13 +107,46 @@ export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map(
   ['markdown:./templates/template-render', './editor/template-render'],
   ['markdown:./templates/placeholder-security', null],
   ['markdown:./templates/types', null],
-  ['commentary:./editor', './editor'],
-  ['commentary:./editor/component-runtime', './editor/component-runtime'],
-  ['commentary:./editor/test-utilities', './editor/test-utilities'],
+  // `editor`'s own top-level barrel would naturally mirror to `./editor`
+  // (the formula is `./${pkg}`) — but that collides with the intentional
+  // override two lines down, which points cinder's `./editor` key at
+  // `editor`'s NESTED `./editor` subpath (the ProseMirror runtime, preserved
+  // at its old `@cinder/editor`-era cinder key). Nothing in-repo imports
+  // `@lostgradient/cinder/commentary`'s former top-level barrel, so it is
+  // suppressed rather than given a second, unused cinder key.
+  ['editor:.', null],
+  ['editor:./editor', './editor'],
+  ['editor:./editor/component-runtime', './editor/component-runtime'],
+  ['editor:./editor/test-utilities', './editor/test-utilities'],
+  // `editor`'s manifest and Svelte-component subpaths (Phase 3 of
+  // package-boundaries.md: `markdown-editor`, `review-editor`, `diff-viewer`)
+  // are real `@lostgradient/editor` surface but are never mirrored into cinder.
+  // Unlike the headless runtime above, cinder has no re-export machinery for
+  // compiled `.svelte` components (`generate-exports.ts`'s component pipeline
+  // only understands components that physically live under
+  // `packages/components/src/components/`) — see the Phase 3 PR description
+  // for why a hand-authored shim was rejected in favor of dropping these
+  // subpaths from cinder's published surface entirely.
+  ['editor:./manifest', null],
+  ['editor:./markdown-editor', null],
+  ['editor:./markdown-editor/schema', null],
+  ['editor:./markdown-editor/variables', null],
+  ['editor:./markdown-editor/styles', null],
+  ['editor:./markdown-editor/examples', null],
+  ['editor:./review-editor', null],
+  ['editor:./review-editor/schema', null],
+  ['editor:./review-editor/variables', null],
+  ['editor:./review-editor/styles', null],
+  ['editor:./review-editor/examples', null],
+  ['editor:./diff-viewer', null],
+  ['editor:./diff-viewer/schema', null],
+  ['editor:./diff-viewer/variables', null],
+  ['editor:./diff-viewer/styles', null],
+  ['editor:./diff-viewer/examples', null],
 ]);
 
 /**
- * Shape of an upstream `exports` entry. `commentary` (still workspace-private)
+ * Shape of an upstream `exports` entry. `editor` (still workspace-private)
  * points `types` AND `bun` at `./src/**`, so a workspace consumer always sees
  * fresh types and runtime with no build step. `@lostgradient/markdown`
  * (published, see `docs/decisions/package-boundaries.md` Phase 2) keeps
@@ -146,7 +191,7 @@ function isUpstreamPackageManifest(value: unknown): value is UpstreamPackageMani
 }
 
 export type UpstreamReexport = {
-  /** `markdown` | `editor` | `commentary` | `diff`. */
+  /** `markdown` | `editor` | `editor` | `diff`. */
   pkg: UpstreamPackageName;
   /** Subpath as written in the upstream exports map (e.g. `.`, `./pipeline`, `./diff/line-diff`). */
   upstreamSubpath: string;
@@ -206,6 +251,18 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
 
     for (const [upstreamSubpath, entry] of Object.entries(exportsMap)) {
       if (upstreamSubpath === './package.json') continue;
+
+      // A suppressed subpath is real upstream surface (resolvable via its own
+      // package's exports map) but must not flow through to cinder — see
+      // `CINDER_KEY_OVERRIDES`. Checked before the bare-string guard below
+      // because suppressed entries (e.g. `editor`'s manifest and Svelte
+      // component subpaths, which are plain-string JSON/component exports,
+      // not conditional objects) are never parsed as a re-export in the
+      // first place.
+      const overrideKey = `${pkg}:${upstreamSubpath}`;
+      const override = CINDER_KEY_OVERRIDES.get(overrideKey);
+      if (override === null) continue;
+
       if (typeof entry === 'string') {
         // We do not currently consume string-shorthand exports from upstream
         // packages — surface as a hard error so this stays explicit.
@@ -213,13 +270,6 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
           `Upstream ${pkg} exports[${upstreamSubpath}] is a bare string; expected a conditional object.`,
         );
       }
-
-      // A suppressed subpath is real `@cinder/*` surface (resolvable via its
-      // own package's exports map) but must not flow through to cinder — see
-      // `CINDER_KEY_OVERRIDES`.
-      const overrideKey = `${pkg}:${upstreamSubpath}`;
-      const override = CINDER_KEY_OVERRIDES.get(overrideKey);
-      if (override === null) continue;
 
       // Decide whether the upstream entry points at a directory-style entry
       // (e.g. `src/pipeline/index.ts`) — in that case our re-export file
@@ -230,7 +280,7 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
       // there is no `.ts`-suffixed string to pattern-match against.
       const stripped = upstreamSubpath === '.' ? '' : upstreamSubpath.replace(/^\.\//, '');
       const isDirectoryEntry = existsSync(
-        join(WORKSPACE_ROOT, 'packages', pkg, 'src', stripped, 'index.ts'),
+        join(WORKSPACE_ROOT, 'packages', pkg, upstreamSourceRoot(pkg), stripped, 'index.ts'),
       );
 
       let baseRelative: string;
@@ -296,7 +346,12 @@ export async function deriveUpstreamReexports(): Promise<UpstreamReexport[]> {
 function resolveUpstreamSourcePath(reexport: UpstreamReexport): string {
   const stripped =
     reexport.upstreamSubpath === '.' ? '' : reexport.upstreamSubpath.replace(/^\.\//, '');
-  const packageSourceRoot = join(WORKSPACE_ROOT, 'packages', reexport.pkg, 'src');
+  const packageSourceRoot = join(
+    WORKSPACE_ROOT,
+    'packages',
+    reexport.pkg,
+    upstreamSourceRoot(reexport.pkg),
+  );
   const directoryCandidate = join(packageSourceRoot, stripped, 'index.ts');
   if (existsSync(directoryCandidate)) return directoryCandidate;
   const fileCandidate = join(packageSourceRoot, `${stripped || 'index'}.ts`);

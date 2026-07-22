@@ -1,7 +1,6 @@
 ---
 '@lostgradient/cinder': patch
 '@lostgradient/markdown': patch
-'@cinder/commentary': patch
 ---
 
 Internal reshuffle: dissolve the private `@cinder/editor` workspace package (Phase 1 of the

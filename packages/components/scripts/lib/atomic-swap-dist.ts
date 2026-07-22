@@ -1,5 +1,5 @@
 // CANONICAL SOURCE for `atomicSwapDist`. This file lives under `components`;
-// the three upstream packages (diff, markdown, commentary) each carry a
+// the three upstream packages (diff, markdown, editor) each carry a
 // byte-identical copy at `packages/<pkg>/scripts/lib/atomic-swap-dist.ts` — four
 // copies total. The duplication exists because a cross-package import would put
 // a source file outside that package's `rootDir: "."` and break its typecheck.

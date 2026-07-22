@@ -678,11 +678,11 @@ export function expandToDependents(
  * The workspace packages with a hash-skippable `build` script (each has its
  * own `scripts/build.ts` + `scripts/lib/build-cache.ts`), listed in dependency
  * order: `@cinder/diff` has no internal workspace dependencies, `@cinder/markdown`
- * depends on `@cinder/diff`, `@cinder/commentary` depends on `@cinder/markdown`,
+ * depends on `@cinder/diff`, `@lostgradient/editor` depends on `@cinder/markdown`,
  * and `@lostgradient/cinder` (components) depends on all three. `@cinder/editor`
  * was dissolved (see `docs/decisions/package-boundaries.md`, Phase 1): its
  * headless half moved into `@cinder/markdown`, its ProseMirror half into
- * `@cinder/commentary`. `@cinder/testing` and `@cinder/playground` have no
+ * `@lostgradient/editor`. `@cinder/testing` and `@cinder/playground` have no
  * `build` script and are excluded.
  *
  * This list is explicit because `WorkspacePackage` does not track which
@@ -693,7 +693,7 @@ export function expandToDependents(
 export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
   '@cinder/diff',
   '@cinder/markdown',
-  '@cinder/commentary',
+  '@lostgradient/editor',
   '@lostgradient/cinder',
 ];
 
@@ -709,7 +709,7 @@ export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
  * Because {@link BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER} is already a valid
  * topological order for this fixed four-package chain (verified against each
  * package's actual `dependencies`: diff has none, markdown depends only on
- * diff, commentary on markdown, and components on all three), the forward
+ * diff, editor on markdown, and components on all three), the forward
  * closure of any subset of it is exactly the list's prefix ending at the
  * latest touched package's index — no graph walk needed. If that invariant
  * ever breaks (a future package reorders its dependencies against this

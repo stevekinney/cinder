@@ -1,0 +1,259 @@
+{
+  "name": "@lostgradient/editor",
+  "version": "0.0.0",
+  "description": "Svelte 5 markdown editing, review, and diff-viewing components for Cinder — Milkdown/ProseMirror-based editing, threaded review comments, and word-level diffing.",
+  "keywords": [
+    "svelte",
+    "svelte-5",
+    "editor",
+    "markdown",
+    "milkdown",
+    "prosemirror",
+    "diff",
+    "review"
+  ],
+  "homepage": "https://github.com/stevekinney/cinder#readme",
+  "bugs": {
+    "url": "https://github.com/stevekinney/cinder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevekinney/cinder.git",
+    "directory": "packages/editor"
+  },
+  "license": "MIT",
+  "author": "Steve Kinney <hello@stevekinney.net>",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/lib/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json",
+    "./manifest": "./components.json",
+    "./markdown-editor": {
+      "types": "./dist/components/markdown-editor/index.d.ts",
+      "browser": "./src/lib/components/markdown-editor/index.ts",
+      "node": "./dist/server/components/markdown-editor/index.js",
+      "svelte": "./src/lib/components/markdown-editor/index.ts",
+      "import": "./src/lib/components/markdown-editor/index.ts",
+      "default": "./dist/components/markdown-editor/index.js"
+    },
+    "./markdown-editor/schema": {
+      "types": "./dist/components/markdown-editor/markdown-editor.schema.d.ts",
+      "browser": "./src/lib/components/markdown-editor/markdown-editor.schema.ts",
+      "svelte": "./src/lib/components/markdown-editor/markdown-editor.schema.ts",
+      "import": "./src/lib/components/markdown-editor/markdown-editor.schema.ts",
+      "default": "./dist/components/markdown-editor/markdown-editor.schema.js"
+    },
+    "./markdown-editor/variables": {
+      "types": "./dist/components/markdown-editor/markdown-editor.variables.d.ts",
+      "browser": "./src/lib/components/markdown-editor/markdown-editor.variables.ts",
+      "svelte": "./src/lib/components/markdown-editor/markdown-editor.variables.ts",
+      "import": "./src/lib/components/markdown-editor/markdown-editor.variables.ts",
+      "default": "./dist/components/markdown-editor/markdown-editor.variables.js"
+    },
+    "./markdown-editor/styles": {
+      "types": "./dist/components/markdown-editor/markdown-editor.css.d.ts",
+      "default": "./dist/components/markdown-editor/markdown-editor.css"
+    },
+    "./markdown-editor/examples": "./dist/components/markdown-editor/markdown-editor.examples.json",
+    "./review-editor": {
+      "types": "./dist/components/review-editor/index.d.ts",
+      "browser": "./src/lib/components/review-editor/index.ts",
+      "node": "./dist/server/components/review-editor/index.js",
+      "svelte": "./src/lib/components/review-editor/index.ts",
+      "import": "./src/lib/components/review-editor/index.ts",
+      "default": "./dist/components/review-editor/index.js"
+    },
+    "./review-editor/schema": {
+      "types": "./dist/components/review-editor/review-editor.schema.d.ts",
+      "browser": "./src/lib/components/review-editor/review-editor.schema.ts",
+      "svelte": "./src/lib/components/review-editor/review-editor.schema.ts",
+      "import": "./src/lib/components/review-editor/review-editor.schema.ts",
+      "default": "./dist/components/review-editor/review-editor.schema.js"
+    },
+    "./review-editor/variables": {
+      "types": "./dist/components/review-editor/review-editor.variables.d.ts",
+      "browser": "./src/lib/components/review-editor/review-editor.variables.ts",
+      "svelte": "./src/lib/components/review-editor/review-editor.variables.ts",
+      "import": "./src/lib/components/review-editor/review-editor.variables.ts",
+      "default": "./dist/components/review-editor/review-editor.variables.js"
+    },
+    "./review-editor/styles": {
+      "types": "./dist/components/review-editor/review-editor.css.d.ts",
+      "default": "./dist/components/review-editor/review-editor.css"
+    },
+    "./review-editor/examples": "./dist/components/review-editor/review-editor.examples.json",
+    "./diff-viewer": {
+      "types": "./dist/components/diff-viewer/index.d.ts",
+      "browser": "./src/lib/components/diff-viewer/index.ts",
+      "node": "./dist/server/components/diff-viewer/index.js",
+      "svelte": "./src/lib/components/diff-viewer/index.ts",
+      "import": "./src/lib/components/diff-viewer/index.ts",
+      "default": "./dist/components/diff-viewer/index.js"
+    },
+    "./diff-viewer/schema": {
+      "types": "./dist/components/diff-viewer/diff-viewer.schema.d.ts",
+      "browser": "./src/lib/components/diff-viewer/diff-viewer.schema.ts",
+      "svelte": "./src/lib/components/diff-viewer/diff-viewer.schema.ts",
+      "import": "./src/lib/components/diff-viewer/diff-viewer.schema.ts",
+      "default": "./dist/components/diff-viewer/diff-viewer.schema.js"
+    },
+    "./diff-viewer/variables": {
+      "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts",
+      "browser": "./src/lib/components/diff-viewer/diff-viewer.variables.ts",
+      "svelte": "./src/lib/components/diff-viewer/diff-viewer.variables.ts",
+      "import": "./src/lib/components/diff-viewer/diff-viewer.variables.ts",
+      "default": "./dist/components/diff-viewer/diff-viewer.variables.js"
+    },
+    "./diff-viewer/styles": {
+      "types": "./dist/components/diff-viewer/diff-viewer.css.d.ts",
+      "default": "./dist/components/diff-viewer/diff-viewer.css"
+    },
+    "./diff-viewer/examples": "./dist/components/diff-viewer/diff-viewer.examples.json",
+    "./anchor-decorations": {
+      "types": "./dist/anchor-decorations.d.ts",
+      "bun": "./src/lib/anchor-decorations.ts",
+      "import": "./dist/anchor-decorations.js",
+      "default": "./dist/anchor-decorations.js"
+    },
+    "./anchoring": {
+      "types": "./dist/anchoring.d.ts",
+      "bun": "./src/lib/anchoring.ts",
+      "import": "./dist/anchoring.js",
+      "default": "./dist/anchoring.js"
+    },
+    "./comments": {
+      "types": "./dist/comments/index.d.ts",
+      "bun": "./src/lib/comments/index.ts",
+      "import": "./dist/comments/index.js",
+      "default": "./dist/comments/index.js"
+    },
+    "./comments/types": {
+      "types": "./dist/comments/types.d.ts",
+      "bun": "./src/lib/comments/types.ts",
+      "import": "./dist/comments/types.js",
+      "default": "./dist/comments/types.js"
+    },
+    "./export": {
+      "types": "./dist/export/index.d.ts",
+      "bun": "./src/lib/export/index.ts",
+      "import": "./dist/export/index.js",
+      "default": "./dist/export/index.js"
+    },
+    "./export/types": {
+      "types": "./dist/export/types.d.ts",
+      "bun": "./src/lib/export/types.ts",
+      "import": "./dist/export/types.js",
+      "default": "./dist/export/types.js"
+    },
+    "./session": {
+      "types": "./dist/session/index.d.ts",
+      "bun": "./src/lib/session/index.ts",
+      "import": "./dist/session/index.js",
+      "default": "./dist/session/index.js"
+    },
+    "./session/types": {
+      "types": "./dist/session/types.d.ts",
+      "bun": "./src/lib/session/types.ts",
+      "import": "./dist/session/types.js",
+      "default": "./dist/session/types.js"
+    },
+    "./shared/anchor-types": {
+      "types": "./dist/shared/anchor-types.d.ts",
+      "bun": "./src/lib/shared/anchor-types.ts",
+      "import": "./dist/shared/anchor-types.js",
+      "default": "./dist/shared/anchor-types.js"
+    },
+    "./editor": {
+      "types": "./dist/editor/index.d.ts",
+      "bun": "./src/lib/editor/index.ts",
+      "import": "./dist/editor/index.js",
+      "default": "./dist/editor/index.js"
+    },
+    "./editor/component-runtime": {
+      "types": "./dist/editor/component-runtime.d.ts",
+      "bun": "./src/lib/editor/component-runtime.ts",
+      "import": "./dist/editor/component-runtime.js",
+      "default": "./dist/editor/component-runtime.js"
+    },
+    "./editor/test-utilities": {
+      "types": "./dist/editor/test-utilities.d.ts",
+      "bun": "./src/lib/editor/test-utilities.ts",
+      "import": "./dist/editor/test-utilities.js",
+      "default": "./dist/editor/test-utilities.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.fixture.*",
+    "!dist/**/*-fixture.*",
+    "!dist/**/*-fixtures.*",
+    "!dist/**/test/**",
+    "components.json"
+  ],
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "clean": "rm -rf dist coverage node_modules/.cache lostgradient-editor-*.tgz",
+    "colors:audit": "bun ../components/scripts/check-component-css-raw-colors.ts --source-root src/lib --baseline scripts/raw-color-baseline.json --strict",
+    "components:check": "bun run scripts/generate-component-artifacts.ts --check",
+    "components:generate": "bun run scripts/generate-component-artifacts.ts",
+    "dev": "svelte-package --watch",
+    "lint": "oxlint --type-aware --tsconfig tsconfig.json $(rg --files src scripts -g '*.ts' -g '*.svelte')",
+    "lint:fix": "oxlint --fix --type-aware --tsconfig tsconfig.json $(rg --files src scripts -g '*.ts' -g '*.svelte')",
+    "pack:publish": "bun run scripts/pack-for-publish.ts",
+    "package:weight:check": "bun ../components/scripts/report-package-weight.ts --check --package-root .",
+    "platform:audit": "bun ../components/scripts/check-platform-features.ts --source-root src/lib --baseline scripts/platform-viewport-baseline.json --strict",
+    "publish:release": "bun ../components/scripts/publish-release.ts --package-root .",
+    "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 src/lib scripts",
+    "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 src/lib scripts --coverage --coverage-reporter=lcov && bun ../components/scripts/check-coverage-ratchet.ts --package-root .",
+    "tokens:audit": "bun ../components/scripts/check-component-css-token-usage.ts --source-root src/lib --baseline scripts/token-usage-baseline.json --strict",
+    "typecheck": "tsc --noEmit -p tsconfig.json && bunx svelte-check --workspace src/lib --tsconfig ../../tsconfig.json --threshold warning",
+    "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run components:check && bun run build",
+    "validate:consumer": "bun run scripts/validate-consumer.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@lostgradient/cinder": "workspace:*",
+    "@lostgradient/markdown": "workspace:*",
+    "@milkdown/ctx": "^7.17.3",
+    "@sveltejs/package": "^2.5.8",
+    "@testing-library/svelte": "^5.2.7",
+    "@types/bun": "^1.3.11",
+    "ajv": "^8",
+    "happy-dom": "^15.11.7",
+    "oxlint": "^1.56.0",
+    "oxlint-tsgolint": "^0.17.0",
+    "postcss": "^8.5.15",
+    "prettier": "^3.8.1",
+    "svelte": "~5.56.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "@lostgradient/cinder": "^0.17.0",
+    "@lostgradient/markdown": "^0.1.0",
+    "@milkdown/ctx": "^7.17.3",
+    "@milkdown/kit": "^7.17.3",
+    "@milkdown/prose": "^7.17.3",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.3",
+    "svelte": ">=5.56.0 <6"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  }
+}

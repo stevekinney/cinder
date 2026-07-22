@@ -110,7 +110,7 @@ async function extractTarball(tarballPath: string, inspectionDirectory: string):
  *     — one entrypoint per component, several files each (`.js`, `.svelte.js`,
  *     `.css`, `.d.ts`, ...). Everything else under `dist/` for these two
  *     packages (`dist/server/**`, the top-level vendored `dist/markdown/**`
- *     and `dist/commentary/**` trees, root `dist/index.js`, ...) is
+ *     and `dist/editor/**` trees, root `dist/index.js`, ...) is
  *     deliberately NOT tracked as its own entrypoint — most of it (`dist/server`
  *     in particular) is an aggregate mirror of the entire component tree, not
  *     a bounded feature surface, so measuring it against the same

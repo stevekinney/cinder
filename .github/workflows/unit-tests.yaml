@@ -37,7 +37,7 @@ on:
       - 'packages/*/package.json'
       - 'packages/*/scripts/**'
       - 'packages/*/tsconfig*.json'
-      - 'packages/commentary/src/**'
+      - 'packages/editor/src/**'
       - 'packages/markdown/src/**'
       - 'packages/playground/src/discover.ts'
       - 'packages/playground/src/examples/**'
@@ -302,7 +302,7 @@ jobs:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
         run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat $AFFECTED
 
-      # @lostgradient/markdown and @cinder/commentary are bundled into
+      # @lostgradient/markdown and @lostgradient/editor are bundled into
       # @lostgradient/cinder (markdown is also independently published — see
       # docs/decisions/package-boundaries.md Phase 2 — but still has no
       # dedicated CI test step of its own beyond this one), so unlike
@@ -332,7 +332,7 @@ jobs:
         # dependencies changed in that range" — verified against turbo 2.x
         # docs and a local --dry=json run: an unrelated diff selects zero
         # tasks, a diff touching only @lostgradient/markdown selects markdown AND
-        # its dependent commentary, exactly the reverse-dependency closure the
+        # its dependent editor, exactly the reverse-dependency closure the
         # old pre-push dispatch covered). Unioning two of these pre-intersected
         # filters is exactly "run each of these two if it's affected",
         # nothing more.
@@ -340,9 +340,9 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            bunx turbo run test --filter="@lostgradient/markdown...[origin/${BASE_REF}...HEAD]" --filter="@cinder/commentary...[origin/${BASE_REF}...HEAD]"
+            bunx turbo run test --filter="@lostgradient/markdown...[origin/${BASE_REF}...HEAD]" --filter="@lostgradient/editor...[origin/${BASE_REF}...HEAD]"
           else
-            bunx turbo run test --filter=@lostgradient/markdown --filter=@cinder/commentary
+            bunx turbo run test --filter=@lostgradient/markdown --filter=@lostgradient/editor
           fi
 
       - name: Run Chat unit tests with coverage (affected)
@@ -352,7 +352,7 @@ jobs:
 
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
-        # their dependents. `@lostgradient/markdown`/`@cinder/commentary`
+        # their dependents. `@lostgradient/markdown`/`@lostgradient/editor`
         # have their own git-range-scoped step above now; `@cinder/playground`
         # and `@cinder/testing` still keep their authoritative coverage in
         # `main-green` only (the ~11-min playground suite would otherwise tax

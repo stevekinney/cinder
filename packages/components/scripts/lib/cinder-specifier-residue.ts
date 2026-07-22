@@ -2,7 +2,7 @@ import { UPSTREAM_PACKAGE_NAMES } from './derive-upstream-reexports.ts';
 
 /**
  * Shared utilities for detecting unresolved upstream-package import
- * specifiers (`@cinder/commentary`, `@lostgradient/markdown`, ...) in built
+ * specifiers (`@lostgradient/editor`, `@lostgradient/markdown`, ...) in built
  * JS / `.d.ts` artifacts.
  *
  * Two gates use this:
@@ -68,7 +68,7 @@ export const STATIC_UPSTREAM_SPECIFIER_PATTERN = new RegExp(
 
 /**
  * Match a template-literal upstream specifier that interpolates — for
- * example `` import(`@cinder/commentary/${pkg}`) ``. The rewrite pass
+ * example `` import(`@lostgradient/editor/${pkg}`) ``. The rewrite pass
  * cannot safely transform a computed specifier, so the gates must fail
  * loudly if one appears rather than silently shipping it.
  */

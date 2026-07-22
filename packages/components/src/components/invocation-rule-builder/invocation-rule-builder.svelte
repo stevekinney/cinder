@@ -10,7 +10,7 @@
    * @useWhen You only need conditions (no actions) — pass mode="conditions" for a constrained operator set and typed value inputs.
    * @useWhen Your data is one flat implicit-AND conditions list — pass mode="flat-conditions" without rule-group metadata.
    * @avoidWhen You need to execute, validate, or persist rules — cinder owns none of that logic.
-   * @related capability-gate, steps, review-editor
+   * @related capability-gate, steps
    */
   export type {
     InvocationRule,

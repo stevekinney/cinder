@@ -107,7 +107,7 @@ jobs:
         run: >-
           bunx turbo run build
           --filter=@lostgradient/markdown
-          --filter=@cinder/commentary
+          --filter=@lostgradient/editor
           --filter=@lostgradient/cinder
           --filter=@lostgradient/chat
 
@@ -115,7 +115,7 @@ jobs:
         run: >-
           bunx turbo run test
           --filter=@lostgradient/markdown
-          --filter=@cinder/commentary
+          --filter=@lostgradient/editor
           --filter=@cinder/playground
           --filter=@cinder/testing
 

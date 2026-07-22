@@ -39,13 +39,13 @@ const pkg = (name: string, dir: string, dependencies: string[] = []): WorkspaceP
 // A fixture mirroring the real internal dependency graph for closure tests.
 const graphPackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/cinder', 'packages/components/', [
-    '@cinder/commentary',
+    '@lostgradient/editor',
     '@cinder/diff',
     '@cinder/markdown',
     '@cinder/testing',
   ]),
   pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
-  pkg('@cinder/commentary', 'packages/commentary/', ['@cinder/markdown']),
+  pkg('@lostgradient/editor', 'packages/editor/', ['@cinder/markdown']),
   pkg('@lostgradient/chat', 'packages/chat/', ['@lostgradient/cinder']),
   pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/chat', '@lostgradient/cinder']),
   pkg('@cinder/diff', 'packages/diff/'),
@@ -365,7 +365,7 @@ describe('expandToDependents', () => {
   // own tests import them), `@lostgradient/chat` depending on Cinder, and
   // `@cinder/playground` depending on both public packages. So any sub-package
   // change pulls in Cinder + Chat + playground as
-  // dependents. Only `@cinder/commentary` (a true leaf in the consumer
+  // dependents. Only `@lostgradient/editor` (a true leaf in the consumer
   // direction) and `@cinder/playground` stay small. These expectations are the
   // sound closures, computed from the graph — not the smaller sets an earlier
   // draft assumed.
@@ -375,18 +375,18 @@ describe('expandToDependents', () => {
     expect(expand('@cinder/playground')).toEqual(['@cinder/playground']);
   });
 
-  it('expands @cinder/commentary through both public packages to playground', () => {
-    expect(expand('@cinder/commentary')).toEqual([
-      '@cinder/commentary',
+  it('expands @lostgradient/editor through both public packages to playground', () => {
+    expect(expand('@lostgradient/editor')).toEqual([
+      '@lostgradient/editor',
       '@cinder/playground',
       '@lostgradient/chat',
       '@lostgradient/cinder',
     ]);
   });
 
-  it('expands @cinder/markdown to markdown + commentary + cinder + playground', () => {
+  it('expands @cinder/markdown to markdown + editor + cinder + playground', () => {
     expect(expand('@cinder/markdown')).toEqual([
-      '@cinder/commentary',
+      '@lostgradient/editor',
       '@cinder/markdown',
       '@cinder/playground',
       '@lostgradient/chat',
@@ -396,7 +396,7 @@ describe('expandToDependents', () => {
 
   it('expands @cinder/diff to the full dependent chain + cinder + playground', () => {
     expect(expand('@cinder/diff')).toEqual([
-      '@cinder/commentary',
+      '@lostgradient/editor',
       '@cinder/diff',
       '@cinder/markdown',
       '@cinder/playground',
@@ -428,9 +428,9 @@ describe('expandToDependents', () => {
 
   it('is cycle-safe and dedupes across multiple touched packages', () => {
     expect(
-      sorted(expandToDependents(graphPackages, ['@cinder/diff', '@cinder/commentary'])),
+      sorted(expandToDependents(graphPackages, ['@cinder/diff', '@lostgradient/editor'])),
     ).toEqual([
-      '@cinder/commentary',
+      '@lostgradient/editor',
       '@cinder/diff',
       '@cinder/markdown',
       '@cinder/playground',
@@ -456,11 +456,11 @@ describe('buildableForwardClosure', () => {
   // strictly backward" invariant `buildableForwardClosure` relies on) fails
   // loudly here instead of silently under-building the pre-push pre-build
   // step and reopening the #364 race as a CI flake.
-  it('closes @cinder/commentary to diff + markdown + commentary (its upstream chain)', () => {
-    expect(buildableForwardClosure(new Set(['@cinder/commentary']))).toEqual([
+  it('closes @lostgradient/editor to diff + markdown + editor (its upstream chain)', () => {
+    expect(buildableForwardClosure(new Set(['@lostgradient/editor']))).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
-      '@cinder/commentary',
+      '@lostgradient/editor',
     ]);
   });
 
@@ -468,7 +468,7 @@ describe('buildableForwardClosure', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
       '@cinder/diff',
       '@cinder/markdown',
-      '@cinder/commentary',
+      '@lostgradient/editor',
       '@lostgradient/cinder',
     ]);
   });

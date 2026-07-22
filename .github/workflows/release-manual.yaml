@@ -17,8 +17,9 @@ on:
           - cinder
           - chat
           - markdown
+          - editor
       tag:
-        description: 'Package-qualified release tag (for example cinder-v0.16.0, chat-v0.1.0, or markdown-v0.1.0).'
+        description: 'Package-qualified release tag (for example cinder-v0.16.0, chat-v0.1.0, markdown-v0.1.0, or editor-v0.1.0).'
         required: true
         type: string
 
@@ -53,6 +54,7 @@ jobs:
             cinder) package_directory='packages/components' ;;
             chat) package_directory='packages/chat' ;;
             markdown) package_directory='packages/markdown' ;;
+            editor) package_directory='packages/editor' ;;
             *) echo "::error::Unsupported package selection: $PACKAGE_SELECTION"; exit 1 ;;
           esac
           package_version="$(jq -er '.version' "$package_directory/package.json")"
@@ -125,6 +127,9 @@ jobs:
             markdown)
               echo 'name=@lostgradient/markdown' >> "$GITHUB_OUTPUT"
               ;;
+            editor)
+              echo 'name=@lostgradient/editor' >> "$GITHUB_OUTPUT"
+              ;;
             *)
               echo "::error::Unsupported package selection: $PACKAGE_SELECTION"
               exit 1
@@ -147,6 +152,24 @@ jobs:
           fi
           echo "Published Cinder satisfies Chat peer ${cinder_peer_range}: ${published_versions}"
 
+      - name: Verify Editor's required Cinder and Markdown releases exist
+        if: inputs.package == 'editor'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for peer in '@lostgradient/cinder' '@lostgradient/markdown'; do
+            peer_range="$(jq -er --arg peer "$peer" '.peerDependencies[$peer]' packages/editor/package.json)"
+            if ! published_versions="$(NPM_CONFIG_USERCONFIG=/dev/null npm view "${peer}@${peer_range}" version --json 2>/dev/null)"; then
+              echo "::error::No published ${peer} version satisfies Editor's required peer ${peer_range}. Publish ${peer} first."
+              exit 1
+            fi
+            if ! jq -e 'if type == "array" then length > 0 else type == "string" and length > 0 end' <<<"$published_versions" >/dev/null; then
+              echo "::error::No published ${peer} version satisfies Editor's required peer ${peer_range}. Publish ${peer} first."
+              exit 1
+            fi
+            echo "Published ${peer} satisfies Editor peer ${peer_range}: ${published_versions}"
+          done
+
       - name: Install Chromium for consumer validation
         run: bunx playwright install --with-deps chromium
 
@@ -160,6 +183,9 @@ jobs:
 
       - name: Validate Cinder package artifact
         run: bun run --filter=@lostgradient/cinder validate:consumer
+
+      - name: Validate Editor package artifact
+        run: bun run --filter=@lostgradient/editor validate:consumer
 
       - name: Validate Chat package artifact
         run: bun run --filter=@lostgradient/chat validate:consumer

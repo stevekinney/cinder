@@ -1851,34 +1851,6 @@
       "import": "./src/components/diff-statistics/diff-statistics.examples.json",
       "default": "./src/components/diff-statistics/diff-statistics.examples.json"
     },
-    "./diff-viewer": {
-      "types": "./dist/components/diff-viewer/index.d.ts",
-      "browser": "./src/components/diff-viewer/index.ts",
-      "node": "./dist/server/components/diff-viewer/index.js",
-      "svelte": "./src/components/diff-viewer/index.ts",
-      "import": "./src/components/diff-viewer/index.ts",
-      "default": "./dist/components/diff-viewer/index.js"
-    },
-    "./diff-viewer/schema": {
-      "types": "./dist/components/diff-viewer/diff-viewer.schema.d.ts",
-      "browser": "./src/components/diff-viewer/diff-viewer.schema.ts",
-      "node": "./dist/server/components/diff-viewer/diff-viewer.schema.js",
-      "svelte": "./src/components/diff-viewer/diff-viewer.schema.ts",
-      "import": "./src/components/diff-viewer/diff-viewer.schema.ts",
-      "default": "./dist/components/diff-viewer/diff-viewer.schema.js"
-    },
-    "./diff-viewer/variables": {
-      "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts",
-      "browser": "./src/components/diff-viewer/diff-viewer.variables.ts",
-      "node": "./dist/server/components/diff-viewer/diff-viewer.variables.js",
-      "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts",
-      "import": "./src/components/diff-viewer/diff-viewer.variables.ts",
-      "default": "./dist/components/diff-viewer/diff-viewer.variables.js"
-    },
-    "./diff-viewer/examples": {
-      "import": "./src/components/diff-viewer/diff-viewer.examples.json",
-      "default": "./src/components/diff-viewer/diff-viewer.examples.json"
-    },
     "./divider": {
       "types": "./dist/components/divider/index.d.ts",
       "browser": "./src/components/divider/index.ts",
@@ -3203,34 +3175,6 @@
       "import": "./src/components/logo-cloud/logo-cloud.examples.json",
       "default": "./src/components/logo-cloud/logo-cloud.examples.json"
     },
-    "./markdown-editor": {
-      "types": "./dist/components/markdown-editor/index.d.ts",
-      "browser": "./src/components/markdown-editor/index.ts",
-      "node": "./dist/server/components/markdown-editor/index.js",
-      "svelte": "./src/components/markdown-editor/index.ts",
-      "import": "./src/components/markdown-editor/index.ts",
-      "default": "./dist/components/markdown-editor/index.js"
-    },
-    "./markdown-editor/schema": {
-      "types": "./dist/components/markdown-editor/markdown-editor.schema.d.ts",
-      "browser": "./src/components/markdown-editor/markdown-editor.schema.ts",
-      "node": "./dist/server/components/markdown-editor/markdown-editor.schema.js",
-      "svelte": "./src/components/markdown-editor/markdown-editor.schema.ts",
-      "import": "./src/components/markdown-editor/markdown-editor.schema.ts",
-      "default": "./dist/components/markdown-editor/markdown-editor.schema.js"
-    },
-    "./markdown-editor/variables": {
-      "types": "./dist/components/markdown-editor/markdown-editor.variables.d.ts",
-      "browser": "./src/components/markdown-editor/markdown-editor.variables.ts",
-      "node": "./dist/server/components/markdown-editor/markdown-editor.variables.js",
-      "svelte": "./src/components/markdown-editor/markdown-editor.variables.ts",
-      "import": "./src/components/markdown-editor/markdown-editor.variables.ts",
-      "default": "./dist/components/markdown-editor/markdown-editor.variables.js"
-    },
-    "./markdown-editor/examples": {
-      "import": "./src/components/markdown-editor/markdown-editor.examples.json",
-      "default": "./src/components/markdown-editor/markdown-editor.examples.json"
-    },
     "./marquee": {
       "types": "./dist/components/marquee/index.d.ts",
       "browser": "./src/components/marquee/index.ts",
@@ -4154,38 +4098,6 @@
     "./resizable-panels/examples": {
       "import": "./src/components/resizable-panels/resizable-panels.examples.json",
       "default": "./src/components/resizable-panels/resizable-panels.examples.json"
-    },
-    "./review-editor": {
-      "types": "./dist/components/review-editor/index.d.ts",
-      "browser": "./src/components/review-editor/index.ts",
-      "node": "./dist/server/components/review-editor/index.js",
-      "svelte": "./src/components/review-editor/index.ts",
-      "import": "./src/components/review-editor/index.ts",
-      "default": "./dist/components/review-editor/index.js"
-    },
-    "./review-editor/schema": {
-      "types": "./dist/components/review-editor/review-editor.schema.d.ts",
-      "browser": "./src/components/review-editor/review-editor.schema.ts",
-      "node": "./dist/server/components/review-editor/review-editor.schema.js",
-      "svelte": "./src/components/review-editor/review-editor.schema.ts",
-      "import": "./src/components/review-editor/review-editor.schema.ts",
-      "default": "./dist/components/review-editor/review-editor.schema.js"
-    },
-    "./review-editor/variables": {
-      "types": "./dist/components/review-editor/review-editor.variables.d.ts",
-      "browser": "./src/components/review-editor/review-editor.variables.ts",
-      "node": "./dist/server/components/review-editor/review-editor.variables.js",
-      "svelte": "./src/components/review-editor/review-editor.variables.ts",
-      "import": "./src/components/review-editor/review-editor.variables.ts",
-      "default": "./dist/components/review-editor/review-editor.variables.js"
-    },
-    "./review-editor/styles": {
-      "types": "./dist/components/review-editor/review-editor.css.d.ts",
-      "default": "./dist/components/review-editor/review-editor.css"
-    },
-    "./review-editor/examples": {
-      "import": "./src/components/review-editor/review-editor.examples.json",
-      "default": "./src/components/review-editor/review-editor.examples.json"
     },
     "./run-step-timeline": {
       "types": "./dist/components/run-step-timeline/index.d.ts",
@@ -6307,86 +6219,6 @@
       "import": "./src/markdown/utilities/sort-keys.ts",
       "default": "./dist/markdown/utilities/sort-keys.js"
     },
-    "./commentary": {
-      "types": "./dist/commentary/index.d.ts",
-      "browser": "./src/commentary/index.ts",
-      "node": "./dist/server/commentary/index.js",
-      "svelte": "./src/commentary/index.ts",
-      "import": "./src/commentary/index.ts",
-      "default": "./dist/commentary/index.js"
-    },
-    "./commentary/anchor-decorations": {
-      "types": "./dist/commentary/anchor-decorations.d.ts",
-      "browser": "./src/commentary/anchor-decorations.ts",
-      "node": "./dist/server/commentary/anchor-decorations.js",
-      "svelte": "./src/commentary/anchor-decorations.ts",
-      "import": "./src/commentary/anchor-decorations.ts",
-      "default": "./dist/commentary/anchor-decorations.js"
-    },
-    "./commentary/anchoring": {
-      "types": "./dist/commentary/anchoring.d.ts",
-      "browser": "./src/commentary/anchoring.ts",
-      "node": "./dist/server/commentary/anchoring.js",
-      "svelte": "./src/commentary/anchoring.ts",
-      "import": "./src/commentary/anchoring.ts",
-      "default": "./dist/commentary/anchoring.js"
-    },
-    "./commentary/comments": {
-      "types": "./dist/commentary/comments/index.d.ts",
-      "browser": "./src/commentary/comments/index.ts",
-      "node": "./dist/server/commentary/comments/index.js",
-      "svelte": "./src/commentary/comments/index.ts",
-      "import": "./src/commentary/comments/index.ts",
-      "default": "./dist/commentary/comments/index.js"
-    },
-    "./commentary/comments/types": {
-      "types": "./dist/commentary/comments/types.d.ts",
-      "browser": "./src/commentary/comments/types.ts",
-      "node": "./dist/server/commentary/comments/types.js",
-      "svelte": "./src/commentary/comments/types.ts",
-      "import": "./src/commentary/comments/types.ts",
-      "default": "./dist/commentary/comments/types.js"
-    },
-    "./commentary/export": {
-      "types": "./dist/commentary/export/index.d.ts",
-      "browser": "./src/commentary/export/index.ts",
-      "node": "./dist/server/commentary/export/index.js",
-      "svelte": "./src/commentary/export/index.ts",
-      "import": "./src/commentary/export/index.ts",
-      "default": "./dist/commentary/export/index.js"
-    },
-    "./commentary/export/types": {
-      "types": "./dist/commentary/export/types.d.ts",
-      "browser": "./src/commentary/export/types.ts",
-      "node": "./dist/server/commentary/export/types.js",
-      "svelte": "./src/commentary/export/types.ts",
-      "import": "./src/commentary/export/types.ts",
-      "default": "./dist/commentary/export/types.js"
-    },
-    "./commentary/session": {
-      "types": "./dist/commentary/session/index.d.ts",
-      "browser": "./src/commentary/session/index.ts",
-      "node": "./dist/server/commentary/session/index.js",
-      "svelte": "./src/commentary/session/index.ts",
-      "import": "./src/commentary/session/index.ts",
-      "default": "./dist/commentary/session/index.js"
-    },
-    "./commentary/session/types": {
-      "types": "./dist/commentary/session/types.d.ts",
-      "browser": "./src/commentary/session/types.ts",
-      "node": "./dist/server/commentary/session/types.js",
-      "svelte": "./src/commentary/session/types.ts",
-      "import": "./src/commentary/session/types.ts",
-      "default": "./dist/commentary/session/types.js"
-    },
-    "./commentary/shared/anchor-types": {
-      "types": "./dist/commentary/shared/anchor-types.d.ts",
-      "browser": "./src/commentary/shared/anchor-types.ts",
-      "node": "./dist/server/commentary/shared/anchor-types.js",
-      "svelte": "./src/commentary/shared/anchor-types.ts",
-      "import": "./src/commentary/shared/anchor-types.ts",
-      "default": "./dist/commentary/shared/anchor-types.js"
-    },
     "./editor": {
       "types": "./dist/editor/index.d.ts",
       "browser": "./src/editor/index.ts",
@@ -6395,6 +6227,38 @@
       "import": "./src/editor/index.ts",
       "default": "./dist/editor/index.js"
     },
+    "./editor/anchor-decorations": {
+      "types": "./dist/editor/anchor-decorations.d.ts",
+      "browser": "./src/editor/anchor-decorations.ts",
+      "node": "./dist/server/editor/anchor-decorations.js",
+      "svelte": "./src/editor/anchor-decorations.ts",
+      "import": "./src/editor/anchor-decorations.ts",
+      "default": "./dist/editor/anchor-decorations.js"
+    },
+    "./editor/anchoring": {
+      "types": "./dist/editor/anchoring.d.ts",
+      "browser": "./src/editor/anchoring.ts",
+      "node": "./dist/server/editor/anchoring.js",
+      "svelte": "./src/editor/anchoring.ts",
+      "import": "./src/editor/anchoring.ts",
+      "default": "./dist/editor/anchoring.js"
+    },
+    "./editor/comments": {
+      "types": "./dist/editor/comments/index.d.ts",
+      "browser": "./src/editor/comments/index.ts",
+      "node": "./dist/server/editor/comments/index.js",
+      "svelte": "./src/editor/comments/index.ts",
+      "import": "./src/editor/comments/index.ts",
+      "default": "./dist/editor/comments/index.js"
+    },
+    "./editor/comments/types": {
+      "types": "./dist/editor/comments/types.d.ts",
+      "browser": "./src/editor/comments/types.ts",
+      "node": "./dist/server/editor/comments/types.js",
+      "svelte": "./src/editor/comments/types.ts",
+      "import": "./src/editor/comments/types.ts",
+      "default": "./dist/editor/comments/types.js"
+    },
     "./editor/component-runtime": {
       "types": "./dist/editor/component-runtime.d.ts",
       "browser": "./src/editor/component-runtime.ts",
@@ -6402,6 +6266,46 @@
       "svelte": "./src/editor/component-runtime.ts",
       "import": "./src/editor/component-runtime.ts",
       "default": "./dist/editor/component-runtime.js"
+    },
+    "./editor/export": {
+      "types": "./dist/editor/export/index.d.ts",
+      "browser": "./src/editor/export/index.ts",
+      "node": "./dist/server/editor/export/index.js",
+      "svelte": "./src/editor/export/index.ts",
+      "import": "./src/editor/export/index.ts",
+      "default": "./dist/editor/export/index.js"
+    },
+    "./editor/export/types": {
+      "types": "./dist/editor/export/types.d.ts",
+      "browser": "./src/editor/export/types.ts",
+      "node": "./dist/server/editor/export/types.js",
+      "svelte": "./src/editor/export/types.ts",
+      "import": "./src/editor/export/types.ts",
+      "default": "./dist/editor/export/types.js"
+    },
+    "./editor/session": {
+      "types": "./dist/editor/session/index.d.ts",
+      "browser": "./src/editor/session/index.ts",
+      "node": "./dist/server/editor/session/index.js",
+      "svelte": "./src/editor/session/index.ts",
+      "import": "./src/editor/session/index.ts",
+      "default": "./dist/editor/session/index.js"
+    },
+    "./editor/session/types": {
+      "types": "./dist/editor/session/types.d.ts",
+      "browser": "./src/editor/session/types.ts",
+      "node": "./dist/server/editor/session/types.js",
+      "svelte": "./src/editor/session/types.ts",
+      "import": "./src/editor/session/types.ts",
+      "default": "./dist/editor/session/types.js"
+    },
+    "./editor/shared/anchor-types": {
+      "types": "./dist/editor/shared/anchor-types.d.ts",
+      "browser": "./src/editor/shared/anchor-types.ts",
+      "node": "./dist/server/editor/shared/anchor-types.js",
+      "svelte": "./src/editor/shared/anchor-types.ts",
+      "import": "./src/editor/shared/anchor-types.ts",
+      "default": "./dist/editor/shared/anchor-types.js"
     },
     "./editor/test-utilities": {
       "types": "./dist/editor/test-utilities.d.ts",
@@ -6585,8 +6489,8 @@
   "devDependencies": {
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
-    "@cinder/commentary": "workspace:*",
     "@cinder/testing": "workspace:*",
+    "@lostgradient/editor": "workspace:*",
     "@lostgradient/markdown": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.60.0",

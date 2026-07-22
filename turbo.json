@@ -44,13 +44,29 @@
       "dependsOn": [],
       "outputs": []
     },
-    "@cinder/commentary#lint": {
+    "@lostgradient/editor#lint": {
       "dependsOn": ["@lostgradient/markdown#build"],
       "outputs": []
     },
     "@lostgradient/cinder#lint": {
-      "dependsOn": ["@lostgradient/markdown#build", "@cinder/commentary#build"],
+      "dependsOn": ["@lostgradient/markdown#build", "@lostgradient/editor#build"],
       "outputs": []
+    },
+    "@lostgradient/editor#build": {
+      "dependsOn": ["@lostgradient/markdown#build"],
+      "outputs": ["dist/**"]
+    },
+    "@lostgradient/editor#typecheck": {
+      "dependsOn": ["@lostgradient/markdown#build"],
+      "outputs": []
+    },
+    "@lostgradient/editor#test": {
+      "dependsOn": ["@lostgradient/markdown#build"],
+      "outputs": []
+    },
+    "@lostgradient/editor#test:coverage": {
+      "dependsOn": ["@lostgradient/markdown#build"],
+      "outputs": ["coverage/**"]
     },
     "validate": {
       "dependsOn": ["^build", "build"],

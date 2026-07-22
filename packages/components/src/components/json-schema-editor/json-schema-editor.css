@@ -364,6 +364,41 @@
     gap: var(--cinder-space-3);
   }
 
+  .cinder-jse-diff-lines {
+    margin: 0;
+    padding: var(--cinder-space-3);
+    overflow-x: auto;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-inset);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    white-space: pre-wrap;
+  }
+
+  .cinder-jse-diff-line {
+    display: block;
+  }
+
+  .cinder-jse-diff-line__marker {
+    display: inline-block;
+    inline-size: 1.25em;
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-jse-diff-line--added {
+    background: var(--cinder-color-success-bg);
+  }
+
+  .cinder-jse-diff-line--removed {
+    background: var(--cinder-color-danger-bg);
+  }
+
+  .cinder-jse-diff-line--modified {
+    background: var(--cinder-color-warning-bg);
+  }
+
   /* ===== Form view ===== */
   .cinder-jse-form-view {
     display: flex;

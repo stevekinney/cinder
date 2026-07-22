@@ -17,11 +17,11 @@ function strip(line: string, state: CommentScanState = { inBlockComment: false }
 
 describe('stripCommentsRespectingStrings', () => {
   test('replaces // line comments with spaces to end of line', () => {
-    const result = strip('const x = 1; // @cinder/commentary');
+    const result = strip('const x = 1; // @lostgradient/editor');
     expect(result.startsWith('const x = 1; ')).toBe(true);
     expect(result).not.toContain('@cinder/');
     // Length preserved so column math doesn't shift.
-    expect(result.length).toBe('const x = 1; // @cinder/commentary'.length);
+    expect(result.length).toBe('const x = 1; // @lostgradient/editor'.length);
   });
 
   test('replaces /* ... */ block comments that open and close on the same line', () => {
@@ -38,7 +38,7 @@ describe('stripCommentsRespectingStrings', () => {
 
   test('marks the rest of the line as comment when /* is unclosed', () => {
     const state: CommentScanState = { inBlockComment: false };
-    const result = strip('const x = 1; /* @cinder/commentary', state);
+    const result = strip('const x = 1; /* @lostgradient/editor', state);
     expect(result).not.toContain('@cinder/');
     expect(state.inBlockComment).toBe(true);
   });
@@ -73,23 +73,23 @@ describe('stripCommentsRespectingStrings', () => {
   });
 
   test('handles escape sequences inside string literals', () => {
-    const result = strip(`const x = 'a\\'b // @cinder/commentary';`);
+    const result = strip(`const x = 'a\\'b // @lostgradient/editor';`);
     // The escaped quote keeps the string open, so the `//` inside is data.
-    expect(result).toContain('@cinder/commentary');
+    expect(result).toContain('@lostgradient/editor');
   });
 });
 
 describe('lineHasUpstreamSpecifierResidue', () => {
   test('flags static single-quoted specifier', () => {
-    expect(scan(`import x from '@cinder/commentary';`)).toBe(true);
+    expect(scan(`import x from '@lostgradient/editor';`)).toBe(true);
   });
 
   test('flags static double-quoted specifier', () => {
-    expect(scan(`import x from "@cinder/commentary";`)).toBe(true);
+    expect(scan(`import x from "@lostgradient/editor";`)).toBe(true);
   });
 
   test('flags backtick-quoted no-interpolation specifier', () => {
-    expect(scan('await import(`@cinder/commentary`);')).toBe(true);
+    expect(scan('await import(`@lostgradient/editor`);')).toBe(true);
   });
 
   test('flags template-literal specifier with interpolation', () => {
@@ -102,44 +102,44 @@ describe('lineHasUpstreamSpecifierResidue', () => {
     // `inBlockComment: true` when this line is reached. The scanner returns
     // false because the entire line is inside the comment.
     const state: CommentScanState = { inBlockComment: true };
-    expect(scan(' * Mention `@cinder/commentary` in prose', state)).toBe(false);
+    expect(scan(' * Mention `@lostgradient/editor` in prose', state)).toBe(false);
     expect(state.inBlockComment).toBe(true);
   });
 
   test('does not flag a `//` line comment with `@cinder/`', () => {
-    expect(scan('// see `@cinder/commentary` for details')).toBe(false);
+    expect(scan('// see `@lostgradient/editor` for details')).toBe(false);
   });
 
   test('tracks multi-line block comments across calls and resumes after `*/`', () => {
     const state: CommentScanState = { inBlockComment: false };
     expect(scan('/* this comment continues', state)).toBe(false);
     expect(state.inBlockComment).toBe(true);
-    expect(scan(' * @cinder/commentary reference', state)).toBe(false);
+    expect(scan(' * @lostgradient/editor reference', state)).toBe(false);
     expect(scan(' */', state)).toBe(false);
     expect(state.inBlockComment).toBe(false);
   });
 
   test('flags `/* x */ import from "@cinder/y"` — the single-line block-comment bypass case', () => {
-    expect(scan(`/* ignore */ import x from '@cinder/commentary';`)).toBe(true);
+    expect(scan(`/* ignore */ import x from '@lostgradient/editor';`)).toBe(true);
   });
 
   test('flags `import x from "@cinder/y" /* trailing */`', () => {
-    expect(scan(`import x from '@cinder/commentary' /* trailing */;`)).toBe(true);
+    expect(scan(`import x from '@lostgradient/editor' /* trailing */;`)).toBe(true);
   });
 
   test('does not flag a single-line block comment containing `@cinder/`', () => {
-    expect(scan(`/* see @cinder/commentary */`)).toBe(false);
+    expect(scan(`/* see @lostgradient/editor */`)).toBe(false);
   });
 
   test('does not flag a line ending with `//` after stripping', () => {
-    expect(scan(`const message = 'plain'; // @cinder/commentary is unused here`)).toBe(false);
+    expect(scan(`const message = 'plain'; // @lostgradient/editor is unused here`)).toBe(false);
   });
 
   test('tracks multi-line block comments and resumes scanning after `*/`', () => {
     const state: CommentScanState = { inBlockComment: false };
     expect(scan('/* opens here', state)).toBe(false);
     expect(state.inBlockComment).toBe(true);
-    expect(scan(` closes */ import x from '@cinder/commentary';`, state)).toBe(true);
+    expect(scan(` closes */ import x from '@lostgradient/editor';`, state)).toBe(true);
     expect(state.inBlockComment).toBe(false);
   });
 
@@ -168,7 +168,7 @@ describe('lineHasUpstreamSpecifierResidue', () => {
     // sequence appears inside the line, including strings — that's the
     // intentional shape; we trust that consumer JS doesn't print real
     // specifier-shaped strings as data outside of import contexts.
-    expect(scan(`const description = 'see @cinder/commentary for details';`)).toBe(false);
+    expect(scan(`const description = 'see @lostgradient/editor for details';`)).toBe(false);
   });
 
   describe('upstream specifiers renamed outside the @cinder/ scope', () => {
@@ -205,7 +205,7 @@ describe('lineHasUpstreamSpecifierResidue', () => {
 
 describe('containsUpstreamSpecifier', () => {
   test('matches any @cinder/* specifier', () => {
-    expect(containsUpstreamSpecifier(`import x from '@cinder/commentary';`)).toBe(true);
+    expect(containsUpstreamSpecifier(`import x from '@lostgradient/editor';`)).toBe(true);
   });
 
   test('matches @lostgradient/markdown even though it is outside the @cinder/ scope', () => {

@@ -56,14 +56,14 @@ describe('recordEntrypointSize', () => {
       // `dist/server` mirrors the ENTIRE component tree for SSR — it's an
       // aggregate, not a bounded feature surface, so it's excluded on
       // purpose rather than tracked against the same single-component
-      // budget. The vendored `dist/markdown/**`/`dist/commentary/**` trees
+      // budget. The vendored `dist/markdown/**`/`dist/editor/**` trees
       // (Cinder re-exporting its upstream packages) and root `dist/index.js`
       // are excluded the same way.
       const sizes = new Map<string, number>();
       recordEntrypointSize(sizes, 'dist/server/index.js', 5_000_000, true);
       recordEntrypointSize(sizes, 'dist/index.js', 2_000_000, true);
       recordEntrypointSize(sizes, 'dist/markdown/rendering/index.js', 300_000, true);
-      recordEntrypointSize(sizes, 'dist/commentary/editor/index.js', 300_000, true);
+      recordEntrypointSize(sizes, 'dist/editor/editor/index.js', 300_000, true);
       expect(sizes.size).toBe(0);
     });
   });

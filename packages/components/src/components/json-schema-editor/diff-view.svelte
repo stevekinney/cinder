@@ -8,13 +8,30 @@
 </script>
 
 <script lang="ts">
+  import type { LineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
+  import { computeLineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
+
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
-  import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import EmptyState from '../empty-state/empty-state.svelte';
 
   let { state, class: className }: DiffViewProps = $props();
+
+  const lineDiffs = $derived(computeLineDiff(state.diffOriginal, state.diffCurrent));
+
+  function lineKindClass(line: LineDiff): string {
+    switch (line.type) {
+      case 'added':
+        return 'cinder-jse-diff-line--added';
+      case 'removed':
+        return 'cinder-jse-diff-line--removed';
+      case 'modified':
+        return 'cinder-jse-diff-line--modified';
+      default:
+        return 'cinder-jse-diff-line--same';
+    }
+  }
 </script>
 
 <div class={classNames('cinder-jse-diff-view', className)}>
@@ -35,11 +52,16 @@
   {#if !state.hasChanges}
     <EmptyState title="No changes yet" description="Edit the schema to see a diff here." />
   {:else}
-    <DiffViewer
-      original={state.diffOriginal}
-      current={state.diffCurrent}
-      normalizeInputs={false}
-      readonly
-    />
+    <pre
+      class="cinder-jse-diff-lines"
+      aria-label="JSON diff">{#each lineDiffs as line, index (index)}<div
+          class={classNames(
+            'cinder-jse-diff-line',
+            lineKindClass(line),
+          )}>{#if line.type === 'modified'}<span class="cinder-jse-diff-line__marker">~</span
+            >{line.oldText}<span class="cinder-jse-diff-line__marker">→</span
+            >{line.newText}{:else}<span class="cinder-jse-diff-line__marker"
+              >{line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}</span
+            >{line.text}{/if}</div>{/each}</pre>
   {/if}
 </div>
