@@ -63,13 +63,6 @@ export {
   type SupportedLanguage,
 } from './highlighter.js';
 
-// Async Worker-based rendering (DEP-687)
-export {
-  initializeWorkerHighlighter,
-  renderMarkdownAsync,
-  terminateMarkdownWorker,
-} from './render-async.js';
-
 // Mermaid SVG cache (DEP-95)
 export {
   clearMermaidCache,

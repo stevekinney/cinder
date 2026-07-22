@@ -75,6 +75,12 @@ describe('@cinder/markdown SSR import safety', () => {
   it('imports the rendering subpath without needing browser globals', async () => {
     const renderingModule = await import('./rendering/index.js');
     expect(typeof renderingModule.renderMarkdown).toBe('function');
+    expect('renderMarkdownAsync' in renderingModule).toBe(false);
+  });
+
+  it('imports the async rendering subpath without needing browser globals', async () => {
+    const asyncRenderingModule = await import('./rendering/async.js');
+    expect(typeof asyncRenderingModule.renderMarkdownAsync).toBe('function');
   });
 
   it('imports the templates/sanitize-html subpath without needing browser globals', async () => {
