@@ -106,19 +106,36 @@ describe('chat message action buttons', () => {
     expect(resetBlock).toContain('bottom: auto');
   });
 
-  test('narrow footer space is reserved only when actions render content', () => {
+  test('touch below-bubble footers reserve space only when actions render content', () => {
+    const touchBlock = collapseWhitespace(extractTouchMediaBlock(source, "data-role='system'"));
+
+    for (const selector of [
+      ".chat-message-wrapper[data-role='system']",
+      ".chat-message-wrapper[data-role='developer']",
+      ".chat-message-wrapper[data-role='tool-call']",
+      ".chat-message-wrapper[data-role='tool-result']",
+      ".chat-message-wrapper[data-role='snapshot']",
+      '.chat-message-wrapper[data-tool-pair]',
+    ]) {
+      expect(touchBlock).toContain(
+        `${selector}:has( > .chat-message-footer .chat-message-actions > :global(*) )`,
+      );
+    }
+
+    expect(touchBlock).not.toMatch(/\.chat-message-wrapper\s*\{[^}]*margin-block-end:/s);
+  });
+
+  test('narrow touch layouts extend footer-space reservation to side-footer roles', () => {
     const narrowBlock = extractMediaBlock(source, '@media (max-width: 480px) {');
-    const narrowTouchBlock = extractMediaBlock(
-      narrowBlock,
-      '@media (hover: none) or (pointer: coarse) {',
+    const narrowTouchBlock = collapseWhitespace(
+      extractMediaBlock(narrowBlock, '@media (hover: none) or (pointer: coarse) {'),
     );
 
-    expect(narrowTouchBlock).toContain(
-      '.chat-message-wrapper:has(> .chat-message-footer .chat-message-actions > :global(*))',
-    );
-    expect(narrowTouchBlock).not.toMatch(/\.chat-message-wrapper\s*\{[^}]*margin-block-end:/s);
-
-    expect(narrowBlock.replace(narrowTouchBlock, '')).not.toContain('margin-block-end:');
+    for (const role of ['user', 'assistant']) {
+      expect(narrowTouchBlock).toContain(
+        `.chat-message-wrapper[data-role='${role}']:has( > .chat-message-footer .chat-message-actions > :global(*) )`,
+      );
+    }
   });
 
   // Regression for #777: a `display: none` footer on tool-paired rows can
@@ -215,4 +232,8 @@ function extractMediaBlock(text: string, marker: string, contains?: string): str
     }
     if (depth !== 0) throw new Error(`media block not balanced: ${marker}`);
   }
+}
+
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
 }

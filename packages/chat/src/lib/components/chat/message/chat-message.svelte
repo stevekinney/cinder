@@ -803,22 +803,53 @@
     }
 
     /* The narrow footer is persistently visible only on touch/coarse-pointer
-     * devices. Hover-capable layouts reveal it on demand and must not reserve
-     * an empty row while the footer is hidden. */
+     * devices. Wide layouts keep user/assistant footers beside the bubble, so
+     * only the narrow fallback needs to reserve their below-bubble footprint. */
     @media (hover: none) or (pointer: coarse) {
-      .chat-message-wrapper:has(> .chat-message-footer .chat-message-actions > :global(*)) {
+      .chat-message-wrapper[data-role='user']:has(
+          > .chat-message-footer .chat-message-actions > :global(*)
+        ),
+      .chat-message-wrapper[data-role='assistant']:has(
+          > .chat-message-footer .chat-message-actions > :global(*)
+        ) {
         margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
       }
     }
+
   }
 
-  /* Touch devices: always show actions. The tool-pair override above has
-   * higher specificity ([data-tool-pair] + .chat-message-wrapper +
+  /* Touch/coarse-pointer devices always show actions, so every below-bubble
+   * footer also needs its footprint reserved in flow when actions actually
+   * render. Wide layouts keep user/assistant footers beside the bubble, so
+   * those side-footer roles only opt into the reservation in the narrow
+   * viewport fallback above. The tool-pair override above has higher
+   * specificity ([data-tool-pair] + .chat-message-wrapper +
    * .chat-message-footer) than the bare `.chat-message-footer` below, so it
    * needs its own entry here — otherwise touch users would hit the same
    * "always opacity: 0" dead end on tool-paired rows that :hover/:focus-within
    * fixes for pointer/keyboard. */
   @media (hover: none) or (pointer: coarse) {
+    .chat-message-wrapper[data-role='system']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='developer']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='tool-call']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='tool-result']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='snapshot']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-tool-pair]:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ) {
+      margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
+    }
+
     .chat-message-footer,
     .chat-message-wrapper[data-tool-pair] .chat-message-footer {
       opacity: 1;
