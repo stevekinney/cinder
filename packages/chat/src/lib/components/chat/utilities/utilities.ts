@@ -443,6 +443,16 @@ export function deriveMessageParts(
   return [...bodyParts, ...imageParts];
 }
 
+const messageRoleLabels: Record<Message['role'], string> = {
+  user: 'You',
+  assistant: 'Assistant',
+  system: 'System',
+  developer: 'Developer',
+  'tool-call': 'Tool Call',
+  'tool-result': 'Tool Result',
+  snapshot: 'Snapshot',
+};
+
 /**
  * Gets the role label for a message.
  * Maps internal role values to human-readable labels.
@@ -451,16 +461,7 @@ export function deriveMessageParts(
  * @returns A human-readable role label
  */
 export function getMessageRoleLabel(message: Message): string {
-  const labels: Record<Message['role'], string> = {
-    user: 'User',
-    assistant: 'Assistant',
-    system: 'System',
-    developer: 'Developer',
-    'tool-call': 'Tool Call',
-    'tool-result': 'Tool Result',
-    snapshot: 'Snapshot',
-  };
-  return labels[message.role] ?? message.role;
+  return messageRoleLabels[message.role] ?? message.role;
 }
 
 /**

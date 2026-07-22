@@ -124,7 +124,7 @@ describe('getMessageRoleLabel', () => {
   // map must key off the real MessageRole value, or tool-call messages fall
   // back to the raw role string.
   it.each([
-    ['user', 'User'],
+    ['user', 'You'],
     ['assistant', 'Assistant'],
     ['system', 'System'],
     ['developer', 'Developer'],
@@ -149,7 +149,7 @@ describe('messagesToMarkdown', () => {
         message({ id: 'u', role: 'user', content: 'Hi' }),
         message({ id: 'a', role: 'assistant', content: 'Hello' }),
       ]),
-    ).toBe('**User:**\n\nHi\n\n---\n\n**Assistant:**\n\nHello');
+    ).toBe('**You:**\n\nHi\n\n---\n\n**Assistant:**\n\nHello');
   });
 
   it('omits system and developer messages from transcript export', () => {
