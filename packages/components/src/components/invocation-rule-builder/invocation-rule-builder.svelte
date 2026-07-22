@@ -587,6 +587,8 @@
             </div>
           {/if}
         </div>
+      {:else}
+        <h3 class="cinder-sr-only">Conditions</h3>
       {/if}
 
       <!-- Conditions section -->

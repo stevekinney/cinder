@@ -1523,6 +1523,13 @@ describe('InvocationRuleBuilder', () => {
       expect(container.querySelector('[data-irb-condition-remove]')).not.toBeNull();
     });
 
+    test('keeps a semantic heading for screen-reader section navigation', () => {
+      const { container } = renderFlatConditionsBuilder([]);
+      const heading = container.querySelector('h3.cinder-sr-only');
+
+      expect(heading?.textContent).toBe('Conditions');
+    });
+
     test('emits the direct conditions array and a change without rule metadata', async () => {
       const { container, onchange } = renderFlatConditionsBuilder([
         makeCondition({ field: 'label', operator: 'eq', value: 'security' }),
