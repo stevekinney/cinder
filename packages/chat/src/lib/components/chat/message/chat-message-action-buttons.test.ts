@@ -61,6 +61,76 @@ describe('chat message action buttons', () => {
     expect(resetBlock).not.toMatch(/(^|\s)right:\s*auto/);
   });
 
+  test('below-bubble footer spacing is an in-box hover bridge', () => {
+    // Use a line-start regex so the lookup is not sensitive to indentation.
+    const footerRule = extractRule(source, /(?:^|\n)\s*\.chat-message-footer\s*\{/);
+    expect(footerRule).toContain('padding-top: var(--cinder-space-1)');
+    expect(footerRule).not.toContain('margin-top: var(--cinder-space-1)');
+
+    const mediaIdx = source.indexOf('@media (max-width: 480px)');
+    expect(mediaIdx).toBeGreaterThan(-1);
+    const desktopRules = source.slice(0, mediaIdx);
+    for (const role of ['developer', 'system', 'snapshot', 'tool-call', 'tool-result']) {
+      expect(desktopRules).not.toContain(
+        `.chat-message-wrapper[data-role='${role}'] .chat-message-footer {`,
+      );
+    }
+
+    const toolPairRule = extractRule(
+      source,
+      '.chat-message-wrapper[data-tool-pair] .chat-message-footer {',
+    );
+    expect(toolPairRule).not.toMatch(/(?:margin|padding)-top:/);
+  });
+
+  test('desktop side footers clear the below-bubble bridge', () => {
+    for (const role of ['user', 'assistant']) {
+      const rule = extractRule(
+        source,
+        `.chat-message-wrapper[data-role='${role}'] .chat-message-footer {`,
+      );
+      expect(rule).toContain('padding-top: 0');
+    }
+  });
+
+  test('narrow side footers restore the below-bubble hover bridge', () => {
+    const resetBlock = extractRule(
+      source,
+      ".chat-message-wrapper[data-role='snapshot'] .chat-message-footer {",
+    );
+    expect(resetBlock).toContain('padding-top: var(--cinder-space-1)');
+    expect(resetBlock).not.toContain('margin-top: var(--cinder-space-1)');
+    // Ensures `bottom: 0` from the user/assistant desktop side-footer rules is
+    // cleared, preventing both `top` and `bottom` being set simultaneously and
+    // collapsing/overconstraining the below-bubble footer box.
+    expect(resetBlock).toContain('bottom: auto');
+  });
+
+  test('touch footer space follows below-bubble placement and rendered content', () => {
+    const narrowBlock = extractMediaBlock(source, '@media (max-width: 480px) {');
+    const narrowTouchBlock = extractMediaBlock(
+      narrowBlock,
+      '@media (hover: none) or (pointer: coarse) {',
+    );
+    const wideTouchBlock = extractTouchMediaBlock(source, "[data-role='system']:has(");
+
+    for (const role of ['user', 'assistant']) {
+      expect(narrowTouchBlock).toContain(`.chat-message-wrapper[data-role='${role}']:has(`);
+    }
+    expect(narrowTouchBlock).not.toMatch(/\.chat-message-wrapper\s*\{[^}]*margin-block-end:/s);
+
+    for (const role of ['system', 'developer', 'tool-call', 'tool-result', 'snapshot']) {
+      expect(wideTouchBlock).toContain(`.chat-message-wrapper[data-role='${role}']:has(`);
+    }
+    expect(wideTouchBlock).toContain(
+      'margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1))',
+    );
+    expect(wideTouchBlock).not.toContain("[data-role='user']:has(");
+    expect(wideTouchBlock).not.toContain("[data-role='assistant']:has(");
+
+    expect(narrowBlock.replace(narrowTouchBlock, '')).not.toContain('margin-block-end:');
+  });
+
   // Regression for #777: a `display: none` footer on tool-paired rows can
   // never be resurrected by the shared `:hover`/`:focus-within` rule (which
   // only toggles opacity/pointer-events), making retry/edit/copy and any
@@ -87,19 +157,37 @@ describe('chat message action buttons', () => {
     );
   });
 
+  test('keyboard focus within any message wrapper still reveals its footer', () => {
+    expect(source).toMatch(
+      /\.chat-message-wrapper:focus-within\s+\.chat-message-footer\s*\{[^}]*opacity:\s*1;[^}]*pointer-events:\s*auto;/s,
+    );
+  });
+
   test('touch devices reveal the tool-pair footer too, matching its higher specificity', () => {
     // The tool-pair hidden-state override has higher specificity than the
     // bare `.chat-message-footer` touch rule, so it needs its own entry in
     // the touch media block or tool-paired rows stay unreachable on touch.
-    const touchBlock = extractTouchMediaBlock(source, '.chat-message-footer');
+    const touchBlock = extractTouchMediaBlock(
+      source,
+      '.chat-message-wrapper[data-tool-pair] .chat-message-footer',
+    );
     expect(touchBlock).toContain('.chat-message-wrapper[data-tool-pair] .chat-message-footer');
   });
 });
 
-function extractRule(text: string, opening: string): string {
-  const start = text.indexOf(opening);
-  if (start === -1) throw new Error(`rule not found: ${opening}`);
-  const bodyStart = start + opening.length;
+function extractRule(text: string, opening: string | RegExp): string {
+  let bodyStart: number;
+  if (typeof opening === 'string') {
+    const start = text.indexOf(opening);
+    if (start === -1) throw new Error(`rule not found: ${opening}`);
+    bodyStart = start + opening.length;
+  } else {
+    // Clone regex without global/sticky flags to avoid lastIndex flakiness
+    const flags = opening.flags.replace(/[gy]/g, '');
+    const match = new RegExp(opening.source, flags).exec(text);
+    if (!match) throw new Error(`rule not found: ${opening}`);
+    bodyStart = match.index + match[0].length;
+  }
   const end = text.indexOf('}', bodyStart);
   return text.slice(bodyStart, end);
 }
@@ -109,10 +197,17 @@ function extractTouchMediaBlock(
   contains: string = '.chat-message-action-button',
 ): string {
   const marker = '@media (hover: none) or (pointer: coarse) {';
+  return extractMediaBlock(text, marker, contains);
+}
+
+function extractMediaBlock(text: string, marker: string, contains?: string): string {
   let searchFrom = 0;
   for (;;) {
     const start = text.indexOf(marker, searchFrom);
-    if (start === -1) throw new Error(`touch media block containing "${contains}" not found`);
+    if (start === -1) {
+      const qualifier = contains ? ` containing "${contains}"` : '';
+      throw new Error(`media block${qualifier} not found: ${marker}`);
+    }
     let depth = 0;
     let i = text.indexOf('{', start);
     const bodyStart = i + 1;
@@ -122,12 +217,12 @@ function extractTouchMediaBlock(
         depth--;
         if (depth === 0) {
           const body = text.slice(bodyStart, i);
-          if (body.includes(contains)) return body;
+          if (!contains || body.includes(contains)) return body;
           searchFrom = i + 1;
           break;
         }
       }
     }
-    if (depth !== 0) throw new Error('touch media block not balanced');
+    if (depth !== 0) throw new Error(`media block not balanced: ${marker}`);
   }
 }
