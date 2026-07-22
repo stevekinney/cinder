@@ -190,6 +190,7 @@ describe('JsonEditor', () => {
       value: '{}',
     });
 
+    expect((editor as HTMLTextAreaElement).value).toBe('{');
     expect(editor.getAttribute('aria-invalid')).toBe('true');
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
   });

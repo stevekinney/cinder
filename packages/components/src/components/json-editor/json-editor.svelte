@@ -113,7 +113,7 @@
     {id}
     {rows}
     {autofocus}
-    {value}
+    value={draftValue}
     spellcheck="false"
     class="cinder-json-editor__textarea"
     aria-describedby={describedBy}
