@@ -59,9 +59,16 @@
     }
   });
   const feedbackIsError = $derived(Boolean(externalError) || !parseIsValid);
+  const consumerMarksInvalid = $derived(
+    consumerInvalid !== undefined && consumerInvalid !== false && consumerInvalid !== 'false',
+  );
   const feedbackText = $derived(
     externalError ??
-      (!parseIsValid ? 'Enter valid JSON.' : showValidFeedback ? 'Valid JSON.' : undefined),
+      (!parseIsValid
+        ? 'Enter valid JSON.'
+        : showValidFeedback && !consumerMarksInvalid
+          ? 'Valid JSON.'
+          : undefined),
   );
   const feedbackId = $derived(feedbackText ? `${id}-feedback` : undefined);
   const describedBy = $derived(composeDescribedBy(descriptionId, feedbackId, consumerDescribedBy));

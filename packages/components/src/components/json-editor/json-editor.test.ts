@@ -117,6 +117,7 @@ describe('JsonEditor', () => {
 
     await fireEvent.input(editor, { target: { value: '{' } });
 
+    expect((editor as HTMLTextAreaElement).value).toBe('{');
     expect(editor.getAttribute('aria-invalid')).toBe('true');
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
   });
@@ -139,6 +140,21 @@ describe('JsonEditor', () => {
 
     expect(editor.getAttribute('aria-invalid')).toBe('true');
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+  });
+
+  test('suppresses valid feedback when consumer validation marks the editor invalid', () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      'aria-invalid': 'true',
+      'aria-describedby': 'payload-domain-error',
+    });
+    const editor = view.getByLabelText('Payload');
+
+    expect(editor.getAttribute('aria-invalid')).toBe('true');
+    expect(editor.getAttribute('aria-describedby')).toBe('payload-domain-error');
+    expect(view.queryByRole('status')).toBeNull();
   });
 
   test('keeps native multiline keyboard input and does not trap Tab', async () => {
