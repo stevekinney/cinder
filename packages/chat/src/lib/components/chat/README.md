@@ -302,7 +302,7 @@ optional resolved `toolCallPair` and `artifact` values:
   } from '@lostgradient/chat';
   import { Button } from '@lostgradient/cinder/button';
 
-  let selectedArtifact = $state<ChatArtifact>();
+  let selectedArtifact = $state<ChatArtifact | undefined>();
 </script>
 
 <ChatArtifactLayout
