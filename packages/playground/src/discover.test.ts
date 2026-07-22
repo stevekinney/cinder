@@ -326,13 +326,16 @@ describe('discoverSidebarComponents', () => {
     // InlineLoading and KanbanBoard each add a standalone sidebar family with
     // examples, bringing the measured ceiling to 168. SelectableRow adds one
     // standalone row-action family, bringing the measured ceiling to 169.
+    // JsonEditor adds one standalone JSON source-editing family with examples,
+    // bringing the measured ceiling to 170.
     const sidebar = await discoverSidebarComponents();
-    expect(sidebar.length).toBeLessThanOrEqual(169);
+    expect(sidebar.length).toBeLessThanOrEqual(170);
     // Positive anchor for the +1: stacked-list-item is the family the #394
     // backfill newly surfaces, so it must actually be present. Without this the
     // upper-bound alone would silently pass if the regression that dropped it
     // from the sidebar also dropped some other family in its place.
     expect(sidebar).toContain('stacked-list-item');
+    expect(sidebar).toContain('json-editor');
     expect(sidebar).toContain('selectable-row');
     expect(sidebar).toContain('page-header');
     expect(sidebar).toContain('data-grid');
