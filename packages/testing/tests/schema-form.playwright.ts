@@ -27,7 +27,11 @@ test.describe('SchemaForm native form serialization', () => {
     await expect(form).toBeVisible();
 
     await mount.getByRole('button', { name: 'Save schedule' }).click();
-    await expect(mount.locator('pre')).toContainText('"name": "Refresh indexes"');
+    const submittedOutput = mount
+      .getByRole('heading', { name: 'Last valid submission' })
+      .locator('..')
+      .locator('pre');
+    await expect(submittedOutput).toContainText('"name": "Refresh indexes"');
 
     const payload = await form.evaluate((element) => {
       const raw = new FormData(element as HTMLFormElement).get('payload');

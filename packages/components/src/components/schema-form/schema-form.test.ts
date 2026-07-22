@@ -808,6 +808,34 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     ]);
   });
 
+  test('preserves malformed numeric editor text after blur', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: 'abc' } });
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+    expect(drafts).toEqual([{ count: 'abc' }]);
+  });
+
   test('does not report programmatic numeric input while submission is pending', async () => {
     const drafts: unknown[] = [];
     let finishSubmit: (() => void) | undefined;

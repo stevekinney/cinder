@@ -181,6 +181,12 @@
     if (reportChange) reportDraftChange();
   }
 
+  function updateNumberValue(field: SchemaFormField, next: number | null) {
+    const draft = numericDrafts[pathKey(field.path)];
+    if (next === null && draft !== undefined && draft.trim() !== '') return;
+    updateValue(field.path, next ?? undefined);
+  }
+
   async function validateTouchedField(field: SchemaFormField) {
     if (submitting) return;
     const fieldKey = pathKey(field.path);
@@ -624,7 +630,7 @@
           step={field.kind === 'integer' ? 1 : undefined}
           onblur={() => validateTouchedField(field)}
           value={numberFieldValue(field)}
-          onchange={(next) => updateValue(field.path, next ?? undefined)}
+          onchange={(next) => updateNumberValue(field, next)}
         />
       {:else if field.kind === 'enum'}
         <Select
