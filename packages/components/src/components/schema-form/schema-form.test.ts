@@ -642,10 +642,14 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
       required: ['name'],
     };
 
+    const drafts: unknown[] = [];
     const { rerender } = render(SchemaForm, {
       props: {
         schema: schema as never,
         value: { name: 'Initial' },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
       },
     });
     await flush();
@@ -667,6 +671,48 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     // User edit is preserved — value prop change did not reset formValue.
     expect(nameInput.value).toBe('User edit');
+    expect(drafts).toEqual([{ name: 'User edit' }]);
+  });
+
+  test('emits complete nested drafts before submit, including schema-invalid values', async () => {
+    const drafts: unknown[] = [];
+    const schema = {
+      type: 'object',
+      properties: {
+        title: { type: 'string', title: 'Title', minLength: 3 },
+        owner: {
+          type: 'object',
+          title: 'Owner',
+          properties: {
+            name: { type: 'string', title: 'Owner name', minLength: 1 },
+          },
+          required: ['name'],
+        },
+      },
+      required: ['title', 'owner'],
+    };
+
+    render(SchemaForm, {
+      props: {
+        schema,
+        value: { title: 'Ready', owner: { name: 'Ada' } },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    expect(drafts).toEqual([]);
+    await fireEvent.input(screen.getByLabelText(/Owner name/), {
+      target: { value: 'Grace' },
+    });
+    await fireEvent.input(screen.getByLabelText(/^Title/), { target: { value: '' } });
+
+    expect(drafts).toEqual([
+      { title: 'Ready', owner: { name: 'Grace' } },
+      { title: '', owner: { name: 'Grace' } },
+    ]);
   });
 });
 

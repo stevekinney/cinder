@@ -19,6 +19,11 @@
   "metadata": {
     "unsupportedProps": [
       {
+        "name": "ondraftchange",
+        "reason": "function-or-snippet",
+        "description": "Called after each edit with the complete current draft, before schema validation.\nThe draft can be schema-invalid and does not change the seed-only `value` contract."
+      },
+      {
         "name": "onsubmit",
         "reason": "function-or-snippet",
         "description": "Called after validation passes with the schema-conformant output value."

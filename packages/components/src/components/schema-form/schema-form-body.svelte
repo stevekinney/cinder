@@ -55,6 +55,7 @@
     submitLabel = 'Submit',
     class: customClassName,
     onsubmit,
+    ondraftchange,
     novalidate,
     ...rest
   }: SchemaFormProps<Schema> = $props();
@@ -143,7 +144,15 @@
     };
   }
 
-  function updateValue(path: readonly string[], next: unknown) {
+  function currentDraft(): SchemaFormOutput {
+    return pruneUndefined(rawJsonIssues().value) as SchemaFormOutput;
+  }
+
+  function reportDraftChange() {
+    ondraftchange?.(currentDraft());
+  }
+
+  function updateValue(path: readonly string[], next: unknown, reportChange = true) {
     if (submitting) return;
     formValue = setValueAtPath(formValue, path, next);
     const key = pathKey(path);
@@ -153,6 +162,7 @@
       errors = remaining;
     }
     setSerializedValue('');
+    if (reportChange) reportDraftChange();
   }
 
   async function validateTouchedField(field: SchemaFormField) {
@@ -214,6 +224,7 @@
       errors = remaining;
     }
     setSerializedValue('');
+    reportDraftChange();
   }
 
   function arrayRows(field: SchemaFormField): Array<{ key: string; index: number }> {
@@ -243,6 +254,7 @@
     updateValue(
       field.path,
       values.filter((_, candidateIndex) => candidateIndex !== index),
+      false,
     );
     rawDrafts = reindexArrayPathState(rawDrafts, field.path, index);
     errors = reindexArrayPathState(errors, field.path, index);
@@ -255,6 +267,7 @@
       ...arrayKeys,
       [key]: (arrayKeys[key] ?? []).filter((_, candidateIndex) => candidateIndex !== index),
     };
+    reportDraftChange();
   }
 
   function reindexArrayPathState<T>(

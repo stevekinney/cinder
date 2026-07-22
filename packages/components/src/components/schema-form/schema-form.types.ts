@@ -6,6 +6,8 @@ export type SchemaFormSchema = JsonSchemaObject;
 
 export type SchemaFormOutput = unknown;
 
+export type SchemaFormDraftChangeHandler = (value: SchemaFormOutput) => void;
+
 export type SchemaFormSubmitHandler = (
   value: SchemaFormOutput,
   event: SubmitEvent,
@@ -37,4 +39,9 @@ export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> 
   class?: string;
   /** Called after validation passes with the schema-conformant output value. */
   onsubmit?: SchemaFormSubmitHandler;
+  /**
+   * Called after each edit with the complete current draft, before schema validation.
+   * The draft can be schema-invalid and does not change the seed-only `value` contract.
+   */
+  ondraftchange?: SchemaFormDraftChangeHandler;
 };
