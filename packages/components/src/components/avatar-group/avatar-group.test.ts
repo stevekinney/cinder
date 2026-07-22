@@ -275,23 +275,39 @@ describe('AvatarGroup', () => {
   });
 
   test('shows a named avatar tooltip on focus and hides it on Escape', async () => {
-    const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 1) });
+    const unrelatedTooltip = document.createElement('span');
+    unrelatedTooltip.setAttribute('role', 'tooltip');
+    unrelatedTooltip.setAttribute('aria-hidden', 'true');
+    document.body.prepend(unrelatedTooltip);
+    const existingTooltips = new Set(document.body.querySelectorAll('[role="tooltip"]'));
 
-    const trigger = container.querySelector<HTMLElement>('.cinder-avatar-group__trigger');
-    expect(trigger).not.toBeNull();
-    trigger?.focus();
-    await fireEvent.focusIn(trigger!);
+    try {
+      const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 1) });
 
-    await waitFor(() => {
-      const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
-      expect(tooltip?.getAttribute('aria-hidden')).toBe('false');
-    });
+      const trigger = container.querySelector<HTMLElement>('.cinder-avatar-group__trigger');
+      expect(trigger).not.toBeNull();
+      trigger?.focus();
+      await fireEvent.focusIn(trigger!);
 
-    await fireEvent.keyDown(document, { key: 'Escape' });
-    await waitFor(() => {
-      const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
-      expect(tooltip?.getAttribute('aria-hidden')).toBe('true');
-    });
+      await waitFor(() => {
+        const ownedTooltips = Array.from(
+          document.body.querySelectorAll<HTMLElement>('[role="tooltip"]'),
+        ).filter((tooltip) => !existingTooltips.has(tooltip));
+        expect(ownedTooltips).toHaveLength(1);
+        expect(ownedTooltips[0]?.getAttribute('aria-hidden')).toBe('false');
+      });
+
+      await fireEvent.keyDown(document, { key: 'Escape' });
+      await waitFor(() => {
+        const ownedTooltips = Array.from(
+          document.body.querySelectorAll<HTMLElement>('[role="tooltip"]'),
+        ).filter((tooltip) => !existingTooltips.has(tooltip));
+        expect(ownedTooltips).toHaveLength(1);
+        expect(ownedTooltips[0]?.getAttribute('aria-hidden')).toBe('true');
+      });
+    } finally {
+      unrelatedTooltip.remove();
+    }
   });
 
   test('raises the focused item above overlapped siblings', async () => {

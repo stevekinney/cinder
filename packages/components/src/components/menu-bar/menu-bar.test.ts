@@ -28,11 +28,17 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
-const { renderToServerHtml } = await import('../../test/server-render.ts');
+const { prepareServerRenderSource, renderToServerHtml } =
+  await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
 const MENU_BAR_SOURCE = `${import.meta.dir}/menu-bar.svelte`;
 const MENU_BAR_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/menu-bar-direction-fixture.svelte`;
+
+await Promise.all([
+  prepareServerRenderSource(MENU_BAR_SOURCE),
+  prepareServerRenderSource(MENU_BAR_DIRECTION_FIXTURE_SOURCE),
+]);
 
 function fileEditViewMenus(onOpenRecent = () => {}) {
   return [

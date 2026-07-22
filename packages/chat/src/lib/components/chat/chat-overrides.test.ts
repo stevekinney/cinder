@@ -2,7 +2,7 @@
  * Tests for the Chat `messagePart` and `row` snippet overrides (C1 spine).
  *
  * Both overrides use inversion of control: the consumer's snippet receives the
- * subject (a part or a message) AND a `renderDefault` snippet it can call to
+ * subject (a part or a row context) AND a `renderDefault` snippet it can call to
  * render the built-in. These tests prove:
  *   - `messagePart` replaces an individual body part's rendering, and can
  *     delegate back to the built-in for parts it does not handle.
@@ -16,7 +16,8 @@ import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
-import type { ConversationHistory, Message, MessageRole } from './conversation-model.ts';
+import type { ChatRowContext } from './chat.types.ts';
+import type { ConversationHistory, MessageRole } from './conversation-model.ts';
 
 setupHappyDom();
 
@@ -134,8 +135,8 @@ describe('Chat — row override', () => {
     let conversation = createConversation();
     conversation = append(conversation, 'user', 'hello there');
 
-    const row = createRawSnippet((getMessage: () => Message) => ({
-      render: () => `<div class="row-override">ROW for ${getMessage().role}</div>`,
+    const row = createRawSnippet((getContext: () => ChatRowContext) => ({
+      render: () => `<div class="row-override">ROW for ${getContext().message.role}</div>`,
       setup: () => {},
     }));
 

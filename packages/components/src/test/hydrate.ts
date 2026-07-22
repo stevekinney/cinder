@@ -9,13 +9,14 @@
  * - Has DOM-property-only state (e.g. Checkbox `indeterminate`)
  * - Uses portals or overlay surfaces
  *
- * Why we rebuild inside the helper: the test runtime preloads the Bun Svelte
+ * Why this helper owns a server build: the test runtime preloads the Bun Svelte
  * plugin in `generate: 'client'` mode (see `scripts/preload.ts`). Calling
  * `svelte/server`'s `render()` against a client-compiled component crashes
  * because the client runtime expects a live effect tree. So this helper builds
  * the component and its complete local Svelte import graph with
  * `generate: 'server'`, writes the bundled JS to a temp file, dynamic-imports
- * it, and feeds that into `render()`.
+ * it, and feeds that into `render()`. Builds are memoized by source path because
+ * component fixtures are immutable during a test process.
  *
  * The helper does NOT itself assert — it returns a structured result so each
  * component test can express the contract it cares about (e.g. "no warnings"
@@ -90,6 +91,56 @@ function serverCompilePlugin(): BunPlugin {
     },
   };
 }
+
+const serverBuildCache = new Map<string, Promise<string>>();
+const serverBuildCounts = new Map<string, number>();
+
+function buildServerCode(sourcePath: string): Promise<string> {
+  const cached = serverBuildCache.get(sourcePath);
+  if (cached) return cached;
+
+  serverBuildCounts.set(sourcePath, (serverBuildCounts.get(sourcePath) ?? 0) + 1);
+  const pending = (async () => {
+    const build = await Bun.build({
+      entrypoints: [sourcePath],
+      target: 'bun',
+      conditions: ['svelte'],
+      external: ['svelte', 'svelte/*'],
+      plugins: [serverCompilePlugin()],
+    });
+    if (!build.success) {
+      const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
+      throw new Error(`hydrate: server build failed for ${sourcePath}\n${logText}`);
+    }
+    const artifact = build.outputs[0];
+    if (!artifact) throw new Error(`hydrate: no server artifact for ${sourcePath}`);
+    return artifact.text();
+  })();
+
+  serverBuildCache.set(sourcePath, pending);
+  void pending.catch(() => {
+    if (serverBuildCache.get(sourcePath) === pending) serverBuildCache.delete(sourcePath);
+  });
+  return pending;
+}
+
+/**
+ * Compile a component's server graph during fixture setup rather than charging
+ * that reusable work to the first timed hydration assertion.
+ */
+export async function prepareHydrationSource(sourcePath: string): Promise<void> {
+  await buildServerCode(sourcePath);
+}
+
+/** Test-only cache probes for the fixture-setup regression suite. */
+export const __serverBuildCacheForTests = {
+  evict(sourcePath: string): void {
+    serverBuildCache.delete(sourcePath);
+  },
+  buildCount(sourcePath: string): number {
+    return serverBuildCounts.get(sourcePath) ?? 0;
+  },
+};
 
 /**
  * Every temp SSR module this helper writes is registered here. The per-test
@@ -192,19 +243,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
 ): Promise<HydrateResult> {
   setupHappyDom();
 
-  const build = await Bun.build({
-    entrypoints: [sourcePath],
-    target: 'bun',
-    conditions: ['svelte'],
-    external: ['svelte', 'svelte/*'],
-    plugins: [serverCompilePlugin()],
-  });
-  if (!build.success) {
-    const logText = build.logs.map((log) => String(log.message ?? log)).join('\n');
-    throw new Error(`hydrate: server build failed for ${sourcePath}\n${logText}`);
-  }
-  const artifact = build.outputs[0];
-  if (!artifact) throw new Error(`hydrate: no server artifact for ${sourcePath}`);
+  const compiledServerCode = await buildServerCode(sourcePath);
 
   const sveltePackageUrl = import.meta.resolve('svelte/package.json');
   const serverAbortSignalUrl = new URL('./src/internal/server/abort-signal.js', sveltePackageUrl)
@@ -269,8 +308,7 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
         '',
       ].join('\n'),
     );
-    let serverCode = await artifact.text();
-    serverCode = serverCode
+    const serverCode = compiledServerCode
       .replaceAll(
         /from\s*['"]svelte\/internal\/server['"]/g,
         `from ${JSON.stringify(serverInternalUrl)}`,

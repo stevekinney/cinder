@@ -7,7 +7,7 @@
   import { BarChart } from '@lostgradient/cinder/bar-chart';
 
   const data = [
-    { severity: 'Critical', current: 8, previous: 10 },
+    { severity: 'Critical escalation', current: 8, previous: 10 },
     { severity: 'High', current: 18, previous: 22 },
     { severity: 'Medium', current: 41, previous: 39 },
   ];

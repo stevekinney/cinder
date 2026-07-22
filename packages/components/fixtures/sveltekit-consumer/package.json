@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@lostgradient/cinder": "file:../../lostgradient-cinder-0.0.1.tgz",
+    "lucide-svelte": "0.577.0",
     "zod": "4.4.1"
   },
   "devDependencies": {

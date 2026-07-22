@@ -1,4 +1,6 @@
+import { createRetryingLoaderCache } from '../utilities/retrying-loader-cache.ts';
 import { CinderKnowledgeError, loadCinderKnowledge, type CinderKnowledge } from './knowledge.ts';
+import { importOptionalMcpDependency } from './mcp-dependencies.ts';
 import type { BestPracticeTopic } from './types.ts';
 
 // zod and @modelcontextprotocol/sdk are peer dependencies (optional) — only
@@ -9,78 +11,33 @@ import type { BestPracticeTopic } from './types.ts';
 type ZodModule = typeof import('zod/v4');
 type McpServerModule = typeof import('@modelcontextprotocol/sdk/server/mcp.js');
 type McpTypesModule = typeof import('@modelcontextprotocol/sdk/types.js');
-type McpStdioModule = typeof import('@modelcontextprotocol/sdk/server/stdio.js');
 type McpErrorDependencies = {
   ErrorCode: McpTypesModule['ErrorCode'];
   McpError: McpTypesModule['McpError'];
-};
-
-export const MCP_OPTIONAL_DEPENDENCIES_MESSAGE =
-  'bun add zod @modelcontextprotocol/sdk to use the cinder MCP server.';
-
-/**
- * Distinguish "the package isn't installed" from any other failure while
- * importing it, so we only rewrite the error message for the case the
- * actionable message is actually about.
- */
-export function isModuleNotFoundError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const code = (error as NodeJS.ErrnoException).code;
-  if (code === 'ERR_MODULE_NOT_FOUND' || code === 'MODULE_NOT_FOUND') return true;
-  return /Cannot find (module|package)/.test(error.message);
-}
-
-async function importOptionalMcpDependency<T>(load: () => Promise<T>): Promise<T> {
-  try {
-    return await load();
-  } catch (error) {
-    if (isModuleNotFoundError(error)) {
-      throw new Error(MCP_OPTIONAL_DEPENDENCIES_MESSAGE, { cause: error });
-    }
-    throw error;
-  }
-}
-
-type McpDependencies = {
-  z: ZodModule;
-  McpServer: McpServerModule['McpServer'];
-  ResourceTemplate: McpServerModule['ResourceTemplate'];
-  ErrorCode: McpTypesModule['ErrorCode'];
-  McpError: McpTypesModule['McpError'];
-  StdioServerTransport: McpStdioModule['StdioServerTransport'];
 };
 
 // Memoized so createMcpServer() and runMcpServer() calling this in the same
 // process (runMcpServer calls createMcpServer) share one import, not two —
 // dynamic import() is itself cached by the module loader, but without this
 // every call still re-runs the Promise.all/error-wrapping orchestration.
-let mcpDependenciesPromise: Promise<McpDependencies> | null = null;
-
-function loadMcpDependencies(): Promise<McpDependencies> {
-  mcpDependenciesPromise ??= importOptionalMcpDependency(() =>
-    Promise.all([
+const loadMcpDependencies = createRetryingLoaderCache(() =>
+  importOptionalMcpDependency(async () => {
+    const [z, serverModule, typesModule, stdioModule] = await Promise.all([
       import('zod/v4'),
       import('@modelcontextprotocol/sdk/server/mcp.js'),
       import('@modelcontextprotocol/sdk/types.js'),
       import('@modelcontextprotocol/sdk/server/stdio.js'),
-    ]),
-  )
-    .then(([z, serverModule, typesModule, stdioModule]) => ({
+    ]);
+    return {
       z,
       McpServer: serverModule.McpServer,
       ResourceTemplate: serverModule.ResourceTemplate,
       ErrorCode: typesModule.ErrorCode,
       McpError: typesModule.McpError,
       StdioServerTransport: stdioModule.StdioServerTransport,
-    }))
-    .catch((error: unknown) => {
-      // Don't cache a rejection — a transient failure (or, in tests, an
-      // injected one) shouldn't permanently poison every later call.
-      mcpDependenciesPromise = null;
-      throw error;
-    });
-  return mcpDependenciesPromise;
-}
+    };
+  }),
+);
 
 function textResult(text: string, structuredContent?: Record<string, unknown>) {
   return {

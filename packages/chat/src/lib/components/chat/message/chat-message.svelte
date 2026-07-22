@@ -5,20 +5,6 @@
   import type { MessagePartOverride } from './chat-message-parts.ts';
   import type { StepInfo } from '../utilities/types.ts';
 
-  /**
-   * Role labels for display purposes.
-   * Maps message roles to human-readable labels.
-   */
-  export const ROLE_LABELS: Record<Message['role'], string> = {
-    user: 'You',
-    assistant: 'Assistant',
-    system: 'System',
-    developer: 'Developer',
-    'tool-call': 'Tool Call',
-    'tool-result': 'Tool Result',
-    snapshot: 'Snapshot',
-  };
-
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
     /** The message to render */
     message: Message;
@@ -98,7 +84,11 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { deriveMessageParts, getMessageText } from '../utilities/utilities.ts';
+  import {
+    deriveMessageParts,
+    getMessageRoleLabel,
+    getMessageText,
+  } from '../utilities/utilities.ts';
   import { Pencil, RotateCcw } from '@lostgradient/cinder/icons';
   import CopyButton from '@lostgradient/cinder/copy-button';
   import ChatMessagePartsRenderer from './chat-message-parts-renderer.svelte';
@@ -179,7 +169,7 @@
   // (copy, edit, the Show more/less control) — the rendered body itself flows
   // through deriveMessageParts + the parts renderer below.
   const textContent = $derived(getMessageText(message));
-  const roleLabel = $derived(ROLE_LABELS[message.role] ?? message.role);
+  const roleLabel = $derived(getMessageRoleLabel(message));
 
   // Role detection — kept for wrapper-level layout + a11y (data-tool-pair,
   // aria-label). The body branches that used to live here are now derived parts.
@@ -714,10 +704,12 @@
 
   /* Footer — absolutely positioned outside the bubble's flow so revealing it on
    * hover/focus does not change the bubble's height. Default geometry: below the
-   * bubble at the leading edge, which works for any role. The user/assistant
-   * rules below override this to put the icon beside the bubble on the
-   * center-facing edge. Roles like developer / system / unpaired tool-result
-   * inherit this default and place the footer below the bubble.
+   * bubble at the leading edge, which works for any role. Padding preserves the
+   * visual spacing while making that space part of the footer's hit area, so the
+   * wrapper stays hovered as the pointer crosses from bubble to actions. The
+   * user/assistant rules below override this to put the icon beside the bubble
+   * on the center-facing edge. Roles like developer / system / unpaired
+   * tool-result inherit this default and place the footer below the bubble.
    * LTR-only: the left/right physical properties below assume left-to-right layout.
    * RTL support is a follow-up that swaps to inset-inline-start/end. */
   .chat-message-footer {
@@ -725,7 +717,7 @@
     top: 100%;
     left: 0;
     width: max-content;
-    margin-top: var(--cinder-space-1);
+    padding-top: var(--cinder-space-1);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -743,6 +735,7 @@
     left: auto;
     right: 100%;
     margin-top: 0;
+    padding-top: 0;
     display: flex;
     align-items: flex-end;
     /* Padding stays physical to match the physical `right: 100%` placement
@@ -759,6 +752,7 @@
     left: 100%;
     right: auto;
     margin-top: 0;
+    padding-top: 0;
     display: flex;
     align-items: flex-end;
     /* stylelint-disable-next-line csstools/use-logical */
@@ -789,11 +783,28 @@
     .chat-message-wrapper[data-role='tool-result'] .chat-message-footer,
     .chat-message-wrapper[data-role='snapshot'] .chat-message-footer {
       top: 100%;
+      bottom: auto;
       inset-inline-start: 0;
       inset-inline-end: auto;
       transform: none;
       padding-inline: 0;
-      margin-top: var(--cinder-space-1);
+      padding-top: var(--cinder-space-1);
+      margin-top: 0;
+    }
+
+    /* User and assistant footers move below the bubble only at this breakpoint.
+     * On touch/coarse-pointer devices they are persistently visible, so reserve
+     * their action row here. Hover-capable layouts reveal it on demand and must
+     * not reserve an empty row while the footer is hidden. */
+    @media (hover: none) or (pointer: coarse) {
+      .chat-message-wrapper[data-role='user']:has(
+          > .chat-message-footer .chat-message-actions > :global(*)
+        ),
+      .chat-message-wrapper[data-role='assistant']:has(
+          > .chat-message-footer .chat-message-actions > :global(*)
+        ) {
+        margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
+      }
     }
   }
 
@@ -808,6 +819,26 @@
     .chat-message-wrapper[data-tool-pair] .chat-message-footer {
       opacity: 1;
       pointer-events: auto;
+    }
+
+    /* These roles use the default below-bubble footer at every width. Reserve
+     * space whenever that persistently visible touch footer has content. */
+    .chat-message-wrapper[data-role='system']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='developer']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='tool-call']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='tool-result']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ),
+    .chat-message-wrapper[data-role='snapshot']:has(
+        > .chat-message-footer .chat-message-actions > :global(*)
+      ) {
+      margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
     }
   }
 

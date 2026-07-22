@@ -9,12 +9,17 @@ Use Cinder when you want UI building blocks without adopting a framework-level r
 ## Install
 
 ```bash
-bun add @lostgradient/cinder svelte lucide-svelte
+bun add @lostgradient/cinder svelte
 ```
 
-`svelte` and `lucide-svelte` are peer dependencies. Cinder targets Svelte `>=5.56.0 <6`.
-It uses Lucide for its own component chrome, but it does not provide a general icon library for
-your application-specific icons.
+`svelte` is a peer dependency; Cinder targets Svelte `>=5.56.0 <6`.
+
+`lucide-svelte` is **not** a peer — Cinder owns it as a pinned regular dependency and installs it
+for you. That pin is deliberate: Cinder ships a prebuilt SSR bundle, so a consumer resolving a
+different `lucide-svelte` version on the client than the one baked into that bundle produces
+structurally different markup for the same icon and a `hydration_mismatch` on first load. Cinder
+uses Lucide for its own component chrome and does not provide a general icon library for your
+application-specific icons — install Lucide yourself if you want it for your own components.
 
 Install the Chat domain suite separately when you need it, alongside the Cinder install above:
 

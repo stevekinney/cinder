@@ -470,4 +470,33 @@ test.describe('chart SVG focus rings', () => {
     await expect(root.locator('[role="tooltip"]').first()).toContainText(chart.tooltipText);
     await expect(root.locator(`.${chart.hitSurfaceClass}`).first()).toBeVisible();
   });
+
+  test('horizontal bar-chart category labels stay inside the SVG viewport', async ({ page }) => {
+    const chart = charts[2]!;
+    await page.goto(routeFor(chart), { waitUntil: 'load' });
+    await page.waitForLoadState('networkidle');
+
+    const label = page
+      .locator(
+        '.cinder-bar-chart[data-cinder-orientation="horizontal"] .cinder-bar-chart__tick-label',
+      )
+      .filter({ hasText: 'Critical escalation' })
+      .first();
+    await expect(label).toHaveText('Critical escalation');
+
+    const root = label.locator(
+      'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " cinder-bar-chart ")]',
+    );
+    const svg = root.locator('svg').first();
+    const bar = root.locator('.cinder-bar-chart__bar').first();
+    const labelBox = await label.boundingBox();
+    const svgBox = await svg.boundingBox();
+    const barBox = await bar.boundingBox();
+    if (!labelBox || !svgBox || !barBox) {
+      throw new Error('Missing horizontal bar-chart label, SVG, or bar bounds.');
+    }
+
+    expectBoxInside(labelBox, svgBox, 'horizontal bar-chart category label inside SVG');
+    expect(barBox.width, 'horizontal bar-chart preserves plot width').toBeGreaterThan(0);
+  });
 });
