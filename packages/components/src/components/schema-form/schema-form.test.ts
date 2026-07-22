@@ -770,6 +770,75 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     expect(drafts.at(-1)).toEqual({ count: 12 });
   });
+
+  test('clears numeric editor text when a commit preserves the existing value', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: {
+            count: { type: 'integer', title: 'Count' },
+            label: { type: 'string', title: 'Label' },
+          },
+          required: ['count', 'label'],
+        },
+        value: { count: 2, label: 'Initial' },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: '02' } });
+    await fireEvent.blur(countInput);
+    await flush();
+    await fireEvent.input(screen.getByRole('textbox', { name: /Label/ }), {
+      target: { value: 'Updated' },
+    });
+
+    expect(drafts).toEqual([
+      { count: '02', label: 'Initial' },
+      { count: 2, label: 'Initial' },
+      { count: 2, label: 'Updated' },
+    ]);
+  });
+
+  test('does not report programmatic numeric input while submission is pending', async () => {
+    const drafts: unknown[] = [];
+    let finishSubmit: (() => void) | undefined;
+    const submitPending = new Promise<void>((resolve) => {
+      finishSubmit = resolve;
+    });
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+        onsubmit: async () => submitPending,
+      },
+    });
+    await flush();
+
+    formFrom(container).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flush();
+    await fireEvent.input(screen.getByRole('spinbutton'), { target: { value: '9' } });
+
+    expect(drafts).toEqual([]);
+    finishSubmit?.();
+    await flush();
+  });
 });
 
 describe('SchemaForm — initialization without write-back $effect', () => {

@@ -244,6 +244,7 @@
   }
 
   function handleFieldInput(field: SchemaFormField, event: Event) {
+    if (submitting) return;
     bumpTouchedValidationSequence(field.path);
     if (field.kind !== 'number' && field.kind !== 'integer') return;
     if (!(event.target instanceof HTMLInputElement)) return;
@@ -622,9 +623,8 @@
           disabled={submitting}
           step={field.kind === 'integer' ? 1 : undefined}
           onblur={() => validateTouchedField(field)}
-          bind:value={
-            () => numberFieldValue(field), (next) => updateValue(field.path, next ?? undefined)
-          }
+          value={numberFieldValue(field)}
+          onchange={(next) => updateValue(field.path, next ?? undefined)}
         />
       {:else if field.kind === 'enum'}
         <Select
