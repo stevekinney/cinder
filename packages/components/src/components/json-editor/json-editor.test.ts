@@ -101,6 +101,26 @@ describe('JsonEditor', () => {
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
   });
 
+  test('preserves proposed parse feedback across unrelated parent rerenders', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+    });
+    const editor = view.getByLabelText('Payload');
+    await fireEvent.input(editor, { target: { value: '{' } });
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      description: 'Updated description.',
+      value: '{}',
+    });
+
+    expect(editor.getAttribute('aria-invalid')).toBe('true');
+    expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
+  });
+
   test('keeps native multiline keyboard input and does not trap Tab', async () => {
     const onchange = mock();
     const view = render(JsonEditor, {

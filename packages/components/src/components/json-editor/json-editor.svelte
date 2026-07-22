@@ -40,8 +40,11 @@
   }: JsonEditorProps = $props();
 
   let draftValue = $state(value);
+  let previousValue = value;
 
   $effect(() => {
+    if (value === previousValue) return;
+    previousValue = value;
     draftValue = value;
   });
 
