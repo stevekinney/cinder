@@ -714,6 +714,32 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
       { title: '', owner: { name: 'Grace' } },
     ]);
   });
+
+  test('emits the current raw JSON text while the draft is temporarily unparseable', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { raw: { title: 'Raw payload' } },
+          required: ['raw'],
+        },
+        value: { raw: { ok: true } },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    await fireEvent.input(screen.getByLabelText(/Raw payload/), { target: { value: '{' } });
+    await fireEvent.input(screen.getByLabelText(/Raw payload/), {
+      target: { value: '{"ok":false}' },
+    });
+
+    expect(drafts).toEqual([{ raw: '{' }, { raw: { ok: false } }]);
+  });
 });
 
 describe('SchemaForm — initialization without write-back $effect', () => {

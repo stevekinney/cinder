@@ -24,7 +24,7 @@ const schema = {
         name: 'ondraftchange',
         reason: 'function-or-snippet',
         description:
-          'Called after each edit with the complete current draft, before schema validation.\nThe draft can be schema-invalid and does not change the seed-only `value` contract.',
+          'Called after each edit with the complete current draft, before schema validation.\nThe draft can be schema-invalid and does not change the seed-only `value` contract.\nTemporarily unparseable JSON fields are reported as their current raw text.',
       },
       {
         name: 'onsubmit',

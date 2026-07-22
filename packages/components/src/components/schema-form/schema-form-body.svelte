@@ -145,7 +145,14 @@
   }
 
   function currentDraft(): SchemaFormOutput {
-    return pruneUndefined(rawJsonIssues().value) as SchemaFormOutput;
+    let nextValue = formValue;
+    for (const field of currentJsonFields(model.field, formValue)) {
+      const draft = rawDrafts[pathKey(field.path)];
+      if (draft === undefined) continue;
+      const parsed = parseJsonDraft(field.path, draft);
+      nextValue = setValueAtPath(nextValue, field.path, parsed.ok ? parsed.value : draft);
+    }
+    return pruneUndefined(nextValue) as SchemaFormOutput;
   }
 
   function reportDraftChange() {
