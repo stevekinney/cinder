@@ -2,9 +2,9 @@
  * Dependency-aware test scoping: the import graph that powers it.
  *
  * Cinder has ~140 components, each in its own directory under
- * `src/components/<slug>/`, and they import each other through public package
- * subpaths (`import Button from '@lostgradient/cinder/button'`). When a single component
- * changes, CI should retest that component AND every component that
+ * `src/components/<slug>/`, and they import each other through relative paths
+ * or public package subpaths (`import Button from '@lostgradient/cinder/button'`).
+ * When a single component changes, CI should retest that component AND every component that
  * (transitively) depends on it — not the full matrix, and not just the one
  * file. This module builds the file-level import graph, inverts it to find
  * dependents, and maps the affected files back to component slugs.
