@@ -348,28 +348,25 @@ export type InvocationRuleBuilderSchemaProps = {
   /**
    * Rendering mode. Omit or pass `'full'` for the original conditions +
    * actions behavior; pass `'conditions'` for grouped conditions only, or
-   * `'flat-conditions'` for one direct conditions list. Not
-   * expressible as a schema-driven discriminant here because JSON Schema
-   * validation of this component is documented, not enforced at runtime
-   * against `operatorOptions`/`actionOptions` presence; see the component
-   * types for the full mode-discriminated prop shape.
+   * `'flat-conditions'` for one direct conditions list. The schema requires
+   * `conditions` only in flat mode and `rules` in both grouped modes; runtime
+   * component types additionally reject mode-inapplicable option props.
    */
   mode?: InvocationRuleBuilderMode;
 
   /**
    * Options for the condition operator selector. Consumer-provided list
    * of operators, e.g. "matches", "is", "is-not", "contains". Required in
-   * full mode; optional (and ignored) when `mode` is `'conditions'`, since
-   * cinder supplies a fixed operator set in that mode — so a conditions-only
-   * configuration validates without it.
+   * full mode; optional (and ignored) in both constrained conditions modes,
+   * where cinder supplies a fixed operator set.
    */
   operatorOptions?: InvocationRuleOption[];
 
   /**
    * Options for the action target selector. Consumer-provided list of
    * targets, e.g. review-agent slugs or step identifiers. Required in full
-   * mode; optional (and ignored) when `mode` is `'conditions'`, since actions
-   * are not rendered — so a conditions-only configuration validates without it.
+   * mode; optional (and ignored) in both constrained conditions modes, where
+   * actions are not rendered.
    */
   actionOptions?: InvocationRuleOption[];
 

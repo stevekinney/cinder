@@ -173,6 +173,45 @@ describe('InvocationRuleBuilder', () => {
       expect(validate.errors).toBeNull();
     });
 
+    test.each([
+      {
+        name: 'flat mode without conditions',
+        configuration: { mode: 'flat-conditions' },
+      },
+      {
+        name: 'flat mode with grouped rules',
+        configuration: { mode: 'flat-conditions', conditions: [], rules: [makeRule()] },
+      },
+      {
+        name: 'full mode with flat conditions',
+        configuration: { mode: 'full', conditions: [] },
+      },
+      {
+        name: 'conditions mode with flat conditions',
+        configuration: { mode: 'conditions', conditions: [] },
+      },
+      {
+        name: 'default full mode without rules',
+        configuration: {},
+      },
+      {
+        name: 'grouped mode with both state shapes',
+        configuration: { rules: [], conditions: [] },
+      },
+    ])('rejects $name', ({ configuration }) => {
+      const ajv = new Ajv2020({ strict: false });
+      const validate = ajv.compile(invocationRuleBuilderSchema);
+
+      expect(
+        validate({
+          ...configuration,
+          fieldOptions: typedFieldOptions,
+          readonly: true,
+        }),
+      ).toBe(false);
+      expect(validate.errors).not.toBeNull();
+    });
+
     test('rejects editable schema-driven configurations without onchange', () => {
       const ajv = new Ajv2020({ strict: false });
       const validate = ajv.compile(invocationRuleBuilderSchema);
