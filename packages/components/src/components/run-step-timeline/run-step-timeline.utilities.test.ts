@@ -24,6 +24,7 @@ const ALL_STATUSES: RunStepStatus[] = [
   'running',
   'succeeded',
   'failed',
+  'timed-out',
   'cancelled',
   'skipped',
   'retrying',
@@ -38,6 +39,7 @@ describe('status mapping', () => {
       running: 'online',
       succeeded: 'success',
       failed: 'danger',
+      'timed-out': 'danger',
       cancelled: 'offline',
       skipped: 'neutral',
       retrying: 'warning',
@@ -50,6 +52,7 @@ describe('status mapping', () => {
       expect(statusLabel(status).length).toBeGreaterThan(0);
     }
     expect(statusLabel('waiting_approval')).toBe('Waiting approval');
+    expect(statusLabel('timed-out')).toBe('Timed out');
   });
 
   test('badgeVariant maps every status to a badge variant', () => {
@@ -59,6 +62,7 @@ describe('status mapping', () => {
       running: 'info',
       succeeded: 'success',
       failed: 'danger',
+      'timed-out': 'danger',
       cancelled: 'neutral',
       skipped: 'neutral',
       retrying: 'warning',
@@ -70,6 +74,7 @@ describe('status mapping', () => {
     expect(ALL_STATUSES.filter(isTerminal)).toEqual([
       'succeeded',
       'failed',
+      'timed-out',
       'cancelled',
       'skipped',
     ]);

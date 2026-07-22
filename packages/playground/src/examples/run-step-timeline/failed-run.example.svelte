@@ -1,7 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Failed run with error details';
+  export const title = 'Failed and timed-out steps';
   export const description =
-    'A completed run where one step failed after retries, with expandable error output and environment info.';
+    'Keep deadline expiry distinct from other terminal errors by mapping the engine timeout state to timed-out.';
 </script>
 
 <script lang="ts">
@@ -26,11 +26,19 @@
       duration: '28s',
     },
     {
+      id: 'integration',
+      label: 'Wait for integration environment',
+      status: 'timed-out',
+      startTime: '2026-06-01T10:00:52Z',
+      endTime: '2026-06-01T10:05:52Z',
+      duration: '5m',
+    },
+    {
       id: 'test',
       label: 'Run unit tests',
       status: 'failed',
-      startTime: '2026-06-01T10:00:52Z',
-      endTime: '2026-06-01T10:05:10Z',
+      startTime: '2026-06-01T10:05:53Z',
+      endTime: '2026-06-01T10:10:11Z',
       duration: '4m 18s',
       attemptCount: 2,
       details: [
@@ -55,4 +63,4 @@
   ];
 </script>
 
-<RunStepTimeline {steps} label="CI run — failed" />
+<RunStepTimeline {steps} label="CI run — failed with timeout" />

@@ -1,6 +1,6 @@
 # RunStepTimeline
 
-Ordered step-by-step execution rail for async operations. Shows pending, running, waiting approval, succeeded, failed, cancelled, skipped, and retrying states with per-step durations, attempt counts, action counts, optional progress indicators, nested child-workflow lanes, links, and expandable inline detail panels for logs, payloads, and errors.
+Ordered step-by-step execution rail for async operations. Shows pending, running, waiting approval, succeeded, failed, timed-out, cancelled, skipped, and retrying states with per-step durations, attempt counts, action counts, optional progress indicators, nested child-workflow lanes, links, and expandable inline detail panels for logs, payloads, and errors.
 
 Use `RunStepTimeline` for CI jobs, workflow engine runs, import pipelines, deployment flows, and queue workers. Use `Timeline` for timestamp-first event logs. Use `Steps` for interactive wizard navigation.
 
@@ -175,9 +175,12 @@ Set `rewound: true` on a step that was speculatively executed and then unwound. 
 - `waiting_approval` — paused on required approval and expected to continue
 - `succeeded` — completed successfully
 - `failed` — completed with a terminal error
+- `timed-out` — exceeded its allowed execution time
 - `cancelled` — stopped before it could complete
 - `skipped` — bypassed intentionally
-- `retrying` — a prior attempt failed; a new attempt is in progress
+- `retrying` — a prior attempt ended unsuccessfully; a new attempt is in progress
+
+Map engine-specific deadline states such as `timed_out`, `timeout`, or `deadline_exceeded` to `timed-out`. Keep other terminal errors mapped to `failed` so consumers can present deadline expiry distinctly without introducing product-specific status vocabulary.
 
 ## Props
 
