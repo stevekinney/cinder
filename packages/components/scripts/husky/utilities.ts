@@ -121,11 +121,7 @@ export function phaseMaxConcurrency(_script: GateScript): number {
  * Run `items` through a bounded async pool, invoking `worker(item, index)` for
  * each and returning the results in input order. At most `maxConcurrency`
  * workers run at once — this is the *mechanism* that {@link phaseMaxConcurrency}
- * feeds. The historical #364 race (concurrent test jobs' inline builds
- * fighting over shared `dist/` directories) is now closed upstream by
- * pre-building the dependency closure once before the test phase runs, so this
- * pool can run the test phase at the same bounded concurrency as lint and
- * typecheck.
+ * feeds.
  *
  * The concurrency floor is defensive. A non-finite `maxConcurrency` — e.g. a
  * caller computing `Math.min(navigator.hardwareConcurrency, 4)` where

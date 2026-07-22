@@ -1017,10 +1017,7 @@ describe('scoped job derivation (real workspace)', () => {
 });
 
 /**
- * Regression test for issue #364 — pre-push and pre-commit test phases raced
- * shared-dist rebuilds.
- *
- * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-push.ts
+ * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-commit.ts
  * so this test can assert the policy without importing the gate entry path
  * (which has module-scope side effects: isContinuousIntegration → process.exit,
  * stdin read). The policy is kept general across all three `GateScript` values
