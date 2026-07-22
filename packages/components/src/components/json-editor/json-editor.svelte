@@ -59,8 +59,11 @@
     }
   });
   const feedbackIsError = $derived(Boolean(externalError) || !parseIsValid);
+  const normalizedConsumerInvalid = $derived(consumerInvalid ?? undefined);
   const consumerMarksInvalid = $derived(
-    consumerInvalid !== undefined && consumerInvalid !== false && consumerInvalid !== 'false',
+    normalizedConsumerInvalid !== undefined &&
+      normalizedConsumerInvalid !== false &&
+      normalizedConsumerInvalid !== 'false',
   );
   const feedbackText = $derived(
     externalError ??
@@ -72,7 +75,7 @@
   );
   const feedbackId = $derived(feedbackText ? `${id}-feedback` : undefined);
   const describedBy = $derived(composeDescribedBy(descriptionId, feedbackId, consumerDescribedBy));
-  const ariaInvalid = $derived(feedbackIsError ? 'true' : consumerInvalid);
+  const ariaInvalid = $derived(feedbackIsError ? 'true' : normalizedConsumerInvalid);
 </script>
 
 <div class={classNames('cinder-json-editor', className)}>

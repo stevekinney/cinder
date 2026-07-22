@@ -157,6 +157,25 @@ describe('JsonEditor', () => {
     expect(view.queryByRole('status')).toBeNull();
   });
 
+  test('restores valid feedback when consumer validation is cleared with null', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      'aria-invalid': 'true',
+    });
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{}',
+      'aria-invalid': null,
+    });
+
+    expect(view.getByLabelText('Payload').getAttribute('aria-invalid')).toBeNull();
+    expect(view.getByRole('status').textContent).toBe('Valid JSON.');
+  });
+
   test('keeps native multiline keyboard input and does not trap Tab', async () => {
     const onchange = mock();
     const view = render(JsonEditor, {
