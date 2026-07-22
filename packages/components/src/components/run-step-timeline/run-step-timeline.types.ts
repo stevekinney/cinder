@@ -15,7 +15,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * - `timed-out` — exceeded its allowed execution time.
  * - `cancelled` — was stopped before it could complete.
  * - `skipped`   — bypassed intentionally (e.g. conditional branch).
- * - `retrying`  — a prior attempt failed; a new attempt is in progress.
+ * - `retrying`  — a prior attempt ended unsuccessfully; a new attempt is in progress.
  * - `waiting_approval` — paused on required approval; can continue afterward.
  */
 export type RunStepStatus =

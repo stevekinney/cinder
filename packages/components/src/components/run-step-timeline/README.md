@@ -178,7 +178,7 @@ Set `rewound: true` on a step that was speculatively executed and then unwound. 
 - `timed-out` — exceeded its allowed execution time
 - `cancelled` — stopped before it could complete
 - `skipped` — bypassed intentionally
-- `retrying` — a prior attempt failed; a new attempt is in progress
+- `retrying` — a prior attempt ended unsuccessfully; a new attempt is in progress
 
 Map engine-specific deadline states such as `timed_out`, `timeout`, or `deadline_exceeded` to `timed-out`. Keep other terminal errors mapped to `failed` so consumers can present deadline expiry distinctly without introducing product-specific status vocabulary.
 
