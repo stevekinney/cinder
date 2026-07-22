@@ -107,14 +107,18 @@ describe('chat message action buttons', () => {
   });
 
   test('narrow footer space is reserved only when actions render content', () => {
-    const mediaIdx = source.indexOf('@media (max-width: 480px)');
-    expect(mediaIdx).toBeGreaterThan(-1);
-    const narrowBlock = source.slice(mediaIdx, source.indexOf('\n  }', mediaIdx) + 4);
+    const narrowBlock = extractMediaBlock(source, '@media (max-width: 480px) {');
+    const narrowTouchBlock = extractMediaBlock(
+      narrowBlock,
+      '@media (hover: none) or (pointer: coarse) {',
+    );
 
-    expect(narrowBlock).toContain(
+    expect(narrowTouchBlock).toContain(
       '.chat-message-wrapper:has(> .chat-message-footer .chat-message-actions > :global(*))',
     );
-    expect(narrowBlock).not.toMatch(/\.chat-message-wrapper\s*\{[^}]*margin-block-end:/s);
+    expect(narrowTouchBlock).not.toMatch(/\.chat-message-wrapper\s*\{[^}]*margin-block-end:/s);
+
+    expect(narrowBlock.replace(narrowTouchBlock, '')).not.toContain('margin-block-end:');
   });
 
   // Regression for #777: a `display: none` footer on tool-paired rows can
@@ -153,7 +157,10 @@ describe('chat message action buttons', () => {
     // The tool-pair hidden-state override has higher specificity than the
     // bare `.chat-message-footer` touch rule, so it needs its own entry in
     // the touch media block or tool-paired rows stay unreachable on touch.
-    const touchBlock = extractTouchMediaBlock(source, '.chat-message-footer');
+    const touchBlock = extractTouchMediaBlock(
+      source,
+      '.chat-message-wrapper[data-tool-pair] .chat-message-footer',
+    );
     expect(touchBlock).toContain('.chat-message-wrapper[data-tool-pair] .chat-message-footer');
   });
 });
@@ -180,10 +187,17 @@ function extractTouchMediaBlock(
   contains: string = '.chat-message-action-button',
 ): string {
   const marker = '@media (hover: none) or (pointer: coarse) {';
+  return extractMediaBlock(text, marker, contains);
+}
+
+function extractMediaBlock(text: string, marker: string, contains?: string): string {
   let searchFrom = 0;
   for (;;) {
     const start = text.indexOf(marker, searchFrom);
-    if (start === -1) throw new Error(`touch media block containing "${contains}" not found`);
+    if (start === -1) {
+      const qualifier = contains ? ` containing "${contains}"` : '';
+      throw new Error(`media block${qualifier} not found: ${marker}`);
+    }
     let depth = 0;
     let i = text.indexOf('{', start);
     const bodyStart = i + 1;
@@ -193,12 +207,12 @@ function extractTouchMediaBlock(
         depth--;
         if (depth === 0) {
           const body = text.slice(bodyStart, i);
-          if (body.includes(contains)) return body;
+          if (!contains || body.includes(contains)) return body;
           searchFrom = i + 1;
           break;
         }
       }
     }
-    if (depth !== 0) throw new Error('touch media block not balanced');
+    if (depth !== 0) throw new Error(`media block not balanced: ${marker}`);
   }
 }

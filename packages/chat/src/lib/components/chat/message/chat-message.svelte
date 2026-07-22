@@ -785,10 +785,6 @@
    * the role-specific desktop rules above ([data-role='…'] = 0-1-1), so the
    * media query actually wins inside its breakpoint. */
   @media (max-width: 480px) {
-    .chat-message-wrapper:has(> .chat-message-footer .chat-message-actions > :global(*)) {
-      margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
-    }
-
     .chat-message-wrapper[data-role='user'] .chat-message-footer,
     .chat-message-wrapper[data-role='assistant'] .chat-message-footer,
     .chat-message-wrapper[data-role='system'] .chat-message-footer,
@@ -804,6 +800,15 @@
       padding-inline: 0;
       padding-top: var(--cinder-space-1);
       margin-top: 0;
+    }
+
+    /* The narrow footer is persistently visible only on touch/coarse-pointer
+     * devices. Hover-capable layouts reveal it on demand and must not reserve
+     * an empty row while the footer is hidden. */
+    @media (hover: none) or (pointer: coarse) {
+      .chat-message-wrapper:has(> .chat-message-footer .chat-message-actions > :global(*)) {
+        margin-block-end: calc(var(--cinder-touch-target-min) + var(--cinder-space-1));
+      }
     }
   }
 

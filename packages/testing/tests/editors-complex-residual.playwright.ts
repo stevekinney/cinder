@@ -72,6 +72,20 @@ async function openTouchPage(
 }
 
 test.describe('chat action buttons', () => {
+  test('narrow hover layouts do not reserve space for hidden actions', async ({ page }) => {
+    await page.setViewportSize({ width: 414, height: 896 });
+    await page.goto('/page/chat?snapshot=1', { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+
+    expect(await page.evaluate(() => window.matchMedia('(hover: hover)').matches)).toBe(true);
+
+    const copyButton = page.locator('.chat-message-copy').first();
+    const actionableRow = copyButton.locator(
+      'xpath=ancestor::*[contains(@class, "chat-message-wrapper")]',
+    );
+    await expect(actionableRow).toHaveCSS('margin-block-end', '0px');
+  });
+
   test('built-in action buttons have a visible resting affordance and touch-sized target', async ({
     browser,
   }) => {
@@ -110,10 +124,7 @@ test.describe('chat action buttons', () => {
         probe.remove();
         return px;
       });
-      await expect(actionableRow).toHaveCSS(
-        'margin-block-end',
-        `${TOUCH_TARGET_MIN + space1Px}px`,
-      );
+      await expect(actionableRow).toHaveCSS('margin-block-end', `${TOUCH_TARGET_MIN + space1Px}px`);
 
       const hitTarget = await copyButton.evaluate((element) => {
         const box = element.getBoundingClientRect();
