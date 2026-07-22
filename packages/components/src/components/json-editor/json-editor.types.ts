@@ -19,7 +19,7 @@ export type JsonEditorProps = Omit<
   /** Whether valid JSON should render an announced success message. Defaults to true. */
   showValidFeedback?: boolean;
   /** Called with the proposed JSON source whenever the user edits the textarea. */
-  onchange?: (value: string) => void;
+  onValueChange?: (value: string) => void;
   /** Extra class names merged onto the field wrapper. */
   class?: string;
 };

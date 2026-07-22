@@ -31,7 +31,7 @@
     error,
     rows = 8,
     showValidFeedback = true,
-    onchange,
+    onValueChange,
     class: className,
     autofocus = false,
     'aria-describedby': consumerDescribedBy,
@@ -95,7 +95,7 @@
     aria-invalid={ariaInvalid}
     oninput={(event) => {
       draftValue = event.currentTarget.value;
-      onchange?.(draftValue);
+      onValueChange?.(draftValue);
     }}
     {@attach (element) => {
       if (autofocus) element.focus();

@@ -18,5 +18,5 @@
   label="Request payload"
   description="Enter the JSON body sent with the request."
   {value}
-  onchange={(nextValue) => (value = nextValue)}
+  onValueChange={(nextValue) => (value = nextValue)}
 />

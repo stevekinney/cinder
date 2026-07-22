@@ -43,7 +43,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onchange',
+        name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called with the proposed JSON source whenever the user edits the textarea.',
       },

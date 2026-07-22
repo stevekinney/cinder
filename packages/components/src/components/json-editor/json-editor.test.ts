@@ -15,18 +15,18 @@ afterEach(() => {
 
 describe('JsonEditor', () => {
   test('emits each proposed string value without taking ownership of controlled state', async () => {
-    const onchange = mock();
+    const onValueChange = mock();
     const view = render(JsonEditor, {
       id: 'payload',
       label: 'Payload',
       value: '{"before":true}',
-      onchange,
+      onValueChange,
     });
 
     const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
     await fireEvent.input(editor, { target: { value: '{"after":true}' } });
 
-    expect(onchange).toHaveBeenCalledWith('{"after":true}');
+    expect(onValueChange).toHaveBeenCalledWith('{"after":true}');
   });
 
   test('synchronizes the native textarea when the external value changes', async () => {
@@ -199,12 +199,12 @@ describe('JsonEditor', () => {
   });
 
   test('keeps native multiline keyboard input and does not trap Tab', async () => {
-    const onchange = mock();
+    const onValueChange = mock();
     const view = render(JsonEditor, {
       id: 'payload',
       label: 'Payload',
       value: '{}',
-      onchange,
+      onValueChange,
     });
     const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
 
@@ -213,7 +213,7 @@ describe('JsonEditor', () => {
     await fireEvent.input(editor, { target: { value: '{\n  "line": 2\n}' } });
 
     expect(tabEvent.defaultPrevented).toBe(false);
-    expect(onchange).toHaveBeenCalledWith('{\n  "line": 2\n}');
+    expect(onValueChange).toHaveBeenCalledWith('{\n  "line": 2\n}');
   });
 
   test('can suppress success text while retaining invalid parse feedback', async () => {

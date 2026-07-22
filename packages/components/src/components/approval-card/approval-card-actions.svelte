@@ -153,7 +153,7 @@
         label="Edited arguments JSON"
         description="Approving sends the parsed JSON below instead of the original arguments."
         value={editedArgumentsText}
-        onchange={(value) => (editedArgumentsText = value)}
+        onValueChange={(value) => (editedArgumentsText = value)}
         {...!editParseResult.ok ? { error: editParseResult.message } : {}}
         rows={8}
         showValidFeedback={false}
