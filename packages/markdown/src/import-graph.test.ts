@@ -284,6 +284,8 @@ type ReachResult = {
   forbiddenReached: Set<string>;
   /** Every external (non-relative, non-workspace) bare import reached. */
   externalsReached: Set<string>;
+  /** Every source file reached from the entry subpath. */
+  filesReached: Set<string>;
 };
 
 /**
@@ -294,6 +296,7 @@ type ReachResult = {
 function reachFromSubpath(entrySubpath: string): ReachResult {
   const forbiddenReached = new Set<string>();
   const externalsReached = new Set<string>();
+  const filesReached = new Set<string>();
   const entryFile = resolveWorkspaceSubpath(entrySubpath);
   if (!entryFile) {
     throw new Error(
@@ -308,6 +311,7 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
     const file = queue.pop()!;
     if (visited.has(file)) continue;
     visited.add(file);
+    filesReached.add(file);
 
     for (const specifier of scanRuntimeImports(file)) {
       // A relative or workspace (@cinder/*) import MUST resolve to a source file
@@ -351,7 +355,7 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
     }
   }
 
-  return { forbiddenReached, externalsReached };
+  return { forbiddenReached, externalsReached, filesReached };
 }
 
 function assertLean(entrySubpath: string): void {
@@ -413,6 +417,19 @@ describe('import-graph leanness', () => {
         );
       }
       expect(missing.length).toBe(0);
+    });
+  });
+
+  describe('Worker rendering is opt-in', () => {
+    it('@cinder/markdown/rendering does not reach the Worker modules', () => {
+      const { filesReached } = reachFromSubpath('@cinder/markdown/rendering');
+      expect([...filesReached].some((file) => file.endsWith('/render-async.ts'))).toBe(false);
+      expect([...filesReached].some((file) => file.endsWith('/render-worker.ts'))).toBe(false);
+    });
+
+    it('@cinder/markdown/rendering/async reaches the Worker modules', () => {
+      const { filesReached } = reachFromSubpath('@cinder/markdown/rendering/async');
+      expect([...filesReached].some((file) => file.endsWith('/render-async.ts'))).toBe(true);
     });
   });
 

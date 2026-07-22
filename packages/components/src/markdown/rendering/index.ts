@@ -15,17 +15,14 @@ export {
   getMermaidCacheSize,
   getMermaidCachedSvg,
   initializeHighlighter,
-  initializeWorkerHighlighter,
   isBundledLanguage,
   isLanguageSupported,
   probablyHasMath,
   renderMarkdown,
-  renderMarkdownAsync,
   renderMarkdownWithMath,
   sanitizeSchema,
   setMermaidCachedSvg,
   splitStreamingContent,
-  terminateMarkdownWorker,
   transformUrls,
 } from '@cinder/markdown/rendering';
 export type {

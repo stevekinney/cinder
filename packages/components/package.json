@@ -6227,6 +6227,14 @@
       "import": "./src/markdown/rendering/index.ts",
       "default": "./dist/markdown/rendering/index.js"
     },
+    "./markdown/rendering/async": {
+      "types": "./dist/markdown/rendering/async.d.ts",
+      "browser": "./src/markdown/rendering/async.ts",
+      "node": "./dist/server/markdown/rendering/async.js",
+      "svelte": "./src/markdown/rendering/async.ts",
+      "import": "./src/markdown/rendering/async.ts",
+      "default": "./dist/markdown/rendering/async.js"
+    },
     "./markdown/rendering/highlighter": {
       "types": "./dist/markdown/rendering/highlighter.d.ts",
       "browser": "./src/markdown/rendering/highlighter.ts",
