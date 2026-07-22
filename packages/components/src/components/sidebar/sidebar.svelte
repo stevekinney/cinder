@@ -48,11 +48,6 @@
     return label;
   });
 
-  // The inner <nav> landmark gets a distinct accessible name so the outer
-  // complementary <aside> and the inner navigation are not announced as two
-  // identically-named landmarks.
-  const navigationLabel = $derived(`${validatedLabel} navigation`);
-
   const validatedMobileBreakpoint = $derived.by(() => {
     if (typeof mobileBreakpoint !== 'string') {
       throw new Error('Sidebar mobileBreakpoint must be a CSS length such as "47.99rem".');
@@ -121,13 +116,12 @@
 
 {#snippet sidebarContents(isMobile: boolean)}
   {#if navigationSnippet}
-    <!-- Guard the entire <nav> landmark, not just its contents. An empty <nav>
-         is an accessibility problem (screen readers announce a navigation landmark
-         with no destinations). navigation is optional so a sidebar can be used as
-         app chrome without a nav list. -->
-    <nav class="cinder-sidebar__nav" aria-label={navigationLabel}>
+    <!-- SideNavigation owns the navigation landmark and its accessible name.
+         This wrapper is structural so the documented composition never nests
+         one navigation landmark inside another. -->
+    <div class="cinder-sidebar__nav">
       {@render navigationSnippet()}
-    </nav>
+    </div>
   {/if}
 
   {#if footerSnippet}
