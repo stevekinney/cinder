@@ -18,6 +18,8 @@ import {
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
+  playwrightCommandArguments,
+  playwrightProcessEnvironment,
   shouldRefuseStaleServerReuse,
   shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
@@ -169,6 +171,32 @@ describe('playwright wrapper exit code', () => {
 
   test('lets a later interrupt exit code replace an earlier failure exit code', () => {
     expect(shutdownExitCodeAfterRequest(1, 130)).toBe(130);
+  });
+});
+
+describe('playwright process launch', () => {
+  test('runs Playwright through Bun instead of the ambient Node runtime', () => {
+    expect(playwrightCommandArguments(['schema-form.playwright.ts', '--workers=1'])).toEqual([
+      '--bun',
+      'playwright',
+      'test',
+      'schema-form.playwright.ts',
+      '--workers=1',
+    ]);
+  });
+
+  test('removes NO_COLOR before Playwright forces colors in its workers', () => {
+    const environment = { NO_COLOR: '1', PATH: '/bin' };
+
+    expect(playwrightProcessEnvironment(environment)).toEqual({ PATH: '/bin' });
+    expect(environment).toEqual({ NO_COLOR: '1', PATH: '/bin' });
+  });
+
+  test('preserves unrelated environment variables', () => {
+    expect(playwrightProcessEnvironment({ CI: 'true', FORCE_COLOR: '0' })).toEqual({
+      CI: 'true',
+      FORCE_COLOR: '0',
+    });
   });
 });
 

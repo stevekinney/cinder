@@ -209,6 +209,24 @@ function waitForExit(childProcess: ChildProcess): Promise<number> {
   });
 }
 
+/**
+ * Remove a color preference Playwright overrides when it starts test workers.
+ * Node warns when a child receives both `NO_COLOR` and Playwright's forced
+ * `FORCE_COLOR`, so the wrapper resolves that contradiction at the boundary.
+ */
+export function playwrightProcessEnvironment(
+  environment: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  const normalizedEnvironment = { ...environment };
+  delete normalizedEnvironment['NO_COLOR'];
+  return normalizedEnvironment;
+}
+
+/** Run Playwright through the workspace's pinned Bun runtime. */
+export function playwrightCommandArguments(argumentsList: string[]): string[] {
+  return ['--bun', 'playwright', 'test', ...argumentsList];
+}
+
 export function childProcessHasFinished(
   childProcess: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>,
 ): boolean {
@@ -626,10 +644,13 @@ async function main(): Promise<void> {
   }
   await exitIfShuttingDown();
 
-  const playwright = spawn('bunx', ['playwright', 'test', ...args], {
+  const playwright = spawn('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
     stdio: 'inherit',
-    env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
+    env: {
+      ...playwrightProcessEnvironment(),
+      PLAYGROUND_URL: targetPlaygroundUrl,
+    },
   });
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
   const playwrightCode = await waitForExit(playwright);
