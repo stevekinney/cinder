@@ -679,10 +679,14 @@ export function expandToDependents(
  * own `scripts/build.ts` + `scripts/lib/build-cache.ts`), listed in dependency
  * order: `@lostgradient/markdown` has no internal workspace dependencies (it
  * absorbed `@cinder/diff` in Phase 2 — see `docs/decisions/package-boundaries.md`
- * — so `packages/diff` no longer exists), `@lostgradient/editor` depends on
- * `@lostgradient/markdown`, and `@lostgradient/cinder` (components) depends on
- * both. `@cinder/editor` was dissolved (Phase 1): its headless half moved
- * into `@lostgradient/markdown`, its ProseMirror half into `@lostgradient/editor`.
+ * — so `packages/diff` no longer exists), and `@lostgradient/cinder`
+ * (components) depends on it (see `src/utilities/change-tracker.svelte.ts`
+ * and `src/components/json-schema-editor/diff-view.svelte`). Cinder no
+ * longer builds `@lostgradient/editor` first — Phase 5 deleted cinder's
+ * `src/editor/`, `src/markdown/`, and `src/commentary/` re-export shims, and
+ * no retained cinder source imports `@lostgradient/editor` at all, so it
+ * drops out of cinder's own build order (editor still builds independently;
+ * it just isn't an upstream input to cinder's build anymore).
  * `@cinder/testing` and `@cinder/playground` have no `build` script; `@lostgradient/chat`
  * has a `build` script but no `scripts/lib/build-cache.ts` (not
  * hash-skippable) — both stay excluded from this specific list.
@@ -690,11 +694,10 @@ export function expandToDependents(
  * This list is explicit because `WorkspacePackage` does not track which
  * packages are buildable, and the dependency chain here is small and fixed —
  * deriving it generically would add a `hasBuild` field and a topo-sort for a
- * three-node chain that has not changed since #364.
+ * two-node chain.
  */
 export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
   '@lostgradient/markdown',
-  '@lostgradient/editor',
   '@lostgradient/cinder',
 ];
 

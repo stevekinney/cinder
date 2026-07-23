@@ -38,17 +38,15 @@ bun add @lostgradient/editor
 See [`@lostgradient/editor`'s README](./packages/editor/README.md) for its own peer install list
 (Milkdown/ProseMirror and `@lostgradient/markdown`).
 
-Markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
-use optional peer dependencies. Install them only when your app imports
-`@lostgradient/cinder/markdown`,
-`@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`,
-`@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`,
-`@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on
-`CodeBlock` automatic highlighting:
-
-```bash
-bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @shikijs/langs @shikijs/rehype @shikijs/types @types/hast @types/mdast @types/unist comlink hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
-```
+Cinder no longer exposes any `./markdown/*`, `./editor/*`, or `./commentary/*` subpath — that
+surface moved to the two published sibling packages above during the
+[package-boundaries extraction](./docs/decisions/package-boundaries.md). If your app imports one
+of those removed subpaths, install `@lostgradient/markdown` directly (`bun add
+@lostgradient/markdown`) and update the import specifier — see
+[`@lostgradient/cinder`'s README](./packages/components/README.md) for the full removed-subpath
+migration table. Syntax-highlighting (`CodeBlock` automatic highlighting via `shiki`) needs no
+separate install — `shiki`, `@shikijs/engine-oniguruma`, and `@shikijs/types` are regular
+`dependencies` of Cinder and install automatically.
 
 ## Quickstart
 

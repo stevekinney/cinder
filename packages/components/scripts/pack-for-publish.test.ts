@@ -105,7 +105,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).toContain('src/components/**/*.ts');
@@ -130,7 +130,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).toContain('src/styles/**/*.css.d.ts');
@@ -143,7 +143,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).toContain('src/components/**/*.css');
@@ -162,7 +162,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).toContain('src/styles/base-guard.ts');
@@ -175,7 +175,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).toContain('!dist/**/*.js.map');
@@ -191,7 +191,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
 
     expect(published.bin).toEqual({ cinder: './dist/cli/index.js' });
     expect(published.files).toContain('dist');
@@ -204,7 +204,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const excludesDistributionSourceMaps = (published.files ?? []).includes('!dist/**/*.js.map');
     const input = 'export const value = 1;\n//# sourceMappingURL=index.js.map\n';
 
@@ -261,7 +261,7 @@ describe('buildPublishedManifest', () => {
       },
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(published.exports['.']).toEqual({
@@ -316,7 +316,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
 
     expect(published.svelte).toBe('./src/index.ts');
   });
@@ -343,7 +343,7 @@ describe('buildPublishedManifest', () => {
       },
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
     const exportTargets = JSON.stringify(published.exports);
 
@@ -374,7 +374,7 @@ describe('buildPublishedManifest', () => {
       },
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
 
     expect(Object.keys(published.exports['.']!)).toEqual([
       'types',
@@ -399,7 +399,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).toContain('src/components/**/*.schema.json');
@@ -416,7 +416,7 @@ describe('buildPublishedManifest', () => {
       exports: {},
     };
 
-    const published = buildPublishedManifest(manifest, []);
+    const published = buildPublishedManifest(manifest);
     const files = published.files ?? [];
 
     expect(files).not.toContain('src/components/**/*.md');
@@ -520,5 +520,51 @@ describe('buildPublishedManifest', () => {
     expect(stripped.text).not.toContain('types.js.map');
     expect(stripped.text).not.toContain('keymap-plugin.js.map');
     expect(stripped.text).not.toContain('commands.js.map');
+  });
+
+  it('strips only workspace:* dep entries, keeping a real dependency of the same package name', () => {
+    // Regression guard: `@lostgradient/markdown` is BOTH a real runtime
+    // dependency of cinder (real semver in `dependencies`) AND a
+    // workspace-local dev dependency (`workspace:*` in `devDependencies`,
+    // used for in-repo `bun test`/`bun run` resolution without a build). The
+    // strip pass must key off the `workspace:*` VALUE, not the package name,
+    // or it would delete the real published dependency too.
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+      dependencies: {
+        '@lostgradient/markdown': '^0.1.0',
+        shiki: '^3.21.0',
+      },
+      devDependencies: {
+        '@cinder/testing': 'workspace:*',
+        '@lostgradient/markdown': 'workspace:*',
+        typescript: '^5.9.0',
+      },
+    };
+
+    const published = buildPublishedManifest(manifest);
+
+    expect(published.dependencies).toEqual({
+      '@lostgradient/markdown': '^0.1.0',
+      shiki: '^3.21.0',
+    });
+    expect(published.devDependencies).toEqual({ typescript: '^5.9.0' });
+  });
+
+  it('drops a dep field entirely once every workspace:* entry is stripped', () => {
+    const manifest: SourceManifest = {
+      name: '@lostgradient/cinder',
+      version: '0.0.0',
+      exports: {},
+      devDependencies: {
+        '@cinder/testing': 'workspace:*',
+      },
+    };
+
+    const published = buildPublishedManifest(manifest);
+
+    expect(published.devDependencies).toBeUndefined();
   });
 });

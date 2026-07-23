@@ -6099,230 +6099,6 @@
       "import": "./src/components/waveform/waveform.examples.json",
       "default": "./src/components/waveform/waveform.examples.json"
     },
-    "./editor/sanitize-html": {
-      "types": "./dist/editor/sanitize-html.d.ts",
-      "browser": "./src/editor/sanitize-html.ts",
-      "node": "./dist/server/editor/sanitize-html.js",
-      "svelte": "./src/editor/sanitize-html.ts",
-      "import": "./src/editor/sanitize-html.ts",
-      "default": "./dist/editor/sanitize-html.js"
-    },
-    "./editor/template-placeholders": {
-      "types": "./dist/editor/template-placeholders.d.ts",
-      "browser": "./src/editor/template-placeholders.ts",
-      "node": "./dist/server/editor/template-placeholders.js",
-      "svelte": "./src/editor/template-placeholders.ts",
-      "import": "./src/editor/template-placeholders.ts",
-      "default": "./dist/editor/template-placeholders.js"
-    },
-    "./editor/template-render": {
-      "types": "./dist/editor/template-render.d.ts",
-      "browser": "./src/editor/template-render.ts",
-      "node": "./dist/server/editor/template-render.js",
-      "svelte": "./src/editor/template-render.ts",
-      "import": "./src/editor/template-render.ts",
-      "default": "./dist/editor/template-render.js"
-    },
-    "./markdown": {
-      "types": "./dist/markdown/index.d.ts",
-      "browser": "./src/markdown/index.ts",
-      "node": "./dist/server/markdown/index.js",
-      "svelte": "./src/markdown/index.ts",
-      "import": "./src/markdown/index.ts",
-      "default": "./dist/markdown/index.js"
-    },
-    "./markdown/diff": {
-      "types": "./dist/markdown/diff/index.d.ts",
-      "browser": "./src/markdown/diff/index.ts",
-      "node": "./dist/server/markdown/diff/index.js",
-      "svelte": "./src/markdown/diff/index.ts",
-      "import": "./src/markdown/diff/index.ts",
-      "default": "./dist/markdown/diff/index.js"
-    },
-    "./markdown/diff/line-diff": {
-      "types": "./dist/markdown/diff/line-diff.d.ts",
-      "browser": "./src/markdown/diff/line-diff.ts",
-      "node": "./dist/server/markdown/diff/line-diff.js",
-      "svelte": "./src/markdown/diff/line-diff.ts",
-      "import": "./src/markdown/diff/line-diff.ts",
-      "default": "./dist/markdown/diff/line-diff.js"
-    },
-    "./markdown/diff/types": {
-      "types": "./dist/markdown/diff/types.d.ts",
-      "browser": "./src/markdown/diff/types.ts",
-      "node": "./dist/server/markdown/diff/types.js",
-      "svelte": "./src/markdown/diff/types.ts",
-      "import": "./src/markdown/diff/types.ts",
-      "default": "./dist/markdown/diff/types.js"
-    },
-    "./markdown/pipeline": {
-      "types": "./dist/markdown/pipeline/index.d.ts",
-      "browser": "./src/markdown/pipeline/index.ts",
-      "node": "./dist/server/markdown/pipeline/index.js",
-      "svelte": "./src/markdown/pipeline/index.ts",
-      "import": "./src/markdown/pipeline/index.ts",
-      "default": "./dist/markdown/pipeline/index.js"
-    },
-    "./markdown/rendering": {
-      "types": "./dist/markdown/rendering/index.d.ts",
-      "browser": "./src/markdown/rendering/index.ts",
-      "node": "./dist/server/markdown/rendering/index.js",
-      "svelte": "./src/markdown/rendering/index.ts",
-      "import": "./src/markdown/rendering/index.ts",
-      "default": "./dist/markdown/rendering/index.js"
-    },
-    "./markdown/rendering/async": {
-      "types": "./dist/markdown/rendering/async.d.ts",
-      "browser": "./src/markdown/rendering/async.ts",
-      "node": "./dist/server/markdown/rendering/async.js",
-      "svelte": "./src/markdown/rendering/async.ts",
-      "import": "./src/markdown/rendering/async.ts",
-      "default": "./dist/markdown/rendering/async.js"
-    },
-    "./markdown/rendering/highlighter": {
-      "types": "./dist/markdown/rendering/highlighter.d.ts",
-      "browser": "./src/markdown/rendering/highlighter.ts",
-      "node": "./dist/server/markdown/rendering/highlighter.js",
-      "svelte": "./src/markdown/rendering/highlighter.ts",
-      "import": "./src/markdown/rendering/highlighter.ts",
-      "default": "./dist/markdown/rendering/highlighter.js"
-    },
-    "./markdown/rendering/mermaid-cache": {
-      "types": "./dist/markdown/rendering/mermaid-cache.d.ts",
-      "browser": "./src/markdown/rendering/mermaid-cache.ts",
-      "node": "./dist/server/markdown/rendering/mermaid-cache.js",
-      "svelte": "./src/markdown/rendering/mermaid-cache.ts",
-      "import": "./src/markdown/rendering/mermaid-cache.ts",
-      "default": "./dist/markdown/rendering/mermaid-cache.js"
-    },
-    "./markdown/rendering/types": {
-      "types": "./dist/markdown/rendering/types.d.ts",
-      "browser": "./src/markdown/rendering/types.ts",
-      "node": "./dist/server/markdown/rendering/types.js",
-      "svelte": "./src/markdown/rendering/types.ts",
-      "import": "./src/markdown/rendering/types.ts",
-      "default": "./dist/markdown/rendering/types.js"
-    },
-    "./markdown/utilities/safe-url": {
-      "types": "./dist/markdown/utilities/safe-url.d.ts",
-      "browser": "./src/markdown/utilities/safe-url.ts",
-      "node": "./dist/server/markdown/utilities/safe-url.js",
-      "svelte": "./src/markdown/utilities/safe-url.ts",
-      "import": "./src/markdown/utilities/safe-url.ts",
-      "default": "./dist/markdown/utilities/safe-url.js"
-    },
-    "./markdown/utilities/sort-keys": {
-      "types": "./dist/markdown/utilities/sort-keys.d.ts",
-      "browser": "./src/markdown/utilities/sort-keys.ts",
-      "node": "./dist/server/markdown/utilities/sort-keys.js",
-      "svelte": "./src/markdown/utilities/sort-keys.ts",
-      "import": "./src/markdown/utilities/sort-keys.ts",
-      "default": "./dist/markdown/utilities/sort-keys.js"
-    },
-    "./commentary": {
-      "types": "./dist/commentary/index.d.ts",
-      "browser": "./src/commentary/index.ts",
-      "node": "./dist/server/commentary/index.js",
-      "svelte": "./src/commentary/index.ts",
-      "import": "./src/commentary/index.ts",
-      "default": "./dist/commentary/index.js"
-    },
-    "./commentary/anchor-decorations": {
-      "types": "./dist/commentary/anchor-decorations.d.ts",
-      "browser": "./src/commentary/anchor-decorations.ts",
-      "node": "./dist/server/commentary/anchor-decorations.js",
-      "svelte": "./src/commentary/anchor-decorations.ts",
-      "import": "./src/commentary/anchor-decorations.ts",
-      "default": "./dist/commentary/anchor-decorations.js"
-    },
-    "./commentary/anchoring": {
-      "types": "./dist/commentary/anchoring.d.ts",
-      "browser": "./src/commentary/anchoring.ts",
-      "node": "./dist/server/commentary/anchoring.js",
-      "svelte": "./src/commentary/anchoring.ts",
-      "import": "./src/commentary/anchoring.ts",
-      "default": "./dist/commentary/anchoring.js"
-    },
-    "./commentary/comments": {
-      "types": "./dist/commentary/comments/index.d.ts",
-      "browser": "./src/commentary/comments/index.ts",
-      "node": "./dist/server/commentary/comments/index.js",
-      "svelte": "./src/commentary/comments/index.ts",
-      "import": "./src/commentary/comments/index.ts",
-      "default": "./dist/commentary/comments/index.js"
-    },
-    "./commentary/comments/types": {
-      "types": "./dist/commentary/comments/types.d.ts",
-      "browser": "./src/commentary/comments/types.ts",
-      "node": "./dist/server/commentary/comments/types.js",
-      "svelte": "./src/commentary/comments/types.ts",
-      "import": "./src/commentary/comments/types.ts",
-      "default": "./dist/commentary/comments/types.js"
-    },
-    "./commentary/export": {
-      "types": "./dist/commentary/export/index.d.ts",
-      "browser": "./src/commentary/export/index.ts",
-      "node": "./dist/server/commentary/export/index.js",
-      "svelte": "./src/commentary/export/index.ts",
-      "import": "./src/commentary/export/index.ts",
-      "default": "./dist/commentary/export/index.js"
-    },
-    "./commentary/export/types": {
-      "types": "./dist/commentary/export/types.d.ts",
-      "browser": "./src/commentary/export/types.ts",
-      "node": "./dist/server/commentary/export/types.js",
-      "svelte": "./src/commentary/export/types.ts",
-      "import": "./src/commentary/export/types.ts",
-      "default": "./dist/commentary/export/types.js"
-    },
-    "./commentary/session": {
-      "types": "./dist/commentary/session/index.d.ts",
-      "browser": "./src/commentary/session/index.ts",
-      "node": "./dist/server/commentary/session/index.js",
-      "svelte": "./src/commentary/session/index.ts",
-      "import": "./src/commentary/session/index.ts",
-      "default": "./dist/commentary/session/index.js"
-    },
-    "./commentary/session/types": {
-      "types": "./dist/commentary/session/types.d.ts",
-      "browser": "./src/commentary/session/types.ts",
-      "node": "./dist/server/commentary/session/types.js",
-      "svelte": "./src/commentary/session/types.ts",
-      "import": "./src/commentary/session/types.ts",
-      "default": "./dist/commentary/session/types.js"
-    },
-    "./commentary/shared/anchor-types": {
-      "types": "./dist/commentary/shared/anchor-types.d.ts",
-      "browser": "./src/commentary/shared/anchor-types.ts",
-      "node": "./dist/server/commentary/shared/anchor-types.js",
-      "svelte": "./src/commentary/shared/anchor-types.ts",
-      "import": "./src/commentary/shared/anchor-types.ts",
-      "default": "./dist/commentary/shared/anchor-types.js"
-    },
-    "./editor": {
-      "types": "./dist/editor/index.d.ts",
-      "browser": "./src/editor/index.ts",
-      "node": "./dist/server/editor/index.js",
-      "svelte": "./src/editor/index.ts",
-      "import": "./src/editor/index.ts",
-      "default": "./dist/editor/index.js"
-    },
-    "./editor/component-runtime": {
-      "types": "./dist/editor/component-runtime.d.ts",
-      "browser": "./src/editor/component-runtime.ts",
-      "node": "./dist/server/editor/component-runtime.js",
-      "svelte": "./src/editor/component-runtime.ts",
-      "import": "./src/editor/component-runtime.ts",
-      "default": "./dist/editor/component-runtime.js"
-    },
-    "./editor/test-utilities": {
-      "types": "./dist/editor/test-utilities.d.ts",
-      "browser": "./src/editor/test-utilities.ts",
-      "node": "./dist/server/editor/test-utilities.js",
-      "svelte": "./src/editor/test-utilities.ts",
-      "import": "./src/editor/test-utilities.ts",
-      "default": "./dist/editor/test-utilities.js"
-    },
     "./experimental/json-viewer": {
       "types": "./dist/components/experimental/json-viewer/index.d.ts",
       "browser": "./src/components/experimental/json-viewer/index.ts",
@@ -6466,39 +6242,21 @@
   },
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
+    "@lostgradient/markdown": "^0.0.0",
     "@shikijs/engine-oniguruma": "^3.21.0",
-    "@shikijs/langs": "^3.21.0",
     "@shikijs/types": "^3.21.0",
     "@tanstack/virtual-core": "^3.17.1",
-    "@types/hast": "^3.0.4",
-    "@types/mdast": "^4.0.4",
-    "@types/unist": "^3.0.0",
     "ajv": "^8",
-    "comlink": "^4.4.2",
-    "diff-match-patch": "^1.0.5",
     "esm-env": "^1.2.0",
-    "hast-util-sanitize": "^5.0.0",
-    "js-yaml": "^4.1.0",
     "libphonenumber-js": "^1.13.3",
     "lucide-svelte": "0.503.0",
     "qrcode": "^1.5.4",
-    "rehype-katex": "^7.0.1",
-    "rehype-sanitize": "^6.0.0",
-    "rehype-stringify": "^10.0.1",
-    "remark-gfm": "^4.0.1",
-    "remark-math": "^6.0.0",
-    "remark-parse": "^11.0.0",
-    "remark-rehype": "^11.1.2",
-    "remark-stringify": "^11.0.0",
-    "shiki": "^3.21.0",
-    "unified": "^11.0.5",
-    "unist-util-visit": "^5.0.0"
+    "shiki": "^3.21.0"
   },
   "devDependencies": {
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
     "@cinder/testing": "workspace:*",
-    "@lostgradient/editor": "workspace:*",
     "@lostgradient/markdown": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.60.0",
@@ -6510,6 +6268,7 @@
     "chalk": "^5.6.2",
     "change-case": "^5.4.4",
     "happy-dom": "^15.11.7",
+    "js-yaml": "^4.1.0",
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.0",
     "postcss": "^8.5.15",
@@ -6526,40 +6285,12 @@
     "zod": "4.4.1"
   },
   "peerDependencies": {
-    "@milkdown/ctx": "^7.17.3",
-    "@milkdown/kit": "^7.17.3",
-    "@milkdown/prose": "^7.17.3",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "prosemirror-inputrules": "^1.5.1",
-    "prosemirror-model": "^1.25.4",
-    "prosemirror-state": "^1.4.4",
-    "prosemirror-view": "^1.41.3",
     "svelte": ">=5.56.0 <6",
     "zod": "^4.0.0"
   },
   "peerDependenciesMeta": {
-    "@milkdown/ctx": {
-      "optional": true
-    },
-    "@milkdown/kit": {
-      "optional": true
-    },
-    "@milkdown/prose": {
-      "optional": true
-    },
     "@modelcontextprotocol/sdk": {
-      "optional": true
-    },
-    "prosemirror-inputrules": {
-      "optional": true
-    },
-    "prosemirror-model": {
-      "optional": true
-    },
-    "prosemirror-state": {
-      "optional": true
-    },
-    "prosemirror-view": {
       "optional": true
     },
     "zod": {

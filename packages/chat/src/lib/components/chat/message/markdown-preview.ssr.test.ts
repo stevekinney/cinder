@@ -13,18 +13,18 @@
  *
  * markdown-preview.svelte satisfies this by:
  *   - importing the rendering pipeline DYNAMICALLY inside a `$effect`
- *     (`import('@lostgradient/cinder/markdown/rendering')`), never statically — `$effect`
+ *     (`import('@lostgradient/markdown/rendering')`), never statically — `$effect`
  *     bodies never run during SSR, so the import is never evaluated on the
  *     server, and the heavy rendering graph stays out of the SSR path; and
  *   - rendering a raw-text fallback (`<p>{content}</p>`) in the `{:else}`
  *     branch, so the server emits the message text without throwing and the
  *     client swaps in formatted HTML after hydration.
  *
- * Unlike `markdown-editor.svelte` — whose live-editor branch pulls in
- * `@lostgradient/cinder/editor/component-runtime` (ProseMirror) and so cannot be exercised
- * by `renderThenHydrate` (the recompiled SSR module resolves that import
+ * Unlike `@lostgradient/editor`'s `markdown-editor.svelte` — whose live-editor
+ * branch pulls in ProseMirror runtime and so cannot be exercised by
+ * `renderThenHydrate` (the recompiled SSR module resolves that import
  * against a missing "node"-conditional dist, producing `effect_orphan`) —
- * markdown-preview has no child components and no static cinder/editor import.
+ * markdown-preview has no child components and no static markdown/editor import.
  * Its only heavy dependency is reached through a dynamic import inside an
  * `$effect`, which never runs during SSR. We therefore verify the SSR contract
  * by actually rendering on the server via `renderThenHydrate` and asserting on

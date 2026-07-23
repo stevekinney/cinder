@@ -2,12 +2,21 @@
  * Cycle-prevention guard for the upstream workspace packages
  * (`markdown`, `editor`).
  *
- * The `@lostgradient/cinder` package re-exports each upstream package's public surface
- * under `@lostgradient/cinder/<pkg>/<subpath>`. If either upstream package were
- * to import `@lostgradient/cinder` or `@lostgradient/cinder/<subpath>`, that would create a runtime
- * resolution cycle (`@lostgradient/cinder` → `@lostgradient/markdown` or `@lostgradient/editor` → `@lostgradient/cinder`), a type-emission
- * cycle (the published `.d.ts` would reference an unresolved `@lostgradient/cinder`), and
- * an init-order hazard.
+ * `@lostgradient/cinder` depends directly on `@lostgradient/markdown` (see
+ * `src/utilities/change-tracker.svelte.ts` and
+ * `src/components/json-schema-editor/diff-view.svelte`) — if markdown's own
+ * source ever imported `@lostgradient/cinder` or `@lostgradient/cinder/<subpath>`,
+ * that would create a real runtime resolution cycle (`cinder → markdown →
+ * cinder`), a type-emission cycle (the published `.d.ts` would reference an
+ * unresolved `@lostgradient/cinder`), and an init-order hazard.
+ *
+ * Cinder no longer depends on `@lostgradient/editor` at all (Phase 5 of
+ * `docs/decisions/package-boundaries.md` deleted cinder's upstream re-export
+ * shims), so editor importing cinder would not create a resolution cycle
+ * today — but editor's headless runtime still has no business depending on
+ * cinder's component surface (only its Svelte component layer legitimately
+ * does, as an ordinary downstream consumer — see `UNRESTRICTED_SUBTREES`
+ * below), so the guard stays in place defensively.
  *
  * This script walks `packages/{markdown,editor}/src/**` and
  * fails on any source file that imports `@lostgradient/cinder` or `@lostgradient/cinder/...`. Run as
@@ -32,15 +41,12 @@ const RESTRICTED_PACKAGES = ['markdown', 'editor'] as const;
 
 /**
  * Per-package glob prefixes excluded from the restriction, relative to that
- * package's `src/`. `@lostgradient/cinder` only mirrors `editor`'s headless
- * runtime (`./editor`, `./editor/component-runtime`, `./editor/test-utilities`
- * — see `derive-upstream-reexports.ts`), never its Svelte components
- * (`markdown-editor`, `review-editor`, `diff-viewer`, which moved into
- * `packages/editor` in Phase 3 and are NOT re-exported by cinder). Only the
- * mirrored subset can create the resolution cycle this script guards
- * against, so `editor`'s component surface — a normal downstream consumer of
- * cinder's published primitives, exactly like `@lostgradient/chat` — is
- * exempt.
+ * package's `src/`. `editor`'s Svelte components (`markdown-editor`,
+ * `review-editor`, `diff-viewer`) are a normal downstream consumer of
+ * cinder's published primitives, exactly like `@lostgradient/chat` — they
+ * legitimately import `@lostgradient/cinder/<component>`, so that subtree is
+ * exempt. Cinder no longer re-exports any of editor's headless runtime (see
+ * the module doc above), so this exemption is the only carve-out needed.
  */
 const UNRESTRICTED_SUBTREES: Readonly<
   Partial<Record<(typeof RESTRICTED_PACKAGES)[number], string>>

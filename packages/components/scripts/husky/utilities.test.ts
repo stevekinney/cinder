@@ -39,14 +39,16 @@ const pkg = (name: string, dir: string, dependencies: string[] = []): WorkspaceP
 // A fixture mirroring the real internal dependency graph for closure tests.
 // Post-#806 (@lostgradient/markdown absorbed @cinder/diff — packages/diff no
 // longer exists) and Phase 3 of package-boundaries (@cinder/commentary +
-// the old @cinder/editor dissolved into @lostgradient/editor, which now
-// peer/dev-depends on BOTH @lostgradient/cinder and @lostgradient/markdown —
-// a genuine circular dependency with cinder, which dev-depends on editor for
-// its own tests/examples).
+// the old @cinder/editor dissolved into @lostgradient/editor, which
+// peer/dev-depends on BOTH @lostgradient/cinder and @lostgradient/markdown).
+// Phase 5 deletes cinder's `src/{markdown,editor,commentary}/` re-export
+// shims — no retained cinder source imports `@lostgradient/editor` anymore
+// (see `docs/decisions/package-boundaries.md`), so the former genuine
+// cycle between cinder and editor is gone: editor still depends on cinder,
+// but cinder no longer depends on editor.
 const graphPackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/cinder', 'packages/components/', [
     '@cinder/testing',
-    '@lostgradient/editor',
     '@lostgradient/markdown',
   ]),
   pkg('@lostgradient/markdown', 'packages/markdown/'),
@@ -372,28 +374,28 @@ describe('isSourceFile', () => {
 });
 
 describe('expandToDependents', () => {
-  // NOTE: `@lostgradient/cinder` dev-depends on every sub-package (its own
-  // tests/examples import them), `@lostgradient/chat` and `@lostgradient/editor`
-  // both depend on Cinder, and `@cinder/playground` depends on Chat, Cinder,
-  // and Markdown. Cinder and Editor form a genuine cycle (Cinder dev-depends
-  // on Editor; Editor peer/dev-depends on Cinder), so touching either one
-  // pulls in the other, plus Chat and Playground downstream of Cinder. Only
-  // `@cinder/playground` (nothing depends on it) and `@lostgradient/chat`
-  // (only Playground depends on it) stay small. These expectations are the
-  // sound closures, computed from the graph.
+  // NOTE: `@lostgradient/cinder` dev-depends on `@cinder/testing` and
+  // `@lostgradient/markdown` only (Phase 5 deleted its upstream re-export
+  // shims, so it no longer dev-depends on `@lostgradient/editor`).
+  // `@lostgradient/chat` and `@lostgradient/editor` both depend on Cinder,
+  // and `@cinder/playground` depends on Chat, Cinder, and Markdown. Cinder
+  // and Editor are no longer a cycle — only Editor points back at Cinder —
+  // so touching Editor stays local, while touching Cinder still pulls in
+  // Editor, Chat, and Playground downstream of it. Only `@cinder/playground`
+  // (nothing depends on it) and `@lostgradient/editor` (nothing in this
+  // graph depends on it) stay leaves. These expectations are the sound
+  // closures, computed from the graph.
   const expand = (name: string) => sorted(expandToDependents(graphPackages, [name]));
 
   it('keeps @cinder/playground a leaf (nothing depends on it)', () => {
     expect(expand('@cinder/playground')).toEqual(['@cinder/playground']);
   });
 
-  it('expands @lostgradient/editor through both public packages to playground', () => {
-    expect(expand('@lostgradient/editor')).toEqual([
-      '@cinder/playground',
-      '@lostgradient/chat',
-      '@lostgradient/cinder',
-      '@lostgradient/editor',
-    ]);
+  it('keeps @lostgradient/editor a leaf (nothing in this graph depends on it)', () => {
+    // Cinder used to dev-depend on editor (for the upstream re-export
+    // shims); Phase 5 deletes those shims, so nothing in the fixture graph
+    // depends on editor anymore — touching it no longer expands outward.
+    expect(expand('@lostgradient/editor')).toEqual(['@lostgradient/editor']);
   });
 
   it('expands @lostgradient/markdown to markdown + editor + cinder + playground', () => {
@@ -462,17 +464,16 @@ describe('buildableForwardClosure', () => {
   // strictly backward" invariant `buildableForwardClosure` relies on) fails
   // loudly here instead of silently under-building the pre-push pre-build
   // step and reopening the #364 race as a CI flake.
-  it('closes @lostgradient/editor to markdown + editor (its upstream chain)', () => {
-    expect(buildableForwardClosure(new Set(['@lostgradient/editor']))).toEqual([
-      '@lostgradient/markdown',
-      '@lostgradient/editor',
-    ]);
+  it('returns an empty list for @lostgradient/editor (not a cinder build input anymore)', () => {
+    // Phase 5 deleted cinder's upstream re-export shims, so editor no
+    // longer needs to be prebuilt before cinder's own build — it dropped
+    // out of BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER entirely.
+    expect(buildableForwardClosure(new Set(['@lostgradient/editor']))).toEqual([]);
   });
 
-  it('closes @lostgradient/cinder to the full three-package chain', () => {
+  it('closes @lostgradient/cinder to the full two-package chain', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
       '@lostgradient/markdown',
-      '@lostgradient/editor',
       '@lostgradient/cinder',
     ]);
   });

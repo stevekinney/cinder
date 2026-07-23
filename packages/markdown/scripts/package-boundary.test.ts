@@ -16,23 +16,22 @@ const cinderManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'components', 'package.json')).text(),
 ) as PackageManifest;
 
-// All three `@shikijs/*` packages are shared between markdown and cinder —
-// for two different reasons:
-//   - `@shikijs/engine-oniguruma` and `@shikijs/types`: cinder's own
-//     `src/highlighters/shiki/index.ts` imports them directly (a dynamic
-//     `import('@shikijs/engine-oniguruma')` and `@shikijs/types` type
-//     imports), independent of markdown entirely.
-//   - `@shikijs/langs`: cinder's own source never imports it, but cinder's
-//     build VENDORS markdown's compiled `dist/rendering/**` wholesale into
-//     its own published dist and re-exposes it under the public
-//     `./markdown/rendering*` subpaths (see `scripts/build.ts`'s upstream
-//     vendoring pass). That vendored `rendering/highlighter.js` dynamically
-//     imports `@shikijs/langs/<name>`, so any consumer who installs
-//     `@lostgradient/cinder` alone and reaches `./markdown/rendering*`
-//     needs `@shikijs/langs` resolvable from CINDER's own dependency tree,
-//     not just markdown's — under pnpm/Yarn PnP or any non-hoisted install
-//     layout, a package can only resolve its OWN declared dependencies.
-const SHARED_SHIKI_PACKAGES = ['@shikijs/engine-oniguruma', '@shikijs/langs', '@shikijs/types'];
+// `@shikijs/engine-oniguruma` and `@shikijs/types` are shared between
+// markdown and cinder: cinder's own `src/highlighters/shiki/index.ts`
+// imports them directly (a dynamic `import('@shikijs/engine-oniguruma')`
+// and `@shikijs/types` type imports), independent of markdown entirely.
+//
+// `@shikijs/langs` is markdown-only now. Before Phase 5 of
+// `docs/decisions/package-boundaries.md`, cinder's build VENDORED
+// markdown's compiled `dist/rendering/**` wholesale into its own published
+// dist and re-exposed it under `./markdown/rendering*`, so a consumer
+// reaching that vendored path needed `@shikijs/langs` resolvable from
+// cinder's own dependency tree too. Phase 5 deleted that vendoring — cinder
+// no longer exposes any markdown subpath at all — so `@shikijs/langs` is no
+// longer cinder's concern; it stays a markdown dependency only (`shiki`
+// itself resolves it as its own transitive dependency regardless).
+const SHARED_SHIKI_PACKAGES = ['@shikijs/engine-oniguruma', '@shikijs/types'];
+const MARKDOWN_ONLY_SHIKI_PACKAGES = ['@shikijs/langs'];
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
 describe('@lostgradient/markdown package ownership boundary', () => {
@@ -77,7 +76,7 @@ describe('@lostgradient/markdown package ownership boundary', () => {
   });
 
   test('carries every @shikijs/* highlighter engine dep it uses', () => {
-    for (const shikiPackage of SHARED_SHIKI_PACKAGES) {
+    for (const shikiPackage of [...SHARED_SHIKI_PACKAGES, ...MARKDOWN_ONLY_SHIKI_PACKAGES]) {
       expect(markdownManifest.dependencies?.[shikiPackage]).toBeDefined();
     }
     // `shiki` itself is not a `@shikijs/*` engine package — it stays a
@@ -86,9 +85,15 @@ describe('@lostgradient/markdown package ownership boundary', () => {
     expect(markdownManifest.dependencies?.['shiki']).toBeDefined();
   });
 
-  test('cinder declares every shared @shikijs/* dep, including langs (vendored via ./markdown/rendering*)', () => {
+  test('cinder declares every shared @shikijs/* dep it directly imports', () => {
     for (const shikiPackage of SHARED_SHIKI_PACKAGES) {
       expect(cinderManifest.dependencies?.[shikiPackage]).toBeDefined();
+    }
+  });
+
+  test('cinder no longer carries @shikijs/langs (no longer vendors markdown/rendering)', () => {
+    for (const shikiPackage of MARKDOWN_ONLY_SHIKI_PACKAGES) {
+      expect(cinderManifest.dependencies?.[shikiPackage]).toBeUndefined();
     }
   });
 

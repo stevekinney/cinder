@@ -41,10 +41,19 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
     fileCount: 300,
     largestEntrypointBytes: 500_000,
   },
+  // Dropped sharply after docs/decisions/package-boundaries.md Phase 5
+  // (deleting cinder's src/{markdown,editor,commentary}/ re-export shims and
+  // no longer vendoring @lostgradient/markdown's or @lostgradient/editor's
+  // dist trees): measured 3.81 MB packed / 18.71 MB unpacked / 4,498 files
+  // immediately after the shim deletion, down from a packed/unpacked/
+  // fileCount budget of 8 MB / 32 MB / 5,500 beforehand. Budgets below keep
+  // meaningful headroom over the measured numbers rather than pinning them
+  // exactly, matching this file's existing convention for every other
+  // package.
   '@lostgradient/cinder': {
-    packedBytes: 8_000_000,
-    unpackedBytes: 32_000_000,
-    fileCount: 5_500,
+    packedBytes: 5_000_000,
+    unpackedBytes: 22_000_000,
+    fileCount: 4_800,
     largestEntrypointBytes: 2_500_000,
   },
   '@lostgradient/chat': {

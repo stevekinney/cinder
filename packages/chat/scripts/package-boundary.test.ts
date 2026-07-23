@@ -54,11 +54,14 @@ describe('Chat package ownership boundary', () => {
     // excluded the very version carrying this fix.
     expect(chatManifest.peerDependencies).toEqual({
       '@lostgradient/cinder': '^0.17.0',
+      '@lostgradient/markdown': '^0.1.0',
       svelte: '>=5.56.0 <6',
     });
     expect(runtimeExternalSpecifiers(chatManifest)).toEqual([
       '@lostgradient/cinder',
       '@lostgradient/cinder/*',
+      '@lostgradient/markdown',
+      '@lostgradient/markdown/*',
       'svelte',
       'svelte/*',
       'conversationalist',
