@@ -37,18 +37,29 @@ const pkg = (name: string, dir: string, dependencies: string[] = []): WorkspaceP
 });
 
 // A fixture mirroring the real internal dependency graph for closure tests.
+// Post-#806 (@lostgradient/markdown absorbed @cinder/diff — packages/diff no
+// longer exists) and Phase 3 of package-boundaries (@cinder/commentary +
+// the old @cinder/editor dissolved into @lostgradient/editor, which now
+// peer/dev-depends on BOTH @lostgradient/cinder and @lostgradient/markdown —
+// a genuine circular dependency with cinder, which dev-depends on editor for
+// its own tests/examples).
 const graphPackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/cinder', 'packages/components/', [
-    '@lostgradient/editor',
-    '@cinder/diff',
-    '@cinder/markdown',
     '@cinder/testing',
+    '@lostgradient/editor',
+    '@lostgradient/markdown',
   ]),
-  pkg('@cinder/markdown', 'packages/markdown/', ['@cinder/diff']),
-  pkg('@lostgradient/editor', 'packages/editor/', ['@cinder/markdown']),
+  pkg('@lostgradient/markdown', 'packages/markdown/'),
+  pkg('@lostgradient/editor', 'packages/editor/', [
+    '@lostgradient/cinder',
+    '@lostgradient/markdown',
+  ]),
   pkg('@lostgradient/chat', 'packages/chat/', ['@lostgradient/cinder']),
-  pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/chat', '@lostgradient/cinder']),
-  pkg('@cinder/diff', 'packages/diff/'),
+  pkg('@cinder/playground', 'packages/playground/', [
+    '@lostgradient/chat',
+    '@lostgradient/cinder',
+    '@lostgradient/markdown',
+  ]),
   pkg('@cinder/testing', 'packages/testing/'),
 ];
 
@@ -361,14 +372,15 @@ describe('isSourceFile', () => {
 });
 
 describe('expandToDependents', () => {
-  // NOTE: the real graph has `@lostgradient/cinder` dev-depending on every sub-package (its
-  // own tests import them), `@lostgradient/chat` depending on Cinder, and
-  // `@cinder/playground` depending on both public packages. So any sub-package
-  // change pulls in Cinder + Chat + playground as
-  // dependents. Only `@lostgradient/editor` (a true leaf in the consumer
-  // direction) and `@cinder/playground` stay small. These expectations are the
-  // sound closures, computed from the graph — not the smaller sets an earlier
-  // draft assumed.
+  // NOTE: `@lostgradient/cinder` dev-depends on every sub-package (its own
+  // tests/examples import them), `@lostgradient/chat` and `@lostgradient/editor`
+  // both depend on Cinder, and `@cinder/playground` depends on Chat, Cinder,
+  // and Markdown. Cinder and Editor form a genuine cycle (Cinder dev-depends
+  // on Editor; Editor peer/dev-depends on Cinder), so touching either one
+  // pulls in the other, plus Chat and Playground downstream of Cinder. Only
+  // `@cinder/playground` (nothing depends on it) and `@lostgradient/chat`
+  // (only Playground depends on it) stay small. These expectations are the
+  // sound closures, computed from the graph.
   const expand = (name: string) => sorted(expandToDependents(graphPackages, [name]));
 
   it('keeps @cinder/playground a leaf (nothing depends on it)', () => {
@@ -377,48 +389,39 @@ describe('expandToDependents', () => {
 
   it('expands @lostgradient/editor through both public packages to playground', () => {
     expect(expand('@lostgradient/editor')).toEqual([
-      '@lostgradient/editor',
       '@cinder/playground',
       '@lostgradient/chat',
       '@lostgradient/cinder',
+      '@lostgradient/editor',
     ]);
   });
 
-  it('expands @cinder/markdown to markdown + editor + cinder + playground', () => {
-    expect(expand('@cinder/markdown')).toEqual([
-      '@lostgradient/editor',
-      '@cinder/markdown',
+  it('expands @lostgradient/markdown to markdown + editor + cinder + playground', () => {
+    expect(expand('@lostgradient/markdown')).toEqual([
       '@cinder/playground',
       '@lostgradient/chat',
       '@lostgradient/cinder',
-    ]);
-  });
-
-  it('expands @cinder/diff to the full dependent chain + cinder + playground', () => {
-    expect(expand('@cinder/diff')).toEqual([
       '@lostgradient/editor',
-      '@cinder/diff',
-      '@cinder/markdown',
-      '@cinder/playground',
-      '@lostgradient/chat',
-      '@lostgradient/cinder',
+      '@lostgradient/markdown',
     ]);
   });
 
-  it('expands @cinder/testing to testing + cinder + playground', () => {
+  it('expands @cinder/testing to testing + cinder + editor + chat + playground', () => {
     expect(expand('@cinder/testing')).toEqual([
       '@cinder/playground',
       '@cinder/testing',
       '@lostgradient/chat',
       '@lostgradient/cinder',
+      '@lostgradient/editor',
     ]);
   });
 
-  it('expands cinder through chat to playground', () => {
+  it('expands cinder through the editor cycle and chat to playground', () => {
     expect(expand('@lostgradient/cinder')).toEqual([
       '@cinder/playground',
       '@lostgradient/chat',
       '@lostgradient/cinder',
+      '@lostgradient/editor',
     ]);
   });
 
@@ -427,15 +430,18 @@ describe('expandToDependents', () => {
   });
 
   it('is cycle-safe and dedupes across multiple touched packages', () => {
+    // @lostgradient/markdown and @cinder/testing both flow, transitively,
+    // through the cinder<->editor cycle to chat and playground — touching
+    // both at once proves the cycle terminates and the union dedupes.
     expect(
-      sorted(expandToDependents(graphPackages, ['@cinder/diff', '@lostgradient/editor'])),
+      sorted(expandToDependents(graphPackages, ['@lostgradient/markdown', '@cinder/testing'])),
     ).toEqual([
-      '@lostgradient/editor',
-      '@cinder/diff',
-      '@cinder/markdown',
       '@cinder/playground',
+      '@cinder/testing',
       '@lostgradient/chat',
       '@lostgradient/cinder',
+      '@lostgradient/editor',
+      '@lostgradient/markdown',
     ]);
   });
 
@@ -761,8 +767,8 @@ describe('changedCssLikeFiles', () => {
 
 describe('isUnderWorkspace', () => {
   it('matches files inside a package directory', () => {
-    expect(isUnderWorkspace('packages/diff/src/x.ts', graphPackages)).toBe(true);
-    expect(isUnderWorkspace('packages/diff/fixtures/data.yaml', graphPackages)).toBe(true);
+    expect(isUnderWorkspace('packages/markdown/src/x.ts', graphPackages)).toBe(true);
+    expect(isUnderWorkspace('packages/markdown/fixtures/data.yaml', graphPackages)).toBe(true);
   });
 
   it('does not match root-level files', () => {
@@ -771,7 +777,7 @@ describe('isUnderWorkspace', () => {
   });
 
   it('does not treat a directory prefix collision as a match', () => {
-    expect(isUnderWorkspace('packages/diff-extra/x.ts', graphPackages)).toBe(false);
+    expect(isUnderWorkspace('packages/markdown-extra/x.ts', graphPackages)).toBe(false);
   });
 });
 
@@ -782,8 +788,8 @@ describe('isIgnorableDoc', () => {
   });
 
   it('ignores package-root README/CHANGELOG and docs/**', () => {
-    expect(isIgnorableDoc('packages/diff/README.md', graphPackages)).toBe(true);
-    expect(isIgnorableDoc('packages/diff/CHANGELOG.md', graphPackages)).toBe(true);
+    expect(isIgnorableDoc('packages/testing/README.md', graphPackages)).toBe(true);
+    expect(isIgnorableDoc('packages/testing/CHANGELOG.md', graphPackages)).toBe(true);
     expect(isIgnorableDoc('packages/markdown/docs/intro.md', graphPackages)).toBe(true);
   });
 
@@ -791,7 +797,7 @@ describe('isIgnorableDoc', () => {
     expect(
       isIgnorableDoc('packages/markdown/test/fixtures/README-edge-case.md', graphPackages),
     ).toBe(false);
-    expect(isIgnorableDoc('packages/diff/fixtures/data.yaml', graphPackages)).toBe(false);
+    expect(isIgnorableDoc('packages/testing/fixtures/data.yaml', graphPackages)).toBe(false);
   });
 
   it('does NOT ignore a non-doc root-level file', () => {

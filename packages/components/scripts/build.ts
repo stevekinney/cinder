@@ -794,6 +794,21 @@ function isUpstreamExcludedFile(relative: string): boolean {
   return upstreamExcludedFilePatterns.some((pattern) => pattern.test(relative));
 }
 
+// `editor`'s `dist/components/**` holds its compiled Svelte components
+// (markdown-editor, review-editor, diff-viewer) — every one of them is
+// suppressed (`null`) in `CINDER_KEY_OVERRIDES` above, so cinder never
+// re-exports any of it. Vendoring it anyway is pure bloat, and worse: it
+// copies CSS assets (`prosemirror.css`, `review-editor.css`) into
+// `dist/server/editor/components/**`, which trips `server-css-free.test.ts`'s
+// "no CSS reachable under dist/server" contract even though nothing in
+// cinder's own server entries imports this subtree.
+const UPSTREAM_SUBTREE_EXCLUSIONS: ReadonlyMap<string, RegExp> = new Map([
+  ['editor', /^components\//u],
+]);
+function isSuppressedUpstreamSubtree(upstreamName: string, relative: string): boolean {
+  return UPSTREAM_SUBTREE_EXCLUSIONS.get(upstreamName)?.test(relative) ?? false;
+}
+
 async function copyUpstreamDistInto(upstreamName: string, destinationRoot: string): Promise<void> {
   const sourceDist = `${workspaceRoot}/packages/${upstreamName}/dist`;
   const destinationDist = `${destinationRoot}/${upstreamName}`;
@@ -806,6 +821,7 @@ async function copyUpstreamDistInto(upstreamName: string, destinationRoot: strin
   const glob = new Glob('**/*');
   for await (const relative of glob.scan({ cwd: sourceDist })) {
     if (isUpstreamExcludedFile(relative)) continue;
+    if (isSuppressedUpstreamSubtree(upstreamName, relative)) continue;
     const sourcePath = `${sourceDist}/${relative}`;
     const destinationPath = `${destinationDist}/${relative}`;
     await mkdir(dirname(destinationPath), { recursive: true });

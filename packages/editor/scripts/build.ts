@@ -4,9 +4,44 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
+import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
 import { parsePackageManifest, runtimeExternalSpecifiers } from './pack-for-publish.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
+const WORKSPACE_ROOT = `${PACKAGE_ROOT}/../..`;
+const DISTRIBUTION_DIRECTORY = join(PACKAGE_ROOT, 'dist');
+
+// `shouldSkipBuild` computes this package's input hash from source, config,
+// and workspace-level inputs (bun.lock, the base tsconfig). This package's
+// build does not stage into a scratch dir and atomically swap it in (unlike
+// markdown's — `svelte-package` writes directly into `dist/`, and
+// restructuring that CLI-driven build to stage first is a separate concern),
+// so this hash-skip guard only covers the cheap "nothing changed, skip
+// entirely" case, not a mid-build crash leaving a partial `dist/`.
+//
+// `upstreamDistDirectories` intentionally omits `@lostgradient/cinder` and
+// `@lostgradient/markdown`: this package peer-depends on cinder (a genuine
+// circular dependency — cinder dev-depends on editor too, see
+// `packages/components/scripts/build.ts`'s own `upstreamPackageNames`
+// comment) and shelling out to build cinder as an upstream step here would
+// recurse into cinder's build, which shells back out to build editor.
+const buildCacheInputs = {
+  packageRoot: PACKAGE_ROOT,
+  sourceGlobRoots: [`${PACKAGE_ROOT}/src`, `${PACKAGE_ROOT}/scripts`],
+  extraFiles: [
+    `${PACKAGE_ROOT}/package.json`,
+    `${PACKAGE_ROOT}/tsconfig.json`,
+    `${WORKSPACE_ROOT}/bun.lock`,
+    `${WORKSPACE_ROOT}/tsconfig.base.json`,
+  ],
+  upstreamDistDirectories: [],
+};
+
+const skipDecision = await shouldSkipBuild(buildCacheInputs);
+if (skipDecision.skip) {
+  process.stdout.write(`[build] up to date (hash ${shortHash(skipDecision.hash)}), skipping\n`);
+  process.exit(0);
+}
 
 const result = Bun.spawnSync(['svelte-package'], {
   cwd: PACKAGE_ROOT,
@@ -109,3 +144,11 @@ for (const expectedPath of [
   }
 }
 process.stdout.write('build — emitted plain-Node server entries for 4 public exports\n');
+
+// Written only now that both the svelte-package build and the server build
+// have succeeded, so the marker never claims a failed or partial build is up
+// to date. See the comment on `buildCacheInputs` above for why this stamps
+// the hash directly (no staging/atomic-swap step here to make conditional).
+if (skipDecision.hash !== null) {
+  await writeBuildInputHash(DISTRIBUTION_DIRECTORY, skipDecision.hash);
+}

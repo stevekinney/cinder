@@ -62,9 +62,15 @@ async function scanGlob(pattern: string): Promise<string[]> {
  * CSS files imported DIRECTLY by component source (`import './foo.css'` in a
  * `.svelte` or `.ts`) rather than through the `@lostgradient/cinder/styles` aggregator. These
  * still reach a consumer's cascade, so they are subject to the same invariant.
- * `markdown-editor.svelte` imports `prosemirror.css` this way — it lives under
- * `src/components/` so the glob already covers it, but enumerating the import
- * graph keeps the guard honest if such a file ever lands outside that root.
+ *
+ * `markdown-editor.svelte` used to import `prosemirror.css` this way — a
+ * non-sidecar CSS file living under a component's own directory rather than
+ * matching the `<name>/<name>.css` convention. That component (and
+ * `prosemirror.css` with it) moved to `@lostgradient/editor` — see
+ * `docs/decisions/package-boundaries.md` — so cinder currently has no
+ * component with a non-sidecar direct CSS import. The scan still runs (and
+ * still feeds `wrappedCssFiles()` below) so it keeps catching the pattern the
+ * moment a future component reintroduces one.
  */
 async function directlyImportedComponentCss(): Promise<string[]> {
   const sources = await scanGlob('src/components/**/*.{svelte,ts}');
@@ -137,13 +143,18 @@ describe('component CSS @layer invariant', () => {
     expect(offenders).toEqual([]);
   }, 60_000);
 
-  test('directly-imported component CSS (e.g. prosemirror.css) is enumerated and wrapped', async () => {
+  test('directly-imported component CSS discovery finds only real, wrapped files', async () => {
     // Codex flagged that CSS imported by a component's source — not via the
-    // aggregator — could be a coverage hole. Assert the discovery actually finds
-    // such a file so this guard cannot silently degrade to "found nothing".
+    // aggregator — could be a coverage hole. cinder has no non-sidecar direct
+    // CSS import today (the one example, prosemirror.css, moved to
+    // @lostgradient/editor with markdown-editor.svelte), so this asserts the
+    // discovery mechanism is still sound rather than pinning a specific file:
+    // every path it finds exists and carries the wrapper.
     const directImports = await directlyImportedComponentCss();
-    expect(directImports).toContain('src/components/markdown-editor/prosemirror.css');
-    expect(await isWrapped('src/components/markdown-editor/prosemirror.css')).toBe(true);
+    for (const file of directImports) {
+      expect(await Bun.file(join(repoRoot, file)).exists()).toBe(true);
+      expect(await isWrapped(file)).toBe(true);
+    }
   });
 
   test('the unwrapped allowlist stays minimal and accurate', async () => {

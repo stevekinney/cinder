@@ -37,15 +37,7 @@ type AggregatorExclusion = {
  * entry needs a reason; the gate fails on any uncovered file NOT listed here, so
  * a new genuinely-missing import can't hide behind a silent category.
  */
-export const AGGREGATOR_EXCLUSIONS: readonly AggregatorExclusion[] = [
-  {
-    path: 'markdown-editor/prosemirror.css',
-    reason:
-      'Third-party ProseMirror editor stylesheet, JS-imported directly by ' +
-      'markdown-editor.svelte. It is intentionally out of the global bundle so ' +
-      'apps not using the markdown editor do not pay for ProseMirror styling.',
-  },
-];
+export const AGGREGATOR_EXCLUSIONS: readonly AggregatorExclusion[] = [];
 
 export type AggregatorViolation = {
   /** Component CSS path relative to `src/components`. */
