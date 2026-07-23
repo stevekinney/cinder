@@ -9,9 +9,9 @@
    * @tag code
    * @useWhen Rendering source-code unified patches from agent output, Git operations, workspace changes, or review systems.
    * @useWhen Showing operational patch output where file and hunk structure matters more than Markdown front matter or word-level prose review.
-   * @avoidWhen Comparing two Markdown documents with normalization, front-matter handling, and revert affordances. | diff-viewer
+   * @avoidWhen Comparing two Markdown documents with normalization, front-matter, and revert affordances — use `DiffViewer` from `@lostgradient/editor`.
    * @avoidWhen Showing syntax-highlighted code samples rather than patch output. | code-block
-   * @related diff-viewer, diff-statistics, code-block
+   * @related diff-statistics, code-block
    */
   export type {
     SourceDiffFile,

@@ -2,7 +2,6 @@
 '@lostgradient/markdown': minor
 '@lostgradient/cinder': minor
 '@lostgradient/chat': patch
-'@cinder/commentary': patch
 ---
 
 Publish `@lostgradient/markdown` (Phase 2 of the package-boundaries plan, see

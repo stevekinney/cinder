@@ -1,0 +1,152 @@
+{
+  "$schema": "./dist/schemas/manifest.schema.json",
+  "manifestVersion": 1,
+  "package": {
+    "name": "@lostgradient/editor",
+    "version": "0.0.0",
+    "framework": "svelte",
+    "frameworkVersionRange": ">=5.56.0 <6",
+    "classPrefix": "cinder-",
+    "cssVarPrefix": "--cinder-",
+    "tokenNamespaces": ["color", "space", "radius", "ring", "type", "motion", "shadow"],
+    "stylesEntry": "@lostgradient/cinder/styles",
+    "schemaDialect": "https://json-schema.org/draft/2020-12/schema"
+  },
+  "categories": {
+    "action": {
+      "label": "Actions",
+      "description": "Controls that trigger operations, submit data, or navigate."
+    },
+    "overlay": {
+      "label": "Overlays",
+      "description": "Floating surfaces that layer above page content and require user dismissal."
+    },
+    "form": {
+      "label": "Forms",
+      "description": "Input controls and layout primitives for collecting structured user data."
+    },
+    "feedback": {
+      "label": "Feedback",
+      "description": "Non-interactive indicators that communicate status, progress, or results."
+    },
+    "navigation": {
+      "label": "Navigation",
+      "description": "Wayfinding controls that move users between views, sections, or steps."
+    },
+    "data-display": {
+      "label": "Data Display",
+      "description": "Read-only presentational components for structured data and content."
+    },
+    "layout": {
+      "label": "Layout",
+      "description": "Structural primitives that control spacing, containment, and composition."
+    },
+    "typography": {
+      "label": "Typography",
+      "description": "Text-rendering components that enforce hierarchy and typographic conventions."
+    },
+    "domain": {
+      "label": "Domain",
+      "description": "Application-specific components that encode product-level business concepts."
+    }
+  },
+  "statusLevels": {
+    "stable": "Public API under semver protection; breaking changes require a major version bump.",
+    "beta": "API is near-final but may have breaking changes in minor versions before promotion.",
+    "alpha": "Experimental; no stability guarantee and subject to removal or significant redesign.",
+    "domain-suite": "A cohesive set of domain-specific components shipped together as a named suite with its own versioning cadence."
+  },
+  "overlapFamilies": {},
+  "components": [
+    {
+      "id": "markdown-editor",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, toolbar, and mark or block introspection helpers.",
+      "tags": ["markdown", "editor", "domain-suite"],
+      "useWhen": [
+        "Composing or editing Markdown documents and wanting the bundled toolbar, link-aware selection, and source or WYSIWYG mode toggle.",
+        "Building writing surfaces that need an editor handle for programmatic mark or block manipulation as part of the heavyweight suite."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Authoring a simple plain-text note — a textarea is dramatically lighter than the Milkdown bundle."
+        },
+        {
+          "reason": "The surface needs inline review threads on top of the editor — use review-editor for that composition."
+        }
+      ],
+      "related": ["review-editor", "code-block"],
+      "name": "MarkdownEditor",
+      "import": "@lostgradient/editor/markdown-editor",
+      "exportName": "MarkdownEditor",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/editor/markdown-editor/schema",
+        "variables": "@lostgradient/editor/markdown-editor/variables",
+        "examples": "@lostgradient/editor/markdown-editor/examples"
+      }
+    },
+    {
+      "id": "review-editor",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Markdown editor extended with inline review threads, anchored comments, and collaborative annotation state.",
+      "tags": ["markdown", "review", "domain-suite"],
+      "useWhen": [
+        "Building a document review experience that needs both a Markdown editor and anchored comment threads in one bundled surface.",
+        "Threading reviewer commentary against specific selections inside a long-form document."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Plain authoring with no review threads — markdown-editor is the lighter primitive."
+        },
+        {
+          "reason": "Reviewing diffs between two documents rather than annotating one — use diff-viewer instead."
+        }
+      ],
+      "related": ["markdown-editor"],
+      "name": "ReviewEditor",
+      "import": "@lostgradient/editor/review-editor",
+      "exportName": "ReviewEditor",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/editor/review-editor/schema",
+        "variables": "@lostgradient/editor/review-editor/variables",
+        "examples": "@lostgradient/editor/review-editor/examples"
+      }
+    },
+    {
+      "id": "diff-viewer",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Side-by-side or unified Markdown diff surface with hunk grouping, word-level inline changes, and size-based debounce gating.",
+      "tags": ["diff", "markdown", "domain-suite"],
+      "useWhen": [
+        "Comparing two Markdown documents and wanting the bundled toolbar, view-mode toggle, front-matter handling, and large-payload safeguards.",
+        "Building a review workflow that needs hunked, line-anchored Markdown diffs out of the box as a heavyweight suite."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing only a counts summary — use diff-statistics on its own for a lightweight presentation."
+        },
+        {
+          "reason": "Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering."
+        }
+      ],
+      "related": ["diff-statistics", "code-block"],
+      "name": "DiffViewer",
+      "import": "@lostgradient/editor/diff-viewer",
+      "exportName": "DiffViewer",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/editor/diff-viewer/schema",
+        "variables": "@lostgradient/editor/diff-viewer/variables",
+        "examples": "@lostgradient/editor/diff-viewer/examples"
+      }
+    }
+  ]
+}

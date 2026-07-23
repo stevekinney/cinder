@@ -1,9 +1,10 @@
 name: release
 
 # Changesets-driven release pipeline for the public `@lostgradient/markdown`,
-# `@lostgradient/cinder`, and `@lostgradient/chat` npm packages. Publish order
-# follows the peer DAG: markdown → cinder → chat (markdown has no peers on
-# the other two; chat peers on cinder).
+# `@lostgradient/cinder`, `@lostgradient/editor`, and `@lostgradient/chat` npm
+# packages. Publish order follows the peer DAG: markdown → cinder → editor →
+# chat (markdown has no peers on the others; editor peers on cinder and
+# markdown; chat peers on cinder and markdown).
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
@@ -125,6 +126,10 @@ jobs:
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/cinder validate:consumer
 
+      - name: Validate Editor package artifact
+        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
+        run: bun run --filter=@lostgradient/editor validate:consumer
+
       - name: Validate Chat package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/chat validate:consumer
@@ -199,6 +204,10 @@ jobs:
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
+      - name: Check validated Editor package artifact budget
+        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball
+
       - name: Check validated Chat package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/chat package:weight:check -- --existing-tarball
@@ -239,6 +248,12 @@ jobs:
         env:
           NPM_CONFIG_PROVENANCE: 'false'
 
+      - name: Publish validated Editor package artifact to npm
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/editor publish:release -- --skip-validation
+        env:
+          NPM_CONFIG_PROVENANCE: 'false'
+
       - name: Publish validated Chat package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/chat publish:release -- --skip-validation
@@ -254,6 +269,10 @@ jobs:
       - name: Publish Cinder (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation
+
+      - name: Publish Editor (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        run: bun run --filter=@lostgradient/editor publish:release -- --dry-run --skip-validation
 
       - name: Publish Chat (dry-run)
         if: github.event_name == 'workflow_dispatch'

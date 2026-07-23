@@ -58,7 +58,7 @@ const INTERACTIVE_ALLOW_LIST = new Set([
   'tooltip',
 ]);
 
-const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set(['diff-viewer', 'review-editor', 'markdown-editor']);
+const DOMAIN_SUITE_STYLE_ALLOW_LIST = new Set<string>([]);
 
 /**
  * Components that intentionally render no class-bearing root element and
@@ -98,7 +98,6 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
  */
 const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
   'command-item', // TODO: add tests and remove from allow-list
-  'review-editor', // TODO: add tests and remove from allow-list
 ]);
 
 /**

@@ -10,7 +10,7 @@ Lightweight unified-patch viewer for source-code and operational diffs with file
 </script>
 ```
 
-Use SourceDiffViewer for source-code patches, agent workspace patches, Git output, and other operational unified diffs. Keep using DiffViewer for Markdown document review, front-matter handling, Markdown normalization, and prose-oriented word-level changes.
+Use SourceDiffViewer for source-code patches, agent workspace patches, Git output, and other operational unified diffs. Use `DiffViewer` from `@lostgradient/editor` for Markdown document review, front-matter handling, Markdown normalization, and prose-oriented word-level changes.
 
 ## Guidance
 
@@ -21,7 +21,7 @@ Use SourceDiffViewer for source-code patches, agent workspace patches, Git outpu
 
 ### Avoid When
 
-- Comparing two Markdown documents with normalization, front-matter handling, and revert affordances — use diff-viewer instead.
+- Comparing two Markdown documents with normalization, front-matter, and revert affordances — use `DiffViewer` from `@lostgradient/editor`.
 - Showing syntax-highlighted code samples rather than patch output — use code-block instead.
 
 ## Props

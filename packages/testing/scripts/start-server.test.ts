@@ -91,7 +91,7 @@ describe('playground bundle dependency build preflight', () => {
   test('builds every workspace package the playground browser bundle resolves through dist', () => {
     expect(playgroundBundleDependencyBuildPackages()).toEqual([
       '@lostgradient/markdown',
-      '@cinder/commentary',
+      '@lostgradient/editor',
       '@lostgradient/cinder',
       '@lostgradient/chat',
     ]);

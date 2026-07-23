@@ -6,15 +6,14 @@ import { describe, expect, test } from 'bun:test';
 const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
 const STYLES_DIR = join(import.meta.dir, 'components');
 
+// diff-viewer and review-editor moved to @lostgradient/editor (see
+// docs/decisions/package-boundaries.md); their audit entries moved with them
+// and are no longer part of this package's source tree.
 const auditedFiles = [
   join(COMPONENTS_DIR, 'badge', 'badge.css'),
   join(COMPONENTS_DIR, 'button', 'button.css'),
   join(COMPONENTS_DIR, 'chip', 'chip.css'),
-  join(COMPONENTS_DIR, 'diff-viewer', 'diff-line.svelte'),
-  join(COMPONENTS_DIR, 'diff-viewer', 'diff-viewer.svelte'),
   join(COMPONENTS_DIR, 'dropdown', 'dropdown.css'),
-  join(COMPONENTS_DIR, 'review-editor', 'comment-list.svelte'),
-  join(COMPONENTS_DIR, 'review-editor', 'comment-sidebar.svelte'),
   join(STYLES_DIR, 'json-highlight.css'),
 ];
 

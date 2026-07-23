@@ -28,6 +28,10 @@ const PUBLISHED_PACKAGE_SOURCE_MAPPINGS = [
     publishedSourcePrefix: 'node_modules/@lostgradient/chat/dist/',
     workspaceSourceMarker: '/packages/chat/src/lib/',
   },
+  {
+    publishedSourcePrefix: 'node_modules/@lostgradient/editor/dist/',
+    workspaceSourceMarker: '/packages/editor/src/lib/',
+  },
 ] as const;
 
 /**

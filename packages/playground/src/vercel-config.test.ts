@@ -18,8 +18,8 @@ import { join } from 'node:path';
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
 const WORKSPACE_BUILD_STEPS = [
   "bun run --filter='@lostgradient/markdown' build",
-  "bun run --filter='@cinder/commentary' build",
   "bun run --filter='@lostgradient/cinder' build",
+  "bun run --filter='@lostgradient/editor' build",
   "bun run --filter='@lostgradient/chat' build",
 ] as const;
 

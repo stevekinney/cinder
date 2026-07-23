@@ -349,8 +349,8 @@ describe('hasBrowserGuard', () => {
     }
   });
 
-  test('returns true for markdown-editor (imports BROWSER from esm-env)', () => {
-    const sveltePath = join(componentDirectory('markdown-editor'), 'markdown-editor.svelte');
+  test('returns true for navigation-bar (imports BROWSER from esm-env)', () => {
+    const sveltePath = join(componentDirectory('navigation-bar'), 'navigation-bar.svelte');
     expect(hasBrowserGuard(sveltePath)).toBe(true);
   });
 

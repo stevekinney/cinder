@@ -82,11 +82,11 @@ describe('newestSourceMtimeMs', () => {
 
   test('includes the private upstream packages the playground bundle depends on', () => {
     // start-server.ts prebuilds and the playground server imports these
-    // packages (@lostgradient/markdown, @cinder/commentary). An edit
+    // packages (@lostgradient/markdown, @lostgradient/editor). An edit
     // to one of them must move the fingerprint, or a running server built
     // from stale upstream code looks fresh.
     expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/markdown/src');
-    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/commentary/src');
+    expect(FINGERPRINT_SOURCE_DIRECTORIES).toContain('packages/editor/src');
   });
 
   test('includes extracted Chat package source', () => {

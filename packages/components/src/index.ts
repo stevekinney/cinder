@@ -301,13 +301,6 @@ export type {
   DiffStatisticsVariant,
 } from './components/diff-statistics/index.ts';
 
-export { default as DiffViewer } from './components/diff-viewer/index.ts';
-export type {
-  DiffToolbarContext,
-  DiffViewerMode,
-  DiffViewerProps,
-} from './components/diff-viewer/index.ts';
-
 export { default as Divider } from './components/divider/index.ts';
 export type { DividerOrientation, DividerProps, DividerTone } from './components/divider/index.ts';
 

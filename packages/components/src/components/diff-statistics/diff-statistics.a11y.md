@@ -9,11 +9,11 @@ Purpose: Compact added, removed, and modified line-count summary that accompanie
 ## Use when
 
 - Surfacing a quick numeric summary of changes alongside or in lieu of a full diff surface.
-- Annotating a list of files or pull requests with line-change counts as part of the diff-viewer suite.
+- Annotating a list of files or pull requests with line-change counts as part of the source-diff-viewer suite.
 
 ## Avoid when
 
-- Rendering the actual hunked diff content — pair with diff-viewer for the full document comparison.
+- Rendering the actual hunked diff content — pair with `DiffViewer` from `@lostgradient/editor` for the full document comparison.
 - Generic numeric badges that have nothing to do with diffs — reach for stat or badge instead.
 
 ## Keyboard and focus
@@ -35,4 +35,4 @@ When DiffStatistics accepts snippets or arbitrary children, the caller owns the 
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `diff-viewer`.
+Related components: `source-diff-viewer`.

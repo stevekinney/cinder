@@ -61,13 +61,15 @@ const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json'
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
  * Every published package, in required publish DAG order: markdown has no
- * internal peer contract with the other two and publishes first; cinder next;
- * chat peers on cinder's minor and publishes last (see
+ * internal peer contract with the other three and publishes first; cinder
+ * next; editor peers on both cinder and markdown and publishes third; chat
+ * peers on cinder's minor and publishes last (see
  * docs/decisions/package-boundaries.md).
  */
 const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
+  '@lostgradient/editor',
   '@lostgradient/chat',
 ] as const;
 const REQUIRED_RELEASE_SCRIPTS = [
@@ -238,6 +240,35 @@ export function manualChatBootstrapHasCinderRegistryPreflight(workflow: unknown)
         run.includes('.peerDependencies["@lostgradient/cinder"]') &&
         run.includes('npm view "@lostgradient/cinder@${cinder_peer_range}" version --json') &&
         run.includes('Publish Cinder first')
+      );
+    });
+  });
+}
+
+/**
+ * The Editor bootstrap path must prove BOTH its required peers — Cinder and
+ * Markdown — exist on npm before publishing. Unlike Chat (a single peer,
+ * checked inline), Editor's preflight loops over `['@lostgradient/cinder',
+ * '@lostgradient/markdown']`, so this checks for the loop shape and each
+ * peer name rather than one inline peer check.
+ */
+export function manualEditorBootstrapHasPeerRegistryPreflight(workflow: unknown): boolean {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
+
+  return Object.values(workflow['jobs']).some((job) => {
+    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return false;
+    return job['steps'].some((step) => {
+      if (!isObjectRecord(step)) return false;
+      const condition = step['if'];
+      const run = step['run'];
+      return (
+        typeof condition === 'string' &&
+        condition.includes("inputs.package == 'editor'") &&
+        typeof run === 'string' &&
+        run.includes("'@lostgradient/cinder' '@lostgradient/markdown'") &&
+        run.includes("'.peerDependencies[$peer]' packages/editor/package.json") &&
+        run.includes('npm view "${peer}@${peer_range}" version --json') &&
+        run.includes('Publish ${peer} first')
       );
     });
   });
@@ -551,6 +582,14 @@ function runValidation(): void {
     );
   }
   pass('Manual Chat bootstrap requires its Cinder peer on npm');
+
+  if (!manualEditorBootstrapHasPeerRegistryPreflight(parsedManualReleaseWorkflow)) {
+    fail(
+      "release-manual.yaml must derive Editor's Cinder AND Markdown peer ranges and verify " +
+        'satisfying versions of both exist on npm before bootstrapping Editor.',
+    );
+  }
+  pass('Manual Editor bootstrap requires its Cinder and Markdown peers on npm');
 
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.

@@ -28,7 +28,7 @@ export const FINGERPRINT_SOURCE_DIRECTORIES = [
   // these upstream source trees must be listed explicitly too, or a running
   // server built from stale upstream code looks fresh.
   'packages/markdown/src',
-  'packages/commentary/src',
+  'packages/editor/src',
 ] as const;
 
 /** Package metadata read by playground discovery, documentation, and bundling. */
@@ -38,6 +38,8 @@ export const FINGERPRINT_SOURCE_FILES = [
   'packages/components/components.json',
   'packages/chat/package.json',
   'packages/chat/components.json',
+  'packages/editor/package.json',
+  'packages/editor/components.json',
 ] as const;
 
 /**

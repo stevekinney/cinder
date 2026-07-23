@@ -18,7 +18,7 @@ const repoRoot = resolvePath(here, '../../..');
 const playgroundRoot = resolvePath(repoRoot, 'packages/playground');
 const playgroundBundleDependencyPackages = [
   '@lostgradient/markdown',
-  '@cinder/commentary',
+  '@lostgradient/editor',
   '@lostgradient/cinder',
   '@lostgradient/chat',
 ] as const;

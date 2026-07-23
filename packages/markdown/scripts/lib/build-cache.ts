@@ -1,5 +1,5 @@
 // CANONICAL SOURCE for `buildCache`. This file lives under `components`; the
-// three upstream packages (diff, markdown, commentary) each carry a
+// three upstream packages (diff, markdown, editor) each carry a
 // byte-identical copy at `packages/<pkg>/scripts/lib/build-cache.ts` — four
 // copies total. The duplication exists for the same reason
 // `atomic-swap-dist.ts` is duplicated: each package's tsconfig has
@@ -42,7 +42,7 @@ type DirectoryReader = typeof readdir;
  *     workspace dependencies this package vendors or type-checks against. A
  *     rebuilt dependency changes these bytes, which changes this hash, which
  *     invalidates this package — the mechanism that makes the skip check safe
- *     across the diff → markdown → commentary chain (and
+ *     across the diff → markdown → editor chain (and
  *     components, which vendors all three).
  */
 export type BuildCacheInputs = {

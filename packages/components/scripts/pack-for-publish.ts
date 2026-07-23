@@ -4,7 +4,7 @@
  * `bun pm pack` runs against the source `packages/components/package.json`,
  * which carries:
  *   - `devDependencies` on upstream workspace-only packages (`@lostgradient/markdown`,
- *     `@cinder/commentary`, `@cinder/testing`) — cinder's build bundles their
+ *     `@lostgradient/editor`, `@cinder/testing`) — cinder's build bundles their
  *     source into `dist/`, so they must NOT appear in any published dep field.
  *   - `exports` entries for the 30 upstream re-export sub-paths whose
  *     `svelte` condition points at `./src/<pkg>/<subpath>.ts`. The published

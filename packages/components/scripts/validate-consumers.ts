@@ -55,8 +55,10 @@ type WorkspaceDependencyPackage = PackageIdentity & {
    * "Publish validated Markdown package artifact" step (`publish:release
    * -- --skip-validation`, which does NOT re-pack) would then ship to npm.
    * Reuse `pack:publish` — the same staged process — for every workspace
-   * dependency package that HAS one; only workspace-private packages with no
-   * publish surface (`commentary`) fall back to a raw pack.
+   * dependency package that HAS one (`@lostgradient/editor` now does too, since
+   * Phase 3 of package-boundaries.md published it — see `pack:publish` in
+   * `packages/editor/package.json`); only a workspace-private package with no
+   * publish surface at all would fall back to a raw `bun pm pack`.
    */
   packCommand: string[];
 };
@@ -95,7 +97,7 @@ const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
 const chatTarballFileName = getPackFileName(chatPackageIdentity);
 const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
 let chatFixtureCinderTarballFilePath = tarballFilePath;
-const workspaceDependencyPackages = ['markdown', 'commentary'].map(
+const workspaceDependencyPackages = ['markdown', 'editor'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
     const identity = readPackageIdentity(packageDirectory);
@@ -696,7 +698,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
 
 /**
  * Run a global grep over the extracted tarball for upstream-package
- * references (`@cinder/commentary`, `@lostgradient/markdown`, ...) that
+ * references (`@lostgradient/editor`, `@lostgradient/markdown`, ...) that
  * look like real import specifiers. Doc-comment prose and source-map
  * embedded source are tolerated because they cannot break runtime
  * resolution.
@@ -704,7 +706,7 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
  * "Looks like a real import specifier" means: the upstream specifier sits
  * inside a single-quote, double-quote, OR backtick-quoted *static* string on
  * a non-comment line. Backticks are flagged in code positions because
- * `await import(\`@cinder/commentary/editor\`)` is a valid runtime import
+ * `await import(\`@lostgradient/editor/editor\`)` is a valid runtime import
  * — JavaScript accepts a template literal with no interpolation as a
  * dynamic-import specifier. The JSDoc/prose backtick form `` `@cinder/x` ``
  * sits on lines that start with `*` or `//` and is filtered by the comment
@@ -862,7 +864,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/commentary/**`
+    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/editor/**`
     // (the generated re-export shells) stay out of the
     // tarball — upstream sub-paths resolve through `dist/` only. The rest
     // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
@@ -883,12 +885,24 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/client/',
       'package/dist/test/',
       'package/scripts/',
-      // Upstream re-export shells (`src/markdown/`, `src/editor/`,
-      // `src/commentary/`) resolve via `dist/_upstream/`; the
-      // shell sources are build-only inputs.
+      // Upstream re-export shells (`src/markdown/`, `src/editor/`) resolve
+      // via `dist/_upstream/`; the shell sources are build-only inputs.
       'package/src/markdown/',
       'package/src/editor/',
-      'package/src/commentary/',
+      // `@lostgradient/editor`'s markdown-editor/review-editor/diff-viewer
+      // Svelte components are vendored into `dist/editor/**` (build.ts's
+      // `copyUpstreamDistInto`) for the headless subpaths cinder DOES
+      // re-export (`./commentary/*`, `./editor/*`), but the component
+      // bundles themselves are suppressed from cinder's exports map — see
+      // `CINDER_KEY_OVERRIDES` in `lib/derive-upstream-reexports.ts` — so
+      // they must never reach the published tarball. Catches both the
+      // browser bundle (`dist/editor/components/**`) and its server-target
+      // twin (`dist/editor/server/components/**`, `dist/server/editor/
+      // components/**` — the same tree copied into both of cinder's dist
+      // roots).
+      'package/dist/editor/components/',
+      'package/dist/editor/server/components/',
+      'package/dist/server/editor/components/',
     ],
   };
 }
