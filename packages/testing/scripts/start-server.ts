@@ -222,6 +222,11 @@ export function playwrightProcessEnvironment(
   return normalizedEnvironment;
 }
 
+/** Run Playwright through the workspace's pinned Bun runtime. */
+export function playwrightCommandArguments(argumentsList: string[]): string[] {
+  return ['--bun', 'playwright', 'test', ...argumentsList];
+}
+
 export function childProcessHasFinished(
   childProcess: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>,
 ): boolean {
@@ -639,7 +644,7 @@ async function main(): Promise<void> {
   }
   await exitIfShuttingDown();
 
-  const playwright = spawn('bunx', ['playwright', 'test', ...args], {
+  const playwright = spawn('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
     stdio: 'inherit',
     env: {

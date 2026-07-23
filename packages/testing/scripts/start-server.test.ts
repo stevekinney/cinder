@@ -18,6 +18,7 @@ import {
   playgroundUrlForPath,
   playgroundWarmReadinessEndpointPath,
   playgroundWarmReadinessMissingEndpointMessage,
+  playwrightCommandArguments,
   playwrightProcessEnvironment,
   shouldRefuseStaleServerReuse,
   shouldStartManagedChildProcess,
@@ -174,6 +175,16 @@ describe('playwright wrapper exit code', () => {
 });
 
 describe('playwright process environment', () => {
+  test('runs Playwright through Bun instead of the ambient Node runtime', () => {
+    expect(playwrightCommandArguments(['schema-form.playwright.ts', '--workers=1'])).toEqual([
+      '--bun',
+      'playwright',
+      'test',
+      'schema-form.playwright.ts',
+      '--workers=1',
+    ]);
+  });
+
   test('removes NO_COLOR before Playwright forces colors in its workers', () => {
     const environment = { NO_COLOR: '1', PATH: '/bin' };
 
