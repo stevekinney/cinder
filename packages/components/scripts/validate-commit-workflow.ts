@@ -2,11 +2,10 @@
  * validate-commit-workflow.ts
  *
  * Simulates the part of the pre-commit hook that processes staged files via lint-staged
- * (Prettier, oxlint, prettier-plugin-svelte). Does NOT exercise the full husky/pre-commit.ts
- * — that script runs `bun run lint:fix`, `typecheck`, `test`, then lint-staged against the
- * live working tree; simulating all of those would mean re-running every CI step inside a
- * tmp repo. Instead we verify the step most at risk from Phase 1 config changes: that
- * .svelte + .css staged files get reformatted through the real repo's lint-staged config.
+ * (Prettier, prettier-plugin-svelte, and sort-package-json). Does NOT exercise the full
+ * husky/pre-commit.ts — that script also checks lockfile staging against the live working
+ * tree; simulating that would mean mutating a developer's index. Instead we verify the staged
+ * formatting pipeline against the real repo's lint-staged config.
  *
  * The real repo's lint-staged globs + devDep slice are copied into an isolated tmp git repo
  * so a developer's live index is never touched.
@@ -35,7 +34,7 @@ async function readFileAsText(path: string): Promise<string> {
 }
 
 type PackageManifestSlice = {
-  'lint-staged': Record<string, string[]>;
+  'lint-staged': Record<string, string | string[]>;
   devDependencies: Record<string, string>;
 };
 
@@ -44,29 +43,13 @@ function isStringRecord(value: unknown): value is Record<string, string> {
   return Object.values(value).every((entry) => typeof entry === 'string');
 }
 
-function isStringArrayRecord(value: unknown): value is Record<string, string[]> {
+function isLintStagedRecord(value: unknown): value is Record<string, string | string[]> {
   if (typeof value !== 'object' || value === null) return false;
   return Object.values(value).every(
-    (entry) => Array.isArray(entry) && entry.every((item) => typeof item === 'string'),
+    (entry) =>
+      typeof entry === 'string' ||
+      (Array.isArray(entry) && entry.every((item) => typeof item === 'string')),
   );
-}
-
-/**
- * Strip `no-restricted-syntax` from the oxlint config for the simulation.
- * The simulation uses a single synthetic file without the patterns that rule targets
- * without the broader oxlint rule surface. The real repo's lint is verified separately
- * via `bun run lint`.
- */
-function stripOxlintRulesForSimulation(oxlintConfigRaw: string): string {
-  const parsed: unknown = JSON.parse(oxlintConfigRaw);
-  if (!isObjectRecord(parsed)) {
-    fail('oxlintrc is not a JSON object');
-  }
-  const rules = parsed['rules'];
-  if (isObjectRecord(rules)) {
-    delete rules['no-restricted-syntax'];
-  }
-  return JSON.stringify(parsed, null, 2);
 }
 
 function loadRealPackageManifestSlice(): PackageManifestSlice {
@@ -76,13 +59,13 @@ function loadRealPackageManifestSlice(): PackageManifestSlice {
   const rootParsed: unknown = JSON.parse(rootRaw);
   if (!isObjectRecord(rootParsed)) fail('workspace root package.json is not an object');
   const lintStagedEntries = rootParsed['lint-staged'];
-  if (!isStringArrayRecord(lintStagedEntries)) {
+  if (!isLintStagedRecord(lintStagedEntries)) {
     fail('workspace root package.json lint-staged is malformed');
   }
 
-  // devDependencies for the sim come from workspace root (where prettier, oxlint, etc live).
+  // devDependencies for the sim come from workspace root (where the formatters live).
   const rootDevDeps = rootParsed['devDependencies'];
-  // Also pull in component-package devDeps for tools like oxlint that may only live there.
+  // Also pull in component-package devDeps for package-local formatting plugins.
   const pkgRaw = readFileSync(join(packageRoot, 'package.json'), 'utf8');
   const pkgParsed: unknown = JSON.parse(pkgRaw);
   if (!isObjectRecord(pkgParsed)) fail('packages/components/package.json is not an object');
@@ -106,8 +89,6 @@ function pruneDevelopmentDependencies(
     'prettier',
     'prettier-plugin-organize-imports',
     'prettier-plugin-svelte',
-    'oxlint',
-    'oxlint-tsgolint',
     'lint-staged',
     'sort-package-json',
     'svelte',
@@ -133,35 +114,12 @@ try {
   await $`git config user.email sim@local`.cwd(simulationDirectory).quiet();
   await $`git config user.name commit-sim`.cwd(simulationDirectory).quiet();
 
-  // Mirror the real config files so oxlint + prettier see exactly what the repo ships with.
+  // Mirror the real formatter configuration so the simulation sees exactly what the repo ships.
   const prettierConfig = await readFileAsText(join(workspaceRoot, '.prettierrc.json'));
-  const oxlintConfig = await readFileAsText(join(workspaceRoot, '.oxlintrc.json'));
-  // Use the package-level bunfig.toml (has [test] preload + .md loader), not workspace-root.
-  const bunfigConfig = await readFileAsText(join(packageRoot, 'bunfig.toml'));
-  const typescriptConfig = await readFileAsText(join(packageRoot, 'tsconfig.json'));
-  const typescriptBaseConfig = await readFileAsText(join(workspaceRoot, 'tsconfig.base.json'));
 
   await Bun.write(join(simulationDirectory, '.prettierrc.json'), prettierConfig);
-  await Bun.write(
-    join(simulationDirectory, '.oxlintrc.json'),
-    stripOxlintRulesForSimulation(oxlintConfig),
-  );
-  await Bun.write(join(simulationDirectory, 'bunfig.toml'), bunfigConfig);
-  // tsconfig.json extends ../../tsconfig.base.json relative to packages/components/ — rewrite
-  // the extends path to ./tsconfig.base.json so it resolves inside the isolated sim dir.
-  await Bun.write(join(simulationDirectory, 'tsconfig.base.json'), typescriptBaseConfig);
-  await Bun.write(
-    join(simulationDirectory, 'tsconfig.json'),
-    typescriptConfig.replace('"../../tsconfig.base.json"', '"./tsconfig.base.json"'),
-  );
-  // The root lint-staged invokes `oxlint --type-aware --tsconfig ./packages/components/tsconfig.json`.
-  // Mirror the components tsconfig at that path in the sim so oxlint can find it.
-  // The extends path "../../tsconfig.base.json" is intentionally preserved — when oxlint reads
-  // this file from sim/packages/components/, ../../ correctly resolves to sim/tsconfig.base.json.
-  mkdirSync(join(simulationDirectory, 'packages/components'), { recursive: true });
-  await Bun.write(join(simulationDirectory, 'packages/components/tsconfig.json'), typescriptConfig);
   // Critical: keep node_modules + bun.lock out of `git add .`. Without this the sim stages
-  // thousands of files, lint-staged walks them all, and sort-package-json / oxlint thrash on
+  // thousands of files, lint-staged walks them all, and formatters thrash on
   // upstream package.json files that don't belong to the sim.
   await Bun.write(join(simulationDirectory, '.gitignore'), 'node_modules/\nbun.lock\n');
 
@@ -186,12 +144,11 @@ try {
 
   // Deliberately mis-formatted files that exercise every lint-staged glob relevant to
   // the workspace: a .svelte file (requires prettier-plugin-svelte), a .ts file under
-  // packages/components/src/ (oxlint + prettier), and a .css file (prettier).
+  // packages/components/src/, and a .css file (all through prettier).
   // The paths must match the workspace-root lint-staged globs exactly.
   const unformattedSvelte = `<script lang="ts">let name='world'</script><p>hello {name}</p>\n`;
   const unformattedCss = `.sim-test   {color:red;  background:blue}\n`;
   // Deliberately mis-formatted with spacing, unsorted import order, and compressed semicolons.
-  // No unused identifiers — those would trip oxlint and obscure the formatting signal.
   const unformattedTypescript = `import{readFile}from"node:fs/promises";import{join}from"node:path";export const   x=await readFile(join("/etc","hosts"),"utf8");\n`;
   // Match the workspace-root lint-staged glob: packages/components/src/**/*.{ts,...}
   mkdirSync(join(simulationDirectory, 'packages/components/src'), { recursive: true });

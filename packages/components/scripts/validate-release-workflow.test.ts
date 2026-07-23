@@ -13,8 +13,8 @@ import {
   manualChatBootstrapHasCinderRegistryPreflight,
   parseChangesetPackageNames,
   publicPackagePublishOrderIsValid,
-  rootConsumerValidationIncludesPublicPackages,
   rootPublishScriptUsesStagedPackers,
+  rootValidationSeparatesSourceAndConsumerGates,
   workflowDeclaresPermission,
   workflowDispatchInputHasDefault,
   workflowRunScriptsContainActiveLine,
@@ -123,7 +123,7 @@ describe('validate-release-workflow changeset guards', () => {
     ).toBe(false);
   });
 
-  test('requires the root validation gate to exercise every packed public package', () => {
+  test('keeps root source validation separate from the packed-consumer release gate', () => {
     const manifest = (validate: string, validateConsumer: string) => ({
       scripts: { validate, 'validate:consumer': validateConsumer },
     });
@@ -132,25 +132,25 @@ describe('validate-release-workflow changeset guards', () => {
     const chat = 'bun run --filter=@lostgradient/chat validate:consumer';
 
     expect(
-      rootConsumerValidationIncludesPublicPackages(
+      rootValidationSeparatesSourceAndConsumerGates(
+        manifest('turbo run validate --concurrency=1', `${markdown} && ${cinder} && ${chat}`),
+      ),
+    ).toBe(true);
+    expect(
+      rootValidationSeparatesSourceAndConsumerGates(
         manifest(
           `turbo run validate --concurrency=1 && ${chat}`,
           `${markdown} && ${cinder} && ${chat}`,
         ),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
-      rootConsumerValidationIncludesPublicPackages(
-        manifest(`turbo run validate --concurrency=1 && ${chat}`, cinder),
+      rootValidationSeparatesSourceAndConsumerGates(
+        manifest('turbo run validate --concurrency=1', cinder),
       ),
     ).toBe(false);
     expect(
-      rootConsumerValidationIncludesPublicPackages(
-        manifest('turbo run validate --concurrency=1', `${markdown} && ${cinder} && ${chat}`),
-      ),
-    ).toBe(false);
-    expect(
-      rootConsumerValidationIncludesPublicPackages(
+      rootValidationSeparatesSourceAndConsumerGates(
         manifest(`bun run --filter='*' validate && ${chat}`, `${markdown} && ${cinder} && ${chat}`),
       ),
     ).toBe(false);
@@ -159,8 +159,8 @@ describe('validate-release-workflow changeset guards', () => {
     // concurrent-load fragility the old --sequential flag guarded against
     // (the playground's dev-server-backed validate step in particular).
     expect(
-      rootConsumerValidationIncludesPublicPackages(
-        manifest(`turbo run validate && ${chat}`, `${cinder} && ${chat}`),
+      rootValidationSeparatesSourceAndConsumerGates(
+        manifest('turbo run validate', `${markdown} && ${cinder} && ${chat}`),
       ),
     ).toBe(false);
   });

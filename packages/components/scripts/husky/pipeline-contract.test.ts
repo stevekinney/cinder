@@ -6,8 +6,8 @@ import { REPO_ROOT } from './utilities.ts';
 
 /**
  * Pins the shape of the validation pipeline described in
- * `docs/validation-topology.md`: pre-commit stays cheap (lockfile + lint-staged
- * + typecheck only), pre-push stays a fast, fail-open sanity check with no
+ * `docs/validation-topology.md`: pre-commit stays cheap (lockfile + formatting
+ * only), pre-push stays a fast, fail-open sanity check with no
  * expensive gate of its own (PR CI + branch protection own that job now), and
  * the package-level scripts compose the way pre-commit assumes. Every
  * assertion below explains, in its failure message, WHY the invariant exists —
@@ -63,17 +63,48 @@ function chainIncludesScript(script: string, name: string): boolean {
 }
 
 describe('pipeline contract: commit stays cheap', () => {
-  it('pre-commit.ts dispatches no test job (source-based: entry script, never imported)', async () => {
+  it('pre-commit.ts dispatches no install, lint, typecheck, or test job', async () => {
     const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-commit.ts')).text());
-    // Tests are owned entirely by PR CI and main-green now -- pre-push runs no
-    // local test dispatch either (see the "push stays thin and fails open"
-    // describe block below). Re-adding a test dispatch to pre-commit would
-    // regress commit time from seconds to minutes for every developer on every
-    // commit. See docs/validation-topology.md.
-    expect(source).not.toMatch(/script:\s*'test'/);
+    // Required PR CI and main-green own source lint, typecheck, and tests. A
+    // hook dispatch duplicates those gates locally and makes concurrent
+    // worktrees contend before CI can run them in isolated jobs.
+    expect(source).not.toMatch(/\bbun\s+run\s+(lint|typecheck|test)\b/);
+    expect(source).not.toMatch(/\bturbo\s+run\b/);
+    expect(source).not.toMatch(/script:\s*'(lint|typecheck|test)'/);
     expect(source).not.toMatch(/'test:changed'/);
-    // The only literal job `script` pre-commit constructs is 'typecheck'.
-    expect(source).toMatch(/script:\s*'typecheck'/);
+    expect(source).not.toMatch(/runWithConcurrencyPool/);
+    expect(source).not.toMatch(/runHookCommand\(\s*['"]bun['"]\s*,\s*\[\s*['"]install['"]/);
+    expect(source).not.toContain('$`bun install');
+  });
+
+  it('lint-staged runs formatters only', async () => {
+    const manifest = await readPackageJson(join(REPO_ROOT, 'package.json'));
+    const lintStaged = manifest['lint-staged'];
+    expect(lintStaged).toBeDefined();
+    expect(typeof lintStaged).toBe('object');
+
+    const commands = Object.values(lintStaged as Record<string, unknown>).flatMap((entry) => {
+      if (typeof entry === 'string') return [entry];
+      return Array.isArray(entry)
+        ? entry.filter((command): command is string => typeof command === 'string')
+        : [];
+    });
+
+    expect(commands.some((command) => command.startsWith('prettier '))).toBe(true);
+    expect(commands).toContain('sort-package-json');
+    for (const command of commands) {
+      expect(command).not.toMatch(/\b(?:oxlint|stylelint|typecheck|test(?::[\w-]+)?|turbo)\b/);
+    }
+  });
+
+  it('the commit-workflow simulation accepts both lint-staged command shapes', async () => {
+    const source = stripComments(
+      await Bun.file(join(componentsPackageRoot, 'scripts/validate-commit-workflow.ts')).text(),
+    );
+
+    expect(source).toContain('Record<string, string | string[]>');
+    expect(source).toMatch(/typeof entry === ['"]string['"]/);
+    expect(source).toMatch(/Array\.isArray\(entry\)/);
   });
 });
 
@@ -155,9 +186,8 @@ describe('pipeline contract: package script composition (source-based: reads pac
     const lint = scripts['lint'];
     expect(lint).toBeDefined();
     // `lint` must stay a single fast oxlint pass. Folding a `check:*` invariant
-    // into it would make every lint-staged run (pre-commit) pay for checks that
-    // belong in the slower, explicitly-scoped `lint:invariants` chain — the same
-    // "cheap commit" guarantee assertion 1 protects, from the other direction.
+    // into it would make ordinary explicit lint runs pay for checks that belong
+    // in the slower `lint:invariants` chain.
     expect(lint).toContain('oxlint');
     const checkScriptNames = Object.keys(scripts).filter((name) => name.startsWith('check:'));
     for (const checkName of checkScriptNames) {
@@ -181,16 +211,18 @@ describe('pipeline contract: package script composition (source-based: reads pac
     }
   });
 
-  it("components' validate chain includes both lint and lint:invariants", async () => {
+  it("components' source validate chain excludes packed-consumer release checks", async () => {
     const manifest = await readPackageJson(join(componentsPackageRoot, 'package.json'));
     const scripts = scriptsOf(manifest);
     const validate = scripts['validate'];
     expect(validate).toBeDefined();
-    // `validate` is the full pre-publish/CI gate; dropping either segment would
-    // let a published release ship past a lint or invariant regression that
-    // the lightweight local hooks do not check in full.
+    // Packed-consumer installation and package-weight checks belong to the
+    // explicit release workflow. Keeping them out of the source gate prevents
+    // every ordinary CI validation from repeating artifact work.
     expect(chainIncludesScript(validate ?? '', 'lint')).toBe(true);
     expect(chainIncludesScript(validate ?? '', 'lint:invariants')).toBe(true);
+    expect(chainIncludesScript(validate ?? '', 'validate:consumer')).toBe(false);
+    expect(chainIncludesScript(validate ?? '', 'package:weight:check')).toBe(false);
   });
 
   it('no package script contains an inline `rm -rf dist` outside the dedicated `clean` script', async () => {

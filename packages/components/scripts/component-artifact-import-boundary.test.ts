@@ -30,4 +30,12 @@ describe('component artifact import boundaries', () => {
       /export\s+(?:\*\s+from\s+['"].*component-artifact-operations|(?:async\s+function|(?:type\s+)?\{[^}]*checkComponentArtifacts))/s,
     );
   });
+
+  it('keeps read-only checks outside the validation lock while locking generation', async () => {
+    const source = await readScript('generate-component-artifacts.ts');
+
+    expect(source).toMatch(
+      /if \(process\.argv\.includes\('--check'\)\)\s*\{\s*await main\(\);\s*\} else \{[\s\S]*?withLocalValidationGateLock\(main\);/,
+    );
+  });
 });

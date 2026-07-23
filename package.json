@@ -30,45 +30,36 @@
     "test:browser:install": "bun run --filter='@cinder/testing' install-browsers",
     "test:browser:ui": "bun run --filter='@cinder/testing' test:playwright:ui",
     "typecheck": "turbo run typecheck",
-    "validate": "turbo run validate --concurrency=1 && bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/chat validate:consumer",
+    "validate": "turbo run validate --concurrency=1",
     "validate:consumer": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/chat validate:consumer",
     "validate:playground": "bun run --filter='@cinder/playground' validate"
   },
   "lint-staged": {
     "packages/chat/src/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix --type-aware --tsconfig ./packages/chat/tsconfig.json",
       "prettier --write"
     ],
     "packages/chat/scripts/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix",
       "prettier --write"
     ],
     "packages/components/src/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix --type-aware --tsconfig ./packages/components/tsconfig.json",
       "prettier --write"
     ],
     "packages/components/scripts/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix",
       "prettier --write"
     ],
     "packages/commentary/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix --type-aware --tsconfig ./packages/commentary/tsconfig.json",
       "prettier --write"
     ],
     "packages/markdown/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix --type-aware --tsconfig ./packages/markdown/tsconfig.json",
       "prettier --write"
     ],
     "packages/playground/src/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix --type-aware --tsconfig ./packages/playground/tsconfig.json",
       "prettier --write"
     ],
     "packages/testing/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
-      "oxlint --fix",
       "prettier --write"
     ],
     "packages/**/src/**/*.{svelte,css}": [
-      "stylelint --fix",
       "prettier --write"
     ],
     "**/*.{json,md,scss}": [

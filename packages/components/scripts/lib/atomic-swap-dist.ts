@@ -34,10 +34,8 @@ const DESTINATION_EXISTS_CODES = new Set(['ENOTEMPTY', 'EEXIST']);
  * turbo, CI, or by hand at the same time as another).
  *
  * IMPORTANT — what this does and does NOT guarantee:
- *   - It is NOT what closes issue #364. The husky test gate serializes its test
- *     phase (`phaseMaxConcurrency('test') === 1`), so concurrent same-package
- *     builds do not occur inside the hook; that serialization is the #364
- *     closure. This helper is defense-in-depth for the out-of-hook paths.
+ *   - This is the correctness boundary for concurrent builds. Git hooks do not
+ *     serialize build work, so every caller relies on the atomic promotion.
  *   - It DOES prevent a reader from observing a half-written tree: a build
  *     writes into a private staging dir and is only promoted once complete, so
  *     `dist` is replaced whole, never written into in place.

@@ -34,6 +34,17 @@ bun run --filter=@lostgradient/cinder test
 bun run --filter=@lostgradient/cinder test:coverage
 ```
 
+### Validation ownership
+
+The `pre-commit` hook checks lockfile staging and runs staged formatters and
+package sorting only. Required PR CI and `main-green` own broad source lint,
+typecheck, and test gates; release owns consumer/tarball validation and package
+weight checks. During ordinary issue or pull request work, run focused
+regression tests and any necessary generated-artifact checks. Do not use the
+root `bun run validate`, full test/coverage/browser suites, or consumer
+validation as an ordinary local pull request gate; required CI and release own
+those broad checks.
+
 ### Code Quality
 
 ```bash

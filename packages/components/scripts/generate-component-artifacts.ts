@@ -211,6 +211,10 @@ async function main(): Promise<void> {
 }
 
 if (import.meta.main) {
-  const { withLocalValidationGateLock } = await import('./husky/utilities.ts');
-  await withLocalValidationGateLock(main);
+  if (process.argv.includes('--check')) {
+    await main();
+  } else {
+    const { withLocalValidationGateLock } = await import('./husky/utilities.ts');
+    await withLocalValidationGateLock(main);
+  }
 }

@@ -1,10 +1,9 @@
 import { $ } from 'bun';
 import chalk from 'chalk';
 import { capitalCase } from 'change-case';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, rmSync } from 'node:fs';
-import { mkdir, open, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { mkdir, open, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -94,67 +93,6 @@ export function prePushPackageScript(
 ): PrePushPackageScript {
   if (packageName === '@lostgradient/cinder' && script === 'test') return 'test:changed';
   return script;
-}
-
-/**
- * The maximum number of jobs that may run concurrently for a given gate
- * script. This is the side-effect-free seam the regression test imports to
- * assert each phase's concurrency policy without triggering the gate entry
- * path's process.exit / stdin-read / lock side effects.
- *
- * All three gate scripts — lint, typecheck, and test — share the same
- * CPU-bound cap, kept general (rather than hardcoded to pre-commit's actual
- * `typecheck`-only usage) so a future gate script inherits the same policy for
- * free. The `test` case in {@link GateScript} and this function's
- * equal-across-scripts policy are kept because `check:pipeline-coverage` and
- * CI jobs still reason about the same script names, and a future local test
- * dispatch should inherit this cap rather than reinvent it.
- */
-export function phaseMaxConcurrency(_script: GateScript): number {
-  // CPU-bound default (up to 4 workers). The `?? 1` guards environments where
-  // `navigator.hardwareConcurrency` is undefined; `Math.max(1, …)` ensures the
-  // floor stays at 1 so a zero / negative value never silently skips all jobs.
-  return Math.max(1, Math.min(navigator.hardwareConcurrency ?? 1, 4));
-}
-
-/**
- * Run `items` through a bounded async pool, invoking `worker(item, index)` for
- * each and returning the results in input order. At most `maxConcurrency`
- * workers run at once — this is the *mechanism* that {@link phaseMaxConcurrency}
- * feeds.
- *
- * The concurrency floor is defensive. A non-finite `maxConcurrency` — e.g. a
- * caller computing `Math.min(navigator.hardwareConcurrency, 4)` where
- * `hardwareConcurrency` is `undefined`, yielding `NaN` — must NOT slip through:
- * `NaN` would make `Math.min(concurrency, items.length)` `NaN`, start zero
- * workers, and silently resolve every item to `undefined` — a false green.
- * `Number.isFinite` rejects `NaN`/±Infinity; `Math.max(1, …)` then guards
- * `0`/negatives. This binding lives in ONE place so both hooks' job runners and
- * the regression test share the same guarantee.
- */
-export async function runWithConcurrencyPool<Item, Result>(
-  items: readonly Item[],
-  maxConcurrency: number,
-  worker: (item: Item, index: number) => Promise<Result>,
-): Promise<Result[]> {
-  if (items.length === 0) return [];
-  const concurrency = Number.isFinite(maxConcurrency) ? Math.max(1, Math.floor(maxConcurrency)) : 1;
-  const results: Result[] = Array.from({ length: items.length });
-  let nextIndex = 0;
-  const workers: Promise<void>[] = [];
-  for (let workerId = 0; workerId < Math.min(concurrency, items.length); workerId++) {
-    workers.push(
-      (async () => {
-        while (true) {
-          const index = nextIndex++;
-          if (index >= items.length) return;
-          results[index] = await worker(items[index]!, index);
-        }
-      })(),
-    );
-  }
-  await Promise.all(workers);
-  return results;
 }
 
 type HookSignal = 'SIGINT' | 'SIGTERM' | 'SIGHUP';
@@ -433,33 +371,16 @@ const DEFAULT_GATE_LOCK_RETRY_MILLISECONDS = 1_000;
 const DEFAULT_GATE_LOCK_WAIT_MILLISECONDS = 5 * 60 * 1_000;
 export const LOCAL_VALIDATION_GATE_LOCK_HELD_ENV = 'CINDER_LOCAL_VALIDATION_GATE_LOCK_HELD';
 
-export function gitCommonDirectory(repositoryRoot = REPO_ROOT): string {
-  try {
-    const commonDirectory = execFileSync(
-      'git',
-      ['-C', repositoryRoot, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
-      {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      },
-    ).trim();
-    if (commonDirectory.length > 0) return commonDirectory;
-  } catch {
-    // Fall through to the repository-local path for non-Git test fixtures.
-  }
-  return join(repositoryRoot, '.git');
-}
-
-export function gateLockPathForCommonDirectory(commonDirectory: string): string {
-  const commonDirectoryHash = createHash('sha256')
-    .update(commonDirectory)
+export function gateLockPathForWorktreeRoot(worktreeRoot: string): string {
+  const worktreeRootHash = createHash('sha256')
+    .update(resolve(worktreeRoot))
     .digest('hex')
     .slice(0, 16);
-  return join(tmpdir(), 'cinder-local-validation-gates', `${commonDirectoryHash}.lock`);
+  return join(tmpdir(), 'cinder-local-validation-gates', `${worktreeRootHash}.lock`);
 }
 
 export function defaultGateLockPath(repositoryRoot = REPO_ROOT): string {
-  return gateLockPathForCommonDirectory(gitCommonDirectory(repositoryRoot));
+  return gateLockPathForWorktreeRoot(repositoryRoot);
 }
 
 function createGateLockFile(token: string): GateLockFile {
@@ -529,8 +450,8 @@ function releaseGateLockSync(lockPath: string, token: string) {
 }
 
 /**
- * Run expensive local validation work under a shared repository lock so
- * concurrent invocations from linked worktrees do not stack full
+ * Run expensive local validation work under a worktree-scoped lock so
+ * concurrent invocations in the same checkout do not stack full
  * workspace-scale work (builds, installs, generated-artifact writes) on top
  * of one another.
  */
@@ -650,15 +571,16 @@ export async function withGateLock<T>(
 }
 
 /**
- * Serialize expensive local validation gates across worktrees.
+ * Serialize expensive local validation gates within one worktree.
  *
  * The lock remains for scripts that do heavy, disk-mutating local work:
  * `test-changed.ts` (`bun run test:changed`),
  * `generate-component-artifacts.ts` (`components:generate`), and
  * `validate-consumers.ts` (`validate:consumer`) each call this directly when
- * run standalone, so concurrent worktrees do not stack full builds/installs
- * on top of one another. The marker below lets a script that's already inside
- * one of those locked runs call another without deadlocking on the same lock.
+ * run standalone, so concurrent invocations in one worktree do not stack full
+ * builds/installs on top of one another. The marker below lets a script that's
+ * already inside one of those locked runs call another without deadlocking on
+ * the same lock.
  */
 export async function withLocalValidationGateLock<T>(
   run: () => Promise<T>,
@@ -711,98 +633,8 @@ export async function printGitStatistics(refA: string, refB: string) {
 export type WorkspacePackage = {
   readonly name: string;
   readonly dir: string;
-  readonly hasLint: boolean;
-  readonly hasTypecheck: boolean;
-  readonly hasTest: boolean;
   readonly dependencies: ReadonlySet<string>;
 };
-
-type PackageManifest = {
-  name?: unknown;
-  scripts?: Record<string, unknown>;
-  dependencies?: Record<string, unknown>;
-  devDependencies?: Record<string, unknown>;
-  peerDependencies?: Record<string, unknown>;
-};
-
-function isManifest(value: unknown): value is PackageManifest {
-  if (!isObjectRecord(value)) return false;
-  for (const key of ['scripts', 'dependencies', 'devDependencies', 'peerDependencies'] as const) {
-    const field = value[key];
-    if (field !== undefined && !isObjectRecord(field)) return false;
-  }
-  return true;
-}
-
-/** Collect dependency names across the runtime/dev/peer fields of a manifest. */
-function dependencyNames(manifest: PackageManifest): Set<string> {
-  const names = new Set<string>();
-  for (const field of [
-    manifest.dependencies,
-    manifest.devDependencies,
-    manifest.peerDependencies,
-  ]) {
-    if (!isObjectRecord(field)) continue;
-    for (const name of Object.keys(field)) names.add(name);
-  }
-  return names;
-}
-
-/**
- * Read every `packages/*\/package.json` once and return the derived workspace
- * package list. Packages without a `name` field are skipped. `hasLint`,
- * `hasTypecheck`, and `hasTest` reflect whether the corresponding npm scripts
- * exist, so the hooks can skip-with-reason instead of failing on a missing
- * script. `dependencies` is filtered to other workspace package names so it
- * can drive reverse-dependency closure.
- *
- * Loading is two-pass: the first pass reads every manifest and learns the set
- * of workspace names; the second pass keeps only the dependency edges that
- * point at another workspace package.
- */
-export async function loadWorkspacePackages(): Promise<readonly WorkspacePackage[]> {
-  const packagesDir = join(REPO_ROOT, 'packages');
-  const entries = await readdir(packagesDir, { withFileTypes: true });
-
-  type Loaded = {
-    readonly name: string;
-    readonly dir: string;
-    readonly hasLint: boolean;
-    readonly hasTypecheck: boolean;
-    readonly hasTest: boolean;
-    readonly rawDependencies: Set<string>;
-  };
-
-  const loaded: Loaded[] = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const manifestPath = join(packagesDir, entry.name, 'package.json');
-    const manifestFile = Bun.file(manifestPath);
-    if (!(await manifestFile.exists())) continue;
-    const raw: unknown = await manifestFile.json();
-    if (!isManifest(raw)) continue;
-    if (typeof raw.name !== 'string' || raw.name.length === 0) continue;
-    const scripts = raw.scripts ?? {};
-    loaded.push({
-      name: raw.name,
-      dir: `packages/${entry.name}/`,
-      hasLint: typeof scripts['lint'] === 'string',
-      hasTypecheck: typeof scripts['typecheck'] === 'string',
-      hasTest: typeof scripts['test'] === 'string',
-      rawDependencies: dependencyNames(raw),
-    });
-  }
-
-  const workspaceNames = new Set(loaded.map((pkg) => pkg.name));
-  return loaded.map((pkg) => ({
-    name: pkg.name,
-    dir: pkg.dir,
-    hasLint: pkg.hasLint,
-    hasTypecheck: pkg.hasTypecheck,
-    hasTest: pkg.hasTest,
-    dependencies: new Set([...pkg.rawDependencies].filter((dep) => workspaceNames.has(dep))),
-  }));
-}
 
 /**
  * Expand a set of touched package names to its **reverse-dependency closure**:
@@ -853,11 +685,10 @@ export function expandToDependents(
  * `@cinder/commentary`. `@cinder/testing` and `@cinder/playground` have no
  * `build` script and are excluded.
  *
- * This list is explicit rather than derived from {@link loadWorkspacePackages}
- * because `WorkspacePackage` does not track which packages are buildable, and
- * the dependency chain here is small and fixed — deriving it generically would
- * add a `hasBuild` field and a topo-sort for a four-node chain that has not
- * changed since #364.
+ * This list is explicit because `WorkspacePackage` does not track which
+ * packages are buildable, and the dependency chain here is small and fixed —
+ * deriving it generically would add a `hasBuild` field and a topo-sort for a
+ * four-node chain that has not changed since #364.
  */
 export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
   '@cinder/diff',
@@ -919,58 +750,6 @@ export function isSourceFile(path: string): boolean {
   const basename = slashIndex === -1 ? lower : lower.slice(slashIndex + 1);
   if (basename.startsWith('readme') || basename.startsWith('changelog')) return false;
   return false;
-}
-
-/**
- * Given the workspace package list and the staged file list, return the
- * subset of packages whose `dir` prefix matches at least one staged source
- * file. Non-source files (docs) are filtered out via `isSourceFile`.
- */
-export function getTouchedPackages(
-  packages: readonly WorkspacePackage[],
-  stagedFiles: readonly string[],
-): WorkspacePackage[] {
-  const touched = new Set<string>();
-  for (const file of stagedFiles) {
-    if (!isSourceFile(file)) continue;
-    const pkg = packages.find((p) => file.startsWith(p.dir));
-    if (pkg) touched.add(pkg.name);
-  }
-  return packages.filter((p) => touched.has(p.name));
-}
-
-/**
- * Root-level files whose changes affect every package and therefore force
- * the pre-commit hook to escalate to a full workspace typecheck + test.
- *
- * Maintenance: this list is hardcoded and there is no automated drift check.
- * When a new root-level lint, formatter, or compiler config is added (or an
- * existing one is renamed), update this list. Code review should flag any
- * new root config that isn't represented here.
- */
-const HIGH_IMPACT_ROOT: readonly string[] = [
-  'package.json',
-  'bun.lock',
-  'tsconfig.json',
-  'tsconfig.base.json',
-  'tsconfig.build.json',
-  'tsconfig.check.json',
-  'tsconfig.test.json',
-  '.oxlintrc.json',
-  'bunfig.toml',
-  '.prettierrc.json',
-  '.stylelintrc.json',
-];
-
-/**
- * Return `true` if any changed file is a high-impact root config file that
- * warrants a full workspace validation instead of scoped per-package checks.
- * Pure path predicate — it matches exact repo-root-relative paths against
- * `HIGH_IMPACT_ROOT` and has no coupling to the staged tree, so it is safe to
- * call with either staged files (pre-commit) or a push range (pre-push).
- */
-export function hasRootConfigurationChanges(files: readonly string[]): boolean {
-  return files.some((f) => HIGH_IMPACT_ROOT.includes(f));
 }
 
 /** The all-zeros object id git uses for a missing ref (new branch, deletion). */

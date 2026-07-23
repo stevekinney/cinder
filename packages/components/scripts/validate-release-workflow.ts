@@ -310,8 +310,8 @@ export function rootPublishScriptUsesStagedPackers(manifest: unknown): boolean {
   );
 }
 
-/** The documented root gate must exercise every public package as a packed consumer, in DAG order. */
-export function rootConsumerValidationIncludesPublicPackages(manifest: unknown): boolean {
+/** The root source gate stays separate from the explicit packed-consumer release gate. */
+export function rootValidationSeparatesSourceAndConsumerGates(manifest: unknown): boolean {
   if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
   const validateScript = manifest['scripts']['validate'];
   const consumerScript = manifest['scripts']['validate:consumer'];
@@ -321,14 +321,14 @@ export function rootConsumerValidationIncludesPublicPackages(manifest: unknown):
     consumerScript,
     (packageName) => `bun run --filter=${packageName} validate:consumer`,
   );
-  const chatCommand = 'bun run --filter=@lostgradient/chat validate:consumer';
+  // --concurrency=1 preserves the serialization the old --sequential flag
+  // gave: turbo parallelizes independent packages by default, and the
+  // playground's dev-server-backed validate step is documented as fragile
+  // under concurrent load. Packed-consumer validation remains an explicit
+  // release gate rather than running on every source validation.
   return (
-    // --concurrency=1 preserves the serialization the old --sequential flag
-    // gave: turbo parallelizes independent packages by default, and the
-    // playground's dev-server-backed validate step is documented as fragile
-    // under concurrent load.
-    validateScript.includes('turbo run validate --concurrency=1') &&
-    validateScript.includes(chatCommand) &&
+    validateScript.trim() === 'turbo run validate --concurrency=1' &&
+    !validateScript.includes('validate:consumer') &&
     consumerIndices !== undefined &&
     isStrictlyIncreasing(consumerIndices)
   );
@@ -529,14 +529,14 @@ function runValidation(): void {
     );
   }
   pass('Root publish shortcut uses every staged package artifact in dependency order');
-  if (!rootConsumerValidationIncludesPublicPackages(rootManifest)) {
+  if (!rootValidationSeparatesSourceAndConsumerGates(rootManifest)) {
     fail(
-      'package.json#scripts.validate must run workspace validation through `turbo run validate` ' +
-        'and append the Chat packed-consumer gate, while validate:consumer must validate Markdown, ' +
-        'then Cinder, then Chat, in DAG order.',
+      'package.json#scripts.validate must contain only `turbo run validate --concurrency=1`; ' +
+        'the explicit validate:consumer release gate must validate Markdown, then Cinder, then Chat, ' +
+        'in DAG order.',
     );
   }
-  pass('Root validation exercises every public package as a packed consumer, in DAG order');
+  pass('Root source validation and packed-consumer release validation remain separate');
 
   let parsedManualReleaseWorkflow: unknown;
   try {
