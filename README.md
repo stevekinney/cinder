@@ -24,10 +24,10 @@ application-specific icons — install Lucide yourself if you want it for your o
 Install the Chat domain suite separately when you need it, alongside the Cinder install above:
 
 ```bash
-bun add @lostgradient/chat
+bun add @lostgradient/chat @lostgradient/markdown
 ```
 
-Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
+`@lostgradient/markdown` is a required peer of Chat — its `markdown-preview` component dynamically imports `@lostgradient/markdown/rendering` to render message bodies, so it must be installed alongside Chat itself, not treated as optional. Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
 
 Install the Editor domain suite separately for `MarkdownEditor`, `ReviewEditor`, and `DiffViewer`:
 

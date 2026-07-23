@@ -29,7 +29,7 @@
  */
 
 import { Glob } from 'bun';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +40,7 @@ import { readJsonFile } from './lib/read-json-file.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..');
+const workspaceRoot = join(packageRoot, '..', '..');
 const stagingRoot = join(packageRoot, 'node_modules', '.cache', 'publish-staging');
 
 type ExportConditional = {
@@ -115,18 +116,61 @@ async function fileHash(path: string): Promise<string> {
 }
 
 /**
- * Strip `workspace:*` entries from any dep field. Those are dev-only,
- * local-resolution pointers (`@cinder/testing`, and `@lostgradient/markdown`'s
- * `devDependencies` entry used for in-repo `bun test`/`bun run` resolution);
- * the published tarball must not reference the `workspace:` protocol in any
- * dep field. Checked by VALUE rather than by name so a package that is
- * BOTH a real published dependency (a real semver range in `dependencies`)
- * AND a workspace-local dev dependency (`workspace:*` in `devDependencies`)
- * — true of `@lostgradient/markdown` since cinder depends on it directly —
- * only has its workspace-local pointer stripped, not its real dependency.
+ * Resolve a workspace sibling package's real, currently-declared version by
+ * reading its `package.json` through the root `node_modules/<name>` symlink
+ * `bun install` creates for every workspace package — this works for any
+ * workspace sibling without hardcoding a `packages/<dir>` mapping.
+ *
+ * Called only to REWRITE a real dependency's `workspace:*` pointer (see
+ * {@link transformDependencyField}), never to strip one, so a missing or
+ * malformed sibling manifest is a hard error: publishing a real dependency
+ * without a resolvable version would silently ship a broken range.
  */
-function stripCinderWorkspaceDeps(
+function resolveWorkspaceSiblingVersion(name: string): string {
+  const manifestPath = join(workspaceRoot, 'node_modules', name, 'package.json');
+  if (!existsSync(manifestPath)) {
+    throw new Error(
+      `Cannot resolve workspace sibling "${name}": ${manifestPath} does not exist. ` +
+        'Run `bun install` at the workspace root first.',
+    );
+  }
+  const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('version' in parsed) ||
+    typeof (parsed as { version: unknown }).version !== 'string'
+  ) {
+    throw new Error(`Workspace sibling "${name}"'s package.json is missing a string "version".`);
+  }
+  return (parsed as { version: string }).version;
+}
+
+/**
+ * Transform every `workspace:*` entry in a dependency-field record.
+ *
+ * `devDependencies` entries are always source-only, local-resolution
+ * pointers (`@cinder/testing`; formerly `@lostgradient/markdown` before it
+ * became a real dependency) — the published tarball must never reference
+ * the `workspace:` protocol, so these are STRIPPED entirely (mode
+ * `'strip'`).
+ *
+ * `dependencies` / `peerDependencies` / `optionalDependencies` entries can
+ * ALSO use `workspace:*` now — `@lostgradient/markdown` is cinder's own
+ * example, a real runtime dependency the source manifest points at the
+ * workspace copy for local `bun test`/`bun run` resolution regardless of
+ * markdown's currently-declared version. Those get REWRITTEN (mode
+ * `'rewrite'`) to a real `^<version>` range resolved from the sibling's
+ * actual `package.json`, so the published tarball depends on a real,
+ * installable semver range rather than either an unresolvable `workspace:*`
+ * or a range hand-typed ahead of the sibling's next release (which
+ * `changeset version` will never correct here — `bumpVersionsWithWorkspaceProtocolOnly:
+ * true` in `.changeset/config.json` only rewrites `workspace:` protocol
+ * ranges, not plain semver ones).
+ */
+function transformDependencyField(
   record: Record<string, string> | undefined,
+  mode: 'strip' | 'rewrite',
 ): Record<string, string> | undefined {
   if (!record) return record;
   const out: Record<string, string> = {};
@@ -134,6 +178,9 @@ function stripCinderWorkspaceDeps(
   for (const [key, value] of Object.entries(record)) {
     if (value === 'workspace:*') {
       touched = true;
+      if (mode === 'rewrite') {
+        out[key] = `^${resolveWorkspaceSiblingVersion(key)}`;
+      }
       continue;
     }
     out[key] = value;
@@ -163,21 +210,24 @@ function buildPublishedManifest(source: SourceManifest): SourceManifest {
       typeof entry === 'object' ? rewriteComponentMetadataNodeEntry(key, entry) : entry;
   }
 
-  // Shallow clone, then strip workspace-local deps and replace `exports`
-  // with the rewritten map.
+  // Shallow clone, then transform workspace-local deps and replace `exports`
+  // with the rewritten map. `devDependencies` entries are stripped
+  // (source-only); real dependency fields are rewritten to a resolvable
+  // semver range — see {@link transformDependencyField}.
   const published: SourceManifest = { ...source };
-  for (const field of [
-    'dependencies',
-    'devDependencies',
-    'peerDependencies',
-    'optionalDependencies',
-  ] as const) {
-    const stripped = stripCinderWorkspaceDeps(source[field]);
-    if (stripped === undefined) {
+  for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies'] as const) {
+    const transformed = transformDependencyField(source[field], 'rewrite');
+    if (transformed === undefined) {
       delete published[field];
     } else {
-      published[field] = stripped;
+      published[field] = transformed;
     }
+  }
+  const strippedDevDependencies = transformDependencyField(source.devDependencies, 'strip');
+  if (strippedDevDependencies === undefined) {
+    delete published.devDependencies;
+  } else {
+    published.devDependencies = strippedDevDependencies;
   }
   // `scripts` are not consumer-facing; drop everything except `prepack` and
   // any other hooks that would re-run inside the staging dir (none today).

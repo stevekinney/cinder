@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 
 import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
 import {
@@ -522,24 +522,36 @@ describe('buildPublishedManifest', () => {
     expect(stripped.text).not.toContain('commands.js.map');
   });
 
-  it('strips only workspace:* dep entries, keeping a real dependency of the same package name', () => {
-    // Regression guard: `@lostgradient/markdown` is BOTH a real runtime
-    // dependency of cinder (real semver in `dependencies`) AND a
-    // workspace-local dev dependency (`workspace:*` in `devDependencies`,
-    // used for in-repo `bun test`/`bun run` resolution without a build). The
-    // strip pass must key off the `workspace:*` VALUE, not the package name,
-    // or it would delete the real published dependency too.
+  it('rewrites a workspace:* real dependency to a resolvable ^<version> range', () => {
+    // `@lostgradient/markdown` is cinder's real, published `dependencies`
+    // entry (see `src/utilities/change-tracker.svelte.ts` and
+    // `src/components/json-schema-editor/diff-view.svelte`), pinned to
+    // `workspace:*` in the SOURCE manifest so in-repo `bun test`/`bun run`
+    // always resolves the current workspace copy regardless of markdown's
+    // currently-declared version. `changeset version` never rewrites this —
+    // `bumpVersionsWithWorkspaceProtocolOnly: true` in `.changeset/config.json`
+    // only rewrites `workspace:` protocol ranges, and `workspace:*` IS that
+    // protocol, but changesets rewrites it in the SOURCE tree at release
+    // time, not in this publish-time transform — so the publish step must
+    // independently resolve it to a real, installable range here, reading
+    // the sibling's actual current version rather than trusting a
+    // hand-typed forward-looking range that could drift from what's really
+    // on disk (a real regression bots caught: a stale `^0.0.0` hand-typed
+    // range would not satisfy markdown's next release).
+    const workspaceMarkdownVersion = JSON.parse(
+      readFileSync(resolvePath(import.meta.dir, '..', '..', 'markdown', 'package.json'), 'utf8'),
+    ).version as string;
+
     const manifest: SourceManifest = {
       name: '@lostgradient/cinder',
       version: '0.0.0',
       exports: {},
       dependencies: {
-        '@lostgradient/markdown': '^0.1.0',
+        '@lostgradient/markdown': 'workspace:*',
         shiki: '^3.21.0',
       },
       devDependencies: {
         '@cinder/testing': 'workspace:*',
-        '@lostgradient/markdown': 'workspace:*',
         typescript: '^5.9.0',
       },
     };
@@ -547,7 +559,7 @@ describe('buildPublishedManifest', () => {
     const published = buildPublishedManifest(manifest);
 
     expect(published.dependencies).toEqual({
-      '@lostgradient/markdown': '^0.1.0',
+      '@lostgradient/markdown': `^${workspaceMarkdownVersion}`,
       shiki: '^3.21.0',
     });
     expect(published.devDependencies).toEqual({ typescript: '^5.9.0' });
