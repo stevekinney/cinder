@@ -1,6 +1,6 @@
 ---
 '@lostgradient/cinder': minor
-'@lostgradient/chat': patch
+'@lostgradient/chat': minor
 ---
 
 Finish the markdown/editor extraction (Phases 4 and 5 of the package-boundaries plan, see

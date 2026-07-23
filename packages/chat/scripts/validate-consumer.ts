@@ -18,7 +18,7 @@ const workspaceRoot = resolve(packageRoot, '../..');
 // Host-supplied runtime singletons — the fixture symlinks these into its
 // top-level node_modules the way a real host app would after installing
 // them directly.
-const requiredPeers = ['@lostgradient/cinder', 'svelte'] as const;
+const requiredPeers = ['@lostgradient/cinder', '@lostgradient/markdown', 'svelte'] as const;
 // Chat's own conversation-model dependencies — the fixture symlinks these
 // into the *installed chat package's own* node_modules, simulating what a
 // package manager does automatically for a regular `dependencies` entry

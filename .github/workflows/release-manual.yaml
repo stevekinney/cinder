@@ -136,21 +136,44 @@ jobs:
               ;;
           esac
 
-      - name: Verify Chat's required Cinder release exists
+      - name: Verify Chat's required Cinder and Markdown releases exist
         if: inputs.package == 'chat'
         shell: bash
         run: |
           set -euo pipefail
-          cinder_peer_range="$(jq -er '.peerDependencies["@lostgradient/cinder"]' packages/chat/package.json)"
-          if ! published_versions="$(NPM_CONFIG_USERCONFIG=/dev/null npm view "@lostgradient/cinder@${cinder_peer_range}" version --json 2>/dev/null)"; then
-            echo "::error::No published @lostgradient/cinder version satisfies Chat's required peer ${cinder_peer_range}. Publish Cinder first."
+          for peer in '@lostgradient/cinder' '@lostgradient/markdown'; do
+            peer_range="$(jq -er --arg peer "$peer" '.peerDependencies[$peer]' packages/chat/package.json)"
+            if ! published_versions="$(NPM_CONFIG_USERCONFIG=/dev/null npm view "${peer}@${peer_range}" version --json 2>/dev/null)"; then
+              echo "::error::No published ${peer} version satisfies Chat's required peer ${peer_range}. Publish ${peer} first."
+              exit 1
+            fi
+            if ! jq -e 'if type == "array" then length > 0 else type == "string" and length > 0 end' <<<"$published_versions" >/dev/null; then
+              echo "::error::No published ${peer} version satisfies Chat's required peer ${peer_range}. Publish ${peer} first."
+              exit 1
+            fi
+            echo "Published ${peer} satisfies Chat peer ${peer_range}: ${published_versions}"
+          done
+
+      - name: Verify Cinder's required Markdown release exists
+        if: inputs.package == 'cinder'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Cinder's packed manifest rewrites its `workspace:*` dependency on
+          # @lostgradient/markdown to a concrete `^<version>` range (see
+          # pack-for-publish.ts). A fresh install of the published Cinder tarball
+          # needs that Markdown version to already exist on npm, so a break-glass
+          # Cinder publish must not run ahead of the Markdown release it pins.
+          markdown_version="$(jq -er '.version' packages/markdown/package.json)"
+          if ! published_versions="$(NPM_CONFIG_USERCONFIG=/dev/null npm view "@lostgradient/markdown@^${markdown_version}" version --json 2>/dev/null)"; then
+            echo "::error::No published @lostgradient/markdown satisfies Cinder's pinned range ^${markdown_version}. Publish Markdown first."
             exit 1
           fi
           if ! jq -e 'if type == "array" then length > 0 else type == "string" and length > 0 end' <<<"$published_versions" >/dev/null; then
-            echo "::error::No published @lostgradient/cinder version satisfies Chat's required peer ${cinder_peer_range}. Publish Cinder first."
+            echo "::error::No published @lostgradient/markdown satisfies Cinder's pinned range ^${markdown_version}. Publish Markdown first."
             exit 1
           fi
-          echo "Published Cinder satisfies Chat peer ${cinder_peer_range}: ${published_versions}"
+          echo "Published Markdown satisfies Cinder dependency ^${markdown_version}: ${published_versions}"
 
       - name: Verify Editor's required Cinder and Markdown releases exist
         if: inputs.package == 'editor'
