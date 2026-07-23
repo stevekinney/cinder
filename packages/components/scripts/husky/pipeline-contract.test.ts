@@ -83,11 +83,12 @@ describe('pipeline contract: commit stays cheap', () => {
     expect(lintStaged).toBeDefined();
     expect(typeof lintStaged).toBe('object');
 
-    const commands = Object.values(lintStaged as Record<string, unknown>).flatMap((entry) =>
-      Array.isArray(entry)
+    const commands = Object.values(lintStaged as Record<string, unknown>).flatMap((entry) => {
+      if (typeof entry === 'string') return [entry];
+      return Array.isArray(entry)
         ? entry.filter((command): command is string => typeof command === 'string')
-        : [],
-    );
+        : [];
+    });
 
     expect(commands.some((command) => command.startsWith('prettier '))).toBe(true);
     expect(commands).toContain('sort-package-json');
