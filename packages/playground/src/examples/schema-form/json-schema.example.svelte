@@ -18,7 +18,12 @@
     required: ['name', 'retries', 'enabled', 'cadence'],
   };
 
+  let draft = $state('No edits yet.');
   let submitted = $state('No payload submitted yet.');
+
+  function handleDraftChange(value: unknown) {
+    draft = JSON.stringify(value, null, 2);
+  }
 
   function handleSubmit(value: unknown) {
     submitted = JSON.stringify(value, null, 2);
@@ -31,8 +36,17 @@
     name="payload"
     value={{ name: 'Refresh indexes', retries: 2, enabled: true, cadence: 'daily' }}
     submitLabel="Save schedule"
+    ondraftchange={handleDraftChange}
     onsubmit={handleSubmit}
   />
 
-  <pre>{submitted}</pre>
+  <section>
+    <h3>Live draft</h3>
+    <pre>{draft}</pre>
+  </section>
+
+  <section>
+    <h3>Last valid submission</h3>
+    <pre>{submitted}</pre>
+  </section>
 </div>

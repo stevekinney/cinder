@@ -710,6 +710,7 @@ export type {
 
 export { default as SchemaForm, readSchemaFormData } from './components/schema-form/index.ts';
 export type {
+  SchemaFormDraftChangeHandler,
   SchemaFormOutput,
   SchemaFormProps,
   SchemaFormSchema,

@@ -642,10 +642,14 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
       required: ['name'],
     };
 
+    const drafts: unknown[] = [];
     const { rerender } = render(SchemaForm, {
       props: {
         schema: schema as never,
         value: { name: 'Initial' },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
       },
     });
     await flush();
@@ -667,6 +671,229 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     // User edit is preserved — value prop change did not reset formValue.
     expect(nameInput.value).toBe('User edit');
+    expect(drafts).toEqual([{ name: 'User edit' }]);
+  });
+
+  test('emits complete nested drafts before submit, including schema-invalid values', async () => {
+    const drafts: unknown[] = [];
+    const schema = {
+      type: 'object',
+      properties: {
+        title: { type: 'string', title: 'Title', minLength: 3 },
+        owner: {
+          type: 'object',
+          title: 'Owner',
+          properties: {
+            name: { type: 'string', title: 'Owner name', minLength: 1 },
+          },
+          required: ['name'],
+        },
+      },
+      required: ['title', 'owner'],
+    };
+
+    render(SchemaForm, {
+      props: {
+        schema,
+        value: { title: 'Ready', owner: { name: 'Ada' } },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    expect(drafts).toEqual([]);
+    await fireEvent.input(screen.getByLabelText(/Owner name/), {
+      target: { value: 'Grace' },
+    });
+    await fireEvent.input(screen.getByLabelText(/^Title/), { target: { value: '' } });
+
+    expect(drafts).toEqual([
+      { title: 'Ready', owner: { name: 'Grace' } },
+      { title: '', owner: { name: 'Grace' } },
+    ]);
+  });
+
+  test('emits the current raw JSON text while the draft is temporarily unparseable', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { raw: { title: 'Raw payload' } },
+          required: ['raw'],
+        },
+        value: { raw: { ok: true } },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    await fireEvent.input(screen.getByLabelText(/Raw payload/), { target: { value: '{' } });
+    await fireEvent.input(screen.getByLabelText(/Raw payload/), {
+      target: { value: '{"ok":false}' },
+    });
+
+    expect(drafts).toEqual([{ raw: '{' }, { raw: { ok: false } }]);
+  });
+
+  test('emits numeric editor text before NumberInput commits its typed value', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: '12' } });
+
+    expect(drafts).toEqual([{ count: '12' }]);
+
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect(drafts.at(-1)).toEqual({ count: 12 });
+  });
+
+  test('clears numeric editor text when a commit preserves the existing value', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: {
+            count: { type: 'integer', title: 'Count' },
+            label: { type: 'string', title: 'Label' },
+          },
+          required: ['count', 'label'],
+        },
+        value: { count: 2, label: 'Initial' },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: '02' } });
+    await fireEvent.blur(countInput);
+    await flush();
+    await fireEvent.input(screen.getByRole('textbox', { name: /Label/ }), {
+      target: { value: 'Updated' },
+    });
+
+    expect(drafts).toEqual([
+      { count: '02', label: 'Initial' },
+      { count: 2, label: 'Initial' },
+      { count: 2, label: 'Updated' },
+    ]);
+  });
+
+  test('preserves malformed numeric editor text after blur', async () => {
+    const drafts: unknown[] = [];
+
+    render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: 'abc' } });
+    await fireEvent.blur(countInput);
+    await flush();
+
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+    expect(drafts).toEqual([{ count: 'abc' }]);
+  });
+
+  test('does not submit a stale numeric value while malformed editor text is visible', async () => {
+    const submitted: unknown[] = [];
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        onsubmit: (value: unknown) => {
+          submitted.push(value);
+        },
+      },
+    });
+    await flush();
+
+    const countInput = screen.getByRole('spinbutton');
+    await fireEvent.focus(countInput);
+    await fireEvent.input(countInput, { target: { value: 'abc' } });
+    await submit(formFrom(container));
+    await flush();
+
+    expect(submitted).toEqual([]);
+    expect(countInput.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('does not report programmatic numeric input while submission is pending', async () => {
+    const drafts: unknown[] = [];
+    let finishSubmit: (() => void) | undefined;
+    const submitPending = new Promise<void>((resolve) => {
+      finishSubmit = resolve;
+    });
+
+    const { container } = render(SchemaForm, {
+      props: {
+        schema: {
+          type: 'object',
+          properties: { count: { type: 'integer', title: 'Count' } },
+          required: ['count'],
+        },
+        value: { count: 2 },
+        ondraftchange: (draft: unknown) => {
+          drafts.push(draft);
+        },
+        onsubmit: async () => submitPending,
+      },
+    });
+    await flush();
+
+    formFrom(container).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await flush();
+    await fireEvent.input(screen.getByRole('spinbutton'), { target: { value: '9' } });
+
+    expect(drafts).toEqual([]);
+    finishSubmit?.();
+    await flush();
   });
 });
 
