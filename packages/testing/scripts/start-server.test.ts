@@ -174,7 +174,7 @@ describe('playwright wrapper exit code', () => {
   });
 });
 
-describe('playwright process environment', () => {
+describe('playwright process launch', () => {
   test('runs Playwright through Bun instead of the ambient Node runtime', () => {
     expect(playwrightCommandArguments(['schema-form.playwright.ts', '--workers=1'])).toEqual([
       '--bun',
