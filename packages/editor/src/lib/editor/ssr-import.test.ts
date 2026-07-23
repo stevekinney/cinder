@@ -61,9 +61,13 @@ describe('@lostgradient/editor editor SSR import safety', () => {
 
   it('keeps process-global module mocks out of the shared test process', async () => {
     const violations: string[] = [];
-    // Commentary's bare `bun test` discovers both src/ and scripts/, so scan
-    // the package root rather than only the editor's source tree.
-    const packageRoot = resolve(import.meta.dirname, '..', '..');
+    // `bun run test` discovers both src/ and scripts/, so scan the package
+    // root rather than only the editor's source tree. `import.meta.dirname`
+    // is `packages/editor/src/lib/editor` (one directory level deeper than
+    // the former `packages/commentary/src/editor` this test was migrated
+    // from — commentary had no `lib/` layer), so reaching the package root
+    // (`packages/editor`) needs three `..` segments, not two.
+    const packageRoot = resolve(import.meta.dirname, '..', '..', '..');
     const moduleMockPattern = new RegExp(['mock', 'module'].join('\\.'), 'g');
     const glob = new Bun.Glob('**/*.test.ts');
 

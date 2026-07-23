@@ -1,24 +1,32 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import * as floatingUi from '@floating-ui/dom';
+import { cleanup, render, waitFor } from '@testing-library/svelte';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
+import LinkPopover from './link-popover.svelte';
 
 setupHappyDom();
 
 // ---------------------------------------------------------------------------
-// Floating-ui mocks — installed before importing the component.
-// Mirror the pattern from popover.test.ts.
+// Floating-ui spies — scoped per-test via `spyOn`, not a process-global
+// module replacement, so they can't leak into other test files sharing this
+// process (`bun run test` runs the whole package in one process). Mirrors
+// the pattern `attach.test.ts` uses for `./editor.js`.
 // ---------------------------------------------------------------------------
 
 let computePositionResult = {
   x: 50,
   y: 80,
-  placement: 'bottom-start',
+  placement: 'bottom-start' as const,
+  strategy: 'absolute' as const,
   middlewareData: {},
 };
 
-const computePositionSpy = mock(async () => computePositionResult);
+const computePositionSpy = mock(
+  async (..._args: Parameters<typeof floatingUi.computePosition>) => computePositionResult,
+);
 
 const autoUpdateTeardown = mock(() => {});
 const autoUpdateSpy = mock((_anchor: unknown, _panel: unknown, update: () => void) => {
@@ -32,18 +40,7 @@ const offsetSpy = mock((value: unknown) => ({
   options: value,
   fn: () => ({}),
 }));
-
-mock.module('@floating-ui/dom', () => ({
-  arrow: () => ({ name: 'arrow', fn: () => ({}) }),
-  computePosition: computePositionSpy,
-  autoUpdate: autoUpdateSpy,
-  flip: flipSpy,
-  shift: shiftSpy,
-  offset: offsetSpy,
-}));
-
-const { render, waitFor, cleanup } = await import('@testing-library/svelte');
-const { default: LinkPopover } = await import('./link-popover.svelte');
+const arrowSpy = mock(() => ({ name: 'arrow', fn: () => ({}) }));
 
 function queryLinkPopover(): HTMLDivElement | null {
   return document.body.querySelector<HTMLDivElement>('.link-popover');
@@ -60,11 +57,19 @@ beforeEach(() => {
     x: 50,
     y: 80,
     placement: 'bottom-start',
+    strategy: 'absolute',
     middlewareData: {},
   };
+  spyOn(floatingUi, 'computePosition').mockImplementation(computePositionSpy);
+  spyOn(floatingUi, 'autoUpdate').mockImplementation(autoUpdateSpy);
+  spyOn(floatingUi, 'flip').mockImplementation(flipSpy);
+  spyOn(floatingUi, 'shift').mockImplementation(shiftSpy);
+  spyOn(floatingUi, 'offset').mockImplementation(offsetSpy);
+  spyOn(floatingUi, 'arrow').mockImplementation(arrowSpy);
 });
 
 afterEach(() => {
+  mock.restore();
   cleanup();
   for (const node of scratchNodes) {
     if (node.isConnected) node.remove();
@@ -76,6 +81,7 @@ afterEach(() => {
   flipSpy.mockClear();
   shiftSpy.mockClear();
   offsetSpy.mockClear();
+  arrowSpy.mockClear();
 });
 
 // ---------------------------------------------------------------------------
@@ -158,7 +164,13 @@ describe('LinkPopover — Floating UI positioning', () => {
   });
 
   test('computed x and y become inline left and top style', async () => {
-    computePositionResult = { x: 120, y: 200, placement: 'bottom-start', middlewareData: {} };
+    computePositionResult = {
+      x: 120,
+      y: 200,
+      placement: 'bottom-start',
+      strategy: 'absolute',
+      middlewareData: {},
+    };
     const anchor = document.createElement('button');
     attachScratch(anchor);
 
