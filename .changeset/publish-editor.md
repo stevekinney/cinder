@@ -14,9 +14,12 @@ and `diff-viewer` — `review-editor` composes the other two, so all three had t
 change for any external consumer of those subpaths, hence the minor (not patch) bump on
 `@lostgradient/cinder`, which pre-1.0 treats a breaking removal as a minor per semver's own
 pre-1.0 carve-out (the same reasoning `@lostgradient/markdown`'s publish used for the removed
-`./diff` aliases). Cinder's `./editor`, `./editor/component-runtime`, and `./editor/test-utilities`
-subpaths are unaffected — they now mirror `@lostgradient/editor`'s headless runtime instead of
-`@cinder/commentary`'s, with no change to their public shape.
+`./diff` aliases). Cinder's `./editor`, `./editor/component-runtime`, `./editor/test-utilities`,
+and every `./commentary/*` subpath (`anchor-decorations`, `anchoring`, `comments`(+`/types`),
+`export`(+`/types`), `session`(+`/types`), `shared/anchor-types`) are unaffected — they now mirror
+`@lostgradient/editor`'s headless runtime instead of `@cinder/commentary`'s, with no change to
+their public shape. The bare `./commentary` root key (which never resolved to anything anyone in
+this repo imports) stays dropped, same as before this move.
 
 We evaluated re-exporting the three Svelte components back through Cinder as generated shims (the
 `derive-upstream-reexports.ts` / `CINDER_KEY_OVERRIDES` pattern used for the headless subpaths
@@ -31,5 +34,8 @@ the very next phase. Consumers of these three components should migrate their im
 from `@lostgradient/cinder/<component>` to `@lostgradient/editor/<component>` directly.
 
 `@lostgradient/editor`'s peers are `@lostgradient/cinder` (`^0.17.0`), `@lostgradient/markdown`
-(`^0.1.0`), `svelte`, and the milkdown/prosemirror stack — all host-supplied singletons. It
-declares no regular `dependencies` of its own.
+(`^0.1.0`), `svelte`, and the milkdown/prosemirror stack — all host-supplied singletons. Its only
+regular `dependencies` are `@floating-ui/dom` and `esm-env`, matching `@lostgradient/cinder`'s own
+treatment of those same two vendored utilities (see `package-boundary.test.ts`): small, stateless
+libraries where a duplicate copy across the install graph causes no functional issue, unlike the
+singleton-sensitive peers above.
