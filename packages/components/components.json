@@ -2742,6 +2742,47 @@
       }
     },
     {
+      "name": "JsonEditor",
+      "id": "json-editor",
+      "import": "@lostgradient/cinder/json-editor",
+      "exportName": "JsonEditor",
+      "category": "form",
+      "status": "stable",
+      "purpose": "Controlled free-form JSON text editor with native textarea fallback, parse feedback, and accessible field wiring.",
+      "tags": ["form", "json", "editor"],
+      "useWhen": [
+        "Editing arbitrary JSON source while preserving the exact string in parent-owned state.",
+        "A lightweight native editor is preferable to shipping a code-editor runtime."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Editing a JSON Schema with guided form and diff views.",
+          "alternative": "json-schema-editor"
+        },
+        {
+          "reason": "Displaying JSON without allowing changes.",
+          "alternative": "json-viewer"
+        }
+      ],
+      "related": ["textarea", "json-schema-editor", "json-viewer"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/json-editor/schema",
+        "variables": "@lostgradient/cinder/json-editor/variables",
+        "examples": "@lostgradient/cinder/json-editor/examples"
+      },
+      "a11y": {
+        "keyboard": [
+          {
+            "keys": "Tab",
+            "action": "Moves focus out of the editor without trapping the keyboard."
+          }
+        ],
+        "notes": ["Uses a native textarea with a programmatic label and announced parse feedback."]
+      }
+    },
+    {
       "name": "JsonSchemaEditor",
       "id": "json-schema-editor",
       "import": "@lostgradient/cinder/json-schema-editor",

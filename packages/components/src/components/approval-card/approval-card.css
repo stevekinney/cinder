@@ -9,6 +9,7 @@
 @import '../code-block/code-block.css';
 @import '../collapsible/collapsible.css';
 @import '../copy-button/copy-button.css';
+@import '../json-editor/json-editor.css';
 @import '../json-viewer/json-viewer.css';
 @import '../payload-inspector/payload-inspector.css';
 @import '../status-dot/status-dot.css';
@@ -289,12 +290,6 @@
     align-items: center;
     flex-wrap: wrap;
     gap: var(--cinder-space-2);
-  }
-
-  .cinder-approval-card__error {
-    margin: 0;
-    color: var(--cinder-danger);
-    font-size: var(--cinder-text-sm);
   }
 
   /* ----------------------------------------

@@ -2831,6 +2831,38 @@
       "import": "./src/components/invocation-rule-builder/invocation-rule-builder.examples.json",
       "default": "./src/components/invocation-rule-builder/invocation-rule-builder.examples.json"
     },
+    "./json-editor": {
+      "types": "./dist/components/json-editor/index.d.ts",
+      "browser": "./src/components/json-editor/index.ts",
+      "node": "./dist/server/components/json-editor/index.js",
+      "svelte": "./src/components/json-editor/index.ts",
+      "import": "./src/components/json-editor/index.ts",
+      "default": "./dist/components/json-editor/index.js"
+    },
+    "./json-editor/schema": {
+      "types": "./dist/components/json-editor/json-editor.schema.d.ts",
+      "browser": "./src/components/json-editor/json-editor.schema.ts",
+      "node": "./dist/server/components/json-editor/json-editor.schema.js",
+      "svelte": "./src/components/json-editor/json-editor.schema.ts",
+      "import": "./src/components/json-editor/json-editor.schema.ts",
+      "default": "./dist/components/json-editor/json-editor.schema.js"
+    },
+    "./json-editor/variables": {
+      "types": "./dist/components/json-editor/json-editor.variables.d.ts",
+      "browser": "./src/components/json-editor/json-editor.variables.ts",
+      "node": "./dist/server/components/json-editor/json-editor.variables.js",
+      "svelte": "./src/components/json-editor/json-editor.variables.ts",
+      "import": "./src/components/json-editor/json-editor.variables.ts",
+      "default": "./dist/components/json-editor/json-editor.variables.js"
+    },
+    "./json-editor/styles": {
+      "types": "./dist/components/json-editor/json-editor.css.d.ts",
+      "default": "./dist/components/json-editor/json-editor.css"
+    },
+    "./json-editor/examples": {
+      "import": "./src/components/json-editor/json-editor.examples.json",
+      "default": "./src/components/json-editor/json-editor.examples.json"
+    },
     "./json-schema-editor": {
       "types": "./dist/components/json-schema-editor/index.d.ts",
       "browser": "./src/components/json-schema-editor/index.ts",

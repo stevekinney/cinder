@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "json-editor",
+  "import": "@lostgradient/cinder/json-editor",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Controlled JSON editor",
+      "description": "A native, controlled JSON text field with parse feedback and no code-editor bundle dependency.",
+      "code": "<script lang=\"ts\">\n  import { JsonEditor } from '@lostgradient/cinder/json-editor';\n\n  let value = $state('{\\n  \"region\": \"us-west-2\",\\n  \"dryRun\": true\\n}');\n</script>\n\n<JsonEditor\n  id=\"payload\"\n  label=\"Request payload\"\n  description=\"Enter the JSON body sent with the request.\"\n  {value}\n  onValueChange={(nextValue) => (value = nextValue)}\n/>\n"
+    }
+  ]
+}

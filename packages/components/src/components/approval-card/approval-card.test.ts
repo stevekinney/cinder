@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import Ajv2020 from 'ajv/dist/2020';
 
@@ -54,6 +55,16 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
 }
 
 describe('ApprovalCard', () => {
+  test('imports JsonEditor through its public component subpath', () => {
+    const actionsSource = readFileSync(
+      new URL('./approval-card-actions.svelte', import.meta.url),
+      'utf8',
+    );
+
+    expect(actionsSource).toContain("from '@lostgradient/cinder/json-editor'");
+    expect(actionsSource).not.toContain("from '../json-editor/json-editor.svelte'");
+  });
+
   test('schema represents the required operation prop', () => {
     expect(approvalCardSchema.required).toContain('operation');
     expect(approvalCardSchema.properties).toHaveProperty('operation');

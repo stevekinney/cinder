@@ -46,6 +46,18 @@ describe('extractImports', () => {
     expect(specifiers).toEqual(['./styles.css']);
   });
 
+  it('extracts CSS @import dependencies', () => {
+    const { specifiers, hasUnmodellableImport } = extractImports(`
+      @import '../json-editor/json-editor.css';
+      @import url('../button/button.css');
+    `);
+    expect(specifiers.toSorted()).toEqual([
+      '../button/button.css',
+      '../json-editor/json-editor.css',
+    ]);
+    expect(hasUnmodellableImport).toBe(false);
+  });
+
   it('extracts export … from and export * from re-exports', () => {
     const content = `
       export { Thing } from './thing.ts';
@@ -158,6 +170,12 @@ describe('resolveImport', () => {
     expect(resolveImport(from, 'zod', exists).kind).toBe('external');
     expect(resolveImport(from, '@lostgradient/markdown', exists).kind).toBe('external');
     expect(resolveImport(from, 'svelte', exists).kind).toBe('external');
+  });
+
+  it('resolves a public Cinder component subpath to its source entry', () => {
+    const target = 'packages/components/src/components/json-editor/index.ts';
+    const result = resolveImport(from, '@lostgradient/cinder/json-editor', (p) => p === target);
+    expect(result).toEqual({ kind: 'resolved', path: target });
   });
 
   it('resolves an explicit .svelte specifier', () => {
@@ -273,6 +291,30 @@ describe('buildImportGraph + dependentsClosure', () => {
     const graph = buildImportGraph(files);
     expect(graph.forward.get(`${C}/dialog/dialog.svelte`)).toContain(`${C}/button/button.svelte`);
     expect(graph.reverse.get(`${C}/button/button.svelte`)).toContain(`${C}/dialog/dialog.svelte`);
+  });
+
+  it('tracks dependents imported through public Cinder component subpaths', () => {
+    const publicImports = new Map<string, string>([
+      [`${C}/json-editor/index.ts`, `export { default } from './json-editor.svelte';`],
+      [`${C}/json-editor/json-editor.svelte`, `<textarea></textarea>`],
+      [
+        `${C}/approval-card/approval-card.svelte`,
+        `import JsonEditor from '@lostgradient/cinder/json-editor';`,
+      ],
+    ]);
+    const graph = buildImportGraph(publicImports);
+    const closure = dependentsClosure(graph, [`${C}/json-editor/json-editor.svelte`]);
+    expect(closure).toContain(`${C}/approval-card/approval-card.svelte`);
+  });
+
+  it('tracks component style dependents imported through CSS', () => {
+    const styleImports = new Map<string, string>([
+      [`${C}/json-editor/json-editor.css`, `.cinder-json-editor { display: block; }`],
+      [`${C}/approval-card/approval-card.css`, `@import '../json-editor/json-editor.css';`],
+    ]);
+    const graph = buildImportGraph(styleImports);
+    const closure = dependentsClosure(graph, [`${C}/json-editor/json-editor.css`]);
+    expect(closure).toContain(`${C}/approval-card/approval-card.css`);
   });
 
   it('computes the transitive dependents closure', () => {
