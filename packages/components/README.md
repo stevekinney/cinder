@@ -21,13 +21,13 @@ different version your app requests, the two can still diverge; see the
 a general icon library for your application-specific icons. The Chat domain
 suite is published separately as `@lostgradient/chat`.
 
-Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces use optional peer dependencies. Install them only when your app imports `@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`, `@lostgradient/cinder/markdown`, `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`, `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`, `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on `CodeBlock` automatic highlighting:
+Markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces use optional peer dependencies. Install them only when your app imports `@lostgradient/cinder/markdown`, `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`, `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`, `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on `CodeBlock` automatic highlighting. (`MarkdownEditor`, `ReviewEditor`, and `DiffViewer` moved to `@lostgradient/editor` — see [`@lostgradient/editor`'s README](../editor/README.md) for its own peer install list.)
 
 ```bash
 bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @shikijs/langs @shikijs/rehype @shikijs/types @types/hast @types/mdast @types/unist comlink hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
 ```
 
-`@lostgradient/cinder/markdown-editor` needs the editor and Markdown pipeline subset from that
+`@lostgradient/cinder/editor` needs the editor and Markdown pipeline subset from that
 list at build time. If `prosemirror-state`, `prosemirror-view`, `@milkdown/kit`, or another editor
 peer is missing, Vite may report the failure through its optional-peer placeholder module instead
 of naming this install step.

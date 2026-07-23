@@ -53,6 +53,7 @@ const repoRoot = resolve(packageRoot, '..', '..');
 const workflowsDirectory = join(repoRoot, '.github', 'workflows');
 const componentsPackageName = '@lostgradient/cinder';
 const chatPackageName = '@lostgradient/chat';
+const editorPackageName = '@lostgradient/editor';
 
 export const LAYERS = [
   'pre-commit',
@@ -303,6 +304,61 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason:
       'Chat owns a coverage-producing package suite now that its tests no longer run in Cinder component chunks.',
+  },
+  [`${editorPackageName}#lint`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Editor package oxlint. unit-tests and main-green reach it through the workspace lint scripts, same as Chat.',
+  },
+  [`${editorPackageName}#typecheck`]: {
+    layers: ['browser-tests', 'main-green'],
+    reason:
+      'Editor package typecheck is owned by browser-tests and main-green (both run the root `typecheck` script, which turbo fans out to every package); pre-commit only formats staged files.',
+  },
+  [`${editorPackageName}#components:check`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Editor generated metadata and exports are checked before merge and in the authoritative main gate, alongside Cinder and Chat.',
+  },
+  [`${editorPackageName}#build`]: {
+    layers: ['main-green'],
+    reason:
+      "Explicit `bun run --filter=@lostgradient/editor build` in main-green's Editor source-audit " +
+      'step. unit-tests never names this command literally — Editor still builds there (transitively, ' +
+      "to satisfy Cinder's `^build` dependency and via the git-range-scoped `turbo run test " +
+      '--filter=@lostgradient/editor...` step, whose own `test` task depends on `^build`) — but this ' +
+      'guard checks for the literal command, matching how Markdown (which builds the same way, and has ' +
+      'no entry in this table at all) is handled.',
+  },
+  [`${editorPackageName}#platform:audit`]: {
+    layers: ['main-green'],
+    reason: 'Editor platform compatibility audit owned by the authoritative source gate.',
+  },
+  [`${editorPackageName}#colors:audit`]: {
+    layers: ['main-green'],
+    reason: 'Editor raw-color audit owned by the authoritative source gate.',
+  },
+  [`${editorPackageName}#tokens:audit`]: {
+    layers: ['main-green'],
+    reason: 'Editor token audit owned by the authoritative source gate.',
+  },
+  [`${editorPackageName}#validate:consumer`]: {
+    layers: ['release'],
+    reason: 'The release artifact gate installs and validates the staged Editor tarball.',
+  },
+  [`${editorPackageName}#package:weight:check`]: {
+    layers: ['release'],
+    reason: 'The release artifact gate applies the dedicated Editor tarball budget.',
+  },
+  [`${editorPackageName}#test`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Unlike Chat (which runs `test:coverage`), Editor and Markdown are git-range-scoped through the bare `test` task in unit-tests ("Run private package unit tests") and run again in main-green\'s "Test non-Cinder workspaces" step.',
+  },
+  [`${editorPackageName}#test:coverage`]: {
+    layers: [],
+    reason:
+      'Not run by any layer by name — Editor, like Markdown, is covered by the bare `test` task above, not a dedicated coverage step.',
   },
 };
 
@@ -730,6 +786,7 @@ async function loadPublicPackageScripts(): Promise<Record<string, Record<string,
   const packageRoots = [
     [componentsPackageName, packageRoot],
     [chatPackageName, join(repoRoot, 'packages', 'chat')],
+    [editorPackageName, join(repoRoot, 'packages', 'editor')],
   ] as const;
   const entries = await Promise.all(
     packageRoots.map(
