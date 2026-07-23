@@ -35,7 +35,7 @@ Block-axis physical properties (`margin-top`, `padding-bottom`, `border-top`, `t
 
 Positioning properties (`left`, `right`) and `text-align: left | right` are **not** stylelint-enforced today. Many components position decorative or geometrically rotated elements (popover arrows, anchor positioning, fixed insets) where physical placement is intentional. When you add a new positioned element that should follow text direction, prefer `inset-inline-start` / `inset-inline-end` by hand. When you keep physical `left`/`right` (e.g., `data-placement="left"` selectors, rotated CSS-triangle decorations), it's worth a short comment so a future reader knows the choice was deliberate.
 
-Stylelint enforces this on every CSS file and `<style>` block under `packages/*/src/**`. The pre-commit hook will auto-fix where it can and fail the commit otherwise. To run the check locally:
+Stylelint enforces this on every CSS file and `<style>` block under `packages/*/src/**`. The pre-commit hook formats staged files and sorts package metadata; broad style and source validation runs in required CI. To run the check locally:
 
 ```bash
 bun run lint        # full lint pipeline, including stylelint
@@ -45,6 +45,17 @@ bun run lint:fix    # auto-fix what's safe
 When `left`/`right` carries semantic placement (e.g. `data-placement="left"` selectors on a tooltip), use the rule's `/* stylelint-disable-next-line csstools/use-logical */` escape hatch and add a comment explaining why the physical axis is intentional.
 
 [logical-properties]: https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_logical_properties_and_values
+
+## Validation ownership
+
+The `pre-commit` hook checks lockfile staging and runs staged formatters and
+package sorting only. Required PR CI and `main-green` own broad source lint,
+typecheck, and test gates. Release owns consumer/tarball validation and package
+weight checks. During ordinary issue or pull request work, run focused
+regression tests and any necessary generated-artifact checks. Do not use the
+root `bun run validate`, full test/coverage/browser suites, or consumer
+validation as an ordinary local pull request gate; required CI and release own
+those broad checks.
 
 ## Tests
 

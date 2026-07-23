@@ -12,7 +12,7 @@ boundary sits where it does.
 
 | Layer                                                                       | What it runs                                                                                                                                                                                                                                                                                                                                                                                                                                       | What it deliberately does NOT run                                                                                                                 | Rationale                                                                                                                                                                                                                                                                                                     |
 | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Commit** (`pre-commit`)                                                   | Lockfile-sync check, `lint-staged` (formatters + oxlint on staged files), scoped per-package `typecheck`                                                                                                                                                                                                                                                                                                                                           | Tests (any kind), the full `lint`/`lint:invariants` chains, stylelint                                                                             | Fast formatting + type feedback. Tests are not run locally at all anymore (neither commit nor push) — PR CI and `main-green` own every test run, so commit stays a sub-second lockfile+lint+typecheck pass.                                                                                                   |
+| **Commit** (`pre-commit`)                                                   | Lockfile-staging check and `lint-staged` formatters/package sorting                                                                                                                                                                                                                                                                                                                                                                                | Install, lint, typecheck, tests (any kind), the full `lint`/`lint:invariants` chains, stylelint                                                   | Fast, deterministic formatting and package metadata normalization. Required PR CI and `main-green` own dependency and broad source validation, so the hook does not repeat those gates.                                                                                                                       |
 | **Push** (`pre-push`)                                                       | Fast, fail-open sanity checks only: parses the push-ref list off stdin to skip deletion-only pushes, and prints a best-effort, non-blocking changeset-presence hint for published-package source changes                                                                                                                                                                                                                                           | Any lint/typecheck/test dispatch, any package build, and the local gate lock that used to serialize concurrent worktree pushes behind one another | Deliberately inverted from the old design. Every check here warns, never blocks — there is nothing left in this hook that can fail a push. See "The push-layer inversion" below.                                                                                                                              |
 | **PR CI** (`unit-tests.yaml`, `browser-tests.yaml`, `changeset-guard.yaml`) | Scoped unit tests (`test:changed`) plus whole-repo invariants that a diff-scoped run could miss (`aggregator:check`, `components:check`), an unconditional `lint`/`lint:invariants` sweep, dependency-scoped browser tests, and a fast standalone changeset-bump guard                                                                                                                                                                             | The authoritative full source suite, consumer/tarball publish validation                                                                          | Fast, dependable per-PR feedback. Whole-repo invariants run unconditionally because a source change can desync a generated artifact without touching the artifact's own checker (`test:changed` would miss that).                                                                                             |
 | **main-green** (post-merge, nightly)                                        | Workspace `lint` + `lint:invariants`, workspace `typecheck`, generated artifact checks (`aggregator:check`, `components:check`), source audits (`check:placeholder-docs`, workflow validation, Svelte peer validation, `platform:audit`, `colors:audit`, `tokens:audit`), the FULL component suite through chunked `test:changed`, full component coverage via `test:coverage`, non-component workspace tests, plus the non-blocking memory canary | Consumer/tarball publish validation (`validate:consumer`, `package:weight:check`)                                                                 | The authoritative source-validation gate. Push runs are keyed by SHA and are not cancelled by newer pushes because release waits for the same-SHA run before publishing. If this goes red, the class of bug PR CI's scoping missed is presumed to have leaked.                                                |
@@ -138,13 +138,15 @@ build` step becomes a near-instant no-op instead of a full rebuild when
   nothing upstream changed.
 - **Gate lock** (`withLocalValidationGateLock` in
   `packages/components/scripts/husky/utilities.ts`) — serializes expensive,
-  disk-mutating local work across worktrees sharing one machine. Pre-push no
+  disk-mutating local work within one worktree. Each worktree has its own lock,
+  so independent issue/PR agents do not queue behind one another. Pre-push no
   longer holds it (it has no expensive critical section left); it remains for
   the scripts that still do heavy work standalone outside of CI —
   `test-changed.ts`, `generate-component-artifacts.ts`
-  (`components:generate`/`components:check`), and `validate-consumers.ts`
-  (`validate:consumer`) — so concurrent worktrees don't stack full test runs,
-  artifact generation, or tarball installs on top of one another. A waiter
+  (`components:generate`), and `validate-consumers.ts`
+  (`validate:consumer`) — so commands in one worktree do not stack full test
+  runs, artifact generation, or tarball installs on top of one another.
+  `components:check` is read-only and does not acquire the lock. A waiter
   keeps polling while the lock's recorded PID is alive, regardless of the
   lock's age; dead holders are reclaimed immediately, while malformed locks
   retain a bounded grace period and wait before the command fails.
@@ -157,6 +159,16 @@ build` step becomes a near-instant no-op instead of a full rebuild when
   a representative command actually produces the effect its layer expects
   (not just "the coverage map says it's declared"). Not yet implemented; noted
   here so its layer gets declared in `check-pipeline-coverage.ts` when it lands.
+
+## Local iteration ownership
+
+Ordinary issue and pull request work should run the smallest focused regression
+test that exercises the change, plus any necessary generated-artifact checks.
+Do not use the root `bun run validate`, full test/coverage/browser suites, or
+consumer/tarball validation as an ordinary local pull request gate. The full
+source suite belongs to PR CI and `main-green`; `validate:consumer` and
+`package:weight:check` belong to release. Run a broad gate locally only to
+diagnose that gate itself or when changing its implementation.
 
 ## The rule
 

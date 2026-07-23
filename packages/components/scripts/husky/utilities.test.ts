@@ -12,23 +12,17 @@ import {
   cleanupHookProcesses,
   defaultGateLockPath,
   expandToDependents,
-  gateLockPathForCommonDirectory,
-  getTouchedPackages,
-  gitCommonDirectory,
-  hasRootConfigurationChanges,
+  gateLockPathForWorktreeRoot,
   isIgnorableDoc,
   isNewBranch,
   isSourceFile,
   isUnderWorkspace,
-  loadWorkspacePackages,
   LOCAL_VALIDATION_GATE_LOCK_HELD_ENV,
   nodeModulesTopology,
   parsePushRefs,
-  phaseMaxConcurrency,
   prePushPackageScript,
   REPO_ROOT,
   runHookCommand,
-  runWithConcurrencyPool,
   withGateLock,
   withLocalValidationGateLock,
   type GitRunner,
@@ -36,24 +30,11 @@ import {
   type WorkspacePackage,
 } from './utilities.ts';
 
-const pkg = (
-  name: string,
-  dir: string,
-  dependencies: string[] = [],
-  flags: Partial<Pick<WorkspacePackage, 'hasLint' | 'hasTypecheck' | 'hasTest'>> = {},
-): WorkspacePackage => ({
+const pkg = (name: string, dir: string, dependencies: string[] = []): WorkspacePackage => ({
   name,
   dir,
-  hasLint: flags.hasLint ?? true,
-  hasTypecheck: flags.hasTypecheck ?? true,
-  hasTest: flags.hasTest ?? true,
   dependencies: new Set(dependencies),
 });
-
-const fakePackages: readonly WorkspacePackage[] = [
-  pkg('@lostgradient/markdown', 'packages/markdown/'),
-  pkg('@lostgradient/cinder', 'packages/components/', [], { hasTest: false }),
-];
 
 // A fixture mirroring the real internal dependency graph for closure tests.
 const graphPackages: readonly WorkspacePackage[] = [
@@ -68,7 +49,7 @@ const graphPackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/chat', 'packages/chat/', ['@lostgradient/cinder']),
   pkg('@cinder/playground', 'packages/playground/', ['@lostgradient/chat', '@lostgradient/cinder']),
   pkg('@cinder/diff', 'packages/diff/'),
-  pkg('@cinder/testing', 'packages/testing/', [], { hasLint: false }),
+  pkg('@cinder/testing', 'packages/testing/'),
 ];
 
 const sorted = (names: Iterable<string>): string[] => [...names].toSorted();
@@ -376,132 +357,6 @@ describe('isSourceFile', () => {
   it('is case-insensitive on extensions and basenames', () => {
     expect(isSourceFile('packages/markdown/src/Index.TS')).toBe(true);
     expect(isSourceFile('packages/markdown/README.MD')).toBe(false);
-  });
-});
-
-describe('getTouchedPackages', () => {
-  it('returns the packages whose dir prefix matches staged source files', () => {
-    const touched = getTouchedPackages(fakePackages, [
-      'packages/markdown/src/index.ts',
-      'packages/components/src/parser.ts',
-    ]);
-    expect(touched.map((p) => p.name).toSorted()).toEqual([
-      '@lostgradient/cinder',
-      '@lostgradient/markdown',
-    ]);
-  });
-
-  it('ignores docs-only staged files', () => {
-    const touched = getTouchedPackages(fakePackages, [
-      'packages/markdown/README.md',
-      'packages/markdown/CHANGELOG.md',
-    ]);
-    expect(touched).toEqual([]);
-  });
-
-  it('mixes source and docs files correctly', () => {
-    const touched = getTouchedPackages(fakePackages, [
-      'packages/markdown/README.md',
-      'packages/markdown/src/index.ts',
-      'packages/components/docs/notes.md',
-    ]);
-    expect(touched.map((p) => p.name)).toEqual(['@lostgradient/markdown']);
-  });
-
-  it('returns empty when no staged file matches any package', () => {
-    const touched = getTouchedPackages(fakePackages, ['README.md', 'package.json']);
-    expect(touched).toEqual([]);
-  });
-
-  it('does not double-report a package with multiple staged files', () => {
-    const touched = getTouchedPackages(fakePackages, [
-      'packages/markdown/src/a.ts',
-      'packages/markdown/src/b.ts',
-      'packages/markdown/src/c.ts',
-    ]);
-    expect(touched.map((p) => p.name)).toEqual(['@lostgradient/markdown']);
-  });
-});
-
-describe('hasRootConfigurationChanges', () => {
-  it('returns true when a high-impact root file is staged', () => {
-    expect(hasRootConfigurationChanges(['tsconfig.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['tsconfig.base.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['tsconfig.build.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['tsconfig.check.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['tsconfig.test.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['package.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['bun.lock'])).toBe(true);
-    expect(hasRootConfigurationChanges(['.oxlintrc.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['bunfig.toml'])).toBe(true);
-    expect(hasRootConfigurationChanges(['.prettierrc.json'])).toBe(true);
-    expect(hasRootConfigurationChanges(['.stylelintrc.json'])).toBe(true);
-  });
-
-  it('returns false for nested files of the same name', () => {
-    // packages/markdown/tsconfig.json must NOT escalate to a full workspace run.
-    expect(hasRootConfigurationChanges(['packages/markdown/tsconfig.json'])).toBe(false);
-    expect(hasRootConfigurationChanges(['packages/markdown/package.json'])).toBe(false);
-  });
-
-  it('returns false when only non-root files are staged', () => {
-    expect(hasRootConfigurationChanges(['packages/markdown/src/index.ts', 'README.md'])).toBe(
-      false,
-    );
-  });
-
-  it('returns false on an empty staged list', () => {
-    expect(hasRootConfigurationChanges([])).toBe(false);
-  });
-
-  it('is a pure path predicate (works on push-range file lists, not just staged)', () => {
-    // No staged context — exact root-relative paths still classify correctly.
-    expect(hasRootConfigurationChanges(['packages/markdown/src/x.ts', 'bun.lock'])).toBe(true);
-    expect(
-      hasRootConfigurationChanges(['packages/markdown/src/x.ts', 'packages/markdown/README.md']),
-    ).toBe(false);
-  });
-});
-
-describe('loadWorkspacePackages', () => {
-  it('reads every packages/*/package.json and exposes script presence', async () => {
-    const packages = await loadWorkspacePackages();
-    const names = packages.map((p) => p.name).toSorted();
-    expect(names).toContain('@lostgradient/markdown');
-    expect(names).toContain('@cinder/commentary');
-    expect(names).toContain('@cinder/playground');
-    expect(names).toContain('@cinder/testing');
-    expect(names).toContain('@lostgradient/chat');
-    expect(names).toContain('@lostgradient/cinder');
-    for (const entry of packages) {
-      expect(entry.dir.startsWith('packages/')).toBe(true);
-      expect(entry.dir.endsWith('/')).toBe(true);
-      expect(typeof entry.hasLint).toBe('boolean');
-      expect(typeof entry.hasTypecheck).toBe('boolean');
-      expect(typeof entry.hasTest).toBe('boolean');
-      expect(entry.dependencies).toBeInstanceOf(Set);
-    }
-  });
-
-  it('populates internal workspace dependencies (filtered to workspace names)', async () => {
-    const packages = await loadWorkspacePackages();
-    const byName = new Map(packages.map((entry) => [entry.name, entry] as const));
-
-    // @cinder/playground depends on cinder.
-    expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/cinder');
-    expect([...byName.get('@cinder/playground')!.dependencies]).toContain('@lostgradient/chat');
-    // Chat composes Cinder primitives and utilities through the public package.
-    expect([...byName.get('@lostgradient/chat')!.dependencies]).toContain('@lostgradient/cinder');
-    // cinder dev-depends on @cinder/testing.
-    expect([...byName.get('@lostgradient/cinder')!.dependencies]).toContain('@cinder/testing');
-    // Every dependency name resolves to another workspace package (external
-    // deps such as `chalk` are filtered out).
-    const workspaceNames = new Set(packages.map((entry) => entry.name));
-    for (const entry of packages) {
-      for (const dep of entry.dependencies) {
-        expect(workspaceNames.has(dep)).toBe(true);
-      }
-    }
   });
 });
 
@@ -951,226 +806,11 @@ describe('isIgnorableDoc', () => {
  * closure) so the motivating CSS-only acceptance criterion is asserted against
  * the *real* workspace, not just the building blocks in isolation.
  */
-function planScopedJobs(
-  workspace: readonly WorkspacePackage[],
-  changed: readonly string[],
-): string[] {
-  const touched = getTouchedPackages(workspace, [...changed]);
-  const byName = new Map(workspace.map((entry) => [entry.name, entry] as const));
-  const jobs: string[] = [];
-  for (const entry of touched) {
-    if (entry.hasLint) jobs.push(`${entry.name} lint`);
-  }
-  for (const name of expandToDependents(
-    workspace,
-    touched.map((entry) => entry.name),
-  )) {
-    const entry = byName.get(name);
-    if (entry === undefined) continue;
-    if (entry.hasTypecheck) jobs.push(`${name} typecheck`);
-    if (entry.hasTest) jobs.push(`${name} ${prePushPackageScript(name, 'test')}`);
-  }
-  return jobs.toSorted();
-}
-
 describe('prePushPackageScript', () => {
   it('uses component-aware test scoping for the cinder package only', () => {
     expect(prePushPackageScript('@lostgradient/cinder', 'test')).toBe('test:changed');
     expect(prePushPackageScript('@lostgradient/cinder', 'typecheck')).toBe('typecheck');
     expect(prePushPackageScript('@cinder/playground', 'test')).toBe('test');
-  });
-});
-
-describe('scoped job derivation (real workspace)', () => {
-  it('scopes a CSS-only packages/components change to cinder + playground only', async () => {
-    const workspace = await loadWorkspacePackages();
-    const jobs = planScopedJobs(workspace, [
-      'packages/components/src/components/alert.css',
-      'packages/components/src/components/callout.css',
-    ]);
-    // Positive: Cinder's three gates plus Chat and playground typecheck/test
-    // through the real reverse-dependency closure.
-    expect(jobs).toEqual([
-      '@cinder/playground test',
-      '@cinder/playground typecheck',
-      '@lostgradient/chat test',
-      '@lostgradient/chat typecheck',
-      '@lostgradient/cinder lint',
-      '@lostgradient/cinder test:changed',
-      '@lostgradient/cinder typecheck',
-    ]);
-    // Negative: no playground *lint* (closure is typecheck/test only), and no
-    // markdown/commentary/diff jobs at all.
-    expect(jobs).not.toContain('@cinder/playground lint');
-    expect(jobs.some((j) => /@cinder\/(markdown|commentary|diff)/.test(j))).toBe(false);
-  });
-
-  it('scopes a leaf @cinder/commentary change without dragging in unrelated siblings', async () => {
-    const workspace = await loadWorkspacePackages();
-    const jobs = planScopedJobs(workspace, ['packages/commentary/src/index.ts']);
-    // commentary is a consumer leaf, but cinder dev-depends on it and playground
-    // depends on cinder, so the closure is commentary + cinder + playground.
-    expect(jobs.some((j) => /@cinder\/(markdown|diff)/.test(j))).toBe(false);
-    expect(jobs).toContain('@cinder/commentary lint');
-    expect(jobs).toContain('@lostgradient/cinder typecheck');
-    expect(jobs).toContain('@cinder/playground test');
-  });
-});
-
-/**
- * `phaseMaxConcurrency` is the side-effect-free seam extracted from pre-commit.ts
- * so this test can assert the policy without importing the gate entry path
- * (which has module-scope side effects: isContinuousIntegration → process.exit,
- * stdin read). The policy is kept general across all three `GateScript` values
- * (not narrowed to pre-commit's `typecheck`) so a future local gate script
- * inherits the same bounded concurrency instead of reinventing it.
- */
-describe('phaseMaxConcurrency', () => {
-  function withHardwareConcurrency(value: number, run: () => void): void {
-    // Pin hardwareConcurrency so the assertion is environment-independent: on
-    // a real 1-vCPU host Math.max(1, Math.min(1, 4)) === 1, which would make
-    // toBeGreaterThan(1) fail. The fixture value must be ≥ 2 and ≤ 4 (the cap
-    // in the implementation) so the mocked result equals min(value, 4).
-    const original = navigator.hardwareConcurrency;
-    Object.defineProperty(navigator, 'hardwareConcurrency', {
-      value,
-      configurable: true,
-      writable: true,
-    });
-    try {
-      run();
-    } finally {
-      Object.defineProperty(navigator, 'hardwareConcurrency', {
-        value: original,
-        configurable: true,
-        writable: true,
-      });
-    }
-  }
-
-  it('returns a value greater than 1 for test', () => {
-    withHardwareConcurrency(2, () => {
-      expect(phaseMaxConcurrency('test')).toBeGreaterThan(1);
-    });
-  });
-
-  it('returns a value greater than 1 for lint (read-only, safe to parallelize)', () => {
-    withHardwareConcurrency(2, () => {
-      expect(phaseMaxConcurrency('lint')).toBeGreaterThan(1);
-    });
-  });
-
-  it('returns a value greater than 1 for typecheck (read-only, safe to parallelize)', () => {
-    withHardwareConcurrency(2, () => {
-      expect(phaseMaxConcurrency('typecheck')).toBeGreaterThan(1);
-    });
-  });
-
-  it('returns the same concurrency for every gate script', () => {
-    withHardwareConcurrency(2, () => {
-      const concurrencies = (['lint', 'typecheck', 'test'] as const).map((script) =>
-        phaseMaxConcurrency(script),
-      );
-      expect(new Set(concurrencies).size).toBe(1);
-    });
-  });
-
-  it('returns a finite positive integer for every gate script', () => {
-    for (const script of ['lint', 'typecheck', 'test'] as const) {
-      const concurrency = phaseMaxConcurrency(script);
-      expect(Number.isFinite(concurrency)).toBe(true);
-      expect(concurrency).toBeGreaterThanOrEqual(1);
-      expect(Number.isInteger(concurrency)).toBe(true);
-    }
-  });
-});
-
-/**
- * `runWithConcurrencyPool` is the *mechanism* the `phaseMaxConcurrency` policy
- * feeds. The policy tests above only prove each phase asks for a given
- * concurrency — they do NOT prove the runner honors it. The pre-commit
- * `runJobs` helper delegates to this pool, so a future edit that passed a
- * hardcoded literal instead of `phaseMaxConcurrency(script)` would still
- * leave the policy tests green. These tests close that gap: they instrument
- * the worker to record the maximum number of overlapping invocations and
- * assert the pool never exceeds the cap — with `maxConcurrency === 1` the
- * overlap is strictly 1.
- */
-describe('runWithConcurrencyPool', () => {
-  /**
-   * Run `items` through the pool with a worker that records concurrent overlap.
-   * Each worker waits one microtask-batch (a resolved-promise tick) before
-   * "finishing", which is enough to interleave with sibling workers if the pool
-   * starts more than one at a time — so a broken cap is observable.
-   */
-  async function observeOverlap(
-    itemCount: number,
-    maxConcurrency: number,
-  ): Promise<{ readonly results: number[]; readonly maxObserved: number }> {
-    let active = 0;
-    let maxObserved = 0;
-    const items = Array.from({ length: itemCount }, (_, index) => index);
-    const results = await runWithConcurrencyPool(items, maxConcurrency, async (item) => {
-      active += 1;
-      maxObserved = Math.max(maxObserved, active);
-      // Yield several times so a too-eager pool has room to overlap workers.
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-      active -= 1;
-      return item * 2;
-    });
-    return { results, maxObserved };
-  }
-
-  it('runs strictly one at a time when maxConcurrency is 1', async () => {
-    const { results, maxObserved } = await observeOverlap(6, 1);
-    expect(maxObserved).toBe(1);
-    // Results stay in input order regardless of pool scheduling.
-    expect(results).toEqual([0, 2, 4, 6, 8, 10]);
-  });
-
-  it('overlaps workers up to the cap when maxConcurrency is greater than 1', async () => {
-    const { results, maxObserved } = await observeOverlap(6, 3);
-    // The pool must actually parallelize — otherwise the cap is meaningless and
-    // the serial case above proves nothing distinctive.
-    expect(maxObserved).toBe(3);
-    expect(results).toEqual([0, 2, 4, 6, 8, 10]);
-  });
-
-  it('never starts more workers than there are items', async () => {
-    const { maxObserved } = await observeOverlap(2, 8);
-    expect(maxObserved).toBe(2);
-  });
-
-  it('returns an empty array for no items without invoking the worker', async () => {
-    let invoked = false;
-    const results = await runWithConcurrencyPool([], 4, async () => {
-      invoked = true;
-      return 1;
-    });
-    expect(results).toEqual([]);
-    expect(invoked).toBe(false);
-  });
-
-  it('floors a non-finite concurrency to 1 instead of starting zero workers', async () => {
-    // A `NaN` cap (e.g. Math.min(undefined hardwareConcurrency, 4)) must NOT
-    // start zero workers and silently resolve every item to undefined — that
-    // would be a false green. The floor forces strictly-serial execution.
-    const { results, maxObserved } = await observeOverlap(4, Number.NaN);
-    expect(maxObserved).toBe(1);
-    expect(results).toEqual([0, 2, 4, 6]);
-  });
-
-  it('preserves input order even when later items resolve first', async () => {
-    // Earlier indices take longer than later ones; the pool must still return
-    // results indexed by input position, not completion order.
-    const items = [3, 2, 1, 0];
-    const results = await runWithConcurrencyPool(items, 2, async (delayTicks) => {
-      for (let tick = 0; tick < delayTicks; tick += 1) await Promise.resolve();
-      return delayTicks;
-    });
-    expect(results).toEqual([3, 2, 1, 0]);
   });
 });
 
@@ -1186,13 +826,23 @@ describe('withGateLock', () => {
     }
   }
 
-  it('derives the default lock path from the shared Git common directory', () => {
-    const commonDirectory = gitCommonDirectory();
-    const expectedPath = gateLockPathForCommonDirectory(commonDirectory);
+  it('derives a deterministic lock path from the worktree root', () => {
+    const expectedPath = gateLockPathForWorktreeRoot(REPO_ROOT);
 
-    expect(commonDirectory).toBe(gitCommonDirectory(REPO_ROOT));
     expect(defaultGateLockPath()).toBe(expectedPath);
-    expect(defaultGateLockPath()).not.toContain(REPO_ROOT);
+    expect(defaultGateLockPath(REPO_ROOT)).toBe(expectedPath);
+  });
+
+  it('isolates linked worktrees while sharing a path within one worktree', () => {
+    const firstWorktree = '/tmp/cinder-worktree-a';
+    const secondWorktree = '/tmp/cinder-worktree-b';
+
+    expect(gateLockPathForWorktreeRoot(firstWorktree)).toBe(
+      gateLockPathForWorktreeRoot(firstWorktree),
+    );
+    expect(gateLockPathForWorktreeRoot(firstWorktree)).not.toBe(
+      gateLockPathForWorktreeRoot(secondWorktree),
+    );
   });
 
   it('creates a lock while the protected function runs and removes it after success', async () => {

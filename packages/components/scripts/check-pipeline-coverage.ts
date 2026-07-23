@@ -88,8 +88,8 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   lint: {
     layers: ['unit-tests', 'main-green'],
     reason:
-      'oxlint. pre-commit runs lint-staged (oxlint invoked directly on staged files, not the ' +
-      '`lint` script by name) so it is NOT counted here. pre-push no longer runs it either — it was ' +
+      'oxlint. pre-commit runs lint-staged formatters only, not the `lint` script by name, so it is ' +
+      'NOT counted here. pre-push no longer runs it either — it was ' +
       'thinned to a fast, fail-open sanity check with no lint/typecheck/test dispatch of its own; CI ' +
       'owns this now. The package-level `lint` script itself is invoked by unit-tests.yaml ' +
       '(`turbo run lint`, unconditional, fans out to every workspace package) and main-green ' +
@@ -100,14 +100,13 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     reason:
       "cinder's custom tree-walk invariant checks. Explicitly called out in unit-tests.yaml " +
       'and main-green (not folded into the `lint` sweep). ' +
-      'Not run at commit time by name — pre-commit scopes to typecheck only. Not run by pre-push, ' +
+      'Not run at commit time by name — pre-commit only formats staged files. Not run by pre-push, ' +
       'which no longer runs any lint/typecheck/test chain locally.',
   },
   typecheck: {
-    layers: ['pre-commit', 'browser-tests', 'main-green'],
+    layers: ['browser-tests', 'main-green'],
     reason:
-      'Per-package typecheck. pre-commit escalates to full workspace typecheck on root-config ' +
-      'changes (else scoped per touched package); browser-tests.yaml has a dedicated `typecheck` job ' +
+      'Per-package typecheck. browser-tests.yaml has a dedicated `typecheck` job ' +
       'running `bun run typecheck` against a fresh checkout (independent of the scope decision); ' +
       'main-green runs the workspace typecheck. pre-push no longer runs it — CI (browser-tests, ' +
       'main-green) is the backstop now. unit-tests.yaml deliberately does NOT run typecheck (that ' +
@@ -121,11 +120,11 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'reaches it through the ROOT `lint` script (`turbo run lint && stylelint "…"`) — ' +
       'NOT the components-package `lint` (plain oxlint), a distinct resolution scope from every ' +
       'other row in this table. Deliberately excludes pre-commit for the same reason `lint` does: ' +
-      "pre-commit's lint-staged runs `stylelint --fix` directly on staged files, not through either " +
-      'named `lint` script, so it is not counted as a layer here (same editorial policy as the ' +
+      "pre-commit's lint-staged pipeline only formats staged files, not through the named `stylelint` " +
+      'script, so it is not counted as a layer here (same editorial policy as the ' +
       "`lint` row above). pre-push's file-scoped `runStylelint` was removed along with the rest of " +
-      'its local lint/typecheck/test dispatch. NOT run by release (root `validate` only fans into ' +
-      "each package's own `validate`, none of which invoke stylelint) or browser-tests/changeset-guard.",
+      'its local lint/typecheck/test dispatch. NOT run by release, which owns artifact validation, ' +
+      'or browser-tests/changeset-guard.',
   },
   'check:no-cycle-imports': {
     layers: ['unit-tests', 'main-green'],
@@ -259,10 +258,9 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'pre-push no longer scopes lint by touched workspace.',
   },
   [`${chatPackageName}#typecheck`]: {
-    layers: ['pre-commit', 'browser-tests', 'main-green'],
+    layers: ['browser-tests', 'main-green'],
     reason:
-      'Chat package typecheck follows the same commit-time and CI gates as every typed package. ' +
-      'pre-push no longer typechecks touched workspaces — browser-tests and main-green are the backstop.',
+      'Chat package typecheck is owned by browser-tests and main-green; pre-commit only formats staged files.',
   },
   [`${chatPackageName}#components:check`]: {
     layers: ['unit-tests', 'main-green'],
