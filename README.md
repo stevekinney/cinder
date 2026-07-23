@@ -35,7 +35,7 @@ Install the Editor domain suite separately for `MarkdownEditor`, `ReviewEditor`,
 bun add @lostgradient/editor
 ```
 
-See [`@lostgradient/editor`'s README](packages/editor/README.md) for its own peer install list
+See [`@lostgradient/editor`'s README](./packages/editor/README.md) for its own peer install list
 (Milkdown/ProseMirror and `@lostgradient/markdown`).
 
 Markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
