@@ -223,8 +223,15 @@ function workflowRunScripts(workflow: unknown): string[] {
   });
 }
 
-/** The Chat bootstrap path must prove its required Cinder peer exists on npm. */
-export function manualChatBootstrapHasCinderRegistryPreflight(workflow: unknown): boolean {
+/**
+ * The Chat bootstrap path must prove BOTH its required peers — Cinder and
+ * Markdown — exist on npm before publishing. Chat gained a required
+ * `@lostgradient/markdown` peer when its markdown-preview started importing
+ * `@lostgradient/markdown/rendering` directly, so (like Editor) its preflight
+ * loops over `['@lostgradient/cinder', '@lostgradient/markdown']` rather than
+ * checking a single inline peer.
+ */
+export function manualChatBootstrapHasPeerRegistryPreflight(workflow: unknown): boolean {
   if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
 
   return Object.values(workflow['jobs']).some((job) => {
@@ -237,9 +244,38 @@ export function manualChatBootstrapHasCinderRegistryPreflight(workflow: unknown)
         typeof condition === 'string' &&
         condition.includes("inputs.package == 'chat'") &&
         typeof run === 'string' &&
-        run.includes('.peerDependencies["@lostgradient/cinder"]') &&
-        run.includes('npm view "@lostgradient/cinder@${cinder_peer_range}" version --json') &&
-        run.includes('Publish Cinder first')
+        run.includes("'@lostgradient/cinder' '@lostgradient/markdown'") &&
+        run.includes("'.peerDependencies[$peer]' packages/chat/package.json") &&
+        run.includes('npm view "${peer}@${peer_range}" version --json') &&
+        run.includes('Publish ${peer} first')
+      );
+    });
+  });
+}
+
+/**
+ * The Cinder bootstrap path must prove its required Markdown release exists on
+ * npm. Cinder gained a real runtime dependency on `@lostgradient/markdown`
+ * (two retained cinder files import its pipeline); pack-for-publish rewrites
+ * that `workspace:*` to a concrete `^<version>` range, so a break-glass Cinder
+ * publish must not run ahead of the Markdown release it pins.
+ */
+export function manualCinderBootstrapHasMarkdownRegistryPreflight(workflow: unknown): boolean {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
+
+  return Object.values(workflow['jobs']).some((job) => {
+    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return false;
+    return job['steps'].some((step) => {
+      if (!isObjectRecord(step)) return false;
+      const condition = step['if'];
+      const run = step['run'];
+      return (
+        typeof condition === 'string' &&
+        condition.includes("inputs.package == 'cinder'") &&
+        typeof run === 'string' &&
+        run.includes("'.version' packages/markdown/package.json") &&
+        run.includes('npm view "@lostgradient/markdown@^${markdown_version}" version --json') &&
+        run.includes('Publish Markdown first')
       );
     });
   });
@@ -575,13 +611,13 @@ function runValidation(): void {
   } catch (error) {
     fail(`release-manual.yaml is missing or invalid YAML: ${errorMessageFrom(error)}`);
   }
-  if (!manualChatBootstrapHasCinderRegistryPreflight(parsedManualReleaseWorkflow)) {
+  if (!manualChatBootstrapHasPeerRegistryPreflight(parsedManualReleaseWorkflow)) {
     fail(
-      "release-manual.yaml must derive Chat's Cinder peer range and verify a satisfying " +
-        'Cinder version exists on npm before bootstrapping Chat.',
+      "release-manual.yaml must derive Chat's Cinder AND Markdown peer ranges and verify " +
+        'satisfying versions of both exist on npm before bootstrapping Chat.',
     );
   }
-  pass('Manual Chat bootstrap requires its Cinder peer on npm');
+  pass('Manual Chat bootstrap requires its Cinder and Markdown peers on npm');
 
   if (!manualEditorBootstrapHasPeerRegistryPreflight(parsedManualReleaseWorkflow)) {
     fail(
@@ -590,6 +626,14 @@ function runValidation(): void {
     );
   }
   pass('Manual Editor bootstrap requires its Cinder and Markdown peers on npm');
+
+  if (!manualCinderBootstrapHasMarkdownRegistryPreflight(parsedManualReleaseWorkflow)) {
+    fail(
+      "release-manual.yaml must derive Cinder's pinned Markdown range and verify a satisfying " +
+        'Markdown version exists on npm before bootstrapping Cinder.',
+    );
+  }
+  pass('Manual Cinder bootstrap requires its Markdown dependency on npm');
 
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.
