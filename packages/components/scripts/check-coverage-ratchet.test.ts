@@ -323,7 +323,7 @@ LF:10
 LH:0
 end_of_record
 TN:
-SF:../commentary/src/comments/index.ts
+SF:../editor/src/comments/index.ts
 FNF:10
 FNH:0
 LF:10

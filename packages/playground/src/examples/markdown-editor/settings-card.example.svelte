@@ -6,7 +6,7 @@
 
 <script lang="ts">
   import { Card } from '@lostgradient/cinder/card';
-  import { MarkdownEditor, type EditorMode } from '@lostgradient/cinder/markdown-editor';
+  import { MarkdownEditor, type EditorMode } from '@lostgradient/editor/markdown-editor';
 
   let { mountIdPrefix }: { mountIdPrefix?: string } = $props();
   const uid = $props.id();

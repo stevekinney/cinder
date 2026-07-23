@@ -71,7 +71,7 @@ async function main(): Promise<void> {
   const packageManifestPaths = [
     'packages/chat/package.json',
     'packages/components/package.json',
-    'packages/commentary/package.json',
+    'packages/editor/package.json',
   ] as const;
   for (const relativePath of packageManifestPaths) {
     const manifest = await readJsonFile<PackageManifest>(join(workspaceRoot, relativePath));

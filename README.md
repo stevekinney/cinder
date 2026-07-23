@@ -29,9 +29,17 @@ bun add @lostgradient/chat
 
 Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
 
-Rich editor, markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
+Install the Editor domain suite separately for `MarkdownEditor`, `ReviewEditor`, and `DiffViewer`:
+
+```bash
+bun add @lostgradient/editor
+```
+
+See [`@lostgradient/editor`'s README](./packages/editor/README.md) for its own peer install list
+(Milkdown/ProseMirror and `@lostgradient/markdown`).
+
+Markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
 use optional peer dependencies. Install them only when your app imports
-`@lostgradient/cinder/markdown-editor`, `@lostgradient/cinder/review-editor`,
 `@lostgradient/cinder/markdown`,
 `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`,
 `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`,

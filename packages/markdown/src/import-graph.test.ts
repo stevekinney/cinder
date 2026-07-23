@@ -125,7 +125,7 @@ function pickConditionTarget(entry: unknown): string | undefined {
  * Workspace-ness is decided structurally rather than by a hardcoded scope
  * prefix: every workspace package lives at `packages/<dir>`, where `<dir>`
  * is the LAST path segment of its npm name (`@lostgradient/markdown` →
- * `markdown`, `@cinder/commentary` → `commentary`). We try that directory
+ * `markdown`, `@lostgradient/editor` → `editor`). We try that directory
  * and confirm its `package.json#name` matches the specifier's package name
  * EXACTLY — directory existence alone is not sufficient, since an unrelated
  * third-party scoped package sharing a leaf name would otherwise

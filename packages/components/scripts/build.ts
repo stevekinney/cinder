@@ -105,13 +105,13 @@ if (checkResult.exitCode !== 0) {
   process.exit(1);
 }
 
-// Dependency order: markdown → commentary. `commentary` vendors `markdown`'s
+// Dependency order: markdown → editor. `editor` vendors `markdown`'s
 // dist — so the list MUST stay topologically sorted (upstream before its
 // dependents). `@cinder/editor` was dissolved (see
 // `docs/decisions/package-boundaries.md`, Phase 1): its headless half moved
 // into `markdown` (published as `@lostgradient/markdown`, Phase 2), its ProseMirror
-// half into `commentary`. `@cinder/diff` folded into `markdown` in Phase 2.
-const upstreamPackageNames = ['markdown', 'commentary'] as const;
+// half into `editor`. `@cinder/diff` folded into `markdown` in Phase 2.
+const upstreamPackageNames = ['markdown', 'editor'] as const;
 
 // Build each upstream package so its `dist/` is fresh — hoisted ABOVE the
 // skip check below. Each upstream build.ts has its own skip check, so this is
@@ -125,7 +125,7 @@ const upstreamPackageNames = ['markdown', 'commentary'] as const;
 //
 // Built SERIALLY in dependency order, NOT in parallel: each upstream build's
 // own hash-skip reads its upstream deps' `dist/` bytes, so a dependent (e.g.
-// `commentary`) must not compute its skip hash while its upstream (`markdown`) is
+// `editor`) must not compute its skip hash while its upstream (`markdown`) is
 // mid-rebuild — that would hash against a half-written or stale tree and
 // wrongly skip, leaving a downstream `dist/` stale (the issue #364 race).
 // Warm builds still skip in milliseconds each, so serial costs little.
@@ -685,7 +685,7 @@ await emitDts({
 
 /**
  * Rewrite every upstream package import specifier (e.g. `@lostgradient/markdown[/subpath]`,
- * `@cinder/commentary[/subpath]`) in a file's content to a relative path
+ * `@lostgradient/editor[/subpath]`) in a file's content to a relative path
  * pointing at the sibling vendored upstream tree.
  *
  * Called for each file under `dist/<pkg>/**` after a verbatim copy. The
@@ -698,7 +698,7 @@ type RewriteMiss = {
   specifier: string;
 };
 
-/** `@lostgradient/markdown` → `markdown`, `@cinder/commentary` → `commentary`, etc. */
+/** `@lostgradient/markdown` → `markdown`, `@lostgradient/editor` → `editor`, etc. */
 const upstreamFolderNameBySpecifier = new Map(
   Object.entries(UPSTREAM_PACKAGE_NAMES).map(([folderName, specifier]) => [specifier, folderName]),
 );
@@ -772,6 +772,47 @@ function rewriteCrossUpstreamSpecifiers(
   );
 }
 
+// Upstream test files never carry a real cinder specifier to re-export, but
+// they routinely contain PLAIN STRING assertions (e.g. `expect(readme).
+// toContain('@lostgradient/editor/markdown-editor')`) that this file's
+// regex-based `rewriteCrossUpstreamSpecifiers` cannot distinguish from a
+// genuine import specifier — a component suppressed from cinder's mirror
+// (see `CINDER_KEY_OVERRIDES`) then reads as an unresolvable rewrite miss
+// even though nothing ever imports it. Cinder also has no reason to vendor
+// an upstream package's own test suite, test fixtures, or internal
+// accessibility notes into its published bundle — this mirrors
+// `validate-consumers.ts`'s own `forbiddenPatterns` for cinder's own dist,
+// so an upstream-supplied file can never leak through a path that check
+// doesn't also cover for cinder's own component directories.
+const upstreamExcludedFilePatterns = [
+  /\.(?:test|spec)\.[^./]+$/u,
+  /(?:^|\/)[^/]*-fixtures?\.[^./]+$/u,
+  /(?:^|\/)fixtures?\.[^./]+$/u,
+  /\.a11y\.md$/u,
+];
+function isUpstreamExcludedFile(relative: string): boolean {
+  return upstreamExcludedFilePatterns.some((pattern) => pattern.test(relative));
+}
+
+// `editor`'s `dist/components/**` (browser Svelte component bundles) and
+// `dist/server/components/**` (their server-target entries) hold its compiled
+// markdown-editor/review-editor/diff-viewer output — every one of them is
+// suppressed (`null`) in `CINDER_KEY_OVERRIDES` above, so cinder never
+// re-exports any of it. Vendoring it anyway is pure bloat (this function
+// copies editor's ENTIRE dist tree into BOTH cinder's `dist/<pkg>/` and
+// `dist/server/<pkg>/`, so both `components/**` and the nested
+// `server/components/**` need excluding, or the pattern only catches half),
+// and worse: it copies CSS assets (`prosemirror.css`, `review-editor.css`)
+// into `dist/server/editor/components/**`, which trips
+// `server-css-free.test.ts`'s "no CSS reachable under dist/server" contract
+// even though nothing in cinder's own server entries imports this subtree.
+const UPSTREAM_SUBTREE_EXCLUSIONS: ReadonlyMap<string, RegExp> = new Map([
+  ['editor', /^(?:server\/)?components\//u],
+]);
+function isSuppressedUpstreamSubtree(upstreamName: string, relative: string): boolean {
+  return UPSTREAM_SUBTREE_EXCLUSIONS.get(upstreamName)?.test(relative) ?? false;
+}
+
 async function copyUpstreamDistInto(upstreamName: string, destinationRoot: string): Promise<void> {
   const sourceDist = `${workspaceRoot}/packages/${upstreamName}/dist`;
   const destinationDist = `${destinationRoot}/${upstreamName}`;
@@ -783,6 +824,8 @@ async function copyUpstreamDistInto(upstreamName: string, destinationRoot: strin
   }
   const glob = new Glob('**/*');
   for await (const relative of glob.scan({ cwd: sourceDist })) {
+    if (isUpstreamExcludedFile(relative)) continue;
+    if (isSuppressedUpstreamSubtree(upstreamName, relative)) continue;
     const sourcePath = `${sourceDist}/${relative}`;
     const destinationPath = `${destinationDist}/${relative}`;
     await mkdir(dirname(destinationPath), { recursive: true });
@@ -854,12 +897,12 @@ if (rewriteMisses.length > 0) {
 
 // `CINDER_KEY_OVERRIDES` remaps a handful of subpaths (the former
 // `@cinder/editor` surface, split across `@cinder/markdown` and
-// `@cinder/commentary`) onto a cinder key that does not match their
+// `@lostgradient/editor`) onto a cinder key that does not match their
 // package's natural `${pkg}/<subpath>` vendored location. Rather than
 // duplicating the compiled file (which would break its sibling-relative
-// imports — `commentary`'s build is `tsc`-only, not bundled, so its emitted
+// imports — `editor`'s build is `tsc`-only, not bundled, so its emitted
 // JS keeps real relative imports like `./bridge.js` that only resolve
-// alongside the rest of `dist/commentary/editor/`), write a thin `export *`
+// alongside the rest of `dist/editor/editor/`), write a thin `export *`
 // redirect at the override location pointing back at the real vendored file.
 // Runs after the copy + specifier-rewrite passes so the vendored target
 // already exists, and before the residue/expected-path gates so the redirect

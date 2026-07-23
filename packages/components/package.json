@@ -1851,34 +1851,6 @@
       "import": "./src/components/diff-statistics/diff-statistics.examples.json",
       "default": "./src/components/diff-statistics/diff-statistics.examples.json"
     },
-    "./diff-viewer": {
-      "types": "./dist/components/diff-viewer/index.d.ts",
-      "browser": "./src/components/diff-viewer/index.ts",
-      "node": "./dist/server/components/diff-viewer/index.js",
-      "svelte": "./src/components/diff-viewer/index.ts",
-      "import": "./src/components/diff-viewer/index.ts",
-      "default": "./dist/components/diff-viewer/index.js"
-    },
-    "./diff-viewer/schema": {
-      "types": "./dist/components/diff-viewer/diff-viewer.schema.d.ts",
-      "browser": "./src/components/diff-viewer/diff-viewer.schema.ts",
-      "node": "./dist/server/components/diff-viewer/diff-viewer.schema.js",
-      "svelte": "./src/components/diff-viewer/diff-viewer.schema.ts",
-      "import": "./src/components/diff-viewer/diff-viewer.schema.ts",
-      "default": "./dist/components/diff-viewer/diff-viewer.schema.js"
-    },
-    "./diff-viewer/variables": {
-      "types": "./dist/components/diff-viewer/diff-viewer.variables.d.ts",
-      "browser": "./src/components/diff-viewer/diff-viewer.variables.ts",
-      "node": "./dist/server/components/diff-viewer/diff-viewer.variables.js",
-      "svelte": "./src/components/diff-viewer/diff-viewer.variables.ts",
-      "import": "./src/components/diff-viewer/diff-viewer.variables.ts",
-      "default": "./dist/components/diff-viewer/diff-viewer.variables.js"
-    },
-    "./diff-viewer/examples": {
-      "import": "./src/components/diff-viewer/diff-viewer.examples.json",
-      "default": "./src/components/diff-viewer/diff-viewer.examples.json"
-    },
     "./divider": {
       "types": "./dist/components/divider/index.d.ts",
       "browser": "./src/components/divider/index.ts",
@@ -3203,34 +3175,6 @@
       "import": "./src/components/logo-cloud/logo-cloud.examples.json",
       "default": "./src/components/logo-cloud/logo-cloud.examples.json"
     },
-    "./markdown-editor": {
-      "types": "./dist/components/markdown-editor/index.d.ts",
-      "browser": "./src/components/markdown-editor/index.ts",
-      "node": "./dist/server/components/markdown-editor/index.js",
-      "svelte": "./src/components/markdown-editor/index.ts",
-      "import": "./src/components/markdown-editor/index.ts",
-      "default": "./dist/components/markdown-editor/index.js"
-    },
-    "./markdown-editor/schema": {
-      "types": "./dist/components/markdown-editor/markdown-editor.schema.d.ts",
-      "browser": "./src/components/markdown-editor/markdown-editor.schema.ts",
-      "node": "./dist/server/components/markdown-editor/markdown-editor.schema.js",
-      "svelte": "./src/components/markdown-editor/markdown-editor.schema.ts",
-      "import": "./src/components/markdown-editor/markdown-editor.schema.ts",
-      "default": "./dist/components/markdown-editor/markdown-editor.schema.js"
-    },
-    "./markdown-editor/variables": {
-      "types": "./dist/components/markdown-editor/markdown-editor.variables.d.ts",
-      "browser": "./src/components/markdown-editor/markdown-editor.variables.ts",
-      "node": "./dist/server/components/markdown-editor/markdown-editor.variables.js",
-      "svelte": "./src/components/markdown-editor/markdown-editor.variables.ts",
-      "import": "./src/components/markdown-editor/markdown-editor.variables.ts",
-      "default": "./dist/components/markdown-editor/markdown-editor.variables.js"
-    },
-    "./markdown-editor/examples": {
-      "import": "./src/components/markdown-editor/markdown-editor.examples.json",
-      "default": "./src/components/markdown-editor/markdown-editor.examples.json"
-    },
     "./marquee": {
       "types": "./dist/components/marquee/index.d.ts",
       "browser": "./src/components/marquee/index.ts",
@@ -4154,38 +4098,6 @@
     "./resizable-panels/examples": {
       "import": "./src/components/resizable-panels/resizable-panels.examples.json",
       "default": "./src/components/resizable-panels/resizable-panels.examples.json"
-    },
-    "./review-editor": {
-      "types": "./dist/components/review-editor/index.d.ts",
-      "browser": "./src/components/review-editor/index.ts",
-      "node": "./dist/server/components/review-editor/index.js",
-      "svelte": "./src/components/review-editor/index.ts",
-      "import": "./src/components/review-editor/index.ts",
-      "default": "./dist/components/review-editor/index.js"
-    },
-    "./review-editor/schema": {
-      "types": "./dist/components/review-editor/review-editor.schema.d.ts",
-      "browser": "./src/components/review-editor/review-editor.schema.ts",
-      "node": "./dist/server/components/review-editor/review-editor.schema.js",
-      "svelte": "./src/components/review-editor/review-editor.schema.ts",
-      "import": "./src/components/review-editor/review-editor.schema.ts",
-      "default": "./dist/components/review-editor/review-editor.schema.js"
-    },
-    "./review-editor/variables": {
-      "types": "./dist/components/review-editor/review-editor.variables.d.ts",
-      "browser": "./src/components/review-editor/review-editor.variables.ts",
-      "node": "./dist/server/components/review-editor/review-editor.variables.js",
-      "svelte": "./src/components/review-editor/review-editor.variables.ts",
-      "import": "./src/components/review-editor/review-editor.variables.ts",
-      "default": "./dist/components/review-editor/review-editor.variables.js"
-    },
-    "./review-editor/styles": {
-      "types": "./dist/components/review-editor/review-editor.css.d.ts",
-      "default": "./dist/components/review-editor/review-editor.css"
-    },
-    "./review-editor/examples": {
-      "import": "./src/components/review-editor/review-editor.examples.json",
-      "default": "./src/components/review-editor/review-editor.examples.json"
     },
     "./run-step-timeline": {
       "types": "./dist/components/run-step-timeline/index.d.ts",
@@ -6585,8 +6497,8 @@
   "devDependencies": {
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
-    "@cinder/commentary": "workspace:*",
     "@cinder/testing": "workspace:*",
+    "@lostgradient/editor": "workspace:*",
     "@lostgradient/markdown": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.60.0",

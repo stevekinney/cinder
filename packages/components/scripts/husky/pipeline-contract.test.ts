@@ -26,7 +26,7 @@ import { REPO_ROOT } from './utilities.ts';
 const huskyDirectory = join(REPO_ROOT, 'packages/components/scripts/husky');
 const componentsPackageRoot = join(REPO_ROOT, 'packages/components');
 
-/** Strip line comments and block comments so source-text assertions aren't fooled by commentary. */
+/** Strip line comments and block comments so source-text assertions aren't fooled by comment text. */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 }
@@ -253,7 +253,7 @@ describe('pipeline contract: package script composition (source-based: reads pac
 
 // The buildable packages, in dependency order: `@lostgradient/markdown` has no
 // internal workspace dependencies (it absorbed `@cinder/diff` in Phase 2 — see
-// docs/decisions/package-boundaries.md), `@cinder/commentary` depends on
+// docs/decisions/package-boundaries.md), `@lostgradient/editor` depends on
 // `@lostgradient/markdown` (dissolved `@cinder/editor` — Phase 1 — dropped out
 // of this chain entirely, #793), and `@lostgradient/cinder` (components)
 // depends on both. Inlined here (not imported from utilities.ts) because no
@@ -262,7 +262,7 @@ describe('pipeline contract: package script composition (source-based: reads pac
 // this is purely a fixture for the assertion below.
 const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER = [
   '@lostgradient/markdown',
-  '@cinder/commentary',
+  '@lostgradient/editor',
   '@lostgradient/cinder',
 ] as const;
 
@@ -272,7 +272,7 @@ const PACKAGE_DIRECTORY_BY_NAME: Record<
   string
 > = {
   '@lostgradient/markdown': 'markdown',
-  '@cinder/commentary': 'commentary',
+  '@lostgradient/editor': 'editor',
   '@lostgradient/cinder': 'components',
 };
 

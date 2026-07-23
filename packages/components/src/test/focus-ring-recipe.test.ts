@@ -29,19 +29,6 @@ function loadCss(relativePath: string): string {
   return readFileSync(fullPath, 'utf8');
 }
 
-/**
- * Extract the contents of a Svelte component's single `<style>` block so the
- * focus-visible declarations can be parsed with `postcss` exactly like a plain
- * `.css` file. These components author plain CSS (no `lang=` on `<style>`), so
- * the inner text parses directly.
- */
-function loadSvelteStyle(relativePath: string): string {
-  const raw = loadCss(relativePath);
-  const match = raw.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-  if (!match) throw new Error(`No <style> block found in ${relativePath}`);
-  return match[1]!;
-}
-
 const copyButtonCss = loadCss('../components/copy-button/copy-button.css');
 const dropdownCss = loadCss('../components/dropdown/dropdown.css');
 const navigationItemCss = loadCss('../components/navigation-item/navigation-item.css');
@@ -84,29 +71,10 @@ const sheetCss = loadCss('../components/sheet/sheet.css');
 const toastRegionCss = loadCss('../components/toast-region/toast-region.css');
 const treeCss = loadCss('../components/tree/tree.css');
 
-// Svelte component <style> blocks converted in the same sweep.
-const markdownEditorStyle = loadSvelteStyle('../components/markdown-editor/markdown-editor.svelte');
-const prosemirrorCss = loadCss('../components/markdown-editor/prosemirror.css');
-const toolbarButtonStyle = loadSvelteStyle(
-  '../components/markdown-editor/editor-toolbar/toolbar-button.svelte',
-);
-const toolbarDropdownStyle = loadSvelteStyle(
-  '../components/markdown-editor/editor-toolbar/toolbar-dropdown.svelte',
-);
-const linkPopoverStyle = loadSvelteStyle(
-  '../components/markdown-editor/editor-toolbar/link-popover.svelte',
-);
-const diffLineStyle = loadSvelteStyle('../components/diff-viewer/diff-line.svelte');
-const frontMatterHeaderStyle = loadSvelteStyle(
-  '../components/diff-viewer/front-matter-header.svelte',
-);
-const threadPopoverStyle = loadSvelteStyle('../components/review-editor/thread-popover.svelte');
-const commentComposerStyle = loadSvelteStyle('../components/review-editor/comment-composer.svelte');
-const commentListStyle = loadSvelteStyle('../components/review-editor/comment-list.svelte');
-const commentSidebarStyle = loadSvelteStyle('../components/review-editor/comment-sidebar.svelte');
-const reviewExportActionsStyle = loadSvelteStyle(
-  '../components/review-editor/export-actions.svelte',
-);
+// Svelte component <style> blocks converted in the same sweep. markdown-editor,
+// diff-viewer, and review-editor moved to @lostgradient/editor (see
+// docs/decisions/package-boundaries.md) and no longer live in this package's
+// source tree, so their recipe pins moved with them.
 
 const TRANSPARENT_OUTLINE = 'var(--cinder-ring-width) solid transparent';
 const SHARED_BOX_SHADOW = 'var(--_cinder-focus-ring-shadow)';
@@ -642,29 +610,6 @@ function assertInsetRecipe(css: string, selector: string, parser = parse): void 
   expect(declValue(fallback, 'outline-offset')).toBe('calc(var(--cinder-ring-width) * -1)');
 }
 
-/**
- * Assert a selector follows Strategy B (outer ring): transparent-outline
- * placeholder, box-shadow referencing the shared focus-ring token, and a
- * forced-colors fallback whose outline does NOT contain `transparent`.
- */
-function assertOuterRecipe(css: string, selector: string, parser = parse): void {
-  const root = parser(css);
-  const baseRules = findRules(root, selector).filter((rule) => !isUnderForcedColors(rule));
-  expect(baseRules.length).toBeGreaterThanOrEqual(1);
-  const base = baseRules[0]!;
-  expect(declValue(base, 'outline')).toBe(TRANSPARENT_OUTLINE);
-  const boxShadow = declValue(base, 'box-shadow');
-  expect(boxShadow).toBeDefined();
-  expect(boxShadow).toContain(SHARED_BOX_SHADOW);
-
-  const fallbackRules = findRules(root, selector).filter((rule) => isUnderForcedColors(rule));
-  expect(fallbackRules.length).toBeGreaterThanOrEqual(1);
-  const fallback = fallbackRules[0]!;
-  const outline = declValue(fallback, 'outline');
-  expect(outline).toBeDefined();
-  expect(outline).not.toContain('transparent');
-}
-
 describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
   const insetCases: Array<{ name: string; css: string; selector: string }> = [
     {
@@ -694,82 +639,12 @@ describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
   }
 });
 
-describe('focus-ring sweep — Strategy B-inset Svelte selectors', () => {
-  const insetCases: Array<{ name: string; style: string; selector: string }> = [
-    {
-      name: 'markdown-editor surface',
-      style: markdownEditorStyle,
-      selector: '.markdown-editor.surface:focus-visible',
-    },
-    {
-      name: 'diff line',
-      style: diffLineStyle,
-      selector: 'button.diff-line:focus-visible',
-    },
-    {
-      name: 'inline front-matter header',
-      style: frontMatterHeaderStyle,
-      selector: ".front-matter-header[data-variant='inline']:focus-visible",
-    },
-    {
-      name: 'link-popover close',
-      style: linkPopoverStyle,
-      selector: '.link-popover-close:focus-visible',
-    },
-    {
-      name: 'thread-popover close',
-      style: threadPopoverStyle,
-      selector: '.thread-popover-close:focus-visible',
-    },
-    {
-      name: 'review-editor thread item',
-      style: commentSidebarStyle,
-      selector: '.thread-item:focus-visible',
-    },
-  ];
-
-  for (const { name, style, selector } of insetCases) {
-    test(`${name}: ${selector} uses the inset recipe + inside-the-clip forced-colors fallback`, () => {
-      assertInsetRecipe(style, selector);
-    });
-  }
-});
-
-describe('focus-ring sweep — Strategy B (outer) Svelte selectors', () => {
-  const outerCases: Array<{ name: string; style: string; selector: string }> = [
-    {
-      name: 'review-editor export trigger',
-      style: reviewExportActionsStyle,
-      selector: '.export-actions :global(.export-trigger:focus-visible)',
-    },
-    {
-      name: 'comment-sidebar actions trigger',
-      style: commentSidebarStyle,
-      selector: '.sidebar-header :global(.actions-trigger:focus-visible)',
-    },
-    {
-      name: 'diff front-matter header',
-      style: frontMatterHeaderStyle,
-      selector: '.front-matter-header:focus-visible',
-    },
-    {
-      name: 'markdown toolbar button',
-      style: toolbarButtonStyle,
-      selector: '.toolbar-button:focus-visible',
-    },
-    {
-      name: 'markdown toolbar dropdown trigger',
-      style: toolbarDropdownStyle,
-      selector: ':global(.toolbar-dropdown-trigger:focus-visible)',
-    },
-  ];
-
-  for (const { name, style, selector } of outerCases) {
-    test(`${name}: ${selector} uses the shared outer-ring recipe + forced-colors fallback`, () => {
-      assertOuterRecipe(style, selector);
-    });
-  }
-});
+// The "focus-ring sweep — Strategy B-inset/outer Svelte selectors" cases that
+// used to live here (markdown-editor surface, diff line, front-matter header,
+// link-popover/thread-popover close, review-editor thread item/export
+// trigger, toolbar button/dropdown) pinned components that moved to
+// @lostgradient/editor (see docs/decisions/package-boundaries.md) and no
+// longer live in this package's source tree.
 
 function cssVariablePixelValue(css: string, property: string): number {
   let value: string | undefined;
@@ -897,64 +772,12 @@ describe('SVG chart focus-ring recipe', () => {
   });
 });
 
-describe('focus-ring sweep — text-entry focus selectors', () => {
-  const textEntryCases: Array<{ name: string; style: string; selector: string }> = [
-    {
-      name: 'review comment composer textarea',
-      style: commentComposerStyle,
-      selector: '.comment-composer-textarea:focus',
-    },
-    {
-      name: 'review comment edit textarea',
-      style: commentListStyle,
-      selector: '.comment-edit-textarea:focus',
-    },
-  ];
-
-  for (const { name, style, selector } of textEntryCases) {
-    test(`${name}: ${selector} uses the shared focus ring + Highlight forced-colors fallback`, () => {
-      assertOuterRecipe(style, selector);
-      const root = parse(style);
-      const fallback = findRules(root, selector).find((rule) => isUnderForcedColors(rule));
-      expect(fallback).toBeDefined();
-      expect(declValue(fallback!, 'outline')).toBe('var(--cinder-ring-width) solid Highlight');
-      expect(declValue(fallback!, 'outline-offset')).toBe('1px');
-    });
-  }
-
-  test('review comment composer error state keeps validation border but does not own a danger focus ring', () => {
-    const root = parse(commentComposerStyle);
-    const errorState = findRule(root, ".comment-composer-textarea[data-has-error='true']");
-    expect(errorState).toBeDefined();
-    expect(declValue(errorState!, 'border-color')).toBe('var(--cinder-danger)');
-
-    const errorFocusRules = findRules(
-      root,
-      ".comment-composer-textarea[data-has-error='true']:focus",
-    );
-    expect(errorFocusRules).toEqual([]);
-
-    const focusRules = findRules(root, '.comment-composer-textarea:focus').filter(
-      (rule) => !isUnderForcedColors(rule),
-    );
-    expect(focusRules.length).toBeGreaterThanOrEqual(1);
-    expect(declValue(focusRules[0]!, 'box-shadow')).toContain(SHARED_BOX_SHADOW);
-    expect(declValue(focusRules[0]!, 'box-shadow')).not.toContain('var(--cinder-danger)');
-  });
-});
-
-describe('focus-ring sweep — selected/current state boundaries', () => {
-  test('ProseMirror selected nodes use a tokenized selected-state outline, not a focus selector', () => {
-    const root = parse(prosemirrorCss);
-    const selectedNode = findRule(root, '.ProseMirror-selectednode');
-    const selectedListItem = findRule(root, 'li.ProseMirror-selectednode:after');
-    expect(selectedNode).toBeDefined();
-    expect(selectedListItem).toBeDefined();
-    expect(selectedNode!.selector).not.toContain(':focus');
-    expect(declValue(selectedNode!, 'outline')).toBe('2px solid var(--cinder-accent)');
-    expect(declValue(selectedListItem!, 'border')).toBe('2px solid var(--cinder-accent)');
-  });
-});
+// The "focus-ring sweep — text-entry focus selectors" (review comment
+// composer/edit textareas) and "selected/current state boundaries"
+// (ProseMirror selected nodes) blocks that used to live here pinned
+// review-editor and markdown-editor CSS, which moved to
+// @lostgradient/editor (see docs/decisions/package-boundaries.md) and no
+// longer lives in this package's source tree.
 
 describe('focus-ring lint rule gates at error severity', () => {
   // Proves the enforcement promotion: a colored outline-only :focus-visible must

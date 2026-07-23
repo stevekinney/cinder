@@ -664,7 +664,7 @@ async function main(): Promise<void> {
 
   // Derive upstream re-exports first so the forbidden-key guard knows which
   // keys are legitimate even when they contain segments like `test-utilities`
-  // (a public `@cinder/commentary/editor` sub-path) that would otherwise trip the
+  // (a public `@lostgradient/editor/editor` sub-path) that would otherwise trip the
   // pattern.
   const upstreamReexports = await deriveUpstreamReexports();
   const upstreamAllowList = new Set(upstreamReexports.map((r) => r.cinderKey));

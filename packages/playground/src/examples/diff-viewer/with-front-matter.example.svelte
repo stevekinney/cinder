@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { DiffViewer } from '@lostgradient/cinder/diff-viewer';
+  import { DiffViewer } from '@lostgradient/editor/diff-viewer';
   const original = `---
 title: Getting Started
 status: draft

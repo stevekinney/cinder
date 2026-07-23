@@ -7,7 +7,7 @@ import { sveltePlugin } from './svelte-plugin.ts';
 // Install happy-dom DOM globals BEFORE any test file's static imports resolve.
 // Two reasons:
 //
-//   1. Several test files (notably review-editor / commentary integrations)
+//   1. Several test files (notably review-editor / editor integrations)
 //      transitively import `decode-named-character-reference/index.dom.js`,
 //      which reads `document` at module-init under the `browser` export
 //      condition. Without globals installed at preload time, those imports

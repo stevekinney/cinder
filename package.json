@@ -5,17 +5,17 @@
   "workspaces": [
     "packages/components",
     "packages/chat",
-    "packages/commentary",
+    "packages/editor",
     "packages/markdown",
     "packages/playground",
     "packages/testing"
   ],
   "scripts": {
-    "build": "turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat",
+    "build": "turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/editor --filter=@lostgradient/chat",
     "changeset": "changeset",
-    "changeset:publish": "bun run --filter=@lostgradient/markdown publish:release && bun run --filter=@lostgradient/cinder publish:release && bun run --filter=@lostgradient/chat publish:release",
-    "changeset:publish:dry": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/chat validate:consumer && bun run --filter=@lostgradient/markdown publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation",
-    "changeset:version": "changeset version && bun run --filter=@lostgradient/cinder components:generate && bun run --filter=@lostgradient/chat components:generate",
+    "changeset:publish": "bun run --filter=@lostgradient/markdown publish:release && bun run --filter=@lostgradient/cinder publish:release && bun run --filter=@lostgradient/editor publish:release && bun run --filter=@lostgradient/chat publish:release",
+    "changeset:publish:dry": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/editor validate:consumer && bun run --filter=@lostgradient/chat validate:consumer && bun run --filter=@lostgradient/markdown publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/editor publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation",
+    "changeset:version": "changeset version && bun run --filter=@lostgradient/cinder components:generate && bun run --filter=@lostgradient/editor components:generate && bun run --filter=@lostgradient/chat components:generate",
     "clean": "bun run --filter='*' clean",
     "dev": "bun run --filter='@cinder/playground' dev",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",
@@ -31,7 +31,7 @@
     "test:browser:ui": "bun run --filter='@cinder/testing' test:playwright:ui",
     "typecheck": "turbo run typecheck",
     "validate": "turbo run validate --concurrency=1",
-    "validate:consumer": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/chat validate:consumer",
+    "validate:consumer": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/editor validate:consumer && bun run --filter=@lostgradient/chat validate:consumer",
     "validate:playground": "bun run --filter='@cinder/playground' validate"
   },
   "lint-staged": {
@@ -47,7 +47,7 @@
     "packages/components/scripts/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
       "prettier --write"
     ],
-    "packages/commentary/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
+    "packages/editor/**/*.{js,ts,tsx,jsx,mjs,cjs}": [
       "prettier --write"
     ],
     "packages/markdown/**/*.{js,ts,tsx,jsx,mjs,cjs}": [

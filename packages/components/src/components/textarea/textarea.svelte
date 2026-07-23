@@ -9,7 +9,7 @@
    * @useWhen Collecting multi-line prose such as comments, descriptions, or messages.
    * @useWhen Surfacing a remaining-character counter as the user types against a maxlength.
    * @avoidWhen Collecting a single short line of text — use input instead.
-   * @related input, markdown-editor
+   * @related input
    */
   export type { TextareaProps } from './textarea.types.ts';
 </script>

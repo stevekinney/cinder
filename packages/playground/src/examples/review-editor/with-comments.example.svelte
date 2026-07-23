@@ -4,8 +4,8 @@
 </script>
 
 <script lang="ts">
-  import { ReviewEditor } from '@lostgradient/cinder/review-editor';
-  import type { Thread } from '@lostgradient/cinder/review-editor';
+  import { ReviewEditor } from '@lostgradient/editor/review-editor';
+  import type { Thread } from '@lostgradient/editor/review-editor';
   const original = `# Architecture Notes
 
 This document describes the review workflow for collaborative editing.

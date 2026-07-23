@@ -13,7 +13,7 @@ Purpose: Lightweight unified-patch viewer for source-code and operational diffs 
 
 ## Avoid when
 
-- Comparing two Markdown documents with normalization, front-matter handling, and revert affordances — use diff-viewer instead.
+- Comparing two Markdown documents with normalization, front-matter, and revert affordances — use `DiffViewer` from `@lostgradient/editor`.
 - Showing syntax-highlighted code samples rather than patch output — use code-block instead.
 
 ## Keyboard and focus
@@ -33,4 +33,4 @@ When rendering bounded output, the truncation notice uses `role="status"` and in
 - Confirm additions and removals remain identifiable without relying on color.
 - Check forced-colors mode because additions and removals use status-colored surfaces.
 
-Related components: `diff-viewer`, `diff-statistics`, `code-block`.
+Related components: `diff-statistics`, `code-block`.
