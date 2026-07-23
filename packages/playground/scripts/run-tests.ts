@@ -32,6 +32,8 @@
 
 import { resolve } from 'node:path';
 
+import ts from 'typescript';
+
 const TEST_ENV = {
   ...process.env,
   TZ: 'UTC',
@@ -50,23 +52,70 @@ const SHARED_FLAGS = ['--conditions', 'browser', '--conditions', 'svelte', '--pa
 
 const MOUNT_HEAVY_TEST = 'src/component-page.test.ts';
 
-/**
- * Imports and APIs that cause a test to drive the playground's `Bun.build()`
- * pipeline.
- * Matching is intentionally conservative: an extra fresh process is cheap,
- * while letting one build-driving test share poisoned process state is not.
- */
-const BUILD_DRIVER_PATTERN =
-  /\bBun\.build\b|(?:from\s+|import\(\s*)['"][^'"]*(?:playground-server|static-export)\.ts['"]/;
+const BUILD_PIPELINE_MODULE_NAMES = ['playground-server.ts', 'static-export.ts'] as const;
 
 export type PlaygroundTestFile = {
   path: string;
   source: string;
 };
 
+function isBuildPipelineModule(specifier: string): boolean {
+  return BUILD_PIPELINE_MODULE_NAMES.some((moduleName) => specifier.endsWith(moduleName));
+}
+
+function syntaxDrivesBuildPipeline(testFile: PlaygroundTestFile): boolean {
+  const sourceFile = ts.createSourceFile(
+    testFile.path,
+    testFile.source,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TS,
+  );
+  let drivesBuildPipeline = false;
+
+  function visit(node: ts.Node): void {
+    if (drivesBuildPipeline) return;
+
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      isBuildPipelineModule(node.moduleSpecifier.text)
+    ) {
+      drivesBuildPipeline = true;
+      return;
+    }
+
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const [moduleSpecifier] = node.arguments;
+      if (moduleSpecifier && ts.isStringLiteral(moduleSpecifier)) {
+        if (isBuildPipelineModule(moduleSpecifier.text)) {
+          drivesBuildPipeline = true;
+          return;
+        }
+      }
+    }
+
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === 'Bun' &&
+      node.expression.name.text === 'build'
+    ) {
+      drivesBuildPipeline = true;
+      return;
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return drivesBuildPipeline;
+}
+
 /** Return whether a test file requires a fresh Bun process. */
 export function requiresFreshProcess(testFile: PlaygroundTestFile): boolean {
-  return testFile.path === MOUNT_HEAVY_TEST || BUILD_DRIVER_PATTERN.test(testFile.source);
+  return testFile.path === MOUNT_HEAVY_TEST || syntaxDrivesBuildPipeline(testFile);
 }
 
 /**

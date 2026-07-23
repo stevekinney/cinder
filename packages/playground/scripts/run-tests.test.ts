@@ -17,12 +17,28 @@ describe('playground test process isolation', () => {
     ['scripts/static-export.test.ts', "import { runStaticExport } from './static-export.ts';"],
     ['src/direct-build.test.ts', 'await Bun.build(options);'],
     ['src/dynamic-server.test.ts', "const server = await import('./playground-server.ts');"],
+    ['src/side-effect-server.test.ts', "import './playground-server.ts';"],
   ])('isolates %s in a fresh process', (path, source) => {
     expect(requiresFreshProcess(testFile(path, source))).toBeTrue();
   });
 
   it('keeps tests without mounts or builds in the shared process', () => {
     expect(requiresFreshProcess(testFile('src/analyze.test.ts'))).toBeFalse();
+  });
+
+  it('ignores build syntax inside strings and comments', () => {
+    expect(
+      requiresFreshProcess(
+        testFile(
+          'src/classifier.test.ts',
+          `
+            const importFixture = "import './playground-server.ts'";
+            const buildFixture = 'await Bun.build(options)';
+            // import './static-export.ts';
+          `,
+        ),
+      ),
+    ).toBeFalse();
   });
 
   it('places every state-sensitive test in its own process', () => {
