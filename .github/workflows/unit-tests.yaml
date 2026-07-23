@@ -165,7 +165,7 @@ jobs:
     # `!cancelled()` gets the same "run despite scope failing" behavior
     # (it's true for both success and failure, just not cancellation)
     # without disabling cancellation.
-    if: "!cancelled()"
+    if: '!cancelled()'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -350,13 +350,27 @@ jobs:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
         run: bunx turbo run test:coverage --filter=@lostgradient/chat $AFFECTED
 
+      # Playground tests exercise source-driven Bun.build routes that have
+      # failed only on Linux after merge when their process isolation regressed.
+      # Run the package when it or one of its workspace dependencies changes so
+      # the exact package runner is proven on the pull request head instead of
+      # relying on main-green to discover the failure after merge.
+      - name: Run Playground unit tests (git-range scoped on PRs)
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            bunx turbo run test --filter="@cinder/playground...[origin/${BASE_REF}...HEAD]"
+          else
+            bunx turbo run test --filter=@cinder/playground
+          fi
+
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
         # their dependents. `@lostgradient/markdown`/`@cinder/commentary`
-        # have their own git-range-scoped step above now; `@cinder/playground`
-        # and `@cinder/testing` still keep their authoritative coverage in
-        # `main-green` only (the ~11-min playground suite would otherwise tax
-        # every PR) — that part of the per-package scoping is still deferred.
+        # and `@cinder/playground` have their own git-range-scoped steps above
+        # now; `@cinder/testing` still keeps its authoritative coverage in
+        # `main-green` only.
         #
         # `needs.scope.outputs.components` can carry an extracted package's
         # slugs (e.g. @lostgradient/chat's `chat*` family — already fully
