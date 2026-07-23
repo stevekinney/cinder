@@ -34,7 +34,7 @@ async function readFileAsText(path: string): Promise<string> {
 }
 
 type PackageManifestSlice = {
-  'lint-staged': Record<string, string[]>;
+  'lint-staged': Record<string, string | string[]>;
   devDependencies: Record<string, string>;
 };
 
@@ -43,10 +43,12 @@ function isStringRecord(value: unknown): value is Record<string, string> {
   return Object.values(value).every((entry) => typeof entry === 'string');
 }
 
-function isStringArrayRecord(value: unknown): value is Record<string, string[]> {
+function isLintStagedRecord(value: unknown): value is Record<string, string | string[]> {
   if (typeof value !== 'object' || value === null) return false;
   return Object.values(value).every(
-    (entry) => Array.isArray(entry) && entry.every((item) => typeof item === 'string'),
+    (entry) =>
+      typeof entry === 'string' ||
+      (Array.isArray(entry) && entry.every((item) => typeof item === 'string')),
   );
 }
 
@@ -57,7 +59,7 @@ function loadRealPackageManifestSlice(): PackageManifestSlice {
   const rootParsed: unknown = JSON.parse(rootRaw);
   if (!isObjectRecord(rootParsed)) fail('workspace root package.json is not an object');
   const lintStagedEntries = rootParsed['lint-staged'];
-  if (!isStringArrayRecord(lintStagedEntries)) {
+  if (!isLintStagedRecord(lintStagedEntries)) {
     fail('workspace root package.json lint-staged is malformed');
   }
 

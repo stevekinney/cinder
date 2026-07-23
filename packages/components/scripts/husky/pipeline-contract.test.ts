@@ -96,6 +96,16 @@ describe('pipeline contract: commit stays cheap', () => {
       expect(command).not.toMatch(/\b(?:oxlint|stylelint|typecheck|test(?::[\w-]+)?|turbo)\b/);
     }
   });
+
+  it('the commit-workflow simulation accepts both lint-staged command shapes', async () => {
+    const source = stripComments(
+      await Bun.file(join(componentsPackageRoot, 'scripts/validate-commit-workflow.ts')).text(),
+    );
+
+    expect(source).toContain('Record<string, string | string[]>');
+    expect(source).toMatch(/typeof entry === ['"]string['"]/);
+    expect(source).toMatch(/Array\.isArray\(entry\)/);
+  });
 });
 
 describe('pipeline contract: push stays thin and fails open (source-based: entry script, never imported)', () => {

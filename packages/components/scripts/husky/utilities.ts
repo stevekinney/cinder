@@ -135,6 +135,34 @@ function readStreamText(stream: unknown): Promise<string> {
   return stream instanceof ReadableStream ? new Response(stream).text() : Promise.resolve('');
 }
 
+const STREAM_DRAIN_GRACE_MILLISECONDS = 1_000;
+
+async function readCapturedStreamsWithGrace(
+  stdoutText: Promise<string>,
+  stderrText: Promise<string>,
+  onTimeout: () => Promise<void>,
+): Promise<{ readonly stdout: string; readonly stderr: string }> {
+  const captured = Promise.all([stdoutText, stderrText]).then(([stdout, stderr]) => ({
+    stderr,
+    stdout,
+  }));
+  const drained = await Promise.race([
+    captured,
+    Bun.sleep(STREAM_DRAIN_GRACE_MILLISECONDS).then(() => null),
+  ]);
+
+  if (drained !== null) return drained;
+
+  await onTimeout();
+
+  return (
+    (await Promise.race([
+      captured,
+      Bun.sleep(STREAM_DRAIN_GRACE_MILLISECONDS).then(() => null),
+    ])) ?? { stderr: '', stdout: '' }
+  );
+}
+
 function isProcessAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -297,15 +325,16 @@ export async function runHookCommand(
     })();
 
     const exitCode = await exitCodePromise;
-    if (!aborted && isProcessGroupAlive(subprocess.pid)) {
-      await cleanupProcessGroups([subprocess.pid], 'SIGTERM');
-    }
-    const [capturedStdout, capturedStderr] = await Promise.all([stdoutText, stderrText]);
+
+    const captured = await readCapturedStreamsWithGrace(stdoutText, stderrText, async () => {
+      abortCleanup ??= cleanupProcessGroups([subprocess.pid], 'SIGTERM');
+      await abortCleanup;
+    });
 
     return {
       exitCode: aborted ? 130 : exitCode,
-      stderr: capturedStderr,
-      stdout: capturedStdout,
+      stderr: captured.stderr,
+      stdout: captured.stdout,
     };
   } finally {
     options.signal?.removeEventListener('abort', abort);
@@ -542,7 +571,7 @@ export async function withGateLock<T>(
 }
 
 /**
- * Serialize expensive local validation gates across worktrees.
+ * Serialize expensive local validation gates within one worktree.
  *
  * The lock remains for scripts that do heavy, disk-mutating local work:
  * `test-changed.ts` (`bun run test:changed`),
