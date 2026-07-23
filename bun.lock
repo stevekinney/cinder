@@ -140,6 +140,10 @@
     "packages/editor": {
       "name": "@lostgradient/editor",
       "version": "0.0.0",
+      "dependencies": {
+        "@floating-ui/dom": "1.7.6",
+        "esm-env": "^1.2.0",
+      },
       "devDependencies": {
         "@lostgradient/cinder": "workspace:*",
         "@lostgradient/markdown": "workspace:*",

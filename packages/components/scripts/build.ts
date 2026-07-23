@@ -779,10 +779,19 @@ function rewriteCrossUpstreamSpecifiers(
 // genuine import specifier — a component suppressed from cinder's mirror
 // (see `CINDER_KEY_OVERRIDES`) then reads as an unresolvable rewrite miss
 // even though nothing ever imports it. Cinder also has no reason to vendor
-// an upstream package's own test suite into its published bundle.
-const upstreamTestFilePattern = /\.(?:test|spec)\.[^./]+$/u;
-function isUpstreamTestFile(relative: string): boolean {
-  return upstreamTestFilePattern.test(relative);
+// an upstream package's own test suite, test fixtures, or internal
+// accessibility notes into its published bundle — this mirrors
+// `validate-consumers.ts`'s own `forbiddenPatterns` for cinder's own dist,
+// so an upstream-supplied file can never leak through a path that check
+// doesn't also cover for cinder's own component directories.
+const upstreamExcludedFilePatterns = [
+  /\.(?:test|spec)\.[^./]+$/u,
+  /(?:^|\/)[^/]*-fixtures?\.[^./]+$/u,
+  /(?:^|\/)fixtures?\.[^./]+$/u,
+  /\.a11y\.md$/u,
+];
+function isUpstreamExcludedFile(relative: string): boolean {
+  return upstreamExcludedFilePatterns.some((pattern) => pattern.test(relative));
 }
 
 async function copyUpstreamDistInto(upstreamName: string, destinationRoot: string): Promise<void> {
@@ -796,7 +805,7 @@ async function copyUpstreamDistInto(upstreamName: string, destinationRoot: strin
   }
   const glob = new Glob('**/*');
   for await (const relative of glob.scan({ cwd: sourceDist })) {
-    if (isUpstreamTestFile(relative)) continue;
+    if (isUpstreamExcludedFile(relative)) continue;
     const sourcePath = `${sourceDist}/${relative}`;
     const destinationPath = `${destinationDist}/${relative}`;
     await mkdir(dirname(destinationPath), { recursive: true });

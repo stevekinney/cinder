@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "filePath": "src/components/markdown-editor/markdown-editor.svelte",
+    "colorClass": "hex",
+    "allowedCount": 7
+  },
+  {
+    "filePath": "src/components/markdown-editor/markdown-editor.svelte",
+    "colorClass": "rgb",
+    "allowedCount": 1
+  }
+]

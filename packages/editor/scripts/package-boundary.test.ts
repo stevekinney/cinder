@@ -33,9 +33,17 @@ describe('Editor package ownership boundary', () => {
     ).toEqual([]);
   });
 
-  test('owns no regular runtime dependencies — every runtime need is a peer', () => {
+  test('owns only vendored-utility dependencies — every framework-level runtime need is a peer', () => {
     expect(() => assertSourceManifest(editorManifest)).not.toThrow();
-    expect(editorManifest.dependencies).toEqual({});
+    // `@floating-ui/dom` and `esm-env` back the vendored `_internal`/
+    // `utilities` helpers copied in from Cinder (anchored-overlay
+    // positioning, dev-only warnings) — not singletons, so Editor owns them
+    // as regular dependencies, matching Cinder's own treatment of the same
+    // two packages, rather than asking every host to install them.
+    expect(editorManifest.dependencies).toEqual({
+      '@floating-ui/dom': '1.7.6',
+      'esm-env': '^1.2.0',
+    });
     // The Cinder floor is ^0.17.0 for the same reason Chat's is: every 0.16
     // release still declares `lucide-svelte` as a peer, and this package's
     // moved components resolve their icons through Cinder's `./icons` seam
@@ -73,6 +81,10 @@ describe('Editor package ownership boundary', () => {
       'prosemirror-view/*',
       'svelte',
       'svelte/*',
+      '@floating-ui/dom',
+      '@floating-ui/dom/*',
+      'esm-env',
+      'esm-env/*',
     ]);
   });
 
@@ -101,7 +113,7 @@ describe('Editor package ownership boundary', () => {
     const published = buildPublishedManifest(editorManifest);
     const serialized = JSON.stringify(published);
 
-    expect(published.dependencies).toEqual({});
+    expect(published.dependencies).toEqual(editorManifest.dependencies);
     expect(published.devDependencies).toBeUndefined();
     expect(published.scripts).toBeUndefined();
     expect(serialized).not.toContain('workspace:');

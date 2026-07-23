@@ -27,11 +27,15 @@ export type PackageManifest = {
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-staging');
-// Every runtime need — Cinder, Markdown, Svelte, and the milkdown/prosemirror
-// stack — is a host-supplied singleton: a consuming app must control which
-// single copy of each renders, so all of them are peers. Unlike Chat (which
-// owns `conversationalist`/`zod` as regular dependencies), Editor has no
-// implementation-detail dependency of its own to bundle.
+// Every framework-level runtime need — Cinder, Markdown, Svelte, and the
+// milkdown/prosemirror stack — is a host-supplied singleton: a consuming app
+// must control which single copy of each renders, so all of them are peers.
+// `@floating-ui/dom` and `esm-env` are vendored implementation details of the
+// moved components' internal utilities (anchored-overlay positioning,
+// dev-only warnings) — not singletons, and not part of any public API
+// surface — so, matching Cinder's own treatment of the same two packages,
+// Editor owns them as regular dependencies instead of asking every host to
+// pick a compatible version.
 const REQUIRED_PEERS = new Set([
   '@lostgradient/cinder',
   '@lostgradient/markdown',
@@ -44,7 +48,10 @@ const REQUIRED_PEERS = new Set([
   'prosemirror-view',
   'svelte',
 ]);
-const REQUIRED_DEPENDENCIES: Record<string, string> = {};
+const REQUIRED_DEPENDENCIES: Record<string, string> = {
+  '@floating-ui/dom': '1.7.6',
+  'esm-env': '^1.2.0',
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -170,6 +177,7 @@ export function buildPublishedManifest(source: PackageManifest): PackageManifest
       '!dist/**/*.fixture.*',
       '!dist/**/*-fixture.*',
       '!dist/**/*-fixtures.*',
+      '!dist/**/fixtures.*',
       '!dist/**/test/**',
       '!dist/**/*.map',
       'components.json',

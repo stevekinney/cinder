@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "filePath": "src/components/markdown-editor/markdown-editor.svelte",
+    "name": "--cinder-surface-active",
+    "allowedCount": 2
+  }
+]

@@ -58,10 +58,6 @@
       "import": "./src/lib/components/markdown-editor/markdown-editor.variables.ts",
       "default": "./dist/components/markdown-editor/markdown-editor.variables.js"
     },
-    "./markdown-editor/styles": {
-      "types": "./dist/components/markdown-editor/markdown-editor.css.d.ts",
-      "default": "./dist/components/markdown-editor/markdown-editor.css"
-    },
     "./markdown-editor/examples": "./dist/components/markdown-editor/markdown-editor.examples.json",
     "./review-editor": {
       "types": "./dist/components/review-editor/index.d.ts",
@@ -111,10 +107,6 @@
       "svelte": "./src/lib/components/diff-viewer/diff-viewer.variables.ts",
       "import": "./src/lib/components/diff-viewer/diff-viewer.variables.ts",
       "default": "./dist/components/diff-viewer/diff-viewer.variables.js"
-    },
-    "./diff-viewer/styles": {
-      "types": "./dist/components/diff-viewer/diff-viewer.css.d.ts",
-      "default": "./dist/components/diff-viewer/diff-viewer.css"
     },
     "./diff-viewer/examples": "./dist/components/diff-viewer/diff-viewer.examples.json",
     "./anchor-decorations": {
@@ -196,6 +188,7 @@
     "!dist/**/*.fixture.*",
     "!dist/**/*-fixture.*",
     "!dist/**/*-fixtures.*",
+    "!dist/**/fixtures.*",
     "!dist/**/test/**",
     "components.json"
   ],
@@ -219,7 +212,10 @@
     "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run components:check && bun run build",
     "validate:consumer": "bun run scripts/validate-consumer.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@floating-ui/dom": "1.7.6",
+    "esm-env": "^1.2.0"
+  },
   "devDependencies": {
     "@lostgradient/cinder": "workspace:*",
     "@lostgradient/markdown": "workspace:*",

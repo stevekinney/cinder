@@ -18,19 +18,30 @@ const workspaceRoot = resolve(packageRoot, '../..');
 // Host-supplied runtime singletons — the fixture symlinks these into its
 // top-level node_modules the way a real host app would after installing
 // them directly.
-const requiredPeers = ['@lostgradient/cinder', 'svelte'] as const;
-// Chat's own conversation-model dependencies — the fixture symlinks these
-// into the *installed chat package's own* node_modules, simulating what a
+const requiredPeers = [
+  '@lostgradient/cinder',
+  '@lostgradient/markdown',
+  '@milkdown/ctx',
+  '@milkdown/kit',
+  '@milkdown/prose',
+  'prosemirror-inputrules',
+  'prosemirror-model',
+  'prosemirror-state',
+  'prosemirror-view',
+  'svelte',
+] as const;
+// Editor's own vendored-utility dependencies — the fixture symlinks these
+// into the *installed editor package's own* node_modules, simulating what a
 // package manager does automatically for a regular `dependencies` entry
 // (nested resolution), never into the fixture's top-level node_modules. A
 // host app never provides these.
-const requiredOwnDependencies = ['conversationalist', 'zod'] as const;
+const requiredOwnDependencies = ['@floating-ui/dom', 'esm-env'] as const;
 
 type ValidationFixture = {
   root: string;
   extractedRoot: string;
   nodeModules: string;
-  installedChatRoot: string;
+  installedEditorRoot: string;
 };
 
 function fail(message: string): never {
@@ -49,7 +60,7 @@ async function run(command: string, arguments_: string[], cwd = packageRoot): Pr
 
 function assertPackedManifest(manifest: PackageManifest): void {
   // assertSourceManifest enforces the exact `dependencies` contract
-  // (conversationalist + zod) and the exact peer set.
+  // (@floating-ui/dom + esm-env) and the exact peer set.
   assertSourceManifest(manifest);
   if (manifest.devDependencies !== undefined) fail('packed manifest must omit devDependencies');
   if (manifest.optionalDependencies !== undefined) {
@@ -62,20 +73,20 @@ function assertPackedManifest(manifest: PackageManifest): void {
   if (serialized.includes('./src/')) fail('packed manifest contains a source export target');
 }
 
-function assertPackedExports(manifest: PackageManifest, installedChatRoot: string): void {
+function assertPackedExports(manifest: PackageManifest, installedEditorRoot: string): void {
   for (const [subpath, entry] of Object.entries(manifest.exports)) {
     for (const target of exportTargets(entry)) {
       if (!target.startsWith('./')) continue;
-      if (!existsSync(join(installedChatRoot, target.slice(2)))) {
+      if (!existsSync(join(installedEditorRoot, target.slice(2)))) {
         fail(`${subpath} points at missing packed target ${target}`);
       }
     }
   }
 }
 
-async function assertPackedFileSet(installedChatRoot: string): Promise<void> {
+async function assertPackedFileSet(installedEditorRoot: string): Promise<void> {
   const forbidden: string[] = [];
-  for await (const relativePath of new Glob('**/*').scan({ cwd: installedChatRoot })) {
+  for await (const relativePath of new Glob('**/*').scan({ cwd: installedEditorRoot })) {
     const normalizedPath = relativePath.replaceAll('\\', '/');
     const fileName = normalizedPath.split('/').at(-1) ?? normalizedPath;
     if (
@@ -95,13 +106,13 @@ async function assertPackedFileSet(installedChatRoot: string): Promise<void> {
 }
 
 /**
- * Neither host-supplied peers nor Chat-owned dependencies should ever be
+ * Neither host-supplied peers nor Editor-owned dependencies should ever be
  * inlined into the published server bundle — both resolve from
  * `node_modules` at install time instead.
  */
 async function assertNoBundledRuntimeProvenance(
   manifest: PackageManifest,
-  installedChatRoot: string,
+  installedEditorRoot: string,
 ): Promise<void> {
   const bundledSpecifiers = new Set<string>();
   const serverSourceGlob = new Glob('dist/server/**/*.js');
@@ -109,8 +120,8 @@ async function assertNoBundledRuntimeProvenance(
     ...Object.keys(manifest.peerDependencies ?? {}),
     ...Object.keys(manifest.dependencies ?? {}),
   ];
-  for await (const relativePath of serverSourceGlob.scan({ cwd: installedChatRoot })) {
-    const bundledSource = await Bun.file(join(installedChatRoot, relativePath)).text();
+  for await (const relativePath of serverSourceGlob.scan({ cwd: installedEditorRoot })) {
+    const bundledSource = await Bun.file(join(installedEditorRoot, relativePath)).text();
     const source = bundledSource.replaceAll('\\', '/');
     for (const specifier of runtimeSpecifiers) {
       if (source.includes(`/node_modules/${specifier}/`)) bundledSpecifiers.add(specifier);
@@ -147,18 +158,18 @@ async function linkPeer(
 }
 
 /**
- * Links a Chat-owned dependency into the *installed chat package's own*
+ * Links an Editor-owned dependency into the *installed editor package's own*
  * node_modules — never the fixture's top-level node_modules. This is what
- * proves the fix: a host app that never installed `conversationalist` or
- * `zod` itself can still resolve them, because they arrive nested under
- * `@lostgradient/chat` the way a package manager installs any other regular
- * `dependencies` entry.
+ * proves the fix: a host app that never installed `@floating-ui/dom` or
+ * `esm-env` itself can still resolve them, because they arrive nested under
+ * `@lostgradient/editor` the way a package manager installs any other
+ * regular `dependencies` entry.
  */
 async function linkOwnDependency(
   dependency: (typeof requiredOwnDependencies)[number],
-  installedChatRoot: string,
+  installedEditorRoot: string,
 ): Promise<void> {
-  await linkModule(dependency, join(installedChatRoot, 'node_modules'));
+  await linkModule(dependency, join(installedEditorRoot, 'node_modules'));
 }
 
 /** Extracts the packed tarball only — no linking yet, so the pure-artifact assertions below inspect exactly what was published. */
@@ -174,19 +185,19 @@ async function extractPackedArtifact(
   const extractedPackage = join(fixture.extractedRoot, 'package');
   if (!existsSync(extractedPackage)) fail('publish tarball does not contain package/');
 
-  await mkdir(dirname(fixture.installedChatRoot), { recursive: true });
-  await rename(extractedPackage, fixture.installedChatRoot);
+  await mkdir(dirname(fixture.installedEditorRoot), { recursive: true });
+  await rename(extractedPackage, fixture.installedEditorRoot);
 
   return parsePackageManifest(
-    await Bun.file(join(fixture.installedChatRoot, 'package.json')).text(),
+    await Bun.file(join(fixture.installedEditorRoot, 'package.json')).text(),
   );
 }
 
-/** Links the fixture's simulated install graph: host peers at the top level, Chat's own dependencies nested under it. */
+/** Links the fixture's simulated install graph: host peers at the top level, Editor's own dependencies nested under it. */
 async function linkFixtureDependencyGraph(fixture: ValidationFixture): Promise<void> {
   for (const peer of requiredPeers) await linkPeer(peer, fixture.nodeModules);
   for (const dependency of requiredOwnDependencies) {
-    await linkOwnDependency(dependency, fixture.installedChatRoot);
+    await linkOwnDependency(dependency, fixture.installedEditorRoot);
   }
 }
 
@@ -198,7 +209,7 @@ function barePackageName(specifier: string): string {
 
 async function assertImportClosure(
   manifest: PackageManifest,
-  installedChatRoot: string,
+  installedEditorRoot: string,
 ): Promise<void> {
   const declaredRuntimeSpecifiers = new Set([
     ...Object.keys(manifest.peerDependencies ?? {}),
@@ -206,8 +217,8 @@ async function assertImportClosure(
   ]);
   const violations: string[] = [];
   const sourceGlob = new Glob('dist/**/*.{js,svelte,css}');
-  for await (const relativePath of sourceGlob.scan({ cwd: installedChatRoot })) {
-    const source = await Bun.file(join(installedChatRoot, relativePath)).text();
+  for await (const relativePath of sourceGlob.scan({ cwd: installedEditorRoot })) {
+    const source = await Bun.file(join(installedEditorRoot, relativePath)).text();
     const patterns = [
       /(?:\bfrom\s*|\bimport\s*\()\s*['"]([^'"]+)['"]/gu,
       /@import\s+['"]([^'"]+)['"]/gu,
@@ -250,22 +261,24 @@ function scopedCssTokenForClass(source: string, className: string, artifactLabel
 async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const clientEntryPath = join(fixture.root, 'client.ts');
   const serverEntryPath = join(fixture.root, 'server.ts');
+  // `DiffViewer` is the client/server SSR proof target: it needs no
+  // `{#if browser}`-gated milkdown runtime the way `MarkdownEditor` and
+  // `ReviewEditor` do, so it exercises the packed client build + real Svelte
+  // SSR render without also re-testing the import-boundary guard those two
+  // already cover in-package (markdown-editor.import-boundary.test.ts).
   await Bun.write(
     clientEntryPath,
-    `import Chat, { ArtifactPanel, pairToolCallsWithResults } from '@lostgradient/chat';\n` +
-      `import ChatComposerPopover from '@lostgradient/chat/composer-popover';\n` +
-      `import ChatConversationHeader from '@lostgradient/chat/conversation-header';\n` +
-      `import ChatConversationList from '@lostgradient/chat/conversation-list';\n` +
-      `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n` +
-      `if (pairToolCallsWithResults([]).length !== 0) throw new Error('expected no tool-call pairs');\n`,
+    `import DiffViewer from '@lostgradient/editor/diff-viewer';\n` +
+      `import MarkdownEditor from '@lostgradient/editor/markdown-editor';\n` +
+      `import ReviewEditor from '@lostgradient/editor/review-editor';\n` +
+      `if (![DiffViewer, MarkdownEditor, ReviewEditor].every(Boolean)) throw new Error('missing Editor component export');\n`,
   );
   await Bun.write(
     serverEntryPath,
     `import { render } from 'svelte/server';\n` +
-      `import Chat, { ArtifactPanel, createConversation } from '@lostgradient/chat';\n` +
-      `if (!ArtifactPanel) throw new Error('missing ArtifactPanel export');\n` +
-      `const rendered = render(Chat, { props: { id: 'consumer-chat', conversation: createConversation({ id: 'consumer-conversation' }) } });\n` +
-      `if (!rendered.body.includes('chat-container')) throw new Error('Chat SSR output is missing its root');\n`,
+      `import DiffViewer from '@lostgradient/editor/diff-viewer';\n` +
+      `const rendered = render(DiffViewer, { props: { original: 'one\\ntwo', current: 'one\\nthree' } });\n` +
+      `if (!rendered.body.includes('diff-viewer')) throw new Error('DiffViewer SSR output is missing its root');\n`,
   );
 
   const clientResult = await Bun.build({
@@ -295,17 +308,17 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const serverSource = await Bun.file(join(serverOutput, 'server.js')).text();
   const clientScopedCssToken = scopedCssTokenForClass(
     clientSource,
-    'artifact-panel',
+    'diff-warning',
     'packed client build',
   );
   const serverScopedCssToken = scopedCssTokenForClass(
     serverSource,
-    'artifact-panel',
+    'diff-warning',
     'packed server build',
   );
   if (clientScopedCssToken !== serverScopedCssToken) {
     fail(
-      `packed client/server scoped CSS identity differs for ArtifactPanel (${clientScopedCssToken} !== ${serverScopedCssToken})`,
+      `packed client/server scoped CSS identity differs for DiffViewer (${clientScopedCssToken} !== ${serverScopedCssToken})`,
     );
   }
 
@@ -313,24 +326,19 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const tsconfigPath = join(fixture.root, 'tsconfig.json');
   await Bun.write(
     typeEntryPath,
-    `import '@lostgradient/chat/styles';\n` +
-      `import '@lostgradient/chat/composer-popover/styles';\n` +
-      `import '@lostgradient/chat/conversation-header/styles';\n` +
-      `import '@lostgradient/chat/conversation-list/styles';\n` +
-      `import Chat, { appendAssistantMessage, appendUserMessage, createConversation, getMessageText, isJSONValue, pairToolCallsWithResults } from '@lostgradient/chat';\n` +
-      `import type { ChatSubmitEvent, ConversationHistory, MultiModalContent, StepInfo } from '@lostgradient/chat';\n` +
-      `const userContent: MultiModalContent = { type: 'text', text: 'Hello' };\n` +
-      `const assistantContent: MultiModalContent = { type: 'text', text: 'Hi there' };\n` +
-      `const conversation: ConversationHistory = appendAssistantMessage(\n` +
-      `  appendUserMessage(createConversation({ id: 'gateway-import-surface' }), [userContent]),\n` +
-      `  [assistantContent],\n` +
-      `);\n` +
-      `const submitEvent: ChatSubmitEvent = { message: { role: 'user', content: 'Follow up' }, attachments: [] };\n` +
-      `const step: StepInfo = { title: 'Inspect', content: 'Read the transcript', status: 'done' };\n` +
-      `const firstMessage = conversation.messages[conversation.ids[0] ?? ''];\n` +
-      `if (firstMessage === undefined) throw new Error('expected a first conversation message');\n` +
-      `if (!isJSONValue(conversation.metadata)) throw new Error('expected conversation metadata to be a JSON value');\n` +
-      `void [Chat, conversation, getMessageText(firstMessage), pairToolCallsWithResults([]), step, submitEvent];\n`,
+    `import '@lostgradient/editor/review-editor/styles';\n` +
+      `import type { DiffViewerProps } from '@lostgradient/editor/diff-viewer';\n` +
+      `import type { MarkdownEditorProps } from '@lostgradient/editor/markdown-editor';\n` +
+      `import type { ReviewEditorProps } from '@lostgradient/editor/review-editor';\n` +
+      `import { createReviewEditorState } from '@lostgradient/editor/review-editor';\n` +
+      `import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';\n` +
+      `import type { LineDiff } from '@lostgradient/markdown/diff/line-diff';\n` +
+      `const diffProps: DiffViewerProps = { original: 'a', current: 'b' };\n` +
+      `const editorProps: MarkdownEditorProps = { id: 'gateway-import-surface' };\n` +
+      `const reviewProps: Pick<ReviewEditorProps, 'id' | 'value'> = { id: 'review', value: 'hello' };\n` +
+      `const lines: LineDiff[] = computeLineDiff(diffProps.original, diffProps.current);\n` +
+      `if (lines.length === 0) throw new Error('expected at least one line diff entry');\n` +
+      `void [editorProps, reviewProps, createReviewEditorState];\n`,
   );
   await Bun.write(
     tsconfigPath,
@@ -356,31 +364,23 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
 }
 
 async function runSvelteCheckConsumer(fixture: ValidationFixture): Promise<void> {
-  // Regression guard for #772/#786: `svelte-check` against a *packed,
-  // installed* @lostgradient/chat (not `bun link`, not a raw .svelte source
-  // import) is the only place the symptom reproduces — a package-local
-  // typecheck never sees it, because svelte-package's dts emission can differ
-  // in subtle ways from the source it was generated from. This step exercises
-  // `bind:atBottom` / `bind:unreadCount` / `bind:newMessageIndicatorVisible`
-  // on the public `Chat` export exactly as a consumer would.
+  // Regression guard mirroring Chat's #772/#786 guard: `svelte-check` against
+  // a *packed, installed* @lostgradient/editor (not `bun link`, not a raw
+  // .svelte source import) is the only place that class of symptom
+  // reproduces — a package-local typecheck never sees it, because
+  // svelte-package's dts emission can differ in subtle ways from the source
+  // it was generated from. This step exercises `bind:value` / `bind:mode` on
+  // the public `MarkdownEditor` export exactly as a consumer would.
   const svelteCheckSourceRoot = join(fixture.root, 'svelte-check-src');
   await mkdir(svelteCheckSourceRoot, { recursive: true });
   await Bun.write(
     join(svelteCheckSourceRoot, 'App.svelte'),
     `<script lang="ts">\n` +
-      `  import { Chat, createConversation } from '@lostgradient/chat';\n` +
-      `  let atBottom = $state(true);\n` +
-      `  let unreadCount = $state(0);\n` +
-      `  let newMessageIndicatorVisible = $state(false);\n` +
-      `  const conversation = createConversation({ id: 'svelte-check-consumer' });\n` +
+      `  import MarkdownEditor from '@lostgradient/editor/markdown-editor';\n` +
+      `  let value = $state('# Hello');\n` +
+      `  let mode = $state<'wysiwyg' | 'source'>('wysiwyg');\n` +
       `</script>\n\n` +
-      `<Chat\n` +
-      `  id="svelte-check-consumer"\n` +
-      `  {conversation}\n` +
-      `  bind:atBottom\n` +
-      `  bind:unreadCount\n` +
-      `  bind:newMessageIndicatorVisible\n` +
-      `/>\n`,
+      `<MarkdownEditor id="svelte-check-consumer" bind:value bind:mode />\n`,
   );
   // `.mjs`, not `.js`. The scratch fixture root has no `package.json`, so a
   // `.js` config is parsed as CommonJS and `export default` is a syntax error
@@ -483,14 +483,13 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
   await Bun.write(
     entryPath,
     `import { render } from 'svelte/server';\n` +
-      `import Chat, { createConversation } from '@lostgradient/chat';\n` +
-      `import ChatComposerPopover from '@lostgradient/chat/composer-popover';\n` +
-      `import ChatConversationHeader from '@lostgradient/chat/conversation-header';\n` +
-      `import ChatConversationList from '@lostgradient/chat/conversation-list';\n` +
+      `import DiffViewer from '@lostgradient/editor/diff-viewer';\n` +
+      `import MarkdownEditor from '@lostgradient/editor/markdown-editor';\n` +
+      `import ReviewEditor from '@lostgradient/editor/review-editor';\n` +
       `if (process.release.name !== 'node') throw new Error('fixture is not running under Node');\n` +
-      `if (![ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Node subpath export');\n` +
-      `const rendered = render(Chat, { props: { id: 'node-chat', conversation: createConversation({ id: 'node-conversation' }) } });\n` +
-      `if (!rendered.body.includes('chat-container')) throw new Error('plain Node SSR output is missing Chat');\n`,
+      `if (![MarkdownEditor, ReviewEditor].every(Boolean)) throw new Error('missing Node subpath export');\n` +
+      `const rendered = render(DiffViewer, { props: { original: 'one\\ntwo', current: 'one\\nthree' } });\n` +
+      `if (!rendered.body.includes('diff-viewer')) throw new Error('plain Node SSR output is missing DiffViewer');\n`,
   );
   await run(node, [entryPath], fixture.root);
 
@@ -498,8 +497,8 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
   await Bun.write(
     browserConditionEntryPath,
     `const expected = new Map([\n` +
-      `  ['@lostgradient/chat', '/node_modules/@lostgradient/chat/dist/index.js'],\n` +
-      `  ['@lostgradient/chat/composer-popover', '/node_modules/@lostgradient/chat/dist/components/chat-composer-popover/index.js'],\n` +
+      `  ['@lostgradient/editor', '/node_modules/@lostgradient/editor/dist/index.js'],\n` +
+      `  ['@lostgradient/editor/diff-viewer', '/node_modules/@lostgradient/editor/dist/components/diff-viewer/index.js'],\n` +
       `]);\n` +
       `if (typeof import.meta.resolve !== 'function') throw new Error('Node executable does not support import.meta.resolve for browser-condition validation');\n` +
       `for (const [specifier, expectedSuffix] of expected) {\n` +
@@ -511,32 +510,34 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
 }
 
 export async function validateConsumer(): Promise<void> {
-  const fixtureRoot = await mkdtemp(join(tmpdir(), 'lostgradient-chat-consumer-'));
+  const fixtureRoot = await mkdtemp(join(tmpdir(), 'lostgradient-editor-consumer-'));
   const fixture: ValidationFixture = {
     root: fixtureRoot,
     extractedRoot: join(fixtureRoot, 'extracted'),
     nodeModules: join(fixtureRoot, 'node_modules'),
-    installedChatRoot: join(fixtureRoot, 'node_modules', '@lostgradient', 'chat'),
+    installedEditorRoot: join(fixtureRoot, 'node_modules', '@lostgradient', 'editor'),
   };
   try {
     process.stdout.write('[validate-consumer] building the Cinder peer server entries…\n');
     await run('bun', ['run', 'build'], join(workspaceRoot, 'packages', 'components'));
-    process.stdout.write('[validate-consumer] building @lostgradient/chat…\n');
+    process.stdout.write('[validate-consumer] building the Markdown peer…\n');
+    await run('bun', ['run', 'build'], join(workspaceRoot, 'packages', 'markdown'));
+    process.stdout.write('[validate-consumer] building @lostgradient/editor…\n');
     await run('bun', ['run', 'build']);
     const { tarballPath } = await packForPublish();
     const packedManifest = await extractPackedArtifact(tarballPath, fixture);
     assertPackedManifest(packedManifest);
-    assertPackedExports(packedManifest, fixture.installedChatRoot);
-    await assertPackedFileSet(fixture.installedChatRoot);
-    await assertNoBundledRuntimeProvenance(packedManifest, fixture.installedChatRoot);
-    await assertImportClosure(packedManifest, fixture.installedChatRoot);
+    assertPackedExports(packedManifest, fixture.installedEditorRoot);
+    await assertPackedFileSet(fixture.installedEditorRoot);
+    await assertNoBundledRuntimeProvenance(packedManifest, fixture.installedEditorRoot);
+    await assertImportClosure(packedManifest, fixture.installedEditorRoot);
     await linkFixtureDependencyGraph(fixture);
     await buildConsumerEntries(fixture);
     await runPlainNodeConsumer(fixture);
     process.stdout.write('[validate-consumer] running svelte-check against the packed artifact…\n');
     await runSvelteCheckConsumer(fixture);
     process.stdout.write(
-      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, plain-Node SSR, and svelte-check bind: forwarding verified without a host-installed conversationalist/zod.\n`,
+      `[validate-consumer] OK — isolated artifact, import closure, client build, plugin SSR, plain-Node SSR, and svelte-check bind: forwarding verified without a host-installed @floating-ui/dom or esm-env.\n`,
     );
   } finally {
     await rm(fixtureRoot, { recursive: true, force: true });

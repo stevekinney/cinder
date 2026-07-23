@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "filePath": "src/components/diff-viewer/diff-summary-bar.svelte",
+    "query": "@media (max-width: 360px)",
+    "allowedCount": 1
+  },
+  {
+    "filePath": "src/components/diff-viewer/diff-toolbar.svelte",
+    "query": "@media (max-width: 480px)",
+    "allowedCount": 1
+  }
+]

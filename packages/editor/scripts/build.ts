@@ -30,11 +30,14 @@ process.stdout.write(
   `build — rewrote TypeScript import specifiers in ${rewrittenFiles} emitted files\n`,
 );
 
-for (const cssPath of [
-  'dist/components/markdown-editor/markdown-editor.css',
-  'dist/components/review-editor/review-editor.css',
-  'dist/components/diff-viewer/diff-viewer.css',
-]) {
+// Only `review-editor` has a standalone top-level CSS file (imported once by
+// `review-editor.svelte`, matching Chat's per-component convention).
+// `markdown-editor` and `diff-viewer` style entirely through per-file scoped
+// `<style>` blocks compiled inline by Svelte — there is no separate CSS
+// asset to stub a declaration for, and no `./markdown-editor/styles` or
+// `./diff-viewer/styles` export in `package.json` (matching the shape they
+// had as cinder components before this move).
+for (const cssPath of ['dist/components/review-editor/review-editor.css']) {
   await Bun.write(join(PACKAGE_ROOT, `${cssPath}.d.ts`), 'export {};\n');
 }
 

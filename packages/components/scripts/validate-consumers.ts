@@ -883,11 +883,9 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/client/',
       'package/dist/test/',
       'package/scripts/',
-      // Upstream re-export shells (`src/markdown/`, `src/editor/`,
-      // `src/editor/`) resolve via `dist/_upstream/`; the
-      // shell sources are build-only inputs.
+      // Upstream re-export shells (`src/markdown/`, `src/editor/`) resolve
+      // via `dist/_upstream/`; the shell sources are build-only inputs.
       'package/src/markdown/',
-      'package/src/editor/',
       'package/src/editor/',
     ],
   };
