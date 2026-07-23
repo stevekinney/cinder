@@ -126,6 +126,13 @@ async function fileHash(path: string): Promise<string> {
  * malformed sibling manifest is a hard error: publishing a real dependency
  * without a resolvable version would silently ship a broken range.
  */
+/** Narrows `value` to an object carrying a string `version` field. */
+function hasStringVersion(value: unknown): value is { version: string } {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('version' in value)) return false;
+  return typeof value.version === 'string';
+}
+
 function resolveWorkspaceSiblingVersion(name: string): string {
   const manifestPath = join(workspaceRoot, 'node_modules', name, 'package.json');
   if (!existsSync(manifestPath)) {
@@ -135,15 +142,10 @@ function resolveWorkspaceSiblingVersion(name: string): string {
     );
   }
   const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !('version' in parsed) ||
-    typeof (parsed as { version: unknown }).version !== 'string'
-  ) {
+  if (!hasStringVersion(parsed)) {
     throw new Error(`Workspace sibling "${name}"'s package.json is missing a string "version".`);
   }
-  return (parsed as { version: string }).version;
+  return parsed.version;
 }
 
 /**
