@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Snippet } from 'svelte';
-  import type { LineDiff, WordChange } from '@lostgradient/cinder/markdown/diff/line-diff';
+  import type { LineDiff, WordChange } from '@lostgradient/markdown/diff/line-diff';
   import type { BadgeVariant } from '@lostgradient/cinder/badge';
 
   import type { DiffViewerMode } from './diff-viewer.types.ts';

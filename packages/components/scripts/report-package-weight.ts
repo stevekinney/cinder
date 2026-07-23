@@ -53,6 +53,16 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
     fileCount: 500,
     largestEntrypointBytes: 1_500_000,
   },
+  // Measured against the real 0.0.0 pack: 240 KB packed, ~1.7 MB unpacked,
+  // 237 files, largest single file ~120 KB (dist/server/components/
+  // review-editor/index.js). Headroom sized like markdown's budget above,
+  // scaled up slightly for editor's three Svelte components.
+  '@lostgradient/editor': {
+    packedBytes: 800_000,
+    unpackedBytes: 4_000_000,
+    fileCount: 400,
+    largestEntrypointBytes: 800_000,
+  },
 };
 
 type FileSizeEntry = {

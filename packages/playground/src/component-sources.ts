@@ -9,14 +9,14 @@ const CHAT_IMPORT_PATHS: Readonly<Record<string, string>> = {
   'chat-conversation-header': '@lostgradient/chat/conversation-header',
   'chat-conversation-list': '@lostgradient/chat/conversation-list',
 };
-export const CHAT_COMPONENT_NAMES = Object.keys(CHAT_IMPORT_PATHS).toSorted();
+export const CHAT_COMPONENT_NAMES = Object.keys(CHAT_IMPORT_PATHS).sort();
 
 const EDITOR_IMPORT_PATHS: Readonly<Record<string, string>> = {
   'markdown-editor': '@lostgradient/editor/markdown-editor',
   'review-editor': '@lostgradient/editor/review-editor',
   'diff-viewer': '@lostgradient/editor/diff-viewer',
 };
-export const EDITOR_COMPONENT_NAMES = Object.keys(EDITOR_IMPORT_PATHS).toSorted();
+export const EDITOR_COMPONENT_NAMES = Object.keys(EDITOR_IMPORT_PATHS).sort();
 
 /**
  * One published component package represented in the shared playground.
@@ -93,8 +93,18 @@ export const EDITOR_COMPONENT_SOURCE: ComponentSource = {
     }
     return importPath;
   },
+  // Unlike Chat, Editor's three components don't uniformly ship a standalone
+  // CSS sidecar: `markdown-editor` and `diff-viewer` style entirely through
+  // scoped `<style>` blocks compiled inline by Svelte (matching their
+  // pre-move shape in cinder), and `packages/editor/package.json` only
+  // declares a `./review-editor/styles` export. Returning a URL for the
+  // other two 404s — `static-export.ts` crawls every referenced `href` and
+  // throws on a non-OK response — so gate on the one component that actually
+  // has a sidecar.
   componentStylesheetUrl: (componentName) =>
-    `/package-components/editor/${componentName}/${componentName}.css`,
+    componentName === 'review-editor'
+      ? `/package-components/editor/${componentName}/${componentName}.css`
+      : null,
 };
 
 /** Ordered, canonical list of packages represented in the playground. */

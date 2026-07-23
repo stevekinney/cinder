@@ -118,6 +118,25 @@ export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map(
   ['editor:./editor', './editor'],
   ['editor:./editor/component-runtime', './editor/component-runtime'],
   ['editor:./editor/test-utilities', './editor/test-utilities'],
+  // `editor`'s headless anchor/comment/session/export runtime — the ProseMirror
+  // decoration plugin, comment-thread model, session persistence, and
+  // LLM/diff export helpers — is the renamed `@cinder/commentary` package
+  // (Phase 3 of package-boundaries.md). Cinder's published surface is frozen
+  // for this move too: every `./commentary/*` cinder subpath these covered
+  // must keep resolving, at its OLD `@cinder/commentary`-era cinder key, not
+  // the natural `./editor/<subpath>` mirror the default formula would
+  // produce (that formula is what the six `./editor/*` overrides above exist
+  // to correct for the ProseMirror half; this block does the same job for
+  // the commentary half).
+  ['editor:./anchor-decorations', './commentary/anchor-decorations'],
+  ['editor:./anchoring', './commentary/anchoring'],
+  ['editor:./comments', './commentary/comments'],
+  ['editor:./comments/types', './commentary/comments/types'],
+  ['editor:./export', './commentary/export'],
+  ['editor:./export/types', './commentary/export/types'],
+  ['editor:./session', './commentary/session'],
+  ['editor:./session/types', './commentary/session/types'],
+  ['editor:./shared/anchor-types', './commentary/shared/anchor-types'],
   // `editor`'s manifest and Svelte-component subpaths (Phase 3 of
   // package-boundaries.md: `markdown-editor`, `review-editor`, `diff-viewer`)
   // are real `@lostgradient/editor` surface but are never mirrored into cinder.

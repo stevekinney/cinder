@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "examples.schema.json",
-  "title": "cinder component examples",
+  "title": "editor component examples",
   "description": "Per-component code examples derived from playground .example.svelte files. Agents fetch this to get canonical usage snippets they can copy into a consumer application.",
   "type": "object",
   "required": ["$schema", "component", "import", "examples"],
@@ -20,7 +20,7 @@
     "import": {
       "type": "string",
       "description": "The import specifier consumers use to import the component. Matches the component's 'import' field in components.json.",
-      "examples": ["cinder/button"]
+      "examples": ["@lostgradient/editor/markdown-editor"]
     },
     "examples": {
       "type": "array",
@@ -55,7 +55,7 @@
           },
           "code": {
             "type": "string",
-            "description": "The complete, self-contained Svelte snippet source. Consumers can paste this directly into a .svelte file. Imports use the published cinder subpath specifiers.",
+            "description": "The complete, self-contained Svelte snippet source. Consumers can paste this directly into a .svelte file. Imports use the published editor subpath specifiers.",
             "minLength": 1
           }
         }

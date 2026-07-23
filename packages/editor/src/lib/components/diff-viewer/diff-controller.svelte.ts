@@ -10,8 +10,8 @@
  * full functionality for typical document sizes.
  */
 
-import type { LineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
-import { computeLineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
+import type { LineDiff } from '@lostgradient/markdown/diff/line-diff';
+import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
 import { formatBytes } from '../../utilities/format-bytes.ts';
 
 export type DiffTier = 'realtime' | 'debounced' | 'manual';

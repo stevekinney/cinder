@@ -16,7 +16,7 @@
  * @experimental
  */
 
-import { contentEquals } from '@lostgradient/cinder/markdown/pipeline';
+import { contentEquals } from '@lostgradient/markdown/pipeline';
 import type { MilkdownPlugin } from '@milkdown/kit/ctx';
 import type { EditorView } from '@milkdown/kit/prose/view';
 import { anchorPluginKey, createAnchorPlugin } from '../../anchor-decorations.ts';

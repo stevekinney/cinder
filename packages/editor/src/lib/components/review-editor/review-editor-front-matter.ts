@@ -3,7 +3,7 @@ import {
   serializeYaml,
   stringifyFrontMatter,
   validateFrontMatter,
-} from '@lostgradient/cinder/markdown/pipeline';
+} from '@lostgradient/markdown/pipeline';
 import type {
   AnchorUpdate,
   CommentAnchor,

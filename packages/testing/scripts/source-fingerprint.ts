@@ -38,6 +38,8 @@ export const FINGERPRINT_SOURCE_FILES = [
   'packages/components/components.json',
   'packages/chat/package.json',
   'packages/chat/components.json',
+  'packages/editor/package.json',
+  'packages/editor/components.json',
 ] as const;
 
 /**

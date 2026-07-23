@@ -55,8 +55,10 @@ type WorkspaceDependencyPackage = PackageIdentity & {
    * "Publish validated Markdown package artifact" step (`publish:release
    * -- --skip-validation`, which does NOT re-pack) would then ship to npm.
    * Reuse `pack:publish` — the same staged process — for every workspace
-   * dependency package that HAS one; only workspace-private packages with no
-   * publish surface (`editor`) fall back to a raw pack.
+   * dependency package that HAS one (`@lostgradient/editor` now does too, since
+   * Phase 3 of package-boundaries.md published it — see `pack:publish` in
+   * `packages/editor/package.json`); only a workspace-private package with no
+   * publish surface at all would fall back to a raw `bun pm pack`.
    */
   packCommand: string[];
 };

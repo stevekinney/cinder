@@ -677,22 +677,23 @@ export function expandToDependents(
 /**
  * The workspace packages with a hash-skippable `build` script (each has its
  * own `scripts/build.ts` + `scripts/lib/build-cache.ts`), listed in dependency
- * order: `@cinder/diff` has no internal workspace dependencies, `@cinder/markdown`
- * depends on `@cinder/diff`, `@lostgradient/editor` depends on `@cinder/markdown`,
- * and `@lostgradient/cinder` (components) depends on all three. `@cinder/editor`
- * was dissolved (see `docs/decisions/package-boundaries.md`, Phase 1): its
- * headless half moved into `@cinder/markdown`, its ProseMirror half into
- * `@lostgradient/editor`. `@cinder/testing` and `@cinder/playground` have no
- * `build` script and are excluded.
+ * order: `@lostgradient/markdown` has no internal workspace dependencies (it
+ * absorbed `@cinder/diff` in Phase 2 — see `docs/decisions/package-boundaries.md`
+ * — so `packages/diff` no longer exists), `@lostgradient/editor` depends on
+ * `@lostgradient/markdown`, and `@lostgradient/cinder` (components) depends on
+ * both. `@cinder/editor` was dissolved (Phase 1): its headless half moved
+ * into `@lostgradient/markdown`, its ProseMirror half into `@lostgradient/editor`.
+ * `@cinder/testing` and `@cinder/playground` have no `build` script; `@lostgradient/chat`
+ * has a `build` script but no `scripts/lib/build-cache.ts` (not
+ * hash-skippable) — both stay excluded from this specific list.
  *
  * This list is explicit because `WorkspacePackage` does not track which
  * packages are buildable, and the dependency chain here is small and fixed —
  * deriving it generically would add a `hasBuild` field and a topo-sort for a
- * four-node chain that has not changed since #364.
+ * three-node chain that has not changed since #364.
  */
 export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
-  '@cinder/diff',
-  '@cinder/markdown',
+  '@lostgradient/markdown',
   '@lostgradient/editor',
   '@lostgradient/cinder',
 ];
@@ -706,17 +707,24 @@ export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
  * this one walks *upstream* to find what must be built first so a test job's
  * inline rebuild step has nothing left to do.
  *
- * Because {@link BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER} is already a valid
- * topological order for this fixed four-package chain (verified against each
- * package's actual `dependencies`: diff has none, markdown depends only on
- * diff, editor on markdown, and components on all three), the forward
- * closure of any subset of it is exactly the list's prefix ending at the
- * latest touched package's index — no graph walk needed. If that invariant
- * ever breaks (a future package reorders its dependencies against this
- * list), the fix is to update `BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER` to
- * match the new topological order; the tests for this function pin the
- * current chain's exact prefixes so a silent mismatch would fail loudly
- * instead of quietly under-building.
+ * {@link BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER} is treated as a valid build
+ * order for this three-package chain, but — unlike before Phase 3 of
+ * package-boundaries.md — it is no longer a *strict* topological order:
+ * `@lostgradient/editor` peer/dev-depends on `@lostgradient/cinder` (it
+ * imports real cinder components inside markdown-editor/review-editor/
+ * diff-viewer) AND `@lostgradient/cinder` dev-depends on `@lostgradient/editor`
+ * (for its own tests/examples) — a genuine cycle. This list still works as a
+ * build order because `editor`'s `build.ts` never needs a freshly-built
+ * `cinder` `dist/` to produce a correct build (only `markdown`'s), and
+ * `cinder`'s own `build.ts` is what actually resolves the cycle — it rebuilds
+ * `markdown` and `editor` itself as an upstream step before building. So the
+ * forward closure of any subset of the list is exactly the list's prefix
+ * ending at the latest touched package's index — no graph walk needed. If
+ * that stops being true (a future package's build starts requiring a fresh
+ * upstream `cinder` dist), the fix is to update
+ * `BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER` to match; the tests for this
+ * function pin the current chain's exact prefixes so a silent mismatch would
+ * fail loudly instead of quietly under-building.
  */
 export function buildableForwardClosure(testPackageNames: ReadonlySet<string>): readonly string[] {
   let lastTouchedIndex = -1;

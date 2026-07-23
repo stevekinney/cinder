@@ -1,4 +1,4 @@
-import type { DiffHunk, LineDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
+import type { DiffHunk, LineDiffStats } from '@lostgradient/markdown/diff/line-diff';
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 

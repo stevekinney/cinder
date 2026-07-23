@@ -462,33 +462,31 @@ describe('buildableForwardClosure', () => {
   // strictly backward" invariant `buildableForwardClosure` relies on) fails
   // loudly here instead of silently under-building the pre-push pre-build
   // step and reopening the #364 race as a CI flake.
-  it('closes @lostgradient/editor to diff + markdown + editor (its upstream chain)', () => {
+  it('closes @lostgradient/editor to markdown + editor (its upstream chain)', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/editor']))).toEqual([
-      '@cinder/diff',
-      '@cinder/markdown',
+      '@lostgradient/markdown',
       '@lostgradient/editor',
     ]);
   });
 
-  it('closes @lostgradient/cinder to the full four-package chain', () => {
+  it('closes @lostgradient/cinder to the full three-package chain', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
-      '@cinder/diff',
-      '@cinder/markdown',
+      '@lostgradient/markdown',
       '@lostgradient/editor',
       '@lostgradient/cinder',
     ]);
   });
 
   it('does not over-build past the latest touched package', () => {
-    expect(buildableForwardClosure(new Set(['@cinder/diff', '@cinder/markdown']))).toEqual([
-      '@cinder/diff',
-      '@cinder/markdown',
+    expect(buildableForwardClosure(new Set(['@lostgradient/markdown']))).toEqual([
+      '@lostgradient/markdown',
     ]);
   });
 
   it('returns an empty list when no buildable package is touched', () => {
     expect(buildableForwardClosure(new Set())).toEqual([]);
     expect(buildableForwardClosure(new Set(['@cinder/testing']))).toEqual([]);
+    expect(buildableForwardClosure(new Set(['@lostgradient/chat']))).toEqual([]);
   });
 });
 

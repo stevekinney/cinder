@@ -13,8 +13,8 @@
  * @module
  */
 
-import { computeLineDiff, getDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
-import { normalize } from '@lostgradient/cinder/markdown/pipeline';
+import { computeLineDiff, getDiffStats } from '@lostgradient/markdown/diff/line-diff';
+import { normalize } from '@lostgradient/markdown/pipeline';
 import type { Thread } from '../../comments/index.ts';
 import { generateMarkdownSummary } from '../../export/index.ts';
 import type {

@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Snippet } from 'svelte';
-  import type { LineDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
+  import type { LineDiffStats } from '@lostgradient/markdown/diff/line-diff';
   import type { DiffState, DiffTier } from './diff-controller.svelte';
 
   import type { DiffViewerMode } from './diff-viewer.types.ts';

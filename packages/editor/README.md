@@ -27,12 +27,16 @@ import MarkdownEditor from '@lostgradient/editor/markdown-editor';
 ```
 
 ```svelte
-<MarkdownEditor value={source} onchange={(next) => (source = next)} />
+<MarkdownEditor id="post-body" value={source} onchange={(next) => (source = next)} />
 ```
 
-Each component ships its own stylesheet, included by the component entry. Applications that need
-a component's stylesheet as a standalone asset can import its `/styles` subpath, e.g.
-`@lostgradient/editor/markdown-editor/styles`.
+`id` is required — `MarkdownEditorProps` has no default and the component uses it for the
+accessibility identifiers it renders (labels, `aria-*` attributes on the editable surface).
+
+Each component ships its own stylesheet, included by the component entry. `review-editor` also
+ships its stylesheet as a standalone asset via `@lostgradient/editor/review-editor/styles`.
+`markdown-editor` and `diff-viewer` style entirely through scoped `<style>` blocks compiled inline
+by Svelte — there is no separate `/styles` subpath for those two.
 
 ## Components
 
@@ -42,7 +46,8 @@ a component's stylesheet as a standalone asset can import its `/styles` subpath,
 - `@lostgradient/editor/diff-viewer` — word-level Markdown diffing with front-matter and revert
   affordances.
 
-Each component subpath also exposes `/schema`, `/variables`, `/styles`, and `/examples`.
+Each component subpath also exposes `/schema`, `/variables`, and `/examples`. Only
+`review-editor` additionally exposes `/styles` (see above).
 
 ## Why a separate package
 

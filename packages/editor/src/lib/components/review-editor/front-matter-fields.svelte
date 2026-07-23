@@ -10,7 +10,7 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { parseFrontMatter, validateFrontMatter } from '@lostgradient/cinder/markdown/pipeline';
+  import { parseFrontMatter, validateFrontMatter } from '@lostgradient/markdown/pipeline';
   import Checkbox from '@lostgradient/cinder/checkbox';
   import Input from '@lostgradient/cinder/input';
   import Textarea from '@lostgradient/cinder/textarea';

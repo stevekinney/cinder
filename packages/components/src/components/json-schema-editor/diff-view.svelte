@@ -52,16 +52,16 @@
   {#if !state.hasChanges}
     <EmptyState title="No changes yet" description="Edit the schema to see a diff here." />
   {:else}
-    <pre
-      class="cinder-jse-diff-lines"
-      aria-label="JSON diff">{#each lineDiffs as line, index (index)}<div
-          class={classNames(
-            'cinder-jse-diff-line',
-            lineKindClass(line),
-          )}>{#if line.type === 'modified'}<span class="cinder-jse-diff-line__marker">~</span
+    <div class="cinder-jse-diff-lines" aria-label="JSON diff">
+      {#each lineDiffs as line, index (index)}<div
+          class={classNames('cinder-jse-diff-line', lineKindClass(line))}
+        >
+          {#if line.type === 'modified'}<span class="cinder-jse-diff-line__marker">~</span
             >{line.oldText}<span class="cinder-jse-diff-line__marker">→</span
             >{line.newText}{:else}<span class="cinder-jse-diff-line__marker"
               >{line.type === 'added' ? '+' : line.type === 'removed' ? '-' : ' '}</span
-            >{line.text}{/if}</div>{/each}</pre>
+            >{line.text}{/if}
+        </div>{/each}
+    </div>
   {/if}
 </div>

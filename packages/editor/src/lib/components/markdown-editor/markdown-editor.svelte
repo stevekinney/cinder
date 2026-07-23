@@ -66,7 +66,7 @@
   >;
 
   type MarkdownPipelineUtilities = Pick<
-    typeof import('@lostgradient/cinder/markdown/pipeline'),
+    typeof import('@lostgradient/markdown/pipeline'),
     'normalize' | 'parseOrThrow'
   >;
 
@@ -184,7 +184,7 @@
     let cancelled = false;
     // cinder/markdown/pipeline is SSR-safe (pure remark/unified), but kept dynamic for code-splitting:
     // the parser/serializer should not load before the user actually interacts with the editor.
-    void import('@lostgradient/cinder/markdown/pipeline').then((module) => {
+    void import('@lostgradient/markdown/pipeline').then((module) => {
       if (!cancelled) {
         pipelineUtilities = {
           normalize: module.normalize,

@@ -291,6 +291,7 @@ jobs:
         run: |
           bun run --filter=@lostgradient/cinder components:check
           bun run --filter=@lostgradient/chat components:check
+          bun run --filter=@lostgradient/editor components:check
 
       # Scoped to the pull request's affected packages via `turbo run
       # --affected` (diffing against TURBO_SCM_BASE) so a chat-only PR stops

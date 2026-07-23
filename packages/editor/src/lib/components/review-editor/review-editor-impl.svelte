@@ -23,7 +23,7 @@
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
   import { stringifyOrNull } from '../../utilities/stringify.ts';
   import MarkdownEditor from '../markdown-editor/markdown-editor.svelte';
-  import { contentEquals, normalize } from '@lostgradient/cinder/markdown/pipeline';
+  import { contentEquals, normalize } from '@lostgradient/markdown/pipeline';
   import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
   import { createAnchorPlugin, anchorPluginKey } from '../../anchor-decorations.ts';
   import {
@@ -62,7 +62,7 @@
   } from './review-editor-selection-geometry.ts';
   import DiffViewer from '../diff-viewer/diff-viewer.svelte';
   import SelectionPopover from '@lostgradient/cinder/selection-popover';
-  import { computeLineDiff, getDiffStats } from '@lostgradient/cinder/markdown/diff/line-diff';
+  import { computeLineDiff, getDiffStats } from '@lostgradient/markdown/diff/line-diff';
   import {
     generateMarkdownSummary,
     generateUnifiedDiff,

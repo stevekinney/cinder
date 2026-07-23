@@ -35,8 +35,8 @@
     computeLineDiff,
     getDiffStats,
     groupIntoHunks,
-  } from '@lostgradient/cinder/markdown/diff/line-diff';
-  import type { DiffHunk } from '@lostgradient/cinder/markdown/diff/line-diff';
+  } from '@lostgradient/markdown/diff/line-diff';
+  import type { DiffHunk } from '@lostgradient/markdown/diff/line-diff';
 
   import { classNames } from '../../utilities/class-names.ts';
   import Button from '@lostgradient/cinder/button';
