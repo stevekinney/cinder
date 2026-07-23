@@ -63,7 +63,7 @@
       "outputs": ["dist/**"]
     },
     "@lostgradient/editor#typecheck": {
-      "dependsOn": ["@lostgradient/markdown#build", "@lostgradient/cinder#build"],
+      "dependsOn": ["@lostgradient/markdown#build"],
       "outputs": []
     },
     "@lostgradient/editor#test": {
