@@ -9,7 +9,7 @@
     "lint": "oxlint src/ scripts/",
     "lint:fix": "oxlint --fix src/ scripts/",
     "test": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/editor' build && bun run --filter='@lostgradient/chat' build && bun run scripts/run-tests.ts",
-    "typecheck": "bun run --filter='@lostgradient/markdown' build && tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
+    "typecheck": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/editor' build && bun run --filter='@lostgradient/chat' build && tsc --noEmit && bunx svelte-check --tsconfig tsconfig.json --threshold error",
     "validate": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/editor' build && bun run --filter='@lostgradient/chat' build && bun run scripts/check-raw-native-controls.ts --strict && bun run src/validate-playground.ts",
     "vercel-build": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/editor' build && bun run --filter='@lostgradient/chat' build && bun run scripts/static-export.ts"
   },

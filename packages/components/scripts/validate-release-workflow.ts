@@ -61,13 +61,15 @@ const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json'
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
  * Every published package, in required publish DAG order: markdown has no
- * internal peer contract with the other two and publishes first; cinder next;
- * chat peers on cinder's minor and publishes last (see
+ * internal peer contract with the other three and publishes first; cinder
+ * next; editor peers on both cinder and markdown and publishes third; chat
+ * peers on cinder's minor and publishes last (see
  * docs/decisions/package-boundaries.md).
  */
 const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
+  '@lostgradient/editor',
   '@lostgradient/chat',
 ] as const;
 const REQUIRED_RELEASE_SCRIPTS = [

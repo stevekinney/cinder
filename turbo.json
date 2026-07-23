@@ -26,12 +26,18 @@
       "outputs": []
     },
     "@cinder/playground#typecheck": {
-      "dependsOn": ["@lostgradient/markdown#build"],
+      "dependsOn": [
+        "@lostgradient/markdown#build",
+        "@lostgradient/cinder#build",
+        "@lostgradient/editor#build",
+        "@lostgradient/chat#build"
+      ],
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/src/**",
         "$TURBO_ROOT$/packages/chat/src/**",
+        "$TURBO_ROOT$/packages/editor/src/**",
         "$TURBO_ROOT$/packages/markdown/src/**"
       ]
     },
