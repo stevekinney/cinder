@@ -9,14 +9,14 @@ const CHAT_IMPORT_PATHS: Readonly<Record<string, string>> = {
   'chat-conversation-header': '@lostgradient/chat/conversation-header',
   'chat-conversation-list': '@lostgradient/chat/conversation-list',
 };
-export const CHAT_COMPONENT_NAMES = Object.keys(CHAT_IMPORT_PATHS).sort();
+export const CHAT_COMPONENT_NAMES = Object.keys(CHAT_IMPORT_PATHS).toSorted();
 
 const EDITOR_IMPORT_PATHS: Readonly<Record<string, string>> = {
   'markdown-editor': '@lostgradient/editor/markdown-editor',
   'review-editor': '@lostgradient/editor/review-editor',
   'diff-viewer': '@lostgradient/editor/diff-viewer',
 };
-export const EDITOR_COMPONENT_NAMES = Object.keys(EDITOR_IMPORT_PATHS).sort();
+export const EDITOR_COMPONENT_NAMES = Object.keys(EDITOR_IMPORT_PATHS).toSorted();
 
 /**
  * One published component package represented in the shared playground.
