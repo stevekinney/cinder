@@ -1,11 +1,11 @@
 /**
  * Playground test runner.
  *
- * Runs the playground test suite in TWO separate `bun test` processes and fails
- * if either does. This split is deliberate and load-bearing — do not collapse it
- * back into a single `bun test` invocation without re-measuring.
+ * Runs the playground test suite across deliberately isolated `bun test`
+ * processes and fails if any process does. This split is load-bearing — do not
+ * collapse it back into a single `bun test` invocation without re-measuring.
  *
- * The ONE constraint that forces it (reproducibly verified, May 2026):
+ * Two constraints force it (reproducibly verified in CI):
  *
  *   `component-page.test.ts` imperatively `mount()`s Svelte fixtures (it exercises
  *   the example-mount `$effect`). Once those fixtures have been compiled and
@@ -19,16 +19,29 @@
  *   parallel race), so the only robust fix is to run the mount-heavy test in its
  *   own process, away from the build-driving server tests.
  *
- * Isolating exactly `component-page.test.ts` is sufficient: every other test
- * file (including `server.test.ts` and the other DOM-mount tests) coexists
- * cleanly in one process.
+ *   Tests that drive `Bun.build()` must also start in a fresh process. A
+ *   previously healthy shared process failed later builds with
+ *   `Unexpected reading file` / `Unseekable reading file` errors against
+ *   healthy component source files on Linux CI (July 2026). Each build-driving
+ *   file passes in isolation.
+ *
+ * The runner discovers build-driving tests from direct `Bun.build()` calls and
+ * imports of the server/export build pipelines, so a new test cannot silently
+ * join the shared process and recreate this failure mode.
  */
+
+import { resolve } from 'node:path';
+
+import ts from 'typescript';
 
 const TEST_ENV = {
   ...process.env,
   TZ: 'UTC',
   LANG: 'en_US.UTF-8',
 };
+
+const PLAYGROUND_ROOT = resolve(import.meta.dir, '..');
+const TEST_DIRECTORIES = ['scripts', 'src'] as const;
 
 // `--parallel=1` (serial) is required, same as the components package: Bun's
 // parallel runner uses worker processes that race to import the Svelte test
@@ -37,16 +50,117 @@ const TEST_ENV = {
 // concurrently. Serial execution avoids both. Do not strip without re-measuring.
 const SHARED_FLAGS = ['--conditions', 'browser', '--conditions', 'svelte', '--parallel=1'];
 
-/** The mount-heavy file that must run alone (see module header). */
-const ISOLATED_TEST = 'src/component-page.test.ts';
+const MOUNT_HEAVY_TEST = 'src/component-page.test.ts';
+
+const BUILD_PIPELINE_MODULE_NAMES = ['playground-server.ts', 'static-export.ts'] as const;
+
+export type PlaygroundTestFile = {
+  path: string;
+  source: string;
+};
+
+function isBuildPipelineModule(specifier: string): boolean {
+  return BUILD_PIPELINE_MODULE_NAMES.some((moduleName) => specifier.endsWith(moduleName));
+}
+
+function syntaxDrivesBuildPipeline(testFile: PlaygroundTestFile): boolean {
+  const sourceFile = ts.createSourceFile(
+    testFile.path,
+    testFile.source,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TS,
+  );
+  let drivesBuildPipeline = false;
+
+  function visit(node: ts.Node): void {
+    if (drivesBuildPipeline) return;
+
+    if (
+      ts.isImportDeclaration(node) &&
+      ts.isStringLiteral(node.moduleSpecifier) &&
+      isBuildPipelineModule(node.moduleSpecifier.text)
+    ) {
+      drivesBuildPipeline = true;
+      return;
+    }
+
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const [moduleSpecifier] = node.arguments;
+      if (moduleSpecifier && ts.isStringLiteral(moduleSpecifier)) {
+        if (isBuildPipelineModule(moduleSpecifier.text)) {
+          drivesBuildPipeline = true;
+          return;
+        }
+      }
+    }
+
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === 'Bun' &&
+      node.expression.name.text === 'build'
+    ) {
+      drivesBuildPipeline = true;
+      return;
+    }
+
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return drivesBuildPipeline;
+}
+
+/** Return whether a test file requires a fresh Bun process. */
+export function requiresFreshProcess(testFile: PlaygroundTestFile): boolean {
+  return testFile.path === MOUNT_HEAVY_TEST || syntaxDrivesBuildPipeline(testFile);
+}
 
 /**
- * Run one `bun test` invocation with the shared flags plus `args` (a path glob
- * to include, or a `--path-ignore-patterns=...` to exclude). Inherits stdio so
- * the child's reporter streams straight through. Returns its exit code.
+ * Build the process plan: safe tests share one serial process, while every
+ * state-sensitive test receives its own process.
+ */
+export function createTestProcessPlan(testFiles: PlaygroundTestFile[]): string[][] {
+  const sortedTestFiles = testFiles.toSorted((left, right) => left.path.localeCompare(right.path));
+  const sharedTestPaths = sortedTestFiles
+    .filter((testFile) => !requiresFreshProcess(testFile))
+    .map((testFile) => testFile.path);
+  const isolatedTestPaths = sortedTestFiles
+    .filter(requiresFreshProcess)
+    .map((testFile) => [testFile.path]);
+
+  return sharedTestPaths.length === 0 ? isolatedTestPaths : [sharedTestPaths, ...isolatedTestPaths];
+}
+
+/** Discover every playground test and load enough source to classify it. */
+async function discoverTestFiles(): Promise<PlaygroundTestFile[]> {
+  const testFiles: PlaygroundTestFile[] = [];
+
+  for (const directory of TEST_DIRECTORIES) {
+    const directoryPath = resolve(PLAYGROUND_ROOT, directory);
+    const glob = new Bun.Glob('**/*.test.ts');
+
+    for await (const relativePath of glob.scan({ cwd: directoryPath, onlyFiles: true })) {
+      const path = `${directory}/${relativePath}`;
+      testFiles.push({
+        path,
+        source: await Bun.file(resolve(PLAYGROUND_ROOT, path)).text(),
+      });
+    }
+  }
+
+  return testFiles;
+}
+
+/**
+ * Run one `bun test` invocation for a process group. Inherits stdio so the
+ * child's reporter streams straight through. Returns its exit code.
  */
 async function runBunTest(args: string[]): Promise<number> {
   const child = Bun.spawn(['bun', 'test', ...SHARED_FLAGS, ...args], {
+    cwd: PLAYGROUND_ROOT,
     env: TEST_ENV,
     stdout: 'inherit',
     stderr: 'inherit',
@@ -54,18 +168,26 @@ async function runBunTest(args: string[]): Promise<number> {
   return child.exited;
 }
 
-/** Run both test processes in sequence; exit non-zero if either fails. */
+/** Run every test process in sequence; exit non-zero if any process fails. */
 async function main(): Promise<void> {
-  // Process 1: everything EXCEPT the isolated mount test.
-  const mainExit = await runBunTest([`--path-ignore-patterns=${ISOLATED_TEST}`]);
-  // Process 2: only the isolated mount test.
-  const isolatedExit = await runBunTest([ISOLATED_TEST]);
-  process.exit(mainExit !== 0 || isolatedExit !== 0 ? 1 : 0);
+  const processPlan = createTestProcessPlan(await discoverTestFiles());
+  if (processPlan.length === 0) {
+    throw new Error('No playground tests were discovered.');
+  }
+  let failed = false;
+
+  for (const testPaths of processPlan) {
+    failed = (await runBunTest(testPaths)) !== 0 || failed;
+  }
+
+  process.exit(failed ? 1 : 0);
 }
 
-// Fire-and-forget: `main()` calls `process.exit`, so the process ends inside it.
-// Surface an unexpected rejection as a non-zero exit rather than an unhandled one.
-void main().catch((error: unknown) => {
-  console.error(error);
-  process.exit(1);
-});
+if (import.meta.main) {
+  // Fire-and-forget: `main()` calls `process.exit`, so the process ends inside it.
+  // Surface an unexpected rejection as a non-zero exit rather than an unhandled one.
+  void main().catch((error: unknown) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
