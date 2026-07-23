@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { relative } from 'node:path';
+import { relative, resolve } from 'node:path';
 
 // Protected prefix — single source of truth is scripts/ssr-import-boundary.ts.
 // Defined inline (matching markdown-editor.import-boundary.test.ts's
@@ -53,6 +53,27 @@ describe('@cinder/commentary editor SSR import safety', () => {
       for (const match of source.matchAll(RUNTIME_MILKDOWN_IMPORT_PATTERN)) {
         const lineNumber = source.slice(0, match.index).split('\n').length;
         violations.push(`${relative(import.meta.dirname, filePath)}:${lineNumber}`);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps process-global module mocks out of the shared test process', async () => {
+    const violations: string[] = [];
+    const sourceRoot = resolve(import.meta.dirname, '..');
+    const moduleMockPattern = new RegExp(['mock', 'module'].join('\\.'), 'g');
+    const glob = new Bun.Glob('**/*.test.ts');
+
+    for await (const filePath of glob.scan({
+      absolute: true,
+      cwd: sourceRoot,
+      onlyFiles: true,
+    })) {
+      const source = await Bun.file(filePath).text();
+      for (const match of source.matchAll(moduleMockPattern)) {
+        const lineNumber = source.slice(0, match.index).split('\n').length;
+        violations.push(`${relative(sourceRoot, filePath)}:${lineNumber}`);
       }
     }
 
