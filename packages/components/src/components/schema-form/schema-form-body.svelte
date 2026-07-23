@@ -65,8 +65,15 @@
   // All mutable state is declared here so it resets when the component is
   // remounted via {#key schema}. The initial values are seeded once from
   // the schema+value at mount time.
-  const initialModel = createSchemaFormModel(schema);
-  const initialFormValue = initialValueForField(initialModel.field, value);
+  function createInitialState() {
+    const initialModel = createSchemaFormModel(schema);
+    return {
+      initialModel,
+      initialFormValue: initialValueForField(initialModel.field, value),
+    };
+  }
+
+  const { initialModel, initialFormValue } = createInitialState();
   const model = $derived(createSchemaFormModel(schema));
   let formElement = $state<HTMLFormElement>();
   let serializedInputElement = $state<HTMLInputElement>();
