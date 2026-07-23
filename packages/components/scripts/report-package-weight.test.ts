@@ -1,5 +1,6 @@
+import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { packageTarballPath, recordEntrypointSize } from './report-package-weight.ts';
@@ -116,4 +117,33 @@ describe('package-weight budget gates', () => {
 
     expect(weightCheckScript.split(/\s+/)).toContain('--check');
   });
+});
+
+describe('upstream vendoring stays scoped to editor headless surface', () => {
+  // `build.ts` vendors ALL of @lostgradient/editor's dist/** into both
+  // `dist/editor/` and `dist/server/editor/` (copyUpstreamDistInto), because
+  // cinder re-exports editor's headless anchor/comment/session/export/
+  // ProseMirror runtime at `./commentary/*` and `./editor/*`. Editor's
+  // compiled markdown-editor/review-editor/diff-viewer Svelte components are
+  // NOT part of that re-exported surface (suppressed to `null` in
+  // CINDER_KEY_OVERRIDES — see lib/derive-upstream-reexports.ts) and must
+  // never reach cinder's dist, let alone its published tarball: they are
+  // pure bloat that grows as editor's component surface grows, with no
+  // exports-map entry pointing at them to catch the leak structurally.
+  // Requires a prior `bun run build` (dist/ is absent in the scoped
+  // unit-test-only CI job); skipped rather than failing so that job stays
+  // green — the full `bun run validate` chain always builds first.
+  const distributionRoot = resolve(import.meta.dirname, '..', 'dist');
+
+  test.skipIf(!existsSync(distributionRoot))(
+    'dist/ contains no vendored editor component bundles',
+    async () => {
+      const offenders: string[] = [];
+      const glob = new Glob('editor/**/components/**');
+      for await (const relativePath of glob.scan({ cwd: distributionRoot })) {
+        offenders.push(relativePath);
+      }
+      expect(offenders).toEqual([]);
+    },
+  );
 });

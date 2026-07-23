@@ -6219,6 +6219,14 @@
       "import": "./src/markdown/utilities/sort-keys.ts",
       "default": "./dist/markdown/utilities/sort-keys.js"
     },
+    "./commentary": {
+      "types": "./dist/commentary/index.d.ts",
+      "browser": "./src/commentary/index.ts",
+      "node": "./dist/server/commentary/index.js",
+      "svelte": "./src/commentary/index.ts",
+      "import": "./src/commentary/index.ts",
+      "default": "./dist/commentary/index.js"
+    },
     "./commentary/anchor-decorations": {
       "types": "./dist/commentary/anchor-decorations.d.ts",
       "browser": "./src/commentary/anchor-decorations.ts",

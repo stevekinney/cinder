@@ -8,6 +8,22 @@
 // file as valid without a prebuilt dist. Runtime resolution (what the test
 // actually asserts) is unaffected; `bun test` resolves the "bun" export
 // condition straight to source.
+//
+// `@lostgradient/markdown`'s sibling test avoids the identical self-import-
+// before-build problem by excluding `**/*.test.ts` in
+// `packages/markdown/tsconfig.check.json`. That pattern does NOT transfer
+// here: markdown's `typecheck` script is `tsc` only — no svelte-check — so
+// excluding test files from the ONE config `tsc` reads is sufficient.
+// Editor's `typecheck` script is `tsc -p tsconfig.json && bunx svelte-check
+// --workspace src/lib --tsconfig ../../tsconfig.json`, and svelte-check is
+// invoked with the WORKSPACE ROOT tsconfig, not editor's own — so an
+// exclusion added to `packages/editor/tsconfig.json` (or a sibling
+// `tsconfig.check.json`) is never consulted by the svelte-check step at all;
+// confirmed empirically that editing editor's own tsconfig's `exclude` list
+// does not change svelte-check's behavior. Excluding `**/*.test.ts` from the
+// shared root tsconfig instead would fix this file but is a much bigger,
+// riskier change (every package's svelte-check invocation reads that same
+// config) for a single test file, so `@ts-nocheck` stays as the targeted fix.
 
 /**
  * Migrated (in part) from `packages/editor/src/package-subpath.test.ts` when

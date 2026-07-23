@@ -794,16 +794,20 @@ function isUpstreamExcludedFile(relative: string): boolean {
   return upstreamExcludedFilePatterns.some((pattern) => pattern.test(relative));
 }
 
-// `editor`'s `dist/components/**` holds its compiled Svelte components
-// (markdown-editor, review-editor, diff-viewer) — every one of them is
+// `editor`'s `dist/components/**` (browser Svelte component bundles) and
+// `dist/server/components/**` (their server-target entries) hold its compiled
+// markdown-editor/review-editor/diff-viewer output — every one of them is
 // suppressed (`null`) in `CINDER_KEY_OVERRIDES` above, so cinder never
-// re-exports any of it. Vendoring it anyway is pure bloat, and worse: it
-// copies CSS assets (`prosemirror.css`, `review-editor.css`) into
-// `dist/server/editor/components/**`, which trips `server-css-free.test.ts`'s
-// "no CSS reachable under dist/server" contract even though nothing in
-// cinder's own server entries imports this subtree.
+// re-exports any of it. Vendoring it anyway is pure bloat (this function
+// copies editor's ENTIRE dist tree into BOTH cinder's `dist/<pkg>/` and
+// `dist/server/<pkg>/`, so both `components/**` and the nested
+// `server/components/**` need excluding, or the pattern only catches half),
+// and worse: it copies CSS assets (`prosemirror.css`, `review-editor.css`)
+// into `dist/server/editor/components/**`, which trips
+// `server-css-free.test.ts`'s "no CSS reachable under dist/server" contract
+// even though nothing in cinder's own server entries imports this subtree.
 const UPSTREAM_SUBTREE_EXCLUSIONS: ReadonlyMap<string, RegExp> = new Map([
-  ['editor', /^components\//u],
+  ['editor', /^(?:server\/)?components\//u],
 ]);
 function isSuppressedUpstreamSubtree(upstreamName: string, relative: string): boolean {
   return UPSTREAM_SUBTREE_EXCLUSIONS.get(upstreamName)?.test(relative) ?? false;

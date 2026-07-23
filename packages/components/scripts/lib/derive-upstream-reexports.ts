@@ -111,10 +111,14 @@ export const CINDER_KEY_OVERRIDES: ReadonlyMap<string, string | null> = new Map(
   // (the formula is `./${pkg}`) — but that collides with the intentional
   // override two lines down, which points cinder's `./editor` key at
   // `editor`'s NESTED `./editor` subpath (the ProseMirror runtime, preserved
-  // at its old `@cinder/editor`-era cinder key). Nothing in-repo imports
-  // `@lostgradient/cinder/commentary`'s former top-level barrel, so it is
-  // suppressed rather than given a second, unused cinder key.
-  ['editor:.', null],
+  // at its old `@cinder/editor`-era cinder key). Editor's root barrel is the
+  // SAME aggregate surface `@cinder/commentary`'s root barrel used to be
+  // (anchor-decorations + anchoring + comments + export + session +
+  // shared/anchor-types, all re-exported together) — a live, published
+  // `@lostgradient/cinder/commentary` key with real external consumers, so it is
+  // remapped to that old key instead of being dropped or given the
+  // colliding `./editor` key.
+  ['editor:.', './commentary'],
   ['editor:./editor', './editor'],
   ['editor:./editor/component-runtime', './editor/component-runtime'],
   ['editor:./editor/test-utilities', './editor/test-utilities'],

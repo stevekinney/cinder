@@ -889,6 +889,20 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       // via `dist/_upstream/`; the shell sources are build-only inputs.
       'package/src/markdown/',
       'package/src/editor/',
+      // `@lostgradient/editor`'s markdown-editor/review-editor/diff-viewer
+      // Svelte components are vendored into `dist/editor/**` (build.ts's
+      // `copyUpstreamDistInto`) for the headless subpaths cinder DOES
+      // re-export (`./commentary/*`, `./editor/*`), but the component
+      // bundles themselves are suppressed from cinder's exports map — see
+      // `CINDER_KEY_OVERRIDES` in `lib/derive-upstream-reexports.ts` — so
+      // they must never reach the published tarball. Catches both the
+      // browser bundle (`dist/editor/components/**`) and its server-target
+      // twin (`dist/editor/server/components/**`, `dist/server/editor/
+      // components/**` — the same tree copied into both of cinder's dist
+      // roots).
+      'package/dist/editor/components/',
+      'package/dist/editor/server/components/',
+      'package/dist/server/editor/components/',
     ],
   };
 }
