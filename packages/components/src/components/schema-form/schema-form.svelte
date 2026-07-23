@@ -17,6 +17,7 @@
    * @a11yNote Invalid submission moves focus to the first invalid field and associates each field error through aria-describedby.
    */
   export type {
+    SchemaFormDraftChangeHandler,
     SchemaFormOutput,
     SchemaFormProps,
     SchemaFormSchema,
@@ -42,6 +43,10 @@
    * only a schema change triggers a remount and state reset. This is intentional:
    * the form is an editing surface, and resetting it on every external value change
    * would discard in-progress user edits.
+   *
+   * Use `ondraftchange` to observe the complete live draft without turning
+   * `value` into a controlled binding. Draft callbacks run before schema
+   * validation, while `onsubmit` runs only after validation passes.
    */
   let { schema, ...rest }: SchemaFormProps<Schema> = $props();
 </script>

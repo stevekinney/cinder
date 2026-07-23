@@ -154,4 +154,9 @@ describe('Chat package ownership boundary', () => {
       'default',
     ]);
   });
+
+  test('keeps coverage in one process so repeated Svelte modules merge deterministically', () => {
+    expect(chatManifest.scripts?.['test:coverage']).toContain('--coverage-reporter=lcov');
+    expect(chatManifest.scripts?.['test:coverage']).not.toContain('--parallel');
+  });
 });

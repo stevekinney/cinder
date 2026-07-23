@@ -1,11 +1,13 @@
 /// <reference lib="dom" />
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { createEditorAttachment } from './attach.js';
+import * as editorRuntime from './editor.js';
 import type { EditorConfig, EditorState } from './types.js';
 
 let resolveCreatedEditor: ((state: EditorState) => void) | undefined;
 let rejectCreatedEditor: ((error: unknown) => void) | undefined;
 
-const createEditorMock = mock((_element: HTMLElement, _configuration: EditorConfig) => {
+const createEditorMock = mock((_element: HTMLElement, _configuration?: EditorConfig) => {
   return new Promise<EditorState>((resolve, reject) => {
     resolveCreatedEditor = resolve;
     rejectCreatedEditor = reject;
@@ -13,13 +15,6 @@ const createEditorMock = mock((_element: HTMLElement, _configuration: EditorConf
 });
 
 const destroyEditorMock = mock((_state: EditorState) => {});
-
-mock.module('./editor.js', () => ({
-  createEditor: createEditorMock,
-  destroyEditor: destroyEditorMock,
-}));
-
-const { createEditorAttachment } = await import('./attach.js');
 
 function createEditorState(): EditorState {
   return {
@@ -71,6 +66,12 @@ describe('createEditorAttachment', () => {
     rejectCreatedEditor = undefined;
     createEditorMock.mockClear();
     destroyEditorMock.mockClear();
+    spyOn(editorRuntime, 'createEditor').mockImplementation(createEditorMock);
+    spyOn(editorRuntime, 'destroyEditor').mockImplementation(destroyEditorMock);
+  });
+
+  afterEach(() => {
+    mock.restore();
   });
 
   test('destroys the editor when initialization resolves after detach', async () => {
