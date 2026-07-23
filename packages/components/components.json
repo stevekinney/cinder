@@ -1748,7 +1748,7 @@
       "tags": ["diff", "statistics", "domain-suite"],
       "useWhen": [
         "Surfacing a quick numeric summary of changes alongside or in lieu of a full diff surface.",
-        "Annotating a list of files or pull requests with line-change counts as part of the diff-viewer suite."
+        "Annotating a list of files or pull requests with line-change counts as part of the source-diff-viewer suite."
       ],
       "avoidWhen": [
         {

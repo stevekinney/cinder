@@ -17,10 +17,12 @@ dependencies so a base Cinder install does not pull the rich editor graph into a
 import it.
 
 Install the rich editor peer set before importing `@lostgradient/editor/markdown-editor` in a
-fresh consumer:
+fresh consumer. MarkdownEditor also imports `@lostgradient/cinder` components (Button, Input,
+icons) and the `@lostgradient/markdown` pipeline directly, so both packages — along with `svelte`
+— are required peers too, not just the Milkdown/ProseMirror stack:
 
 ```bash
-bun add @milkdown/ctx @milkdown/kit @milkdown/prose @types/mdast @types/unist js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view remark-gfm remark-parse remark-stringify unified unist-util-visit
+bun add @lostgradient/cinder @lostgradient/markdown svelte @milkdown/ctx @milkdown/kit @milkdown/prose @types/mdast @types/unist js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view remark-gfm remark-parse remark-stringify unified unist-util-visit
 ```
 
 `@lostgradient/editor/review-editor` and `@lostgradient/chat` with the default composer also

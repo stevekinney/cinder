@@ -8,7 +8,7 @@
    * @tag statistics
    * @tag domain-suite
    * @useWhen Surfacing a quick numeric summary of changes alongside or in lieu of a full diff surface.
-   * @useWhen Annotating a list of files or pull requests with line-change counts as part of the diff-viewer suite.
+   * @useWhen Annotating a list of files or pull requests with line-change counts as part of the source-diff-viewer suite.
    * @avoidWhen Rendering the actual hunked diff content — pair with `DiffViewer` from `@lostgradient/editor` for the full document comparison.
    * @avoidWhen Generic numeric badges that have nothing to do with diffs — reach for stat or badge instead.
    * @related source-diff-viewer

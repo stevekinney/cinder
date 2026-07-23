@@ -201,9 +201,20 @@ describe('MarkdownEditor import-boundary invariant', () => {
 describe('MarkdownEditor peer dependency documentation', () => {
   it('documents the optional editor peer install path for fresh consumers', () => {
     expect(readme).toContain('@lostgradient/editor/markdown-editor');
-    expect(readme).toContain('bun add @milkdown/ctx @milkdown/kit @milkdown/prose');
+    expect(readme).toContain('bun add @lostgradient/cinder @lostgradient/markdown svelte');
+    expect(readme).toContain('@milkdown/ctx @milkdown/kit @milkdown/prose');
     expect(readme).toContain('prosemirror-state');
     expect(readme).toContain('__vite-optional-peer-dep:*');
+  });
+
+  it('documents Cinder and Markdown as required direct peers, not just the Milkdown/ProseMirror stack', () => {
+    // MarkdownEditor imports @lostgradient/cinder components and the
+    // @lostgradient/markdown pipeline directly (see the component's own
+    // import boundary tests above), so the peer install command must
+    // include both packages — the old Milkdown-only list left consumers who
+    // follow just this component's README with unresolved module errors.
+    expect(readme).toContain('@lostgradient/cinder');
+    expect(readme).toContain('@lostgradient/markdown');
   });
 });
 
