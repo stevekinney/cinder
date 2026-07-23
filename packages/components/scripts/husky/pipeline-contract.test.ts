@@ -26,7 +26,7 @@ import { REPO_ROOT } from './utilities.ts';
 const huskyDirectory = join(REPO_ROOT, 'packages/components/scripts/husky');
 const componentsPackageRoot = join(REPO_ROOT, 'packages/components');
 
-/** Strip line comments and block comments so source-text assertions aren't fooled by editor. */
+/** Strip line comments and block comments so source-text assertions aren't fooled by comment text. */
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 }

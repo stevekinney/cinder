@@ -33,6 +33,11 @@ const buildCacheInputs = {
     `${PACKAGE_ROOT}/tsconfig.json`,
     `${WORKSPACE_ROOT}/bun.lock`,
     `${WORKSPACE_ROOT}/tsconfig.base.json`,
+    // Shared compiler plugin this build imports from cinder's scripts
+    // directory (outside `sourceGlobRoots` above) — a change to it (e.g. a
+    // server-identity or scoped-CSS filename fix) must invalidate this
+    // package's hash too, or a stale dist survives an "up to date" skip.
+    `${WORKSPACE_ROOT}/packages/components/scripts/svelte-plugin.ts`,
   ],
   upstreamDistDirectories: [],
 };
