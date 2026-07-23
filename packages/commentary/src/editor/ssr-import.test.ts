@@ -61,19 +61,21 @@ describe('@cinder/commentary editor SSR import safety', () => {
 
   it('keeps process-global module mocks out of the shared test process', async () => {
     const violations: string[] = [];
-    const sourceRoot = resolve(import.meta.dirname, '..');
+    // Commentary's bare `bun test` discovers both src/ and scripts/, so scan
+    // the package root rather than only the editor's source tree.
+    const packageRoot = resolve(import.meta.dirname, '..', '..');
     const moduleMockPattern = new RegExp(['mock', 'module'].join('\\.'), 'g');
     const glob = new Bun.Glob('**/*.test.ts');
 
     for await (const filePath of glob.scan({
       absolute: true,
-      cwd: sourceRoot,
+      cwd: packageRoot,
       onlyFiles: true,
     })) {
       const source = await Bun.file(filePath).text();
       for (const match of source.matchAll(moduleMockPattern)) {
         const lineNumber = source.slice(0, match.index).split('\n').length;
-        violations.push(`${relative(sourceRoot, filePath)}:${lineNumber}`);
+        violations.push(`${relative(packageRoot, filePath)}:${lineNumber}`);
       }
     }
 
