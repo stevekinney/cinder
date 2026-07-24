@@ -1,6 +1,5 @@
-@import '../stat/stat.css';
-
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../stat/stat.css';
 @layer cinder.components {
   .cinder-stat-group {
     --cinder-stat-group-gap: var(--cinder-space-4, 1rem);
