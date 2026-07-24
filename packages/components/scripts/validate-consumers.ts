@@ -1029,9 +1029,17 @@ async function runStylesConsumerFixture(): Promise<void> {
   const fixtureDirectory = join(repositoryRoot, 'fixtures/styles-consumer');
   process.stdout.write('[validate-consumers] step: styles-consumer (base install shape)…\n');
 
+  // `@lostgradient/markdown` is a real, non-optional Cinder dependency now, so
+  // even a styles-only install resolves it transitively. Inject the local
+  // Markdown tarball (an `overrides` entry, so the transitive cinder→markdown
+  // edge resolves to it) rather than letting `bun install` ask npm for
+  // `^<version>` — during the same-train Markdown release that version is not
+  // published yet, which would block `release.yaml`'s pre-publish consumer
+  // validation. The rich-feature leak check below is scoped to SDK/zod, which
+  // Markdown never pulls in, so including it does not weaken that assertion.
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, {
     includeRichFeatureDependencies: false,
-    includeWorkspaceDependencyPackages: false,
+    includeWorkspaceDependencyPackages: true,
   });
 
   try {
