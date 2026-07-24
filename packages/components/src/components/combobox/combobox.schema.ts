@@ -87,7 +87,7 @@ const schema = {
       },
       {
         name: 'value',
-        reason: 'unknown-shape',
+        reason: 'generic-type-parameter',
         description: "Currently selected value. Bindable. `''` when nothing is selected.",
       },
     ],

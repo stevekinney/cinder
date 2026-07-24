@@ -957,6 +957,21 @@ describe('InvocationRuleBuilder', () => {
       expect(fieldInput.value).toBe('team.owner');
     });
 
+    test('blur commits an exact suggested field label as its canonical field value', async () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const fieldInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Field for condition 1 of PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(fieldInput, { target: { value: 'Enabled' } });
+      await fireEvent.blur(fieldInput, { relatedTarget: null });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].field).toBe('enabled');
+    });
+
     test('add-condition seeds the new condition with the fixed operator set default (eq)', async () => {
       const rule = makeRule({ conditions: [] });
       const { container, onchange } = renderConditionsOnlyBuilder([rule]);

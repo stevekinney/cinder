@@ -34,7 +34,7 @@ SVG icons inside buttons are `aria-hidden="true"` because the button's `aria-lab
 
 Action controls are not rendered at all, so their roles, names, and states described above do not apply — there is nothing to hide from assistive technology because nothing is emitted to the DOM in the first place.
 
-The condition field control is a combobox in conditions-only modes. It keeps the accessible name `aria-label="Field for condition N of RuleName"`, uses `fieldOptions` as suggestions, and commits arbitrary typed keys on Enter. The condition value control is one of four native elements depending on the matching field option's `type`, but all four use the same accessible-name pattern as the full-mode text input: `aria-label="Value for condition N of RuleName"`.
+The condition field control is a combobox in conditions-only modes. It keeps the accessible name `aria-label="Field for condition N of RuleName"`, uses `fieldOptions` as suggestions, and commits arbitrary typed keys on Enter or blur while still normalizing exact field matches back to their canonical option values. The condition value control is one of four native elements depending on the matching field option's `type`, but all four use the same accessible-name pattern as the full-mode text input: `aria-label="Value for condition N of RuleName"`.
 
 - `type: 'number'` renders `<input type="number">`.
 - `type: 'boolean'` renders `<input type="checkbox">`.

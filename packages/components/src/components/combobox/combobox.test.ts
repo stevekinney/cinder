@@ -203,15 +203,12 @@ describe('Combobox', () => {
 });
 
 describe('Combobox structure', () => {
-  test('renders an input with role=combobox and aria-controls while open', async () => {
+  test('renders an input with role=combobox', () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`);
     expect(input?.getAttribute('role')).toBe('combobox');
     expect(input?.getAttribute('aria-autocomplete')).toBe('list');
-    expect(input?.getAttribute('aria-controls')).toBeNull();
-    await fireEvent.focus(input!);
-    await waitForListbox();
-    expect(input?.getAttribute('aria-controls')).toBe('fruit-listbox');
+    expect(input?.hasAttribute('aria-controls')).toBe(false);
   });
 
   test('renders a label when label prop is supplied', () => {
@@ -237,7 +234,38 @@ describe('Combobox structure', () => {
   test('listbox is closed by default and has no aria-expanded=true', () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     expect(container.querySelector(`#fruit`)?.getAttribute('aria-expanded')).toBe('false');
+    expect(container.querySelector(`#fruit`)?.hasAttribute('aria-controls')).toBe(false);
     expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
+  test('wires aria-controls only while the listbox exists', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector<HTMLInputElement>('#fruit')!;
+
+    await fireEvent.focus(input);
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
+
+    expect(input.getAttribute('aria-expanded')).toBe('true');
+    expect(input.getAttribute('aria-controls')).toBe('fruit-listbox');
+
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitFor(() =>
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull(),
+    );
+
+    expect(input.getAttribute('aria-expanded')).toBe('false');
+    expect(input.hasAttribute('aria-controls')).toBe(false);
+  });
+
+  test('omits aria-activedescendant when the listbox is closed', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector<HTMLInputElement>('#fruit')!;
+    await fireEvent.focus(input);
+    await waitForListbox();
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    expect(input.getAttribute('aria-activedescendant')).toBe('fruit-option-0');
+    await fireEvent.blur(input);
+    expect(input.hasAttribute('aria-activedescendant')).toBe(false);
   });
 
   test('renders a hidden input for native form submission when name is provided', () => {
@@ -366,6 +394,62 @@ describe('Combobox structure', () => {
 
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
     expect(hidden?.value).toBe('');
+  });
+
+  test('allowCustomValue renders an external arbitrary value as committed text', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      value: 'dragonfruit',
+      allowCustomValue: true,
+      options: fruits,
+    });
+
+    expect(container.querySelector<HTMLInputElement>('#fruit')?.value).toBe('dragonfruit');
+  });
+
+  test('allowCustomValue normalizes an exact option label on blur', async () => {
+    let value = '';
+    const onchange = (nextValue: string) => {
+      value = nextValue;
+    };
+    const { container, rerender } = render(Combobox, {
+      id: 'fruit',
+      value,
+      allowCustomValue: true,
+      onchange,
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit')!;
+
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'Banana' } });
+    await fireEvent.blur(input, { relatedTarget: null });
+    await rerender({ id: 'fruit', value, allowCustomValue: true, onchange, options: fruits });
+
+    expect(value).toBe('banana');
+    expect(input.value).toBe('Banana');
+  });
+
+  test('allowCustomValue keeps the canonical option value when Enter is pressed on a focused selection', async () => {
+    let value = 'banana';
+    const onchange = (nextValue: string) => {
+      value = nextValue;
+    };
+    const { container, rerender } = render(Combobox, {
+      id: 'fruit',
+      value,
+      allowCustomValue: true,
+      onchange,
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit')!;
+
+    await fireEvent.focus(input);
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    await rerender({ id: 'fruit', value, allowCustomValue: true, onchange, options: fruits });
+
+    expect(value).toBe('banana');
+    expect(input.value).toBe('Banana');
   });
 
   test('disabled hidden input is omitted from native FormData', () => {

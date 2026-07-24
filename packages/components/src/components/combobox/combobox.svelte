@@ -99,9 +99,15 @@
   let hiddenInputElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let committedLabel = $state('');
+  let initialCustomValue = $state('');
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  const initialValue = untrack(() => value);
+  let initialValue = $state(untrack(() => value));
   const initialInputValue = untrack(() => inputValue);
+
+  $effect.pre(() => {
+    if (!initialValue && value) initialValue = value;
+    if (allowCustomValue && value && !initialCustomValue) initialCustomValue = value;
+  });
 
   // Reset active index whenever the filtered set changes so we don't point
   // at a stale option.
@@ -133,6 +139,7 @@
         inputValue = matched.label;
       }
     } else if (allowCustomValue) {
+      if (!initialCustomValue) initialCustomValue = value;
       committedLabel = value;
       if (untrack(() => inputValue) !== value) inputValue = value;
     }
@@ -173,11 +180,27 @@
     return releaseEscape;
   });
 
+  const listboxVisible = $derived(open && filteredOptions.length > 0);
   const activeOptionId = $derived(
-    activeIndex >= 0 && activeIndex < filteredOptions.length
+    listboxVisible && activeIndex >= 0 && activeIndex < filteredOptions.length
       ? `${id}-option-${activeIndex}`
       : undefined,
   );
+  function findCommittedOption(rawValue: string): ComboboxOption<T> | undefined {
+    const query = rawValue.trim();
+    if (!query) return undefined;
+    let labelMatch: ComboboxOption<T> | undefined;
+    for (const option of options) {
+      if (option.disabled) continue;
+      if (option.value === query) return option;
+      // Keep scanning after the first label match so an exact value match later
+      // in the list still wins over a human-readable label collision.
+      if (labelMatch === undefined && option.label === query) {
+        labelMatch = option;
+      }
+    }
+    return labelMatch;
+  }
 
   function handleInput(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -222,15 +245,15 @@
   function commitCustomValue(): void {
     const nextValue = inputValue.trim();
     if (!allowCustomValue || !nextValue) return;
-    const matchedOption = options.find(
-      (option) => option.value === nextValue || option.label === nextValue,
-    );
-    const committedValue = matchedOption?.value ?? nextValue;
+    const matched = findCommittedOption(nextValue);
+    const committedValue = matched?.value ?? nextValue;
+    const committedText = matched?.label ?? nextValue;
+    // This path only runs when arbitrary values are explicitly allowed.
     value = committedValue as T;
-    inputValue = matchedOption?.label ?? nextValue;
-    committedLabel = matchedOption?.label ?? nextValue;
+    inputValue = committedText;
+    committedLabel = committedText;
     open = false;
-    onchange?.(committedValue);
+    onchange?.(committedValue as T);
   }
 
   function resetToInitialValue(event: Event): void {
@@ -238,15 +261,19 @@
     resetSyncTimeout = setTimeout(() => {
       resetSyncTimeout = undefined;
       if (event.defaultPrevented) return;
-      value = initialValue;
-      const matched = options.find((option) => option.value === initialValue);
-      const nextInputValue = matched?.label ?? initialInputValue;
+      const resetValue =
+        initialValue ||
+        hiddenInputElement?.defaultValue ||
+        (allowCustomValue ? initialCustomValue || committedLabel : '');
+      value = resetValue as T;
+      const matched = options.find((option) => option.value === resetValue);
+      const nextInputValue = matched?.label ?? (allowCustomValue ? resetValue : initialInputValue);
       inputValue = nextInputValue;
       committedLabel = matched?.label ?? '';
       open = false;
       activeIndex = -1;
       if (inputElement) inputElement.value = nextInputValue;
-      if (hiddenInputElement) hiddenInputElement.value = initialValue;
+      if (hiddenInputElement) hiddenInputElement.value = resetValue;
     }, 0);
   }
 
@@ -339,8 +366,8 @@
       value={inputValue}
       aria-autocomplete="list"
       aria-label={ariaLabel?.trim() || undefined}
-      aria-expanded={open}
-      aria-controls={open && filteredOptions.length > 0 ? listboxId : undefined}
+      aria-expanded={listboxVisible}
+      aria-controls={listboxVisible ? listboxId : undefined}
       aria-activedescendant={activeOptionId}
       aria-invalid={field.ariaInvalid}
       aria-required={resolvedRequired || undefined}
@@ -362,7 +389,7 @@
     />
   {/if}
 
-  {#if open && filteredOptions.length > 0}
+  {#if listboxVisible}
     <Popover
       bind:open
       id={listboxId}

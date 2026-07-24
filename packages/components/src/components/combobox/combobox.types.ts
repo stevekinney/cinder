@@ -39,7 +39,7 @@ export type ComboboxProps<T extends string = string, AllowCustom extends boolean
   /** Currently selected value. Bindable. `''` when nothing is selected. */
   value?: AllowCustom extends true ? string : NoInfer<T> | '';
   /** Called when an option, or an arbitrary value when enabled, is committed. */
-  onchange?: (value: string) => void;
+  onchange?: (value: AllowCustom extends true ? string : T) => void;
   /** Native form field name. Renders a hidden input carrying the selected value. */
   name?: string | undefined;
   /** Free-text input value (the text the user has typed). Bindable. */
