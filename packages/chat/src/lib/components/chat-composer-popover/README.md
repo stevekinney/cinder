@@ -36,6 +36,11 @@ Chat composer-bound slash-command and mention listbox primitive.
 </ChatComposerPopover>
 ```
 
+The default placement is `top-start`, which keeps suggestions above a composer
+anchored near the bottom of the viewport. Pass `placement` when a different
+starting side is appropriate; the underlying floating overlay still flips and
+shifts the menu when available space requires it.
+
 When the composer is the full `Chat` surface, commit a selection with the
 public range API. `insertAtRange()` updates the popover's bound value through
 `oncomposerinput`, so no synthetic DOM event is needed:

@@ -32,7 +32,7 @@
         "bottom-start",
         "bottom-end"
       ],
-      "description": "Caret-relative placement. Default `'bottom-start'`."
+      "description": "Caret-relative placement. Default `'top-start'`, which keeps the menu above a bottom composer."
     },
     "offset": {
       "type": "number",
