@@ -304,7 +304,7 @@
           scrollState.setAtBottom(false);
           updateAtBottomBinding(false);
         }
-        scrollState.withUserScrollGuard(() => {
+        scrollState.withUserScrollGuard(viewport, () => {
           chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
         });
       }
@@ -1519,7 +1519,7 @@
       // virtualizer remeasurement, and without this guard it would keep
       // snapping the viewport back toward the bottom mid-scroll since
       // `isUserScrolling` was never set for this branch.
-      scrollState.withUserScrollGuard(() => {
+      scrollState.withUserScrollGuard(viewport, () => {
         chatVirtualizer.scrollToOffset(0, { behavior: scrollState.getScrollBehavior() });
       });
     } else {
