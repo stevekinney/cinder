@@ -309,6 +309,38 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.atBottom).toBe(false);
   });
 
+  test('a visible sentinel cannot undo scrollToTop state while its programmatic scroll guard is active', () => {
+    jest.useFakeTimers();
+    let reachedBottom = 0;
+    const state = useChatScrollState({
+      onReachBottom: () => {
+        reachedBottom += 1;
+      },
+    });
+    const viewport = createViewport();
+    const visibleSentinelEntry = {
+      isIntersecting: true,
+    } as IntersectionObserverEntry;
+
+    state.scrollToTop(viewport);
+    expect(state.atBottom).toBe(false);
+    expect(state.isUserScrolling).toBe(true);
+
+    // IntersectionObserver can deliver an entry queued while the bottom
+    // sentinel was still visible, before the smooth scroll moved it away.
+    state.handleSentinelEntry(visibleSentinelEntry);
+
+    expect(state.atBottom).toBe(false);
+    expect(reachedBottom).toBe(0);
+
+    // Once the programmatic scroll has settled, a genuinely visible sentinel
+    // once again owns the bottom-state transition and unread cleanup.
+    jest.advanceTimersByTime(500);
+    state.handleSentinelEntry(visibleSentinelEntry);
+    expect(state.atBottom).toBe(true);
+    expect(reachedBottom).toBe(1);
+  });
+
   test('scrollToTop preserves atBottom when the viewport cannot actually leave the bottom', () => {
     // Regression guard (Codex review on #787): a transcript short enough to
     // fit entirely within the viewport (scrollHeight <= clientHeight) is

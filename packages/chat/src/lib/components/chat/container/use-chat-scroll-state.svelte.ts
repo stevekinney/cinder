@@ -268,6 +268,13 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * Exposed for use with useIntersection attachment-based wiring.
    */
   function handleSentinelEntry(entry: IntersectionObserverEntry): void {
+    // A smooth programmatic scroll away from the bottom can receive an
+    // already-queued "visible" entry before the sentinel actually leaves the
+    // viewport. The explicit scroll-away state owns this interval; allowing
+    // the stale entry to win would immediately flip atBottom back to true and
+    // clear unread state before the scroll has moved.
+    if (isUserScrolling) return;
+
     const sentinelVisible = entry.isIntersecting;
     if (sentinelVisible && !atBottom) {
       atBottom = true;
