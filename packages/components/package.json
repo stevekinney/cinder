@@ -80,6 +80,14 @@
       "default": "./dist/components/json-editor/json-editor-enhancement.js"
     },
     "./highlighters/shiki": {
+      "types": "./dist/highlighters/shiki/default.d.ts",
+      "browser": "./src/highlighters/shiki/default.ts",
+      "node": "./dist/server/highlighters/shiki/default.js",
+      "svelte": "./src/highlighters/shiki/default.ts",
+      "import": "./src/highlighters/shiki/default.ts",
+      "default": "./dist/highlighters/shiki/default.js"
+    },
+    "./highlighters/shiki/curated": {
       "types": "./dist/highlighters/shiki/index.d.ts",
       "browser": "./src/highlighters/shiki/index.ts",
       "node": "./dist/server/highlighters/shiki/index.js",
@@ -6290,6 +6298,7 @@
     "svelte2tsx": "^0.7.33",
     "ts-morph": "^28.0.0",
     "typescript": "^5.9.0",
+    "vite": "^8.0.9",
     "zod": "4.4.1"
   },
   "peerDependencies": {

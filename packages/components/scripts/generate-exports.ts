@@ -91,6 +91,7 @@ const PACKAGE_JSON_KEY = './package.json';
 const ICONS_KEY = './icons';
 const JSON_EDITOR_ENHANCEMENT_KEY = './json-editor/enhancement';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
+const HIGHLIGHTERS_SHIKI_CURATED_KEY = './highlighters/shiki/curated';
 
 /**
  * Keys that the generator owns at the top level but never emits via
@@ -110,6 +111,7 @@ const RESERVED_KEYS = new Set([
   ICONS_KEY,
   JSON_EDITOR_ENHANCEMENT_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
+  HIGHLIGHTERS_SHIKI_CURATED_KEY,
 ]);
 
 /**
@@ -172,14 +174,14 @@ export function shouldPreserveLegacyEntry(
  * and not an upstream re-export); the generator stitches this in alongside
  * the styles entries.
  */
-function highlightersShikiExport(): ExportEntry {
+function highlightersShikiExport(source = 'default'): ExportEntry {
   return orderedExportEntry({
-    types: './dist/highlighters/shiki/index.d.ts',
-    browser: './src/highlighters/shiki/index.ts',
-    svelte: './src/highlighters/shiki/index.ts',
-    node: './dist/server/highlighters/shiki/index.js',
-    import: './src/highlighters/shiki/index.ts',
-    default: './dist/highlighters/shiki/index.js',
+    types: `./dist/highlighters/shiki/${source}.d.ts`,
+    browser: `./src/highlighters/shiki/${source}.ts`,
+    svelte: `./src/highlighters/shiki/${source}.ts`,
+    node: `./dist/server/highlighters/shiki/${source}.js`,
+    import: `./src/highlighters/shiki/${source}.ts`,
+    default: `./dist/highlighters/shiki/${source}.js`,
   });
 }
 
@@ -698,6 +700,7 @@ async function main(): Promise<void> {
     next[ICONS_KEY] = iconsExport();
     next[JSON_EDITOR_ENHANCEMENT_KEY] = jsonEditorEnhancementExport();
     next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
+    next[HIGHLIGHTERS_SHIKI_CURATED_KEY] = highlightersShikiExport('index');
 
     // Preserve legacy flat component subpaths whose component still exists as
     // a flat .svelte file (not yet migrated to a directory).
