@@ -1,5 +1,190 @@
 # @lostgradient/cinder
 
+## 0.17.0
+
+### Minor Changes
+
+- [#852](https://github.com/stevekinney/cinder/pull/852) [`ffbbb2f`](https://github.com/stevekinney/cinder/commit/ffbbb2f3b6fc9ac8bbb14c598716e49cff72c517) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a controlled, accessible JsonEditor primitive with native textarea editing, parse feedback, and no code-editor bundle dependency.
+
+- [#861](https://github.com/stevekinney/cinder/pull/861) [`caa5b36`](https://github.com/stevekinney/cinder/commit/caa5b36ea46511a8e62f514d89e2f4a5726f9fc9) Thanks [@stevekinney](https://github.com/stevekinney)! - Finish the markdown/editor extraction (Phases 4 and 5 of the package-boundaries plan, see
+  `docs/decisions/package-boundaries.md`). This is the breaking-change release train that pays off
+  the whole extraction: `@lostgradient/cinder` no longer exposes `./markdown/*`, `./editor/*`, or
+  `./commentary/*` at all. Every consumer that used those subpaths must depend on
+  `@lostgradient/markdown` or `@lostgradient/editor` directly.
+
+  ## Migration table
+
+  | Removed cinder subpath                                                                    | New home                                                                                                                                                                                                                                            |
+  | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `@lostgradient/cinder/markdown` and every `./markdown/*` subpath                          | `@lostgradient/markdown` (same subpath shape, e.g. `./markdown/pipeline` → `@lostgradient/markdown/pipeline`, `./markdown/diff/line-diff` → `@lostgradient/markdown/diff/line-diff`, `./markdown/rendering*` → `@lostgradient/markdown/rendering*`) |
+  | `@lostgradient/cinder/editor`, `./editor/component-runtime`, `./editor/test-utilities`    | `@lostgradient/editor/editor`, `@lostgradient/editor/editor/component-runtime`, `@lostgradient/editor/editor/test-utilities`                                                                                                                        |
+  | `@lostgradient/cinder/editor/sanitize-html`, `/template-placeholders`, `/template-render` | `@lostgradient/markdown/templates/sanitize-html`, `/template-placeholders`, `/template-render`                                                                                                                                                      |
+  | `@lostgradient/cinder/commentary` (root) and every `./commentary/*` subpath               | `@lostgradient/editor` root barrel and its matching subpath (e.g. `./commentary/anchor-decorations` → `@lostgradient/editor/anchor-decorations`, `./commentary/comments` → `@lostgradient/editor/comments`)                                         |
+
+  (`@lostgradient/cinder/diff` and `./diff/line-diff` were already removed in the earlier
+  `@lostgradient/markdown` publish — see that changeset. `markdown-editor`, `review-editor`, and
+  `diff-viewer` were already removed from cinder in the `@lostgradient/editor` publish — import
+  those from `@lostgradient/editor` directly, unchanged by this release.)
+
+  ## What else changed
+  - Deleted the generated re-export shim directories `src/markdown/`, `src/editor/`,
+    `src/commentary/` and the `derive-upstream-reexports.ts` / `CINDER_KEY_OVERRIDES` machinery that
+    generated them. Cinder's `dist/` no longer vendors `@lostgradient/markdown`'s or
+    `@lostgradient/editor`'s compiled output at all.
+  - Two retained cinder files depend on `@lostgradient/markdown` directly now —
+    `src/utilities/change-tracker.svelte.ts` and `src/components/json-schema-editor/diff-view.svelte`
+    import `@lostgradient/markdown/pipeline` and `@lostgradient/markdown/diff/line-diff`.
+    `@lostgradient/markdown` moves from a build-only `devDependency` to a real, published
+    `dependencies` entry cinder's consumers install transitively — cinder exposes none of its
+    subpaths, but genuinely depends on it now.
+  - `@lostgradient/editor` is no longer a cinder dependency of any kind (no `devDependency`, no
+    runtime dependency) — no retained cinder source imports it.
+  - Dropped now-orphaned dependencies empirically verified unused by any retained cinder source:
+    the full milkdown/prosemirror peer set (`@milkdown/ctx`, `@milkdown/kit`, `@milkdown/prose`,
+    `prosemirror-inputrules`, `prosemirror-model`, `prosemirror-state`, `prosemirror-view`), the
+    markdown-pipeline dependency stack (`comlink`, `diff-match-patch`, `hast-util-sanitize`,
+    `js-yaml` — moved to a scripts-only `devDependency`, still used by workspace tooling that parses
+    CI YAML — `rehype-katex`, `rehype-sanitize`, `rehype-stringify`, `remark-gfm`, `remark-math`,
+    `remark-parse`, `remark-rehype`, `remark-stringify`, `unified`, `unist-util-visit`,
+    `@types/hast`, `@types/mdast`, `@types/unist`), and `@shikijs/langs` (never imported by name in
+    cinder's own source — only a transitive dependency of `shiki` itself). `shiki`,
+    `@shikijs/engine-oniguruma`, and `@shikijs/types` are KEPT: cinder's own
+    `src/highlighters/shiki/index.ts` imports all three directly.
+  - Cinder's published package weight dropped sharply: 3.81 MB packed / 18.71 MB unpacked / 4,498
+    files, down from an 8 MB / 32 MB / 5,500-file budget beforehand.
+  - Chat's `markdown-preview.svelte` now dynamically imports `@lostgradient/markdown/rendering`
+    directly instead of `@lostgradient/cinder/markdown/rendering` — this was the migration
+    rehearsal the decision doc called for. `@lostgradient/markdown` joins chat's `peerDependencies`
+    (required, not optional — chat always renders through it) and `devDependencies`.
+
+- [#854](https://github.com/stevekinney/cinder/pull/854) [`23a5ebc`](https://github.com/stevekinney/cinder/commit/23a5ebc161be56d1198829fb269372e67f85d5bb) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a flat conditions mode to `InvocationRuleBuilder` for controlled implicit-AND lists without rule-group metadata or controls.
+
+- [#845](https://github.com/stevekinney/cinder/pull/845) [`35732d8`](https://github.com/stevekinney/cinder/commit/35732d8d15240082ccb5d7b4be6d6216a05c40ea) Thanks [@stevekinney](https://github.com/stevekinney)! - Move the Worker-based Markdown rendering API to `@lostgradient/cinder/markdown/rendering/async` so sync-only consumers do not bundle the Worker entry and its dependencies.
+
+- [#855](https://github.com/stevekinney/cinder/pull/855) [`d7ecfc4`](https://github.com/stevekinney/cinder/commit/d7ecfc4cece464edddef9e027ae5176d40313766) Thanks [@stevekinney](https://github.com/stevekinney)! - Expose complete live SchemaForm drafts through `ondraftchange` while preserving seed-only `value` semantics and validated `onsubmit` output.
+
+- [#817](https://github.com/stevekinney/cinder/pull/817) [`fffa0ab`](https://github.com/stevekinney/cinder/commit/fffa0abf2ee41c9cf0a0e100eb5ee99447f5d5f4) Thanks [@stevekinney](https://github.com/stevekinney)! - Expose PayloadInspector depth controls for its composed JsonViewer.
+
+- [#856](https://github.com/stevekinney/cinder/pull/856) [`006641e`](https://github.com/stevekinney/cinder/commit/006641ebfd998a78e0c2d0459b503c750f9a014c) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish `@lostgradient/editor` (Phase 3 of the package-boundaries plan, see
+  `docs/decisions/package-boundaries.md`). `@cinder/commentary` is renamed to `@lostgradient/editor`
+  and absorbs the ProseMirror/Milkdown half of the former `@cinder/editor` package. Three components
+  move out of `@lostgradient/cinder` and into this new package: `markdown-editor`, `review-editor`,
+  and `diff-viewer` — `review-editor` composes the other two, so all three had to move together.
+
+  `@lostgradient/cinder`'s `markdown-editor`, `review-editor`, and `diff-viewer` subpaths (and their
+  `/schema`, `/variables`, `/styles`, `/examples` siblings) are **removed** — this is a breaking
+  change for any external consumer of those subpaths, hence the minor (not patch) bump on
+  `@lostgradient/cinder`, which pre-1.0 treats a breaking removal as a minor per semver's own
+  pre-1.0 carve-out (the same reasoning `@lostgradient/markdown`'s publish used for the removed
+  `./diff` aliases). That is the ONLY subpath removal in this release — Phase 3's scope is those
+  three Svelte components, nothing else. Cinder's `./editor`, `./editor/component-runtime`,
+  `./editor/test-utilities`, the bare `./commentary` root barrel, and every `./commentary/*` subpath
+  (`anchor-decorations`, `anchoring`, `comments`(+`/types`), `export`(+`/types`), `session`
+  (+`/types`), `shared/anchor-types`) are unaffected — they now mirror `@lostgradient/editor`'s
+  headless runtime instead of `@cinder/commentary`'s, with no change to their public shape.
+
+  We evaluated re-exporting the three Svelte components back through Cinder as generated shims (the
+  `derive-upstream-reexports.ts` / `CINDER_KEY_OVERRIDES` pattern used for the headless subpaths
+  above), but that mechanism only understands `.ts` value/type re-exports — `generate-exports.ts`'s
+  component pipeline requires a component to physically live under
+  `packages/components/src/components/`, and cannot re-export a compiled `.svelte` file from a
+  sibling package. A hand-authored shim `.svelte` file was rejected too: it is exactly the kind of
+  compatibility scaffolding this repo's conventions avoid on a pre-release package, and Phase 5 of
+  the package-boundaries plan deletes Cinder's remaining shims outright — so a temporary
+  `markdown-editor`/`review-editor`/`diff-viewer` shim here would be written only to be deleted in
+  the very next phase. Consumers of these three components should migrate their import specifier
+  from `@lostgradient/cinder/<component>` to `@lostgradient/editor/<component>` directly.
+
+  `@lostgradient/editor`'s peers are `@lostgradient/cinder` (`^0.17.0`), `@lostgradient/markdown`
+  (`^0.1.0`), `svelte`, and the milkdown/prosemirror stack — all host-supplied singletons. Its only
+  regular `dependencies` are `@floating-ui/dom` and `esm-env`, matching `@lostgradient/cinder`'s own
+  treatment of those same two vendored utilities (see `package-boundary.test.ts`): small, stateless
+  libraries where a duplicate copy across the install graph causes no functional issue, unlike the
+  singleton-sensitive peers above.
+
+- [#806](https://github.com/stevekinney/cinder/pull/806) [`1b80249`](https://github.com/stevekinney/cinder/commit/1b802498e71f799ceac44becd67fec73f8b7d74c) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish `@lostgradient/markdown` (Phase 2 of the package-boundaries plan, see
+  `docs/decisions/package-boundaries.md`). `@cinder/markdown` is renamed to `@lostgradient/markdown`
+  and absorbs the former `@cinder/diff` package — its word/line-diff engine is now inlined at
+  `@lostgradient/markdown/diff/line-diff` rather than re-exported from a separate workspace package.
+  `@cinder/diff` no longer exists. `@lostgradient/markdown` now declares `@shikijs/engine-oniguruma`,
+  `@shikijs/langs`, and `@shikijs/types` as its own runtime dependencies (previously these existed
+  only as transitive dependencies of `@lostgradient/cinder`, which vendors and re-exports markdown's
+  compiled output). `@lostgradient/cinder` keeps declaring all three too: `engine-oniguruma` and
+  `types` because cinder's own `./highlighters/shiki` adapter imports them directly, and `langs`
+  because cinder's build vendors markdown's `./rendering` pipeline (which lazily loads per-language
+  grammars from `@shikijs/langs`) into its own published dist under `./markdown/rendering*`. `shiki`
+  itself stays a direct dependency of both packages, as before.
+  `@lostgradient/cinder`'s `./markdown/*` re-export shims are unaffected; the top-level `./diff` and
+  `./diff/line-diff` cinder aliases (sourced from the now-deleted `@cinder/diff` package) are
+  **removed** — `./markdown/diff/line-diff` was already the canonical, actually-used path for every
+  in-repo consumer, but this is a breaking change for any external consumer of those aliases, hence
+  the minor (not patch) bump on `@lostgradient/cinder`, which pre-1.0 treats a breaking removal as a
+  minor per semver's own pre-1.0 carve-out. `@cinder/commentary`'s `workspace:*` dependency on
+  markdown is repointed to the new package name. `@lostgradient/chat`'s `peerDependencies` on
+  `@lostgradient/cinder` widens from `^0.16.0` to `^0.16.0 || ^0.17.0` — cinder's minor bump here
+  would otherwise leave chat's declared peer range unsatisfied against the version this release
+  actually produces, per `.changeset/README.md`'s "keep that peer range aligned with the Cinder
+  version released alongside it" contract.
+
+- [#829](https://github.com/stevekinney/cinder/pull/829) [`4376c18`](https://github.com/stevekinney/cinder/commit/4376c18e2f0dd055ec629cd02035447f8f6e13b2) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove the `brand` snippet from `Sidebar`. Consumers that used it should move that markup into their own shell chrome, such as a top bar or a region above `Sidebar`; there is no replacement API.
+
+- [#823](https://github.com/stevekinney/cinder/pull/823) [`2174be0`](https://github.com/stevekinney/cinder/commit/2174be0182d834d8aa3f1dbe82a2b3fe54b153db) Thanks [@stevekinney](https://github.com/stevekinney)! - Add RunStepTimeline selected-step and row-click selection props.
+
+- [#853](https://github.com/stevekinney/cinder/pull/853) [`31fd201`](https://github.com/stevekinney/cinder/commit/31fd20103079bc6cebeadab8c0e11390119754f3) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a domain-neutral `timed-out` terminal status to RunStepTimeline with a distinct label, danger tone, public schema support, and consumer mapping guidance.
+
+### Patch Changes
+
+- [#832](https://github.com/stevekinney/cinder/pull/832) [`fdecd5e`](https://github.com/stevekinney/cinder/commit/fdecd5e63a0ea2e3ca8e3d997efa3f815d1bd664) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep shared local validation gate waiters alive while the recorded lock holder process is still running.
+
+- [#851](https://github.com/stevekinney/cinder/pull/851) [`955adb0`](https://github.com/stevekinney/cinder/commit/955adb0459272b9d08ed8a5eb13b579ce83997a7) Thanks [@stevekinney](https://github.com/stevekinney)! - Avoid nested navigation landmarks when composing Sidebar with SideNavigation.
+
+- [#833](https://github.com/stevekinney/cinder/pull/833) [`30feaa5`](https://github.com/stevekinney/cinder/commit/30feaa509548f436e77c47520d9b49193f76c6f4) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix a `hydration_mismatch` warning on the first SSR load of any Cinder component that renders an icon (including Chat, which renders one unconditionally in its composer toolbar).
+
+  `lucide-svelte` was a loosely-ranged (`>=0.400.0 <1`) `peerDependency`. Cinder's prebuilt server bundle (`dist/server`, resolved via the `node` export condition under SSR) bakes in whatever `lucide-svelte` version was installed in Cinder's own build at publish time. A consuming application's client bundle, however, resolves `lucide-svelte` fresh at whatever version its own package manager picked within that peer range. Lucide periodically redraws icon artwork (different `<path>` counts or coordinates for the same icon name), so any consumer whose installed `lucide-svelte` differs from Cinder's build-time version got structurally different icon markup between the server-rendered HTML and the client's hydrated render — a real, reproducible `[svelte] hydration_mismatch`, confirmed against a real SvelteKit dev server and a real browser.
+
+  `lucide-svelte` is now a pinned, exact-version regular `dependency` of `@lostgradient/cinder` instead of a peer, so its own server and client builds resolve the same `lucide-svelte` install without depending on what version — if any — your application installs for its own icons. (See the known follow-up below for the one case this does not fully close.)
+
+  **Consumer impact:** if your app currently lists `lucide-svelte` as a direct dependency solely to satisfy `@lostgradient/cinder`'s former peer requirement, you can remove it — Cinder now supplies its own pinned copy for its own components. If your app also renders Lucide icons directly, keep your own dependency; npm/bun will install and resolve it independently of Cinder's pinned copy (they do not conflict).
+
+  **Known follow-up:** if your application pins its _own_ `lucide-svelte` version and your bundler's deduplication happens to collapse Cinder's nested pinned copy onto your application's version for Cinder's client-side (browser/`svelte` condition) source compile — while Cinder's prebuilt `dist/server` still resolves its own pinned copy — the two could still diverge. This is inherent to Cinder shipping both prebuilt server output and raw source for Svelte-aware bundlers. Closing that residual case fully would mean vendoring icon path data directly into Cinder rather than depending on `lucide-svelte` at all; that is out of scope for this fix and is tracked as a follow-up.
+
+  **Known caveat — `lucide-svelte`'s own declared peer range:** every published `lucide-svelte` release, including the latest (`1.0.1` as of this writing), declares `peerDependencies: { svelte: "^3 || ^4 || ^5.0.0-next.42" }` — it has never been updated to include a stable Svelte 5 release, even though it works correctly with one (this repository has used `lucide-svelte@0.503.0` against stable Svelte `5.56.x` for a long time). This is not something this fix can work around by choosing a different `lucide-svelte` version, since none of them declare a stable-Svelte-5 peer range. Under npm/bun's default (non-strict) peer resolution this only produces a warning, same as it did when `lucide-svelte` was Cinder's own peer dependency. Consumers using `pnpm` or `npm --strict-peer-deps` may see this warning surface from inside Cinder's dependency tree now rather than from their own top-level install; if it blocks your install, an `overrides`/`resolutions` entry or a peer-dependency-rule exception for `lucide-svelte` in your package manager's config resolves it, same as it would have before this change.
+
+- [#821](https://github.com/stevekinney/cinder/pull/821) [`f86e857`](https://github.com/stevekinney/cinder/commit/f86e8577f03cedad95858f5fb60a20f3265a2407) Thanks [@stevekinney](https://github.com/stevekinney)! - Add an `allowedModes` prop to `ScheduleBuilder` so consumers can restrict the authoring UI, including cron-only rendering with `allowedModes={['cron']}` that never emits interval values.
+
+- [#805](https://github.com/stevekinney/cinder/pull/805) [`204928e`](https://github.com/stevekinney/cinder/commit/204928e8b07e6e1e7ea7f16c994ae3e201933bf9) Thanks [@stevekinney](https://github.com/stevekinney)! - Deferred `ajv` in `json-schema-editor` the same way `schema-form` already does, so meta-schema validation and compile checks no longer ship Ajv in the base install path. `applyJsonDraft` is now async as a result.
+
+  Moved `zod` and `@modelcontextprotocol/sdk` from `dependencies` to optional `peerDependencies` — both are only used by the `mcp` CLI command (`bin.cinder mcp`), not by any component, so every consumer no longer has to install them. Running `mcp` without them now fails with an actionable message instead of a raw module-resolution error.
+
+- [#793](https://github.com/stevekinney/cinder/pull/793) [`62a9a75`](https://github.com/stevekinney/cinder/commit/62a9a75c321303f7f4c8cd8d429fc0d1a071f667) Thanks [@stevekinney](https://github.com/stevekinney)! - Internal reshuffle: dissolve the private `@cinder/editor` workspace package (Phase 1 of the
+  package-boundaries plan, see `docs/decisions/package-boundaries.md`). The headless
+  template-placeholder trio (`sanitize-html.ts`, `template-placeholders.ts`, `template-render.ts`,
+  `placeholder-security.ts`) moved into `@cinder/markdown`'s new `templates/` directory. The
+  ProseMirror/Milkdown editor integration moved into `@cinder/commentary`'s new `editor/`
+  directory. `@lostgradient/cinder`'s published `./editor/*` subpaths are unaffected — the
+  generated re-export shims now source from the new locations, but the exported symbol sets and
+  `package.json#exports` entries are byte-identical to before. Pure internal code movement; no
+  public API change.
+
+- [#819](https://github.com/stevekinney/cinder/pull/819) [`0ef0a27`](https://github.com/stevekinney/cinder/commit/0ef0a272568e716e0dac034e60347f5cf3f611d6) Thanks [@stevekinney](https://github.com/stevekinney)! - Add `triggerLabel` to `FileUpload` so consumers can customize the visible picker button text while keeping Cinder's native input wiring, drag-and-drop validation, disabled state, and live-region announcements.
+
+- [#820](https://github.com/stevekinney/cinder/pull/820) [`e9c1146`](https://github.com/stevekinney/cinder/commit/e9c11464ca1ef5af0801439270f4e0e09411ad41) Thanks [@stevekinney](https://github.com/stevekinney)! - Route `ToastRegion` warning toasts through the polite `role="status"` live-region channel while keeping danger toasts assertive.
+
+- [#802](https://github.com/stevekinney/cinder/pull/802) [`280ba3e`](https://github.com/stevekinney/cinder/commit/280ba3e9eed6e76d7534bd0f4f78ff8890cf05df) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix the Shiki adapter behind `<CodeBlock>` (`highlighters/shiki`) to build on `shiki/core` + `@shikijs/engine-oniguruma`, resolving languages and themes through `shiki/langs` / `shiki/themes` instead of the default `shiki` barrel, converging on the same pattern `packages/markdown` already uses. This closes a build-time regression risk: cinder's own build (`splitting: false`) previously kept only the bare `shiki` specifier external, so any future `shiki/*` subpath import would have been inlined whole into cinder's published dist (measured at ~10 MB). `scripts/build.ts` now externalizes `shiki/*` and `@shikijs/engine-oniguruma` too. No change to the public `shikiHighlighter()` API, behavior, or supported language/theme set — and no change to what a consumer's own bundler ships, since `shiki` was already external there.
+
+- [#822](https://github.com/stevekinney/cinder/pull/822) [`7e9d2f6`](https://github.com/stevekinney/cinder/commit/7e9d2f65b1b464762f6858a0e6429c1c6c52d4d1) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a `mobileBreakpoint` prop to Sidebar so app shells can raise or lower the drawer breakpoint while keeping the JavaScript media query and Sidebar presentation contract aligned.
+
+- [#816](https://github.com/stevekinney/cinder/pull/816) [`356c5d7`](https://github.com/stevekinney/cinder/commit/356c5d7f7a4d3a7e9306b71e6039ce05382c7aa7) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep Tabs triggers single-line inside scrollable tab lists, so overflow resolves by horizontally scrolling the tab strip instead of shrinking and wrapping individual tab labels.
+
+- [#798](https://github.com/stevekinney/cinder/pull/798) [`282b380`](https://github.com/stevekinney/cinder/commit/282b38060b765340a58f07487c53a0f9710d4033) Thanks [@stevekinney](https://github.com/stevekinney)! - Thinned `pre-push` to a fast, fail-open sanity check (no more local lint/typecheck/test dispatch or gate lock) now that PR CI and required branch-protection status checks own that validation. No published runtime behavior changes — this only touches internal `scripts/husky/*` tooling and `check-pipeline-coverage.ts`'s declaration table.
+
+- [#792](https://github.com/stevekinney/cinder/pull/792) [`88d8b17`](https://github.com/stevekinney/cinder/commit/88d8b17d99e74742d0819094b3c6a5740079d6c3) Thanks [@stevekinney](https://github.com/stevekinney)! - Teach `check:pipeline-coverage` and `validate:release-workflow` to recognize `turbo run <task>` (including repeated `--filter=<pkg>` flags) as equivalent to `bun run --filter=<pkg> <task>`, so the workspace's move to Turborepo-orchestrated build/test/typecheck/lint doesn't silently blind the CI-gate coverage map. No published runtime behavior changes — dev-tooling scripts only.
+
+- [#841](https://github.com/stevekinney/cinder/pull/841) [`09bdd26`](https://github.com/stevekinney/cinder/commit/09bdd2627ef2a36edf502add662ffd08a9b6ae41) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep horizontal BarChart category labels visible without sacrificing the plot area.
+
+- Updated dependencies [[`62a9a75`](https://github.com/stevekinney/cinder/commit/62a9a75c321303f7f4c8cd8d429fc0d1a071f667), [`1b80249`](https://github.com/stevekinney/cinder/commit/1b802498e71f799ceac44becd67fec73f8b7d74c)]:
+  - @lostgradient/markdown@0.1.0
+
 ## 0.16.1
 
 ### Patch Changes

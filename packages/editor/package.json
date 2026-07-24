@@ -1,6 +1,6 @@
 {
   "name": "@lostgradient/editor",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Svelte 5 markdown editing, review, and diff-viewing components for Cinder — Milkdown/ProseMirror-based editing, threaded review comments, and word-level diffing.",
   "keywords": [
     "svelte",

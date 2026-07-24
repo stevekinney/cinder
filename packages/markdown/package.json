@@ -1,6 +1,6 @@
 {
   "name": "@lostgradient/markdown",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Headless Markdown pipeline, rendering, diffing, and templating for Cinder and its sibling packages.",
   "keywords": [
     "markdown",
