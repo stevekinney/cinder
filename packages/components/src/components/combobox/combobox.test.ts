@@ -162,14 +162,55 @@ describe('Combobox', () => {
     expect(input.value).not.toBe('Apple');
     expect(input.value).toBe('Apr');
   });
+
+  test('commits arbitrary text with allowCustomValue and canonicalizes matching labels', async () => {
+    const values: string[] = [];
+    const onchange = (value: string) => values.push(value);
+    const { container } = render(Combobox, {
+      id: 'custom-fruit',
+      options: fruits,
+      allowCustomValue: true,
+      onchange,
+    });
+    const input = container.querySelector<HTMLInputElement>('#custom-fruit')!;
+
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'custom.field' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(values).toEqual(['custom.field']);
+    expect(input.value).toBe('custom.field');
+
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'Apple' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(values).toEqual(['custom.field', 'apple']);
+    expect(input.value).toBe('Apple');
+  });
+
+  test('restores unmatched text when custom values are disabled', async () => {
+    const { container } = render(Combobox, {
+      id: 'fixed-fruit',
+      value: 'apple',
+      options: fruits,
+    });
+    const input = container.querySelector<HTMLInputElement>('#fixed-fruit')!;
+
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'custom.field' } });
+    await fireEvent.blur(input);
+    expect(input.value).toBe('Apple');
+  });
 });
 
 describe('Combobox structure', () => {
-  test('renders an input with role=combobox and aria-controls', () => {
+  test('renders an input with role=combobox and aria-controls while open', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`);
     expect(input?.getAttribute('role')).toBe('combobox');
     expect(input?.getAttribute('aria-autocomplete')).toBe('list');
+    expect(input?.getAttribute('aria-controls')).toBeNull();
+    await fireEvent.focus(input!);
+    await waitForListbox();
     expect(input?.getAttribute('aria-controls')).toBe('fruit-listbox');
   });
 
@@ -182,6 +223,15 @@ describe('Combobox structure', () => {
     const label = container.querySelector('label');
     expect(label?.getAttribute('for')).toBe('fruit');
     expect(label?.textContent?.trim()).toBe('Fruit');
+  });
+
+  test('does not emit an empty accessible label', () => {
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      'aria-label': '   ',
+    });
+    expect(container.querySelector('#fruit')?.getAttribute('aria-label')).toBeNull();
   });
 
   test('listbox is closed by default and has no aria-expanded=true', () => {

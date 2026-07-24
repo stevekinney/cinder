@@ -15,7 +15,7 @@
   export type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
 </script>
 
-<script lang="ts" generics="T extends string = string">
+<script lang="ts" generics="T extends string = string, AllowCustom extends boolean = false">
   import type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
   import { untrack } from 'svelte';
 
@@ -28,10 +28,12 @@
   let {
     id,
     value = $bindable(''),
+    onchange,
     name,
     inputValue = $bindable(''),
     options,
     label,
+    'aria-label': ariaLabel,
     placeholder,
     filter,
     description,
@@ -39,9 +41,10 @@
     disabled,
     required,
     maxVisibleOptions = 200,
+    allowCustomValue = false as AllowCustom,
     class: className,
     'aria-describedby': consumerDescribedBy,
-  }: ComboboxProps<T> = $props();
+  }: ComboboxProps<T, AllowCustom> = $props();
 
   const context = getFormFieldContext();
   const field = $derived(
@@ -129,6 +132,9 @@
       if (untrack(() => inputValue) !== matched.label) {
         inputValue = matched.label;
       }
+    } else if (allowCustomValue) {
+      committedLabel = value;
+      if (untrack(() => inputValue) !== value) inputValue = value;
     }
   });
 
@@ -190,6 +196,10 @@
     // CSS-special characters (colons, dots, leading digits) don't throw.
     const next = event.relatedTarget as Node | null;
     if (next && listboxElement?.contains(next)) return;
+    if (allowCustomValue && inputValue.trim() && inputValue !== committedLabel) {
+      commitCustomValue();
+      return;
+    }
     open = false;
     // Restore the committed label if the live text drifted from it. Leaving the
     // field on a stale edit (without selecting an option) would desync the
@@ -206,6 +216,21 @@
     inputValue = option.label;
     committedLabel = option.label;
     open = false;
+    onchange?.(option.value);
+  }
+
+  function commitCustomValue(): void {
+    const nextValue = inputValue.trim();
+    if (!allowCustomValue || !nextValue) return;
+    const matchedOption = options.find(
+      (option) => option.value === nextValue || option.label === nextValue,
+    );
+    const committedValue = matchedOption?.value ?? nextValue;
+    value = committedValue as T;
+    inputValue = matchedOption?.label ?? nextValue;
+    committedLabel = matchedOption?.label ?? nextValue;
+    open = false;
+    onchange?.(committedValue);
   }
 
   function resetToInitialValue(event: Event): void {
@@ -241,7 +266,7 @@
 
   $effect(() => {
     inputElement?.setCustomValidity(
-      (resolvedRequired && !value) || inputValue !== committedLabel
+      (resolvedRequired && !value) || (!allowCustomValue && inputValue !== committedLabel)
         ? 'Please select an option.'
         : '',
     );
@@ -271,6 +296,9 @@
       if (option) {
         event.preventDefault();
         selectOption(option);
+      } else if (allowCustomValue) {
+        event.preventDefault();
+        commitCustomValue();
       }
     } else if (event.key === 'Escape') {
       // Fallback path. In a real browser the capture-phase escape-stack listener
@@ -310,8 +338,9 @@
       {placeholder}
       value={inputValue}
       aria-autocomplete="list"
+      aria-label={ariaLabel?.trim() || undefined}
       aria-expanded={open}
-      aria-controls={listboxId}
+      aria-controls={open && filteredOptions.length > 0 ? listboxId : undefined}
       aria-activedescendant={activeOptionId}
       aria-invalid={field.ariaInvalid}
       aria-required={resolvedRequired || undefined}

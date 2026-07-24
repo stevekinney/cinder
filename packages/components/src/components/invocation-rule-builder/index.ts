@@ -1,3 +1,4 @@
+import '../combobox/combobox.css';
 import './invocation-rule-builder.css';
 import InvocationRuleBuilder from './invocation-rule-builder.svelte';
 

@@ -20,6 +20,10 @@ const schema = {
       type: 'string',
       description: 'Visible label rendered in a `<label>` associated via `for`.',
     },
+    'aria-label': {
+      type: 'string',
+      description: 'Accessible name for the input when no visible label is rendered.',
+    },
     placeholder: {
       type: 'string',
       description: 'Placeholder when no value is selected.',
@@ -60,10 +64,20 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'allowCustomValue',
+        reason: 'generic-type-parameter',
+        description: 'Allow committing typed text that is not present in `options`.',
+      },
+      {
         name: 'filter',
         reason: 'function-or-snippet',
         description:
           'Custom synchronous filter. Receives an option and the current input\nvalue; returns true to keep. Defaults to case-insensitive substring\nmatch on label.',
+      },
+      {
+        name: 'onchange',
+        reason: 'function-or-snippet',
+        description: 'Called when an option, or an arbitrary value when enabled, is committed.',
       },
       {
         name: 'options',
@@ -73,7 +87,7 @@ const schema = {
       },
       {
         name: 'value',
-        reason: 'generic-type-parameter',
+        reason: 'unknown-shape',
         description: "Currently selected value. Bindable. `''` when nothing is selected.",
       },
     ],

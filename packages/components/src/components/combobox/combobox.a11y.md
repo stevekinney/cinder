@@ -50,5 +50,5 @@ These are deliberate non-goals for the first version. Consumers who need them sh
 - **Single-select only.** No multi-select, no token chips.
 - **Synchronous local filtering only.** Pass `filter` for custom logic, but don't expect debounced fetches or async loading.
 - **No virtualization.** Visible option count is capped at `maxVisibleOptions` (default 200). Larger lists should be paginated or pre-filtered.
-- **No "create new" / free-text submission.** Typed text that doesn't match an option does not become a value.
+- **Custom values are opt-in.** With `allowCustomValue`, typed text can be committed with Enter or on blur; the default remains constrained to the supplied options.
 - **No custom option renderer.** Rich rows support `description` and `avatar` out of the box. Consumers needing a different layout should open a feature request; a snippet-based renderer is a candidate for a future iteration.

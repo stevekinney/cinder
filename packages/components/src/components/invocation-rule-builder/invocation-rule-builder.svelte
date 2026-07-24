@@ -30,6 +30,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
+  import Combobox from '../combobox/combobox.svelte';
   import type {
     InvocationRule,
     InvocationRuleAction,
@@ -632,22 +633,35 @@
           >
             {#each rule.conditions as condition, conditionIndex (condition.id)}
               <div class="cinder-invocation-rule-builder__condition" role="listitem">
-                <select
-                  class="cinder-invocation-rule-builder__condition-select"
-                  aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
-                  value={condition.field}
-                  onchange={(event) =>
-                    handleUpdateCondition(
-                      rule.id,
-                      condition.id,
-                      'field',
-                      (event.target as HTMLSelectElement).value,
-                    )}
-                >
-                  {#each fieldOptions as option (option.value)}
-                    <option value={option.value}>{option.label}</option>
-                  {/each}
-                </select>
+                {#if conditionsOnly}
+                  <Combobox
+                    id={`${baseId}-condition-${condition.id}-field`}
+                    value={condition.field}
+                    options={fieldOptions}
+                    allowCustomValue
+                    aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
+                    onchange={(value) =>
+                      handleUpdateCondition(rule.id, condition.id, 'field', value)}
+                    class="cinder-invocation-rule-builder__condition-combobox"
+                  />
+                {:else}
+                  <select
+                    class="cinder-invocation-rule-builder__condition-select"
+                    aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
+                    value={condition.field}
+                    onchange={(event) =>
+                      handleUpdateCondition(
+                        rule.id,
+                        condition.id,
+                        'field',
+                        (event.target as HTMLSelectElement).value,
+                      )}
+                  >
+                    {#each fieldOptions as option (option.value)}
+                      <option value={option.value}>{option.label}</option>
+                    {/each}
+                  </select>
+                {/if}
 
                 <select
                   class="cinder-invocation-rule-builder__condition-select"
