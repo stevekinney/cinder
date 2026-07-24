@@ -9,33 +9,42 @@ type Request = {
 
 const usage = 'Usage: bun run scripts/cinder-downstream-snapshot.ts --request FILE [--output FILE]';
 
-function parseArgs(args: string[]): { request?: string; output?: string } {
-  const result: { request?: string; output?: string } = {};
+function parseArgs(args: string[]): { request?: string; output?: string; help?: boolean } {
+  const result: { request?: string; output?: string; help?: boolean } = {};
   for (let index = 0; index < args.length; index += 1) {
     if (args[index] === '--request') result.request = args[++index];
     else if (args[index] === '--output') result.output = args[++index];
-    else if (args[index] === '--help') return result;
+    else if (args[index] === '--help') result.help = true;
   }
   return result;
 }
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  if (args.help) {
+    console.log(usage);
+    return;
+  }
   if (!args.request) throw new Error(usage);
   const request = JSON.parse(await readFile(resolve(args.request), 'utf8')) as Request;
   if (request.schemaVersion !== 1) throw new Error('request.schemaVersion must be 1');
   const repositories = [];
+  const errors: Array<{ repository: string; message: string }> = [];
   for (const repository of [...(request.repositories ?? [])].sort((a, b) => a.name.localeCompare(b.name))) {
-    const root = resolve(repository.path);
-    const files = [];
-    for await (const path of new Bun.Glob('**/*').scan({ cwd: root, onlyFiles: true })) {
-      if (repository.globs?.length && !repository.globs.some((glob) => new Bun.Glob(glob).match(path))) continue;
-      const text = await Bun.file(`${root}/${path}`).text();
-      files.push({ path, sha256: new Bun.CryptoHasher('sha256').update(text).digest('hex'), bytes: text.length });
+    try {
+      const root = resolve(repository.path);
+      const files = [];
+      for await (const path of new Bun.Glob('**/*').scan({ cwd: root, onlyFiles: true })) {
+        if (repository.globs?.length && !repository.globs.some((glob) => new Bun.Glob(glob).match(path))) continue;
+        const text = await Bun.file(`${root}/${path}`).text();
+        files.push({ path, sha256: new Bun.CryptoHasher('sha256').update(text).digest('hex'), bytes: text.length });
+      }
+      repositories.push({ name: repository.name, commit: repository.commit ?? null, files: files.sort((a, b) => a.path.localeCompare(b.path)) });
+    } catch (error) {
+      errors.push({ repository: repository.name, message: error instanceof Error ? error.message : String(error) });
     }
-    repositories.push({ name: repository.name, commit: repository.commit ?? null, files: files.sort((a, b) => a.path.localeCompare(b.path)) });
   }
-  const output = { schemaVersion: 1, collectedAt: new Date().toISOString(), packages: [...(request.packages ?? [])].sort((a, b) => a.name.localeCompare(b.name)), repositories };
+  const output = { schemaVersion: 1, collectedAt: new Date().toISOString(), packages: [...(request.packages ?? [])].sort((a, b) => a.name.localeCompare(b.name)), repositories, errors: errors.sort((a, b) => a.repository.localeCompare(b.repository)) };
   const text = JSON.stringify(output);
   if (args.output) await Bun.write(resolve(args.output), `${text}\n`);
   else console.log(text);

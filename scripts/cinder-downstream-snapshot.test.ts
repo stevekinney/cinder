@@ -14,3 +14,9 @@ test('snapshot input is deterministic and sorted', async () => {
   const normalize = (value: string) => JSON.stringify({ ...JSON.parse(value), collectedAt: 'stable' });
   expect(normalize(first)).toBe(normalize(second));
 });
+
+test('help prints usage without requiring a request', () => {
+  const result = Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--help']);
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout.toString()).toContain('Usage:');
+});
