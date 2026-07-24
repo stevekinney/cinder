@@ -12,8 +12,8 @@
  * module specifier in:
  *   - `code-block.svelte` (instance + module scripts)
  *   - `code-block-default-highlighter.ts` (the seam CodeBlock imports)
- * and asserts NONE resolve to `src/highlighters/shiki/index.ts`. Dynamic
- * `import('../../highlighters/shiki/index.ts')` is allowed (and asserted to
+ * and asserts NONE resolve to `src/highlighters/shiki/default.ts`. Dynamic
+ * `import('../../highlighters/shiki/default.ts')` is allowed (and asserted to
  * exist as a positive control so a future refactor that drops the lazy edge
  * entirely is caught).
  */
@@ -25,7 +25,7 @@ import { parse } from 'svelte/compiler';
 import ts from 'typescript';
 
 const HERE = import.meta.dir;
-const SHIKI_ADAPTER = resolvePath(HERE, '../../highlighters/shiki/index.ts');
+const SHIKI_ADAPTER = resolvePath(HERE, '../../highlighters/shiki/default.ts');
 
 /** Resolve a relative specifier to the candidate absolute files it could mean. */
 function resolveSpecifierCandidates(fromFile: string, specifier: string): string[] {

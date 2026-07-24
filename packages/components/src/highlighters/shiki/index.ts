@@ -108,6 +108,10 @@ export type ShikiHighlighterOptions = {
    * first-render flash for those languages).
    */
   langs?: ReadonlyArray<string>;
+  /** Curated Shiki language loader map for the `/highlighters/shiki/curated` entrypoint. */
+  languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>;
+  /** Curated Shiki theme loader map for the `/highlighters/shiki/curated` entrypoint. */
+  themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>;
 };
 
 const DEFAULT_THEME: { light: string; dark: string } = {
@@ -146,8 +150,8 @@ function plaintextBlock(code: string): string {
  * here are keyed by a `lang`/theme name string that is only known to be a
  * member of that union after a runtime `Object.hasOwn` check.
  */
-type BundledLanguages = Record<string, DynamicImportLanguageRegistration>;
-type BundledThemes = Record<string, DynamicImportThemeRegistration>;
+type BundledLanguages = Readonly<Record<string, DynamicImportLanguageRegistration>>;
+type BundledThemes = Readonly<Record<string, DynamicImportThemeRegistration>>;
 
 type ShikiModule = {
   highlighter: HighlighterCore;
@@ -162,6 +166,8 @@ type ShikiModule = {
    * their own `shiki/core` import.
    */
   guessEmbeddedLanguages: (code: string, lang: string) => string[];
+  /** Whether aliases should be discovered from curated grammar metadata. */
+  resolveLanguageAliases: boolean;
 };
 
 type ShikiModuleLoader = () => Promise<ShikiModule>;
@@ -206,16 +212,52 @@ async function loadGuessedEmbeddedLanguages(
   shiki: ShikiModule,
   code: string,
   lang: string,
+  resolvedLanguageAliases: Map<string, string | undefined>,
 ): Promise<void> {
   for (const guessed of shiki.guessEmbeddedLanguages(code, lang)) {
-    if (!Object.hasOwn(shiki.bundledLanguages, guessed)) continue;
     try {
-      await ensureLanguageLoaded(shiki, guessed);
+      const languageKey = await resolveLanguageKey(shiki, guessed, resolvedLanguageAliases);
+      if (languageKey !== undefined) await ensureLanguageLoaded(shiki, languageKey);
     } catch {
       // Best-effort — an embedded grammar that fails to load only costs
       // that nested region its highlighting, not the whole block.
     }
   }
+}
+
+async function resolveLanguageKey(
+  shiki: ShikiModule,
+  normalizedLang: string,
+  resolvedLanguageAliases: Map<string, string | undefined>,
+): Promise<string | undefined> {
+  let languageKey: string | undefined = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
+    ? normalizedLang
+    : resolvedLanguageAliases.get(normalizedLang);
+  if (
+    languageKey === undefined &&
+    shiki.resolveLanguageAliases &&
+    !resolvedLanguageAliases.has(normalizedLang)
+  ) {
+    let loaderFailed = false;
+    for (const [candidate, loader] of Object.entries(shiki.bundledLanguages)) {
+      try {
+        const module = await loader();
+        const registrations = module.default;
+        if (registrations.some((registration) => registration.aliases?.includes(normalizedLang))) {
+          languageKey = candidate;
+          break;
+        }
+      } catch {
+        loaderFailed = true;
+      }
+    }
+    if (!loaderFailed || languageKey !== undefined) {
+      resolvedLanguageAliases.set(normalizedLang, languageKey);
+    }
+  }
+  return languageKey !== undefined && Object.hasOwn(shiki.bundledLanguages, languageKey)
+    ? languageKey
+    : undefined;
 }
 
 /**
@@ -229,27 +271,52 @@ async function loadGuessedEmbeddedLanguages(
  * entirely (see `shikiHighlighter`'s second parameter).
  */
 let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
+const sharedCuratedModules = new WeakMap<object, WeakMap<object, () => Promise<ShikiModule>>>();
+const EMPTY_LOADERS: Readonly<Record<string, never>> = {};
 
-function getSharedShikiModule(): Promise<ShikiModule> {
-  sharedShikiModule ??= createRetryingLoaderCache(async (): Promise<ShikiModule> => {
-    const [{ createOnigurumaEngine }, coreModule, langsModule, themesModule] = await Promise.all([
-      import('@shikijs/engine-oniguruma'),
-      import('shiki/core'),
-      import('shiki/langs'),
-      import('shiki/themes'),
-    ]);
-    const highlighter = await coreModule.createHighlighterCore({
-      themes: [],
-      langs: [],
-      engine: createOnigurumaEngine(import('shiki/wasm')),
-    });
-    return {
-      highlighter,
-      bundledLanguages: langsModule.bundledLanguages,
-      bundledThemes: themesModule.bundledThemes,
-      guessEmbeddedLanguages: coreModule.guessEmbeddedLanguages,
-    };
+export async function createShikiModule(
+  languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
+  themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
+  resolveLanguageAliases = true,
+): Promise<ShikiModule> {
+  const [{ createOnigurumaEngine }, coreModule] = await Promise.all([
+    import('@shikijs/engine-oniguruma'),
+    import('shiki/core'),
+  ]);
+  const highlighter = await coreModule.createHighlighterCore({
+    themes: [],
+    langs: [],
+    engine: createOnigurumaEngine(import('shiki/wasm')),
   });
+  return {
+    highlighter,
+    bundledLanguages: languageLoaders ?? {},
+    bundledThemes: themeLoaders ?? {},
+    guessEmbeddedLanguages: coreModule.guessEmbeddedLanguages,
+    resolveLanguageAliases,
+  };
+}
+
+function getSharedShikiModule(
+  languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
+  themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
+): Promise<ShikiModule> {
+  if (languageLoaders !== undefined || themeLoaders !== undefined) {
+    const languageKey = languageLoaders ?? EMPTY_LOADERS;
+    const themeKey = themeLoaders ?? EMPTY_LOADERS;
+    let themes = sharedCuratedModules.get(languageKey);
+    if (themes === undefined) {
+      themes = new WeakMap();
+      sharedCuratedModules.set(languageKey, themes);
+    }
+    let loader = themes.get(themeKey);
+    if (loader === undefined) {
+      loader = createRetryingLoaderCache(() => createShikiModule(languageLoaders, themeLoaders));
+      themes.set(themeKey, loader);
+    }
+    return loader();
+  }
+  sharedShikiModule ??= createRetryingLoaderCache(() => createShikiModule());
   return sharedShikiModule();
 }
 
@@ -262,8 +329,9 @@ export function shikiHighlighter(
   options: ShikiHighlighterOptions = {},
   moduleLoader?: ShikiModuleLoader,
 ): Highlighter {
-  const { theme = DEFAULT_THEME, langs } = options;
+  const { theme = DEFAULT_THEME, langs, languageLoaders, themeLoaders } = options;
   const warnedLanguages = new Set<string>();
+  const resolvedLanguageAliases = new Map<string, string | undefined>();
 
   // Resolve Shiki lazily on the first highlight call. The cache wrapper
   // de-duplicates concurrent loads and evicts rejected promises so a
@@ -272,7 +340,7 @@ export function shikiHighlighter(
   const loadShiki = createRetryingLoaderCache(
     moduleLoader ??
       (async (): Promise<ShikiModule> => {
-        const shikiModule = await getSharedShikiModule();
+        const shikiModule = await getSharedShikiModule(languageLoaders, themeLoaders);
 
         // Optional preload — if the consumer named specific languages, load
         // the configured theme once and each named language, so Shiki
@@ -319,11 +387,12 @@ export function shikiHighlighter(
       return plaintextBlock(code);
     }
 
-    // Shiki's `bundledLanguages` table already exposes both canonical names
-    // and aliases as top-level keys (`typescript` AND `ts`, `javascript` AND
-    // `js`, etc.), so a single hasOwn check accepts whatever Shiki accepts
-    // natively without us inventing additional aliases.
-    if (!Object.hasOwn(shiki.bundledLanguages, normalizedLang)) {
+    // The full Shiki registry exposes aliases as top-level keys, while a
+    // curated registry usually exposes only canonical ids. Resolve aliases
+    // from each grammar's own metadata so curated consumers retain the
+    // complete Shiki alias contract without maintaining a partial list here.
+    const languageKey = await resolveLanguageKey(shiki, normalizedLang, resolvedLanguageAliases);
+    if (languageKey === undefined || !Object.hasOwn(shiki.bundledLanguages, languageKey)) {
       if (!warnedLanguages.has(normalizedLang)) {
         warnedLanguages.add(normalizedLang);
         console.warn(
@@ -334,9 +403,9 @@ export function shikiHighlighter(
     }
 
     try {
-      await ensureLanguageLoaded(shiki, normalizedLang);
+      await ensureLanguageLoaded(shiki, languageKey);
       await ensureThemesLoaded(shiki, theme);
-      await loadGuessedEmbeddedLanguages(shiki, code, normalizedLang);
+      await loadGuessedEmbeddedLanguages(shiki, code, normalizedLang, resolvedLanguageAliases);
       const html = shiki.highlighter.codeToHtml(code, {
         lang: normalizedLang,
         ...buildThemeOption(theme),

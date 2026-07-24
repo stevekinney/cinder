@@ -31,7 +31,7 @@
 import type { Highlighter } from '../../utilities/highlighter.ts';
 import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
 
-type ShikiAdapterModule = typeof import('../../highlighters/shiki/index.ts');
+type ShikiAdapterModule = typeof import('../../highlighters/shiki/default.ts');
 
 /**
  * Dynamically import the Shiki adapter module. Kept as a dedicated arrow so
@@ -40,7 +40,7 @@ type ShikiAdapterModule = typeof import('../../highlighters/shiki/index.ts');
  * is no static edge (asserted by `code-block.bundle-boundary.test.ts`).
  */
 const loadShikiAdapterModule = createRetryingLoaderCache<ShikiAdapterModule>(
-  () => import('../../highlighters/shiki/index.ts'),
+  () => import('../../highlighters/shiki/default.ts'),
 );
 
 /** Memoized default highlighter instance, created once on first success. */

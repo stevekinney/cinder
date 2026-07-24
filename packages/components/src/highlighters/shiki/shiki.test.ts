@@ -10,7 +10,7 @@ import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 setupHappyDom();
 
-const { shikiHighlighter } = await import('./index.ts');
+const { shikiHighlighter } = await import('./default.ts');
 
 const originalConsoleWarn = console.warn;
 afterEach(() => {
@@ -176,6 +176,69 @@ describe('shikiHighlighter — happy path', () => {
 });
 
 describe('shikiHighlighter — fallback contract', () => {
+  test('uses curated language and theme loader maps', async () => {
+    const { warnings, restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter({
+        languageLoaders: {
+          typescript: () => import('@shikijs/langs/typescript'),
+          shellscript: () => import('@shikijs/langs/shellscript'),
+        },
+        themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+        theme: 'github-light',
+      });
+
+      expect(await highlight('const answer = 42;', 'typescript')).toMatch(/<span[^>]*style=/);
+      expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
+      expect(await highlight('echo answer', 'sh')).toMatch(/<span[^>]*style=/);
+      expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
+      expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
+      expect(warnings.filter((warning) => warning.includes('javascript')).length).toBe(1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('retries alias discovery after a transient grammar-loader failure', async () => {
+    const { warnings, restore } = captureWarnings();
+    let attempts = 0;
+    const languageLoader = async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('transient grammar failure');
+      return import('@shikijs/langs/typescript');
+    };
+    try {
+      const highlight = shikiHighlighter({
+        languageLoaders: { typescript: languageLoader },
+        themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+        theme: 'github-light',
+      });
+
+      expect(await highlight('const answer = 42;', 'ts')).toContain('shiki-plaintext');
+      expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
+      expect(attempts).toBeGreaterThanOrEqual(2);
+      expect(warnings.filter((warning) => warning.includes('"ts"')).length).toBe(1);
+    } finally {
+      restore();
+    }
+  });
+
+  test('resolves aliases for embedded grammars in curated maps', async () => {
+    const highlight = shikiHighlighter({
+      languageLoaders: {
+        markdown: () => import('@shikijs/langs/markdown'),
+        typescript: () => import('@shikijs/langs/typescript'),
+      },
+      themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+      theme: 'github-light',
+    });
+    const html = await highlight('```ts\nconst x: number = 1;\n```\n', 'markdown');
+    const colors = new Set(
+      Array.from(html.matchAll(/color:#[0-9A-Fa-f]{6}/g), (match) => match[0]),
+    );
+    expect(colors.size).toBeGreaterThan(1);
+  });
+
   test('empty lang returns escaped-plaintext fallback', async () => {
     const highlight = shikiHighlighter();
     const html = await highlight('const x = 1;', '');
@@ -332,8 +395,8 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
 
     expect(specifiers).not.toContain('shiki');
     expect(specifiers).toContain('shiki/core');
-    expect(specifiers).toContain('shiki/langs');
-    expect(specifiers).toContain('shiki/themes');
+    expect(specifiers).not.toContain('shiki/langs');
+    expect(specifiers).not.toContain('shiki/themes');
     expect(specifiers).toContain('shiki/wasm');
     expect(specifiers).toContain('@shikijs/engine-oniguruma');
   });
