@@ -23,7 +23,8 @@ test('Vite curated Shiki fixture emits only configured language and theme candid
   expect(assetNames).not.toContain('python');
   const oversized = [];
   for (const asset of assets) {
-    const size = (await stat(resolve(outputDirectory, 'assets', asset))).size;
+    const metadata = await stat(resolve(outputDirectory, 'assets', asset));
+    const size = metadata.size;
     if (size > 500 * 1024) oversized.push({ asset, size });
   }
   // Oniguruma's WASM payload is the only expected chunk above Vite's default
