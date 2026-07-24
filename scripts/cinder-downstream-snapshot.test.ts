@@ -29,3 +29,14 @@ test('partial repository failures stay in the snapshot', async () => {
   expect(result.exitCode).toBe(0);
   expect(JSON.parse(result.stdout.toString()).errors[0].scope).toBe('repository:missing');
 });
+
+test('hashes binary bytes and rejects malformed options', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-bytes-'));
+  await Bun.write(join(root, 'binary.bin'), new Uint8Array([0, 255, 128]));
+  const request = join(root, 'request.json');
+  await Bun.write(request, JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }));
+  const result = Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--request', request]);
+  const file = JSON.parse(result.stdout.toString()).repositories[0].files.find((entry: { path: string }) => entry.path === 'binary.bin');
+  expect(file.bytes).toBe(3);
+  expect(Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--wat']).exitCode).not.toBe(0);
+});
