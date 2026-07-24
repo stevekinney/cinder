@@ -21,6 +21,15 @@ describe('JsonEditor', () => {
   });
 
   test('keeps highlighting opt-in and annotates invalid JSON after lazy enhancement', async () => {
+    const baseline = render(JsonEditor, {
+      id: 'baseline-payload',
+      label: 'Baseline payload',
+      value: '{"ready":true}',
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull();
+    baseline.unmount();
+
     const view = render(JsonEditor, {
       id: 'payload',
       label: 'Payload',
