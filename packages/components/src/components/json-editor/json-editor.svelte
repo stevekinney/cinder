@@ -46,6 +46,7 @@
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   let highlightedHtml = $state<string | null>(null);
   let lintPosition = $state<number | null>(null);
+  let highlightNode: HTMLElement | undefined = $state();
 
   $effect(() => {
     if (value === previousValue) return;
@@ -147,7 +148,10 @@
     data-cinder-json-lint-position={lintPosition ?? undefined}
   >
     {#if hasHighlightOverlay}
-      <pre class="cinder-json-editor__highlight" aria-hidden="true">{@html highlightedHtml}</pre>
+      <pre
+        bind:this={highlightNode}
+        class="cinder-json-editor__highlight"
+        aria-hidden="true">{@html highlightedHtml}</pre>
     {/if}
     <textarea
       bind:this={textareaNode}
@@ -163,6 +167,12 @@
       oninput={(event) => {
         draftValue = event.currentTarget.value;
         onValueChange?.(draftValue);
+      }}
+      onscroll={(event) => {
+        const textarea = event.currentTarget;
+        if (!highlightNode) return;
+        highlightNode.scrollTop = textarea.scrollTop;
+        highlightNode.scrollLeft = textarea.scrollLeft;
       }}
       {@attach (element) => {
         if (autofocus) element.focus();

@@ -38,7 +38,7 @@
   .cinder-json-editor__highlight {
     position: absolute;
     inset: 0;
-    overflow: hidden;
+    overflow: auto;
     margin: 0;
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-md);
@@ -46,8 +46,14 @@
     pointer-events: none;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    font: inherit;
-    line-height: inherit;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+    line-height: normal;
+    scrollbar-width: none;
+  }
+
+  .cinder-json-editor__highlight::-webkit-scrollbar {
+    display: none;
   }
 
   .cinder-json-editor__input--highlighted .cinder-json-editor__textarea {

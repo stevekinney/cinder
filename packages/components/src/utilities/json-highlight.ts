@@ -179,3 +179,8 @@ export function highlightJson(value: string): string {
   }
   return tokenize(value);
 }
+
+/** Highlight source that has already been validated by the caller. */
+export function highlightJsonValidated(value: string): string {
+  return tokenize(value);
+}

@@ -43,7 +43,8 @@ const schema = {
     },
     highlight: {
       type: 'boolean',
-      description: 'Enables a lazy syntax-highlighted view with inline parse-error annotation.',
+      description:
+        'Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false.',
     },
     class: {
       type: 'string',
