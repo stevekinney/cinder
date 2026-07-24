@@ -385,6 +385,68 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(reachedBottom).toBe(0);
   });
 
+  test('scrollend rechecks sentinel geometry before a delayed final observer entry arrives', () => {
+    jest.useFakeTimers();
+    let reachedBottom = 0;
+    const state = useChatScrollState({
+      onReachBottom: () => {
+        reachedBottom += 1;
+      },
+    });
+    const viewport = createViewport();
+    const sentinel = document.createElement('div');
+    viewport.appendChild(sentinel);
+    viewport.getBoundingClientRect = () =>
+      ({
+        top: 0,
+        right: 400,
+        bottom: 400,
+        left: 0,
+        width: 400,
+        height: 400,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
+    let sentinelTop = 350;
+    sentinel.getBoundingClientRect = () =>
+      ({
+        top: sentinelTop,
+        right: 400,
+        bottom: sentinelTop + 1,
+        left: 0,
+        width: 400,
+        height: 1,
+        x: 0,
+        y: sentinelTop,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    state.setAtBottom(false);
+    state.withUserScrollGuard(viewport, () => {});
+    state.handleSentinelEntry({
+      isIntersecting: true,
+      target: sentinel,
+    } as IntersectionObserverEntry);
+
+    // The scroll finishes with the sentinel outside the viewport, but
+    // scrollend wins the event-loop race against IntersectionObserver's final
+    // hidden notification. Settlement must inspect current geometry instead
+    // of replaying the queued visible snapshot.
+    sentinelTop = 1_000;
+    viewport.dispatchEvent(new Event('scrollend'));
+    expect(state.isUserScrolling).toBe(false);
+    expect(state.atBottom).toBe(false);
+    expect(reachedBottom).toBe(0);
+
+    state.handleSentinelEntry({
+      isIntersecting: false,
+      target: sentinel,
+    } as IntersectionObserverEntry);
+    expect(state.atBottom).toBe(false);
+    expect(reachedBottom).toBe(0);
+  });
+
   test('a sentinel that remains visible during the guard is applied once the scroll settles', () => {
     jest.useFakeTimers();
     let reachedBottom = 0;

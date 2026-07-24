@@ -199,9 +199,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   let scrollTicking = false;
   let isUserScrolling = false; // Prevents auto-scroll from interrupting user-initiated smooth scroll
   // IntersectionObserver does not repeat an unchanged observation after a
-  // guard settles. Coalesce entries received during the guard so the latest
-  // real sentinel state can take ownership once the programmatic scroll ends.
-  let pendingSentinelVisibility: boolean | null = null;
+  // guard settles. Preserve the latest entry received during the guard, then
+  // re-read its target geometry at settlement so callback ordering cannot
+  // replay a stale intersection snapshot.
+  let pendingSentinelEntry: IntersectionObserverEntry | null = null;
   // Cancel function for the in-flight withForcedLayout session, if any. A new
   // session cancels the previous one's listeners/timer before starting its
   // own — see withForcedLayout below for why this matters.
@@ -212,6 +213,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // overlapping guarded scroll's timer could flip isUserScrolling back to
   // false while a later guarded scroll's animation is still in progress.
   let activeUserScrollGuardCancel: (() => void) | null = null;
+  let activeUserScrollViewport: HTMLElement | null = null;
 
   /**
    * Set atBottom state directly.
@@ -281,10 +283,23 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     }
   }
 
-  function applyPendingSentinelVisibility(): void {
-    if (pendingSentinelVisibility === null) return;
-    const sentinelVisible = pendingSentinelVisibility;
-    pendingSentinelVisibility = null;
+  function applyPendingSentinelEntry(viewport: HTMLElement | null): void {
+    if (pendingSentinelEntry === null) return;
+    const entry = pendingSentinelEntry;
+    pendingSentinelEntry = null;
+
+    let sentinelVisible = entry.isIntersecting;
+    if (viewport !== null && entry.target instanceof Element && entry.target.isConnected) {
+      const sentinelBounds = entry.target.getBoundingClientRect();
+      const viewportBounds = viewport.getBoundingClientRect();
+      const bottomMargin = getBottomThreshold?.() ?? bottomThreshold;
+      sentinelVisible =
+        sentinelBounds.bottom >= viewportBounds.top &&
+        sentinelBounds.top <= viewportBounds.bottom + bottomMargin &&
+        sentinelBounds.right >= viewportBounds.left &&
+        sentinelBounds.left <= viewportBounds.right;
+    }
+
     applySentinelVisibility(sentinelVisible);
   }
 
@@ -295,7 +310,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     // including the case where the sentinel remains visible and the observer
     // will not emit the same unchanged intersection again.
     if (isUserScrolling) {
-      pendingSentinelVisibility = entry.isIntersecting;
+      pendingSentinelEntry = entry;
       return;
     }
 
@@ -460,8 +475,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
       if (settled) return;
       cancel();
       activeUserScrollGuardCancel = null;
+      activeUserScrollViewport = null;
       isUserScrolling = false;
-      applyPendingSentinelVisibility();
+      applyPendingSentinelEntry(viewport);
       onSettled?.();
     }
 
@@ -471,6 +487,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     }
 
     activeUserScrollGuardCancel = cancel;
+    activeUserScrollViewport = viewport;
     viewport?.addEventListener('scrollend', settle, { once: true });
     viewport?.addEventListener('scroll', armBackstop, { passive: true });
 
@@ -490,10 +507,12 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * `UseChatScrollStateReturn.clearUserScrollGuard` for details.
    */
   function clearUserScrollGuard(): void {
+    const viewport = activeUserScrollViewport;
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
+    activeUserScrollViewport = null;
     isUserScrolling = false;
-    applyPendingSentinelVisibility();
+    applyPendingSentinelEntry(viewport);
   }
 
   /**
@@ -557,8 +576,9 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeForcedLayoutCancel = null;
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
+    activeUserScrollViewport = null;
     isUserScrolling = false;
-    pendingSentinelVisibility = null;
+    pendingSentinelEntry = null;
   }
 
   return {
