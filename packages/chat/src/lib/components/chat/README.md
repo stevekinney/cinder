@@ -339,8 +339,14 @@ and edit controls. For native buttons, add the shared
 hover, and touch styles:
 
 ```svelte
+<script lang="ts">
+  let panelOpen = $state(false);
+</script>
+
 {#snippet messageActions()}
-  <button type="button" class="chat-message-action-button" onclick={openPanel}> Open panel </button>
+  <button type="button" class="chat-message-action-button" onclick={() => (panelOpen = true)}>
+    Open panel
+  </button>
 {/snippet}
 ```
 
