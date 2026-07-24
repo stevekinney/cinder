@@ -107,6 +107,7 @@ describe('exports drift', () => {
       './icons',
       './highlighters/shiki',
       './json-editor/enhancement',
+      './highlighters/shiki/curated',
     ]);
     for (const key of Object.keys(existing)) {
       if (RESERVED.has(key)) continue;
