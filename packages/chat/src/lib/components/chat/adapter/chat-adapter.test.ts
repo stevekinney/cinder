@@ -264,6 +264,68 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('single-flights concurrent retries for the same message', async () => {
+    let calls = 0;
+    let release!: () => void;
+    const retryFinished = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async () => {
+        calls += 1;
+        await retryFinished;
+      },
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-retry-single-flight',
+      conversation: failedConversation(),
+      adapter,
+    });
+
+    clickRetry(container);
+    clickRetry(container);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    release();
+    await retryFinished;
+
+    unmount(instance);
+  });
+
+  test('does not let an old conversation clear a newer retry flight', async () => {
+    let calls = 0;
+    const releases: Array<() => void> = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async () => {
+        calls += 1;
+        await new Promise<void>((resolve) => releases.push(resolve));
+      },
+    };
+    const instance = mount(AdapterSwitchFixture, {
+      target: document.body,
+      props: { initial: failedConversation('conversation-a'), adapter },
+    }) as unknown as SwitchFixtureInstance;
+    const container = document.body;
+    flushSync();
+
+    clickRetry(container);
+    instance.setConversation(failedConversation('conversation-b'));
+    flushSync();
+    clickRetry(container);
+    expect(calls).toBe(2);
+
+    releases[0]?.();
+    await Promise.resolve();
+    clickRetry(container);
+    expect(calls).toBe(2);
+
+    releases[1]?.();
+    unmount(instance);
+  });
+
   test('the adapter takes precedence over the callback (no double-dispatch)', async () => {
     const adapterRetried: string[] = [];
     const callbackRetried: string[] = [];

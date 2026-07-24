@@ -206,6 +206,7 @@
   // part re-derives to show the resolved state.
   let approvedToolCallIds = $state(new Set<string>());
   let deniedToolCallIds = $state(new Set<string>());
+  let pendingRetryMessageTokens = $state(new Map<string, symbol>());
 
   // Per-message disclosure state (reasoning blocks + tool-call cards). UI-only;
   // never written to the transcript. Both are collapsed by default; toggling
@@ -233,6 +234,7 @@
   $effect(() => {
     conversationId;
     approvedToolCallIds = new Set();
+    pendingRetryMessageTokens = new Map();
     deniedToolCallIds = new Set();
     reasoningState.reset();
     toolCallState.reset();
@@ -1156,16 +1158,32 @@
   }
 
   function handleRetry(messageId: string): void {
-    void dispatchCommand(
-      'retryMessage',
-      // Return `undefined` ONLY when the optional method is absent; otherwise
-      // wrap its result so a present-but-sync method still counts as handled.
-      (resolvedAdapter) =>
-        resolvedAdapter.retryMessage
-          ? Promise.resolve(resolvedAdapter.retryMessage(messageId))
-          : undefined,
-      () => onretry?.(messageId),
-    );
+    if (pendingRetryMessageTokens.has(messageId)) return;
+    const flightToken = Symbol(messageId);
+    pendingRetryMessageTokens = new Map(pendingRetryMessageTokens).set(messageId, flightToken);
+    const clearPending = (): void => {
+      if (pendingRetryMessageTokens.get(messageId) !== flightToken) return;
+      const next = new Map(pendingRetryMessageTokens);
+      next.delete(messageId);
+      pendingRetryMessageTokens = next;
+    };
+    try {
+      const run = dispatchCommand(
+        'retryMessage',
+        // Return `undefined` ONLY when the optional method is absent; otherwise
+        // wrap its result so a present-but-sync method still counts as handled.
+        (resolvedAdapter) =>
+          resolvedAdapter.retryMessage
+            ? Promise.resolve(resolvedAdapter.retryMessage(messageId))
+            : undefined,
+        () => onretry?.(messageId),
+      );
+      if (run !== undefined) void run.finally(clearPending);
+      else clearPending();
+    } catch (error) {
+      clearPending();
+      throw error;
+    }
   }
 
   function handleEdit(event: { messageId: string; content: string }): void {
