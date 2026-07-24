@@ -235,8 +235,16 @@ async function loadGuessedEmbeddedLanguages(
 let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
 const sharedCuratedModules = new WeakMap<object, WeakMap<object, () => Promise<ShikiModule>>>();
 const EMPTY_LOADERS: Readonly<Record<string, never>> = {};
+const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
+  ts: 'typescript',
+  js: 'javascript',
+  py: 'python',
+  rb: 'ruby',
+  md: 'markdown',
+  yml: 'yaml',
+};
 
-async function createShikiModule(
+export async function createShikiModule(
   languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
   themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
 ): Promise<ShikiModule> {
@@ -350,7 +358,10 @@ export function shikiHighlighter(
     // and aliases as top-level keys (`typescript` AND `ts`, `javascript` AND
     // `js`, etc.), so a single hasOwn check accepts whatever Shiki accepts
     // natively without us inventing additional aliases.
-    if (!Object.hasOwn(shiki.bundledLanguages, normalizedLang)) {
+    const languageKey = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
+      ? normalizedLang
+      : LANGUAGE_ALIASES[normalizedLang];
+    if (languageKey === undefined || !Object.hasOwn(shiki.bundledLanguages, languageKey)) {
       if (!warnedLanguages.has(normalizedLang)) {
         warnedLanguages.add(normalizedLang);
         console.warn(
@@ -361,7 +372,7 @@ export function shikiHighlighter(
     }
 
     try {
-      await ensureLanguageLoaded(shiki, normalizedLang);
+      await ensureLanguageLoaded(shiki, languageKey);
       await ensureThemesLoaded(shiki, theme);
       await loadGuessedEmbeddedLanguages(shiki, code, normalizedLang);
       const html = shiki.highlighter.codeToHtml(code, {

@@ -186,6 +186,7 @@ describe('shikiHighlighter — fallback contract', () => {
       });
 
       expect(await highlight('const answer = 42;', 'typescript')).toMatch(/<span[^>]*style=/);
+      expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
       expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
       expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
       expect(warnings.filter((warning) => warning.includes('javascript')).length).toBe(1);

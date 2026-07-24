@@ -1,9 +1,7 @@
-import { bundledLanguages } from 'shiki/langs';
-import { bundledThemes } from 'shiki/themes';
-
 import {
   createRetryingLoaderCache,
   shikiHighlighter as createShikiHighlighter,
+  createShikiModule,
   type ShikiHighlighterOptions,
 } from './index.ts';
 
@@ -15,12 +13,17 @@ export function shikiHighlighter(
   options: ShikiHighlighterOptions = {},
   moduleLoader?: Parameters<typeof createShikiHighlighter>[1],
 ): ReturnType<typeof createShikiHighlighter> {
-  return createShikiHighlighter(
-    {
-      ...options,
-      languageLoaders: options.languageLoaders ?? bundledLanguages,
-      themeLoaders: options.themeLoaders ?? bundledThemes,
-    },
-    moduleLoader,
-  );
+  const loadModule =
+    moduleLoader ??
+    (async () => {
+      const [{ bundledLanguages }, { bundledThemes }] = await Promise.all([
+        import('shiki/langs'),
+        import('shiki/themes'),
+      ]);
+      return createShikiModule(
+        options.languageLoaders ?? bundledLanguages,
+        options.themeLoaders ?? bundledThemes,
+      );
+    });
+  return createShikiHighlighter(options, loadModule);
 }

@@ -1,5 +1,9 @@
 {
   "name": "cinder-shiki-curated-vite",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@shikijs/langs": "3.23.0",
+    "@shikijs/themes": "3.23.0"
+  }
 }
