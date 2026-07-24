@@ -285,15 +285,21 @@ for (const component of manifest.components) {
   assertRuntimeResolvable(importSpecifier);
   expectedComponentExportKeys.add(specifierToExportKey(importSpecifier));
 
-  // 2b. schema + variables: full runtime entry points (task 4176c51c). The
+  // 2b. schema + variables + component-owned runtime enhancements: full runtime
+  //     entry points (task 4176c51c). The
   //     `types` declaration target must exist AND the subpath must runtime-resolve
   //     via both the ESM and CJS resolvers.
-  for (const metadataKey of ['schema', 'variables']) {
-    const specifier = artifacts[metadataKey];
+  for (const artifactKey of ['schema', 'variables', 'enhancement']) {
+    const specifier = artifacts[artifactKey];
+    if (specifier === undefined) {
+      if (artifactKey === 'enhancement') continue;
+      record(`${id}: manifest is missing artifacts.${artifactKey}`);
+      continue;
+    }
     // Accumulate (don't throw) so one malformed component doesn't mask the rest.
-    if (specifier !== `${importSpecifier}/${metadataKey}`) {
+    if (specifier !== `${importSpecifier}/${artifactKey}`) {
       record(
-        `${id}: artifacts.${metadataKey} ("${specifier}") must equal import + "/${metadataKey}"`,
+        `${id}: artifacts.${artifactKey} ("${specifier}") must equal import + "/${artifactKey}"`,
       );
       continue;
     }
@@ -329,8 +335,7 @@ for (const component of manifest.components) {
       }
     }
 
-    // Runtime entry point: the default-exported JSON Schema / variables value
-    // must be importable from a plain Node/Vite consumer.
+    // Runtime entry point must be importable from a plain Node/Vite consumer.
     assertRuntimeResolvable(specifier);
   }
 
@@ -432,7 +437,7 @@ if (failures.length > 0) {
 
 process.stdout.write(
   `manifest-consumer OK — verified ${manifest.components.length} components ` +
-    `(import + schema/variables/examples/constraints/styles runtime-resolvable via ESM+CJS; ` +
+    `(import + schema/variables/examples/constraints/enhancements/styles runtime-resolvable via ESM+CJS; ` +
     `schema/variables type-target present; ` +
     `two-way export↔manifest consistency holds).\n`,
 );

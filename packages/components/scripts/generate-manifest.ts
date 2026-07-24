@@ -82,6 +82,7 @@ export type ManifestComponent = {
     variables: string;
     examples?: string;
     constraints?: string;
+    enhancement?: string;
   };
 };
 
@@ -162,6 +163,22 @@ function hasConstraintsArtifact(id: string, isExperimental: boolean): boolean {
     ? join(COMPONENTS_ROOT, 'experimental', id)
     : join(COMPONENTS_ROOT, id);
   return existsSync(join(componentDir, `${id}.constraints.json`));
+}
+
+/**
+ * Check whether the component has a separately published runtime enhancement.
+ * The source probe follows the same stable/experimental directory policy as
+ * the schema, variables, examples, and constraints artifact probes.
+ */
+export function hasEnhancementArtifact(
+  id: string,
+  isExperimental: boolean,
+  componentsRoot: string = COMPONENTS_ROOT,
+): boolean {
+  const componentDir = isExperimental
+    ? join(componentsRoot, 'experimental', id)
+    : join(componentsRoot, id);
+  return existsSync(join(componentDir, `${id}-enhancement.ts`));
 }
 
 /**
@@ -285,6 +302,9 @@ export async function buildManifest(): Promise<Manifest> {
       }
       if (hasConstraintsFlag) {
         artifacts.constraints = artifactSubpath(meta.id, meta.isExperimental, 'constraints');
+      }
+      if (!meta.isExperimental && hasEnhancementArtifact(meta.id, meta.isExperimental)) {
+        artifacts.enhancement = artifactSubpath(meta.id, meta.isExperimental, 'enhancement');
       }
 
       return {

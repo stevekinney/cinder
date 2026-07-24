@@ -254,6 +254,11 @@
                 "type": "string",
                 "description": "Import specifier for the constraints sidecar. Present only when hasConstraints is true.",
                 "examples": ["cinder/button/constraints"]
+              },
+              "enhancement": {
+                "type": "string",
+                "description": "Import specifier for a separately published runtime enhancement owned by this component.",
+                "examples": ["cinder/json-editor/enhancement"]
               }
             }
           },
