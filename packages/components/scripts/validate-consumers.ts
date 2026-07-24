@@ -1743,40 +1743,117 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
 type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
 
-async function assertSvelteKitClientRoutesHydrate(
+/**
+ * `--disable-dev-shm-usage` is Playwright's documented remedy for Chromium
+ * crashing mid-run with "Target page, context or browser has been closed":
+ * without it Chromium writes its shared memory into the runner's `/dev/shm`
+ * (small on Linux CI), overflows it, and the renderer dies. This browser check
+ * only runs in `validate:consumer` (the release path + local macOS, where
+ * `/dev/shm` is not constrained), so the crash first surfaced as a blocked
+ * release rather than in PR CI. Writing shared memory under `/tmp` avoids it.
+ */
+async function launchHydrationChromium() {
+  const { chromium } = await import('@playwright/test');
+  return promiseWithTimeout(
+    chromium.launch({ args: ['--disable-dev-shm-usage'] }),
+    15_000,
+    'launching Chromium for SvelteKit hydration validation',
+  );
+}
+
+/**
+ * A crashed Chromium process reports as "…has been closed" / "Target closed" /
+ * "crashed" — distinct from a route assertion timing out on a specific locator.
+ * Only the former is retried (a transient renderer death must never block a
+ * release); a real hydration/content failure throws a different message and is
+ * rethrown immediately.
+ */
+function isBrowserCrashError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /has been closed|Target closed|browser has disconnected|crashed/i.test(message);
+}
+
+/**
+ * Marks a failure that happened during teardown (`context.close()` /
+ * `browser.close()`) AFTER every route assertion already passed. Its message
+ * often looks like a browser crash ("…has been closed"), so it is wrapped in a
+ * distinct type: the retry wrapper surfaces it immediately rather than
+ * re-running routes that already succeeded.
+ */
+class HydrationTeardownError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'HydrationTeardownError';
+    this.cause = cause;
+  }
+}
+
+async function runSvelteKitHydrationRoutesOnce(
   httpPort: number,
   label: string,
   routePaths: SvelteKitHydrationRoute[],
 ): Promise<void> {
-  const { chromium } = await import('@playwright/test');
-  const browser = await promiseWithTimeout(
-    chromium.launch(),
-    15_000,
-    'launching Chromium for SvelteKit hydration validation',
-  );
+  const browser = await launchHydrationChromium();
   let context: BrowserContext | undefined;
+  let bodyError: unknown;
+  let bodyFailed = false;
 
   try {
     context = await browser.newContext();
     for (const routePath of routePaths) {
       await assertSvelteKitHydrationRoute(context, httpPort, label, routePath);
     }
-  } finally {
-    try {
-      if (context !== undefined) {
-        await promiseWithTimeout(
-          context.close(),
-          5_000,
-          `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-        );
-      }
-    } finally {
-      await promiseWithTimeout(
-        browser.close(),
-        5_000,
-        `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-      );
-    }
+  } catch (error) {
+    bodyError = error;
+    bodyFailed = true;
+  }
+
+  // Teardown runs OUTSIDE the try (not in `finally`, which would need a
+  // throw-in-finally — `no-unsafe-finally`). Always attempt both closes so a
+  // passing run never leaks a Chromium process/handle that would hang a later
+  // validate:consumer run; collect rather than throw inline so `browser.close()`
+  // still runs if `context.close()` fails.
+  const closeErrors: unknown[] = [];
+  if (context !== undefined) {
+    await promiseWithTimeout(
+      context.close(),
+      5_000,
+      `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
+    ).catch((error: unknown) => closeErrors.push(error));
+  }
+  await promiseWithTimeout(
+    browser.close(),
+    5_000,
+    `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
+  ).catch((error: unknown) => closeErrors.push(error));
+
+  // A body failure wins: its error is what the retry decision needs (a crashed
+  // browser makes both closes throw too — those are swallowed). But when every
+  // route assertion PASSED and teardown still failed, surface it: a browser
+  // dying during close is a real problem, not noise to hide behind a green run.
+  if (bodyFailed) throw bodyError;
+  if (closeErrors.length > 0) throw new HydrationTeardownError(closeErrors[0]);
+}
+
+async function assertSvelteKitClientRoutesHydrate(
+  httpPort: number,
+  label: string,
+  routePaths: SvelteKitHydrationRoute[],
+): Promise<void> {
+  try {
+    await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
+  } catch (error) {
+    // Only a crash DURING route assertions is retried. A teardown failure
+    // after passing assertions (HydrationTeardownError) is surfaced as-is —
+    // re-running routes that already succeeded would be wasted work — and any
+    // non-crash failure (a real hydration/content assertion) is rethrown too.
+    if (error instanceof HydrationTeardownError || !isBrowserCrashError(error)) throw error;
+    process.stderr.write(
+      `[validate-consumers] Chromium crashed during ${label} hydration ` +
+        `(${routePaths.join(', ')}); relaunching once: ` +
+        `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
   }
 }
 
@@ -2447,9 +2524,42 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.main) {
+/**
+ * A lighter subset of {@link main} for `main-green` (Linux CI, post-merge,
+ * pre-publish since the release path waits for the same-SHA main-green run).
+ * It exercises the exact browser hydration path — `runSveltekitFixture` →
+ * `launchHydrationChromium` → `assertSvelteKitClientRoutesHydrate`, including
+ * the crash-prone `/chat-layout` and `/dev-ssr` routes — that only ran in the
+ * release path before, so a Chromium-launch regression is caught on Linux CI
+ * every merge instead of first surfacing as a blocked release. It packs only
+ * the tarballs the SvelteKit fixture needs and runs a single Svelte version
+ * (workspace), skipping the styles/manifest/typescript/node/examples/
+ * peer-compatibility fixtures and the multi-version matrix the full gate runs.
+ */
+async function hydrationSmoke(): Promise<void> {
+  installHookProcessCleanup();
+  ensureSupportedPlatform();
+  await ensureNodeOnPath();
+  await runBuild();
+  await packWorkspaceDependencyTarballs();
+  await packTarball();
+  await packChatTarball();
+
+  const chatFixtureCinderArtifact = await stageChatFixtureCinderArtifact();
+  chatFixtureCinderTarballFilePath = chatFixtureCinderArtifact.tarballPath;
   try {
-    await withLocalValidationGateLock(main);
+    await runSveltekitFixture('hydration smoke');
+    process.stdout.write('[validate-consumers] hydration smoke passed.\n');
+  } finally {
+    await chatFixtureCinderArtifact.cleanup();
+    chatFixtureCinderTarballFilePath = tarballFilePath;
+  }
+}
+
+if (import.meta.main) {
+  const entry = process.argv.includes('--hydration-smoke') ? hydrationSmoke : main;
+  try {
+    await withLocalValidationGateLock(entry);
   } catch (error) {
     if (error instanceof ValidationError) {
       process.stderr.write(`[validate-consumers] ${error.message}\n`);

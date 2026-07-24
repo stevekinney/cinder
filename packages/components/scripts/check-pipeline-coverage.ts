@@ -223,6 +223,15 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'Direct release artifact gate. It builds the staged tarball and installs it into consumer ' +
       'fixtures immediately before package weight and publish.',
   },
+  'validate:consumer:hydration-smoke': {
+    layers: ['main-green'],
+    reason:
+      'A lighter single-version subset of `validate:consumer` that runs only the SvelteKit ' +
+      'hydration fixture. It runs in main-green (not release, where the full `validate:consumer` ' +
+      'already covers it) so a Chromium-launch regression in the browser hydration path — which ' +
+      'otherwise executes only in the release path — is caught on Linux CI before the same-SHA ' +
+      'release can publish. See docs/validation-topology.md.',
+  },
   'package:weight:check': {
     layers: ['release'],
     reason:
