@@ -1,5 +1,18 @@
 # @lostgradient/chat
 
+## 0.3.0
+
+### Minor Changes
+
+- [#871](https://github.com/stevekinney/cinder/pull/871) [`77c505d`](https://github.com/stevekinney/cinder/commit/77c505db32ece4682ea2bc153fa51007fb98db85) Thanks [@stevekinney](https://github.com/stevekinney)! - Adopt conversationalist 0.5 and expose its `createConversationHistory`, `buildMessage`, and `prependMessages` builders. The existing `createConversation` export remains as a deprecated migration alias.
+
+### Patch Changes
+
+- [#869](https://github.com/stevekinney/cinder/pull/869) [`20d9125`](https://github.com/stevekinney/cinder/commit/20d91259adbb32d55ffad8ea68b26f463f061d7d) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep unread-message accrual synchronized after non-virtualized chats scroll to the top.
+
+- Updated dependencies [[`e12e2e9`](https://github.com/stevekinney/cinder/commit/e12e2e97c200f4bcb8586bdc6dc2dd95a1e74dfe), [`92e7ab3`](https://github.com/stevekinney/cinder/commit/92e7ab3ff9d05176f08498c5f0948a4d6827d153), [`4bb7c93`](https://github.com/stevekinney/cinder/commit/4bb7c93ea3ad4741a515026f21197513ac4889a2)]:
+  - @lostgradient/cinder@0.18.0
+
 ## 0.2.0
 
 ### Minor Changes
