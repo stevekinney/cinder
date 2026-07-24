@@ -260,16 +260,34 @@ describe('StatusDot connection preset', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
-  test('showLabel=false keeps hidden text for the live-region connection preset', () => {
+  test('showLabel=false keeps hidden text and an accessible name for the live-region preset', () => {
     const { container } = render(StatusDot, {
       props: { connectionState: 'connected', showLabel: false },
     });
     const root = container.querySelector('.cinder-status-dot');
 
     expect(root?.getAttribute('role')).toBe('status');
-    expect(root?.getAttribute('aria-label')).toBeNull();
+    expect(root?.getAttribute('aria-label')).toBe('Connected');
     expect(root?.textContent).toContain('Connected');
     expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('Connected');
+  });
+
+  test('showLabel=false exposes the provided label as the live-region accessible name', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connecting', label: 'streaming', showLabel: false },
+    });
+    const root = container.querySelector('.cinder-status-dot');
+
+    expect(root?.getAttribute('role')).toBe('status');
+    expect(root?.getAttribute('aria-label')).toBe('streaming');
+    expect(within(container).getByRole('status', { name: 'streaming' })).not.toBeNull();
+  });
+
+  test('showLabel=false exposes a consumer aria-label as the live-region accessible name', () => {
+    const { container } = render(StatusDot, {
+      props: { connectionState: 'connected', 'aria-label': 'streaming', showLabel: false },
+    });
+    expect(within(container).getByRole('status', { name: 'streaming' })).not.toBeNull();
   });
 
   test('consumer aria-label is preserved as live-region text', () => {

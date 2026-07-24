@@ -76,6 +76,13 @@
   const needsHiddenLiveLabel = $derived(
     resolvedLive && (!hasVisibleLabel || visibleLabelIsLiveDuplicate),
   );
+  // A live region with its visible label suppressed still needs an author name
+  // so role-based queries and assistive technology can identify the status.
+  const liveAriaLabel = $derived(
+    !hasVisibleLabel && (normalizedLabel !== undefined || normalizedAriaLabel !== undefined)
+      ? resolvedAriaLabel
+      : undefined,
+  );
 </script>
 
 <!--
@@ -97,7 +104,7 @@
   role={resolvedLive ? 'status' : 'img'}
   aria-live={resolvedLive ? 'polite' : undefined}
   aria-atomic={resolvedLive ? 'true' : undefined}
-  aria-label={resolvedLive ? undefined : resolvedAriaLabel}
+  aria-label={resolvedLive ? liveAriaLabel : resolvedAriaLabel}
 >
   <span class="cinder-status-dot__indicator" aria-hidden="true"></span>
   {#if hasVisibleLabel}
