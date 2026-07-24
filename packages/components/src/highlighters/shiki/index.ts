@@ -166,6 +166,8 @@ type ShikiModule = {
    * their own `shiki/core` import.
    */
   guessEmbeddedLanguages: (code: string, lang: string) => string[];
+  /** Whether aliases should be discovered from curated grammar metadata. */
+  resolveLanguageAliases: boolean;
 };
 
 type ShikiModuleLoader = () => Promise<ShikiModule>;
@@ -239,6 +241,7 @@ const EMPTY_LOADERS: Readonly<Record<string, never>> = {};
 export async function createShikiModule(
   languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
   themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
+  resolveLanguageAliases = true,
 ): Promise<ShikiModule> {
   const [{ createOnigurumaEngine }, coreModule] = await Promise.all([
     import('@shikijs/engine-oniguruma'),
@@ -254,6 +257,7 @@ export async function createShikiModule(
     bundledLanguages: languageLoaders ?? {},
     bundledThemes: themeLoaders ?? {},
     guessEmbeddedLanguages: coreModule.guessEmbeddedLanguages,
+    resolveLanguageAliases,
   };
 }
 
@@ -354,7 +358,11 @@ export function shikiHighlighter(
     let languageKey: string | undefined = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
       ? normalizedLang
       : resolvedLanguageAliases.get(normalizedLang);
-    if (languageKey === undefined && !resolvedLanguageAliases.has(normalizedLang)) {
+    if (
+      languageKey === undefined &&
+      shiki.resolveLanguageAliases &&
+      !resolvedLanguageAliases.has(normalizedLang)
+    ) {
       for (const [candidate, loader] of Object.entries(shiki.bundledLanguages)) {
         try {
           const module = await loader();

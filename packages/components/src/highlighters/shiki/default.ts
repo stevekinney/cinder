@@ -17,7 +17,7 @@ function getDefaultModuleLoader(): () => Promise<ShikiModule> {
       import('shiki/langs'),
       import('shiki/themes'),
     ]);
-    return createShikiModule(bundledLanguages, bundledThemes);
+    return createShikiModule(bundledLanguages, bundledThemes, false);
   });
   return sharedDefaultModuleLoader;
 }
