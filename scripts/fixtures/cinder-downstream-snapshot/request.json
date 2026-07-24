@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "packages": [],
+  "repositories": [
+    {
+      "name": "cinder",
+      "path": ".",
+      "commit": "local",
+      "evidence": {
+        "manifests": ["package.json"],
+        "source": ["scripts/**/*.ts"],
+        "styles": ["**/*.css"]
+      }
+    }
+  ],
+  "issueWindow": { "open": 100, "recentlyClosed": 100, "since": "2026-07-17" }
+}

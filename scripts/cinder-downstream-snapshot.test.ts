@@ -20,3 +20,12 @@ test('help prints usage without requiring a request', () => {
   expect(result.exitCode).toBe(0);
   expect(result.stdout.toString()).toContain('Usage:');
 });
+
+test('partial repository failures stay in the snapshot', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-error-'));
+  const request = join(root, 'request.json');
+  await Bun.write(request, JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'missing', path: join(root, 'missing') }] }));
+  const result = Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--request', request]);
+  expect(result.exitCode).toBe(0);
+  expect(JSON.parse(result.stdout.toString()).errors[0].scope).toBe('repository:missing');
+});
