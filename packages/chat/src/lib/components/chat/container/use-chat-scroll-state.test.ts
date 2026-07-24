@@ -309,7 +309,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.atBottom).toBe(false);
   });
 
-  test('a visible sentinel cannot undo scrollToTop state while its programmatic scroll guard is active', () => {
+  test('sentinel observations are coalesced until a programmatic scroll settles', () => {
     jest.useFakeTimers();
     let reachedBottom = 0;
     const state = useChatScrollState({
@@ -320,6 +320,9 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     const viewport = createViewport();
     const visibleSentinelEntry = {
       isIntersecting: true,
+    } as IntersectionObserverEntry;
+    const hiddenSentinelEntry = {
+      isIntersecting: false,
     } as IntersectionObserverEntry;
 
     state.scrollToTop(viewport);
@@ -333,10 +336,35 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.atBottom).toBe(false);
     expect(reachedBottom).toBe(0);
 
-    // Once the programmatic scroll has settled, a genuinely visible sentinel
-    // once again owns the bottom-state transition and unread cleanup.
+    // The sentinel then leaves the viewport as the scroll progresses. Its
+    // latest observation must replace the stale visible one.
+    state.handleSentinelEntry(hiddenSentinelEntry);
     jest.advanceTimersByTime(500);
-    state.handleSentinelEntry(visibleSentinelEntry);
+    expect(state.atBottom).toBe(false);
+    expect(reachedBottom).toBe(0);
+  });
+
+  test('a sentinel that remains visible during the guard is applied once the scroll settles', () => {
+    jest.useFakeTimers();
+    let reachedBottom = 0;
+    const state = useChatScrollState({
+      onReachBottom: () => {
+        reachedBottom += 1;
+      },
+    });
+
+    state.setAtBottom(false);
+    state.withUserScrollGuard(() => {});
+    state.handleSentinelEntry({
+      isIntersecting: true,
+    } as IntersectionObserverEntry);
+
+    expect(state.atBottom).toBe(false);
+    expect(reachedBottom).toBe(0);
+
+    // IntersectionObserver does not repeat an unchanged intersection after
+    // the guard expires, so the coalesced latest entry must be applied here.
+    jest.advanceTimersByTime(500);
     expect(state.atBottom).toBe(true);
     expect(reachedBottom).toBe(1);
   });

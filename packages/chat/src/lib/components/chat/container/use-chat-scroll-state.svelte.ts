@@ -195,6 +195,10 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
   // Non-reactive bookkeeping
   let scrollTicking = false;
   let isUserScrolling = false; // Prevents auto-scroll from interrupting user-initiated smooth scroll
+  // IntersectionObserver does not repeat an unchanged observation after a
+  // guard settles. Coalesce entries received during the guard so the latest
+  // real sentinel state can take ownership once the programmatic scroll ends.
+  let pendingSentinelVisibility: boolean | null = null;
   // Cancel function for the in-flight withForcedLayout session, if any. A new
   // session cancels the previous one's listeners/timer before starting its
   // own — see withForcedLayout below for why this matters.
@@ -267,19 +271,32 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * IntersectionObserver callback for the bottom sentinel element.
    * Exposed for use with useIntersection attachment-based wiring.
    */
-  function handleSentinelEntry(entry: IntersectionObserverEntry): void {
-    // A smooth programmatic scroll away from the bottom can receive an
-    // already-queued "visible" entry before the sentinel actually leaves the
-    // viewport. The explicit scroll-away state owns this interval; allowing
-    // the stale entry to win would immediately flip atBottom back to true and
-    // clear unread state before the scroll has moved.
-    if (isUserScrolling) return;
-
-    const sentinelVisible = entry.isIntersecting;
+  function applySentinelVisibility(sentinelVisible: boolean): void {
     if (sentinelVisible && !atBottom) {
       atBottom = true;
       onReachBottom?.();
     }
+  }
+
+  function applyPendingSentinelVisibility(): void {
+    if (pendingSentinelVisibility === null) return;
+    const sentinelVisible = pendingSentinelVisibility;
+    pendingSentinelVisibility = null;
+    applySentinelVisibility(sentinelVisible);
+  }
+
+  function handleSentinelEntry(entry: IntersectionObserverEntry): void {
+    // A smooth programmatic scroll can receive observations for transient
+    // positions before it settles. Coalesce them rather than applying them
+    // immediately: the latest observation owns the state once the guard ends,
+    // including the case where the sentinel remains visible and the observer
+    // will not emit the same unchanged intersection again.
+    if (isUserScrolling) {
+      pendingSentinelVisibility = entry.isIntersecting;
+      return;
+    }
+
+    applySentinelVisibility(entry.isIntersecting);
   }
 
   /**
@@ -438,6 +455,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
         settled = true;
         activeUserScrollGuardCancel = null;
         isUserScrolling = false;
+        applyPendingSentinelVisibility();
         onSettled?.();
       }, scrollDuration);
       activeUserScrollGuardCancel = () => {
@@ -456,6 +474,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
     isUserScrolling = false;
+    applyPendingSentinelVisibility();
   }
 
   /**
@@ -519,6 +538,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel?.();
     activeUserScrollGuardCancel = null;
     isUserScrolling = false;
+    pendingSentinelVisibility = null;
   }
 
   return {
