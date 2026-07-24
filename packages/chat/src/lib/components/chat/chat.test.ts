@@ -815,6 +815,42 @@ describe('Chat — atBottom bindable after send', () => {
     const jumpButton = container.querySelector('.chat-jump-button');
     expect(jumpButton).toBeNull();
   });
+
+  test('scrollToTop accrues messages appended before the first scroll event', async () => {
+    const source = await Bun.file(new URL('./container/chat.svelte', import.meta.url)).text();
+    const nonVirtualizedBranch = source.slice(
+      source.indexOf('    } else {\n      // Same canLeaveBottom reasoning'),
+    );
+    expect(nonVirtualizedBranch).toMatch(
+      /const canLeaveBottom[\s\S]*?scrollState\.setAtBottom\(false\);[\s\S]*?updateAtBottomBinding\(false\);/,
+    );
+
+    let conversation = appendAssistantMessage(
+      appendUserMessage(createConversation({ id: 'conversation-scroll-top-unread' }), 'Hello'),
+      'Hi there',
+    );
+    const unreadChanges: number[] = [];
+    const { component, container, rerender } = render(Chat, {
+      props: {
+        id: 'chat-scroll-top-unread',
+        conversation,
+        onunreadindicatorchange: (event: { unreadCount: number }) => {
+          unreadChanges.push(event.unreadCount);
+        },
+      },
+    });
+
+    const timeline = container.querySelector<HTMLElement>('.chat-timeline');
+    expect(timeline).not.toBeNull();
+    Object.defineProperty(timeline!, 'clientHeight', { configurable: true, value: 100 });
+    Object.defineProperty(timeline!, 'scrollHeight', { configurable: true, value: 400 });
+
+    (component as unknown as { scrollToTop: () => void }).scrollToTop();
+
+    conversation = appendAssistantMessage(conversation, 'A message while scrolling');
+    await rerender({ conversation });
+    await waitFor(() => expect(unreadChanges).toContain(1));
+  });
 });
 
 describe('Chat — public wrapper forwards bind:atBottom/unreadCount/newMessageIndicatorVisible', () => {
