@@ -85,16 +85,19 @@ export interface UseChatScrollStateReturn {
   /**
    * Run a programmatic scroll `action` while suppressing the auto-stick-to-bottom
    * effect, mirroring the guard `jumpToLatest` already applies. Sets
-   * `isUserScrolling` for the duration of the scroll animation (based on the
-   * reduced-motion preference), then clears it. A new call cancels any prior
-   * in-flight guard's timer first, so overlapping guarded scrolls can never
-   * leave a stale timer that clears the flag out from under a later one.
-   * `onSettled`, if given, runs once this guard's own timer fires (not if a
-   * later guard cancels it first). Use this for any caller-driven scroll
+   * `isUserScrolling` until the viewport emits `scrollend` or stops emitting
+   * scroll events for the reduced-motion-aware backstop interval, then clears
+   * it. A new call cancels any prior in-flight guard's listeners and backstop.
+   * `onSettled`, if given, runs only when this guard settles (not if a later
+   * guard cancels it first). Use this for any caller-driven scroll
    * (e.g. a virtualized `scrollToOffset`/`scrollToIndex` call) that isn't
    * already routed through `scrollToBottom`/`scrollToTop`/`jumpToLatest`.
    */
-  withUserScrollGuard(action: () => void, onSettled?: () => void): void;
+  withUserScrollGuard(
+    viewport: HTMLElement | null,
+    action: () => void,
+    onSettled?: () => void,
+  ): void;
   /**
    * Immediately cancel any in-flight `withUserScrollGuard`/`jumpToLatest`
    * session and clear `isUserScrolling`, without arming a replacement timer.
@@ -428,7 +431,11 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
    * latest, scroll-to-top, jump-to-start) can never leave a stale timer behind
    * that clears the flag mid-animation for a different call.
    */
-  function withUserScrollGuard(action: () => void, onSettled?: () => void): void {
+  function withUserScrollGuard(
+    viewport: HTMLElement | null,
+    action: () => void,
+    onSettled?: () => void,
+  ): void {
     // Cancel any previous in-flight guard first: without this, an earlier
     // overlapping guarded scroll (e.g. jumpToLatest() immediately followed by
     // scrollToTop(), or two quick Home presses) would have its OWN timer flip
@@ -437,32 +444,44 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     activeUserScrollGuardCancel?.();
     isUserScrolling = true;
 
-    // Arm the timer AFTER `action()` runs (in `finally`, so a throwing
-    // `action` still gets the flag cleared) rather than before. `action` can
-    // include synchronous work with real cost — e.g. jumpToLatest's forced
-    // layout pass, which reflows every row before the scroll even starts. On
-    // a large transcript that can eat a meaningful slice of the animation
-    // budget; arming the timer first would start the clock before the scroll
-    // command was even issued, letting the guard expire mid-animation.
-    const scrollDuration = reducedMotion.current ? 50 : 500;
+    const settleBackstopDuration = reducedMotion.current ? 50 : 500;
     let settled = false;
-    let timer: ReturnType<typeof setTimeout>;
+    let backstop: ReturnType<typeof setTimeout> | undefined;
+
+    function cancel(): void {
+      if (settled) return;
+      settled = true;
+      if (backstop !== undefined) clearTimeout(backstop);
+      viewport?.removeEventListener('scrollend', settle);
+      viewport?.removeEventListener('scroll', armBackstop);
+    }
+
+    function settle(): void {
+      if (settled) return;
+      cancel();
+      activeUserScrollGuardCancel = null;
+      isUserScrolling = false;
+      applyPendingSentinelVisibility();
+      onSettled?.();
+    }
+
+    function armBackstop(): void {
+      if (backstop !== undefined) clearTimeout(backstop);
+      backstop = setTimeout(settle, settleBackstopDuration);
+    }
+
+    activeUserScrollGuardCancel = cancel;
+    viewport?.addEventListener('scrollend', settle, { once: true });
+    viewport?.addEventListener('scroll', armBackstop, { passive: true });
+
+    // Arm the no-event backstop AFTER `action()` runs. The action can include
+    // a costly synchronous layout pass before it issues the scroll command;
+    // starting the clock first would consume settlement budget before the
+    // animation even begins. Every subsequent scroll tick re-arms it.
     try {
       action();
     } finally {
-      timer = setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        activeUserScrollGuardCancel = null;
-        isUserScrolling = false;
-        applyPendingSentinelVisibility();
-        onSettled?.();
-      }, scrollDuration);
-      activeUserScrollGuardCancel = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-      };
+      armBackstop();
     }
   }
 
@@ -496,7 +515,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     if (viewport.scrollHeight > viewport.clientHeight) {
       atBottom = false;
     }
-    withUserScrollGuard(() => {
+    withUserScrollGuard(viewport, () => {
       viewport.scrollTo({ top: 0, behavior: getScrollBehavior() });
     });
   }
@@ -508,6 +527,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     if (!viewport) return;
 
     withUserScrollGuard(
+      viewport,
       () => {
         withForcedLayout(viewport, () => {
           viewport.scrollTo({ top: viewport.scrollHeight, behavior: getScrollBehavior() });

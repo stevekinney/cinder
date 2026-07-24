@@ -176,7 +176,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     let called = false;
 
     expect(state.isUserScrolling).toBe(false);
-    state.withUserScrollGuard(() => {
+    state.withUserScrollGuard(null, () => {
       // Runs synchronously inside the guard, mirroring
       // `chatVirtualizer.scrollToOffset(0, ...)` in chat.svelte.
       called = true;
@@ -213,7 +213,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
 
     try {
       const state = useChatScrollState();
-      state.withUserScrollGuard(() => {});
+      state.withUserScrollGuard(null, () => {});
       expect(state.isUserScrolling).toBe(true);
 
       jest.advanceTimersByTime(49);
@@ -237,7 +237,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     // A second, independent guarded scroll must also resolve back to false —
     // proving the flag resets on its own timer rather than requiring some
     // other code path to clear it.
-    state.withUserScrollGuard(() => {});
+    state.withUserScrollGuard(viewport, () => {});
     expect(state.isUserScrolling).toBe(true);
     jest.advanceTimersByTime(500);
     expect(state.isUserScrolling).toBe(false);
@@ -253,9 +253,9 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     jest.useFakeTimers();
     const state = useChatScrollState();
 
-    state.withUserScrollGuard(() => {}); // session A: timer armed for ~500ms from t=0
+    state.withUserScrollGuard(null, () => {}); // session A: backstop armed for ~500ms from t=0
     jest.advanceTimersByTime(50);
-    state.withUserScrollGuard(() => {}); // session B: timer armed for ~500ms from t=50
+    state.withUserScrollGuard(null, () => {}); // session B: backstop armed for ~500ms from t=50
 
     // At t≈520ms: session A's original (500ms) deadline has passed, but
     // session B's (550ms) has not. isUserScrolling must still be true —
@@ -344,6 +344,47 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(reachedBottom).toBe(0);
   });
 
+  test('a scroll lasting longer than the backstop cannot replay stale sentinel state mid-animation', () => {
+    jest.useFakeTimers();
+    let reachedBottom = 0;
+    const state = useChatScrollState({
+      onReachBottom: () => {
+        reachedBottom += 1;
+      },
+    });
+    const viewport = createViewport();
+
+    state.setAtBottom(false);
+    state.withUserScrollGuard(viewport, () => {});
+    state.handleSentinelEntry({
+      isIntersecting: true,
+    } as IntersectionObserverEntry);
+
+    // Keep the animation active well beyond the original fixed 500ms guard.
+    // Every real scroll tick must re-arm settlement instead of letting the
+    // initial visible observation replay on its original wall-clock deadline.
+    for (let index = 0; index < 3; index += 1) {
+      jest.advanceTimersByTime(400);
+      viewport.dispatchEvent(new Event('scroll'));
+      expect(state.isUserScrolling).toBe(true);
+      expect(state.atBottom).toBe(false);
+      expect(reachedBottom).toBe(0);
+    }
+
+    // The final observer state is hidden. It owns the transition only after
+    // the viewport has actually stopped producing scroll events.
+    state.handleSentinelEntry({
+      isIntersecting: false,
+    } as IntersectionObserverEntry);
+    jest.advanceTimersByTime(499);
+    expect(state.isUserScrolling).toBe(true);
+    expect(state.atBottom).toBe(false);
+    jest.advanceTimersByTime(1);
+    expect(state.isUserScrolling).toBe(false);
+    expect(state.atBottom).toBe(false);
+    expect(reachedBottom).toBe(0);
+  });
+
   test('a sentinel that remains visible during the guard is applied once the scroll settles', () => {
     jest.useFakeTimers();
     let reachedBottom = 0;
@@ -352,9 +393,10 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
         reachedBottom += 1;
       },
     });
+    const viewport = createViewport();
 
     state.setAtBottom(false);
-    state.withUserScrollGuard(() => {});
+    state.withUserScrollGuard(viewport, () => {});
     state.handleSentinelEntry({
       isIntersecting: true,
     } as IntersectionObserverEntry);
@@ -394,7 +436,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     const state = useChatScrollState();
     let clearedDuringAction = false;
 
-    state.withUserScrollGuard(() => {
+    state.withUserScrollGuard(null, () => {
       // Simulate action() itself consuming the guard's entire duration. If
       // the timer had been armed before action() ran, this would fire it
       // while still inside action() — proving the bug.
