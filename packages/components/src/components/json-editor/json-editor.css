@@ -20,6 +20,8 @@
   }
 
   .cinder-json-editor__textarea {
+    display: block;
+    inline-size: 100%;
     min-block-size: 10rem;
     resize: vertical;
     border: 1px solid var(--cinder-border);
