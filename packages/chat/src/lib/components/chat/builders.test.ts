@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   appendAssistantMessage,
+  appendMessages,
   appendUserMessage,
   buildMessage,
   createConversation,
@@ -50,5 +51,19 @@ describe('chat conversation builders', () => {
 
     expect(conversation.messages[conversation.ids[0]!]!.role).toBe('user');
     expect(conversation.messages[conversation.ids[0]!]!.content).toBe('Hello');
+  });
+
+  test('preserves immutable snapshots and dense message positions', () => {
+    const initial = createConversationHistory({ id: 'conversation-immutability' });
+    expect(appendMessages(initial)).toEqual(initial);
+
+    const next = appendMessages(initial, { role: 'user', content: 'First' });
+    const final = appendMessages(next, { role: 'assistant', content: 'Second' });
+
+    expect(initial.ids).toEqual([]);
+    expect(next.ids).toHaveLength(1);
+    expect(final.ids).toHaveLength(2);
+    expect(final.messages[final.ids[0]!]!.position).toBe(0);
+    expect(final.messages[final.ids[1]!]!.position).toBe(1);
   });
 });

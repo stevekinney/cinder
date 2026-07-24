@@ -1,5 +1,5 @@
 /**
- * Conversation builders re-exported from Chat's pinned Conversationalist
+ * Conversation builders re-exported from Chat's direct Conversationalist
  * dependency. Keeping these at the Chat boundary gives consumers one stable
  * import surface while Chat and Conversationalist share the same transcript
  * types and runtime implementation.
