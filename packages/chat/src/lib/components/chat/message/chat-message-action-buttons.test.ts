@@ -12,8 +12,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const source = readFileSync(resolve(import.meta.dir, 'chat-message.svelte'), 'utf8');
+const readme = readFileSync(resolve(import.meta.dir, '../README.md'), 'utf8');
 
 describe('chat message action buttons', () => {
+  test('documents the opt-in styling contract for native consumer actions', () => {
+    expect(readme).toContain('`chat-message-action-button` class');
+    expect(readme).toContain('class="chat-message-action-button"');
+  });
+
   test('copy action uses CopyButton with both shared base class and copy-specific class', () => {
     // CopyButton receives the classes as a prop; source shows them in the `class` attribute value.
     expect(source).toContain('chat-message-action-button chat-message-copy');
