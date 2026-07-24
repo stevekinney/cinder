@@ -200,21 +200,27 @@ describe('shikiHighlighter — fallback contract', () => {
   });
 
   test('retries alias discovery after a transient grammar-loader failure', async () => {
+    const { warnings, restore } = captureWarnings();
     let attempts = 0;
     const languageLoader = async () => {
       attempts += 1;
       if (attempts === 1) throw new Error('transient grammar failure');
       return import('@shikijs/langs/typescript');
     };
-    const highlight = shikiHighlighter({
-      languageLoaders: { typescript: languageLoader },
-      themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
-      theme: 'github-light',
-    });
+    try {
+      const highlight = shikiHighlighter({
+        languageLoaders: { typescript: languageLoader },
+        themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+        theme: 'github-light',
+      });
 
-    expect(await highlight('const answer = 42;', 'ts')).toContain('shiki-plaintext');
-    expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
-    expect(attempts).toBeGreaterThanOrEqual(2);
+      expect(await highlight('const answer = 42;', 'ts')).toContain('shiki-plaintext');
+      expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
+      expect(attempts).toBeGreaterThanOrEqual(2);
+      expect(warnings.filter((warning) => warning.includes('"ts"')).length).toBe(1);
+    } finally {
+      restore();
+    }
   });
 
   test('empty lang returns escaped-plaintext fallback', async () => {
