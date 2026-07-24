@@ -61,7 +61,7 @@ describe('CodeBlock default-highlighter seam (real Shiki adapter)', () => {
     const highlighter = mock((code: string) => `<pre><code>${code}</code></pre>`);
     const shikiHighlighter = mock(() => highlighter);
 
-    mock.module('../../highlighters/shiki/index.ts', () => ({ shikiHighlighter }));
+    mock.module('../../highlighters/shiki/default.ts', () => ({ shikiHighlighter }));
     try {
       const { loadDefaultHighlighter } = await import('./code-block-default-highlighter.ts');
       const first = await loadDefaultHighlighter();

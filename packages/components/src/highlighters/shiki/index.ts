@@ -108,6 +108,10 @@ export type ShikiHighlighterOptions = {
    * first-render flash for those languages).
    */
   langs?: ReadonlyArray<string>;
+  /** Curated Shiki language loader map. When supplied, the default registry is not imported. */
+  languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>;
+  /** Curated Shiki theme loader map. When supplied, the default registry is not imported. */
+  themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>;
 };
 
 const DEFAULT_THEME: { light: string; dark: string } = {
@@ -146,8 +150,8 @@ function plaintextBlock(code: string): string {
  * here are keyed by a `lang`/theme name string that is only known to be a
  * member of that union after a runtime `Object.hasOwn` check.
  */
-type BundledLanguages = Record<string, DynamicImportLanguageRegistration>;
-type BundledThemes = Record<string, DynamicImportThemeRegistration>;
+type BundledLanguages = Readonly<Record<string, DynamicImportLanguageRegistration>>;
+type BundledThemes = Readonly<Record<string, DynamicImportThemeRegistration>>;
 
 type ShikiModule = {
   highlighter: HighlighterCore;
@@ -230,26 +234,35 @@ async function loadGuessedEmbeddedLanguages(
  */
 let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
 
-function getSharedShikiModule(): Promise<ShikiModule> {
-  sharedShikiModule ??= createRetryingLoaderCache(async (): Promise<ShikiModule> => {
-    const [{ createOnigurumaEngine }, coreModule, langsModule, themesModule] = await Promise.all([
-      import('@shikijs/engine-oniguruma'),
-      import('shiki/core'),
-      import('shiki/langs'),
-      import('shiki/themes'),
-    ]);
-    const highlighter = await coreModule.createHighlighterCore({
-      themes: [],
-      langs: [],
-      engine: createOnigurumaEngine(import('shiki/wasm')),
-    });
-    return {
-      highlighter,
-      bundledLanguages: langsModule.bundledLanguages,
-      bundledThemes: themesModule.bundledThemes,
-      guessEmbeddedLanguages: coreModule.guessEmbeddedLanguages,
-    };
+async function createShikiModule(
+  languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
+  themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
+): Promise<ShikiModule> {
+  const [{ createOnigurumaEngine }, coreModule] = await Promise.all([
+    import('@shikijs/engine-oniguruma'),
+    import('shiki/core'),
+  ]);
+  const highlighter = await coreModule.createHighlighterCore({
+    themes: [],
+    langs: [],
+    engine: createOnigurumaEngine(import('shiki/wasm')),
   });
+  return {
+    highlighter,
+    bundledLanguages: languageLoaders ?? {},
+    bundledThemes: themeLoaders ?? {},
+    guessEmbeddedLanguages: coreModule.guessEmbeddedLanguages,
+  };
+}
+
+function getSharedShikiModule(
+  languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
+  themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
+): Promise<ShikiModule> {
+  if (languageLoaders !== undefined || themeLoaders !== undefined) {
+    return createShikiModule(languageLoaders, themeLoaders);
+  }
+  sharedShikiModule ??= createRetryingLoaderCache(() => createShikiModule());
   return sharedShikiModule();
 }
 
@@ -262,7 +275,7 @@ export function shikiHighlighter(
   options: ShikiHighlighterOptions = {},
   moduleLoader?: ShikiModuleLoader,
 ): Highlighter {
-  const { theme = DEFAULT_THEME, langs } = options;
+  const { theme = DEFAULT_THEME, langs, languageLoaders, themeLoaders } = options;
   const warnedLanguages = new Set<string>();
 
   // Resolve Shiki lazily on the first highlight call. The cache wrapper
@@ -272,7 +285,7 @@ export function shikiHighlighter(
   const loadShiki = createRetryingLoaderCache(
     moduleLoader ??
       (async (): Promise<ShikiModule> => {
-        const shikiModule = await getSharedShikiModule();
+        const shikiModule = await getSharedShikiModule(languageLoaders, themeLoaders);
 
         // Optional preload — if the consumer named specific languages, load
         // the configured theme once and each named language, so Shiki

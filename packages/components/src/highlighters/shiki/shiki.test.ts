@@ -10,7 +10,7 @@ import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 setupHappyDom();
 
-const { shikiHighlighter } = await import('./index.ts');
+const { shikiHighlighter } = await import('./default.ts');
 
 const originalConsoleWarn = console.warn;
 afterEach(() => {
@@ -176,6 +176,17 @@ describe('shikiHighlighter — happy path', () => {
 });
 
 describe('shikiHighlighter — fallback contract', () => {
+  test('uses curated language and theme loader maps', async () => {
+    const highlight = shikiHighlighter({
+      languageLoaders: { typescript: () => import('@shikijs/langs/typescript') },
+      themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+      theme: 'github-light',
+    });
+
+    expect(await highlight('const answer = 42;', 'typescript')).toMatch(/<span[^>]*style=/);
+    expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
+  });
+
   test('empty lang returns escaped-plaintext fallback', async () => {
     const highlight = shikiHighlighter();
     const html = await highlight('const x = 1;', '');
@@ -332,8 +343,8 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
 
     expect(specifiers).not.toContain('shiki');
     expect(specifiers).toContain('shiki/core');
-    expect(specifiers).toContain('shiki/langs');
-    expect(specifiers).toContain('shiki/themes');
+    expect(specifiers).not.toContain('shiki/langs');
+    expect(specifiers).not.toContain('shiki/themes');
     expect(specifiers).toContain('shiki/wasm');
     expect(specifiers).toContain('@shikijs/engine-oniguruma');
   });
