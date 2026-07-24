@@ -131,6 +131,7 @@
   const feedbackId = $derived(feedbackText ? `${id}-feedback` : undefined);
   const describedBy = $derived(composeDescribedBy(descriptionId, feedbackId, consumerDescribedBy));
   const ariaInvalid = $derived(feedbackIsError ? 'true' : normalizedConsumerInvalid);
+  const hasHighlightOverlay = $derived(highlight && highlightedHtml !== null);
 </script>
 
 <div class={classNames('cinder-json-editor', className)}>
@@ -141,11 +142,11 @@
   <div
     class={classNames(
       'cinder-json-editor__input',
-      highlight && 'cinder-json-editor__input--highlighted',
+      hasHighlightOverlay && 'cinder-json-editor__input--highlighted',
     )}
     data-cinder-json-lint-position={lintPosition ?? undefined}
   >
-    {#if highlight && highlightedHtml !== null}
+    {#if hasHighlightOverlay}
       <pre class="cinder-json-editor__highlight" aria-hidden="true">{@html highlightedHtml}</pre>
     {/if}
     <textarea

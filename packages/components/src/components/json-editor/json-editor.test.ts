@@ -43,6 +43,22 @@ describe('JsonEditor', () => {
     expect(view.container.querySelector('.cinder-json-lint')).not.toBeNull();
   });
 
+  test('keeps the native textarea visible until highlighted mode finishes loading', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"ready":true}',
+      highlight: true,
+    });
+
+    expect(view.container.querySelector('.cinder-json-editor__input--highlighted')).toBeNull();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(view.container.querySelector('.cinder-json-editor__input--highlighted')).not.toBeNull();
+    expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull();
+  });
+
   test('emits each proposed string value without taking ownership of controlled state', async () => {
     const onValueChange = mock();
     const view = render(JsonEditor, {
