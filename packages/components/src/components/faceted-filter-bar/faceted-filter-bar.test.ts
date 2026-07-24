@@ -344,6 +344,8 @@ describe('FacetedFilterBar CSS snapshot', () => {
     expect(css).toContain('@layer cinder.components');
     expect(css).toContain('.cinder-faceted-filter-bar');
     expect(css).toContain('.cinder-faceted-filter-bar__select:focus-visible');
+    expect(css).toContain('min-block-size: var(--cinder-control-height-sm, 2rem);');
+    expect(css).not.toMatch(/^\s*block-size: var\(--cinder-control-height-sm, 2rem\);/m);
     expect(css).toContain('outline: var(--cinder-ring-width) solid transparent');
     expect(css).toContain('@media (forced-colors: active)');
     expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
