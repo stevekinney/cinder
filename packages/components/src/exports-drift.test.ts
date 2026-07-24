@@ -129,6 +129,14 @@ describe('exports drift', () => {
     expect(exports['./styles/foundation']).toBeDefined();
     expect(exports['./styles/utilities']).toBeDefined();
     expect(exports['./icons']).toBeDefined();
+    expect(exports['./json-editor/enhancement']).toEqual({
+      types: './dist/components/json-editor/json-editor-enhancement.d.ts',
+      browser: './src/components/json-editor/json-editor-enhancement.ts',
+      node: './dist/server/components/json-editor/json-editor-enhancement.js',
+      svelte: './src/components/json-editor/json-editor-enhancement.ts',
+      import: './src/components/json-editor/json-editor-enhancement.ts',
+      default: './dist/components/json-editor/json-editor-enhancement.js',
+    });
     // The slim base points at the layer-order + tokens/foundation/utilities
     // aggregator; the all-in entry points at the full-cascade aggregator.
     // Each CSS-only subpath also carries a `types` condition (first, per

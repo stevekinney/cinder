@@ -11,7 +11,17 @@ function lintJson(value: string, validated: boolean): JsonLint | undefined {
     return undefined;
   } catch (error) {
     const message = error instanceof SyntaxError ? error.message : '';
-    const position = Number(message.match(/position (\d+)/i)?.[1] ?? value.length);
+    const positionMatch = message.match(/position (\d+)/i);
+    const lineColumnMatch = message.match(/line\s+(\d+)\s+column\s+(\d+)/i);
+    let position = Number(positionMatch?.[1] ?? value.length);
+    if (!positionMatch && lineColumnMatch) {
+      const line = Number(lineColumnMatch[1]);
+      const column = Number(lineColumnMatch[2]);
+      const lines = value.split('\n');
+      position =
+        lines.slice(0, line - 1).reduce((offset, current) => offset + current.length + 1, 0) +
+        column;
+    }
     return { position };
   }
 }

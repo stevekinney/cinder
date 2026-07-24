@@ -36,6 +36,8 @@
     onValueChange,
     class: className,
     autofocus = false,
+    wrap,
+    onscroll: consumerOnScroll,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -151,6 +153,7 @@
     class={classNames(
       'cinder-json-editor__input',
       hasHighlightOverlay && 'cinder-json-editor__input--highlighted',
+      wrap === 'off' && 'cinder-json-editor__input--nowrap',
     )}
     data-cinder-json-lint-position={lintPosition ?? undefined}
   >
@@ -165,6 +168,7 @@
       {...rest}
       {id}
       {rows}
+      {wrap}
       {autofocus}
       value={draftValue}
       spellcheck="false"
@@ -180,6 +184,7 @@
         if (!highlightNode) return;
         highlightNode.scrollTop = textarea.scrollTop;
         highlightNode.scrollLeft = textarea.scrollLeft;
+        consumerOnScroll?.(event);
       }}
       {@attach (element) => {
         if (autofocus) element.focus();

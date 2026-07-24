@@ -55,6 +55,13 @@
     scrollbar-width: none;
   }
 
+  .cinder-json-editor__input--nowrap .cinder-json-editor__highlight {
+    white-space: pre;
+    overflow-wrap: normal;
+    width: max-content;
+    min-width: 100%;
+  }
+
   .cinder-json-editor__highlight::-webkit-scrollbar {
     display: none;
   }

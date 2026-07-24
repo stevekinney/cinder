@@ -56,6 +56,19 @@ describe('JsonEditor', () => {
     expect(view.container.querySelector('.cinder-json-lint')).not.toBeNull();
   });
 
+  test('preserves native wrap and scroll props in highlighted mode', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"ready":true}',
+      highlight: true,
+      wrap: 'off',
+    });
+    const editor = view.getByLabelText('Payload');
+    expect(editor.getAttribute('wrap')).toBe('off');
+    expect(view.container.querySelector('.cinder-json-editor__input--nowrap')).not.toBeNull();
+  });
+
   test('keeps the native textarea visible until highlighted mode finishes loading', async () => {
     const view = render(JsonEditor, {
       id: 'payload',
