@@ -235,14 +235,6 @@ async function loadGuessedEmbeddedLanguages(
 let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
 const sharedCuratedModules = new WeakMap<object, WeakMap<object, () => Promise<ShikiModule>>>();
 const EMPTY_LOADERS: Readonly<Record<string, never>> = {};
-const LANGUAGE_ALIASES: Readonly<Record<string, string>> = {
-  ts: 'typescript',
-  js: 'javascript',
-  py: 'python',
-  rb: 'ruby',
-  md: 'markdown',
-  yml: 'yaml',
-};
 
 export async function createShikiModule(
   languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
@@ -299,6 +291,7 @@ export function shikiHighlighter(
 ): Highlighter {
   const { theme = DEFAULT_THEME, langs, languageLoaders, themeLoaders } = options;
   const warnedLanguages = new Set<string>();
+  const resolvedLanguageAliases = new Map<string, string | undefined>();
 
   // Resolve Shiki lazily on the first highlight call. The cache wrapper
   // de-duplicates concurrent loads and evicts rejected promises so a
@@ -354,13 +347,31 @@ export function shikiHighlighter(
       return plaintextBlock(code);
     }
 
-    // Shiki's `bundledLanguages` table already exposes both canonical names
-    // and aliases as top-level keys (`typescript` AND `ts`, `javascript` AND
-    // `js`, etc.), so a single hasOwn check accepts whatever Shiki accepts
-    // natively without us inventing additional aliases.
-    const languageKey = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
+    // The full Shiki registry exposes aliases as top-level keys, while a
+    // curated registry usually exposes only canonical ids. Resolve aliases
+    // from each grammar's own metadata so curated consumers retain the
+    // complete Shiki alias contract without maintaining a partial list here.
+    let languageKey: string | undefined = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
       ? normalizedLang
-      : LANGUAGE_ALIASES[normalizedLang];
+      : resolvedLanguageAliases.get(normalizedLang);
+    if (languageKey === undefined && !resolvedLanguageAliases.has(normalizedLang)) {
+      for (const [candidate, loader] of Object.entries(shiki.bundledLanguages)) {
+        try {
+          const module = await loader();
+          const registrations = module.default;
+          if (
+            registrations.some((registration) => registration.aliases?.includes(normalizedLang))
+          ) {
+            languageKey = candidate;
+            break;
+          }
+        } catch {
+          // A broken optional grammar should not prevent other candidates
+          // from resolving this alias or force the whole highlight to fail.
+        }
+      }
+      resolvedLanguageAliases.set(normalizedLang, languageKey);
+    }
     if (languageKey === undefined || !Object.hasOwn(shiki.bundledLanguages, languageKey)) {
       if (!warnedLanguages.has(normalizedLang)) {
         warnedLanguages.add(normalizedLang);

@@ -180,13 +180,17 @@ describe('shikiHighlighter — fallback contract', () => {
     const { warnings, restore } = captureWarnings();
     try {
       const highlight = shikiHighlighter({
-        languageLoaders: { typescript: () => import('@shikijs/langs/typescript') },
+        languageLoaders: {
+          typescript: () => import('@shikijs/langs/typescript'),
+          shellscript: () => import('@shikijs/langs/shellscript'),
+        },
         themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
         theme: 'github-light',
       });
 
       expect(await highlight('const answer = 42;', 'typescript')).toMatch(/<span[^>]*style=/);
       expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
+      expect(await highlight('echo answer', 'sh')).toMatch(/<span[^>]*style=/);
       expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
       expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
       expect(warnings.filter((warning) => warning.includes('javascript')).length).toBe(1);

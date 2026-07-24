@@ -8,6 +8,20 @@ import {
 export { createRetryingLoaderCache };
 export type { ShikiHighlighterOptions };
 
+type ShikiModule = Awaited<ReturnType<typeof createShikiModule>>;
+let sharedDefaultModuleLoader: (() => Promise<ShikiModule>) | undefined;
+
+function getDefaultModuleLoader(): () => Promise<ShikiModule> {
+  sharedDefaultModuleLoader ??= createRetryingLoaderCache(async () => {
+    const [{ bundledLanguages }, { bundledThemes }] = await Promise.all([
+      import('shiki/langs'),
+      import('shiki/themes'),
+    ]);
+    return createShikiModule(bundledLanguages, bundledThemes);
+  });
+  return sharedDefaultModuleLoader;
+}
+
 /** The bundled adapter with the complete Shiki language and theme registries. */
 export function shikiHighlighter(
   options: ShikiHighlighterOptions = {},
@@ -15,15 +29,17 @@ export function shikiHighlighter(
 ): ReturnType<typeof createShikiHighlighter> {
   const loadModule =
     moduleLoader ??
-    (async () => {
-      const [{ bundledLanguages }, { bundledThemes }] = await Promise.all([
-        import('shiki/langs'),
-        import('shiki/themes'),
-      ]);
-      return createShikiModule(
-        options.languageLoaders ?? bundledLanguages,
-        options.themeLoaders ?? bundledThemes,
-      );
-    });
+    (options.languageLoaders === undefined && options.themeLoaders === undefined
+      ? getDefaultModuleLoader()
+      : async () => {
+          const [{ bundledLanguages }, { bundledThemes }] = await Promise.all([
+            import('shiki/langs'),
+            import('shiki/themes'),
+          ]);
+          return createShikiModule(
+            options.languageLoaders ?? bundledLanguages,
+            options.themeLoaders ?? bundledThemes,
+          );
+        });
   return createShikiHighlighter(options, loadModule);
 }
