@@ -818,11 +818,8 @@ describe('Chat — atBottom bindable after send', () => {
 
   test('scrollToTop accrues messages appended before the first scroll event', async () => {
     const source = await Bun.file(new URL('./container/chat.svelte', import.meta.url)).text();
-    const nonVirtualizedBranch = source.slice(
-      source.indexOf('    } else {\n      // Same canLeaveBottom reasoning'),
-    );
-    expect(nonVirtualizedBranch).toMatch(
-      /const canLeaveBottom[\s\S]*?scrollState\.setAtBottom\(false\);[\s\S]*?updateAtBottomBinding\(false\);/,
+    expect(source).toMatch(
+      /const canLeaveBottom = !!viewport\s*&& viewport\.scrollHeight > viewport\.clientHeight;[\s\S]*?scrollState\.setAtBottom\(false\);[\s\S]*?updateAtBottomBinding\(false\);/,
     );
 
     let conversation = appendAssistantMessage(
