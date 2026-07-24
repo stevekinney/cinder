@@ -18,10 +18,10 @@
 </script>
 
 <script lang="ts">
-  import { CURRENT_SCHEMA_VERSION } from 'conversationalist/versioning';
   import { classNames } from '../../utilities/class-names.ts';
   import ChatImplementation from './container/chat.svelte';
   import type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
+  import { CURRENT_SCHEMA_VERSION } from './index.ts';
 
   let {
     class: className,
