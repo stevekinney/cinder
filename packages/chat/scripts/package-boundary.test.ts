@@ -40,20 +40,17 @@ describe('Chat package ownership boundary', () => {
       conversationalist: '^0.5.0',
       zod: '4.4.1',
     });
-    // The Cinder floor is deliberately ^0.17.0, not ^0.16.x: every 0.16
-    // release still has `lucide-svelte` as a peer dependency, so a consumer
-    // resolves its own Lucide version against Cinder's prebuilt SSR bundle and
-    // hits a hydration_mismatch — while Chat's README now tells them they do
-    // not need to install Lucide at all. Accepting 0.16 would ship correct
-    // docs against a broken combination.
-    //
-    // 0.17.0 rather than 0.16.2 because pending `minor` changesets (payload
-    // inspector, sidebar brand snippet, run-step timeline) carry Cinder from
-    // 0.16.1 to 0.17.0. A `^0.16.2` floor would have been UNSATISFIABLE
-    // against that release — caret on 0.x pins the minor — and would have
-    // excluded the very version carrying this fix.
+    // The Cinder floor tracks the Cinder minor released alongside Chat —
+    // caret on 0.x pins the minor, so each Cinder minor bump MUST widen this
+    // range or `validate-consumers` hard-fails the release (see the 0.18.0
+    // release failure and #879, which asks the version-packages flow to
+    // reconcile this automatically). The floor stays >=0.17 for the original
+    // reason: every 0.16 release still had `lucide-svelte` as a peer, so a
+    // consumer resolved its own Lucide against Cinder's prebuilt SSR bundle
+    // and hit a hydration_mismatch, while Chat's README says Lucide is not
+    // needed at all.
     expect(chatManifest.peerDependencies).toEqual({
-      '@lostgradient/cinder': '^0.17.0',
+      '@lostgradient/cinder': '^0.18.0',
       '@lostgradient/markdown': '^0.1.0',
       svelte: '>=5.56.0 <6',
     });
