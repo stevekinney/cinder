@@ -143,7 +143,7 @@ describe('JsonEditor — bundle boundary', () => {
   });
 
   test('synchronizes overlay scroll after lazy enhancement resolves', async () => {
-    const source = await Bun.file(resolvePath(HERE, 'json-editor.svelte')).text();
+    const source = await Bun.file(resolvePath(import.meta.dir, 'json-editor.svelte')).text();
     expect(source).toContain('highlightNode.scrollTop = textareaNode.scrollTop');
     expect(source).toContain("import { tick } from 'svelte'");
   });
