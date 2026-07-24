@@ -592,6 +592,14 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
 // ---------------------------------------------------------------------------
 
 describe('Chat — no scroll jump: outer typing wrapper always in DOM', () => {
+  test('participant typing wrapper cannot flex-collapse when the transcript overflows', async () => {
+    const source = await Bun.file(
+      `${import.meta.dir}/container/chat-participant-typing.svelte`,
+    ).text();
+
+    expect(source).toMatch(/\.chat-participant-typing\s*\{[^}]*flex-shrink:\s*0;/);
+  });
+
   test('participant typing outer wrapper is present even with no typingParticipants (prevents scroll-jump)', () => {
     // Regression guard: the outer .chat-participant-typing div must be in DOM
     // regardless of message count or typing state. If it were absent and then
