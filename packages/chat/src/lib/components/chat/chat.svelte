@@ -23,7 +23,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import ChatImplementation from './container/chat.svelte';
   import type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
-  import { CURRENT_SCHEMA_VERSION } from './index.ts';
+  import { CURRENT_SCHEMA_VERSION } from './schema-version.ts';
 
   let {
     class: className,
@@ -45,9 +45,13 @@
     );
   }
 
+  function warnForInitialSchemaVersion(): void {
+    warnForSchemaVersion(conversation.schemaVersion);
+  }
+
   // Run during both SSR and client initialization so a server-rendered Chat
   // still surfaces an incompatible history when it is never hydrated.
-  warnForSchemaVersion(conversation.schemaVersion);
+  warnForInitialSchemaVersion();
 
   $effect(() => {
     warnForSchemaVersion(conversation.schemaVersion);

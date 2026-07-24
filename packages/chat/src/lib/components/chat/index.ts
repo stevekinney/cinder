@@ -9,9 +9,9 @@
 // Top-level Chat wrapper — the public component consumers import as
 // `@lostgradient/chat`. It composes the inner implementation in container/ with a
 // custom class-merge layer.
-import { CURRENT_SCHEMA_VERSION } from 'conversationalist/versioning';
 import './chat.css';
 import Chat from './chat.svelte';
+import { CURRENT_SCHEMA_VERSION } from './schema-version.ts';
 
 export default Chat;
 export type {
@@ -39,6 +39,12 @@ export type {
 export {
   appendAssistantMessage,
   appendMessages,
+  appendToolCall,
+  appendToolCalls,
+  appendToolResult,
+  appendToolResultAsync,
+  appendToolResults,
+  appendToolResultsAsync,
   appendUserMessage,
   buildMessage,
   createConversation,

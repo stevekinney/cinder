@@ -8,6 +8,12 @@
 export {
   appendAssistantMessage,
   appendMessages,
+  appendToolCall,
+  appendToolCalls,
+  appendToolResult,
+  appendToolResultAsync,
+  appendToolResults,
+  appendToolResultsAsync,
   appendUserMessage,
   buildMessage,
   createConversationHistory,

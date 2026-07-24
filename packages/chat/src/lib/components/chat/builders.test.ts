@@ -3,6 +3,12 @@ import { describe, expect, test } from 'bun:test';
 import {
   appendAssistantMessage,
   appendMessages,
+  appendToolCall,
+  appendToolCalls,
+  appendToolResult,
+  appendToolResultAsync,
+  appendToolResults,
+  appendToolResultsAsync,
   appendUserMessage,
   buildMessage,
   createConversation,
@@ -69,5 +75,56 @@ describe('chat conversation builders', () => {
     expect(final.ids).toHaveLength(2);
     expect(final.messages[final.ids[0]!]!.position).toBe(0);
     expect(final.messages[final.ids[1]!]!.position).toBe(1);
+  });
+
+  test('re-exports all tool transcript builder variants', async () => {
+    const initial = createConversationHistory({ id: 'conversation-tools' });
+    const withCalls = appendToolCalls(
+      appendToolCall(initial, {
+        id: 'call-one',
+        name: 'lookup',
+        arguments: { query: 'first' },
+      }),
+      [
+        { id: 'call-two', name: 'lookup', arguments: { query: 'second' } },
+        { id: 'call-three', name: 'lookup', arguments: { query: 'third' } },
+      ],
+    );
+    const withResults = appendToolResults(
+      appendToolResult(withCalls, {
+        callId: 'call-one',
+        outcome: 'success',
+        content: { value: 1 },
+      }),
+      [
+        { callId: 'call-two', outcome: 'success', content: { value: 2 } },
+        { callId: 'call-three', outcome: 'success', content: { value: 3 } },
+      ],
+    );
+    const withAsyncCall = appendToolCall(withResults, {
+      id: 'call-four',
+      name: 'lookup',
+      arguments: { query: 'fourth' },
+    });
+    const withAsyncResult = await appendToolResultAsync(withAsyncCall, {
+      callId: 'call-four',
+      outcome: 'success',
+      content: { value: 4 },
+    });
+    const withAsyncCalls = appendToolCalls(withAsyncResult, [
+      { id: 'call-five', name: 'lookup', arguments: { query: 'fifth' } },
+      { id: 'call-six', name: 'lookup', arguments: { query: 'sixth' } },
+    ]);
+    const final = await appendToolResultsAsync(withAsyncCalls, [
+      { callId: 'call-five', outcome: 'success', content: { value: 5 } },
+      { callId: 'call-six', outcome: 'success', content: { value: 6 } },
+    ]);
+
+    const messages = final.ids.map((id) => final.messages[id]!);
+    expect(messages.filter((message) => message.role === 'tool-call')).toHaveLength(6);
+    expect(messages.filter((message) => message.role === 'tool-result')).toHaveLength(6);
+    expect(messages.map((message) => message.position)).toEqual(
+      Array.from({ length: 12 }, (_, index) => index),
+    );
   });
 });

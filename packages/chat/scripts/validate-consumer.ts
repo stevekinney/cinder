@@ -252,11 +252,12 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const serverEntryPath = join(fixture.root, 'server.ts');
   await Bun.write(
     clientEntryPath,
-    `import Chat, { ArtifactPanel, pairToolCallsWithResults } from '@lostgradient/chat';\n` +
+    `import Chat, { ArtifactPanel, appendToolCall, appendToolCalls, appendToolResult, appendToolResultAsync, appendToolResults, appendToolResultsAsync, pairToolCallsWithResults } from '@lostgradient/chat';\n` +
       `import ChatComposerPopover from '@lostgradient/chat/composer-popover';\n` +
       `import ChatConversationHeader from '@lostgradient/chat/conversation-header';\n` +
       `import ChatConversationList from '@lostgradient/chat/conversation-list';\n` +
       `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n` +
+      `if (![appendToolCall, appendToolCalls, appendToolResult, appendToolResultAsync, appendToolResults, appendToolResultsAsync].every((builder) => typeof builder === 'function')) throw new Error('missing tool transcript builder export');\n` +
       `if (pairToolCallsWithResults([]).length !== 0) throw new Error('expected no tool-call pairs');\n`,
   );
   await Bun.write(
