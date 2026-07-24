@@ -53,7 +53,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { discoverComponentEnhancements } from './lib/component-enhancements.ts';
+import {
+  componentEnhancementKey,
+  discoverComponentEnhancements,
+} from './lib/component-enhancements.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
 
@@ -401,9 +404,9 @@ export function computeExports(
   packageRoot: string = DEFAULT_PACKAGE_ROOT,
 ): Record<string, ExportEntry | JsonExportEntry> {
   const out: Record<string, ExportEntry | JsonExportEntry> = {};
-  const enhancementNames = new Set(
+  const enhancementKeys = new Set(
     discoverComponentEnhancements(components, join(packageRoot, 'src', 'components')).map(
-      (enhancement) => enhancement.name,
+      componentEnhancementKey,
     ),
   );
 
@@ -521,7 +524,7 @@ export function computeExports(
     // Component-owned runtime enhancements are emitted for stable components
     // when their `<name>-enhancement.ts` source file exists. The source and
     // compiled paths follow the same layout as the other per-component modules.
-    if (enhancementNames.has(name)) {
+    if (enhancementKeys.has(componentEnhancementKey({ name, isExperimental }))) {
       out[`${prefix}/enhancement`] = componentEnhancementExport(
         name,
         srcDir,

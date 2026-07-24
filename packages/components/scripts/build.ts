@@ -14,6 +14,7 @@ import {
   type CommentScanState,
 } from './lib/cinder-specifier-residue.ts';
 import {
+  componentEnhancementKey,
   componentEnhancementOutputPaths,
   discoverComponentEnhancements,
 } from './lib/component-enhancements.ts';
@@ -261,6 +262,9 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
 const componentEnhancements = discoverComponentEnhancements(components, `${sourceRoot}/components`);
 const componentEnhancementEntrypoints = componentEnhancements.map(
   (enhancement) => enhancement.sourcePath,
+);
+const componentEnhancementsByKey = new Map(
+  componentEnhancements.map((enhancement) => [componentEnhancementKey(enhancement), enhancement]),
 );
 
 /**
@@ -685,7 +689,7 @@ for (const component of components) {
     expectedPaths.push(`${directory}/${component.name}.${metadataKind}.d.ts`);
     expectedPaths.push(`${serverDirectory}/${component.name}.${metadataKind}.js`);
   }
-  const enhancement = componentEnhancements.find(({ name }) => name === component.name);
+  const enhancement = componentEnhancementsByKey.get(componentEnhancementKey(component));
   if (enhancement !== undefined) {
     const enhancementPaths = componentEnhancementOutputPaths(
       distributionDirectory,

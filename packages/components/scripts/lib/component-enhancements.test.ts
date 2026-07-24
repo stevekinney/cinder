@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'bun:test';
 
 import {
+  componentEnhancementKey,
   componentEnhancementOutputPaths,
   discoverComponentEnhancements,
 } from './component-enhancements.ts';
@@ -25,7 +26,8 @@ describe('component enhancements', () => {
         [{ name: 'second-editor', isExperimental: false }],
         componentsRoot,
       );
-      expect(enhancements).toEqual([{ name: 'second-editor', sourcePath }]);
+      expect(enhancements).toEqual([{ name: 'second-editor', isExperimental: false, sourcePath }]);
+      expect(componentEnhancementKey(enhancements[0]!)).toBe('stable/second-editor');
 
       const browserBuild = await Bun.build({
         entrypoints: enhancements.map((enhancement) => enhancement.sourcePath),

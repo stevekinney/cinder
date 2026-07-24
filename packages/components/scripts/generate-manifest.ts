@@ -183,6 +183,19 @@ function artifactSubpath(id: string, isExperimental: boolean, suffix: string): s
   return `${prefix}/${suffix}`;
 }
 
+/** Return the manifest subpath when this component owns a runtime enhancement. */
+export function enhancementArtifactSubpath(
+  id: string,
+  isExperimental: boolean,
+  componentsRoot: string = COMPONENTS_ROOT,
+): string | undefined {
+  const enhancement = discoverComponentEnhancements(
+    [{ name: id, isExperimental }],
+    componentsRoot,
+  )[0];
+  return enhancement === undefined ? undefined : artifactSubpath(id, isExperimental, 'enhancement');
+}
+
 // ---------------------------------------------------------------------------
 // Core builder
 // ---------------------------------------------------------------------------
@@ -288,13 +301,9 @@ export async function buildManifest(): Promise<Manifest> {
       if (hasConstraintsFlag) {
         artifacts.constraints = artifactSubpath(meta.id, meta.isExperimental, 'constraints');
       }
-      const hasEnhancement =
-        discoverComponentEnhancements(
-          [{ name: meta.id, isExperimental: meta.isExperimental }],
-          COMPONENTS_ROOT,
-        ).length > 0;
-      if (hasEnhancement) {
-        artifacts.enhancement = artifactSubpath(meta.id, meta.isExperimental, 'enhancement');
+      const enhancementArtifact = enhancementArtifactSubpath(meta.id, meta.isExperimental);
+      if (enhancementArtifact !== undefined) {
+        artifacts.enhancement = enhancementArtifact;
       }
 
       return {
