@@ -100,13 +100,16 @@
   let listboxElement = $state<HTMLElement | null>(null);
   let committedLabel = $state('');
   let initialCustomValue = $state('');
+  let hasUserCommittedValue = $state(false);
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  let initialValue = $state(untrack(() => value));
+  let initialValue = $state(untrack(() => value ?? ''));
   const initialInputValue = untrack(() => inputValue);
 
   $effect.pre(() => {
-    if (!initialValue && value) initialValue = value;
-    if (allowCustomValue && value && !initialCustomValue) initialCustomValue = value;
+    if (!hasUserCommittedValue && !initialValue && value) initialValue = value;
+    if (allowCustomValue && !hasUserCommittedValue && value && !initialCustomValue) {
+      initialCustomValue = value;
+    }
   });
 
   // Reset active index whenever the filtered set changes so we don't point
@@ -235,6 +238,7 @@
 
   function selectOption(option: ComboboxOption<T>) {
     if (option.disabled) return;
+    hasUserCommittedValue = true;
     value = option.value;
     inputValue = option.label;
     committedLabel = option.label;
@@ -245,15 +249,17 @@
   function commitCustomValue(): void {
     const nextValue = inputValue.trim();
     if (!allowCustomValue || !nextValue) return;
+    hasUserCommittedValue = true;
     const matched = findCommittedOption(nextValue);
     const committedValue = matched?.value ?? nextValue;
     const committedText = matched?.label ?? nextValue;
+    const previousValue = value;
     // This path only runs when arbitrary values are explicitly allowed.
     value = committedValue as T;
     inputValue = committedText;
     committedLabel = committedText;
     open = false;
-    onchange?.(committedValue as T);
+    if (committedValue !== previousValue) onchange?.(committedValue as T);
   }
 
   function resetToInitialValue(event: Event): void {
@@ -262,8 +268,8 @@
       resetSyncTimeout = undefined;
       if (event.defaultPrevented) return;
       const resetValue =
-        initialValue ||
-        hiddenInputElement?.defaultValue ||
+        initialValue ??
+        hiddenInputElement?.defaultValue ??
         (allowCustomValue ? initialCustomValue || committedLabel : '');
       value = resetValue as T;
       const matched = options.find((option) => option.value === resetValue);

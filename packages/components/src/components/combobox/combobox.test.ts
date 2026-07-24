@@ -316,6 +316,37 @@ describe('Combobox structure', () => {
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 
+  test('form reset restores an initially-empty combobox after a selection', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(Combobox, {
+      target: form,
+      props: {
+        id: 'fruit',
+        name: 'fruit',
+        options: fruits,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit');
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(input?.value).toBe('');
+    expect(hidden?.value).toBe('');
+
+    await fireEvent.focus(input!);
+    await fireEvent.input(input!, { target: { value: 'ap' } });
+    const appleOption = await findOption('Apple');
+    await fireEvent.mouseDown(appleOption);
+    expect(input?.value).toBe('Apple');
+    expect(hidden?.value).toBe('apple');
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(input?.value).toBe('');
+    expect(hidden?.value).toBe('');
+    expect(container.querySelector('[role="listbox"]')).toBeNull();
+  });
+
   test('canceled form reset leaves the current submitted value and visible label unchanged', async () => {
     const form = document.createElement('form');
     document.body.append(form);
@@ -432,7 +463,9 @@ describe('Combobox structure', () => {
 
   test('allowCustomValue keeps the canonical option value when Enter is pressed on a focused selection', async () => {
     let value = 'banana';
+    const changes: string[] = [];
     const onchange = (nextValue: string) => {
+      changes.push(nextValue);
       value = nextValue;
     };
     const { container, rerender } = render(Combobox, {
@@ -449,6 +482,7 @@ describe('Combobox structure', () => {
     await rerender({ id: 'fruit', value, allowCustomValue: true, onchange, options: fruits });
 
     expect(value).toBe('banana');
+    expect(changes).toEqual([]);
     expect(input.value).toBe('Banana');
   });
 

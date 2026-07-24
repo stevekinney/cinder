@@ -635,7 +635,7 @@
               <div class="cinder-invocation-rule-builder__condition" role="listitem">
                 {#if conditionsOnly}
                   <Combobox
-                    id={`${baseId}-rule-${rule.id}-condition-${condition.id}-field`}
+                    id={`${baseId}-rule-${ruleIndex}-condition-${conditionIndex}-field`}
                     value={condition.field}
                     options={fieldOptions}
                     allowCustomValue
