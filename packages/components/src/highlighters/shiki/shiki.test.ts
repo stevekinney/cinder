@@ -177,14 +177,21 @@ describe('shikiHighlighter — happy path', () => {
 
 describe('shikiHighlighter — fallback contract', () => {
   test('uses curated language and theme loader maps', async () => {
-    const highlight = shikiHighlighter({
-      languageLoaders: { typescript: () => import('@shikijs/langs/typescript') },
-      themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
-      theme: 'github-light',
-    });
+    const { warnings, restore } = captureWarnings();
+    try {
+      const highlight = shikiHighlighter({
+        languageLoaders: { typescript: () => import('@shikijs/langs/typescript') },
+        themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+        theme: 'github-light',
+      });
 
-    expect(await highlight('const answer = 42;', 'typescript')).toMatch(/<span[^>]*style=/);
-    expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
+      expect(await highlight('const answer = 42;', 'typescript')).toMatch(/<span[^>]*style=/);
+      expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
+      expect(await highlight('const answer = 42;', 'javascript')).toContain('shiki-plaintext');
+      expect(warnings.filter((warning) => warning.includes('javascript')).length).toBe(1);
+    } finally {
+      restore();
+    }
   });
 
   test('empty lang returns escaped-plaintext fallback', async () => {
