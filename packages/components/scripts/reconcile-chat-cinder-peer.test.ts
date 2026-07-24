@@ -68,9 +68,9 @@ describe('reconcileChatCinderPeer', () => {
 
     expect(result).toMatchObject({
       changed: true,
+      cinderVersion: '0.18.0',
       previousRange: '^0.17.0',
       nextRange: '^0.18.0',
-      chatVersion: '0.3.1',
     });
     expect(rewritten.peerDependencies['@lostgradient/cinder']).toBe('^0.18.0');
   });

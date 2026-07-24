@@ -12,7 +12,6 @@ export type ReconcileChatCinderPeerResult = {
   cinderVersion: string;
   previousRange: string;
   nextRange: string;
-  chatVersion?: string;
 };
 
 function isJsonObject(value: unknown): value is JsonObject {
@@ -106,26 +105,15 @@ export async function reconcileChatCinderPeer(
     'Chat',
   );
   const previousRange = requiredCinderPeerRange(chatPeerDependencies, options.chatManifestPath);
-  const chatVersion = requiredString(chatManifest, 'version', options.chatManifestPath, 'Chat');
   const nextRange = `^${cinderVersion}`;
 
   if (Bun.semver.satisfies(cinderVersion, previousRange)) {
-    return { changed: false, cinderVersion, previousRange, nextRange, chatVersion };
+    return { changed: false, cinderVersion, previousRange, nextRange };
   }
 
   chatPeerDependencies['@lostgradient/cinder'] = nextRange;
-  const versionMatch = /^(\d+)\.(\d+)\.(\d+)$/.exec(chatVersion);
-  if (!versionMatch) throw new Error(`Chat version must be a numeric semver: ${chatVersion}`);
-  const patch = Number(versionMatch[3]);
-  chatManifest['version'] = `${versionMatch[1]}.${versionMatch[2]}.${patch + 1}`;
   await Bun.write(options.chatManifestPath, `${JSON.stringify(chatManifest, null, 2)}\n`);
-  return {
-    changed: true,
-    cinderVersion,
-    previousRange,
-    nextRange,
-    chatVersion: String(chatManifest['version']),
-  };
+  return { changed: true, cinderVersion, previousRange, nextRange };
 }
 
 async function main(): Promise<void> {
@@ -136,9 +124,6 @@ async function main(): Promise<void> {
   });
 
   if (result.changed) {
-    const install = Bun.spawn(['bun', 'install', '--lockfile-only'], { cwd: workspaceRoot });
-    if ((await install.exited) !== 0)
-      throw new Error('bun install --lockfile-only failed after peer reconciliation');
     console.log(
       `reconcile-chat-cinder-peer — widened Chat's @lostgradient/cinder peer from ${result.previousRange} to ${result.nextRange} for Cinder ${result.cinderVersion}`,
     );

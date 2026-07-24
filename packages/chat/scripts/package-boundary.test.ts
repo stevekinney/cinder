@@ -49,8 +49,12 @@ describe('Chat package ownership boundary', () => {
     // consumer resolved its own Lucide against Cinder's prebuilt SSR bundle
     // and hit a hydration_mismatch, while Chat's README says Lucide is not
     // needed at all.
-    expect(chatManifest.peerDependencies).toEqual({
-      '@lostgradient/cinder': `^${cinderManifest.version}`,
+    const remainingPeerDependencies = Object.fromEntries(
+      Object.entries(chatManifest.peerDependencies ?? {}).filter(
+        ([peer]) => peer !== '@lostgradient/cinder',
+      ),
+    );
+    expect(remainingPeerDependencies).toEqual({
       '@lostgradient/markdown': '^0.1.0',
       svelte: '>=5.56.0 <6',
     });
@@ -71,8 +75,14 @@ describe('Chat package ownership boundary', () => {
   test('keeps Chat’s Cinder peer range covering the current Cinder version', () => {
     const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
     expect(
-      typeof cinderPeerRange === 'string' &&
-        Bun.semver.satisfies(cinderManifest.version, cinderPeerRange),
+      cinderPeerRange,
+      'Chat must declare @lostgradient/cinder as a peer dependency.',
+    ).toBeDefined();
+    if (typeof cinderPeerRange !== 'string') return;
+
+    expect(cinderPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
+    expect(
+      Bun.semver.satisfies(cinderManifest.version, cinderPeerRange),
       'Cinder must satisfy Chat’s peer range. Run packages/components/scripts/reconcile-chat-cinder-peer.ts during versioning (issue #879).',
     ).toBe(true);
   });
