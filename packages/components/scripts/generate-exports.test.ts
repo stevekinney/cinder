@@ -212,18 +212,28 @@ describe('computeExports', () => {
 
   it('does not emit enhancement exports for experimental components', () => {
     const packageRoot = mkdtempSync(join(tmpdir(), 'cinder-experimental-enhancement-'));
+    const stableEnhancementPath = join(
+      packageRoot,
+      'src/components/second-editor/second-editor-enhancement.ts',
+    );
     const enhancementPath = join(
       packageRoot,
       'src/components/experimental/second-editor/second-editor-enhancement.ts',
     );
+    mkdirSync(dirname(stableEnhancementPath), { recursive: true });
     mkdirSync(dirname(enhancementPath), { recursive: true });
+    writeFileSync(stableEnhancementPath, 'export function enhance() {}\n');
     writeFileSync(enhancementPath, 'export function enhance() {}\n');
 
     try {
       const out = computeExports(
-        [{ name: 'second-editor', isExperimental: true, hasCss: false }],
+        [
+          { name: 'second-editor', isExperimental: false, hasCss: false },
+          { name: 'second-editor', isExperimental: true, hasCss: false },
+        ],
         packageRoot,
       );
+      expect(out['./second-editor/enhancement']).toBeDefined();
       expect(out['./experimental/second-editor/enhancement']).toBeUndefined();
     } finally {
       rmSync(packageRoot, { recursive: true, force: true });

@@ -31,6 +31,7 @@ import type {
   ComponentMetadata,
 } from './generate-component-metadata.ts';
 import { extractAllComponentMetadata } from './generate-component-metadata.ts';
+import { discoverComponentEnhancements } from './lib/component-enhancements.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
 
 // ---------------------------------------------------------------------------
@@ -166,22 +167,6 @@ function hasConstraintsArtifact(id: string, isExperimental: boolean): boolean {
 }
 
 /**
- * Check whether the component has a separately published runtime enhancement.
- * The source probe follows the same stable/experimental directory policy as
- * the schema, variables, examples, and constraints artifact probes.
- */
-export function hasEnhancementArtifact(
-  id: string,
-  isExperimental: boolean,
-  componentsRoot: string = COMPONENTS_ROOT,
-): boolean {
-  const componentDir = isExperimental
-    ? join(componentsRoot, 'experimental', id)
-    : join(componentsRoot, id);
-  return existsSync(join(componentDir, `${id}-enhancement.ts`));
-}
-
-/**
  * Derive the artifact subpath prefix. Per the plan, artifact subpaths do NOT
  * include the `experimental/` prefix — they use the same flat `@lostgradient/cinder/{id}/…`
  * pattern regardless of whether the component is experimental.
@@ -196,6 +181,19 @@ function artifactSubpath(id: string, isExperimental: boolean, suffix: string): s
     ? `@lostgradient/cinder/experimental/${id}`
     : `@lostgradient/cinder/${id}`;
   return `${prefix}/${suffix}`;
+}
+
+/** Return the manifest subpath when this component owns a runtime enhancement. */
+export function enhancementArtifactSubpath(
+  id: string,
+  isExperimental: boolean,
+  componentsRoot: string = COMPONENTS_ROOT,
+): string | undefined {
+  const enhancement = discoverComponentEnhancements(
+    [{ name: id, isExperimental }],
+    componentsRoot,
+  )[0];
+  return enhancement === undefined ? undefined : artifactSubpath(id, isExperimental, 'enhancement');
 }
 
 // ---------------------------------------------------------------------------
@@ -303,8 +301,9 @@ export async function buildManifest(): Promise<Manifest> {
       if (hasConstraintsFlag) {
         artifacts.constraints = artifactSubpath(meta.id, meta.isExperimental, 'constraints');
       }
-      if (!meta.isExperimental && hasEnhancementArtifact(meta.id, meta.isExperimental)) {
-        artifacts.enhancement = artifactSubpath(meta.id, meta.isExperimental, 'enhancement');
+      const enhancementArtifact = enhancementArtifactSubpath(meta.id, meta.isExperimental);
+      if (enhancementArtifact !== undefined) {
+        artifacts.enhancement = enhancementArtifact;
       }
 
       return {

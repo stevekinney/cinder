@@ -18,11 +18,12 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 import type { Manifest, ManifestComponent } from './generate-manifest.ts';
 import {
   buildManifest,
+  enhancementArtifactSubpath,
   findDanglingAlternatives,
   formatDanglingAlternativeMessage,
   formatExtractionErrorMessage,
-  hasEnhancementArtifact,
 } from './generate-manifest.ts';
+import { discoverComponentEnhancements } from './lib/component-enhancements.ts';
 
 // ---------------------------------------------------------------------------
 // Schema loader helper
@@ -445,9 +446,28 @@ describe('component-owned artifacts', () => {
     writeFileSync(experimentalEnhancementPath, 'export function enhance() {}\n');
 
     try {
-      expect(hasEnhancementArtifact('second-editor', false, componentsRoot)).toBe(true);
-      expect(hasEnhancementArtifact('second-editor', true, componentsRoot)).toBe(true);
-      expect(hasEnhancementArtifact('missing-editor', false, componentsRoot)).toBe(false);
+      expect(
+        discoverComponentEnhancements(
+          [{ name: 'second-editor', isExperimental: false }],
+          componentsRoot,
+        ),
+      ).toEqual([{ name: 'second-editor', isExperimental: false, sourcePath: enhancementPath }]);
+      expect(
+        discoverComponentEnhancements(
+          [{ name: 'second-editor', isExperimental: true }],
+          componentsRoot,
+        ),
+      ).toEqual([]);
+      expect(enhancementArtifactSubpath('second-editor', false, componentsRoot)).toBe(
+        '@lostgradient/cinder/second-editor/enhancement',
+      );
+      expect(enhancementArtifactSubpath('second-editor', true, componentsRoot)).toBeUndefined();
+      expect(
+        discoverComponentEnhancements(
+          [{ name: 'missing-editor', isExperimental: false }],
+          componentsRoot,
+        ),
+      ).toEqual([]);
     } finally {
       rmSync(componentsRoot, { recursive: true, force: true });
     }

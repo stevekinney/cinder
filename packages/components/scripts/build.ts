@@ -13,6 +13,11 @@ import {
   lineHasUpstreamSpecifierResidue,
   type CommentScanState,
 } from './lib/cinder-specifier-residue.ts';
+import {
+  componentEnhancementKey,
+  componentEnhancementOutputPaths,
+  discoverComponentEnhancements,
+} from './lib/component-enhancements.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
@@ -254,10 +259,18 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
   componentMetadataEntrypoints(component),
 );
 
+const componentEnhancements = discoverComponentEnhancements(components, `${sourceRoot}/components`);
+const componentEnhancementEntrypoints = componentEnhancements.map(
+  (enhancement) => enhancement.sourcePath,
+);
+const componentEnhancementsByKey = new Map(
+  componentEnhancements.map((enhancement) => [componentEnhancementKey(enhancement), enhancement]),
+);
+
 /**
- * Static sub-paths cinder exposes outside the `components/` tree. Today this
- * includes the first-party Shiki adapter, the shared icons barrel, and the
- * dev-only base-loaded guard; new non-component
+ * Static sub-paths cinder exposes outside the discovered component entries.
+ * Today this includes the first-party Shiki adapter, the shared icons barrel,
+ * and the dev-only base-loaded guard; new non-component
  * static sub-paths get listed here so the build emits a predictable
  * `dist/<rel>.js` for each one. `shiki` itself stays external (declared in
  * cinder's `dependencies` + the `runtimeDependencyExternals` list) — the
@@ -266,7 +279,6 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
  */
 const staticSubpathEntrypoints = [
   `${sourceRoot}/components/icons/index.ts`,
-  `${sourceRoot}/components/json-editor/json-editor-enhancement.ts`,
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/highlighters/shiki/default.ts`,
   `${sourceRoot}/styles/base-guard.ts`,
@@ -330,6 +342,7 @@ const browserEntrypoints = [
   browserRootEntrypoint,
   ...perComponentEntrypoints,
   ...perComponentMetadataEntrypoints,
+  ...componentEnhancementEntrypoints,
   ...staticSubpathEntrypoints,
   ...deprecatedAliasEntrypoints,
 ];
@@ -453,6 +466,7 @@ const perComponentServerBuildResult = await Bun.build({
     serverRootEntrypoint,
     ...perComponentEntrypoints,
     ...perComponentMetadataEntrypoints,
+    ...componentEnhancementEntrypoints,
     ...staticSubpathEntrypoints,
     ...deprecatedAliasEntrypoints,
   ],
@@ -640,9 +654,6 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/components/icons/index.js`,
   `${distributionDirectory}/components/icons/index.d.ts`,
   `${distributionDirectory}/server/components/icons/index.js`,
-  `${distributionDirectory}/components/json-editor/json-editor-enhancement.js`,
-  `${distributionDirectory}/components/json-editor/json-editor-enhancement.d.ts`,
-  `${distributionDirectory}/server/components/json-editor/json-editor-enhancement.js`,
   `${distributionDirectory}/highlighters/shiki/index.js`,
   `${distributionDirectory}/highlighters/shiki/index.d.ts`,
   `${distributionDirectory}/server/highlighters/shiki/index.js`,
@@ -677,6 +688,14 @@ for (const component of components) {
     expectedPaths.push(`${directory}/${component.name}.${metadataKind}.js`);
     expectedPaths.push(`${directory}/${component.name}.${metadataKind}.d.ts`);
     expectedPaths.push(`${serverDirectory}/${component.name}.${metadataKind}.js`);
+  }
+  const enhancement = componentEnhancementsByKey.get(componentEnhancementKey(component));
+  if (enhancement !== undefined) {
+    const enhancementPaths = componentEnhancementOutputPaths(
+      distributionDirectory,
+      enhancement.name,
+    );
+    expectedPaths.push(enhancementPaths.browser, enhancementPaths.types, enhancementPaths.server);
   }
   if (existsSync(componentCssSource(component))) {
     expectedPaths.push(componentCssDestination(component));
