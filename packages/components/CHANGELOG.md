@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.19.0
+
+### Minor Changes
+
+- [#876](https://github.com/stevekinney/cinder/pull/876) [`cb98477`](https://github.com/stevekinney/cinder/commit/cb98477807816e19c7736e0ca875c8b1bddfe838) Thanks [@stevekinney](https://github.com/stevekinney)! - Add `@lostgradient/cinder/highlighters/shiki/curated`, a curated adapter entrypoint where `shikiHighlighter` accepts `languageLoaders` and `themeLoaders` maps so Vite consumers can ship only the Shiki grammars and themes they use.
+
 ## 0.18.0
 
 ### Minor Changes
