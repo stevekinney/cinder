@@ -3,7 +3,7 @@
 import type { Locator } from '@playwright/test';
 import { describe, expect, test } from 'bun:test';
 
-import { waitForFocusStyleFrame } from './focus-ring';
+import { waitForFocusStyleFrame } from './focus-ring.ts';
 
 describe('waitForFocusStyleFrame', () => {
   test('settles on exactly the next animation frame', async () => {
