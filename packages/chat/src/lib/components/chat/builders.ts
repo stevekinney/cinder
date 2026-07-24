@@ -16,6 +16,6 @@ export {
 
 /**
  * @deprecated Use {@link createConversationHistory}. This alias is retained
- * as the explicit migration path for consumers upgrading from Chat 0.2.
+ * as the explicit migration path for consumers upgrading to Conversationalist 0.5.
  */
 export { createConversationHistory as createConversation } from 'conversationalist';
