@@ -242,6 +242,28 @@ describe('Chat — basic render', () => {
     expect(region?.id).toBe('chat-basic');
   });
 
+  test('warns when a conversation requires a newer schema version', async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+
+    try {
+      const conversation = createConversation({ id: 'future-schema' });
+      conversation.schemaVersion = 6;
+      render(Chat, {
+        props: { id: 'future-schema-chat', conversation },
+      });
+      await tick();
+
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]?.[0]).toBe(
+        '[Chat] Conversation schema version 6 is newer than the supported version 5. Upgrade @lostgradient/chat before relying on this history.',
+      );
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
   test('derives the timeline id from the component id', () => {
     const conversation = createConversation({ id: 'conversation-timeline' });
     const { container } = render(Chat, {

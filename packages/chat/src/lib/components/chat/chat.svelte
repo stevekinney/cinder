@@ -18,12 +18,14 @@
 </script>
 
 <script lang="ts">
+  import { CURRENT_SCHEMA_VERSION } from 'conversationalist/versioning';
   import { classNames } from '../../utilities/class-names.ts';
   import ChatImplementation from './container/chat.svelte';
   import type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
 
   let {
     class: className,
+    conversation,
     atBottom = $bindable(true),
     unreadCount = $bindable(0),
     newMessageIndicatorVisible = $bindable(false),
@@ -31,6 +33,17 @@
   }: ChatProps = $props();
 
   const mergedClassName = $derived(classNames(className));
+  let warnedSchemaVersion: number | undefined;
+
+  $effect(() => {
+    const schemaVersion = conversation.schemaVersion;
+    if (schemaVersion <= CURRENT_SCHEMA_VERSION || warnedSchemaVersion === schemaVersion) return;
+
+    warnedSchemaVersion = schemaVersion;
+    console.warn(
+      `[Chat] Conversation schema version ${schemaVersion} is newer than the supported version ${CURRENT_SCHEMA_VERSION}. Upgrade @lostgradient/chat before relying on this history.`,
+    );
+  });
 
   function handleAtBottomBindingChange(value: boolean): void {
     atBottom = value;
@@ -119,6 +132,7 @@
 <ChatImplementation
   bind:this={impl}
   {...rest}
+  {conversation}
   {atBottom}
   {unreadCount}
   {newMessageIndicatorVisible}

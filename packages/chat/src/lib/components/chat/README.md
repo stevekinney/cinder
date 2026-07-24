@@ -127,7 +127,8 @@ directly — that is supported, it just is not something Chat requires.
 
 The exported schema version comes from the `conversationalist` version Chat
 depends on. Histories produced by an older compatible schema can render
-as-is; a newer schema requires upgrading `@lostgradient/chat`.
+as-is; a newer schema causes Chat to emit a console warning and requires
+upgrading `@lostgradient/chat` before relying on that history.
 
 ## Layout and sizing
 
