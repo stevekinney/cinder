@@ -94,6 +94,22 @@ describe('Select', () => {
     expect(labelEl!.textContent?.trim()).toBe('Choose one');
   });
 
+  test('hideLabel keeps the label available to assistive technology while hiding it visually', () => {
+    const { container } = render(Select, {
+      props: {
+        id: 'hidden-label-select',
+        value: 'a',
+        options: defaultOptions,
+        label: 'Choose one',
+        hideLabel: true,
+      },
+    });
+    const labelEl = container.querySelector('label[for="hidden-label-select"]');
+    expect(labelEl).not.toBeNull();
+    expect(labelEl!.textContent?.trim()).toBe('Choose one');
+    expect(labelEl!.classList.contains('cinder-sr-only')).toBe(true);
+  });
+
   test('on user change event, bound value updates', async () => {
     const { container } = render(Select, {
       props: { id: 'test-select', value: 'a', options: defaultOptions },
@@ -114,6 +130,23 @@ describe('Select', () => {
       expect(selectEl!.getAttribute('data-cinder-empty')).toBe('true');
       expect(warnSpy).toHaveBeenCalledWith(
         '[cinder/Select] options is empty — pass at least one option, or ignore during async load.',
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('unmatched value: dev warning emitted while retaining the native select', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { container } = render(Select, {
+        props: { id: 'unmatched-select', value: 'missing', options: defaultOptions },
+      });
+      const selectEl = container.querySelector('select#unmatched-select') as HTMLSelectElement;
+      expect(selectEl).not.toBeNull();
+      expect(selectEl.selectedIndex).toBe(-1);
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[cinder/Select] value does not match any option — pass a value from options or omit it.',
       );
     } finally {
       warnSpy.mockRestore();

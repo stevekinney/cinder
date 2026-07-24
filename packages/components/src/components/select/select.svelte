@@ -27,6 +27,7 @@
     value = $bindable(),
     options,
     label,
+    hideLabel = false,
     description,
     error,
     required,
@@ -67,13 +68,21 @@
       devWarn(
         '[cinder/Select] options is empty — pass at least one option, or ignore during async load.',
       );
+    } else if (value !== undefined && !options.some((option) => option.value === value)) {
+      devWarn(
+        '[cinder/Select] value does not match any option — pass a value from options or omit it.',
+      );
     }
   });
 </script>
 
 <div class={classNames('cinder-select-field', className)}>
   {#if label}
-    <label for={id} class="cinder-select-field__label" data-disabled={field.disabled || undefined}>
+    <label
+      for={id}
+      class={classNames('cinder-select-field__label', hideLabel && 'cinder-sr-only')}
+      data-disabled={field.disabled || undefined}
+    >
       {label}
       {#if field.required}
         <span class="cinder-_required-marker" aria-hidden="true">*</span>

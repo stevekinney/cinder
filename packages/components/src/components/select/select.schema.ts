@@ -20,6 +20,10 @@ const schema = {
       type: 'string',
       description: 'Visible label rendered in a `<label>` associated via `for`.',
     },
+    hideLabel: {
+      type: 'boolean',
+      description: 'Visually hides the label while keeping it available to assistive technology.',
+    },
     description: {
       type: 'string',
       description: 'Helper text rendered below the control; wired via `aria-describedby`.',
