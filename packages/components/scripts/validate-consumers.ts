@@ -1819,13 +1819,27 @@ async function runSvelteKitHydrationRoutesOnce(
       context.close(),
       5_000,
       `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-    ).catch((error: unknown) => closeErrors.push(error));
+    ).catch((error: unknown) =>
+      closeErrors.push(
+        new Error(
+          `teardown phase=context.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        ),
+      ),
+    );
   }
   await promiseWithTimeout(
     browser.close(),
     5_000,
     `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-  ).catch((error: unknown) => closeErrors.push(error));
+  ).catch((error: unknown) =>
+    closeErrors.push(
+      new Error(
+        `teardown phase=browser.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      ),
+    ),
+  );
 
   // A body failure wins: its error is what the retry decision needs (a crashed
   // browser makes both closes throw too — those are swallowed). But when every
