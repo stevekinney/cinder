@@ -210,6 +210,26 @@ describe('computeExports', () => {
     });
   });
 
+  it('does not emit enhancement exports for experimental components', () => {
+    const packageRoot = mkdtempSync(join(tmpdir(), 'cinder-experimental-enhancement-'));
+    const enhancementPath = join(
+      packageRoot,
+      'src/components/experimental/second-editor/second-editor-enhancement.ts',
+    );
+    mkdirSync(dirname(enhancementPath), { recursive: true });
+    writeFileSync(enhancementPath, 'export function enhance() {}\n');
+
+    try {
+      const out = computeExports(
+        [{ name: 'second-editor', isExperimental: true, hasCss: false }],
+        packageRoot,
+      );
+      expect(out['./experimental/second-editor/enhancement']).toBeUndefined();
+    } finally {
+      rmSync(packageRoot, { recursive: true, force: true });
+    }
+  });
+
   // Task 4176c51c: schema/variables are runtime entry points. The build compiles
   // each `<name>.schema.ts` / `<name>.variables.ts` to its own JS, so a plain
   // Node/Vite consumer resolving `@lostgradient/cinder/<name>/schema` under the `default`
@@ -217,6 +237,33 @@ describe('computeExports', () => {
   // pins the `default` (and `node`) condition at the generator so a regression
   // that drops the runtime condition is caught before it ships. The
   // manifest-consumer fixture asserts the same at Node runtime.
+  it('emits an enhancement export for any stable component with an enhancement source file', () => {
+    const packageRoot = mkdtempSync(join(tmpdir(), 'cinder-enhancement-'));
+    const enhancementPath = join(
+      packageRoot,
+      'src/components/second-editor/second-editor-enhancement.ts',
+    );
+    mkdirSync(dirname(enhancementPath), { recursive: true });
+    writeFileSync(enhancementPath, 'export function enhance() {}\n');
+
+    try {
+      const out = computeExports(
+        [{ name: 'second-editor', isExperimental: false, hasCss: false }],
+        packageRoot,
+      );
+      expect(out['./second-editor/enhancement']).toEqual({
+        types: './dist/components/second-editor/second-editor-enhancement.d.ts',
+        browser: './src/components/second-editor/second-editor-enhancement.ts',
+        node: './dist/server/components/second-editor/second-editor-enhancement.js',
+        svelte: './src/components/second-editor/second-editor-enhancement.ts',
+        import: './src/components/second-editor/second-editor-enhancement.ts',
+        default: './dist/components/second-editor/second-editor-enhancement.js',
+      });
+    } finally {
+      rmSync(packageRoot, { recursive: true, force: true });
+    }
+  });
+
   it('emits a default (and node) runtime condition on every /schema and /variables export', () => {
     const out = computeExports([
       { name: 'button', isExperimental: false, hasCss: false },

@@ -2740,7 +2740,8 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/json-editor/schema",
         "variables": "@lostgradient/cinder/json-editor/variables",
-        "examples": "@lostgradient/cinder/json-editor/examples"
+        "examples": "@lostgradient/cinder/json-editor/examples",
+        "enhancement": "@lostgradient/cinder/json-editor/enhancement"
       },
       "a11y": {
         "keyboard": [

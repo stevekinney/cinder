@@ -89,7 +89,6 @@ const STYLES_GUARD_KEY = './styles/guard';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
 const ICONS_KEY = './icons';
-const JSON_EDITOR_ENHANCEMENT_KEY = './json-editor/enhancement';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 const HIGHLIGHTERS_SHIKI_CURATED_KEY = './highlighters/shiki/curated';
 
@@ -109,7 +108,6 @@ const RESERVED_KEYS = new Set([
   STYLES_GUARD_KEY,
   PACKAGE_JSON_KEY,
   ICONS_KEY,
-  JSON_EDITOR_ENHANCEMENT_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
   HIGHLIGHTERS_SHIKI_CURATED_KEY,
 ]);
@@ -197,14 +195,20 @@ function iconsExport(): ExportEntry {
   });
 }
 
-function jsonEditorEnhancementExport(): ExportEntry {
+function componentEnhancementExport(
+  name: string,
+  srcDir: string,
+  distDir: string,
+  serverDistDir: string,
+): ExportEntry {
+  const fileName = `${name}-enhancement`;
   return orderedExportEntry({
-    types: './dist/components/json-editor/json-editor-enhancement.d.ts',
-    browser: './src/components/json-editor/json-editor-enhancement.ts',
-    node: './dist/server/components/json-editor/json-editor-enhancement.js',
-    svelte: './src/components/json-editor/json-editor-enhancement.ts',
-    import: './src/components/json-editor/json-editor-enhancement.ts',
-    default: './dist/components/json-editor/json-editor-enhancement.js',
+    types: `${distDir}/${fileName}.d.ts`,
+    browser: `${srcDir}/${fileName}.ts`,
+    node: `${serverDistDir}/${fileName}.js`,
+    svelte: `${srcDir}/${fileName}.ts`,
+    import: `${srcDir}/${fileName}.ts`,
+    default: `${distDir}/${fileName}.js`,
   });
 }
 
@@ -507,6 +511,25 @@ export function computeExports(
       const relPath = `${srcDir}/${name}.constraints.json`;
       out[`${prefix}/constraints`] = jsonSidecarExport(relPath);
     }
+
+    // Component-owned runtime enhancements are emitted for stable components
+    // when their `<name>-enhancement.ts` source file exists. The source and
+    // compiled paths follow the same layout as the other per-component modules.
+    const enhancementSourcePath = join(
+      packageRoot,
+      'src',
+      'components',
+      name,
+      `${name}-enhancement.ts`,
+    );
+    if (!isExperimental && existsSync(enhancementSourcePath)) {
+      out[`${prefix}/enhancement`] = componentEnhancementExport(
+        name,
+        srcDir,
+        distDir,
+        serverDistDir,
+      );
+    }
   }
 
   return out;
@@ -698,7 +721,12 @@ async function main(): Promise<void> {
     }
     next[STYLES_GUARD_KEY] = stylesGuardExport();
     next[ICONS_KEY] = iconsExport();
-    next[JSON_EDITOR_ENHANCEMENT_KEY] = jsonEditorEnhancementExport();
+    // Keep component-owned enhancement entries at their historical position
+    // before the package-level highlighter export while deriving them from the
+    // generic component computation above.
+    for (const [key, entry] of Object.entries(componentComputed)) {
+      if (key.endsWith('/enhancement')) next[key] = entry;
+    }
     next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
     next[HIGHLIGHTERS_SHIKI_CURATED_KEY] = highlightersShikiExport('index');
 

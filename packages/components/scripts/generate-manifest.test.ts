@@ -8,6 +8,8 @@
  * `manifest.schema.json`.
  */
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import Ajv from 'ajv/dist/2020.js';
@@ -15,9 +17,11 @@ import { beforeAll, describe, expect, it } from 'bun:test';
 
 import type { Manifest, ManifestComponent } from './generate-manifest.ts';
 import {
+  buildManifest,
   findDanglingAlternatives,
   formatDanglingAlternativeMessage,
   formatExtractionErrorMessage,
+  hasEnhancementArtifact,
 } from './generate-manifest.ts';
 
 // ---------------------------------------------------------------------------
@@ -424,6 +428,36 @@ describe('buildManifest() error formatting', () => {
     expect(message).toContain('comp-9');
     expect(message).not.toContain('comp-10');
     expect(message).toMatch(/… and 4 more errors \(14 total\)/);
+  });
+});
+
+describe('component-owned artifacts', () => {
+  it('detects an enhancement for any stable component with an enhancement source file', () => {
+    const componentsRoot = mkdtempSync(join(tmpdir(), 'cinder-manifest-enhancement-'));
+    const enhancementPath = join(componentsRoot, 'second-editor/second-editor-enhancement.ts');
+    mkdirSync(join(componentsRoot, 'second-editor'), { recursive: true });
+    writeFileSync(enhancementPath, 'export function enhance() {}\n');
+    const experimentalEnhancementPath = join(
+      componentsRoot,
+      'experimental/second-editor/second-editor-enhancement.ts',
+    );
+    mkdirSync(join(componentsRoot, 'experimental/second-editor'), { recursive: true });
+    writeFileSync(experimentalEnhancementPath, 'export function enhance() {}\n');
+
+    try {
+      expect(hasEnhancementArtifact('second-editor', false, componentsRoot)).toBe(true);
+      expect(hasEnhancementArtifact('second-editor', true, componentsRoot)).toBe(true);
+      expect(hasEnhancementArtifact('missing-editor', false, componentsRoot)).toBe(false);
+    } finally {
+      rmSync(componentsRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('advertises JsonEditor’s lazy enhancement entry point', async () => {
+    const manifest = await buildManifest();
+    const jsonEditor = manifest.components.find((component) => component.id === 'json-editor');
+
+    expect(jsonEditor?.artifacts.enhancement).toBe('@lostgradient/cinder/json-editor/enhancement');
   });
 });
 

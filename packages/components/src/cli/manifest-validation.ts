@@ -78,7 +78,8 @@ function isManifestComponent(value: unknown): value is ManifestComponent {
     typeof artifacts['schema'] === 'string' &&
     typeof artifacts['variables'] === 'string' &&
     (artifacts['examples'] === undefined || typeof artifacts['examples'] === 'string') &&
-    (artifacts['constraints'] === undefined || typeof artifacts['constraints'] === 'string')
+    (artifacts['constraints'] === undefined || typeof artifacts['constraints'] === 'string') &&
+    (artifacts['enhancement'] === undefined || typeof artifacts['enhancement'] === 'string')
   );
 }
 

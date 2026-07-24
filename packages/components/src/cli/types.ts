@@ -22,6 +22,7 @@ export type ManifestComponent = {
     variables: string;
     examples?: string;
     constraints?: string;
+    enhancement?: string;
   };
   a11y?: {
     pattern?: string;
