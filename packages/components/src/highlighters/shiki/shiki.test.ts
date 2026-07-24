@@ -223,6 +223,22 @@ describe('shikiHighlighter — fallback contract', () => {
     }
   });
 
+  test('resolves aliases for embedded grammars in curated maps', async () => {
+    const highlight = shikiHighlighter({
+      languageLoaders: {
+        markdown: () => import('@shikijs/langs/markdown'),
+        typescript: () => import('@shikijs/langs/typescript'),
+      },
+      themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+      theme: 'github-light',
+    });
+    const html = await highlight('```ts\nconst x: number = 1;\n```\n', 'markdown');
+    const colors = new Set(
+      Array.from(html.matchAll(/color:#[0-9A-Fa-f]{6}/g), (match) => match[0]),
+    );
+    expect(colors.size).toBeGreaterThan(1);
+  });
+
   test('empty lang returns escaped-plaintext fallback', async () => {
     const highlight = shikiHighlighter();
     const html = await highlight('const x = 1;', '');

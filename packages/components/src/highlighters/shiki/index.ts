@@ -212,16 +212,52 @@ async function loadGuessedEmbeddedLanguages(
   shiki: ShikiModule,
   code: string,
   lang: string,
+  resolvedLanguageAliases: Map<string, string | undefined>,
 ): Promise<void> {
   for (const guessed of shiki.guessEmbeddedLanguages(code, lang)) {
-    if (!Object.hasOwn(shiki.bundledLanguages, guessed)) continue;
     try {
-      await ensureLanguageLoaded(shiki, guessed);
+      const languageKey = await resolveLanguageKey(shiki, guessed, resolvedLanguageAliases);
+      if (languageKey !== undefined) await ensureLanguageLoaded(shiki, languageKey);
     } catch {
       // Best-effort — an embedded grammar that fails to load only costs
       // that nested region its highlighting, not the whole block.
     }
   }
+}
+
+async function resolveLanguageKey(
+  shiki: ShikiModule,
+  normalizedLang: string,
+  resolvedLanguageAliases: Map<string, string | undefined>,
+): Promise<string | undefined> {
+  let languageKey: string | undefined = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
+    ? normalizedLang
+    : resolvedLanguageAliases.get(normalizedLang);
+  if (
+    languageKey === undefined &&
+    shiki.resolveLanguageAliases &&
+    !resolvedLanguageAliases.has(normalizedLang)
+  ) {
+    let loaderFailed = false;
+    for (const [candidate, loader] of Object.entries(shiki.bundledLanguages)) {
+      try {
+        const module = await loader();
+        const registrations = module.default;
+        if (registrations.some((registration) => registration.aliases?.includes(normalizedLang))) {
+          languageKey = candidate;
+          break;
+        }
+      } catch {
+        loaderFailed = true;
+      }
+    }
+    if (!loaderFailed || languageKey !== undefined) {
+      resolvedLanguageAliases.set(normalizedLang, languageKey);
+    }
+  }
+  return languageKey !== undefined && Object.hasOwn(shiki.bundledLanguages, languageKey)
+    ? languageKey
+    : undefined;
 }
 
 /**
@@ -355,35 +391,7 @@ export function shikiHighlighter(
     // curated registry usually exposes only canonical ids. Resolve aliases
     // from each grammar's own metadata so curated consumers retain the
     // complete Shiki alias contract without maintaining a partial list here.
-    let languageKey: string | undefined = Object.hasOwn(shiki.bundledLanguages, normalizedLang)
-      ? normalizedLang
-      : resolvedLanguageAliases.get(normalizedLang);
-    if (
-      languageKey === undefined &&
-      shiki.resolveLanguageAliases &&
-      !resolvedLanguageAliases.has(normalizedLang)
-    ) {
-      let loaderFailed = false;
-      for (const [candidate, loader] of Object.entries(shiki.bundledLanguages)) {
-        try {
-          const module = await loader();
-          const registrations = module.default;
-          if (
-            registrations.some((registration) => registration.aliases?.includes(normalizedLang))
-          ) {
-            languageKey = candidate;
-            break;
-          }
-        } catch {
-          loaderFailed = true;
-          // A broken optional grammar should not prevent other candidates
-          // from resolving this alias or force the whole highlight to fail.
-        }
-      }
-      if (!loaderFailed || languageKey !== undefined) {
-        resolvedLanguageAliases.set(normalizedLang, languageKey);
-      }
-    }
+    const languageKey = await resolveLanguageKey(shiki, normalizedLang, resolvedLanguageAliases);
     if (languageKey === undefined || !Object.hasOwn(shiki.bundledLanguages, languageKey)) {
       if (!warnedLanguages.has(normalizedLang)) {
         warnedLanguages.add(normalizedLang);
@@ -397,7 +405,7 @@ export function shikiHighlighter(
     try {
       await ensureLanguageLoaded(shiki, languageKey);
       await ensureThemesLoaded(shiki, theme);
-      await loadGuessedEmbeddedLanguages(shiki, code, normalizedLang);
+      await loadGuessedEmbeddedLanguages(shiki, code, normalizedLang, resolvedLanguageAliases);
       const html = shiki.highlighter.codeToHtml(code, {
         lang: normalizedLang,
         ...buildThemeOption(theme),
