@@ -256,6 +256,7 @@ const allowedNonComponentExportKeys = new Set([
   './icons',
   './highlighters/shiki',
   './highlighters/shiki/curated',
+  './json-editor/enhancement',
   // Upstream re-export root barrels. These (and their `/subpath` children,
   // skipped below) are not component exports; node-consumer validates them.
   './markdown',

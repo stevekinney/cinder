@@ -2556,8 +2556,24 @@ async function hydrationSmoke(): Promise<void> {
   }
 }
 
+/** Cheap PR gate for packed manifest/export consistency; no browser or registry fixtures. */
+async function manifestSmoke(): Promise<void> {
+  installHookProcessCleanup();
+  ensureSupportedPlatform();
+  await ensureNodeOnPath();
+  await runBuild();
+  await packWorkspaceDependencyTarballs();
+  await packTarball();
+  await runManifestConsumerFixture();
+  process.stdout.write('[validate-consumers] manifest smoke passed.\n');
+}
+
 if (import.meta.main) {
-  const entry = process.argv.includes('--hydration-smoke') ? hydrationSmoke : main;
+  const entry = process.argv.includes('--hydration-smoke')
+    ? hydrationSmoke
+    : process.argv.includes('--manifest-smoke')
+      ? manifestSmoke
+      : main;
   try {
     await withLocalValidationGateLock(entry);
   } catch (error) {
