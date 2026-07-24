@@ -264,6 +264,36 @@ describe('ChatAdapter — command equivalence', () => {
     unmount(instance);
   });
 
+  test('single-flights concurrent retries for the same message', async () => {
+    let calls = 0;
+    let release!: () => void;
+    const retryFinished = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      retryMessage: async () => {
+        calls += 1;
+        await retryFinished;
+      },
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-retry-single-flight',
+      conversation: failedConversation(),
+      adapter,
+    });
+
+    clickRetry(container);
+    clickRetry(container);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+
+    release();
+    await retryFinished;
+
+    unmount(instance);
+  });
+
   test('the adapter takes precedence over the callback (no double-dispatch)', async () => {
     const adapterRetried: string[] = [];
     const callbackRetried: string[] = [];
