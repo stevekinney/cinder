@@ -822,21 +822,32 @@
     if (!resolvedAdapter?.subscribe) return;
 
     const currentConversationId = conversationId;
+    let active = true;
     const handlers: ChatPushHandlers = {
-      onMessage: (message) => untrack(() => onpushmessage)?.(message),
+      onMessage: (message) => {
+        if (active) untrack(() => onpushmessage)?.(message);
+      },
       onTypingChange: (isTyping) => {
+        if (!active) return;
         // Drive the C6 per-participant typing indicator via the adapter path.
         typingIndicatorState.handleAdapterTypingChange(isTyping);
         untrack(() => ontypingchange)?.(isTyping);
       },
       onReadReceipt: (event) => {
+        if (!active) return;
         // Accumulate the receipt into C6 read receipt state.
         readReceiptsState.handleAdapterReadReceipt(event);
         untrack(() => onreadreceipt)?.(event);
       },
-      onStreamBegin: (messageId) => beginStreaming(messageId),
-      onTokenPush: (token) => pushToken(token),
-      onStreamEnd: () => endStreaming(),
+      onStreamBegin: (messageId) => {
+        if (active) beginStreaming(messageId);
+      },
+      onTokenPush: (token) => {
+        if (active) pushToken(token);
+      },
+      onStreamEnd: () => {
+        if (active) endStreaming();
+      },
     };
 
     const unsubscribe = resolvedAdapter.subscribe(currentConversationId, handlers);
@@ -851,6 +862,7 @@
     // participant, a pending live-region timer, and accumulated receipts alive
     // (the conversation-change effect above only fires on an id change).
     return () => {
+      active = false;
       if (typeof unsubscribe === 'function') unsubscribe();
       endStreaming();
       typingIndicatorState.reset();
