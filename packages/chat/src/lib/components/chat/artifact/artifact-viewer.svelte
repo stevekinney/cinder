@@ -54,7 +54,7 @@
     {#if mermaidRenderer}
       {@render mermaidRenderer(content, 'mermaid')}
     {:else}
-      <pre class="artifact-code-block" data-language="mermaid"><code>{content}</code></pre>
+      <pre class="artifact-source-block" data-language="mermaid"><code>{content}</code></pre>
       <p class="artifact-mermaid-note" aria-live="polite">
         No Mermaid renderer was provided. Showing diagram source.
       </p>
@@ -88,7 +88,7 @@
     padding: var(--cinder-space-4);
   }
 
-  .artifact-code-block {
+  .artifact-source-block {
     margin: 0;
     padding: var(--cinder-space-4);
     background: var(--cinder-surface-raised);
@@ -103,16 +103,20 @@
     tab-size: 2;
   }
 
-  .artifact-code-block :global(.cinder-code-block__pre),
-  .artifact-code-block :global(.shiki) {
+  .artifact-code-block {
     tab-size: 2;
   }
 
-  .artifact-code-block code {
+  .artifact-source-block code {
     font-family: inherit;
     font-size: inherit;
     background: none;
     padding: 0;
+  }
+
+  .artifact-code-block :global(.cinder-code-block__pre),
+  .artifact-code-block :global(.shiki) {
+    tab-size: 2;
   }
 
   .artifact-mermaid-note {
