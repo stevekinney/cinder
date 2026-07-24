@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { afterEach, expect, test } from 'bun:test';
 
 const fixtureDirectory = resolve(import.meta.dir, '../../../fixtures/shiki-curated-vite');
-const outputDirectory = resolve(import.meta.dir, '.shiki-curated-vite-dist');
+const outputDirectory = resolve(fixtureDirectory, '.dist');
 
 afterEach(async () => {
   await rm(outputDirectory, { recursive: true, force: true });
