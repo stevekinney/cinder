@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -19,6 +20,12 @@ function textSnippet(text: string) {
 }
 
 describe('StatGroup', () => {
+  test('loads the Stat entrypoint so compound Stat styles are registered', async () => {
+    const source = await readFile(new URL('./index.ts', import.meta.url), 'utf8');
+    expect(source).toContain("import Stat from '../stat/index.ts';");
+    expect(source).not.toContain("import Stat from '../stat/stat.svelte';");
+  });
+
   test('renders .cinder-stat-group wrapping its children', () => {
     const { container } = render(StatGroup, {
       children: textSnippet('stat content'),
