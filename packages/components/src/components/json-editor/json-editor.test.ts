@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: JsonEditor } = await import('./json-editor.svelte');
 const { default: schema } = await import('./json-editor.schema.ts');
 
@@ -18,6 +18,87 @@ describe('JsonEditor', () => {
   test('documents supported native validation and disabled props in its public schema', () => {
     expect(schema.properties).toHaveProperty('disabled');
     expect(schema.properties).toHaveProperty('required');
+  });
+
+  test('keeps highlighting opt-in and annotates invalid JSON after lazy enhancement', async () => {
+    const baseline = render(JsonEditor, {
+      id: 'baseline-payload',
+      label: 'Baseline payload',
+      value: '{"ready":true}',
+    });
+    await waitFor(() =>
+      expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull(),
+    );
+    expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull();
+    baseline.unmount();
+
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"ready":true}',
+      highlight: true,
+    });
+
+    await waitFor(() =>
+      expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull(),
+    );
+    expect(view.container.querySelector('.cinder-json-token-key')).not.toBeNull();
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+      highlight: true,
+    });
+    await waitFor(() =>
+      expect(view.container.querySelector('[data-cinder-json-lint-position]')).not.toBeNull(),
+    );
+    expect(view.container.querySelector('.cinder-json-lint')).not.toBeNull();
+  });
+
+  test('preserves native wrap and scroll props in highlighted mode', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"ready":true}',
+      highlight: true,
+      wrap: 'off',
+    });
+    const editor = view.getByLabelText('Payload');
+    expect(editor.getAttribute('wrap')).toBe('off');
+    expect(view.container.querySelector('.cinder-json-editor__input--nowrap')).not.toBeNull();
+  });
+
+  test('does not add parse lint while an external error owns feedback', () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+      highlight: true,
+      error: 'Payload failed validation.',
+    });
+    expect(view.getByRole('alert').textContent).toBe('Payload failed validation.');
+    expect(view.container.querySelector('.cinder-json-lint')).toBeNull();
+  });
+
+  test('keeps the native textarea visible until highlighted mode finishes loading', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"ready":true}',
+      highlight: true,
+    });
+
+    expect(view.container.querySelector('.cinder-json-editor__input--highlighted')).toBeNull();
+
+    await waitFor(() =>
+      expect(
+        view.container.querySelector('.cinder-json-editor__input--highlighted'),
+      ).not.toBeNull(),
+    );
+
+    expect(view.container.querySelector('.cinder-json-editor__input--highlighted')).not.toBeNull();
+    expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull();
   });
 
   test('emits each proposed string value without taking ownership of controlled state', async () => {

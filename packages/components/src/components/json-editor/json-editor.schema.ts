@@ -41,6 +41,11 @@ const schema = {
       description:
         'Whether valid JSON should render an announced success message. Defaults to true.',
     },
+    highlight: {
+      type: 'boolean',
+      description:
+        'Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false.',
+    },
     class: {
       type: 'string',
       description: 'Extra class names merged onto the field wrapper.',

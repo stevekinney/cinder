@@ -266,6 +266,7 @@ const perComponentMetadataEntrypoints = components.flatMap((component) =>
  */
 const staticSubpathEntrypoints = [
   `${sourceRoot}/components/icons/index.ts`,
+  `${sourceRoot}/components/json-editor/json-editor-enhancement.ts`,
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/styles/base-guard.ts`,
 ];
@@ -365,15 +366,8 @@ const rootBarrelStyleSpecifiers = componentsWithSidecar.map((component) =>
   componentStylesSpecifier(component.name, component.isExperimental),
 );
 
-// `splitting: false` is a deliberate trade-off mandated by the Track 4 plan:
-// it gives each entrypoint a predictable, single-file output so the eventual
-// `default` condition in `package.json#exports` points at exactly one JS file
-// per subpath. The cost is that shared internal modules (utilities, runes,
-// helpers) get duplicated across component bundles. Module-identity-sensitive
-// patterns (cross-component Svelte context keys, shared stores, exported
-// singletons) MUST live in the root barrel and be imported from there by
-// consumers — never re-imported from two different `@lostgradient/cinder/<name>` subpaths.
-// Track 5's à la carte fixture will assert this contract once it lands.
+// Keep each public entrypoint as a predictable single file. Optional runtime
+// enhancements use their own public subpath so this boundary survives bundling.
 const browserBuildResult = await Bun.build({
   entrypoints: browserEntrypoints,
   outdir: distributionDirectory,
@@ -645,6 +639,9 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/components/icons/index.js`,
   `${distributionDirectory}/components/icons/index.d.ts`,
   `${distributionDirectory}/server/components/icons/index.js`,
+  `${distributionDirectory}/components/json-editor/json-editor-enhancement.js`,
+  `${distributionDirectory}/components/json-editor/json-editor-enhancement.d.ts`,
+  `${distributionDirectory}/server/components/json-editor/json-editor-enhancement.js`,
   `${distributionDirectory}/highlighters/shiki/index.js`,
   `${distributionDirectory}/highlighters/shiki/index.d.ts`,
   `${distributionDirectory}/server/highlighters/shiki/index.js`,

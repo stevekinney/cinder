@@ -122,4 +122,29 @@ describe('JsonEditor — bundle boundary', () => {
     expect(await Bun.file(componentPath).text()).toContain('<textarea');
     expect(closure.forbiddenEdges).toEqual([]);
   });
+
+  test('enhancement is reached only through a dynamic import', async () => {
+    const componentPath = resolvePath(import.meta.dir, 'json-editor.svelte');
+    const source = await Bun.file(componentPath).text();
+    expect(source).toMatch(
+      /import\(\s*['"]@lostgradient\/cinder\/json-editor\/enhancement['"]\s*\)/,
+    );
+    expect(source).not.toMatch(/from\s*['"]\.\/json-editor-enhancement\.ts['"]/);
+  });
+
+  test('enhancement has no code-editor dependency edge', async () => {
+    const enhancementPath = resolvePath(import.meta.dir, 'json-editor-enhancement.ts');
+    const source = await Bun.file(enhancementPath).text();
+    expect(
+      typescriptSpecifiers(enhancementPath, source).filter((specifier) =>
+        EDITOR_DEPENDENCY_PATTERN.test(specifier),
+      ),
+    ).toEqual([]);
+  });
+
+  test('synchronizes overlay scroll after lazy enhancement resolves', async () => {
+    const source = await Bun.file(resolvePath(import.meta.dir, 'json-editor.svelte')).text();
+    expect(source).toContain('highlightNode.scrollTop = textareaNode.scrollTop');
+    expect(source).toContain("import { tick } from 'svelte'");
+  });
 });

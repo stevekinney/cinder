@@ -19,6 +19,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { composeDescribedBy } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { JsonEditorProps } from './json-editor.types.ts';
@@ -31,9 +32,12 @@
     error,
     rows = 8,
     showValidFeedback = true,
+    highlight = false,
     onValueChange,
     class: className,
     autofocus = false,
+    wrap,
+    onscroll: consumerOnScroll,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -43,11 +47,48 @@
   let previousValue = value;
   let textareaNode: HTMLTextAreaElement | undefined = $state();
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  let highlightedHtml = $state<string | null>(null);
+  let lintPosition = $state<number | null>(null);
+  let highlightNode: HTMLElement | undefined = $state();
 
   $effect(() => {
     if (value === previousValue) return;
     previousValue = value;
     draftValue = value;
+  });
+
+  $effect(() => {
+    if (!highlight || externalError) {
+      highlightedHtml = null;
+      lintPosition = null;
+      return;
+    }
+
+    const pendingValue = draftValue;
+    let cancelled = false;
+    void import('@lostgradient/cinder/json-editor/enhancement')
+      .then(({ enhanceJson }) => {
+        if (cancelled) return;
+        const result = enhanceJson(pendingValue, parseIsValid);
+        highlightedHtml = result.html;
+        lintPosition = result.lint?.position ?? null;
+        void tick().then(() => {
+          if (!cancelled && highlightNode && textareaNode) {
+            highlightNode.scrollTop = textareaNode.scrollTop;
+            highlightNode.scrollLeft = textareaNode.scrollLeft;
+          }
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          highlightedHtml = null;
+          lintPosition = null;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   });
 
   function syncDraftAfterFormReset(): void {
@@ -100,6 +141,7 @@
   const feedbackId = $derived(feedbackText ? `${id}-feedback` : undefined);
   const describedBy = $derived(composeDescribedBy(descriptionId, feedbackId, consumerDescribedBy));
   const ariaInvalid = $derived(feedbackIsError ? 'true' : normalizedConsumerInvalid);
+  const hasHighlightOverlay = $derived(highlight && highlightedHtml !== null);
 </script>
 
 <div class={classNames('cinder-json-editor', className)}>
@@ -107,25 +149,48 @@
   {#if description}
     <p id={descriptionId} class="cinder-json-editor__description">{description}</p>
   {/if}
-  <textarea
-    bind:this={textareaNode}
-    {...rest}
-    {id}
-    {rows}
-    {autofocus}
-    value={draftValue}
-    spellcheck="false"
-    class="cinder-json-editor__textarea"
-    aria-describedby={describedBy}
-    aria-invalid={ariaInvalid}
-    oninput={(event) => {
-      draftValue = event.currentTarget.value;
-      onValueChange?.(draftValue);
-    }}
-    {@attach (element) => {
-      if (autofocus) element.focus();
-    }}
-  ></textarea>
+  <div
+    class={classNames(
+      'cinder-json-editor__input',
+      hasHighlightOverlay && 'cinder-json-editor__input--highlighted',
+      wrap === 'off' && 'cinder-json-editor__input--nowrap',
+    )}
+    data-cinder-json-lint-position={lintPosition ?? undefined}
+  >
+    {#if hasHighlightOverlay}
+      <pre
+        bind:this={highlightNode}
+        class="cinder-json-editor__highlight"
+        aria-hidden="true">{@html highlightedHtml}</pre>
+    {/if}
+    <textarea
+      bind:this={textareaNode}
+      {...rest}
+      {id}
+      {rows}
+      {wrap}
+      {autofocus}
+      value={draftValue}
+      spellcheck="false"
+      class="cinder-json-editor__textarea"
+      aria-describedby={describedBy}
+      aria-invalid={ariaInvalid}
+      oninput={(event) => {
+        draftValue = event.currentTarget.value;
+        onValueChange?.(draftValue);
+      }}
+      onscroll={(event) => {
+        const textarea = event.currentTarget;
+        if (!highlightNode) return;
+        highlightNode.scrollTop = textarea.scrollTop;
+        highlightNode.scrollLeft = textarea.scrollLeft;
+        consumerOnScroll?.(event);
+      }}
+      {@attach (element) => {
+        if (autofocus) element.focus();
+      }}
+    ></textarea>
+  </div>
   {#if feedbackText}
     <p
       id={feedbackId}

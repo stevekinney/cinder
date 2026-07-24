@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Controlled JSON editor';
   export const description =
-    'A native, controlled JSON text field with parse feedback and no code-editor bundle dependency.';
+    'A controlled JSON text field with optional lazy syntax highlighting and parse feedback.';
 </script>
 
 <script lang="ts">
@@ -19,4 +19,5 @@
   description="Enter the JSON body sent with the request."
   {value}
   onValueChange={(nextValue) => (value = nextValue)}
+  highlight={true}
 />
