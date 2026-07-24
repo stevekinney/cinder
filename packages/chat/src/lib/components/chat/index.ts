@@ -40,7 +40,10 @@ export {
   appendAssistantMessage,
   appendMessages,
   appendUserMessage,
+  buildMessage,
   createConversation,
+  createConversationHistory,
+  prependMessages,
 } from './builders.ts';
 
 // Streaming conversation builders — keep the immutable snapshot and Chat's

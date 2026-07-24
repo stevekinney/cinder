@@ -37,7 +37,7 @@ describe('Chat package ownership boundary', () => {
   test('keeps host-supplied runtime singletons peer-only and owns its conversation-model dependencies', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
     expect(chatManifest.dependencies).toEqual({
-      conversationalist: '^0.2.1 || ^0.4.1',
+      conversationalist: '^0.5.0',
       zod: '4.4.1',
     });
     // The Cinder floor is deliberately ^0.17.0, not ^0.16.x: every 0.16

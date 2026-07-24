@@ -37,7 +37,7 @@ const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-stagi
 // never install or version-pick them directly.
 const REQUIRED_PEERS = new Set(['@lostgradient/cinder', '@lostgradient/markdown', 'svelte']);
 const REQUIRED_DEPENDENCIES: Record<string, string> = {
-  conversationalist: '^0.2.1 || ^0.4.1',
+  conversationalist: '^0.5.0',
   zod: '4.4.1',
 };
 
