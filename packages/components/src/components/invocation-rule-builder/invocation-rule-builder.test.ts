@@ -122,6 +122,14 @@ function renderFlatConditionsBuilder(
   return { ...result, onchange };
 }
 
+async function commitField(container: HTMLElement, value: string): Promise<void> {
+  const fieldInput = container.querySelector<HTMLInputElement>(
+    '[aria-label="Field for condition 1 of PR Review Rule"]',
+  )!;
+  await fireEvent.input(fieldInput, { target: { value } });
+  await fireEvent.keyDown(fieldInput, { key: 'Enter' });
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
@@ -922,6 +930,48 @@ describe('InvocationRuleBuilder', () => {
       expect(values).toEqual(['eq', 'gt', 'lt', 'gte', 'lte']);
     });
 
+    test('commits an arbitrary field value through the field combobox', async () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const fieldInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Field for condition 1 of PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(fieldInput, { target: { value: 'custom.attribute' } });
+      await fireEvent.keyDown(fieldInput, { key: 'Enter' });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules, change] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].field).toBe('custom.attribute');
+      expect(change).toMatchObject({ type: 'update-condition', field: 'field' });
+    });
+
+    test('shows a persisted custom field value in the combobox', () => {
+      const rule = makeRule({
+        conditions: [makeCondition({ field: 'team.owner', operator: 'eq' })],
+      });
+      const { container } = renderConditionsOnlyBuilder([rule]);
+      const fieldInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Field for condition 1 of PR Review Rule"]',
+      )!;
+      expect(fieldInput.value).toBe('team.owner');
+    });
+
+    test('blur commits an exact suggested field label as its canonical field value', async () => {
+      const rule = makeRule({ conditions: [makeCondition({ field: 'label', operator: 'eq' })] });
+      const { container, onchange } = renderConditionsOnlyBuilder([rule]);
+      const fieldInput = container.querySelector<HTMLInputElement>(
+        '[aria-label="Field for condition 1 of PR Review Rule"]',
+      )!;
+
+      await fireEvent.input(fieldInput, { target: { value: 'Enabled' } });
+      await fireEvent.blur(fieldInput, { relatedTarget: null });
+
+      expect(onchange).toHaveBeenCalledTimes(1);
+      const [nextRules] = onchange.mock.calls[0]!;
+      expect(nextRules[0].conditions[0].field).toBe('enabled');
+    });
+
     test('add-condition seeds the new condition with the fixed operator set default (eq)', async () => {
       const rule = makeRule({ conditions: [] });
       const { container, onchange } = renderConditionsOnlyBuilder([rule]);
@@ -1119,11 +1169,7 @@ describe('InvocationRuleBuilder', () => {
       test('resets a stale value to "false" when the field changes to boolean', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
         const { container, onchange } = renderConditionsOnlyBuilder([rule]);
-        const fieldSelect = container.querySelector<HTMLSelectElement>(
-          '[aria-label="Field for condition 1 of PR Review Rule"]',
-        )!;
-
-        await fireEvent.change(fieldSelect, { target: { value: 'enabled' } });
+        await commitField(container, 'enabled');
 
         expect(onchange).toHaveBeenCalledTimes(1);
         const [nextRules, change] = onchange.mock.calls[0]!;
@@ -1136,11 +1182,7 @@ describe('InvocationRuleBuilder', () => {
       test('resets a value outside the new choices to the first choice when the field changes to enum', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
         const { container, onchange } = renderConditionsOnlyBuilder([rule]);
-        const fieldSelect = container.querySelector<HTMLSelectElement>(
-          '[aria-label="Field for condition 1 of PR Review Rule"]',
-        )!;
-
-        await fireEvent.change(fieldSelect, { target: { value: 'severity' } });
+        await commitField(container, 'severity');
 
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('low');
@@ -1149,11 +1191,7 @@ describe('InvocationRuleBuilder', () => {
       test('keeps the existing value when the field changes to an enum field whose choices already include it', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'high' })] });
         const { container, onchange } = renderConditionsOnlyBuilder([rule]);
-        const fieldSelect = container.querySelector<HTMLSelectElement>(
-          '[aria-label="Field for condition 1 of PR Review Rule"]',
-        )!;
-
-        await fireEvent.change(fieldSelect, { target: { value: 'severity' } });
+        await commitField(container, 'severity');
 
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('high');
@@ -1162,11 +1200,7 @@ describe('InvocationRuleBuilder', () => {
       test('resets a non-numeric value to empty when the field changes to number', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: 'foobar' })] });
         const { container, onchange } = renderConditionsOnlyBuilder([rule]);
-        const fieldSelect = container.querySelector<HTMLSelectElement>(
-          '[aria-label="Field for condition 1 of PR Review Rule"]',
-        )!;
-
-        await fireEvent.change(fieldSelect, { target: { value: 'retries' } });
+        await commitField(container, 'retries');
 
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('');
@@ -1175,11 +1209,7 @@ describe('InvocationRuleBuilder', () => {
       test('keeps an existing numeric-looking value when the field changes to number', async () => {
         const rule = makeRule({ conditions: [makeCondition({ field: 'label', value: '7' })] });
         const { container, onchange } = renderConditionsOnlyBuilder([rule]);
-        const fieldSelect = container.querySelector<HTMLSelectElement>(
-          '[aria-label="Field for condition 1 of PR Review Rule"]',
-        )!;
-
-        await fireEvent.change(fieldSelect, { target: { value: 'retries' } });
+        await commitField(container, 'retries');
 
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('7');
@@ -1190,11 +1220,7 @@ describe('InvocationRuleBuilder', () => {
         const { container, onchange } = renderConditionsOnlyBuilder([rule], {
           fieldOptions: [...typedFieldOptions, { value: 'owner', label: 'Owner' }],
         });
-        const fieldSelect = container.querySelector<HTMLSelectElement>(
-          '[aria-label="Field for condition 1 of PR Review Rule"]',
-        )!;
-
-        await fireEvent.change(fieldSelect, { target: { value: 'owner' } });
+        await commitField(container, 'owner');
 
         const [nextRules] = onchange.mock.calls[0]!;
         expect(nextRules[0].conditions[0].value).toBe('foobar');

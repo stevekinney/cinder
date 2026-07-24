@@ -20,6 +20,10 @@ const schema = {
       type: 'string',
       description: 'Visible label rendered in a `<label>` associated via `for`.',
     },
+    'aria-label': {
+      type: 'string',
+      description: 'Accessible name for the input when no visible label is rendered.',
+    },
     placeholder: {
       type: 'string',
       description: 'Placeholder when no value is selected.',
@@ -45,6 +49,10 @@ const schema = {
       type: 'number',
       description: 'Hard cap on visible filtered options. Default 200.',
     },
+    allowCustomValue: {
+      type: 'boolean',
+      description: 'Allow committing typed text that is not present in `options`.',
+    },
     'aria-describedby': {
       type: 'string',
       description:
@@ -64,6 +72,11 @@ const schema = {
         reason: 'function-or-snippet',
         description:
           'Custom synchronous filter. Receives an option and the current input\nvalue; returns true to keep. Defaults to case-insensitive substring\nmatch on label.',
+      },
+      {
+        name: 'onchange',
+        reason: 'function-or-snippet',
+        description: 'Called when an option, or an arbitrary value when enabled, is committed.',
       },
       {
         name: 'options',

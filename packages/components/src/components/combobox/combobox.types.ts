@@ -28,16 +28,18 @@ export type ComboboxOption<T extends string = string> = {
  * - No async / remote loading; no debounced fetch.
  * - No virtualization. Visible options are capped at 200; consumers with
  *   larger lists must paginate or pre-filter externally.
- * - No multi-select, no token chips, no "create new" / free-text submission.
+ * - No multi-select or token chips; custom-value submission is opt-in.
  *
- * Bigger Combobox patterns will live as separate components or as an
- * extension once consumer needs justify them.
+ * Custom-value submission is opt-in through `allowCustomValue`; the default
+ * remains a constrained single-select.
  */
-export type ComboboxProps<T extends string = string> = {
+export type ComboboxProps<T extends string = string, AllowCustom extends boolean = false> = {
   /** Unique identifier — required for label association and ARIA wiring. */
   id: string;
   /** Currently selected value. Bindable. `''` when nothing is selected. */
-  value?: NoInfer<T> | '';
+  value?: AllowCustom extends true ? string : NoInfer<T> | '';
+  /** Called when an option, or an arbitrary value when enabled, is committed. */
+  onchange?: (value: AllowCustom extends true ? string : T) => void;
   /** Native form field name. Renders a hidden input carrying the selected value. */
   name?: string | undefined;
   /** Free-text input value (the text the user has typed). Bindable. */
@@ -46,6 +48,8 @@ export type ComboboxProps<T extends string = string> = {
   options: readonly ComboboxOption<T>[];
   /** Visible label rendered in a `<label>` associated via `for`. */
   label?: string;
+  /** Accessible name for the input when no visible label is rendered. */
+  'aria-label'?: string;
   /** Placeholder when no value is selected. */
   placeholder?: string;
   /**
@@ -68,6 +72,8 @@ export type ComboboxProps<T extends string = string> = {
   required?: boolean;
   /** Hard cap on visible filtered options. Default 200. */
   maxVisibleOptions?: number;
+  /** Allow committing typed text that is not present in `options`. */
+  allowCustomValue?: AllowCustom;
   /**
    * External element id(s) to compose into `aria-describedby`. Composed
    * after the component-generated description and error ids, matching the

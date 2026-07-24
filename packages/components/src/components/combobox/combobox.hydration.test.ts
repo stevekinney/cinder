@@ -2,9 +2,9 @@
 /**
  * Hydration contract for Combobox.
  *
- * The combobox input carries `aria-controls` pointing at the listbox id
- * (`{id}-listbox`) and `aria-activedescendant`. Those references must survive
- * hydration so assistive tech keeps the input wired to its popup.
+ * The combobox input keeps its role/state wiring stable across hydration. The
+ * popup-specific attributes (`aria-controls`, `aria-activedescendant`) are only
+ * emitted while the listbox exists.
  */
 import { describe, expect, test } from 'bun:test';
 
@@ -45,7 +45,7 @@ describe('Combobox hydration', () => {
     }
   });
 
-  test('aria-controls points at the same listbox id before and after hydration', async () => {
+  test('closed combobox omits popup references before and after hydration', async () => {
     const result = await renderThenHydrate(Combobox, sourcePath, {
       id: 'fruit',
       label: 'Fruit',
@@ -53,11 +53,10 @@ describe('Combobox hydration', () => {
     });
 
     try {
-      // The id pattern is deterministic, so the SSR HTML and the hydrated DOM
-      // must agree on the listbox id reference.
-      expect(result.ssrHtml).toContain('aria-controls="fruit-listbox"');
+      expect(result.ssrHtml).not.toContain('aria-controls=');
       const input = result.container.querySelector('[role="combobox"]');
-      expect(input?.getAttribute('aria-controls')).toBe('fruit-listbox');
+      expect(input?.hasAttribute('aria-controls')).toBe(false);
+      expect(input?.getAttribute('aria-expanded')).toBe('false');
     } finally {
       result.cleanup();
     }

@@ -28,6 +28,7 @@
   let conditions = $state<InvocationRuleCondition[]>([
     { id: 'status', field: 'status', operator: 'eq', value: 'failed' },
     { id: 'retries', field: 'retry-count', operator: 'gte', value: '3' },
+    { id: 'custom', field: 'team.owner', operator: 'eq', value: 'platform' },
   ]);
 
   function handleChange(

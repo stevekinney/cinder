@@ -15,7 +15,7 @@
   export type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
 </script>
 
-<script lang="ts" generics="T extends string = string">
+<script lang="ts" generics="T extends string = string, AllowCustom extends boolean = false">
   import type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
   import { untrack } from 'svelte';
 
@@ -28,10 +28,12 @@
   let {
     id,
     value = $bindable(''),
+    onchange,
     name,
     inputValue = $bindable(''),
     options,
     label,
+    'aria-label': ariaLabel,
     placeholder,
     filter,
     description,
@@ -39,9 +41,10 @@
     disabled,
     required,
     maxVisibleOptions = 200,
+    allowCustomValue = false as AllowCustom,
     class: className,
     'aria-describedby': consumerDescribedBy,
-  }: ComboboxProps<T> = $props();
+  }: ComboboxProps<T, AllowCustom> = $props();
 
   const context = getFormFieldContext();
   const field = $derived(
@@ -96,9 +99,23 @@
   let hiddenInputElement = $state<HTMLInputElement | null>(null);
   let listboxElement = $state<HTMLElement | null>(null);
   let committedLabel = $state('');
+  let initialCustomValue = $state('');
+  let hasUserCommittedValue = $state(false);
+  let hasExplicitNavigation = $state(false);
+  let hasStoredInitialValue = $state(false);
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  const initialValue = untrack(() => value);
+  let initialValue = $state(untrack(() => value));
   const initialInputValue = untrack(() => inputValue);
+
+  $effect.pre(() => {
+    if (!hasUserCommittedValue && !hasStoredInitialValue && value) {
+      initialValue = value;
+      hasStoredInitialValue = true;
+    }
+    if (allowCustomValue && !hasUserCommittedValue && value && !initialCustomValue) {
+      initialCustomValue = value;
+    }
+  });
 
   // Reset active index whenever the filtered set changes so we don't point
   // at a stale option.
@@ -129,6 +146,10 @@
       if (untrack(() => inputValue) !== matched.label) {
         inputValue = matched.label;
       }
+    } else if (allowCustomValue) {
+      if (!initialCustomValue) initialCustomValue = value;
+      committedLabel = value;
+      if (untrack(() => inputValue) !== value) inputValue = value;
     }
   });
 
@@ -167,17 +188,34 @@
     return releaseEscape;
   });
 
+  const listboxVisible = $derived(open && filteredOptions.length > 0);
   const activeOptionId = $derived(
-    activeIndex >= 0 && activeIndex < filteredOptions.length
+    listboxVisible && activeIndex >= 0 && activeIndex < filteredOptions.length
       ? `${id}-option-${activeIndex}`
       : undefined,
   );
+  function findCommittedOption(rawValue: string): ComboboxOption<T> | undefined {
+    const query = rawValue.trim();
+    if (!query) return undefined;
+    let labelMatch: ComboboxOption<T> | undefined;
+    for (const option of options) {
+      if (option.disabled) continue;
+      if (option.value === query) return option;
+      // Keep scanning after the first label match so an exact value match later
+      // in the list still wins over a human-readable label collision.
+      if (labelMatch === undefined && option.label === query) {
+        labelMatch = option;
+      }
+    }
+    return labelMatch;
+  }
 
   function handleInput(event: Event) {
     const target = event.target as HTMLInputElement;
     inputValue = target.value;
     open = true;
     activeIndex = filteredOptions.length > 0 ? 0 : -1;
+    hasExplicitNavigation = false;
   }
 
   function handleFocus() {
@@ -190,6 +228,10 @@
     // CSS-special characters (colons, dots, leading digits) don't throw.
     const next = event.relatedTarget as Node | null;
     if (next && listboxElement?.contains(next)) return;
+    if (allowCustomValue && inputValue.trim() && inputValue !== committedLabel) {
+      commitCustomValue();
+      return;
+    }
     open = false;
     // Restore the committed label if the live text drifted from it. Leaving the
     // field on a stale edit (without selecting an option) would desync the
@@ -202,10 +244,38 @@
 
   function selectOption(option: ComboboxOption<T>) {
     if (option.disabled) return;
+    hasUserCommittedValue = true;
     value = option.value;
     inputValue = option.label;
     committedLabel = option.label;
     open = false;
+    onchange?.(option.value);
+  }
+
+  function commitCustomValue(): void {
+    const nextValue = inputValue.trim();
+    if (!allowCustomValue || !nextValue) return;
+    if (
+      options.some(
+        (option) => option.disabled && (option.value === nextValue || option.label === nextValue),
+      )
+    ) {
+      inputValue = committedLabel;
+      if (inputElement) inputElement.value = committedLabel;
+      open = false;
+      return;
+    }
+    hasUserCommittedValue = true;
+    const matched = findCommittedOption(nextValue);
+    const committedValue = matched?.value ?? nextValue;
+    const committedText = matched?.label ?? nextValue;
+    const previousValue = value;
+    // This path only runs when arbitrary values are explicitly allowed.
+    value = committedValue as T;
+    inputValue = committedText;
+    committedLabel = committedText;
+    open = false;
+    if (committedValue !== previousValue) onchange?.(committedValue as T);
   }
 
   function resetToInitialValue(event: Event): void {
@@ -213,15 +283,22 @@
     resetSyncTimeout = setTimeout(() => {
       resetSyncTimeout = undefined;
       if (event.defaultPrevented) return;
-      value = initialValue;
-      const matched = options.find((option) => option.value === initialValue);
-      const nextInputValue = matched?.label ?? initialInputValue;
+      // Use captured initialValue directly; don't fall back to defaultValue
+      // because Svelte's reactive binding updates the attribute (and thus defaultValue).
+      const resetValue = hasStoredInitialValue
+        ? initialValue
+        : allowCustomValue
+          ? initialCustomValue || committedLabel
+          : '';
+      value = resetValue as T;
+      const matched = options.find((option) => option.value === resetValue);
+      const nextInputValue = matched?.label ?? (allowCustomValue ? resetValue : initialInputValue);
       inputValue = nextInputValue;
-      committedLabel = matched?.label ?? '';
+      committedLabel = matched?.label ?? (allowCustomValue ? resetValue : '');
       open = false;
       activeIndex = -1;
       if (inputElement) inputElement.value = nextInputValue;
-      if (hiddenInputElement) hiddenInputElement.value = initialValue;
+      if (hiddenInputElement) hiddenInputElement.value = resetValue;
     }, 0);
   }
 
@@ -241,7 +318,7 @@
 
   $effect(() => {
     inputElement?.setCustomValidity(
-      (resolvedRequired && !value) || inputValue !== committedLabel
+      (resolvedRequired && !value) || (!allowCustomValue && inputValue !== committedLabel)
         ? 'Please select an option.'
         : '',
     );
@@ -253,22 +330,29 @@
       open = true;
       if (filteredOptions.length === 0) return;
       activeIndex = (activeIndex + 1) % filteredOptions.length;
+      hasExplicitNavigation = true;
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       open = true;
       if (filteredOptions.length === 0) return;
       activeIndex = activeIndex <= 0 ? filteredOptions.length - 1 : activeIndex - 1;
+      hasExplicitNavigation = true;
     } else if (event.key === 'Home') {
       if (!open) return;
       event.preventDefault();
       activeIndex = filteredOptions.length > 0 ? 0 : -1;
+      hasExplicitNavigation = true;
     } else if (event.key === 'End') {
       if (!open) return;
       event.preventDefault();
       activeIndex = filteredOptions.length - 1;
+      hasExplicitNavigation = true;
     } else if (event.key === 'Enter' && open) {
       const option = filteredOptions[activeIndex];
-      if (option) {
+      if (allowCustomValue && !(hasExplicitNavigation && option)) {
+        event.preventDefault();
+        commitCustomValue();
+      } else if (option) {
         event.preventDefault();
         selectOption(option);
       }
@@ -310,8 +394,9 @@
       {placeholder}
       value={inputValue}
       aria-autocomplete="list"
-      aria-expanded={open}
-      aria-controls={listboxId}
+      aria-label={ariaLabel?.trim() || undefined}
+      aria-expanded={listboxVisible}
+      aria-controls={listboxVisible ? listboxId : undefined}
       aria-activedescendant={activeOptionId}
       aria-invalid={field.ariaInvalid}
       aria-required={resolvedRequired || undefined}
@@ -333,7 +418,7 @@
     />
   {/if}
 
-  {#if open && filteredOptions.length > 0}
+  {#if listboxVisible}
     <Popover
       bind:open
       id={listboxId}

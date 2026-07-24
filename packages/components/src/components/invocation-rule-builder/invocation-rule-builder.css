@@ -1,4 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../combobox/combobox.css';
 
 @layer cinder.components {
   .cinder-invocation-rule-builder {
@@ -131,6 +132,19 @@
       0.3rem 0.3rem,
       0.3rem 0.3rem;
     background-repeat: no-repeat;
+  }
+
+  .cinder-invocation-rule-builder__condition-combobox {
+    flex: 1 1 8rem;
+    min-inline-size: 6rem;
+  }
+
+  .cinder-invocation-rule-builder__condition-combobox .cinder-combobox__control {
+    min-block-size: var(--cinder-control-height-sm, 2rem);
+  }
+
+  .cinder-invocation-rule-builder__condition-combobox .cinder-combobox__input {
+    min-block-size: var(--cinder-control-height-sm, 2rem);
   }
 
   .cinder-invocation-rule-builder__condition-select:focus-visible {

@@ -87,6 +87,7 @@ Pass `mode="conditions"` to render conditions without actions — for example, a
 
 - Action controls are hidden entirely. Rules never render or emit action descriptors (`add-action`, `remove-action`, `update-action`), and any actions on incoming rules are stripped from emitted rules. In the TypeScript props, `operatorOptions`, `actionOptions`, and `addActionLabel` are typed `never` in conditions-only mode, so passing them is a compile-time error. (The schema-driven surface and the runtime are more lenient — they treat those props as optional and simply ignore them in conditions-only mode, which is why the generated props table below lists them as optional.)
 - The operator set is fixed to `eq` (equals), `gt` (greater than), `lt` (less than), `gte` (greater than or equal), and `lte` (less than or equal). Cinder supplies these five with default labels.
+- The field control is a free-text combobox. `fieldOptions` remain typeahead suggestions and provide type metadata, but a user can press Enter or leave the field after typing a key that is not in the list.
 - The value control for each condition is inferred from the matching `fieldOptions` entry's optional `type`: a numeric text input for `'number'`, a checkbox for `'boolean'`, a `<select>` populated from that option's `options` for `'enum'`, and a plain text input for `'string'` or an omitted `type`.
 
 ```svelte
@@ -176,4 +177,4 @@ In readonly mode all controls are replaced by visible text, so no interaction is
 
 Focus management on remove: when a condition or action row is removed, focus moves to the preceding row's remove button, or to the "Add condition" / "Add action" button if the removed row was the last one.
 
-The component uses semantic HTML: the root is a `section` with an `aria-label`, condition and action lists use `role="list"` with `aria-labelledby` pointing to the "Conditions" / "Actions" section heading, and each row uses `role="listitem"`.
+The component uses semantic HTML: the root is a `section` with an `aria-label`, condition and action lists use `role="list"` with `aria-labelledby` pointing to the "Conditions" / "Actions" section heading, and each row uses `role="listitem"`. In conditions-only modes, each field combobox keeps the per-condition accessible name (for example, "Field for condition 2 of Rule 1").

@@ -6,9 +6,9 @@
 
 ## Roles, names, states
 
-- The text input carries `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, `aria-controls` (pointing at the listbox), and `aria-activedescendant` (pointing at the visually-active option, if any).
+- The text input carries `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`, and `aria-activedescendant` (pointing at the visually-active option, if any). `aria-controls` is only present while the listbox is mounted, so it never references a popup element that is absent from the DOM.
 - The listbox carries `role="listbox"`. Each option is a `<li>` with `role="option"`, `aria-selected` reflecting whether it matches the current value, and `aria-disabled` when the option is non-selectable.
-- The visible label rendered by the `label` prop sits in a `<label for={id}>`. Consumers without a visible label should pass `aria-label` via consumer composition (defer until consumer demand).
+- The visible label rendered by the `label` prop sits in a `<label for={id}>`. Consumers without a visible label should pass the first-class `aria-label` prop.
 - `description` and `error` are wired via the shared `field-control.ts` contract: the input carries `aria-describedby` pointing at the rendered helper paragraph(s), and `aria-invalid="true"` when `error` is set.
 
 ## Keyboard
@@ -50,5 +50,5 @@ These are deliberate non-goals for the first version. Consumers who need them sh
 - **Single-select only.** No multi-select, no token chips.
 - **Synchronous local filtering only.** Pass `filter` for custom logic, but don't expect debounced fetches or async loading.
 - **No virtualization.** Visible option count is capped at `maxVisibleOptions` (default 200). Larger lists should be paginated or pre-filtered.
-- **No "create new" / free-text submission.** Typed text that doesn't match an option does not become a value.
+- **Custom values are opt-in.** With `allowCustomValue`, typed text can be committed with Enter or on blur; when the text exactly matches an existing option label or value, the component still commits that option's canonical value instead of treating it as arbitrary text.
 - **No custom option renderer.** Rich rows support `description` and `avatar` out of the box. Consumers needing a different layout should open a feature request; a snippet-based renderer is a candidate for a future iteration.

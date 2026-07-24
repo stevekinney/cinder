@@ -55,7 +55,11 @@ describe('chat conversation builders', () => {
 
   test('preserves immutable snapshots and dense message positions', () => {
     const initial = createConversationHistory({ id: 'conversation-immutability' });
-    expect(appendMessages(initial)).toEqual(initial);
+    const unchanged = appendMessages(initial);
+    expect(unchanged.id).toBe(initial.id);
+    expect(unchanged.ids).toEqual(initial.ids);
+    expect(unchanged.messages).toEqual(initial.messages);
+    expect(unchanged.metadata).toEqual(initial.metadata);
 
     const next = appendMessages(initial, { role: 'user', content: 'First' });
     const final = appendMessages(next, { role: 'assistant', content: 'Second' });

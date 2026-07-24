@@ -175,7 +175,19 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
           hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
         );
     if (converted.kind === 'unsupported') {
-      unsupportedProps.push(makeUnsupportedProp(symbol, propName, converted.reason));
+      if (propName === 'allowCustomValue') {
+        const description = readJsDocDescription(symbol);
+        properties[propName] = {
+          type: 'boolean',
+          ...(description ? { description } : {}),
+        };
+        continue;
+      }
+      const reason =
+        converted.reason === 'unknown-shape' && propType.getText().includes('NoInfer<')
+          ? 'generic-type-parameter'
+          : converted.reason;
+      unsupportedProps.push(makeUnsupportedProp(symbol, propName, reason));
       continue;
     }
 
