@@ -1526,6 +1526,7 @@
       // Same canLeaveBottom reasoning as the virtualized branch above.
       const canLeaveBottom = !!viewport && viewport.scrollHeight > viewport.clientHeight;
       if (canLeaveBottom) {
+        scrollState.setAtBottom(false);
         updateAtBottomBinding(false);
       }
       scrollState.scrollToTop(viewport);
