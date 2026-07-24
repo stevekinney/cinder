@@ -15,7 +15,7 @@
     "changeset": "changeset",
     "changeset:publish": "bun run --filter=@lostgradient/markdown publish:release && bun run --filter=@lostgradient/cinder publish:release && bun run --filter=@lostgradient/editor publish:release && bun run --filter=@lostgradient/chat publish:release",
     "changeset:publish:dry": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/editor validate:consumer && bun run --filter=@lostgradient/chat validate:consumer && bun run --filter=@lostgradient/markdown publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/editor publish:release -- --dry-run --skip-validation && bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation",
-    "changeset:version": "changeset version && bun run --filter=@lostgradient/cinder components:generate && bun run --filter=@lostgradient/editor components:generate && bun run --filter=@lostgradient/chat components:generate",
+    "changeset:version": "changeset version && bun run packages/components/scripts/reconcile-chat-cinder-peer.ts && bun run --filter=@lostgradient/cinder components:generate && bun run --filter=@lostgradient/editor components:generate && bun run --filter=@lostgradient/chat components:generate",
     "clean": "bun run --filter='*' clean",
     "dev": "bun run --filter='@cinder/playground' dev",
     "format": "prettier --write \"**/*.{ts,tsx,svelte,js,jsx,json,md,css}\"",

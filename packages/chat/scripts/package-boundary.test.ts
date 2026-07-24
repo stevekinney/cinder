@@ -50,7 +50,7 @@ describe('Chat package ownership boundary', () => {
     // and hit a hydration_mismatch, while Chat's README says Lucide is not
     // needed at all.
     expect(chatManifest.peerDependencies).toEqual({
-      '@lostgradient/cinder': '^0.18.0',
+      '@lostgradient/cinder': `^${cinderManifest.version}`,
       '@lostgradient/markdown': '^0.1.0',
       svelte: '>=5.56.0 <6',
     });
@@ -66,6 +66,15 @@ describe('Chat package ownership boundary', () => {
       'zod',
       'zod/*',
     ]);
+  });
+
+  test('keeps Chat’s Cinder peer range covering the current Cinder version', () => {
+    const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
+    expect(
+      typeof cinderPeerRange === 'string' &&
+        Bun.semver.satisfies(cinderManifest.version, cinderPeerRange),
+      'Cinder must satisfy Chat’s peer range. Run packages/components/scripts/reconcile-chat-cinder-peer.ts during versioning (issue #879).',
+    ).toBe(true);
   });
 
   test("documents Chat and Cinder's required peers in the install command", () => {
