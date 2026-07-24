@@ -26,6 +26,11 @@ describe('StatGroup', () => {
     expect(source).not.toContain("import Stat from '../stat/stat.svelte';");
   });
 
+  test('aggregates Stat styles in the parent CSS sidecar', async () => {
+    const css = await Bun.file(new URL('./stat-group.css', import.meta.url)).text();
+    expect(css).toContain("@import '../stat/stat.css';");
+  });
+
   test('renders .cinder-stat-group wrapping its children', () => {
     const { container } = render(StatGroup, {
       children: textSnippet('stat content'),
