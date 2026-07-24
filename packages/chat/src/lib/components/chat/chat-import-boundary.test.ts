@@ -17,6 +17,7 @@ const RUNTIME_IMPORT_ALLOWLIST = new Set([
   'builders.ts',
   'chat-import-boundary.test.ts',
   'index.ts',
+  'schema-version.ts',
 ]);
 
 type ModuleSpecifier = {
@@ -175,19 +176,46 @@ describe('chat import boundary', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('the public chat barrel is the only runtime boundary for streaming builders and isJSONValue', async () => {
+  it('keeps the schema version behind a local seam instead of importing the public barrel', async () => {
+    const chatSource = extractSvelteScripts(await Bun.file(`${CHAT_ROOT}/chat.svelte`).text());
+    const chatSpecifiers = collectModuleSpecifiers(`${CHAT_ROOT}/chat.svelte`, chatSource).map(
+      ({ specifier }) => specifier,
+    );
+    const indexSource = await Bun.file(`${CHAT_ROOT}/index.ts`).text();
+    const indexSpecifiers = collectModuleSpecifiers(`${CHAT_ROOT}/index.ts`, indexSource).map(
+      ({ specifier }) => specifier,
+    );
+
+    expect(chatSpecifiers).toContain('./schema-version.ts');
+    expect(chatSpecifiers).not.toContain('./index.ts');
+    expect(indexSpecifiers).toContain('./schema-version.ts');
+  });
+
+  it('the public chat barrel and schema seam own Conversationalist runtime imports', async () => {
     const source = await Bun.file(`${CHAT_ROOT}/index.ts`).text();
-    const specifiers = collectModuleSpecifiers(`${CHAT_ROOT}/index.ts`, source).filter(
+    const indexSpecifiers = collectModuleSpecifiers(`${CHAT_ROOT}/index.ts`, source).filter(
+      ({ specifier, typeOnly }) =>
+        !typeOnly &&
+        (specifier === CONVERSATIONALIST_PACKAGE ||
+          specifier.startsWith(`${CONVERSATIONALIST_PACKAGE}/`)),
+    );
+    const schemaSource = await Bun.file(`${CHAT_ROOT}/schema-version.ts`).text();
+    const schemaSpecifiers = collectModuleSpecifiers(
+      `${CHAT_ROOT}/schema-version.ts`,
+      schemaSource,
+    ).filter(
       ({ specifier, typeOnly }) =>
         !typeOnly &&
         (specifier === CONVERSATIONALIST_PACKAGE ||
           specifier.startsWith(`${CONVERSATIONALIST_PACKAGE}/`)),
     );
 
-    expect(specifiers).toEqual([
-      { specifier: `${CONVERSATIONALIST_PACKAGE}/versioning`, typeOnly: false },
+    expect(indexSpecifiers).toEqual([
       { specifier: `${CONVERSATIONALIST_PACKAGE}/streaming`, typeOnly: false },
       { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false },
+    ]);
+    expect(schemaSpecifiers).toEqual([
+      { specifier: `${CONVERSATIONALIST_PACKAGE}/versioning`, typeOnly: false },
     ]);
   });
 });
