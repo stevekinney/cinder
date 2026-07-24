@@ -48,6 +48,22 @@ function createShortViewport(): HTMLElement {
   return viewport;
 }
 
+function createIntersectionObserverEntry(
+  isIntersecting: boolean,
+  target: Element = document.createElement('div'),
+): IntersectionObserverEntry {
+  const bounds = target.getBoundingClientRect();
+  return {
+    time: 0,
+    target,
+    rootBounds: null,
+    boundingClientRect: bounds,
+    intersectionRect: isIntersecting ? bounds : new DOMRect(),
+    isIntersecting,
+    intersectionRatio: isIntersecting ? 1 : 0,
+  };
+}
+
 describe('useChatScrollState — withForcedLayout backstop', () => {
   test('sets data-cinder-force-visible for the duration of scrollToBottom', () => {
     const state = useChatScrollState();
@@ -318,12 +334,8 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
       },
     });
     const viewport = createViewport();
-    const visibleSentinelEntry = {
-      isIntersecting: true,
-    } as IntersectionObserverEntry;
-    const hiddenSentinelEntry = {
-      isIntersecting: false,
-    } as IntersectionObserverEntry;
+    const visibleSentinelEntry = createIntersectionObserverEntry(true);
+    const hiddenSentinelEntry = createIntersectionObserverEntry(false);
 
     state.scrollToTop(viewport);
     expect(state.atBottom).toBe(false);
@@ -356,9 +368,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
 
     state.setAtBottom(false);
     state.withUserScrollGuard(viewport, () => {});
-    state.handleSentinelEntry({
-      isIntersecting: true,
-    } as IntersectionObserverEntry);
+    state.handleSentinelEntry(createIntersectionObserverEntry(true));
 
     // Keep the animation active well beyond the original fixed 500ms guard.
     // Every real scroll tick must re-arm settlement instead of letting the
@@ -373,9 +383,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
 
     // The final observer state is hidden. It owns the transition only after
     // the viewport has actually stopped producing scroll events.
-    state.handleSentinelEntry({
-      isIntersecting: false,
-    } as IntersectionObserverEntry);
+    state.handleSentinelEntry(createIntersectionObserverEntry(false));
     jest.advanceTimersByTime(499);
     expect(state.isUserScrolling).toBe(true);
     expect(state.atBottom).toBe(false);
@@ -424,10 +432,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
 
     state.setAtBottom(false);
     state.withUserScrollGuard(viewport, () => {});
-    state.handleSentinelEntry({
-      isIntersecting: true,
-      target: sentinel,
-    } as IntersectionObserverEntry);
+    state.handleSentinelEntry(createIntersectionObserverEntry(true, sentinel));
 
     // The scroll finishes with the sentinel outside the viewport, but
     // scrollend wins the event-loop race against IntersectionObserver's final
@@ -439,10 +444,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     expect(state.atBottom).toBe(false);
     expect(reachedBottom).toBe(0);
 
-    state.handleSentinelEntry({
-      isIntersecting: false,
-      target: sentinel,
-    } as IntersectionObserverEntry);
+    state.handleSentinelEntry(createIntersectionObserverEntry(false, sentinel));
     expect(state.atBottom).toBe(false);
     expect(reachedBottom).toBe(0);
   });
@@ -459,9 +461,7 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
 
     state.setAtBottom(false);
     state.withUserScrollGuard(viewport, () => {});
-    state.handleSentinelEntry({
-      isIntersecting: true,
-    } as IntersectionObserverEntry);
+    state.handleSentinelEntry(createIntersectionObserverEntry(true));
 
     expect(state.atBottom).toBe(false);
     expect(reachedBottom).toBe(0);
