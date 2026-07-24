@@ -1773,6 +1773,21 @@ function isBrowserCrashError(error: unknown): boolean {
   return /has been closed|Target closed|browser has disconnected|crashed/i.test(message);
 }
 
+/**
+ * Marks a failure that happened during teardown (`context.close()` /
+ * `browser.close()`) AFTER every route assertion already passed. Its message
+ * often looks like a browser crash ("…has been closed"), so it is wrapped in a
+ * distinct type: the retry wrapper surfaces it immediately rather than
+ * re-running routes that already succeeded.
+ */
+class HydrationTeardownError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = 'HydrationTeardownError';
+    this.cause = cause;
+  }
+}
+
 async function runSvelteKitHydrationRoutesOnce(
   httpPort: number,
   label: string,
@@ -1817,7 +1832,7 @@ async function runSvelteKitHydrationRoutesOnce(
   // route assertion PASSED and teardown still failed, surface it: a browser
   // dying during close is a real problem, not noise to hide behind a green run.
   if (bodyFailed) throw bodyError;
-  if (closeErrors.length > 0) throw closeErrors[0];
+  if (closeErrors.length > 0) throw new HydrationTeardownError(closeErrors[0]);
 }
 
 async function assertSvelteKitClientRoutesHydrate(
@@ -1828,7 +1843,11 @@ async function assertSvelteKitClientRoutesHydrate(
   try {
     await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
   } catch (error) {
-    if (!isBrowserCrashError(error)) throw error;
+    // Only a crash DURING route assertions is retried. A teardown failure
+    // after passing assertions (HydrationTeardownError) is surfaced as-is —
+    // re-running routes that already succeeded would be wasted work — and any
+    // non-crash failure (a real hydration/content assertion) is rethrown too.
+    if (error instanceof HydrationTeardownError || !isBrowserCrashError(error)) throw error;
     process.stderr.write(
       `[validate-consumers] Chromium crashed during ${label} hydration ` +
         `(${routePaths.join(', ')}); relaunching once: ` +
