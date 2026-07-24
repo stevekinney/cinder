@@ -20,7 +20,7 @@ function lintJson(value: string, validated: boolean): JsonLint | undefined {
       const lines = value.split('\n');
       position =
         lines.slice(0, line - 1).reduce((offset, current) => offset + current.length + 1, 0) +
-        column;
+        Math.max(0, column - 1);
     }
     return { position };
   }

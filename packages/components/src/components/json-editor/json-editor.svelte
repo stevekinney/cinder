@@ -58,7 +58,7 @@
   });
 
   $effect(() => {
-    if (!highlight) {
+    if (!highlight || externalError) {
       highlightedHtml = null;
       lintPosition = null;
       return;

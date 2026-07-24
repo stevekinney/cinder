@@ -69,6 +69,18 @@ describe('JsonEditor', () => {
     expect(view.container.querySelector('.cinder-json-editor__input--nowrap')).not.toBeNull();
   });
 
+  test('does not add parse lint while an external error owns feedback', () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+      highlight: true,
+      error: 'Payload failed validation.',
+    });
+    expect(view.getByRole('alert').textContent).toBe('Payload failed validation.');
+    expect(view.container.querySelector('.cinder-json-lint')).toBeNull();
+  });
+
   test('keeps the native textarea visible until highlighted mode finishes loading', async () => {
     const view = render(JsonEditor, {
       id: 'payload',
