@@ -206,7 +206,7 @@
   // part re-derives to show the resolved state.
   let approvedToolCallIds = $state(new Set<string>());
   let deniedToolCallIds = $state(new Set<string>());
-  let pendingRetryMessageIds = $state(new Set<string>());
+  let pendingRetryMessageTokens = $state(new Map<string, symbol>());
 
   // Per-message disclosure state (reasoning blocks + tool-call cards). UI-only;
   // never written to the transcript. Both are collapsed by default; toggling
@@ -234,7 +234,7 @@
   $effect(() => {
     conversationId;
     approvedToolCallIds = new Set();
-    pendingRetryMessageIds = new Set();
+    pendingRetryMessageTokens = new Map();
     deniedToolCallIds = new Set();
     reasoningState.reset();
     toolCallState.reset();
@@ -1158,10 +1158,14 @@
   }
 
   function handleRetry(messageId: string): void {
-    if (pendingRetryMessageIds.has(messageId)) return;
-    pendingRetryMessageIds = new Set([...pendingRetryMessageIds, messageId]);
+    if (pendingRetryMessageTokens.has(messageId)) return;
+    const flightToken = Symbol(messageId);
+    pendingRetryMessageTokens = new Map(pendingRetryMessageTokens).set(messageId, flightToken);
     const clearPending = (): void => {
-      pendingRetryMessageIds = removeFromSet(pendingRetryMessageIds, messageId);
+      if (pendingRetryMessageTokens.get(messageId) !== flightToken) return;
+      const next = new Map(pendingRetryMessageTokens);
+      next.delete(messageId);
+      pendingRetryMessageTokens = next;
     };
     try {
       const run = dispatchCommand(
