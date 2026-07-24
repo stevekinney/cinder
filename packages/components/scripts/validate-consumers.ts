@@ -2561,7 +2561,9 @@ async function manifestSmoke(): Promise<void> {
   installHookProcessCleanup();
   ensureSupportedPlatform();
   await ensureNodeOnPath();
-  await runBuild();
+  await runHookCommand('bun', ['run', '--filter=@lostgradient/cinder', 'build'], {
+    cwd: workspaceRoot,
+  });
   await packWorkspaceDependencyTarballs();
   await packTarball();
   await runManifestConsumerFixture();

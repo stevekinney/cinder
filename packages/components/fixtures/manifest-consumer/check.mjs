@@ -265,6 +265,9 @@ const allowedNonComponentExportKeys = new Set([
   './diff',
 ]);
 
+// This non-manifest runtime entry is still part of the packed resolver contract.
+assertRuntimeResolvable('@lostgradient/cinder/json-editor/enhancement');
+
 /** Convert a `@lostgradient/cinder/...` or `@lostgradient/cinder` specifier to its `./...` export key. */
 function specifierToExportKey(specifier) {
   if (specifier === '@lostgradient/cinder') return '.';
