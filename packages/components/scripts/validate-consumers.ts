@@ -1018,6 +1018,14 @@ function injectTarballIntoFixture(
     dependencies['@lostgradient/chat'] = `file:${chatTarballFilePath}`;
     for (const [dependencyName, version] of Object.entries(chatPeerDependencies ?? {})) {
       if (dependencyName === '@lostgradient/cinder' || dependencyName === 'svelte') continue;
+      // A workspace dependency package (e.g. @lostgradient/markdown) is already
+      // pinned to its locally packed `file:` tarball above. Do not overwrite it
+      // with the peer *range* — chat's `^0.1.0` peer would send `bun install` to
+      // the registry for a version that may not exist yet (same-train release),
+      // and leaving the direct dependency as the local tarball keeps resolution
+      // local without relying on the `overrides` entry to win.
+      const existing = dependencies[dependencyName];
+      if (typeof existing === 'string' && existing.startsWith('file:')) continue;
       dependencies[dependencyName] = version;
     }
   }
