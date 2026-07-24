@@ -39,6 +39,7 @@ export function shikiHighlighter(
           return createShikiModule(
             options.languageLoaders ?? bundledLanguages,
             options.themeLoaders ?? bundledThemes,
+            options.languageLoaders !== undefined,
           );
         });
   return createShikiHighlighter(options, loadModule);

@@ -199,6 +199,24 @@ describe('shikiHighlighter — fallback contract', () => {
     }
   });
 
+  test('retries alias discovery after a transient grammar-loader failure', async () => {
+    let attempts = 0;
+    const languageLoader = async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error('transient grammar failure');
+      return import('@shikijs/langs/typescript');
+    };
+    const highlight = shikiHighlighter({
+      languageLoaders: { typescript: languageLoader },
+      themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+      theme: 'github-light',
+    });
+
+    expect(await highlight('const answer = 42;', 'ts')).toContain('shiki-plaintext');
+    expect(await highlight('const answer = 42;', 'ts')).toMatch(/<span[^>]*style=/);
+    expect(attempts).toBeGreaterThanOrEqual(2);
+  });
+
   test('empty lang returns escaped-plaintext fallback', async () => {
     const highlight = shikiHighlighter();
     const html = await highlight('const x = 1;', '');

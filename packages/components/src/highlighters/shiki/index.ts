@@ -363,6 +363,7 @@ export function shikiHighlighter(
       shiki.resolveLanguageAliases &&
       !resolvedLanguageAliases.has(normalizedLang)
     ) {
+      let loaderFailed = false;
       for (const [candidate, loader] of Object.entries(shiki.bundledLanguages)) {
         try {
           const module = await loader();
@@ -374,11 +375,14 @@ export function shikiHighlighter(
             break;
           }
         } catch {
+          loaderFailed = true;
           // A broken optional grammar should not prevent other candidates
           // from resolving this alias or force the whole highlight to fail.
         }
       }
-      resolvedLanguageAliases.set(normalizedLang, languageKey);
+      if (!loaderFailed || languageKey !== undefined) {
+        resolvedLanguageAliases.set(normalizedLang, languageKey);
+      }
     }
     if (languageKey === undefined || !Object.hasOwn(shiki.bundledLanguages, languageKey)) {
       if (!warnedLanguages.has(normalizedLang)) {
