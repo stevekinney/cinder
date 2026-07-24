@@ -31,6 +31,7 @@ import type {
   ComponentMetadata,
 } from './generate-component-metadata.ts';
 import { extractAllComponentMetadata } from './generate-component-metadata.ts';
+import { discoverComponentEnhancements } from './lib/component-enhancements.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
 
 // ---------------------------------------------------------------------------
@@ -166,22 +167,6 @@ function hasConstraintsArtifact(id: string, isExperimental: boolean): boolean {
 }
 
 /**
- * Check whether the component has a separately published runtime enhancement.
- * The source probe follows the same stable/experimental directory policy as
- * the schema, variables, examples, and constraints artifact probes.
- */
-export function hasEnhancementArtifact(
-  id: string,
-  isExperimental: boolean,
-  componentsRoot: string = COMPONENTS_ROOT,
-): boolean {
-  const componentDir = isExperimental
-    ? join(componentsRoot, 'experimental', id)
-    : join(componentsRoot, id);
-  return existsSync(join(componentDir, `${id}-enhancement.ts`));
-}
-
-/**
  * Derive the artifact subpath prefix. Per the plan, artifact subpaths do NOT
  * include the `experimental/` prefix — they use the same flat `@lostgradient/cinder/{id}/…`
  * pattern regardless of whether the component is experimental.
@@ -303,7 +288,12 @@ export async function buildManifest(): Promise<Manifest> {
       if (hasConstraintsFlag) {
         artifacts.constraints = artifactSubpath(meta.id, meta.isExperimental, 'constraints');
       }
-      if (!meta.isExperimental && hasEnhancementArtifact(meta.id, meta.isExperimental)) {
+      const hasEnhancement =
+        discoverComponentEnhancements(
+          [{ name: meta.id, isExperimental: meta.isExperimental }],
+          COMPONENTS_ROOT,
+        ).length > 0;
+      if (hasEnhancement) {
         artifacts.enhancement = artifactSubpath(meta.id, meta.isExperimental, 'enhancement');
       }
 
