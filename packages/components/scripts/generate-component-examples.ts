@@ -603,7 +603,7 @@ export async function generateAllExamples(): Promise<GenerateExamplesResult> {
   // can import their siblings via the same `@lostgradient/cinder/<subpath>` contract.
   // Static non-component sub-paths (the first-party Shiki adapter, etc.)
   // are listed alongside.
-  const validCinderSubpaths = new Set<string>(['highlighters/shiki']);
+  const validCinderSubpaths = new Set<string>(['highlighters/shiki', 'highlighters/shiki/curated']);
   for (const component of components) {
     if (component.isExperimental) {
       validCinderSubpaths.add(`experimental/${component.name}`);

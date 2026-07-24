@@ -12,10 +12,7 @@ afterEach(async () => {
 
 test('Vite curated Shiki fixture emits only configured language and theme candidates', async () => {
   const result =
-    await Bun.$`${resolve(fixtureDirectory, '../../../../node_modules/.bin/vite')} build ${fixtureDirectory} --config ${resolve(fixtureDirectory, 'vite.config.ts')} --outDir ${outputDirectory}`
-      .quiet()
-      .nothrow();
-  expect(result.exitCode).toBe(0);
+    await Bun.$`${resolve(fixtureDirectory, '../../../../node_modules/.bin/vite')} build ${fixtureDirectory} --config ${resolve(fixtureDirectory, 'vite.config.ts')} --outDir ${outputDirectory}`;
   const assets = await readdir(resolve(outputDirectory, 'assets'));
   const assetNames = assets.join('\n');
   expect(assetNames).toContain('typescript');

@@ -108,9 +108,9 @@ export type ShikiHighlighterOptions = {
    * first-render flash for those languages).
    */
   langs?: ReadonlyArray<string>;
-  /** Curated Shiki language loader map. When supplied, the default registry is not imported. */
+  /** Curated Shiki language loader map for the `/highlighters/shiki/curated` entrypoint. */
   languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>;
-  /** Curated Shiki theme loader map. When supplied, the default registry is not imported. */
+  /** Curated Shiki theme loader map for the `/highlighters/shiki/curated` entrypoint. */
   themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>;
 };
 
@@ -234,6 +234,7 @@ async function loadGuessedEmbeddedLanguages(
  */
 let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
 const sharedCuratedModules = new WeakMap<object, WeakMap<object, () => Promise<ShikiModule>>>();
+const EMPTY_LOADERS: Readonly<Record<string, never>> = {};
 
 async function createShikiModule(
   languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
@@ -261,8 +262,8 @@ function getSharedShikiModule(
   themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
 ): Promise<ShikiModule> {
   if (languageLoaders !== undefined || themeLoaders !== undefined) {
-    const languageKey = languageLoaders ?? {};
-    const themeKey = themeLoaders ?? {};
+    const languageKey = languageLoaders ?? EMPTY_LOADERS;
+    const themeKey = themeLoaders ?? EMPTY_LOADERS;
     let themes = sharedCuratedModules.get(languageKey);
     if (themes === undefined) {
       themes = new WeakMap();

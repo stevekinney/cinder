@@ -268,6 +268,7 @@ const staticSubpathEntrypoints = [
   `${sourceRoot}/components/icons/index.ts`,
   `${sourceRoot}/components/json-editor/json-editor-enhancement.ts`,
   `${sourceRoot}/highlighters/shiki/index.ts`,
+  `${sourceRoot}/highlighters/shiki/default.ts`,
   `${sourceRoot}/styles/base-guard.ts`,
 ];
 
@@ -645,6 +646,9 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/highlighters/shiki/index.js`,
   `${distributionDirectory}/highlighters/shiki/index.d.ts`,
   `${distributionDirectory}/server/highlighters/shiki/index.js`,
+  `${distributionDirectory}/highlighters/shiki/default.js`,
+  `${distributionDirectory}/highlighters/shiki/default.d.ts`,
+  `${distributionDirectory}/server/highlighters/shiki/default.js`,
   // Dev-only base-loaded guard — browser + server builds, plus types.
   `${distributionDirectory}/styles/base-guard.js`,
   `${distributionDirectory}/styles/base-guard.d.ts`,

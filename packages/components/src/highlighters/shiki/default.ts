@@ -2,9 +2,13 @@ import { bundledLanguages } from 'shiki/langs';
 import { bundledThemes } from 'shiki/themes';
 
 import {
+  createRetryingLoaderCache,
   shikiHighlighter as createShikiHighlighter,
   type ShikiHighlighterOptions,
 } from './index.ts';
+
+export { createRetryingLoaderCache };
+export type { ShikiHighlighterOptions };
 
 /** The bundled adapter with the complete Shiki language and theme registries. */
 export function shikiHighlighter(
