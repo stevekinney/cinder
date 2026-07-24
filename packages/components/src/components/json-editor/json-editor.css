@@ -43,6 +43,7 @@
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-md);
     padding: var(--cinder-space-2);
+    background: var(--cinder-surface);
     pointer-events: none;
     white-space: pre-wrap;
     overflow-wrap: anywhere;

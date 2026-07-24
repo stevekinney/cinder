@@ -19,6 +19,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { composeDescribedBy } from '../../_internal/field-control.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { JsonEditorProps } from './json-editor.types.ts';
@@ -69,6 +70,12 @@
         const result = enhanceJson(pendingValue, parseIsValid);
         highlightedHtml = result.html;
         lintPosition = result.lint?.position ?? null;
+        void tick().then(() => {
+          if (!cancelled && highlightNode && textareaNode) {
+            highlightNode.scrollTop = textareaNode.scrollTop;
+            highlightNode.scrollLeft = textareaNode.scrollLeft;
+          }
+        });
       })
       .catch(() => {
         if (!cancelled) {

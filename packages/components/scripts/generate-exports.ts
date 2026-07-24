@@ -196,14 +196,14 @@ function iconsExport(): ExportEntry {
 }
 
 function jsonEditorEnhancementExport(): ExportEntry {
-  return {
+  return orderedExportEntry({
     types: './dist/components/json-editor/json-editor-enhancement.d.ts',
     browser: './src/components/json-editor/json-editor-enhancement.ts',
-    svelte: './src/components/json-editor/json-editor-enhancement.ts',
     node: './dist/server/components/json-editor/json-editor-enhancement.js',
+    svelte: './src/components/json-editor/json-editor-enhancement.ts',
     import: './src/components/json-editor/json-editor-enhancement.ts',
     default: './dist/components/json-editor/json-editor-enhancement.js',
-  };
+  });
 }
 
 /**
