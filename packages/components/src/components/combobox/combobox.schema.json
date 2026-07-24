@@ -46,6 +46,9 @@
       "type": "number",
       "description": "Hard cap on visible filtered options. Default 200."
     },
+    "allowCustomValue": {
+      "type": "boolean"
+    },
     "aria-describedby": {
       "type": "string",
       "description": "External element id(s) to compose into `aria-describedby`. Composed\nafter the component-generated description and error ids, matching the\nfield-control contract in Select. Useful for tooltip ids, counter ids,\nor any external hint."
@@ -59,11 +62,6 @@
   "required": ["id"],
   "metadata": {
     "unsupportedProps": [
-      {
-        "name": "allowCustomValue",
-        "reason": "generic-type-parameter",
-        "description": "Allow committing typed text that is not present in `options`."
-      },
       {
         "name": "filter",
         "reason": "function-or-snippet",

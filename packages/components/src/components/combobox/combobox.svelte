@@ -101,12 +101,17 @@
   let committedLabel = $state('');
   let initialCustomValue = $state('');
   let hasUserCommittedValue = $state(false);
+  let hasExplicitNavigation = $state(false);
+  let hasStoredInitialValue = $state(false);
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  let initialValue = $state(untrack(() => value ?? ''));
+  let initialValue = $state(untrack(() => value));
   const initialInputValue = untrack(() => inputValue);
 
   $effect.pre(() => {
-    if (!hasUserCommittedValue && !initialValue && value) initialValue = value;
+    if (!hasUserCommittedValue && !hasStoredInitialValue && value) {
+      initialValue = value;
+      hasStoredInitialValue = true;
+    }
     if (allowCustomValue && !hasUserCommittedValue && value && !initialCustomValue) {
       initialCustomValue = value;
     }
@@ -210,6 +215,7 @@
     inputValue = target.value;
     open = true;
     activeIndex = filteredOptions.length > 0 ? 0 : -1;
+    hasExplicitNavigation = false;
   }
 
   function handleFocus() {
@@ -249,6 +255,16 @@
   function commitCustomValue(): void {
     const nextValue = inputValue.trim();
     if (!allowCustomValue || !nextValue) return;
+    if (
+      options.some(
+        (option) => option.disabled && (option.value === nextValue || option.label === nextValue),
+      )
+    ) {
+      inputValue = committedLabel;
+      if (inputElement) inputElement.value = committedLabel;
+      open = false;
+      return;
+    }
     hasUserCommittedValue = true;
     const matched = findCommittedOption(nextValue);
     const committedValue = matched?.value ?? nextValue;
@@ -267,15 +283,18 @@
     resetSyncTimeout = setTimeout(() => {
       resetSyncTimeout = undefined;
       if (event.defaultPrevented) return;
-      const resetValue =
-        initialValue ??
-        hiddenInputElement?.defaultValue ??
-        (allowCustomValue ? initialCustomValue || committedLabel : '');
+      // Use captured initialValue directly; don't fall back to defaultValue
+      // because Svelte's reactive binding updates the attribute (and thus defaultValue).
+      const resetValue = hasStoredInitialValue
+        ? initialValue
+        : allowCustomValue
+          ? initialCustomValue || committedLabel
+          : '';
       value = resetValue as T;
       const matched = options.find((option) => option.value === resetValue);
       const nextInputValue = matched?.label ?? (allowCustomValue ? resetValue : initialInputValue);
       inputValue = nextInputValue;
-      committedLabel = matched?.label ?? '';
+      committedLabel = matched?.label ?? (allowCustomValue ? resetValue : '');
       open = false;
       activeIndex = -1;
       if (inputElement) inputElement.value = nextInputValue;
@@ -311,27 +330,31 @@
       open = true;
       if (filteredOptions.length === 0) return;
       activeIndex = (activeIndex + 1) % filteredOptions.length;
+      hasExplicitNavigation = true;
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       open = true;
       if (filteredOptions.length === 0) return;
       activeIndex = activeIndex <= 0 ? filteredOptions.length - 1 : activeIndex - 1;
+      hasExplicitNavigation = true;
     } else if (event.key === 'Home') {
       if (!open) return;
       event.preventDefault();
       activeIndex = filteredOptions.length > 0 ? 0 : -1;
+      hasExplicitNavigation = true;
     } else if (event.key === 'End') {
       if (!open) return;
       event.preventDefault();
       activeIndex = filteredOptions.length - 1;
+      hasExplicitNavigation = true;
     } else if (event.key === 'Enter' && open) {
       const option = filteredOptions[activeIndex];
-      if (option) {
-        event.preventDefault();
-        selectOption(option);
-      } else if (allowCustomValue) {
+      if (allowCustomValue && !(hasExplicitNavigation && option)) {
         event.preventDefault();
         commitCustomValue();
+      } else if (option) {
+        event.preventDefault();
+        selectOption(option);
       }
     } else if (event.key === 'Escape') {
       // Fallback path. In a real browser the capture-phase escape-stack listener

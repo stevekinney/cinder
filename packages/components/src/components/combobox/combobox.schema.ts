@@ -49,6 +49,9 @@ const schema = {
       type: 'number',
       description: 'Hard cap on visible filtered options. Default 200.',
     },
+    allowCustomValue: {
+      type: 'boolean',
+    },
     'aria-describedby': {
       type: 'string',
       description:
@@ -63,11 +66,6 @@ const schema = {
   required: ['id'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'allowCustomValue',
-        reason: 'generic-type-parameter',
-        description: 'Allow committing typed text that is not present in `options`.',
-      },
       {
         name: 'filter',
         reason: 'function-or-snippet',

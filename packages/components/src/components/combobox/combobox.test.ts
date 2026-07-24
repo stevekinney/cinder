@@ -486,6 +486,21 @@ describe('Combobox structure', () => {
     expect(input.value).toBe('Banana');
   });
 
+  test('allowCustomValue does not commit disabled option values', async () => {
+    const changes: string[] = [];
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: [{ value: 'secret', label: 'Secret', disabled: true }, ...fruits],
+      allowCustomValue: true,
+      onchange: (nextValue: string) => changes.push(nextValue),
+    });
+    const input = container.querySelector<HTMLInputElement>('#fruit')!;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'Secret' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(changes).toEqual([]);
+  });
+
   test('disabled hidden input is omitted from native FormData', () => {
     const { container } = render(Combobox, {
       id: 'fruit',
