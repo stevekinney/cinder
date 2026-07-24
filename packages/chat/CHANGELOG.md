@@ -1,5 +1,16 @@
 # @lostgradient/chat
 
+## 0.4.0
+
+### Minor Changes
+
+- Widen the @lostgradient/cinder peer range to follow the Cinder release.
+
+### Patch Changes
+
+- Updated dependencies [[`cb98477`](https://github.com/stevekinney/cinder/commit/cb98477807816e19c7736e0ca875c8b1bddfe838)]:
+  - @lostgradient/cinder@0.19.0
+
 ## 0.3.0
 
 ### Minor Changes
