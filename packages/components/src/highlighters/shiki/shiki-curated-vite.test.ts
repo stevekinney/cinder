@@ -1,4 +1,4 @@
-import { readdir, rm } from 'node:fs/promises';
+import { readdir, rm, stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 import { afterEach, expect, test } from 'bun:test';
@@ -21,4 +21,14 @@ test('Vite curated Shiki fixture emits only configured language and theme candid
   expect(assetNames).not.toContain('javascript');
   expect(assetNames).not.toContain('github-dark');
   expect(assetNames).not.toContain('python');
+  const oversized = [];
+  for (const asset of assets) {
+    const size = (await stat(resolve(outputDirectory, 'assets', asset))).size;
+    if (size > 500 * 1024) oversized.push({ asset, size });
+  }
+  // Oniguruma's WASM payload is the only expected chunk above Vite's default
+  // warning threshold; keep it bounded so the fixture cannot hide regressions.
+  expect(oversized).toHaveLength(1);
+  expect(oversized[0]?.asset).toContain('wasm');
+  expect(oversized[0]?.size).toBeLessThan(700 * 1024);
 });
