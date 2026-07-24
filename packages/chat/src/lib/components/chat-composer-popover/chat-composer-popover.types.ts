@@ -62,7 +62,7 @@ export type ChatComposerPopoverProps<TItem extends ChatComposerPopoverItem> = {
   triggers?: readonly string[];
   /** Accessible listbox label. Default `'Composer suggestions'`. */
   label?: string;
-  /** Caret-relative placement. Default `'bottom-start'`. */
+  /** Caret-relative placement. Default `'top-start'`, which keeps the menu above a bottom composer. */
   placement?: PopoverPlacement;
   /** Distance in px between the caret and popover. Default `6`. */
   offset?: number;

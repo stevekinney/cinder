@@ -5,12 +5,14 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const computePositionSpy = mock(async () => ({
-  x: 12,
-  y: 34,
-  placement: 'bottom-start',
-  middlewareData: {},
-}));
+const computePositionSpy = mock(
+  async (_anchor: unknown, _panel: HTMLElement, options: { placement: string }) => ({
+    x: 12,
+    y: 34,
+    placement: options.placement,
+    middlewareData: {},
+  }),
+);
 const autoUpdateTeardown = mock(() => {});
 const autoUpdateSpy = mock((_anchor: unknown, _panel: HTMLElement, update: () => void) => {
   update();
@@ -77,6 +79,11 @@ describe('ChatComposerPopover', () => {
 
     await waitFor(() => expect(queryListbox()).not.toBeNull());
     const listbox = queryListbox()!;
+
+    await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
+    expect(computePositionSpy.mock.calls.at(-1)?.[2]).toMatchObject({
+      placement: 'top-start',
+    });
 
     expect(composer.getAttribute('role')).toBe('combobox');
     expect(composer.getAttribute('aria-autocomplete')).toBe('list');

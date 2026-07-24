@@ -55,7 +55,7 @@
     items,
     triggers = ['/', '@'],
     label = 'Composer suggestions',
-    placement = 'bottom-start',
+    placement = 'top-start',
     offset = 6,
     composer,
     item,
