@@ -1,4 +1,4 @@
-import Stat from '../stat/index.ts';
+import Stat from '../stat/stat.svelte';
 import './stat-group.css';
 import StatGroupRoot from './stat-group.svelte';
 

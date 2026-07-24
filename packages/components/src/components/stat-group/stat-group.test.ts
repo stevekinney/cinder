@@ -20,10 +20,10 @@ function textSnippet(text: string) {
 }
 
 describe('StatGroup', () => {
-  test('loads the Stat entrypoint so compound Stat styles are registered', async () => {
+  test('imports the Stat leaf source for compound namespace composition', async () => {
     const source = await readFile(new URL('./index.ts', import.meta.url), 'utf8');
-    expect(source).toContain("import Stat from '../stat/index.ts';");
-    expect(source).not.toContain("import Stat from '../stat/stat.svelte';");
+    expect(source).toContain("import Stat from '../stat/stat.svelte';");
+    expect(source).not.toContain("import Stat from '../stat/index.ts';");
   });
 
   test('aggregates Stat styles in the parent CSS sidecar', async () => {
