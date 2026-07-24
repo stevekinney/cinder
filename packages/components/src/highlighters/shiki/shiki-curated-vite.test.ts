@@ -5,13 +5,15 @@ import { afterEach, expect, test } from 'bun:test';
 
 const fixtureDirectory = resolve(import.meta.dir, '../../../fixtures/shiki-curated-vite');
 const outputDirectory = resolve(fixtureDirectory, '.dist');
+const viteExecutable =
+  Bun.which('vite') ?? resolve(fixtureDirectory, '../../../../node_modules/.bin/vite');
 
 afterEach(async () => {
   await rm(outputDirectory, { recursive: true, force: true });
 });
 
 test('Vite curated Shiki fixture emits only configured language and theme candidates', async () => {
-  await Bun.$`${resolve(fixtureDirectory, '../../../../node_modules/.bin/vite')} build ${fixtureDirectory} --config ${resolve(fixtureDirectory, 'vite.config.ts')} --outDir ${outputDirectory}`;
+  await Bun.$`${viteExecutable} build ${fixtureDirectory} --config ${resolve(fixtureDirectory, 'vite.config.ts')} --outDir ${outputDirectory}`;
   const assets = await readdir(resolve(outputDirectory, 'assets'));
   const assetNames = assets.join('\n');
   expect(assetNames).toContain('typescript');
