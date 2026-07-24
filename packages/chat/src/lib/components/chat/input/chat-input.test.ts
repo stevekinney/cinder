@@ -69,6 +69,14 @@ describe('ChatInput', () => {
     expect(composer?.readOnly).toBe(true);
   });
 
+  test('hides the programmatic file picker from the accessibility tree', () => {
+    const { container } = render(ChatInput, { id: 'attachment-a11y' });
+    const picker = container.querySelector<HTMLInputElement>('input[type="file"]');
+    expect(picker?.getAttribute('aria-hidden')).toBe('true');
+    expect(picker?.tabIndex).toBe(-1);
+    expect(container.querySelector('button[aria-label="Attach file"]')).not.toBeNull();
+  });
+
   describe('getValue()', () => {
     test('returns the current composer text after the user types', async () => {
       const target = document.createElement('div');

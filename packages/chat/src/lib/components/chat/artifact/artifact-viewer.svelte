@@ -12,8 +12,10 @@
 
 <script lang="ts">
   import type { ArtifactViewerProps } from './artifact-viewer.types.ts';
+  import CodeBlock from '@lostgradient/cinder/code-block';
 
-  let { type, content, language, title, mermaidRenderer }: ArtifactViewerProps = $props();
+  let { type, content, language, title, mermaidRenderer, codeRenderer }: ArtifactViewerProps =
+    $props();
 
   const svgDocument = $derived(type === 'svg' ? wrapSvgInHtml(content) : '');
 </script>
@@ -36,14 +38,23 @@
   ></iframe>
 {:else if type === 'code'}
   <div class="artifact-viewer artifact-viewer-code">
-    <pre class="artifact-code-block" data-language={language}><code>{content}</code></pre>
+    {#if codeRenderer}
+      {@render codeRenderer(content, 'code', language)}
+    {:else}
+      <CodeBlock
+        code={content}
+        {...language === undefined ? {} : { language }}
+        showLanguageLabel={false}
+        class="artifact-code-block"
+      />
+    {/if}
   </div>
 {:else if type === 'mermaid'}
   <div class="artifact-viewer artifact-viewer-mermaid">
     {#if mermaidRenderer}
       {@render mermaidRenderer(content, 'mermaid')}
     {:else}
-      <pre class="artifact-code-block" data-language="mermaid"><code>{content}</code></pre>
+      <pre class="artifact-source-block" data-language="mermaid"><code>{content}</code></pre>
       <p class="artifact-mermaid-note" aria-live="polite">
         No Mermaid renderer was provided. Showing diagram source.
       </p>
@@ -77,7 +88,7 @@
     padding: var(--cinder-space-4);
   }
 
-  .artifact-code-block {
+  .artifact-source-block {
     margin: 0;
     padding: var(--cinder-space-4);
     background: var(--cinder-surface-raised);
@@ -89,13 +100,23 @@
     line-height: var(--leading-relaxed);
     color: var(--cinder-text);
     white-space: pre;
+    tab-size: 2;
   }
 
-  .artifact-code-block code {
+  .artifact-code-block {
+    tab-size: 2;
+  }
+
+  .artifact-source-block code {
     font-family: inherit;
     font-size: inherit;
     background: none;
     padding: 0;
+  }
+
+  .artifact-code-block :global(.cinder-code-block__pre),
+  .artifact-code-block :global(.shiki) {
+    tab-size: 2;
   }
 
   .artifact-mermaid-note {

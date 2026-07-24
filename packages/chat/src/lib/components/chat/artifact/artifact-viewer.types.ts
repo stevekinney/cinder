@@ -12,6 +12,7 @@ export type ChatArtifact = {
 
 /** Consumer-owned Mermaid rendering snippet. */
 export type MermaidRenderer = Snippet<[content: string, type: 'mermaid']>;
+export type CodeRenderer = Snippet<[content: string, type: 'code', language: string | undefined]>;
 
 export type ArtifactViewerProps = {
   type: ArtifactContentType;
@@ -23,4 +24,6 @@ export type ArtifactViewerProps = {
    * for `type="mermaid"`; otherwise ArtifactViewer uses its built-in renderer.
    */
   mermaidRenderer?: MermaidRenderer;
+  /** Renders code artifacts with a consumer-owned highlighter or viewer. */
+  codeRenderer?: CodeRenderer;
 };
