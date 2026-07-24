@@ -12,8 +12,10 @@
 
 <script lang="ts">
   import type { ArtifactViewerProps } from './artifact-viewer.types.ts';
+  import CodeBlock from '@lostgradient/cinder/code-block';
 
-  let { type, content, language, title, mermaidRenderer }: ArtifactViewerProps = $props();
+  let { type, content, language, title, mermaidRenderer, codeRenderer }: ArtifactViewerProps =
+    $props();
 
   const svgDocument = $derived(type === 'svg' ? wrapSvgInHtml(content) : '');
 </script>
@@ -36,7 +38,16 @@
   ></iframe>
 {:else if type === 'code'}
   <div class="artifact-viewer artifact-viewer-code">
-    <pre class="artifact-code-block" data-language={language}><code>{content}</code></pre>
+    {#if codeRenderer}
+      {@render codeRenderer(content, 'code', language)}
+    {:else}
+      <CodeBlock
+        code={content}
+        {...language === undefined ? {} : { language }}
+        showLanguageLabel={false}
+        class="artifact-code-block"
+      />
+    {/if}
   </div>
 {:else if type === 'mermaid'}
   <div class="artifact-viewer artifact-viewer-mermaid">
@@ -89,6 +100,12 @@
     line-height: var(--leading-relaxed);
     color: var(--cinder-text);
     white-space: pre;
+    tab-size: 2;
+  }
+
+  .artifact-code-block :global(.cinder-code-block__pre),
+  .artifact-code-block :global(.shiki) {
+    tab-size: 2;
   }
 
   .artifact-code-block code {

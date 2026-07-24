@@ -3,7 +3,7 @@ import { fireEvent, render } from '@testing-library/svelte';
 import { describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import type { ArtifactViewerProps, MermaidRenderer } from '../index.ts';
+import type { ArtifactViewerProps, CodeRenderer, MermaidRenderer } from '../index.ts';
 import ArtifactPanelFixture from './artifact-panel-fixture.svelte';
 import ArtifactViewer from './artifact-viewer.svelte';
 import ChatArtifactLayoutFixture from './chat-artifact-layout-fixture.svelte';
@@ -29,7 +29,7 @@ describe('Chat artifact components', () => {
     expect(container.querySelector('iframe')?.getAttribute('srcdoc')).toContain('<svg></svg>');
 
     await rerender({ type: 'code', content: 'const value = 1;', language: 'typescript' });
-    expect(container.querySelector('pre')?.dataset['language']).toBe('typescript');
+    expect(container.querySelector('.cinder-code-block')).not.toBeNull();
     expect(container.querySelector('code')?.textContent).toBe('const value = 1;');
     expect(rendererInvocation).not.toHaveBeenCalled();
   });
@@ -65,6 +65,32 @@ describe('Chat artifact components', () => {
     expect(renderedDiagram?.textContent).toBe('graph TD; Start-->Finish;');
     expect(container.querySelector('.artifact-mermaid-note')).toBeNull();
     expect(container.querySelector('pre')).toBeNull();
+  });
+
+  test('renders code through the built-in CodeBlock and supports a custom renderer', () => {
+    const rendererInvocation = mock(
+      (getContent: () => string, getType: () => 'code', getLanguage: () => string | undefined) => ({
+        render: () =>
+          `<output data-testid="code-renderer" data-type="${getType()}" data-language="${getLanguage()}">${getContent()}</output>`,
+      }),
+    );
+    const codeRenderer: CodeRenderer = createRawSnippet(rendererInvocation);
+    const { container, rerender } = render(ArtifactViewer, {
+      props: { type: 'code', content: 'const value = 1;', language: 'typescript' },
+    });
+    expect(container.querySelector('.artifact-code-block')).not.toBeNull();
+    expect(container.querySelector('.artifact-code-block')?.querySelector('pre')).not.toBeNull();
+
+    void rerender({
+      type: 'code',
+      content: 'const value = 1;',
+      language: 'typescript',
+      codeRenderer,
+    });
+    expect(rendererInvocation).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[data-testid="code-renderer"]')?.textContent).toBe(
+      'const value = 1;',
+    );
   });
 
   test('renders panel content, focuses close, and dispatches close', async () => {

@@ -176,5 +176,6 @@ export type {
   ArtifactContentType,
   ArtifactViewerProps,
   ChatArtifact,
+  CodeRenderer,
   MermaidRenderer,
 } from './artifact/index.ts';

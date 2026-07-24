@@ -610,6 +610,7 @@
           class="sr-only"
           onchange={handleFileSelect}
           aria-label="Attach files"
+          aria-hidden="true"
           tabindex={-1}
         />
         <Button

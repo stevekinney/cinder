@@ -77,7 +77,17 @@ Use `messageActions` to open application-owned panel state, then render the sele
 
 ## Rendering Mermaid artifacts
 
-`ArtifactViewer` renders HTML and SVG in sandboxed iframes and renders code as escaped source. Mermaid stays consumer-owned so applications can choose their Mermaid version, configuration, and security policy. Without a renderer, Mermaid artifacts show their source and an explicit fallback note.
+`ArtifactViewer` renders HTML and SVG in sandboxed iframes. Code artifacts use Cinder's `CodeBlock` with the artifact language for lazy syntax highlighting; pass `codeRenderer` when an application needs a custom code viewer. Mermaid stays consumer-owned so applications can choose their Mermaid version, configuration, and security policy. Without a renderer, Mermaid artifacts show their source and an explicit fallback note.
+
+The `codeRenderer` snippet receives `(content, 'code', language)` and is invoked only for code artifacts:
+
+```svelte
+{#snippet codeRenderer(source, _type, language)}
+  <MyCodeViewer {source} {language} />
+{/snippet}
+
+<ArtifactViewer type="code" content={source} language="svelte" {codeRenderer} />
+```
 
 Pass a `mermaidRenderer` snippet to delegate only the Mermaid branch to an application component:
 
@@ -96,4 +106,4 @@ Pass a `mermaidRenderer` snippet to delegate only the Mermaid branch to an appli
 <ArtifactViewer type="mermaid" {content} {mermaidRenderer} />
 ```
 
-The snippet has type `Snippet<[content: string, type: 'mermaid']>`. `ArtifactViewer` invokes it only when `type` is `mermaid`; HTML, SVG, and code continue through the built-in renderers. The application-owned component is responsible for loading Mermaid, handling asynchronous rendering and errors, and applying its required content-safety policy.
+The Mermaid snippet has type `Snippet<[content: string, type: 'mermaid']>`. `ArtifactViewer` invokes it only when `type` is `mermaid`; HTML, SVG, and code continue through their built-in renderers unless a code snippet is supplied. The application-owned component is responsible for loading Mermaid, handling asynchronous rendering and errors, and applying its required content-safety policy.
