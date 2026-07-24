@@ -51,6 +51,7 @@ const schema = {
     },
     allowCustomValue: {
       type: 'boolean',
+      description: 'Allow committing typed text that is not present in `options`.',
     },
     'aria-describedby': {
       type: 'string',

@@ -176,7 +176,10 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
         );
     if (converted.kind === 'unsupported') {
       if (propName === 'allowCustomValue') {
-        properties[propName] = { type: 'boolean' };
+        properties[propName] = {
+          type: 'boolean',
+          description: readJsDocDescription(symbol),
+        };
         continue;
       }
       const reason =
