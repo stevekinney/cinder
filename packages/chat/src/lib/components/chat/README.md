@@ -333,6 +333,22 @@ optional resolved `toolCallPair` and `artifact` values:
 </ChatArtifactLayout>
 ```
 
+`messageActions` is rendered in the same action row as Chat's built-in copy
+and edit controls. For native buttons, add the shared
+`chat-message-action-button` class to opt into the action-row sizing, focus,
+hover, and touch styles:
+
+```svelte
+{#snippet messageActions()}
+  <button type="button" class="chat-message-action-button" onclick={openPanel}> Open panel </button>
+{/snippet}
+```
+
+The class is intentionally opt-in so consumers can use their own button
+component or visual treatment without Chat overriding it. Cinder `Button`
+instances already provide their own complete styling and do not need this
+class.
+
 A paired `tool-result` message does not render a second visible row and does not
 invoke the snippets separately. Chat folds that result into the corresponding
 tool-call row's `toolCallPair` and resolves `cinder:artifact` metadata from the
