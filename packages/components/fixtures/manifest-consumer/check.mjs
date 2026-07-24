@@ -256,6 +256,7 @@ const allowedNonComponentExportKeys = new Set([
   './icons',
   './highlighters/shiki',
   './highlighters/shiki/curated',
+  './json-editor/enhancement',
   // Upstream re-export root barrels. These (and their `/subpath` children,
   // skipped below) are not component exports; node-consumer validates them.
   './markdown',
@@ -263,6 +264,9 @@ const allowedNonComponentExportKeys = new Set([
   './commentary',
   './diff',
 ]);
+
+// This non-manifest runtime entry is still part of the packed resolver contract.
+assertRuntimeResolvable('@lostgradient/cinder/json-editor/enhancement');
 
 /** Convert a `@lostgradient/cinder/...` or `@lostgradient/cinder` specifier to its `./...` export key. */
 function specifierToExportKey(specifier) {
