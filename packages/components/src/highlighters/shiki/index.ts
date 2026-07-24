@@ -233,6 +233,7 @@ async function loadGuessedEmbeddedLanguages(
  * entirely (see `shikiHighlighter`'s second parameter).
  */
 let sharedShikiModule: (() => Promise<ShikiModule>) | undefined;
+const sharedCuratedModules = new WeakMap<object, WeakMap<object, () => Promise<ShikiModule>>>();
 
 async function createShikiModule(
   languageLoaders?: Readonly<Record<string, DynamicImportLanguageRegistration>>,
@@ -260,7 +261,19 @@ function getSharedShikiModule(
   themeLoaders?: Readonly<Record<string, DynamicImportThemeRegistration>>,
 ): Promise<ShikiModule> {
   if (languageLoaders !== undefined || themeLoaders !== undefined) {
-    return createShikiModule(languageLoaders, themeLoaders);
+    const languageKey = languageLoaders ?? {};
+    const themeKey = themeLoaders ?? {};
+    let themes = sharedCuratedModules.get(languageKey);
+    if (themes === undefined) {
+      themes = new WeakMap();
+      sharedCuratedModules.set(languageKey, themes);
+    }
+    let loader = themes.get(themeKey);
+    if (loader === undefined) {
+      loader = createRetryingLoaderCache(() => createShikiModule(languageLoaders, themeLoaders));
+      themes.set(themeKey, loader);
+    }
+    return loader();
   }
   sharedShikiModule ??= createRetryingLoaderCache(() => createShikiModule());
   return sharedShikiModule();
