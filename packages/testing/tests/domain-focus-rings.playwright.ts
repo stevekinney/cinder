@@ -8,6 +8,7 @@
  */
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
+import { boxShadowLayerCount, waitForFocusStyleFrame } from '../src/helpers/focus-ring.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 import { THEME_STORAGE_KEY } from '../src/helpers/theme.ts';
 
@@ -89,17 +90,16 @@ async function tabUntilFocused(
   );
 }
 
-function boxShadowLayerCount(boxShadow: string): number {
-  return boxShadow.split(/,(?![^(]*\))/).length;
-}
-
 async function focusPaint(target: Locator): Promise<{
   boxShadow: string;
+  forcedColorsActive: boolean;
   matchesFocusVisible: boolean;
+  outlineColor: string;
   outlineColorAlpha: number;
   outlineStyle: string;
   outlineWidth: string;
 }> {
+  await waitForFocusStyleFrame(target);
   return target.evaluate((element) => {
     function colorAlpha(color: string): number {
       const canvas = document.createElement('canvas');
@@ -116,7 +116,9 @@ async function focusPaint(target: Locator): Promise<{
     const styles = getComputedStyle(element as HTMLElement);
     return {
       boxShadow: styles.boxShadow,
+      forcedColorsActive: window.matchMedia('(forced-colors: active)').matches,
       matchesFocusVisible: element.matches(':focus-visible'),
+      outlineColor: styles.outlineColor,
       outlineColorAlpha: colorAlpha(styles.outlineColor),
       outlineStyle: styles.outlineStyle,
       outlineWidth: styles.outlineWidth,
@@ -130,7 +132,10 @@ async function assertSharedOuterRing(target: Locator, label: string): Promise<vo
   expect(paint.matchesFocusVisible, `${label} should match :focus-visible`).toBe(true);
   expect(paint.outlineStyle, `${label} should reserve an outline channel`).toBe('solid');
   expect(parseFloat(paint.outlineWidth), `${label} outline width`).toBeGreaterThan(0);
-  expect(paint.outlineColorAlpha, `${label} outline should be transparent`).toBe(0);
+  expect(
+    paint.outlineColorAlpha,
+    `${label} outline should be transparent (${paint.outlineColor}, forced colors: ${paint.forcedColorsActive})`,
+  ).toBe(0);
   expect(paint.boxShadow, `${label} should paint a focus shadow`).not.toBe('none');
   expect(
     boxShadowLayerCount(paint.boxShadow),
@@ -145,7 +150,10 @@ async function assertInsetRing(target: Locator, label: string): Promise<void> {
   expect(paint.matchesFocusVisible, `${label} should match :focus-visible`).toBe(true);
   expect(paint.outlineStyle, `${label} should reserve an outline channel`).toBe('solid');
   expect(parseFloat(paint.outlineWidth), `${label} outline width`).toBeGreaterThan(0);
-  expect(paint.outlineColorAlpha, `${label} outline should be transparent`).toBe(0);
+  expect(
+    paint.outlineColorAlpha,
+    `${label} outline should be transparent (${paint.outlineColor}, forced colors: ${paint.forcedColorsActive})`,
+  ).toBe(0);
   expect(paint.boxShadow, `${label} should paint an inset focus shadow`).toContain('inset');
 }
 

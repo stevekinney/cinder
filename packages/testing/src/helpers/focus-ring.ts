@@ -15,6 +15,19 @@
 import type { Locator, Page } from '@playwright/test';
 
 /**
+ * Wait for the render frame after keyboard focus changes before sampling paint.
+ *
+ * Chromium updates `document.activeElement` and `:focus-visible` synchronously,
+ * but can expose the previous cascade's computed outline until the next render
+ * frame. This is one render-boundary synchronization, not polling or a retry.
+ */
+export async function waitForFocusStyleFrame(target: Locator): Promise<void> {
+  await target.evaluate(
+    () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
+}
+
+/**
  * Walk Tab from `document.body` until `target` is the active element, capped at
  * `maxPresses`. Returns true when focus landed on the target. Blurs first so the
  * walk is deterministic regardless of any prior autofocus.
