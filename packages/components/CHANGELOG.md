@@ -1,5 +1,17 @@
 # @lostgradient/cinder
 
+## 0.18.0
+
+### Minor Changes
+
+- [#872](https://github.com/stevekinney/cinder/pull/872) [`e12e2e9`](https://github.com/stevekinney/cinder/commit/e12e2e97c200f4bcb8586bdc6dc2dd95a1e74dfe) Thanks [@stevekinney](https://github.com/stevekinney)! - Allow conditions-only `InvocationRuleBuilder` fields to accept arbitrary keys through a free-text combobox while retaining `fieldOptions` as suggestions and type metadata.
+
+- [#874](https://github.com/stevekinney/cinder/pull/874) [`4bb7c93`](https://github.com/stevekinney/cinder/commit/4bb7c93ea3ad4741a515026f21197513ac4889a2) Thanks [@stevekinney](https://github.com/stevekinney)! - Add an opt-in lazy-highlighted mode to `JsonEditor` with inline JSON parse annotations while keeping the native textarea contract as the default.
+
+### Patch Changes
+
+- [#870](https://github.com/stevekinney/cinder/pull/870) [`92e7ab3`](https://github.com/stevekinney/cinder/commit/92e7ab3ff9d05176f08498c5f0948a4d6827d153) Thanks [@stevekinney](https://github.com/stevekinney)! - Expose StatusDot labels as accessible names when live connection indicators hide their visible label.
+
 ## 0.17.0
 
 ### Minor Changes
