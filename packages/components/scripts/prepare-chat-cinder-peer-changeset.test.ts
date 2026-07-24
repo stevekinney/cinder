@@ -20,6 +20,7 @@ afterEach(async () => {
 
 async function makeChangesetFixture(
   files: Record<string, string>,
+  chatVersion = '0.3.0',
 ): Promise<PrepareChatCinderPeerChangesetOptions> {
   const changesetDirectory = await mkdtemp(join(tmpdir(), 'prepare-chat-cinder-peer-'));
   temporaryRoots.push(changesetDirectory);
@@ -28,7 +29,12 @@ async function makeChangesetFixture(
       writeFile(join(changesetDirectory, filename), content),
     ),
   );
-  return { changesetDirectory };
+  const chatManifestPath = join(changesetDirectory, 'chat-package.json');
+  await writeFile(
+    chatManifestPath,
+    `${JSON.stringify({ name: '@lostgradient/chat', version: chatVersion }, null, 2)}\n`,
+  );
+  return { changesetDirectory, chatManifestPath };
 }
 
 function changeset(packageName: string, releaseType: string, summary = 'Fixture change.'): string {
@@ -46,7 +52,7 @@ describe('prepareChatCinderPeerChangeset', () => {
     expect(result.written).toBe(true);
     expect(
       await Bun.file(join(fixture.changesetDirectory, SYNTHETIC_CHANGESET_FILENAME)).text(),
-    ).toBe(SYNTHETIC_CHANGESET_CONTENT());
+    ).toBe(SYNTHETIC_CHANGESET_CONTENT('minor'));
   });
 
   test('does not write for a pending Cinder patch', async () => {
@@ -62,21 +68,51 @@ describe('prepareChatCinderPeerChangeset', () => {
     ).toBe(false);
   });
 
-  test('writes for a stable Cinder major', async () => {
+  test('keeps Chat pre-1.0 on a minor bump when Cinder moves to 1.x', async () => {
     const fixture = await makeChangesetFixture({
       'cinder-major.md': changeset('@lostgradient/cinder', 'major'),
     });
-    const result = await prepareChatCinderPeerChangeset({ ...fixture, cinderVersion: '1.2.0' });
+    const result = await prepareChatCinderPeerChangeset(fixture);
+    expect(result.written).toBe(true);
+    expect(
+      await Bun.file(join(fixture.changesetDirectory, SYNTHETIC_CHANGESET_FILENAME)).text(),
+    ).toBe(SYNTHETIC_CHANGESET_CONTENT('minor'));
+  });
+
+  test('uses a major bump for stable Chat peer-range narrowing', async () => {
+    const fixture = await makeChangesetFixture(
+      {
+        'cinder-minor.md': changeset('@lostgradient/cinder', 'minor'),
+      },
+      '1.0.0',
+    );
+
+    const result = await prepareChatCinderPeerChangeset(fixture);
+
     expect(result.written).toBe(true);
     expect(
       await Bun.file(join(fixture.changesetDirectory, SYNTHETIC_CHANGESET_FILENAME)).text(),
     ).toBe(SYNTHETIC_CHANGESET_CONTENT('major'));
   });
 
-  test('does not write when Chat already has a pending changeset', async () => {
+  test('writes a minor changeset when Chat only has a pending patch', async () => {
     const fixture = await makeChangesetFixture({
       'cinder-minor.md': changeset('@lostgradient/cinder', 'minor'),
       'chat-patch.md': changeset('@lostgradient/chat', 'patch'),
+    });
+
+    const result = await prepareChatCinderPeerChangeset(fixture);
+
+    expect(result.written).toBe(true);
+    expect(
+      await Bun.file(join(fixture.changesetDirectory, SYNTHETIC_CHANGESET_FILENAME)).text(),
+    ).toBe(SYNTHETIC_CHANGESET_CONTENT('minor'));
+  });
+
+  test('does not write when Chat already has a pending minor', async () => {
+    const fixture = await makeChangesetFixture({
+      'cinder-minor.md': changeset('@lostgradient/cinder', 'minor'),
+      'chat-minor.md': changeset('@lostgradient/chat', 'minor'),
     });
 
     const result = await prepareChatCinderPeerChangeset(fixture);
