@@ -21,16 +21,29 @@ different version your app requests, the two can still diverge; see the
 a general icon library for your application-specific icons. The Chat domain
 suite is published separately as `@lostgradient/chat`.
 
-Markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces use optional peer dependencies. Install them only when your app imports `@lostgradient/cinder/markdown`, `@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`, `@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`, `@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on `CodeBlock` automatic highlighting. (`MarkdownEditor`, `ReviewEditor`, and `DiffViewer` moved to `@lostgradient/editor` — see [`@lostgradient/editor`'s README](../editor/README.md) for its own peer install list.)
+As of this release, cinder no longer exposes any `./markdown/*`, `./editor/*`, or
+`./commentary/*` subpath — that surface moved to two published sibling packages during the
+[package-boundaries extraction](../../docs/decisions/package-boundaries.md). If your app imports
+one of the removed subpaths, install the package that now owns it and update the import
+specifier:
+
+| Removed cinder subpath                                                                    | New home                                                                                                                                                            |
+| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@lostgradient/cinder/markdown`, `./markdown/*` (pipeline, diff, rendering, utilities)    | `@lostgradient/markdown` — same subpath shape, e.g. `./markdown/pipeline` → `@lostgradient/markdown/pipeline`                                                       |
+| `@lostgradient/cinder/editor`, `./editor/component-runtime`, `./editor/test-utilities`    | `@lostgradient/editor/editor`, `@lostgradient/editor/editor/component-runtime`, `@lostgradient/editor/editor/test-utilities`                                        |
+| `@lostgradient/cinder/editor/sanitize-html`, `/template-placeholders`, `/template-render` | `@lostgradient/markdown/templates/sanitize-html`, `/template-placeholders`, `/template-render`                                                                      |
+| `@lostgradient/cinder/commentary`, `./commentary/*`                                       | `@lostgradient/editor` root barrel and its matching subpath, e.g. `./commentary/anchor-decorations` → `@lostgradient/editor/anchor-decorations`                     |
+| `@lostgradient/cinder/markdown-editor`, `/review-editor`, `/diff-viewer`                  | `@lostgradient/editor/markdown-editor`, `/review-editor`, `/diff-viewer` (moved in an earlier release — see [`@lostgradient/editor`'s README](../editor/README.md)) |
 
 ```bash
-bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @shikijs/langs @shikijs/rehype @shikijs/types @types/hast @types/mdast @types/unist comlink hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
+bun add @lostgradient/markdown
+# and, if you use the MarkdownEditor / ReviewEditor / DiffViewer components:
+bun add @lostgradient/editor
 ```
 
-`@lostgradient/cinder/editor` needs the editor and Markdown pipeline subset from that
-list at build time. If `prosemirror-state`, `prosemirror-view`, `@milkdown/kit`, or another editor
-peer is missing, Vite may report the failure through its optional-peer placeholder module instead
-of naming this install step.
+Syntax-highlighting (`CodeBlock` automatic highlighting via `shiki`, `@shikijs/engine-oniguruma`,
+and `@shikijs/types`) needs no separate install — they are regular `dependencies` of cinder and
+install automatically.
 
 ## Quickstart
 

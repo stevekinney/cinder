@@ -44,7 +44,7 @@
     // even under per-token streaming.
     const handle = requestAnimationFrame(() => {
       if (cancelled) return;
-      void import('@lostgradient/cinder/markdown/rendering')
+      void import('@lostgradient/markdown/rendering')
         .then(async ({ renderMarkdownWithMath }) => {
           if (cancelled) return;
           try {

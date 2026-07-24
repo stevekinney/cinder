@@ -10,7 +10,8 @@ import {
   findMissingPublicPackageReleaseCommands,
   findMissingWorkflowDispatches,
   findOutdatedWorkflowActions,
-  manualChatBootstrapHasCinderRegistryPreflight,
+  manualChatBootstrapHasPeerRegistryPreflight,
+  manualCinderBootstrapHasMarkdownRegistryPreflight,
   parseChangesetPackageNames,
   publicPackagePublishOrderIsValid,
   rootPublishScriptUsesStagedPackers,
@@ -187,7 +188,7 @@ describe('validate-release-workflow changeset guards', () => {
     ).toBe(false);
   });
 
-  test('requires the manual Chat bootstrap to preflight its Cinder peer', () => {
+  test('requires the manual Chat bootstrap to preflight its Cinder and Markdown peers', () => {
     const workflow = (run: string) => ({
       jobs: {
         publish: {
@@ -196,15 +197,39 @@ describe('validate-release-workflow changeset guards', () => {
       },
     });
     const peerLookup = [
-      'cinder_peer_range="$(jq -er \'.peerDependencies["@lostgradient/cinder"]\' packages/chat/package.json)"',
-      'npm view "@lostgradient/cinder@${cinder_peer_range}" version --json',
-      'echo "::error::Publish Cinder first"',
+      "for peer in '@lostgradient/cinder' '@lostgradient/markdown'; do",
+      'peer_range="$(jq -er --arg peer "$peer" \'.peerDependencies[$peer]\' packages/chat/package.json)"',
+      'npm view "${peer}@${peer_range}" version --json',
+      'echo "::error::Publish ${peer} first"',
     ].join('\n');
 
-    expect(manualChatBootstrapHasCinderRegistryPreflight(workflow(peerLookup))).toBe(true);
+    expect(manualChatBootstrapHasPeerRegistryPreflight(workflow(peerLookup))).toBe(true);
+    // Rejects the old single-inline-peer shape that only checked Cinder.
     expect(
-      manualChatBootstrapHasCinderRegistryPreflight(
-        workflow('npm view "@lostgradient/cinder" version --json'),
+      manualChatBootstrapHasPeerRegistryPreflight(
+        workflow('npm view "@lostgradient/cinder@${cinder_peer_range}" version --json'),
+      ),
+    ).toBe(false);
+  });
+
+  test('requires the manual Cinder bootstrap to preflight its Markdown dependency', () => {
+    const workflow = (run: string) => ({
+      jobs: {
+        publish: {
+          steps: [{ if: "inputs.package == 'cinder'", run }],
+        },
+      },
+    });
+    const markdownLookup = [
+      'markdown_version="$(jq -er \'.version\' packages/markdown/package.json)"',
+      'npm view "@lostgradient/markdown@^${markdown_version}" version --json',
+      'echo "::error::Publish Markdown first"',
+    ].join('\n');
+
+    expect(manualCinderBootstrapHasMarkdownRegistryPreflight(workflow(markdownLookup))).toBe(true);
+    expect(
+      manualCinderBootstrapHasMarkdownRegistryPreflight(
+        workflow('npm view "@lostgradient/markdown" version --json'),
       ),
     ).toBe(false);
   });

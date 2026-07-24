@@ -10,12 +10,13 @@
  *      forwards to that component, so it inherits the server-side skeleton
  *      fallback for free.
  *
- *   2. ReviewEditor's own logic statically imports the commentary and markdown
- *      surfaces (`@lostgradient/cinder/commentary/anchor-decorations`, `@lostgradient/markdown/
- *      pipeline`, `@lostgradient/markdown/diff/line-diff`, `@lostgradient/cinder/editor`). Those are
- *      all SSR-safe at module-evaluation time — proven by
- *      `packages/commentary/src/ssr-import.test.ts` and
- *      `packages/markdown/src/ssr-import.test.ts` — so the static imports do
+ *   2. ReviewEditor's own logic statically imports the anchor-decorations and
+ *      markdown surfaces (`../../anchor-decorations.ts` and `../../editor/
+ *      index.ts` — editor's own in-package modules, dissolved `@cinder/editor`
+ *      / `@cinder/commentary` — plus `@lostgradient/markdown/pipeline` and
+ *      `@lostgradient/markdown/diff/line-diff`). Those are all SSR-safe at
+ *      module-evaluation time — proven by `packages/editor/src/lib/ssr-import.test.ts`
+ *      and `packages/markdown/src/ssr-import.test.ts` — so the static imports do
  *      not throw during SSR. The only DOM access in this layer
  *      (`document.*`, `window.getSelection()`) lives inside `$effect` bodies,
  *      which never run on the server; the selection-change effect additionally

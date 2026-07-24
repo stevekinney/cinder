@@ -1,7 +1,7 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
 import { chmod, mkdir, rm } from 'node:fs/promises';
-import { dirname, relative as relativeFilePath } from 'node:path';
+import { dirname } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
@@ -13,10 +13,6 @@ import {
   lineHasUpstreamSpecifierResidue,
   type CommentScanState,
 } from './lib/cinder-specifier-residue.ts';
-import {
-  deriveUpstreamReexports,
-  UPSTREAM_PACKAGE_NAMES,
-} from './lib/derive-upstream-reexports.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
@@ -105,40 +101,30 @@ if (checkResult.exitCode !== 0) {
   process.exit(1);
 }
 
-// Dependency order: markdown → editor. `editor` vendors `markdown`'s
-// dist — so the list MUST stay topologically sorted (upstream before its
-// dependents). `@cinder/editor` was dissolved (see
-// `docs/decisions/package-boundaries.md`, Phase 1): its headless half moved
-// into `markdown` (published as `@lostgradient/markdown`, Phase 2), its ProseMirror
-// half into `editor`. `@cinder/diff` folded into `markdown` in Phase 2.
-const upstreamPackageNames = ['markdown', 'editor'] as const;
-
-// Build each upstream package so its `dist/` is fresh — hoisted ABOVE the
-// skip check below. Each upstream build.ts has its own skip check, so this is
-// near-free once every upstream is already up to date, but it MUST run before
-// `shouldSkipBuild` computes this package's input hash: this package vendors
-// all three upstream `dist/` trees (step 5b), so the hash needs to see FRESH
-// upstream output, not whatever was on disk before this invocation. Skipping
-// this step first would let a stale upstream hash match this package's
-// recorded marker and skip a rebuild that a changed upstream (e.g. `diff`)
-// actually requires.
+// Cinder no longer re-exports `@lostgradient/markdown`'s or
+// `@lostgradient/editor`'s public surface (see
+// `docs/decisions/package-boundaries.md`, Phase 5) — those upstream packages
+// are no longer vendored into cinder's `dist/`. Cinder keeps exactly one
+// direct runtime dependency on the upstream chain: `@lostgradient/markdown`
+// (imported by `src/utilities/change-tracker.svelte.ts` and
+// `src/components/json-schema-editor/diff-view.svelte`), declared as an
+// external `dependencies` entry and resolved from the consumer's own
+// `node_modules` at runtime, not bundled.
 //
-// Built SERIALLY in dependency order, NOT in parallel: each upstream build's
-// own hash-skip reads its upstream deps' `dist/` bytes, so a dependent (e.g.
-// `editor`) must not compute its skip hash while its upstream (`markdown`) is
-// mid-rebuild — that would hash against a half-written or stale tree and
-// wrongly skip, leaving a downstream `dist/` stale (the issue #364 race).
-// Warm builds still skip in milliseconds each, so serial costs little.
-for (const upstreamName of upstreamPackageNames) {
-  const upstreamRoot = `${workspaceRoot}/packages/${upstreamName}`;
-  const buildResult = await $`bun run --cwd ${upstreamRoot} build`.nothrow();
-  if (buildResult.exitCode !== 0) {
-    process.stderr.write(
-      `Build aborted: upstream ${upstreamName} package build failed (exit ${buildResult.exitCode}).\n` +
-        `${buildResult.stderr.toString()}\n`,
-    );
-    process.exit(1);
-  }
+// `@lostgradient/markdown`'s own `dist/` still needs to be fresh before this
+// build runs `emitDts()` below: its `types` export condition points at
+// `dist/*.d.ts` (unlike the `bun` condition used for workspace testing), so
+// cinder's own declaration emission needs real `.d.ts` files to resolve
+// against. `@lostgradient/editor` is not imported by any retained cinder
+// source, so it is not built here.
+const markdownBuildResult =
+  await $`bun run --cwd ${workspaceRoot}/packages/markdown build`.nothrow();
+if (markdownBuildResult.exitCode !== 0) {
+  process.stderr.write(
+    `Build aborted: upstream markdown package build failed (exit ${markdownBuildResult.exitCode}).\n` +
+      `${markdownBuildResult.stderr.toString()}\n`,
+  );
+  process.exit(1);
 }
 
 const buildCacheInputs = {
@@ -155,9 +141,7 @@ const buildCacheInputs = {
     `${workspaceRoot}/bun.lock`,
     `${workspaceRoot}/tsconfig.base.json`,
   ],
-  upstreamDistDirectories: upstreamPackageNames.map(
-    (upstreamName) => `${workspaceRoot}/packages/${upstreamName}/dist`,
-  ),
+  upstreamDistDirectories: [`${workspaceRoot}/packages/markdown/dist`],
 };
 
 const skipDecision = await shouldSkipBuild(buildCacheInputs);
@@ -171,31 +155,24 @@ await $`rm -rf dist`;
 process.env['NODE_ENV'] = 'production';
 
 const components = await discoverComponents();
-const upstreamReexports = await deriveUpstreamReexports();
-
-/**
- * Entrypoints for the bundled upstream workspace re-exports. PR 1 bundles
- * the upstream sources into `@lostgradient/cinder`'s `dist/` so the published package has
- * zero runtime dependency on the upstream workspace packages.
- */
-const upstreamReexportEntrypoints = upstreamReexports.map(
-  (reexport) => `${sourceRoot}/${reexport.sourceRelativePath}`,
-);
 
 /**
  * Third-party runtime dependencies that must stay external so they are
  * installed from the npm registry at the consumer site (declared in
  * `@lostgradient/cinder`'s own `dependencies` or `peerDependencies`) rather
- * than vendored into the published bundle. Some are transitive dependencies
- * inherited from the bundled `@cinder/*` workspace packages; others, such as
- * Ajv, are direct lazy runtime dependencies for optional component behavior.
- * `zod` and `@modelcontextprotocol/sdk` are optional peer dependencies —
- * only `bin.cinder`'s `mcp` command needs them.
+ * than bundled into the published output. `@lostgradient/markdown` is the
+ * one sibling published package cinder still imports directly (see
+ * `src/utilities/change-tracker.svelte.ts` and
+ * `src/components/json-schema-editor/diff-view.svelte`) — it stays external
+ * rather than bundled, matching the treatment of every other declared
+ * dependency here. `zod` and `@modelcontextprotocol/sdk` are optional peer
+ * dependencies — only `bin.cinder`'s `mcp` command needs them.
  */
 const runtimeDependencyExternals = [
+  '@lostgradient/markdown',
+  '@lostgradient/markdown/*',
   '@modelcontextprotocol/sdk',
   '@modelcontextprotocol/sdk/*',
-  '@shikijs/rehype',
   // The Shiki adapter (`highlighters/shiki/index.ts`) resolves languages and
   // themes via `shiki/langs` / `shiki/themes` and builds its highlighter via
   // `shiki/core` + `@shikijs/engine-oniguruma` (see that file's module JSDoc
@@ -206,33 +183,9 @@ const runtimeDependencyExternals = [
   // grammar (~10 MB) into cinder's own published dist.
   '@shikijs/engine-oniguruma',
   'shiki/*',
-  '@milkdown/kit',
-  '@milkdown/prose',
-  '@milkdown/kit/*',
-  '@milkdown/prose/*',
   'ajv',
   'ajv/*',
-  'comlink',
-  'diff-match-patch',
-  'hast-util-sanitize',
-  'js-yaml',
-  'prosemirror-inputrules',
-  'prosemirror-model',
-  'prosemirror-state',
-  'prosemirror-view',
-  'rehype-katex',
-  'rehype-sanitize',
-  'rehype-stringify',
-  'remark-gfm',
-  'remark-html',
-  'remark-math',
-  'remark-parse',
-  'remark-rehype',
-  'remark-stringify',
   'shiki',
-  'unified',
-  'unist-util-remove',
-  'unist-util-visit',
   'zod',
   'zod/*',
 ];
@@ -411,16 +364,6 @@ const perComponentStyleSpecifiers = new Map(
 const rootBarrelStyleSpecifiers = componentsWithSidecar.map((component) =>
   componentStylesSpecifier(component.name, component.isExperimental),
 );
-
-// `upstreamReexportEntrypoints` is intentionally NOT fed to Bun.build:
-// the upstream packages have already produced fully-baked `dist/` trees
-// (workers, source maps, declarations) through their own builds. Re-bundling
-// them here drops Vite-specific patterns like
-// `new Worker(new URL('./worker.js', import.meta.url))` because esbuild
-// treats `import.meta.url` as opaque. Instead, step 5c below copies each
-// upstream's `dist/**` verbatim into `packages/components/dist/<pkg>/` and
-// rewrites cross-package `@cinder/*` specifiers to relative paths.
-void upstreamReexportEntrypoints;
 
 // `splitting: false` is a deliberate trade-off mandated by the Track 4 plan:
 // it gives each entrypoint a predictable, single-file output so the eventual
@@ -650,297 +593,11 @@ await emitDts({
   tsconfig: `${repositoryRoot}/tsconfig.build.json`,
 });
 
-// -----------------------------------------------------------------------------
-// 5b. Vendor upstream `@cinder/*` build output verbatim into cinder's dist.
-//
-//     The three upstream workspace packages emit their own `dist/` trees via
-//     their per-package build. Those trees include patterns esbuild can't
-//     safely re-bundle — notably
-//     `new Worker(new URL('./render-worker.js', import.meta.url))` and the
-//     companion worker source file. Re-bundling drops the worker entirely
-//     and breaks consumers under Vite + the Svelte plugin.
-//
-//     Instead, we:
-//       1. Build each upstream first so its `dist/` is fresh.
-//       2. Copy each upstream's entire `dist/**` into
-//          `packages/components/dist/<pkg>/` (browser) and
-//          `packages/components/dist/server/<pkg>/` (server), mirroring the
-//          upstream's internal layout. Workers, assets, and source maps come
-//          along untouched.
-//       3. Rewrite every `@cinder/<pkg>[/subpath]` import specifier in the
-//          copied JS/`.d.ts` to a relative path within the vendored tree, so
-//          `dist/markdown/diff/line-diff.js` referencing `@cinder/diff/line-diff`
-//          becomes `../../diff/line-diff` (no unresolvable `@cinder/*` after
-//          install).
-//
-//     The cinder exports map points `./<pkg>[/subpath]` directly at the
-//     vendored files via `cinderExportEntry` in
-//     `scripts/lib/derive-upstream-reexports.ts`.
-// -----------------------------------------------------------------------------
-
-// `upstreamPackageNames` and the upstream builds themselves were hoisted above
-// the `shouldSkipBuild` check near the top of this file — see the comment
-// there for why order matters (this package's input hash must observe FRESH
-// upstream `dist/` output, not stale bytes from before this invocation).
-
-/**
- * Rewrite every upstream package import specifier (e.g. `@lostgradient/markdown[/subpath]`,
- * `@lostgradient/editor[/subpath]`) in a file's content to a relative path
- * pointing at the sibling vendored upstream tree.
- *
- * Called for each file under `dist/<pkg>/**` after a verbatim copy. The
- * relative target depends on how deep the file lives under
- * `dist/<originPkg>/`.
- */
-/** Sites where the rewrite couldn't resolve the target file. */
-type RewriteMiss = {
-  file: string;
-  specifier: string;
-};
-
-/** `@lostgradient/markdown` → `markdown`, `@lostgradient/editor` → `editor`, etc. */
-const upstreamFolderNameBySpecifier = new Map(
-  Object.entries(UPSTREAM_PACKAGE_NAMES).map(([folderName, specifier]) => [specifier, folderName]),
-);
-
-/** Alternation of every upstream package's npm specifier, escaped for regex use. */
-const upstreamSpecifierAlternation = Object.values(UPSTREAM_PACKAGE_NAMES)
-  .map((specifier) => specifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  .join('|');
-const upstreamSpecifierPattern = new RegExp(
-  `(['"])(${upstreamSpecifierAlternation})(/[^'"]*)?\\1`,
-  'g',
-);
-
-function rewriteCrossUpstreamSpecifiers(
-  content: string,
-  fileDistRelative: string,
-  misses: RewriteMiss[],
-): string {
-  // `fileDistRelative` is e.g. `markdown/diff/line-diff.js`. `dirname` gives
-  // `markdown/diff`; the relative walk back to `dist/` is `../..`.
-  const fileDirectory = dirname(fileDistRelative);
-  const upwards =
-    fileDirectory === '.'
-      ? '.'
-      : fileDirectory
-          .split('/')
-          .map(() => '..')
-          .join('/');
-  // Node ESM under `module: nodenext` rejects extensionless relative
-  // imports, so we materialize the target file path explicitly:
-  //   - `@lostgradient/markdown`           → `<up>/markdown/index.js`
-  //   - `@lostgradient/markdown/pipeline`  → `<up>/markdown/pipeline.js` if there
-  //     is a `pipeline.js` file at that path, otherwise `<up>/markdown/pipeline/index.js`.
-  //   - `@lostgradient/markdown/diff/line-diff` → `<up>/markdown/diff/line-diff.js`.
-  // The disambiguation depends on whether the target subpath is a directory
-  // entry or a leaf file; we resolve that lazily by checking the vendored
-  // dist for an `<subpath>/index.js`. If neither candidate exists the
-  // rewrite cannot produce a valid Node ESM specifier — the caller fails
-  // the build via the `misses` array instead of silently emitting an
-  // extensionless path that would yield a broken module (and pass the
-  // residue gate because the prefix is gone).
-  return content.replace(
-    upstreamSpecifierPattern,
-    (_match, quote: string, specifier: string, rest: string | undefined) => {
-      const pkg = upstreamFolderNameBySpecifier.get(specifier);
-      if (pkg === undefined) return _match;
-      const subpath = rest ?? '';
-      if (subpath === '') {
-        return `${quote}${upwards}/${pkg}/index.js${quote}`;
-      }
-      // Check whether the subpath resolves to a directory entry by looking
-      // at the vendored upstream dist on disk. If `dist/<pkg><subpath>/index.js`
-      // exists, the import target is the index file; otherwise it's a leaf
-      // `dist/<pkg><subpath>.js`.
-      const directoryCandidate = `${distributionDirectory}/${pkg}${subpath}/index.js`;
-      const leafCandidate = `${distributionDirectory}/${pkg}${subpath}.js`;
-      if (existsSync(directoryCandidate)) {
-        return `${quote}${upwards}/${pkg}${subpath}/index.js${quote}`;
-      }
-      if (existsSync(leafCandidate)) {
-        return `${quote}${upwards}/${pkg}${subpath}.js${quote}`;
-      }
-      // Record the miss; the caller will abort the build after the pass.
-      // We return the original specifier shape so the post-pass residue
-      // gate also sees it (defense in depth — if for some reason the
-      // miss collection isn't checked, the original specifier token
-      // remains and the residue gate trips).
-      misses.push({ file: fileDistRelative, specifier: `${specifier}${subpath}` });
-      return `${quote}${specifier}${subpath}${quote}`;
-    },
-  );
-}
-
-// Upstream test files never carry a real cinder specifier to re-export, but
-// they routinely contain PLAIN STRING assertions (e.g. `expect(readme).
-// toContain('@lostgradient/editor/markdown-editor')`) that this file's
-// regex-based `rewriteCrossUpstreamSpecifiers` cannot distinguish from a
-// genuine import specifier — a component suppressed from cinder's mirror
-// (see `CINDER_KEY_OVERRIDES`) then reads as an unresolvable rewrite miss
-// even though nothing ever imports it. Cinder also has no reason to vendor
-// an upstream package's own test suite, test fixtures, or internal
-// accessibility notes into its published bundle — this mirrors
-// `validate-consumers.ts`'s own `forbiddenPatterns` for cinder's own dist,
-// so an upstream-supplied file can never leak through a path that check
-// doesn't also cover for cinder's own component directories.
-const upstreamExcludedFilePatterns = [
-  /\.(?:test|spec)\.[^./]+$/u,
-  /(?:^|\/)[^/]*-fixtures?\.[^./]+$/u,
-  /(?:^|\/)fixtures?\.[^./]+$/u,
-  /\.a11y\.md$/u,
-];
-function isUpstreamExcludedFile(relative: string): boolean {
-  return upstreamExcludedFilePatterns.some((pattern) => pattern.test(relative));
-}
-
-// `editor`'s `dist/components/**` (browser Svelte component bundles) and
-// `dist/server/components/**` (their server-target entries) hold its compiled
-// markdown-editor/review-editor/diff-viewer output — every one of them is
-// suppressed (`null`) in `CINDER_KEY_OVERRIDES` above, so cinder never
-// re-exports any of it. Vendoring it anyway is pure bloat (this function
-// copies editor's ENTIRE dist tree into BOTH cinder's `dist/<pkg>/` and
-// `dist/server/<pkg>/`, so both `components/**` and the nested
-// `server/components/**` need excluding, or the pattern only catches half),
-// and worse: it copies CSS assets (`prosemirror.css`, `review-editor.css`)
-// into `dist/server/editor/components/**`, which trips
-// `server-css-free.test.ts`'s "no CSS reachable under dist/server" contract
-// even though nothing in cinder's own server entries imports this subtree.
-const UPSTREAM_SUBTREE_EXCLUSIONS: ReadonlyMap<string, RegExp> = new Map([
-  ['editor', /^(?:server\/)?components\//u],
-]);
-function isSuppressedUpstreamSubtree(upstreamName: string, relative: string): boolean {
-  return UPSTREAM_SUBTREE_EXCLUSIONS.get(upstreamName)?.test(relative) ?? false;
-}
-
-async function copyUpstreamDistInto(upstreamName: string, destinationRoot: string): Promise<void> {
-  const sourceDist = `${workspaceRoot}/packages/${upstreamName}/dist`;
-  const destinationDist = `${destinationRoot}/${upstreamName}`;
-  if (!existsSync(sourceDist)) {
-    process.stderr.write(
-      `Build aborted: expected upstream dist ${sourceDist} to exist after upstream build.\n`,
-    );
-    process.exit(1);
-  }
-  const glob = new Glob('**/*');
-  for await (const relative of glob.scan({ cwd: sourceDist })) {
-    if (isUpstreamExcludedFile(relative)) continue;
-    if (isSuppressedUpstreamSubtree(upstreamName, relative)) continue;
-    const sourcePath = `${sourceDist}/${relative}`;
-    const destinationPath = `${destinationDist}/${relative}`;
-    await mkdir(dirname(destinationPath), { recursive: true });
-    const bytes = await Bun.file(sourcePath).bytes();
-    await Bun.write(destinationPath, bytes);
-  }
-}
-
-// First pass: copy every upstream dist verbatim into both `dist/<pkg>/` and
-// `dist/server/<pkg>/`. Specifier rewrites happen in the second pass so
-// `rewriteCrossUpstreamSpecifiers` can probe sibling vendored trees on
-// disk to disambiguate directory-style vs leaf-style imports. Each copy
-// writes to a disjoint destination directory, so they run in parallel.
-await Promise.all(
-  upstreamPackageNames.flatMap((upstreamName) => [
-    copyUpstreamDistInto(upstreamName, distributionDirectory),
-    copyUpstreamDistInto(upstreamName, `${distributionDirectory}/server`),
-  ]),
-);
-
-// Second pass: rewrite `@cinder/*` import specifiers across every text
-// artifact. Files under `dist/server/**` are walked with `dist/server/` as
-// their root so the relative `../..` hops point at sibling server files,
-// not back into the browser tree. Files outside `dist/server/**` are walked
-// with `dist/` as root.
-async function rewriteSpecifiersUnder(
-  root: string,
-  options: { skipPrefix?: string } = {},
-): Promise<RewriteMiss[]> {
-  const misses: RewriteMiss[] = [];
-  // Only JS and `.d.ts` artifacts carry import specifiers the rewrite needs
-  // to touch. `*.map` files are vendored upstream source maps (including
-  // any `sourcesContent`) — rewriting them mutates debugging metadata that
-  // should stay verbatim, and the post-build residue gate only scans
-  // JS/`.d.ts` anyway. Keep maps out of the rewrite pass.
-  const textGlob = new Glob('**/*.{js,mjs,cjs,d.ts,d.mts,d.cts}');
-  for await (const relative of textGlob.scan({ cwd: root })) {
-    if (options.skipPrefix !== undefined && relative.startsWith(options.skipPrefix)) continue;
-    const filePath = `${root}/${relative}`;
-    const original = await Bun.file(filePath).text();
-    if (!containsUpstreamSpecifier(original)) continue;
-    const rewritten = rewriteCrossUpstreamSpecifiers(original, relative, misses);
-    if (rewritten !== original) {
-      await Bun.write(filePath, rewritten);
-    }
-  }
-  return misses;
-}
-
-const rewriteMisses: RewriteMiss[] = [
-  ...(await rewriteSpecifiersUnder(`${distributionDirectory}/server`)),
-  ...(await rewriteSpecifiersUnder(distributionDirectory, { skipPrefix: 'server/' })),
-];
-
-if (rewriteMisses.length > 0) {
-  process.stderr.write(
-    'Build aborted: rewriteCrossUpstreamSpecifiers could not resolve target files for the\n' +
-      'following specifiers — neither a directory `index.js` nor a leaf `.js` exists in the\n' +
-      'vendored upstream tree. An extensionless relative path here would yield a module\n' +
-      'Node ESM rejects under `module: nodenext`. Check that the upstream `dist/` actually\n' +
-      'emits the file these specifiers reference; if it does, the verbatim-copy step in\n' +
-      'build.ts likely missed it (a new file extension or directory layout the copy glob\n' +
-      "doesn't match):\n" +
-      rewriteMisses.map((m) => `  ${m.file}  →  ${m.specifier}`).join('\n') +
-      '\n',
-  );
-  process.exit(1);
-}
-
-// `CINDER_KEY_OVERRIDES` remaps a handful of subpaths (the former
-// `@cinder/editor` surface, split across `@cinder/markdown` and
-// `@lostgradient/editor`) onto a cinder key that does not match their
-// package's natural `${pkg}/<subpath>` vendored location. Rather than
-// duplicating the compiled file (which would break its sibling-relative
-// imports — `editor`'s build is `tsc`-only, not bundled, so its emitted
-// JS keeps real relative imports like `./bridge.js` that only resolve
-// alongside the rest of `dist/editor/editor/`), write a thin `export *`
-// redirect at the override location pointing back at the real vendored file.
-// Runs after the copy + specifier-rewrite passes so the vendored target
-// already exists, and before the residue/expected-path gates so the redirect
-// files are covered by both.
-async function writeOverrideRedirectShims(root: string): Promise<void> {
-  for (const reexport of upstreamReexports) {
-    if (reexport.distRelativePath === reexport.vendoredDistRelativePath) continue;
-
-    const overrideJsPath = `${root}/${reexport.distRelativePath}`;
-    const overrideDtsPath = overrideJsPath.replace(/\.js$/, '.d.ts');
-    const vendoredJsPath = `${root}/${reexport.vendoredDistRelativePath}`;
-    if (!existsSync(vendoredJsPath)) {
-      process.stderr.write(
-        `Build aborted: expected vendored file ${vendoredJsPath} to exist for the ` +
-          `"${reexport.cinderKey}" override redirect.\n`,
-      );
-      process.exit(1);
-    }
-
-    const relativeTarget = relativeFilePath(dirname(overrideJsPath), vendoredJsPath);
-    const specifier = relativeTarget.startsWith('.') ? relativeTarget : `./${relativeTarget}`;
-
-    await mkdir(dirname(overrideJsPath), { recursive: true });
-    const redirectBody = `export * from '${specifier}';\n`;
-    await Bun.write(overrideJsPath, redirectBody);
-    await Bun.write(overrideDtsPath, redirectBody);
-  }
-}
-
-await writeOverrideRedirectShims(distributionDirectory);
-await writeOverrideRedirectShims(`${distributionDirectory}/server`);
-
-// Fast residue guard: after the rewrite pass, scan every emitted JS/`.d.ts`
-// file for surviving quoted upstream-package import specifiers.
-// `validate-consumers` runs the same check against the published tarball,
-// but that flow takes minutes; this one catches the same class of bug at
-// the end of `bun run build` (~ms) so a missed rewrite surfaces immediately
-// instead of waiting for the slow consumer-validation pass.
+// Residue guard: scan every emitted JS/`.d.ts` file for a leaked
+// workspace-private `@cinder/*` import specifier — those must never survive
+// into built output. `validate-consumers` runs the same check against the
+// published tarball, but that flow takes minutes; this one catches the same
+// class of bug at the end of `bun run build` (~ms).
 {
   // Comment-stripping + pattern logic lives in
   // `lib/cinder-specifier-residue.ts` so this gate and the slower tarball
@@ -965,12 +622,9 @@ await writeOverrideRedirectShims(`${distributionDirectory}/server`);
   }
   if (residueOffenders.length > 0) {
     process.stderr.write(
-      'Build aborted: unresolved upstream-package specifiers remain after rewrite:\n' +
+      'Build aborted: workspace-private @cinder/* specifiers leaked into built output:\n' +
         residueOffenders.map((file) => `  ${file}`).join('\n') +
-        '\n' +
-        'If the offender is a computed `import(`@lostgradient/markdown/${...}`)`, the\n' +
-        'rewrite pass cannot safely transform it — change the upstream source to use a\n' +
-        'static specifier instead.\n',
+        '\n',
     );
     process.exit(1);
   }
@@ -1027,18 +681,6 @@ for (const component of components) {
     expectedPaths.push(componentCssDestination(component));
     expectedPaths.push(`${componentCssDestination(component)}.d.ts`);
   }
-}
-
-// Post-build resolution gate for the bundled `@cinder/*` re-exports. Each
-// sub-path in `package.json#exports` for the three upstream packages must
-// resolve to a real file in `dist/` (and a matching `.d.ts` for the `types`
-// condition) so consumers cannot import a dead sub-path.
-for (const reexport of upstreamReexports) {
-  expectedPaths.push(`${distributionDirectory}/${reexport.distRelativePath}`);
-  expectedPaths.push(
-    `${distributionDirectory}/${reexport.distRelativePath.replace(/\.js$/, '.d.ts')}`,
-  );
-  expectedPaths.push(`${distributionDirectory}/server/${reexport.distRelativePath}`);
 }
 
 // Deprecated `@lostgradient/cinder/experimental/<name>` alias shims must emit a browser

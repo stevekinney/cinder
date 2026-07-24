@@ -42,9 +42,13 @@
       ]
     },
     "@lostgradient/chat#typecheck": {
-      "dependsOn": [],
+      "dependsOn": ["@lostgradient/markdown#build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/src/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/src/**",
+        "$TURBO_ROOT$/packages/markdown/src/**"
+      ]
     },
     "lint": {
       "dependsOn": [],

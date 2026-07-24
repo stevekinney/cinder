@@ -96,26 +96,26 @@ if (typeof useHistory !== 'function') {
 
 process.stdout.write('<!-- useHistory imported OK -->\n');
 
-// PR 1: smoke-test the upstream re-export sub-paths. Each `@lostgradient/cinder/<pkg>/...`
-// import must resolve in the published tarball and expose at least one
-// recognizable named export. We only assert that a representative function
-// or non-undefined value comes back — full behavior is covered by the
-// upstream packages' own test suites. Imports are restricted to SSR-safe
-// modules so this fixture stays runnable under Node 22 without a DOM.
-import { computeLineDiff } from '@lostgradient/cinder/markdown/diff/line-diff';
-import { renderMarkdown } from '@lostgradient/cinder/markdown/rendering';
-import { isSafeUrl } from '@lostgradient/cinder/markdown/utilities/safe-url';
-import { sortKeys } from '@lostgradient/cinder/markdown/utilities/sort-keys';
+// Phase 5 of docs/decisions/package-boundaries.md deleted cinder's
+// `@lostgradient/cinder/markdown/*` re-export shims — cinder no longer
+// exposes any markdown subpath at all. What this fixture DOES still need to
+// prove is the flip side: `@lostgradient/markdown` is a real declared
+// `dependencies` entry of the published `@lostgradient/cinder` package (see
+// `src/utilities/change-tracker.svelte.ts` and
+// `src/components/json-schema-editor/diff-view.svelte`), so installing
+// cinder must transitively install a resolvable `@lostgradient/markdown`.
+// Imports are restricted to SSR-safe modules so this fixture stays runnable
+// under Node 22 without a DOM.
+import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
+import { normalize } from '@lostgradient/markdown/pipeline';
 
-const upstreamProbes: Array<{ name: string; value: unknown }> = [
-  { name: '@lostgradient/cinder/markdown/diff/line-diff#computeLineDiff', value: computeLineDiff },
-  { name: '@lostgradient/cinder/markdown/rendering#renderMarkdown', value: renderMarkdown },
-  { name: '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl', value: isSafeUrl },
-  { name: '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys', value: sortKeys },
+const markdownDependencyProbes: Array<{ name: string; value: unknown }> = [
+  { name: '@lostgradient/markdown/diff/line-diff#computeLineDiff', value: computeLineDiff },
+  { name: '@lostgradient/markdown/pipeline#normalize', value: normalize },
 ];
-for (const { name, value } of upstreamProbes) {
+for (const { name, value } of markdownDependencyProbes) {
   if (typeof value !== 'function') {
-    process.stderr.write(`${name} is not a function — upstream re-export resolution failed\n`);
+    process.stderr.write(`${name} is not a function — markdown dependency resolution failed\n`);
     process.exit(1);
   }
   process.stdout.write(`<!-- ${name} imported OK -->\n`);

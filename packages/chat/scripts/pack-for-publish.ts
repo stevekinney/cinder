@@ -27,12 +27,15 @@ export type PackageManifest = {
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-staging');
-// `@lostgradient/cinder` and `svelte` are host-supplied runtime singletons: a
-// consuming app must control which copy renders. `conversationalist` and
-// `zod` are implementation details of Chat's conversation model — Chat owns
-// them as regular dependencies so host apps never install or version-pick
-// them directly.
-const REQUIRED_PEERS = new Set(['@lostgradient/cinder', 'svelte']);
+// `@lostgradient/cinder`, `@lostgradient/markdown`, and `svelte` are
+// host-supplied runtime singletons: a consuming app must control which copy
+// renders. `@lostgradient/markdown` joined this list migrating chat's
+// markdown-preview off cinder's now-deleted `/markdown/rendering` shim (see
+// docs/decisions/package-boundaries.md, Phase 4) — chat imports it directly.
+// `conversationalist` and `zod` are implementation details of Chat's
+// conversation model — Chat owns them as regular dependencies so host apps
+// never install or version-pick them directly.
+const REQUIRED_PEERS = new Set(['@lostgradient/cinder', '@lostgradient/markdown', 'svelte']);
 const REQUIRED_DEPENDENCIES: Record<string, string> = {
   conversationalist: '^0.2.1 || ^0.4.1',
   zod: '4.4.1',

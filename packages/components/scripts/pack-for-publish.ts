@@ -29,22 +29,18 @@
  */
 
 import { Glob } from 'bun';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
-import {
-  deriveUpstreamReexports,
-  UPSTREAM_PACKAGE_NAMES,
-  type UpstreamReexport,
-} from './lib/derive-upstream-reexports.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..');
+const workspaceRoot = join(packageRoot, '..', '..');
 const stagingRoot = join(packageRoot, 'node_modules', '.cache', 'publish-staging');
 
 type ExportConditional = {
@@ -120,65 +116,79 @@ async function fileHash(path: string): Promise<string> {
 }
 
 /**
- * Strip the four `@cinder/*` workspace entries from any dep field. They are
- * source-only inputs to cinder's build; the published tarball must not
- * reference them in any dep field (`workspace:` protocol leaks into the
- * registry-installed manifest otherwise).
+ * Resolve a workspace sibling package's real, currently-declared version by
+ * reading its `package.json` through the root `node_modules/<name>` symlink
+ * `bun install` creates for every workspace package — this works for any
+ * workspace sibling without hardcoding a `packages/<dir>` mapping.
+ *
+ * Called only to REWRITE a real dependency's `workspace:*` pointer (see
+ * {@link transformDependencyField}), never to strip one, so a missing or
+ * malformed sibling manifest is a hard error: publishing a real dependency
+ * without a resolvable version would silently ship a broken range.
  */
-/**
- * Upstream workspace-only packages whose `workspace:*` devDependency entries
- * must never leak into the published `@lostgradient/cinder` manifest. Not every
- * `@cinder/*`-prefixed name (private dev tooling) or `@lostgradient/*`-prefixed
- * name (published siblings, e.g. `@lostgradient/chat`) is one of these — only
- * the packages cinder's build vendors source from (see
- * `scripts/lib/derive-upstream-reexports.ts`'s `UPSTREAM_PACKAGE_NAMES`) plus
- * `@cinder/testing`, a dev-only workspace dependency with no publish surface.
- */
-const UPSTREAM_WORKSPACE_DEPENDENCY_NAMES: ReadonlySet<string> = new Set([
-  ...Object.values(UPSTREAM_PACKAGE_NAMES),
-  '@cinder/testing',
-]);
+/** Narrows `value` to an object carrying a string `version` field. */
+function hasStringVersion(value: unknown): value is { version: string } {
+  if (typeof value !== 'object' || value === null) return false;
+  if (!('version' in value)) return false;
+  return typeof value.version === 'string';
+}
 
-function stripCinderWorkspaceDeps(
+function resolveWorkspaceSiblingVersion(name: string): string {
+  const manifestPath = join(workspaceRoot, 'node_modules', name, 'package.json');
+  if (!existsSync(manifestPath)) {
+    throw new Error(
+      `Cannot resolve workspace sibling "${name}": ${manifestPath} does not exist. ` +
+        'Run `bun install` at the workspace root first.',
+    );
+  }
+  const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (!hasStringVersion(parsed)) {
+    throw new Error(`Workspace sibling "${name}"'s package.json is missing a string "version".`);
+  }
+  return parsed.version;
+}
+
+/**
+ * Transform every `workspace:*` entry in a dependency-field record.
+ *
+ * `devDependencies` entries are always source-only, local-resolution
+ * pointers (`@cinder/testing`; formerly `@lostgradient/markdown` before it
+ * became a real dependency) — the published tarball must never reference
+ * the `workspace:` protocol, so these are STRIPPED entirely (mode
+ * `'strip'`).
+ *
+ * `dependencies` / `peerDependencies` / `optionalDependencies` entries can
+ * ALSO use `workspace:*` now — `@lostgradient/markdown` is cinder's own
+ * example, a real runtime dependency the source manifest points at the
+ * workspace copy for local `bun test`/`bun run` resolution regardless of
+ * markdown's currently-declared version. Those get REWRITTEN (mode
+ * `'rewrite'`) to a real `^<version>` range resolved from the sibling's
+ * actual `package.json`, so the published tarball depends on a real,
+ * installable semver range rather than either an unresolvable `workspace:*`
+ * or a range hand-typed ahead of the sibling's next release (which
+ * `changeset version` will never correct here — `bumpVersionsWithWorkspaceProtocolOnly:
+ * true` in `.changeset/config.json` only rewrites `workspace:` protocol
+ * ranges, not plain semver ones).
+ */
+function transformDependencyField(
   record: Record<string, string> | undefined,
+  mode: 'strip' | 'rewrite',
 ): Record<string, string> | undefined {
   if (!record) return record;
   const out: Record<string, string> = {};
   let touched = false;
   for (const [key, value] of Object.entries(record)) {
-    if (UPSTREAM_WORKSPACE_DEPENDENCY_NAMES.has(key)) {
+    if (value === 'workspace:*') {
       touched = true;
+      if (mode === 'rewrite') {
+        out[key] = `^${resolveWorkspaceSiblingVersion(key)}`;
+      }
       continue;
     }
     out[key] = value;
   }
   if (!touched) return record;
   return Object.keys(out).length === 0 ? undefined : out;
-}
-
-/**
- * Rewrite the exports entry for an upstream re-export sub-path so the
- * published tarball points its `types` and `default` at `dist/` and drops
- * the `svelte` condition. The source manifest's `svelte` condition is used
- * in-repo for HMR and TS source resolution; published consumers must resolve
- * the built artifacts.
- */
-function rewriteUpstreamReexportEntry(
-  entry: ExportConditional,
-  reexport: UpstreamReexport,
-): ExportConditional {
-  const distRelative = reexport.distRelativePath;
-  const result: ExportConditional = {};
-  if (entry.types !== undefined) {
-    result.types = `./dist/${distRelative.replace(/\.js$/, '.d.ts')}`;
-  }
-  if (entry.node !== undefined) {
-    result.node = `./dist/server/${distRelative}`;
-  }
-  if (entry.default !== undefined) {
-    result.default = `./dist/${distRelative}`;
-  }
-  return result;
 }
 
 function rewriteComponentMetadataNodeEntry(
@@ -195,40 +205,31 @@ function rewriteComponentMetadataNodeEntry(
 /**
  * Build the transformed manifest written into staging.
  */
-function buildPublishedManifest(
-  source: SourceManifest,
-  reexports: UpstreamReexport[],
-): SourceManifest {
-  const reexportKeys = new Set(reexports.map((r) => r.cinderKey));
-  const reexportByKey = new Map(reexports.map((r) => [r.cinderKey, r] as const));
-
+function buildPublishedManifest(source: SourceManifest): SourceManifest {
   const transformedExports: ExportsMap = {};
   for (const [key, entry] of Object.entries(source.exports)) {
-    if (reexportKeys.has(key) && typeof entry === 'object') {
-      const reexport = reexportByKey.get(key);
-      if (!reexport) throw new Error(`Internal error: missing reexport for ${key}`);
-      transformedExports[key] = rewriteUpstreamReexportEntry(entry, reexport);
-      continue;
-    }
     transformedExports[key] =
       typeof entry === 'object' ? rewriteComponentMetadataNodeEntry(key, entry) : entry;
   }
 
-  // Shallow clone, then strip `@cinder/*` from every dep field and replace
-  // `exports` with the rewritten map.
+  // Shallow clone, then transform workspace-local deps and replace `exports`
+  // with the rewritten map. `devDependencies` entries are stripped
+  // (source-only); real dependency fields are rewritten to a resolvable
+  // semver range — see {@link transformDependencyField}.
   const published: SourceManifest = { ...source };
-  for (const field of [
-    'dependencies',
-    'devDependencies',
-    'peerDependencies',
-    'optionalDependencies',
-  ] as const) {
-    const stripped = stripCinderWorkspaceDeps(source[field]);
-    if (stripped === undefined) {
+  for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies'] as const) {
+    const transformed = transformDependencyField(source[field], 'rewrite');
+    if (transformed === undefined) {
       delete published[field];
     } else {
-      published[field] = stripped;
+      published[field] = transformed;
     }
+  }
+  const strippedDevDependencies = transformDependencyField(source.devDependencies, 'strip');
+  if (strippedDevDependencies === undefined) {
+    delete published.devDependencies;
+  } else {
+    published.devDependencies = strippedDevDependencies;
   }
   // `scripts` are not consumer-facing; drop everything except `prepack` and
   // any other hooks that would re-run inside the staging dir (none today).
@@ -594,8 +595,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
   const sourceHashBefore = await fileHash(sourceManifestPath);
 
   const sourceManifest = await readSourceManifest();
-  const reexports = await deriveUpstreamReexports();
-  const publishedManifest = buildPublishedManifest(sourceManifest, reexports);
+  const publishedManifest = buildPublishedManifest(sourceManifest);
 
   // Stage from the PUBLISHED manifest's `files` list, not the source's.
   await stageFiles(publishedManifest);

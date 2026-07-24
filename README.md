@@ -24,10 +24,10 @@ application-specific icons — install Lucide yourself if you want it for your o
 Install the Chat domain suite separately when you need it, alongside the Cinder install above:
 
 ```bash
-bun add @lostgradient/chat
+bun add @lostgradient/chat @lostgradient/markdown
 ```
 
-Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
+`@lostgradient/markdown` is a required peer of Chat — its `markdown-preview` component dynamically imports `@lostgradient/markdown/rendering` to render message bodies, so it must be installed alongside Chat itself, not treated as optional. Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
 
 Install the Editor domain suite separately for `MarkdownEditor`, `ReviewEditor`, and `DiffViewer`:
 
@@ -38,17 +38,15 @@ bun add @lostgradient/editor
 See [`@lostgradient/editor`'s README](./packages/editor/README.md) for its own peer install list
 (Milkdown/ProseMirror and `@lostgradient/markdown`).
 
-Markdown rendering, editor/commentary re-exports, and syntax-highlighting surfaces
-use optional peer dependencies. Install them only when your app imports
-`@lostgradient/cinder/markdown`,
-`@lostgradient/cinder/markdown/*`, `@lostgradient/cinder/editor`,
-`@lostgradient/cinder/editor/*`, `@lostgradient/cinder/commentary`,
-`@lostgradient/cinder/commentary/*`, `@lostgradient/cinder/highlighters/shiki`, or relies on
-`CodeBlock` automatic highlighting:
-
-```bash
-bun add @milkdown/ctx @milkdown/kit @milkdown/prose @shikijs/engine-oniguruma @shikijs/langs @shikijs/rehype @shikijs/types @types/hast @types/mdast @types/unist comlink hast-util-sanitize js-yaml prosemirror-inputrules prosemirror-model prosemirror-state prosemirror-view rehype-katex rehype-sanitize rehype-stringify remark-gfm remark-html remark-math remark-parse remark-rehype remark-stringify shiki unified unist-util-remove unist-util-visit
-```
+Cinder no longer exposes any `./markdown/*`, `./editor/*`, or `./commentary/*` subpath — that
+surface moved to the two published sibling packages above during the
+[package-boundaries extraction](./docs/decisions/package-boundaries.md). If your app imports one
+of those removed subpaths, install `@lostgradient/markdown` directly (`bun add
+@lostgradient/markdown`) and update the import specifier — see
+[`@lostgradient/cinder`'s README](./packages/components/README.md) for the full removed-subpath
+migration table. Syntax-highlighting (`CodeBlock` automatic highlighting via `shiki`) needs no
+separate install — `shiki`, `@shikijs/engine-oniguruma`, and `@shikijs/types` are regular
+`dependencies` of Cinder and install automatically.
 
 ## Quickstart
 

@@ -22,16 +22,13 @@ import {
   assertNoForbiddenExportKeys,
   computeDeprecatedExperimentalAliases,
   computeExports,
-  computeUpstreamReexports,
   FORBIDDEN_EXPORT_KEY_PATTERN,
   type ExportEntry,
 } from '../scripts/generate-exports.ts';
-import { deriveUpstreamReexports } from '../scripts/lib/derive-upstream-reexports.ts';
 import { discoverComponents } from '../scripts/lib/discover-components.ts';
 
 const ROOT = join(import.meta.dir, '..');
 const COMPONENTS_ROOT = join(ROOT, 'src', 'components');
-const SUBPATH_ONLY_COMPONENTS = new Set(['markdown-editor', 'review-editor']);
 
 describe('exports drift', () => {
   test('package.json#exports matches src/components/*.svelte', async () => {
@@ -76,19 +73,13 @@ describe('exports drift', () => {
       };
     }
 
-    // 3. Upstream re-exports: every public sub-path of the four @cinder/*
-    //    workspace packages flows through cinder/<pkg>/* (PR 1).
-    const upstreamReexports = await deriveUpstreamReexports();
-    const upstreamExports = computeUpstreamReexports(upstreamReexports);
-
-    // 4. Deprecated `./experimental/<name>` aliases for components promoted
+    // 3. Deprecated `./experimental/<name>` aliases for components promoted
     //    out of the experimental tree.
     const deprecatedAliasExports = computeDeprecatedExperimentalAliases();
 
     const expected = {
       ...flatExpected,
       ...directoryExports,
-      ...upstreamExports,
       ...deprecatedAliasExports,
     };
 
@@ -155,15 +146,7 @@ describe('exports drift', () => {
   test('checked-in exports contain no forbidden keys', async () => {
     const packageJson = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf-8'));
     const exports = packageJson.exports as Record<string, unknown>;
-    // Upstream re-export keys like `./editor/test-utilities` are legitimate
-    // public sub-paths inherited from `@cinder/editor`'s exports map; they
-    // bypass the forbidden-key pattern via an allow-list. The script does
-    // the same in production.
-    const upstreamReexports = await deriveUpstreamReexports();
-    const allowList = new Set(upstreamReexports.map((r) => r.cinderKey));
-    expect(() =>
-      assertNoForbiddenExportKeys(exports, FORBIDDEN_EXPORT_KEY_PATTERN, allowList),
-    ).not.toThrow();
+    expect(() => assertNoForbiddenExportKeys(exports, FORBIDDEN_EXPORT_KEY_PATTERN)).not.toThrow();
   });
 
   test('no _internal components appear as export keys', async () => {
@@ -185,7 +168,6 @@ describe('exports drift', () => {
     // Migrated components are imported from `./components/<name>/index.ts`.
     const migrated = await discoverComponents();
     for (const component of migrated) {
-      if (SUBPATH_ONLY_COMPONENTS.has(component.name)) continue;
       const expectedImport = component.isExperimental
         ? `from './components/experimental/${component.name}/index.ts'`
         : `from './components/${component.name}/index.ts'`;

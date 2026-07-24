@@ -28,7 +28,6 @@ import {
   containsUpstreamSpecifier,
   lineHasUpstreamSpecifierResidue,
 } from './lib/cinder-specifier-residue.ts';
-import { deriveUpstreamReexports } from './lib/derive-upstream-reexports.ts';
 import { discoverComponents } from './lib/discover-components.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
 import { getSourceMapReferences, packForPublish } from './pack-for-publish.ts';
@@ -97,7 +96,7 @@ const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
 const chatTarballFileName = getPackFileName(chatPackageIdentity);
 const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
 let chatFixtureCinderTarballFilePath = tarballFilePath;
-const workspaceDependencyPackages = ['markdown', 'editor'].map(
+const workspaceDependencyPackages = ['markdown'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
     const identity = readPackageIdentity(packageDirectory);
@@ -116,41 +115,15 @@ const workspaceDependencyPackages = ['markdown', 'editor'].map(
   },
 );
 
-const RICH_FEATURE_DEPENDENCY_NAMES = [
-  '@milkdown/ctx',
-  '@milkdown/kit',
-  '@milkdown/prose',
-  '@modelcontextprotocol/sdk',
-  'prosemirror-inputrules',
-  'prosemirror-model',
-  'prosemirror-state',
-  'prosemirror-view',
-  'zod',
-] as const;
+const RICH_FEATURE_DEPENDENCY_NAMES = ['@modelcontextprotocol/sdk', 'zod'] as const;
 
 const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
 
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
+  '@lostgradient/markdown',
   '@shikijs/engine-oniguruma',
-  '@shikijs/langs',
   '@shikijs/types',
-  '@types/hast',
-  '@types/mdast',
-  '@types/unist',
-  'comlink',
-  'hast-util-sanitize',
-  'js-yaml',
-  'rehype-katex',
-  'rehype-sanitize',
-  'rehype-stringify',
-  'remark-gfm',
-  'remark-math',
-  'remark-parse',
-  'remark-rehype',
-  'remark-stringify',
   'shiki',
-  'unified',
-  'unist-util-visit',
 ] as const;
 const REQUIRED_PEER_DEPENDENCY_NAMES: readonly string[] = [];
 
@@ -658,25 +631,9 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
   assertPackedExportConditionOrder(exportsMap, '.');
   assertPackedExportConditionOrder(exportsMap, './button');
 
-  const upstreamReexports = await deriveUpstreamReexports();
-  const upstreamKeys = new Set(upstreamReexports.map((r) => r.cinderKey));
   for (const [key, value] of Object.entries(exportsMap)) {
     if (!isObjectRecord(value)) continue;
     const conditions = value;
-    if (upstreamKeys.has(key)) {
-      if ('svelte' in conditions) {
-        fail(
-          `packed exports["${key}"] retains a \`svelte\` condition — upstream re-export sub-paths must resolve to \`dist/\` only`,
-        );
-      }
-      for (const [condition, target] of Object.entries(conditions)) {
-        if (typeof target === 'string' && target.startsWith('./src/')) {
-          fail(
-            `packed exports["${key}"]["${condition}"] points at "${target}" — upstream re-exports must resolve to \`./dist/\``,
-          );
-        }
-      }
-    }
     for (const [condition, target] of Object.entries(conditions)) {
       if (
         typeof target === 'string' &&
@@ -697,20 +654,17 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
 }
 
 /**
- * Run a global grep over the extracted tarball for upstream-package
- * references (`@lostgradient/editor`, `@lostgradient/markdown`, ...) that
- * look like real import specifiers. Doc-comment prose and source-map
- * embedded source are tolerated because they cannot break runtime
- * resolution.
+ * Run a global grep over the extracted tarball for a leaked workspace-private
+ * `@cinder/*` import specifier. Doc-comment prose and source-map embedded
+ * source are tolerated because they cannot break runtime resolution.
  *
- * "Looks like a real import specifier" means: the upstream specifier sits
- * inside a single-quote, double-quote, OR backtick-quoted *static* string on
- * a non-comment line. Backticks are flagged in code positions because
- * `await import(\`@lostgradient/editor/editor\`)` is a valid runtime import
- * — JavaScript accepts a template literal with no interpolation as a
- * dynamic-import specifier. The JSDoc/prose backtick form `` `@cinder/x` ``
- * sits on lines that start with `*` or `//` and is filtered by the comment
- * skip below.
+ * "Looks like a real import specifier" means: the specifier sits inside a
+ * single-quote, double-quote, OR backtick-quoted *static* string on a
+ * non-comment line. Backticks are flagged in code positions because
+ * `await import(\`@cinder/foo\`)` is a valid runtime import — JavaScript
+ * accepts a template literal with no interpolation as a dynamic-import
+ * specifier. The JSDoc/prose backtick form `` `@cinder/x` `` sits on lines
+ * that start with `*` or `//` and is filtered by the comment skip below.
  */
 async function assertNoQuotedUpstreamReferences(extractedRoot: string): Promise<void> {
   const packageRoot = join(extractedRoot, 'package');
@@ -720,7 +674,7 @@ async function assertNoQuotedUpstreamReferences(extractedRoot: string): Promise<
   // so this gate and the fast post-build gate in `build.ts` share one
   // implementation. The previous inline ladder skipped any line starting
   // with `/*` even when `*/` closed on the same line, letting
-  // `/* x */ import from '@lostgradient/markdown'` slip through.
+  // `/* x */ import from '@cinder/foo'` slip through.
   for await (const scriptPath of glob.scan({ cwd: packageRoot })) {
     const filePath = join(packageRoot, scriptPath);
     const content = await Bun.file(filePath).text();
@@ -739,32 +693,6 @@ async function assertNoQuotedUpstreamReferences(extractedRoot: string): Promise<
   }
   if (offenders.length > 0) {
     fail(`tarball contains quoted upstream-package references in:\n  ${offenders.join('\n  ')}`);
-  }
-}
-
-/**
- * Assert that every cinder/<pkg>/<subpath> sub-path emitted by the upstream
- * re-export generator resolves to a real file inside the packed tarball.
- * Mirrors the post-build resolution gate in `build.ts` but operates against
- * the tarball-shaped layout (`package/dist/...`).
- */
-async function assertUpstreamReexportsResolveInTarball(extractedRoot: string): Promise<void> {
-  const reexports = await deriveUpstreamReexports();
-  const packageRoot = join(extractedRoot, 'package');
-  const missing: string[] = [];
-  for (const reexport of reexports) {
-    const candidates = [
-      join(packageRoot, 'dist', reexport.distRelativePath),
-      join(packageRoot, 'dist', reexport.distRelativePath.replace(/\.js$/, '.d.ts')),
-    ];
-    for (const candidate of candidates) {
-      if (!existsSync(candidate)) {
-        missing.push(candidate.replace(packageRoot + '/', ''));
-      }
-    }
-  }
-  if (missing.length > 0) {
-    fail(`tarball missing upstream re-export artifacts:\n  ${missing.join('\n  ')}`);
   }
 }
 
@@ -864,12 +792,13 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/highlighters/shiki/index.d.ts',
       ...componentRequiredEntries,
     ],
-    // PR 1: `src/markdown/**`, `src/editor/**`, and `src/editor/**`
-    // (the generated re-export shells) stay out of the
-    // tarball — upstream sub-paths resolve through `dist/` only. The rest
-    // of `src/**` (component Svelte/TS source, utilities, `_internal/`,
+    // `src/**` (component Svelte/TS source, utilities, `_internal/`,
     // styles, JSON sidecars) ships because the published `svelte`
-    // condition on component sub-paths targets it.
+    // condition on component sub-paths targets it. Cinder no longer
+    // generates any `src/markdown/`, `src/editor/`, or `src/commentary/`
+    // re-export shells (see `docs/decisions/package-boundaries.md`, Phase
+    // 5) — those directories no longer exist, so there is nothing left to
+    // exclude here.
     forbiddenPatterns: [
       /\.(test|spec)\.[cm]?[jt]s$/,
       /\.type-test\./,
@@ -885,24 +814,6 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
       'package/dist/client/',
       'package/dist/test/',
       'package/scripts/',
-      // Upstream re-export shells (`src/markdown/`, `src/editor/`) resolve
-      // via `dist/_upstream/`; the shell sources are build-only inputs.
-      'package/src/markdown/',
-      'package/src/editor/',
-      // `@lostgradient/editor`'s markdown-editor/review-editor/diff-viewer
-      // Svelte components are vendored into `dist/editor/**` (build.ts's
-      // `copyUpstreamDistInto`) for the headless subpaths cinder DOES
-      // re-export (`./commentary/*`, `./editor/*`), but the component
-      // bundles themselves are suppressed from cinder's exports map — see
-      // `CINDER_KEY_OVERRIDES` in `lib/derive-upstream-reexports.ts` — so
-      // they must never reach the published tarball. Catches both the
-      // browser bundle (`dist/editor/components/**`) and its server-target
-      // twin (`dist/editor/server/components/**`, `dist/server/editor/
-      // components/**` — the same tree copied into both of cinder's dist
-      // roots).
-      'package/dist/editor/components/',
-      'package/dist/editor/server/components/',
-      'package/dist/server/editor/components/',
     ],
   };
 }
@@ -1107,6 +1018,14 @@ function injectTarballIntoFixture(
     dependencies['@lostgradient/chat'] = `file:${chatTarballFilePath}`;
     for (const [dependencyName, version] of Object.entries(chatPeerDependencies ?? {})) {
       if (dependencyName === '@lostgradient/cinder' || dependencyName === 'svelte') continue;
+      // A workspace dependency package (e.g. @lostgradient/markdown) is already
+      // pinned to its locally packed `file:` tarball above. Do not overwrite it
+      // with the peer *range* — chat's `^0.1.0` peer would send `bun install` to
+      // the registry for a version that may not exist yet (same-train release),
+      // and leaving the direct dependency as the local tarball keeps resolution
+      // local without relying on the `overrides` entry to win.
+      const existing = dependencies[dependencyName];
+      if (typeof existing === 'string' && existing.startsWith('file:')) continue;
       dependencies[dependencyName] = version;
     }
   }
@@ -1118,9 +1037,17 @@ async function runStylesConsumerFixture(): Promise<void> {
   const fixtureDirectory = join(repositoryRoot, 'fixtures/styles-consumer');
   process.stdout.write('[validate-consumers] step: styles-consumer (base install shape)…\n');
 
+  // `@lostgradient/markdown` is a real, non-optional Cinder dependency now, so
+  // even a styles-only install resolves it transitively. Inject the local
+  // Markdown tarball (an `overrides` entry, so the transitive cinder→markdown
+  // edge resolves to it) rather than letting `bun install` ask npm for
+  // `^<version>` — during the same-train Markdown release that version is not
+  // published yet, which would block `release.yaml`'s pre-publish consumer
+  // validation. The rich-feature leak check below is scoped to SDK/zod, which
+  // Markdown never pulls in, so including it does not weaken that assertion.
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, {
     includeRichFeatureDependencies: false,
-    includeWorkspaceDependencyPackages: false,
+    includeWorkspaceDependencyPackages: true,
   });
 
   try {
@@ -1422,17 +1349,21 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     `[validate-consumers] step 4: sveltekit-consumer (${label}${svelteVersion ? `: ${svelteVersion}` : ''})…\n`,
   );
 
+  // `includeWorkspaceDependencyPackages: true` injects `@lostgradient/markdown`
+  // as a `file:` dependency + override — the `/upstream` route imports it
+  // directly now that cinder no longer re-exports any markdown subpath (see
+  // docs/decisions/package-boundaries.md, Phase 5).
   const restoreManifest =
     svelteVersion === undefined
       ? injectTarballIntoFixture(fixtureDirectory, {
           includeRichFeatureDependencies: false,
-          includeWorkspaceDependencyPackages: false,
+          includeWorkspaceDependencyPackages: true,
           includeChatPackage: true,
         })
       : injectTarballIntoFixture(fixtureDirectory, {
           svelteVersion,
           includeRichFeatureDependencies: false,
-          includeWorkspaceDependencyPackages: false,
+          includeWorkspaceDependencyPackages: true,
           includeChatPackage: true,
         });
 
@@ -2206,16 +2137,17 @@ async function runNodeFixture(): Promise<void> {
     if (!renderedOutput.includes('useHistory imported OK')) {
       fail(`node render output missing "useHistory imported OK" — barrel utility import failed`);
     }
-    // PR 1 upstream re-export sub-paths must resolve in the published tarball.
-    const upstreamProbeMarkers = [
-      '@lostgradient/cinder/markdown/diff/line-diff#computeLineDiff imported OK',
-      '@lostgradient/cinder/markdown/rendering#renderMarkdown imported OK',
-      '@lostgradient/cinder/markdown/utilities/safe-url#isSafeUrl imported OK',
-      '@lostgradient/cinder/markdown/utilities/sort-keys#sortKeys imported OK',
+    // `@lostgradient/markdown` must resolve as a real transitive dependency
+    // of the installed `@lostgradient/cinder` tarball (see
+    // docs/decisions/package-boundaries.md, Phase 5 — cinder no longer
+    // re-exports any markdown subpath, but it depends on markdown directly).
+    const markdownDependencyProbeMarkers = [
+      '@lostgradient/markdown/diff/line-diff#computeLineDiff imported OK',
+      '@lostgradient/markdown/pipeline#normalize imported OK',
     ];
-    for (const marker of upstreamProbeMarkers) {
+    for (const marker of markdownDependencyProbeMarkers) {
       if (!renderedOutput.includes(marker)) {
-        fail(`node render output missing "${marker}" — upstream re-export resolution failed`);
+        fail(`node render output missing "${marker}" — markdown dependency resolution failed`);
       }
     }
   } finally {
@@ -2480,7 +2412,6 @@ async function main(): Promise<void> {
     process.stdout.write('[validate-consumers] asserting packed manifest invariants…\n');
     await assertPackedManifestInvariants(tarballInspectionDirectory);
     await assertNoQuotedUpstreamReferences(tarballInspectionDirectory);
-    await assertUpstreamReexportsResolveInTarball(tarballInspectionDirectory);
     await assertNoDanglingSourceMapComments(tarballInspectionDirectory);
     process.stdout.write('[validate-consumers] publish-path invariants OK.\n');
   } finally {

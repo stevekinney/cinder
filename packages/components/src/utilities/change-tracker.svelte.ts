@@ -9,10 +9,7 @@
  * This avoids per-keystroke normalize() calls which are expensive for large documents.
  */
 
-import {
-  contentEquals,
-  contentEqualsWithFrontMatter,
-} from '@lostgradient/cinder/markdown/pipeline';
+import { contentEquals, contentEqualsWithFrontMatter } from '@lostgradient/markdown/pipeline';
 
 /**
  * Fast non-cryptographic hash for change detection.
