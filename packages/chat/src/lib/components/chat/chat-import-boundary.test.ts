@@ -2,7 +2,8 @@
  * Conversationalist boundary regression test for the Chat component.
  *
  * Chat should get transcript types from the published package. Runtime
- * Conversationalist imports are allowed only through the public Chat barrel.
+ * Conversationalist imports are allowed only through the Chat builder seam
+ * and public barrel.
  */
 
 import { describe, expect, it } from 'bun:test';
@@ -12,7 +13,11 @@ const CHAT_ROOT = import.meta.dir;
 const CONVERSATIONALIST_PACKAGE = 'conversationalist';
 const CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN =
   /(?:from\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*\(\s*['"]conversationalist(?:\/[^'"]*)?['"])/;
-const RUNTIME_IMPORT_ALLOWLIST = new Set(['chat-import-boundary.test.ts', 'index.ts']);
+const RUNTIME_IMPORT_ALLOWLIST = new Set([
+  'builders.ts',
+  'chat-import-boundary.test.ts',
+  'index.ts',
+]);
 
 type ModuleSpecifier = {
   specifier: string;

@@ -16,10 +16,10 @@ Import Cinder's global styles once in your application, then import Chat from th
 
 ```ts
 import '@lostgradient/cinder/styles';
-import Chat, { appendAssistantMessage, createConversation } from '@lostgradient/chat';
+import Chat, { appendAssistantMessage, createConversationHistory } from '@lostgradient/chat';
 
 const conversation = appendAssistantMessage(
-  createConversation({ id: 'support' }),
+  createConversationHistory({ id: 'support' }),
   'How can I help?',
 );
 ```
@@ -31,6 +31,10 @@ const conversation = appendAssistantMessage(
 ```
 
 Chat's component stylesheet is included by the component entry. Applications that need the stylesheet as a standalone asset can import `@lostgradient/chat/styles`.
+
+`createConversationHistory` is the Conversationalist 0.5 builder name. Chat keeps
+`createConversation` as a deprecated alias so existing consumers can migrate
+without a flag day.
 
 ## Components
 
