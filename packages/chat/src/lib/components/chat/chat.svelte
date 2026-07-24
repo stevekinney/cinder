@@ -15,15 +15,19 @@
    * @related markdown-editor
    */
   export type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
+
+  const warnedSchemaVersions = new Set<number>();
 </script>
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import ChatImplementation from './container/chat.svelte';
   import type { ChatAnnounceLevel, ChatProps } from './chat.types.ts';
+  import { CURRENT_SCHEMA_VERSION } from './index.ts';
 
   let {
     class: className,
+    conversation,
     atBottom = $bindable(true),
     unreadCount = $bindable(0),
     newMessageIndicatorVisible = $bindable(false),
@@ -31,6 +35,23 @@
   }: ChatProps = $props();
 
   const mergedClassName = $derived(classNames(className));
+
+  function warnForSchemaVersion(schemaVersion: number): void {
+    if (schemaVersion <= CURRENT_SCHEMA_VERSION || warnedSchemaVersions.has(schemaVersion)) return;
+
+    warnedSchemaVersions.add(schemaVersion);
+    console.warn(
+      `[Chat] Conversation schema version ${schemaVersion} is newer than the supported version ${CURRENT_SCHEMA_VERSION}. Upgrade @lostgradient/chat before relying on this history.`,
+    );
+  }
+
+  // Run during both SSR and client initialization so a server-rendered Chat
+  // still surfaces an incompatible history when it is never hydrated.
+  warnForSchemaVersion(conversation.schemaVersion);
+
+  $effect(() => {
+    warnForSchemaVersion(conversation.schemaVersion);
+  });
 
   function handleAtBottomBindingChange(value: boolean): void {
     atBottom = value;
@@ -119,6 +140,7 @@
 <ChatImplementation
   bind:this={impl}
   {...rest}
+  {conversation}
   {atBottom}
   {unreadCount}
   {newMessageIndicatorVisible}

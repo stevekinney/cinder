@@ -242,6 +242,39 @@ describe('Chat — basic render', () => {
     expect(region?.id).toBe('chat-basic');
   });
 
+  test('warns when a conversation requires a newer schema version', async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+
+    try {
+      const conversation = createConversation({ id: 'future-schema' });
+      conversation.schemaVersion = 6;
+      const first = render(Chat, {
+        props: { id: 'future-schema-chat', conversation },
+      });
+      await tick();
+
+      const newerConversation = { ...conversation, schemaVersion: 7 };
+      first.rerender({ conversation: newerConversation });
+      await tick();
+      first.rerender({ conversation });
+      await tick();
+      render(Chat, {
+        props: { id: 'second-future-schema-chat', conversation },
+      });
+      await tick();
+
+      expect(warnings).toHaveLength(2);
+      expect(warnings.map((warning) => warning[0])).toEqual([
+        '[Chat] Conversation schema version 6 is newer than the supported version 5. Upgrade @lostgradient/chat before relying on this history.',
+        '[Chat] Conversation schema version 7 is newer than the supported version 5. Upgrade @lostgradient/chat before relying on this history.',
+      ]);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+
   test('derives the timeline id from the component id', () => {
     const conversation = createConversation({ id: 'conversation-timeline' });
     const { container } = render(Chat, {
