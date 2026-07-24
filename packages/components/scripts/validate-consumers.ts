@@ -1743,17 +1743,42 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
 
 type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
 
-async function assertSvelteKitClientRoutesHydrate(
+/**
+ * `--disable-dev-shm-usage` is Playwright's documented remedy for Chromium
+ * crashing mid-run with "Target page, context or browser has been closed":
+ * without it Chromium writes its shared memory into the runner's `/dev/shm`
+ * (small on Linux CI), overflows it, and the renderer dies. This browser check
+ * only runs in `validate:consumer` (the release path + local macOS, where
+ * `/dev/shm` is not constrained), so the crash first surfaced as a blocked
+ * release rather than in PR CI. Writing shared memory under `/tmp` avoids it.
+ */
+async function launchHydrationChromium() {
+  const { chromium } = await import('@playwright/test');
+  return promiseWithTimeout(
+    chromium.launch({ args: ['--disable-dev-shm-usage'] }),
+    15_000,
+    'launching Chromium for SvelteKit hydration validation',
+  );
+}
+
+/**
+ * A crashed Chromium process reports as "…has been closed" / "Target closed" /
+ * "crashed" — distinct from a route assertion timing out on a specific locator.
+ * Only the former is retried (a transient renderer death must never block a
+ * release); a real hydration/content failure throws a different message and is
+ * rethrown immediately.
+ */
+function isBrowserCrashError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /has been closed|Target closed|browser has disconnected|crashed/i.test(message);
+}
+
+async function runSvelteKitHydrationRoutesOnce(
   httpPort: number,
   label: string,
   routePaths: SvelteKitHydrationRoute[],
 ): Promise<void> {
-  const { chromium } = await import('@playwright/test');
-  const browser = await promiseWithTimeout(
-    chromium.launch(),
-    15_000,
-    'launching Chromium for SvelteKit hydration validation',
-  );
+  const browser = await launchHydrationChromium();
   let context: BrowserContext | undefined;
 
   try {
@@ -1762,21 +1787,38 @@ async function assertSvelteKitClientRoutesHydrate(
       await assertSvelteKitHydrationRoute(context, httpPort, label, routePath);
     }
   } finally {
-    try {
-      if (context !== undefined) {
-        await promiseWithTimeout(
-          context.close(),
-          5_000,
-          `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-        );
-      }
-    } finally {
+    // Cleanup only — swallow close errors (a crashed browser makes both throw)
+    // so the original failure propagates to the retry decision above.
+    if (context !== undefined) {
       await promiseWithTimeout(
-        browser.close(),
+        context.close(),
         5_000,
-        `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-      );
+        `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
+      ).catch(() => {});
     }
+    await promiseWithTimeout(
+      browser.close(),
+      5_000,
+      `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
+    ).catch(() => {});
+  }
+}
+
+async function assertSvelteKitClientRoutesHydrate(
+  httpPort: number,
+  label: string,
+  routePaths: SvelteKitHydrationRoute[],
+): Promise<void> {
+  try {
+    await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
+  } catch (error) {
+    if (!isBrowserCrashError(error)) throw error;
+    process.stderr.write(
+      `[validate-consumers] Chromium crashed during ${label} hydration ` +
+        `(${routePaths.join(', ')}); relaunching once: ` +
+        `${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
   }
 }
 
