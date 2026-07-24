@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -19,6 +20,17 @@ function textSnippet(text: string) {
 }
 
 describe('StatGroup', () => {
+  test('imports the Stat leaf source for compound namespace composition', async () => {
+    const source = await readFile(new URL('./index.ts', import.meta.url), 'utf8');
+    expect(source).toContain("import Stat from '../stat/stat.svelte';");
+    expect(source).not.toContain("import Stat from '../stat/index.ts';");
+  });
+
+  test('aggregates Stat styles in the parent CSS sidecar', async () => {
+    const css = await Bun.file(new URL('./stat-group.css', import.meta.url)).text();
+    expect(css).toContain("@import '../stat/stat.css';");
+  });
+
   test('renders .cinder-stat-group wrapping its children', () => {
     const { container } = render(StatGroup, {
       children: textSnippet('stat content'),
