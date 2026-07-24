@@ -126,8 +126,8 @@ describe('JsonEditor — bundle boundary', () => {
   test('enhancement is reached only through a dynamic import', async () => {
     const componentPath = resolvePath(import.meta.dir, 'json-editor.svelte');
     const source = await Bun.file(componentPath).text();
-    expect(source).toContain("import('./json-editor-enhancement.ts')");
-    expect(source).not.toContain("from './json-editor-enhancement.ts'");
+    expect(source).toContain("import('@lostgradient/cinder/json-editor/enhancement')");
+    expect(source).not.toContain("import('./json-editor-enhancement.ts')");
   });
 
   test('enhancement has no code-editor dependency edge', async () => {

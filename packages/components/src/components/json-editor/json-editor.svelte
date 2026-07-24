@@ -63,7 +63,7 @@
 
     const pendingValue = draftValue;
     let cancelled = false;
-    void import('./json-editor-enhancement.ts')
+    void import('@lostgradient/cinder/json-editor/enhancement')
       .then(({ enhanceJson }) => {
         if (cancelled) return;
         const result = enhanceJson(pendingValue);

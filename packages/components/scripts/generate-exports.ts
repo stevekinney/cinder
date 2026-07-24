@@ -89,6 +89,7 @@ const STYLES_GUARD_KEY = './styles/guard';
 const ROOT_KEY = '.';
 const PACKAGE_JSON_KEY = './package.json';
 const ICONS_KEY = './icons';
+const JSON_EDITOR_ENHANCEMENT_KEY = './json-editor/enhancement';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 
 /**
@@ -107,6 +108,7 @@ const RESERVED_KEYS = new Set([
   STYLES_GUARD_KEY,
   PACKAGE_JSON_KEY,
   ICONS_KEY,
+  JSON_EDITOR_ENHANCEMENT_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
 ]);
 
@@ -191,6 +193,17 @@ function iconsExport(): ExportEntry {
     import: './src/components/icons/index.ts',
     default: './dist/components/icons/index.js',
   });
+}
+
+function jsonEditorEnhancementExport(): ExportEntry {
+  return {
+    types: './dist/components/json-editor/json-editor-enhancement.d.ts',
+    browser: './src/components/json-editor/json-editor-enhancement.ts',
+    svelte: './src/components/json-editor/json-editor-enhancement.ts',
+    node: './dist/server/components/json-editor/json-editor-enhancement.js',
+    import: './src/components/json-editor/json-editor-enhancement.ts',
+    default: './dist/components/json-editor/json-editor-enhancement.js',
+  };
 }
 
 /**
@@ -683,6 +696,7 @@ async function main(): Promise<void> {
     }
     next[STYLES_GUARD_KEY] = stylesGuardExport();
     next[ICONS_KEY] = iconsExport();
+    next[JSON_EDITOR_ENHANCEMENT_KEY] = jsonEditorEnhancementExport();
     next[HIGHLIGHTERS_SHIKI_KEY] = highlightersShikiExport();
 
     // Preserve legacy flat component subpaths whose component still exists as
