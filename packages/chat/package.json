@@ -1,6 +1,6 @@
 {
   "name": "@lostgradient/chat",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "An accessible Svelte 5 conversation surface built on Conversationalist and Cinder.",
   "keywords": [
     "svelte",
