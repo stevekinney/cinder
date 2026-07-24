@@ -1780,28 +1780,44 @@ async function runSvelteKitHydrationRoutesOnce(
 ): Promise<void> {
   const browser = await launchHydrationChromium();
   let context: BrowserContext | undefined;
+  let bodyError: unknown;
+  let bodyFailed = false;
 
   try {
     context = await browser.newContext();
     for (const routePath of routePaths) {
       await assertSvelteKitHydrationRoute(context, httpPort, label, routePath);
     }
-  } finally {
-    // Cleanup only — swallow close errors (a crashed browser makes both throw)
-    // so the original failure propagates to the retry decision above.
-    if (context !== undefined) {
-      await promiseWithTimeout(
-        context.close(),
-        5_000,
-        `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-      ).catch(() => {});
-    }
-    await promiseWithTimeout(
-      browser.close(),
-      5_000,
-      `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-    ).catch(() => {});
+  } catch (error) {
+    bodyError = error;
+    bodyFailed = true;
   }
+
+  // Teardown runs OUTSIDE the try (not in `finally`, which would need a
+  // throw-in-finally — `no-unsafe-finally`). Always attempt both closes so a
+  // passing run never leaks a Chromium process/handle that would hang a later
+  // validate:consumer run; collect rather than throw inline so `browser.close()`
+  // still runs if `context.close()` fails.
+  const closeErrors: unknown[] = [];
+  if (context !== undefined) {
+    await promiseWithTimeout(
+      context.close(),
+      5_000,
+      `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
+    ).catch((error: unknown) => closeErrors.push(error));
+  }
+  await promiseWithTimeout(
+    browser.close(),
+    5_000,
+    `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
+  ).catch((error: unknown) => closeErrors.push(error));
+
+  // A body failure wins: its error is what the retry decision needs (a crashed
+  // browser makes both closes throw too — those are swallowed). But when every
+  // route assertion PASSED and teardown still failed, surface it: a browser
+  // dying during close is a real problem, not noise to hide behind a green run.
+  if (bodyFailed) throw bodyError;
+  if (closeErrors.length > 0) throw closeErrors[0];
 }
 
 async function assertSvelteKitClientRoutesHydrate(
