@@ -650,7 +650,11 @@
   ): Promise<boolean> {
     await waitForLayoutFrame();
     if (pendingHistoryScroll !== pending) return false;
-    return restoreHistoryScroll(pending);
+    const restored = restoreHistoryScroll(pending);
+    if (restored && !isVirtualized) {
+      await stabilizeNonVirtualHistoryAnchor(pending);
+    }
+    return restored;
   }
 
   function restoreHistoryScroll(pending: PendingHistoryScroll): boolean {
@@ -680,10 +684,13 @@
       historyAnchorRestoredScrollTop = viewport?.scrollTop ?? chatVirtualizer.scrollOffset;
     } else {
       clearHistoryAnchor();
-      const newTotalSize = viewport.scrollHeight;
-      const delta = newTotalSize - pending.previousScrollHeight;
+      const anchorCorrection = nonVirtualHistoryAnchorCorrection(pending);
+      const targetScrollTop =
+        anchorCorrection === null
+          ? pending.previousScrollTop + (viewport.scrollHeight - pending.previousScrollHeight)
+          : viewport.scrollTop + anchorCorrection;
       viewport.scrollTo({
-        top: pending.previousScrollTop + delta,
+        top: targetScrollTop,
         behavior: 'instant',
       });
     }
@@ -701,6 +708,39 @@
       focusAfterHistoryRestore(pending);
     });
     return true;
+  }
+
+  function nonVirtualHistoryAnchorCorrection(pending: PendingHistoryScroll): number | null {
+    if (!viewport || pending.previousFirstMessageId === null) return null;
+
+    const anchor = renderedMessageById(pending.previousFirstMessageId);
+    if (!anchor) return null;
+
+    const anchorRect = anchor.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+    const hasLayoutBox =
+      anchorRect.top !== 0 ||
+      anchorRect.bottom !== 0 ||
+      viewportRect.top !== 0 ||
+      viewportRect.bottom !== 0;
+    if (!hasLayoutBox) return null;
+
+    const currentOffset = anchorRect.top - viewportRect.top;
+    return currentOffset - pending.previousFirstMessageViewportOffset;
+  }
+
+  async function stabilizeNonVirtualHistoryAnchor(pending: PendingHistoryScroll): Promise<void> {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await waitForLayoutFrame();
+      if (!viewport) return;
+
+      const correction = nonVirtualHistoryAnchorCorrection(pending);
+      if (correction === null || Math.abs(correction) < 1) return;
+      viewport.scrollTo({
+        top: viewport.scrollTop + correction,
+        behavior: 'instant',
+      });
+    }
   }
 
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
@@ -2050,7 +2090,9 @@
   .chat-timeline {
     flex: 1;
     overflow-y: auto;
-    overflow-anchor: auto;
+    /* Chat owns append and prepend restoration. Native anchoring can apply a
+       second offset while content-visibility measurements settle. */
+    overflow-anchor: none;
     padding: var(--cinder-chat-timeline-padding);
     display: flex;
     flex-direction: column;
