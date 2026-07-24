@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: JsonEditor } = await import('./json-editor.svelte');
 const { default: schema } = await import('./json-editor.schema.ts');
 
@@ -26,7 +26,9 @@ describe('JsonEditor', () => {
       label: 'Baseline payload',
       value: '{"ready":true}',
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() =>
+      expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull(),
+    );
     expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull();
     baseline.unmount();
 
@@ -37,8 +39,9 @@ describe('JsonEditor', () => {
       highlight: true,
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull();
+    await waitFor(() =>
+      expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull(),
+    );
     expect(view.container.querySelector('.cinder-json-token-key')).not.toBeNull();
 
     await view.rerender({
@@ -47,8 +50,9 @@ describe('JsonEditor', () => {
       value: '{',
       highlight: true,
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(view.container.querySelector('[data-cinder-json-lint-position]')).not.toBeNull();
+    await waitFor(() =>
+      expect(view.container.querySelector('[data-cinder-json-lint-position]')).not.toBeNull(),
+    );
     expect(view.container.querySelector('.cinder-json-lint')).not.toBeNull();
   });
 
@@ -62,7 +66,11 @@ describe('JsonEditor', () => {
 
     expect(view.container.querySelector('.cinder-json-editor__input--highlighted')).toBeNull();
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await waitFor(() =>
+      expect(
+        view.container.querySelector('.cinder-json-editor__input--highlighted'),
+      ).not.toBeNull(),
+    );
 
     expect(view.container.querySelector('.cinder-json-editor__input--highlighted')).not.toBeNull();
     expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull();
