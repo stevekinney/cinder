@@ -141,6 +141,19 @@ jobs:
         continue-on-error: true
         run: bun run --filter=@lostgradient/cinder test:memory-canary
 
+      # Exercises the SvelteKit consumer hydration path — the same Chromium
+      # launch (validate-consumers.ts) that previously ran ONLY in the release
+      # path and crashed there on the runner's `/dev/shm`. A single-version
+      # smoke here catches a browser-launch regression on Linux CI every merge,
+      # before the release (which waits for this same-SHA main-green run) can
+      # publish. NOT continue-on-error: a crash here must go red so the release
+      # never publishes on top of a broken hydration path.
+      - name: Install Chromium for hydration smoke
+        run: bunx playwright install --with-deps chromium
+
+      - name: Consumer hydration smoke (cinder)
+        run: bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke
+
   component-tests:
     name: component-tests (${{ matrix.chunk }}/4)
     runs-on: ubuntu-latest

@@ -2489,9 +2489,42 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.main) {
+/**
+ * A lighter subset of {@link main} for `main-green` (Linux CI, post-merge,
+ * pre-publish since the release path waits for the same-SHA main-green run).
+ * It exercises the exact browser hydration path — `runSveltekitFixture` →
+ * `launchHydrationChromium` → `assertSvelteKitClientRoutesHydrate`, including
+ * the crash-prone `/chat-layout` and `/dev-ssr` routes — that only ran in the
+ * release path before, so a Chromium-launch regression is caught on Linux CI
+ * every merge instead of first surfacing as a blocked release. It packs only
+ * the tarballs the SvelteKit fixture needs and runs a single Svelte version
+ * (workspace), skipping the styles/manifest/typescript/node/examples/
+ * peer-compatibility fixtures and the multi-version matrix the full gate runs.
+ */
+async function hydrationSmoke(): Promise<void> {
+  installHookProcessCleanup();
+  ensureSupportedPlatform();
+  await ensureNodeOnPath();
+  await runBuild();
+  await packWorkspaceDependencyTarballs();
+  await packTarball();
+  await packChatTarball();
+
+  const chatFixtureCinderArtifact = await stageChatFixtureCinderArtifact();
+  chatFixtureCinderTarballFilePath = chatFixtureCinderArtifact.tarballPath;
   try {
-    await withLocalValidationGateLock(main);
+    await runSveltekitFixture('hydration smoke');
+    process.stdout.write('[validate-consumers] hydration smoke passed.\n');
+  } finally {
+    await chatFixtureCinderArtifact.cleanup();
+    chatFixtureCinderTarballFilePath = tarballFilePath;
+  }
+}
+
+if (import.meta.main) {
+  const entry = process.argv.includes('--hydration-smoke') ? hydrationSmoke : main;
+  try {
+    await withLocalValidationGateLock(entry);
   } catch (error) {
     if (error instanceof ValidationError) {
       process.stderr.write(`[validate-consumers] ${error.message}\n`);
