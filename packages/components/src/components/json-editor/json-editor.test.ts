@@ -20,6 +20,29 @@ describe('JsonEditor', () => {
     expect(schema.properties).toHaveProperty('required');
   });
 
+  test('keeps highlighting opt-in and annotates invalid JSON after lazy enhancement', async () => {
+    const view = render(JsonEditor, {
+      id: 'payload',
+      label: 'Payload',
+      value: '{"ready":true}',
+      highlight: true,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(view.container.querySelector('.cinder-json-editor__highlight')).not.toBeNull();
+    expect(view.container.querySelector('.cinder-json-token-key')).not.toBeNull();
+
+    await view.rerender({
+      id: 'payload',
+      label: 'Payload',
+      value: '{',
+      highlight: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(view.container.querySelector('[data-cinder-json-lint-position]')).not.toBeNull();
+    expect(view.container.querySelector('.cinder-json-lint')).not.toBeNull();
+  });
+
   test('emits each proposed string value without taking ownership of controlled state', async () => {
     const onValueChange = mock();
     const view = render(JsonEditor, {

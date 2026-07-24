@@ -31,6 +31,7 @@
     error,
     rows = 8,
     showValidFeedback = true,
+    highlight = false,
     onValueChange,
     class: className,
     autofocus = false,
@@ -43,11 +44,41 @@
   let previousValue = value;
   let textareaNode: HTMLTextAreaElement | undefined = $state();
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  let highlightedHtml = $state<string | null>(null);
+  let lintPosition = $state<number | null>(null);
 
   $effect(() => {
     if (value === previousValue) return;
     previousValue = value;
     draftValue = value;
+  });
+
+  $effect(() => {
+    if (!highlight) {
+      highlightedHtml = null;
+      lintPosition = null;
+      return;
+    }
+
+    const pendingValue = draftValue;
+    let cancelled = false;
+    void import('./json-editor-enhancement.ts')
+      .then(({ enhanceJson }) => {
+        if (cancelled) return;
+        const result = enhanceJson(pendingValue);
+        highlightedHtml = result.html;
+        lintPosition = result.lint?.position ?? null;
+      })
+      .catch(() => {
+        if (!cancelled) {
+          highlightedHtml = null;
+          lintPosition = null;
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   });
 
   function syncDraftAfterFormReset(): void {
@@ -107,25 +138,36 @@
   {#if description}
     <p id={descriptionId} class="cinder-json-editor__description">{description}</p>
   {/if}
-  <textarea
-    bind:this={textareaNode}
-    {...rest}
-    {id}
-    {rows}
-    {autofocus}
-    value={draftValue}
-    spellcheck="false"
-    class="cinder-json-editor__textarea"
-    aria-describedby={describedBy}
-    aria-invalid={ariaInvalid}
-    oninput={(event) => {
-      draftValue = event.currentTarget.value;
-      onValueChange?.(draftValue);
-    }}
-    {@attach (element) => {
-      if (autofocus) element.focus();
-    }}
-  ></textarea>
+  <div
+    class={classNames(
+      'cinder-json-editor__input',
+      highlight && 'cinder-json-editor__input--highlighted',
+    )}
+    data-cinder-json-lint-position={lintPosition ?? undefined}
+  >
+    {#if highlight && highlightedHtml !== null}
+      <pre class="cinder-json-editor__highlight" aria-hidden="true">{@html highlightedHtml}</pre>
+    {/if}
+    <textarea
+      bind:this={textareaNode}
+      {...rest}
+      {id}
+      {rows}
+      {autofocus}
+      value={draftValue}
+      spellcheck="false"
+      class="cinder-json-editor__textarea"
+      aria-describedby={describedBy}
+      aria-invalid={ariaInvalid}
+      oninput={(event) => {
+        draftValue = event.currentTarget.value;
+        onValueChange?.(draftValue);
+      }}
+      {@attach (element) => {
+        if (autofocus) element.focus();
+      }}
+    ></textarea>
+  </div>
   {#if feedbackText}
     <p
       id={feedbackId}

@@ -31,6 +31,59 @@
     font-size: var(--cinder-text-sm);
   }
 
+  .cinder-json-editor__input {
+    position: relative;
+  }
+
+  .cinder-json-editor__highlight {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: var(--cinder-radius-md);
+    padding: var(--cinder-space-2);
+    pointer-events: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: inherit;
+    line-height: inherit;
+  }
+
+  .cinder-json-editor__input--highlighted .cinder-json-editor__textarea {
+    position: relative;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--cinder-text);
+  }
+
+  .cinder-json-editor .cinder-json-token-key {
+    color: var(--cinder-accent-text);
+  }
+
+  .cinder-json-editor .cinder-json-token-string {
+    color: var(--cinder-color-success-fg);
+  }
+
+  .cinder-json-editor .cinder-json-token-number {
+    color: var(--cinder-color-warning-fg);
+  }
+
+  .cinder-json-editor .cinder-json-token-boolean,
+  .cinder-json-editor .cinder-json-token-null {
+    color: var(--cinder-color-info-fg);
+  }
+
+  .cinder-json-editor .cinder-json-token-punctuation {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-json-editor .cinder-json-lint {
+    text-decoration: underline wavy var(--cinder-danger);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+
   .cinder-json-editor__textarea:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);

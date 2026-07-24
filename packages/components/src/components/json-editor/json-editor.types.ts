@@ -22,6 +22,8 @@ export type JsonEditorProps = Omit<
   required?: boolean;
   /** Whether valid JSON should render an announced success message. Defaults to true. */
   showValidFeedback?: boolean;
+  /** Enables a lazy syntax-highlighted view with inline parse-error annotation. */
+  highlight?: boolean;
   /** Called with the proposed JSON source whenever the user edits the textarea. */
   onValueChange?: (value: string) => void;
   /** Extra class names merged onto the field wrapper. */

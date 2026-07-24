@@ -24,6 +24,7 @@ Controlled free-form JSON text editing with a native textarea, parse feedback, a
 | `description`       | `string`   | no       | —       | Supporting text announced with the editor.                                                                                                            |
 | `disabled`          | `boolean`  | no       | —       | Disables the editor. Passed through to the native textarea.                                                                                           |
 | `error`             | `string`   | no       | —       | External validation error. Takes precedence over JSON parse feedback.                                                                                 |
+| `highlight`         | `boolean`  | no       | —       | Enables a lazy syntax-highlighted view with inline parse-error annotation.                                                                            |
 | `id`                | `string`   | yes      | —       | Unique identifier used for the label and feedback relationships.                                                                                      |
 | `label`             | `string`   | yes      | —       | Visible label associated with the native textarea.                                                                                                    |
 | `required`          | `boolean`  | no       | —       | Marks the editor as required. Passed through to the native textarea.                                                                                  |

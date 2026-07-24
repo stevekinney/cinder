@@ -122,4 +122,21 @@ describe('JsonEditor — bundle boundary', () => {
     expect(await Bun.file(componentPath).text()).toContain('<textarea');
     expect(closure.forbiddenEdges).toEqual([]);
   });
+
+  test('enhancement is reached only through a dynamic import', async () => {
+    const componentPath = resolvePath(import.meta.dir, 'json-editor.svelte');
+    const source = await Bun.file(componentPath).text();
+    expect(source).toContain("import('./json-editor-enhancement.ts')");
+    expect(source).not.toContain("from './json-editor-enhancement.ts'");
+  });
+
+  test('enhancement has no code-editor dependency edge', async () => {
+    const enhancementPath = resolvePath(import.meta.dir, 'json-editor-enhancement.ts');
+    const source = await Bun.file(enhancementPath).text();
+    expect(
+      typescriptSpecifiers(enhancementPath, source).filter((specifier) =>
+        EDITOR_DEPENDENCY_PATTERN.test(specifier),
+      ),
+    ).toEqual([]);
+  });
 });
