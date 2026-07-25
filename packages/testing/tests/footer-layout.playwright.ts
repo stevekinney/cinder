@@ -200,6 +200,7 @@ test.describe('Footer responsive layout', () => {
           </section>
           <div class="cinder-footer__groups">
             <nav aria-label="Product">
+              <h3 class="cinder-footer__group-title">AcmeInternationalizationResources</h3>
               <ul class="cinder-footer__list">
                 <li>
                   <a class="cinder-footer__link" href="/international">
@@ -218,15 +219,42 @@ test.describe('Footer responsive layout', () => {
 
     const product = page.getByRole('navigation', { name: 'Product' });
     const longLink = product.getByRole('link');
-    const [productBox, longLinkBox] = await Promise.all([
+    const longGroupTitle = product.getByRole('heading');
+    const [productBox, longLinkBox, longGroupTitleBox] = await Promise.all([
       product.boundingBox(),
       longLink.boundingBox(),
+      longGroupTitle.boundingBox(),
     ]);
 
     expect(productBox).not.toBeNull();
     expect(longLinkBox).not.toBeNull();
+    expect(longGroupTitleBox).not.toBeNull();
     expect((longLinkBox?.x ?? 0) + (longLinkBox?.width ?? 0)).toBeLessThanOrEqual(
       (productBox?.x ?? 0) + (productBox?.width ?? 0),
+    );
+    expect((longGroupTitleBox?.x ?? 0) + (longGroupTitleBox?.width ?? 0)).toBeLessThanOrEqual(
+      (productBox?.x ?? 0) + (productBox?.width ?? 0),
+    );
+    expect(await longGroupTitle.evaluate((title) => title.scrollWidth <= title.clientWidth)).toBe(
+      true,
+    );
+
+    await page.locator('.cinder-footer').evaluate((footer) => {
+      footer.style.inlineSize = '40rem';
+    });
+    const brand = page.locator('.cinder-footer__brand');
+    const brandTitle = page.locator('.cinder-footer__brand-title');
+    await brandTitle.evaluate((title) => {
+      title.textContent = 'AcmeInternationalizationDocumentation';
+    });
+    const [brandBox, brandTitleBox] = await Promise.all([
+      brand.boundingBox(),
+      brandTitle.boundingBox(),
+    ]);
+    expect(brandBox).not.toBeNull();
+    expect(brandTitleBox).not.toBeNull();
+    expect((brandTitleBox?.x ?? 0) + (brandTitleBox?.width ?? 0)).toBeLessThanOrEqual(
+      (brandBox?.x ?? 0) + (brandBox?.width ?? 0),
     );
   });
 });
