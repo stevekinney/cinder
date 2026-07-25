@@ -74,6 +74,16 @@ describe('Calendar', () => {
     expect(selected).toBe('0099-06-15');
   });
 
+  test('disambiguates ISO year zero with an era in visible and accessible labels', () => {
+    const { container } = render(Calendar, { value: '0000-06-15' });
+    const selected = container.querySelector<HTMLButtonElement>(
+      '.cinder-calendar__day[data-selected]',
+    );
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('1 BC');
+    expect(selected?.getAttribute('aria-label')).toContain('1 BC');
+  });
+
   test('renders the skipped Pacific/Apia civil date when run in that timezone', () => {
     const { container } = render(Calendar, { value: '2011-12-30' });
 

@@ -162,9 +162,12 @@
   });
 
   const monthLabel = $derived(
-    new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-      visibleMonthDate,
-    ),
+    new Intl.DateTimeFormat(locale, {
+      month: 'long',
+      year: 'numeric',
+      era: visibleMonthDate.getUTCFullYear() <= 0 ? 'short' : undefined,
+      timeZone: 'UTC',
+    }).format(visibleMonthDate),
   );
 
   const weekdayLabels = $derived(
@@ -187,6 +190,14 @@
       day: 'numeric',
       timeZone: 'UTC',
     });
+    const dayLabelWithEraFmt = new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      era: 'short',
+      timeZone: 'UTC',
+    });
     const next: CalendarCell[] = [];
     for (let index = 0; index < 42; index += 1) {
       const date = addDays(gridStart, index);
@@ -199,7 +210,8 @@
         disabled: disabled || !supported || isDateDisabled(iso),
         focused: iso === focused,
         selected: iso === selectedIso,
-        ariaLabel: dayLabelFmt.format(date),
+        ariaLabel:
+          date.getUTCFullYear() <= 0 ? dayLabelWithEraFmt.format(date) : dayLabelFmt.format(date),
       });
     }
     return next;

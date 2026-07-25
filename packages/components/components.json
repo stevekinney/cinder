@@ -1660,7 +1660,7 @@
       "exportName": "DatePicker",
       "category": "form",
       "status": "alpha",
-      "purpose": "Controlled date picker that combines a text trigger, floating calendar grid, and optional time controls.",
+      "purpose": "Controlled date picker that combines a text field, calendar-trigger button, floating calendar grid, and optional time controls.",
       "tags": ["form", "date", "calendar"],
       "useWhen": [
         "Collecting a date with consistent cross-browser UI and keyboard support.",

@@ -3,7 +3,7 @@
    * @cinder
    * @category form
    * @status alpha
-   * @purpose Controlled date picker that combines a text trigger, floating calendar grid, and optional time controls.
+   * @purpose Controlled date picker that combines a text field, calendar-trigger button, floating calendar grid, and optional time controls.
    * @tag form
    * @tag date
    * @tag calendar
