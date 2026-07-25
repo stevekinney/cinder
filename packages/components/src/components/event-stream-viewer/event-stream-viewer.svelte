@@ -39,6 +39,7 @@
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
+  import Input from '../input/index.ts';
   import {
     detailsIdForKey,
     reconnectedBoundaryKey,
@@ -90,8 +91,8 @@
     loading = false,
     label = 'Event stream',
     detectSequenceGaps = false,
-    onCopyVisible,
-    onFilter,
+    oncopyvisible,
+    onfilter,
     filterQuery = '',
     class: className,
     ...rest
@@ -248,8 +249,8 @@
 
   function handleCopyVisible() {
     const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
-    if (!onCopyVisible) return;
-    onCopyVisible(text);
+    if (!oncopyvisible) return;
+    oncopyvisible(text);
     liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
     setTimeout(() => {
       liveMessage = '';
@@ -303,45 +304,49 @@
   data-cinder-paused={!followLatest || undefined}
 >
   <!-- Toolbar -->
-  <div class="cinder-event-stream-viewer__toolbar" role="group" aria-label="Stream controls">
-    <div class="cinder-event-stream-viewer__toolbar-start">
-      {#if connectionState}
-        <StatusDot {connectionState} />
-      {/if}
-      {#if !followLatest}
-        <button
-          type="button"
-          class="cinder-event-stream-viewer__resume-button"
-          onclick={resumeFollowing}
-        >
-          Resume following
-        </button>
-      {/if}
+  {#if connectionState || !followLatest || onfilter !== undefined || oncopyvisible !== undefined}
+    <div class="cinder-event-stream-viewer__toolbar" role="group" aria-label="Stream controls">
+      <div class="cinder-event-stream-viewer__toolbar-start">
+        {#if connectionState}
+          <StatusDot {connectionState} />
+        {/if}
+        {#if !followLatest}
+          <button
+            type="button"
+            class="cinder-event-stream-viewer__resume-button"
+            onclick={resumeFollowing}
+          >
+            Resume following
+          </button>
+        {/if}
+      </div>
+      <div class="cinder-event-stream-viewer__toolbar-end">
+        {#if onfilter !== undefined}
+          <Input
+            type="search"
+            class="cinder-event-stream-viewer__filter-input"
+            placeholder="Filter events…"
+            label="Filter events"
+            hideLabel
+            aria-label="Filter events"
+            value={filterQuery}
+            oninput={(e) => onfilter?.((e.currentTarget as HTMLInputElement).value)}
+          />
+        {/if}
+        {#if oncopyvisible !== undefined}
+          <button
+            type="button"
+            class="cinder-event-stream-viewer__copy-all-button"
+            onclick={handleCopyVisible}
+            aria-label="Copy all visible events"
+            disabled={events.length === 0}
+          >
+            Copy visible
+          </button>
+        {/if}
+      </div>
     </div>
-    <div class="cinder-event-stream-viewer__toolbar-end">
-      {#if onFilter !== undefined}
-        <input
-          type="search"
-          class="cinder-event-stream-viewer__filter-input"
-          placeholder="Filter events…"
-          aria-label="Filter events"
-          value={filterQuery}
-          oninput={(e) => onFilter?.((e.currentTarget as HTMLInputElement).value)}
-        />
-      {/if}
-      {#if onCopyVisible !== undefined}
-        <button
-          type="button"
-          class="cinder-event-stream-viewer__copy-all-button"
-          onclick={handleCopyVisible}
-          aria-label="Copy all visible events"
-          disabled={events.length === 0}
-        >
-          Copy visible
-        </button>
-      {/if}
-    </div>
-  </div>
+  {/if}
 
   <!-- Truncation notice -->
   {#if truncated}
