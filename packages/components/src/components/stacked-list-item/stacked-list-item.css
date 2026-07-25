@@ -18,7 +18,7 @@
 
   .cinder-stacked-list-item__layout {
     display: grid;
-    align-items: start;
+    align-items: center;
     column-gap: var(--cinder-space-3);
     row-gap: var(--cinder-space-2);
     grid-template-columns: 1fr;
@@ -28,6 +28,10 @@
   .cinder-stacked-list-item--has-leading .cinder-stacked-list-item__layout {
     grid-template-columns: auto 1fr;
     grid-template-areas: 'leading body';
+  }
+
+  .cinder-stacked-list-item--has-leading .cinder-stacked-list-item__leading {
+    align-self: start;
   }
 
   .cinder-stacked-list-item--has-trailing .cinder-stacked-list-item__layout {
