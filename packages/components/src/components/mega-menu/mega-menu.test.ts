@@ -98,6 +98,20 @@ describe('MegaMenu', () => {
     expect(styles).toContain('.cinder-mega-menu__sub .cinder-mega-menu__sections {');
   });
 
+  test('renders independently titled nested sections below top-level section headings', async () => {
+    const nestedTitleItems = structuredClone(items);
+    nestedTitleItems[0]!.submenu![0]!.sections[0]!.title = 'Frameworks';
+    const { container } = render(MegaMenu, { items: nestedTitleItems });
+
+    await fireEvent.click(getTriggerByLabel(container, 'Products'));
+
+    const heading = Array.from(container.querySelectorAll('h4')).find(
+      (element) => element.textContent === 'Frameworks',
+    );
+    expect(heading).not.toBeUndefined();
+    expect(container.querySelector('h3')?.textContent).toBe('Core');
+  });
+
   test('arrow navigation moves focus between top-level triggers', async () => {
     const { container } = render(MegaMenu, { items });
     const first = getTriggerByLabel(container, 'Products');
