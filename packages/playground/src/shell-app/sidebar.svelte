@@ -259,7 +259,7 @@
         {:else if matchesCurrentFilter(name) || (COMPOUND_COMPONENT_FAMILIES[name] ?? []).some(matchesCurrentFilter)}
           <SideNavigationGroup
             label={humanizeComponentName(name)}
-            bind:expanded={expandedFamilies[name]}
+            bind:expanded={expandedFamilies[name]!}
           >
             <SideNavigationItem
               href={buildShellHref(name)}
