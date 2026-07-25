@@ -181,6 +181,24 @@
         "typescript": "^5.9.0",
       },
     },
+    "packages/mcp": {
+      "name": "@lostgradient/cinder-mcp",
+      "version": "0.0.0",
+      "bin": {
+        "cinder-mcp": "./dist/bin.js",
+      },
+      "dependencies": {
+        "@lostgradient/cinder": "workspace:*",
+        "@modelcontextprotocol/sdk": "^1.29.0",
+        "zod": "^4.0.0",
+      },
+      "devDependencies": {
+        "@types/bun": "^1.3.11",
+        "oxlint": "^1.56.0",
+        "oxlint-tsgolint": "^0.17.0",
+        "typescript": "^5.9.0",
+      },
+    },
     "packages/playground": {
       "name": "@cinder/playground",
       "version": "0.0.1",
@@ -394,6 +412,8 @@
     "@lostgradient/chat": ["@lostgradient/chat@workspace:packages/chat"],
 
     "@lostgradient/cinder": ["@lostgradient/cinder@workspace:packages/components"],
+
+    "@lostgradient/cinder-mcp": ["@lostgradient/cinder-mcp@workspace:packages/mcp"],
 
     "@lostgradient/editor": ["@lostgradient/editor@workspace:packages/editor"],
 

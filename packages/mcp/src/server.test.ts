@@ -5,15 +5,12 @@ import { describe, expect, it } from 'bun:test';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  importOptionalMcpDependency,
-  isModuleNotFoundError,
-  MCP_OPTIONAL_DEPENDENCIES_MESSAGE,
-} from './mcp-dependencies.ts';
-
-const cliDirectory = dirname(fileURLToPath(import.meta.url));
-const packageRoot = resolve(cliDirectory, '../..');
-const cliEntrypoint = join(cliDirectory, 'index.ts');
+const srcDirectory = dirname(fileURLToPath(import.meta.url));
+const packageRoot = resolve(srcDirectory, '..');
+const binEntrypoint = join(srcDirectory, 'bin.ts');
+const packageVersion: string = JSON.parse(
+  await Bun.file(join(packageRoot, 'package.json')).text(),
+).version;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -46,11 +43,30 @@ function errorData(error: McpError): Record<string, unknown> {
   return data['error'];
 }
 
-describe('cinder MCP server', () => {
+describe('cinder-mcp server', () => {
+  it('reports its name and package version during initialize', async () => {
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: [binEntrypoint],
+      cwd: packageRoot,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+      stderr: 'pipe',
+    });
+    const client = new Client({ name: 'cinder-mcp-test', version: '0.0.0' });
+    await client.connect(transport);
+    try {
+      const serverVersion = client.getServerVersion();
+      expect(serverVersion?.name).toBe('cinder');
+      expect(serverVersion?.version).toBe(packageVersion);
+    } finally {
+      await client.close();
+    }
+  });
+
   it('serves tools, resources, and prompts over stdio without stderr noise', async () => {
     const transport = new StdioClientTransport({
       command: process.execPath,
-      args: [cliEntrypoint, 'mcp'],
+      args: [binEntrypoint],
       cwd: packageRoot,
       env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
       stderr: 'pipe',
@@ -60,7 +76,7 @@ describe('cinder MCP server', () => {
       stderrChunks.push(String(chunk));
     });
 
-    const client = new Client({ name: 'cinder-cli-test', version: '0.0.0' });
+    const client = new Client({ name: 'cinder-mcp-test', version: '0.0.0' });
     await client.connect(transport);
 
     try {
@@ -128,67 +144,5 @@ describe('cinder MCP server', () => {
     }
 
     expect(stderrChunks.join('').trim()).toBe('');
-  });
-});
-
-// zod and @modelcontextprotocol/sdk moved to optional peerDependencies
-// (package-boundaries.md, Phase 0): every consumer of the component library
-// no longer has to install them, only users of the `mcp` CLI command do. If
-// they're missing, `loadMcpDependencies` should rewrite the raw
-// module-resolution error into one actionable message rather than letting a
-// "Cannot find package 'zod'" stack trace reach the user. This can't be
-// exercised end-to-end without actually uninstalling a workspace
-// devDependency, so it tests the classifier that decision hinges on
-// directly, against both the codes and message shapes Bun/Node use for a
-// missing module.
-describe('isModuleNotFoundError', () => {
-  it('recognises Node/Bun module-not-found error codes', () => {
-    const error = new Error("Cannot find package 'zod' imported from mcp.ts");
-    (error as NodeJS.ErrnoException).code = 'ERR_MODULE_NOT_FOUND';
-    expect(isModuleNotFoundError(error)).toBe(true);
-  });
-
-  it('recognises the legacy MODULE_NOT_FOUND code', () => {
-    const error = new Error("Cannot find module '@modelcontextprotocol/sdk/server/mcp.js'");
-    (error as NodeJS.ErrnoException).code = 'MODULE_NOT_FOUND';
-    expect(isModuleNotFoundError(error)).toBe(true);
-  });
-
-  it('falls back to message sniffing when no error code is set', () => {
-    expect(isModuleNotFoundError(new Error("Cannot find package 'zod'"))).toBe(true);
-    expect(isModuleNotFoundError(new Error("Cannot find module './missing.ts'"))).toBe(true);
-  });
-
-  it('does not misclassify unrelated errors', () => {
-    expect(isModuleNotFoundError(new Error('zod threw while parsing input'))).toBe(false);
-    expect(isModuleNotFoundError(new TypeError('unexpected token'))).toBe(false);
-    expect(isModuleNotFoundError('not an Error instance')).toBe(false);
-    expect(isModuleNotFoundError(undefined)).toBe(false);
-  });
-});
-
-describe('importOptionalMcpDependency', () => {
-  it('returns a loaded optional dependency', async () => {
-    expect(await importOptionalMcpDependency(async () => 'loaded')).toBe('loaded');
-  });
-
-  it('rewrites only module-not-found failures and preserves their cause', async () => {
-    const missing = new Error("Cannot find package 'zod'");
-    const rewritten = await importOptionalMcpDependency(async () => {
-      throw missing;
-    }).then(
-      () => undefined,
-      (error: unknown) => error,
-    );
-    expect(rewritten).toBeInstanceOf(Error);
-    expect((rewritten as Error).message).toBe(MCP_OPTIONAL_DEPENDENCIES_MESSAGE);
-    expect((rewritten as Error).cause).toBe(missing);
-
-    const internalFailure = new Error('dependency initialization failed');
-    await expect(
-      importOptionalMcpDependency(async () => {
-        throw internalFailure;
-      }),
-    ).rejects.toBe(internalFailure);
   });
 });

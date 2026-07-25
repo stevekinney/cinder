@@ -377,3 +377,28 @@ nothing today), no husky/hook rewiring, no removal of `shouldSkipBuild` yet. The
 layer becomes redundant once turbo owns orchestration and gets deleted in a follow-up once
 turbo has baked on main — running both systems briefly is belt-and-suspenders, not drift, since
 each is independently correct.
+
+## Update 2026-07-24: the Phase 0 optional-peer compromise is superseded
+
+Phase 0 (above) made `zod` and `@modelcontextprotocol/sdk` optional peer dependencies of
+`@lostgradient/cinder`, reachable only through `cinder mcp`, with `src/cli/mcp-dependencies.ts`
+rewriting a missing-package error into an actionable message. That was the cheap fix at the
+time — it kept every consumer of the component library from installing the MCP SDK and Zod,
+without standing up a fifth package.
+
+It is superseded by a dedicated `@lostgradient/cinder-mcp` package (issue #886). `cinder mcp` is
+removed outright — no forwarding command, no compatibility shim. `@lostgradient/cinder-mcp` owns
+MCP protocol registration, the `cinder-mcp` binary, and the MCP SDK/Zod dependencies as regular
+(non-optional, non-peer) dependencies. `@lostgradient/cinder` exposes the knowledge service the
+MCP server needs through a new Node-only `@lostgradient/cinder/knowledge` export, so the
+metadata Cinder already owned (`components.json`, schemas, variables, examples, constraints)
+stays owned by Cinder — only the MCP protocol surface moved. The optional-peer machinery
+(`mcp-dependencies.ts`, `peerDependenciesMeta`, `MCP_OPTIONAL_DEPENDENCIES_MESSAGE`) is deleted
+rather than kept as a fallback: this repository is pre-1.0, and a second, redundant path to the
+same server would be exactly the kind of compatibility scaffolding this document argues against
+everywhere else.
+
+Publish order gains `@lostgradient/cinder-mcp` immediately after `@lostgradient/cinder`:
+markdown → cinder → cinder-mcp → editor → chat. The same first-publish bootstrap constraint
+described above (npm Trusted Publishing cannot mint a brand-new package name) applies to
+`@lostgradient/cinder-mcp`'s first release.

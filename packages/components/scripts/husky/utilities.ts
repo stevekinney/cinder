@@ -690,15 +690,21 @@ export function expandToDependents(
  * `@cinder/testing` and `@cinder/playground` have no `build` script; `@lostgradient/chat`
  * has a `build` script but no `scripts/lib/build-cache.ts` (not
  * hash-skippable) — both stay excluded from this specific list.
+ * `@lostgradient/cinder-mcp` is appended after `@lostgradient/cinder`: its
+ * `server.ts` imports `@lostgradient/cinder/knowledge`, which resolves (via
+ * the `node`/`import`/`default` export conditions) to cinder's own built
+ * `dist/cli/knowledge.js` — a genuine build-order dependency, unlike editor's
+ * dev-only relationship with cinder described above.
  *
  * This list is explicit because `WorkspacePackage` does not track which
  * packages are buildable, and the dependency chain here is small and fixed —
  * deriving it generically would add a `hasBuild` field and a topo-sort for a
- * two-node chain.
+ * short, fixed chain.
  */
 export const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER: readonly string[] = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
+  '@lostgradient/cinder-mcp',
 ];
 
 /**

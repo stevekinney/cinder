@@ -14,7 +14,7 @@ This file covers repo-wide Bun workspace conventions.
 bun install              # Install workspace dependencies
 bun run dev              # Start the playground dev server
 bun run playground       # Alias for the playground dev server
-bun run build            # Build @lostgradient/cinder, then @lostgradient/chat
+bun run build            # Build @lostgradient/cinder, @lostgradient/cinder-mcp, @lostgradient/editor, then @lostgradient/chat
 ```
 
 ### Testing
@@ -65,20 +65,25 @@ bun run --filter=@lostgradient/chat components:generate
 bun run --filter=@lostgradient/chat components:check
 bun run --filter=@lostgradient/chat validate:consumer
 bun run --filter=@lostgradient/chat package:weight:check
+bun run --filter=@lostgradient/cinder-mcp build
+bun run --filter=@lostgradient/cinder-mcp test
+bun run --filter=@lostgradient/cinder-mcp validate:consumer
+bun run --filter=@lostgradient/cinder-mcp package:weight:check
 ```
 
 Run `components:generate` after changing component source metadata, examples, constraints, variables, generated README sections, or export-affecting component files.
 
 ## Workspace Layout
 
-| Workspace             | Purpose                                                                                                  |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| `packages/components` | Published `@lostgradient/cinder` package.                                                                |
-| `packages/chat`       | Published `@lostgradient/chat` domain package.                                                           |
-| `packages/playground` | Private component playground and static export.                                                          |
-| `packages/testing`    | Private Playwright, axe, and visual-regression harness.                                                  |
-| `packages/markdown`   | Published `@lostgradient/markdown` package (headless Markdown pipeline, rendering, diffing, templating). |
-| `packages/commentary` | Private review/comment anchoring and editor (ProseMirror/Milkdown) runtime utilities.                    |
+| Workspace             | Purpose                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `packages/components` | Published `@lostgradient/cinder` package.                                                                              |
+| `packages/chat`       | Published `@lostgradient/chat` domain package.                                                                         |
+| `packages/playground` | Private component playground and static export.                                                                        |
+| `packages/testing`    | Private Playwright, axe, and visual-regression harness.                                                                |
+| `packages/markdown`   | Published `@lostgradient/markdown` package (headless Markdown pipeline, rendering, diffing, templating).               |
+| `packages/mcp`        | Published `@lostgradient/cinder-mcp` package (Node-only Model Context Protocol server for Cinder component discovery). |
+| `packages/commentary` | Private review/comment anchoring and editor (ProseMirror/Milkdown) runtime utilities.                                  |
 
 ## Architecture Notes
 
@@ -96,6 +101,7 @@ Run `components:generate` after changing component source metadata, examples, co
 - Long-form docs index: [`docs/README.md`](./docs/README.md)
 - Published package README: [`packages/components/README.md`](./packages/components/README.md)
 - Chat package README: [`packages/chat/README.md`](./packages/chat/README.md)
+- MCP package README: [`packages/mcp/README.md`](./packages/mcp/README.md)
 - Package contribution guidance: [`packages/components/AGENTS.md`](./packages/components/AGENTS.md)
 
 When documentation mentions commands, prefer root workspace commands with `bun run --filter=<package>` for package-specific gates. Avoid bare `bun test` in docs unless the local package script intentionally wraps it.

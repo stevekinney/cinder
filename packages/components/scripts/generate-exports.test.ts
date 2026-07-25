@@ -25,6 +25,7 @@ import {
   computeRootExport,
   EXPLICIT_ROOT_FILE_ENTRIES,
   FORBIDDEN_EXPORT_KEY_PATTERN,
+  knowledgeExport,
   legacyEntrySourcePath,
   orderedExportEntry,
   rootLevelExportTargets,
@@ -354,6 +355,20 @@ describe('stylesGuardExport', () => {
     // A component named 'styles' would produce './styles', but the guard key
     // './styles/guard' must never appear in the computed component subpaths.
     expect(computed['./styles/guard']).toBeUndefined();
+  });
+});
+
+describe('knowledgeExport', () => {
+  it('points node/import/default at the built CLI knowledge module and bun at source', () => {
+    const entry = knowledgeExport();
+    expect(entry).toEqual({
+      types: './dist/cli/knowledge.d.ts',
+      bun: './src/cli/knowledge.ts',
+      node: './dist/cli/knowledge.js',
+      import: './dist/cli/knowledge.js',
+      default: './dist/cli/knowledge.js',
+    });
+    expect(Object.keys(entry)).toEqual(['types', 'bun', 'node', 'import', 'default']);
   });
 });
 

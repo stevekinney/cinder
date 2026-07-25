@@ -73,6 +73,7 @@ export type ExportEntry = {
   types?: string;
   browser?: string;
   svelte?: string;
+  bun?: string;
   import?: string;
   node?: string;
   default?: string;
@@ -95,6 +96,7 @@ const PACKAGE_JSON_KEY = './package.json';
 const ICONS_KEY = './icons';
 const HIGHLIGHTERS_SHIKI_KEY = './highlighters/shiki';
 const HIGHLIGHTERS_SHIKI_CURATED_KEY = './highlighters/shiki/curated';
+const KNOWLEDGE_KEY = './knowledge';
 
 /**
  * Keys that the generator owns at the top level but never emits via
@@ -114,6 +116,7 @@ const RESERVED_KEYS = new Set([
   ICONS_KEY,
   HIGHLIGHTERS_SHIKI_KEY,
   HIGHLIGHTERS_SHIKI_CURATED_KEY,
+  KNOWLEDGE_KEY,
 ]);
 
 /**
@@ -184,6 +187,23 @@ function highlightersShikiExport(source = 'default'): ExportEntry {
     node: `./dist/server/highlighters/shiki/${source}.js`,
     import: `./src/highlighters/shiki/${source}.ts`,
     default: `./dist/highlighters/shiki/${source}.js`,
+  });
+}
+
+/**
+ * Canonical conditional entry for `@lostgradient/cinder/knowledge`, the
+ * Node-only knowledge-service boundary `@lostgradient/cinder-mcp` and other
+ * external packages load Cinder's component metadata through. The `bun`
+ * condition is workspace-only — it resolves to source for sibling packages
+ * in this monorepo; every other consumer resolves the built `dist/cli/knowledge.js`.
+ */
+export function knowledgeExport(): ExportEntry {
+  return orderedExportEntry({
+    types: './dist/cli/knowledge.d.ts',
+    bun: './src/cli/knowledge.ts',
+    node: './dist/cli/knowledge.js',
+    import: './dist/cli/knowledge.js',
+    default: './dist/cli/knowledge.js',
   });
 }
 
@@ -268,6 +288,7 @@ export function orderedExportEntry(entry: ExportEntry): ExportEntry {
   const out: ExportEntry = {};
   if (entry.types !== undefined) out.types = entry.types;
   if (entry.browser !== undefined) out.browser = entry.browser;
+  if (entry.bun !== undefined) out.bun = entry.bun;
   if (entry.node !== undefined) out.node = entry.node;
   if (entry.svelte !== undefined) out.svelte = entry.svelte;
   if (entry.import !== undefined) out.import = entry.import;
@@ -723,6 +744,7 @@ async function main(): Promise<void> {
     }
     next[STYLES_GUARD_KEY] = stylesGuardExport();
     next[ICONS_KEY] = iconsExport();
+    next[KNOWLEDGE_KEY] = knowledgeExport();
     // Keep component-owned enhancement entries at their historical position
     // before the package-level highlighter export while deriving them from the
     // generic component computation above.
@@ -814,6 +836,14 @@ async function main(): Promise<void> {
       issues.push(`Reserved export "${STYLES_GUARD_KEY}" is missing`);
     } else if (JSON.stringify(currentGuardEntry) !== JSON.stringify(expectedGuardEntry)) {
       issues.push(`Stale reserved export "${STYLES_GUARD_KEY}"`);
+    }
+
+    const expectedKnowledgeEntry = knowledgeExport();
+    const currentKnowledgeEntry = existing[KNOWLEDGE_KEY];
+    if (!currentKnowledgeEntry) {
+      issues.push(`Reserved export "${KNOWLEDGE_KEY}" is missing`);
+    } else if (JSON.stringify(currentKnowledgeEntry) !== JSON.stringify(expectedKnowledgeEntry)) {
+      issues.push(`Stale reserved export "${KNOWLEDGE_KEY}"`);
     }
 
     if (existing[PACKAGE_JSON_KEY] !== './package.json') {

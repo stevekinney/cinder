@@ -170,14 +170,11 @@ const components = await discoverComponents();
  * `src/utilities/change-tracker.svelte.ts` and
  * `src/components/json-schema-editor/diff-view.svelte`) — it stays external
  * rather than bundled, matching the treatment of every other declared
- * dependency here. `zod` and `@modelcontextprotocol/sdk` are optional peer
- * dependencies — only `bin.cinder`'s `mcp` command needs them.
+ * dependency here.
  */
 const runtimeDependencyExternals = [
   '@lostgradient/markdown',
   '@lostgradient/markdown/*',
-  '@modelcontextprotocol/sdk',
-  '@modelcontextprotocol/sdk/*',
   // The Shiki adapter (`highlighters/shiki/index.ts`) resolves languages and
   // themes via `shiki/langs` / `shiki/themes` and builds its highlighter via
   // `shiki/core` + `@shikijs/engine-oniguruma` (see that file's module JSDoc
@@ -191,8 +188,6 @@ const runtimeDependencyExternals = [
   'ajv',
   'ajv/*',
   'shiki',
-  'zod',
-  'zod/*',
 ];
 
 // Pre-emit sidecar lint: every component CSS that exists must conform to the
@@ -285,6 +280,7 @@ const staticSubpathEntrypoints = [
 ];
 
 const cliEntrypoint = `${sourceRoot}/cli/index.ts`;
+const cliKnowledgeEntrypoint = `${sourceRoot}/cli/knowledge.ts`;
 
 const serverCssNoopPlugin = {
   name: 'server-css-noop',
@@ -532,13 +528,16 @@ await rm(temporaryServerRootMapOutput, { force: true });
 
 // -----------------------------------------------------------------------------
 // 3. CLI build. The published `bin.cinder` target is Node-only and must not
-//    participate in browser/component export builds. It shares the runtime
-//    dependency external list so MCP SDK and zod stay install-time (optional
-//    peer) dependencies instead of being vendored into the generated binary.
+//    participate in browser/component export builds. `cli/knowledge.ts` is
+//    built as its own entrypoint (not just imported by `cli/index.ts`) so
+//    `dist/cli/knowledge.js` exists as a standalone module for the
+//    `@lostgradient/cinder/knowledge` export — the boundary
+//    `@lostgradient/cinder-mcp` and other Node consumers load Cinder's
+//    component metadata through.
 // -----------------------------------------------------------------------------
 
 const cliBuildResult = await Bun.build({
-  entrypoints: [cliEntrypoint],
+  entrypoints: [cliEntrypoint, cliKnowledgeEntrypoint],
   outdir: distributionDirectory,
   root: sourceRoot,
   target: 'node',
@@ -664,6 +663,11 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/styles/base-guard.js`,
   `${distributionDirectory}/styles/base-guard.d.ts`,
   `${distributionDirectory}/server/styles/base-guard.js`,
+  // CLI binary plus the standalone knowledge module the
+  // `@lostgradient/cinder/knowledge` export resolves.
+  `${distributionDirectory}/cli/index.js`,
+  `${distributionDirectory}/cli/knowledge.js`,
+  `${distributionDirectory}/cli/knowledge.d.ts`,
 ];
 
 for (const component of components) {

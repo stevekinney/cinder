@@ -39,6 +39,7 @@ on:
       - 'packages/*/tsconfig*.json'
       - 'packages/editor/src/**'
       - 'packages/markdown/src/**'
+      - 'packages/mcp/**'
       - 'packages/playground/src/discover.ts'
       - 'packages/playground/src/examples/**'
       - 'packages/playground/src/**'
@@ -306,7 +307,7 @@ jobs:
       - name: Build workspace (affected)
         env:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
-        run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat $AFFECTED
+        run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/cinder-mcp --filter=@lostgradient/chat $AFFECTED
 
       # @lostgradient/markdown and @lostgradient/editor are bundled into
       # @lostgradient/cinder (markdown is also independently published — see
@@ -346,9 +347,9 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            bunx turbo run test --filter="@lostgradient/markdown...[origin/${BASE_REF}...HEAD]" --filter="@lostgradient/editor...[origin/${BASE_REF}...HEAD]"
+            bunx turbo run test --filter="@lostgradient/markdown...[origin/${BASE_REF}...HEAD]" --filter="@lostgradient/editor...[origin/${BASE_REF}...HEAD]" --filter="@lostgradient/cinder-mcp...[origin/${BASE_REF}...HEAD]"
           else
-            bunx turbo run test --filter=@lostgradient/markdown --filter=@lostgradient/editor
+            bunx turbo run test --filter=@lostgradient/markdown --filter=@lostgradient/editor --filter=@lostgradient/cinder-mcp
           fi
 
       - name: Run Chat unit tests with coverage (affected)

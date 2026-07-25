@@ -54,6 +54,7 @@ const workflowsDirectory = join(repoRoot, '.github', 'workflows');
 const componentsPackageName = '@lostgradient/cinder';
 const chatPackageName = '@lostgradient/chat';
 const editorPackageName = '@lostgradient/editor';
+const mcpPackageName = '@lostgradient/cinder-mcp';
 
 export const LAYERS = [
   'pre-commit',
@@ -368,6 +369,39 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: [],
     reason:
       'Not run by any layer by name — Editor, like Markdown, is covered by the bare `test` task above, not a dedicated coverage step.',
+  },
+  [`${mcpPackageName}#lint`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'cinder-mcp oxlint. unit-tests and main-green reach it through the workspace lint scripts, same as Chat and Editor.',
+  },
+  [`${mcpPackageName}#typecheck`]: {
+    layers: ['browser-tests', 'main-green'],
+    reason:
+      'cinder-mcp typecheck is owned by browser-tests and main-green (both run the root `typecheck` script, which turbo fans out to every package); pre-commit only formats staged files.',
+  },
+  [`${mcpPackageName}#build`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'unit-tests\' "Build workspace (affected)" turbo step names `--filter=@lostgradient/cinder-mcp` ' +
+      "literally, alongside Cinder and Chat. main-green's dedicated Node-runtime smoke step also builds " +
+      'it explicitly (it then runs the built `dist/bin.js` under real Node).',
+  },
+  [`${mcpPackageName}#test`]: {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Git-range-scoped through the bare `test` task in unit-tests ("Run private package unit tests", ' +
+      'alongside Markdown and Editor) and run again in main-green\'s "Test non-Cinder workspaces" step.',
+  },
+  [`${mcpPackageName}#validate:consumer`]: {
+    layers: ['release'],
+    reason:
+      'The release artifact gate installs both the staged Cinder and cinder-mcp tarballs and runs the ' +
+      'full npx --no-install cinder-mcp MCP handshake under plain Node with Bun removed from PATH.',
+  },
+  [`${mcpPackageName}#package:weight:check`]: {
+    layers: ['release'],
+    reason: 'The release artifact gate applies the dedicated cinder-mcp tarball budget.',
   },
 };
 
@@ -796,6 +830,7 @@ async function loadPublicPackageScripts(): Promise<Record<string, Record<string,
     [componentsPackageName, packageRoot],
     [chatPackageName, join(repoRoot, 'packages', 'chat')],
     [editorPackageName, join(repoRoot, 'packages', 'editor')],
+    [mcpPackageName, join(repoRoot, 'packages', 'mcp')],
   ] as const;
   const entries = await Promise.all(
     packageRoots.map(

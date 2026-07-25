@@ -16,8 +16,9 @@
  *     cannot accidentally deploy a version branch to production.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
- *   - Every public package (markdown, cinder, chat, in DAG order) has consumer
- *     validation, package-weight, and publish commands, and no publish step has
+ *   - Every public package (markdown, cinder, cinder-mcp, editor, chat, in DAG
+ *     order) has consumer validation, package-weight, and publish commands,
+ *     and no publish step has
  *     NODE_AUTH_TOKEN or NPM_TOKEN in its `env:` block (precise, well-messaged
  *     check).
  *   - NODE_AUTH_TOKEN / NPM_TOKEN do NOT appear anywhere else in release.yaml
@@ -61,14 +62,16 @@ const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json'
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
  * Every published package, in required publish DAG order: markdown has no
- * internal peer contract with the other three and publishes first; cinder
- * next; editor peers on both cinder and markdown and publishes third; chat
+ * internal peer contract with the other four and publishes first; cinder
+ * next; cinder-mcp depends on cinder's `./knowledge` export and publishes
+ * third; editor peers on both cinder and markdown and publishes fourth; chat
  * peers on cinder's minor and publishes last (see
  * docs/decisions/package-boundaries.md).
  */
 const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
+  '@lostgradient/cinder-mcp',
   '@lostgradient/editor',
   '@lostgradient/chat',
 ] as const;
@@ -276,6 +279,34 @@ export function manualCinderBootstrapHasMarkdownRegistryPreflight(workflow: unkn
         run.includes("'.version' packages/markdown/package.json") &&
         run.includes('npm view "@lostgradient/markdown@^${markdown_version}" version --json') &&
         run.includes('Publish Markdown first')
+      );
+    });
+  });
+}
+
+/**
+ * The cinder-mcp bootstrap path must prove its required Cinder release exists
+ * on npm. cinder-mcp's packed manifest rewrites its `workspace:*` dependency
+ * on `@lostgradient/cinder` to a concrete `^<version>` range (mirrors the
+ * Cinder-bootstrap-requires-Markdown check above), so a break-glass cinder-mcp
+ * publish must not run ahead of the Cinder release it pins.
+ */
+export function manualMcpBootstrapHasCinderRegistryPreflight(workflow: unknown): boolean {
+  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
+
+  return Object.values(workflow['jobs']).some((job) => {
+    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return false;
+    return job['steps'].some((step) => {
+      if (!isObjectRecord(step)) return false;
+      const condition = step['if'];
+      const run = step['run'];
+      return (
+        typeof condition === 'string' &&
+        condition.includes("inputs.package == 'mcp'") &&
+        typeof run === 'string' &&
+        run.includes("'.version' packages/components/package.json") &&
+        run.includes('npm view "@lostgradient/cinder@^${cinder_version}" version --json') &&
+        run.includes('Publish Cinder first')
       );
     });
   });
@@ -634,6 +665,14 @@ function runValidation(): void {
     );
   }
   pass('Manual Cinder bootstrap requires its Markdown dependency on npm');
+
+  if (!manualMcpBootstrapHasCinderRegistryPreflight(parsedManualReleaseWorkflow)) {
+    fail(
+      "release-manual.yaml must derive cinder-mcp's pinned Cinder range and verify a satisfying " +
+        'Cinder version exists on npm before bootstrapping cinder-mcp.',
+    );
+  }
+  pass('Manual cinder-mcp bootstrap requires its Cinder dependency on npm');
 
   // ── Guard 2: locate the primary publish step ────────────────────────────────
   // The primary publish step is identified by the run: command that calls publish:release.
