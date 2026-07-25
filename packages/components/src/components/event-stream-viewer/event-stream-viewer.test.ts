@@ -144,7 +144,9 @@ describe('EventStreamViewer', () => {
     });
 
     test('renders a log region with the default label', () => {
-      const { container } = render(EventStreamViewer, { props: { events: [] } });
+      const { container } = render(EventStreamViewer, {
+        props: { events: [], connectionState: 'connected' },
+      });
       const log = container.querySelector('[role="log"]');
       expect(log).not.toBeNull();
       expect(log?.getAttribute('aria-label')).toBe('Event stream');
@@ -159,7 +161,9 @@ describe('EventStreamViewer', () => {
     });
 
     test('renders toolbar with group role', () => {
-      const { container } = render(EventStreamViewer, { props: { events: [] } });
+      const { container } = render(EventStreamViewer, {
+        props: { events: [], connectionState: 'connected' },
+      });
       const toolbar = container.querySelector('[role="group"]');
       expect(toolbar).not.toBeNull();
       expect(toolbar?.getAttribute('aria-label')).toBe('Stream controls');
