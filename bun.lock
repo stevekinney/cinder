@@ -22,7 +22,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.4.0",
+      "version": "0.4.1",
       "dependencies": {
         "conversationalist": "^0.5.0",
         "zod": "4.4.1",
@@ -50,7 +50,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.19.0",
+      "version": "0.19.1",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
