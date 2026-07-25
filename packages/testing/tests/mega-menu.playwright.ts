@@ -1,5 +1,6 @@
 import { expect, test } from '../src/fixtures/component-page.ts';
 import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
+import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop');
 const megaMenuEntry = loadManifest().find((entry) => entry.slug === 'mega-menu');
@@ -50,6 +51,9 @@ test('Accessibility shortcut alternatives wrap without overflowing', async ({ co
     theme: 'light',
     viewport: desktop,
   });
+  // Snapshot mode intentionally renders only the component fixture, so switch to the
+  // documentation route before checking the Accessibility section. captureScreenshot()
+  // applies the repository's deterministic screenshot styling before it records the page.
   await page.goto(megaMenuEntry.route, { waitUntil: 'load' });
 
   const accessibility = page.locator('#accessibility');
@@ -65,5 +69,10 @@ test('Accessibility shortcut alternatives wrap without overflowing', async ({ co
   );
   expect(overflows).toBe(false);
 
-  await expect(accessibility).toHaveScreenshot('mega-menu/light-desktop-accessibility.png');
+  await captureScreenshot(page, {
+    slug: 'mega-menu',
+    theme: 'light',
+    viewport: 'desktop',
+    fixture: 'accessibility',
+  });
 });

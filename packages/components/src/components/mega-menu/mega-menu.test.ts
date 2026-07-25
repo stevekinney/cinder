@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -83,10 +84,16 @@ describe('MegaMenu', () => {
 
     const panelId = trigger.getAttribute('aria-controls') as string;
     const panel = container.querySelector(`#${panelId}`) as HTMLElement;
-    const firstLink = panel.querySelector('a');
-    if (!firstLink) throw new Error('Missing panel link.');
-    await fireEvent.keyDown(firstLink, { key: 'Escape' });
+    panel.focus();
+    await fireEvent.keyDown(panel, { key: 'Escape' });
     expect(container.querySelector(`#${panelId}`)).toBeNull();
+  });
+
+  test('keeps the top-level sections grid while indenting only nested sections', () => {
+    const styles = readFileSync(new URL('./mega-menu.css', import.meta.url), 'utf8');
+
+    expect(styles).toContain('.cinder-mega-menu__sections {');
+    expect(styles).toContain('.cinder-mega-menu__sub .cinder-mega-menu__sections {');
   });
 
   test('arrow navigation moves focus between top-level triggers', async () => {
@@ -133,6 +140,26 @@ describe('MegaMenu', () => {
     await Promise.resolve();
     expect(container.querySelector('.cinder-mega-menu__content')).toBeNull();
     expect(document.activeElement).toBe(products);
+  });
+
+  test('mirrors nested submenu enter and return arrows in right-to-left direction', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'rtl' });
+    const products = getTriggerByLabel(container, 'Products');
+    products.focus();
+
+    await fireEvent.keyDown(products, { key: 'ArrowDown' });
+    const frontend = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    ).find((trigger) => trigger.textContent?.trim() === 'Frontend');
+    if (!frontend) throw new Error('Missing nested submenu trigger.');
+
+    await fireEvent.keyDown(frontend, { key: 'ArrowLeft' });
+    const svelteLink = container.querySelector<HTMLAnchorElement>('a[href="/svelte"]');
+    expect(document.activeElement).toBe(svelteLink);
+
+    if (!svelteLink) throw new Error('Missing nested submenu link.');
+    await fireEvent.keyDown(svelteLink, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(frontend);
   });
 
   test('closes stale open menu state when the current item is removed', async () => {
