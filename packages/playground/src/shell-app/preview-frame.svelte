@@ -115,6 +115,18 @@
     const element = iframeEl;
     if (element === null) return;
     element.addEventListener('load', handleLoad);
+    // SSR emits the iframe before the hydration bundle. A cached preview can
+    // finish before this listener attaches, so recognize that exact completed
+    // document immediately. Do not mistake the initial about:blank document
+    // for readiness: its URL will not equal the requested preview URL.
+    const documentUrl = element.contentDocument?.URL;
+    if (element.contentDocument?.readyState === 'complete' && documentUrl) {
+      const expectedUrl = new URL(src, 'http://cinder.local');
+      const loadedUrl = new URL(documentUrl, 'http://cinder.local');
+      if (loadedUrl.pathname === expectedUrl.pathname && loadedUrl.search === expectedUrl.search) {
+        handleLoad();
+      }
+    }
     return () => {
       element.removeEventListener('load', handleLoad);
     };

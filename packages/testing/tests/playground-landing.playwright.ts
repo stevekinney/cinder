@@ -37,11 +37,13 @@ test.describe('playground landing page', () => {
     await page.evaluate(() => {
       (window as typeof window & { __cinderShellMarker?: string }).__cinderShellMarker = 'mounted';
     });
+    await page.locator('#sidebar-filter').fill('button');
 
     await page.getByRole('link', { name: 'Browse components' }).click();
     await expect(page).toHaveURL(/\/c\/[^/]+$/);
     await expect.poll(() => readShellMarker(page)).toBeUndefined();
     await expect(page.locator('iframe')).toHaveAttribute('src', /\/page\/[^/?]+\?preview=1$/);
+    await expect(page.locator('#sidebar-filter')).toHaveValue('button');
 
     await page.evaluate(() => {
       (window as typeof window & { __cinderShellMarker?: string }).__cinderShellMarker = 'mounted';
@@ -50,6 +52,7 @@ test.describe('playground landing page', () => {
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);
     await expect.poll(() => readShellMarker(page)).toBeUndefined();
+    await expect(page.locator('#sidebar-filter')).toHaveValue('button');
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);

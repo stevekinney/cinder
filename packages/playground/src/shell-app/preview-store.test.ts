@@ -32,6 +32,7 @@ type MatchMediaListener =
   | ((this: MediaQueryList, event: MediaQueryListEvent) => void);
 
 const originalLocalStorage = (globalThis as { localStorage?: Storage }).localStorage;
+const originalSessionStorage = (globalThis as { sessionStorage?: Storage }).sessionStorage;
 const originalWindow = (globalThis as { window?: Window }).window;
 const originalHistory = (globalThis as { history?: History }).history;
 
@@ -48,6 +49,17 @@ function installLocalStorage(stub: LocalStorageStub | undefined): void {
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     value: stub as unknown as Storage,
+    writable: true,
+  });
+}
+
+function installSessionStorage(values = new Map<string, string>()): void {
+  Object.defineProperty(globalThis, 'sessionStorage', {
+    configurable: true,
+    value: {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    } as unknown as Storage,
     writable: true,
   });
 }
@@ -120,6 +132,15 @@ afterEach(() => {
     Object.defineProperty(globalThis, 'window', {
       configurable: true,
       value: originalWindow,
+      writable: true,
+    });
+  }
+  if (originalSessionStorage === undefined) {
+    delete (globalThis as { sessionStorage?: Storage }).sessionStorage;
+  } else {
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      configurable: true,
+      value: originalSessionStorage,
       writable: true,
     });
   }
@@ -317,6 +338,19 @@ describe('color token overrides', () => {
     expect(store.colorTokenOverrides.light['--cinder-accent']).toBe('oklch(60% 0.2 195)');
     expect(store.colorTokenOverrides.dark['--cinder-accent']).toBe('oklch(78% 0.16 195)');
     expect(store.getActiveColorTokenOverrides()).toEqual({
+      '--cinder-accent': 'oklch(60% 0.2 195)',
+    });
+  });
+
+  it('restores validated color overrides across full-page shell navigation', () => {
+    installWindow('https://playground.example/c/button');
+    installSessionStorage();
+
+    const firstPageStore = new PreviewStore('button', { theme: 'light' });
+    firstPageStore.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
+
+    const nextPageStore = new PreviewStore('card', { theme: 'light' });
+    expect(nextPageStore.colorTokenOverrides.light).toEqual({
       '--cinder-accent': 'oklch(60% 0.2 195)',
     });
   });

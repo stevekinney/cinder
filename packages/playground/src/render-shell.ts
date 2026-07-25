@@ -136,6 +136,10 @@ export type RenderShellOptions = {
    * Server-rendered Shell markup. The client hydrates this exact tree.
    */
   shellBody?: string;
+  /** Server-rendered Svelte head output, including scoped component styles. */
+  shellHead?: string;
+  /** Request query used to seed identical server and client toolbar state. */
+  initialSearch?: string;
 };
 
 /**
@@ -200,6 +204,7 @@ export function renderShell(
     components,
     readmeHtml: options.readmeHtml ?? '',
     documentation: options.documentation ?? null,
+    initialSearch: options.initialSearch ?? '',
   };
 
   return `<!DOCTYPE html>
@@ -209,6 +214,7 @@ export function renderShell(
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
     ${meta}
+    ${options.shellHead ?? ''}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       /* Register cinder.reset as the FIRST layer (least priority) so the universal

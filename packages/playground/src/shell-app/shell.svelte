@@ -3,12 +3,7 @@
   import { MediaQuery } from 'svelte/reactivity';
 
   import Announcer from './announcer.svelte';
-  import {
-    announceLandingNavigation,
-    announceNavigation,
-    Announcer as AnnouncerStore,
-    setAnnouncer,
-  } from './announcer.svelte.ts';
+  import { Announcer as AnnouncerStore, setAnnouncer } from './announcer.svelte.ts';
   import { createEventSource } from './event-source.svelte.ts';
   import type { ComponentDocumentationPayload } from '../component-documentation-types.ts';
   import ComponentDocumentation from './component-documentation.svelte';
@@ -18,7 +13,7 @@
     readPersistedTheme,
     setPreviewStore,
   } from './preview-store.svelte.ts';
-  import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
+  import { buildShellHref, readToolbarStateFromSearch } from './routing.ts';
   import ColorTokenPanel from './color-token-panel.svelte';
   import LandingPage from './landing-page.svelte';
   import Sidebar, { type SidebarHandle } from './sidebar.svelte';
@@ -29,9 +24,10 @@
     components: string[];
     readmeHtml: string;
     documentation: ComponentDocumentationPayload | null;
+    initialSearch: string;
   };
 
-  let { initialComponent, components, readmeHtml, documentation }: Props = $props();
+  let { initialComponent, components, readmeHtml, documentation, initialSearch }: Props = $props();
 
   // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
   let sidebar = $state<SidebarHandle | null>(null);
@@ -43,11 +39,8 @@
   // Seed the toolbar from the URL (shareable, survives reload). When the URL
   // is silent about theme, fall back to the localStorage preference so the
   // next visit honors the user's last choice.
-  const initialSearch =
-    typeof window === 'undefined'
-      ? new URLSearchParams()
-      : new URL(window.location.href).searchParams;
-  const initialUrlState = readToolbarStateFromSearch(initialSearch);
+  const initialSearchValue = untrack(() => initialSearch);
+  const initialUrlState = readToolbarStateFromSearch(new URLSearchParams(initialSearchValue));
   const initialTheme = initialUrlState.theme ?? readPersistedTheme();
   const initialComponentName = untrack(() => initialComponent);
   const store = new PreviewStore(initialComponentName, {
@@ -56,9 +49,8 @@
   });
   setPreviewStore(store);
 
-  // Single shared polite live region for the shell. The top bar pushes
-  // toolbar feedback through it; client-side navigation (below) announces the
-  // newly-viewed component. One instance keeps exactly one live region in the
+  // Single shared polite live region for the shell. The top bar pushes toolbar
+  // feedback through it. One instance keeps exactly one live region in the
   // document (two would double-read every message).
   const announcer = new AnnouncerStore();
   setAnnouncer(announcer);
@@ -71,8 +63,7 @@
   // pure lifecycle cleanup that never tracks reactive state.
   onDestroy(() => announcer.cancel());
 
-  // `<main>` is programmatically focusable (tabindex="-1") so keyboard focus
-  // can move to the freshly-rendered content after client-side navigation.
+  // `<main>` is bound so the narrow sidebar can make background content inert.
   let mainEl = $state<HTMLElement | null>(null);
 
   // True below the responsive breakpoint, where the sidebar is a modal-style
@@ -155,26 +146,6 @@
     if (name === store.currentComponent) return;
     const { search, hash } = window.location;
     window.location.assign(`${buildShellHref(name)}${search}${hash}`);
-  }
-
-  async function handlePopState(): Promise<void> {
-    const parsed = parseComponentFromPath(window.location.pathname);
-    const isRootPath = window.location.pathname === '/';
-    if (parsed !== null) {
-      store.currentComponent = parsed;
-    } else if (isRootPath) {
-      store.currentComponent = '';
-    }
-    // Re-sync the toolbar (theme/viewport/focus mode) from the URL *before*
-    // announcing so the toolbar reflects the restored state by the time focus
-    // lands on <main>.
-    store.syncFromUrl();
-    // Browser back/forward is client-side navigation too: apply the same
-    // title + live-region + focus side effects as selectComponent (WCAG
-    // 2.4.2 / 4.1.3 / 2.4.3). Guard on a resolved component, mirroring the
-    // null check above.
-    if (parsed !== null) await announceNavigation(announcer, parsed, () => mainEl);
-    else if (isRootPath) await announceLandingNavigation(announcer, () => mainEl);
   }
 
   /**
@@ -270,7 +241,7 @@
   }
 </script>
 
-<svelte:window onpopstate={handlePopState} onkeydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <!--
   Layout overview

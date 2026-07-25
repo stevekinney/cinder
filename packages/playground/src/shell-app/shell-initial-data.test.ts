@@ -9,6 +9,7 @@ describe('parseInitialData', () => {
       components: ['button', 'card'],
       readmeHtml: '',
       documentation: null,
+      initialSearch: '',
     });
   });
 
@@ -20,7 +21,18 @@ describe('parseInitialData', () => {
       components: ['button'],
       readmeHtml: '<h1>cinder</h1>',
       documentation: null,
+      initialSearch: '',
     });
+  });
+
+  test('keeps the request search used to seed SSR toolbar state', () => {
+    expect(
+      parseInitialData({
+        component: 'button',
+        components: ['button'],
+        initialSearch: '?w=768&focus=1',
+      }),
+    ).toHaveProperty('initialSearch', '?w=768&focus=1');
   });
 
   test('rejects malformed component names', () => {

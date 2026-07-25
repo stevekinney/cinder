@@ -358,7 +358,25 @@ describe('/c/:name', () => {
     expect(html).toContain('Overview');
     expect(html).toContain('Props');
     expect(html).toContain('src="/page/button?preview=1"');
+    expect(html).toContain('href="/page/button"');
     expect(html.match(/data-canonical-documentation/g)).toHaveLength(1);
+  });
+
+  it('seeds SSR and hydration from the same toolbar query', async () => {
+    const response = await handleRequest(req('/c/button?w=768&focus=1'));
+    const html = await response.text();
+
+    expect(html).toContain('id="viewport-width-input"');
+    expect(html).toContain('value="768"');
+    expect(html).toContain('"initialSearch":"?w=768\\u0026focus=1"');
+    expect(html).toMatch(/class="shell [^"]*focus-mode"/);
+  });
+
+  it('includes server-rendered scoped shell styles for no-JavaScript rendering', async () => {
+    const response = await handleRequest(req('/c/button'));
+    const html = await response.text();
+
+    expect(html).toMatch(/<style[^>]*>[\s\S]*\.documentation/);
   });
 
   it('embeds the active component name in the cinder-initial data island', async () => {

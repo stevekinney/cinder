@@ -36,6 +36,7 @@ const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
 /** Persisted theme key — must match `PRE_PAINT_THEME_SCRIPT` in render-shell.ts. */
 export const THEME_STORAGE_KEY = 'cinder-playground-theme';
+export const COLOR_TOKEN_SESSION_KEY = 'cinder-playground-color-token-overrides';
 
 const THEME_VALUES: ReadonlySet<ThemeChoice> = new Set(['light', 'dark']);
 
@@ -61,6 +62,39 @@ export function readPersistedTheme(): ThemeChoice | null {
 export function writePersistedTheme(value: ThemeChoice): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, value);
+  } catch {
+    /* ignore — degraded but functional */
+  }
+}
+
+function readSessionColorTokenOverrides(): ColorTokenOverrideState {
+  const empty: ColorTokenOverrideState = { light: {}, dark: {} };
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(COLOR_TOKEN_SESSION_KEY) ?? 'null');
+    if (typeof parsed !== 'object' || parsed === null) return empty;
+    const result: ColorTokenOverrideState = { light: {}, dark: {} };
+    for (const theme of THEME_VALUES) {
+      const entries = Reflect.get(parsed, theme);
+      if (typeof entries !== 'object' || entries === null) continue;
+      for (const [tokenName, value] of Object.entries(entries)) {
+        if (
+          isColorTokenName(tokenName) &&
+          typeof value === 'string' &&
+          isSafeColorTokenValue(value)
+        ) {
+          result[theme][tokenName] = value.trim();
+        }
+      }
+    }
+    return result;
+  } catch {
+    return empty;
+  }
+}
+
+function writeSessionColorTokenOverrides(overrides: ColorTokenOverrideState): void {
+  try {
+    sessionStorage.setItem(COLOR_TOKEN_SESSION_KEY, JSON.stringify(overrides));
   } catch {
     /* ignore — degraded but functional */
   }
@@ -146,6 +180,9 @@ export class PreviewStore {
     this.#isFocusMode = initialState.isFocusMode ?? false;
     this.#override = initialState.theme ?? null;
     this.#previewWidth = initialState.previewWidth ?? null;
+    if (typeof window !== 'undefined') {
+      this.colorTokenOverrides = readSessionColorTokenOverrides();
+    }
   }
 
   get isFocusMode(): boolean {
@@ -258,6 +295,7 @@ export class PreviewStore {
         [tokenName]: value.trim(),
       },
     };
+    writeSessionColorTokenOverrides(this.colorTokenOverrides);
 
     if (theme === this.theme && typeof document !== 'undefined') {
       this.applyActiveColorTokenOverridesToDocument(document);
@@ -272,6 +310,7 @@ export class PreviewStore {
       ...this.colorTokenOverrides,
       [theme]: nextThemeOverrides,
     };
+    writeSessionColorTokenOverrides(this.colorTokenOverrides);
 
     if (theme === this.theme && typeof document !== 'undefined') {
       this.applyActiveColorTokenOverridesToDocument(document);
@@ -283,6 +322,7 @@ export class PreviewStore {
       ...this.colorTokenOverrides,
       [theme]: {},
     };
+    writeSessionColorTokenOverrides(this.colorTokenOverrides);
 
     if (theme === this.theme && typeof document !== 'undefined') {
       this.applyActiveColorTokenOverridesToDocument(document);

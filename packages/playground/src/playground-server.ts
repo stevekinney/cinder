@@ -187,7 +187,8 @@ let shellServerRendererPromise: Promise<
     components: string[];
     readmeHtml: string;
     documentation: ComponentDocumentationPayload | null;
-  }) => string
+    initialSearch: string;
+  }) => { body: string; head: string }
 > | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
@@ -447,11 +448,11 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   // component barrel (`../../../components/src/index.ts`), so a
   // components-package change can affect the shell's own compiled output,
   // not just page bundles. The only difference between the two scopes is
-  // which SSE event to emit: `shell-reload` forces a live browser reload
-  // (needed when shell-app sources themselves changed); `reload` doesn't
-  // (a components-only change still leaves the shell CACHE fresh for
-  // whenever a real reload next happens, without disrupting the current
-  // session on every component edit).
+  // which files caused the invalidation. Both tiers emit `shell-reload`: the
+  // canonical shell now owns README and prop metadata as well as the preview,
+  // so reloading only the iframe would leave that outer documentation stale.
+  // Session-only shell state is persisted before navigation, so the document
+  // refresh does not discard filters or color-token overrides.
   pageEntryByName.clear();
   pageArtifactByPath.clear();
   pageBuildPromiseByKey.clear();
@@ -464,7 +465,7 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   shellBuildPromise = null;
   shellServerRendererPromise = null;
 
-  triggerReload(scope.kind === 'shell' ? 'shell-reload' : 'reload');
+  triggerReload('shell-reload');
 }
 
 /** Set of active SSE stream controllers. */
@@ -1189,7 +1190,8 @@ async function loadShellServerRenderer(): Promise<
     components: string[];
     readmeHtml: string;
     documentation: ComponentDocumentationPayload | null;
-  }) => string
+    initialSearch: string;
+  }) => { body: string; head: string }
 > {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
@@ -1227,7 +1229,8 @@ async function loadShellServerRenderer(): Promise<
       components: string[];
       readmeHtml: string;
       documentation: ComponentDocumentationPayload | null;
-    }) => string;
+      initialSearch: string;
+    }) => { body: string; head: string };
   })();
 
   return shellServerRendererPromise;
@@ -1344,10 +1347,13 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
 
   const definition = await discoverComponentDefinition(componentName);
   if (definition === undefined) return null;
+  const generationAtStart = rebuildGeneration;
   const manifest = await analyzeComponent(definition.filePath, {
     importPath: definition.importPath,
   });
-  componentManifestCache.set(componentName, manifest);
+  if (generationAtStart === rebuildGeneration) {
+    componentManifestCache.set(componentName, manifest);
+  }
   return manifest;
 }
 
@@ -2133,13 +2139,19 @@ export async function handleRequest(request: Request): Promise<Response> {
       return notFound(`Documentation for "${componentName}" not found`);
     }
     const renderShellBody = await loadShellServerRenderer();
-    const shellBody = renderShellBody({
+    const renderedShell = renderShellBody({
       initialComponent: componentName,
       components: sidebarComponents,
       readmeHtml: '',
       documentation,
+      initialSearch: url.search,
     });
-    const html = renderShell(componentName, sidebarComponents, { documentation, shellBody });
+    const html = renderShell(componentName, sidebarComponents, {
+      documentation,
+      shellBody: renderedShell.body,
+      shellHead: renderedShell.head,
+      initialSearch: url.search,
+    });
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
@@ -2150,13 +2162,19 @@ export async function handleRequest(request: Request): Promise<Response> {
       renderLandingReadmeHtml(),
     ]);
     const renderShellBody = await loadShellServerRenderer();
-    const shellBody = renderShellBody({
+    const renderedShell = renderShellBody({
       initialComponent: '',
       components: sidebarComponents,
       readmeHtml,
       documentation: null,
+      initialSearch: url.search,
     });
-    const html = renderShell(null, sidebarComponents, { readmeHtml, shellBody });
+    const html = renderShell(null, sidebarComponents, {
+      readmeHtml,
+      shellBody: renderedShell.body,
+      shellHead: renderedShell.head,
+      initialSearch: url.search,
+    });
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 

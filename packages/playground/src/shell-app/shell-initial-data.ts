@@ -6,6 +6,7 @@ export type InitialData = {
   components: string[];
   readmeHtml: string;
   documentation: ComponentDocumentationPayload | null;
+  initialSearch: string;
 };
 
 function getOwnProperty(value: object, key: string): unknown {
@@ -23,9 +24,11 @@ export function parseInitialData(value: unknown): InitialData | null {
   const components = getOwnProperty(value, 'components');
   const readmeHtml = getOwnProperty(value, 'readmeHtml');
   const documentation = getOwnProperty(value, 'documentation');
+  const initialSearch = getOwnProperty(value, 'initialSearch');
   if (typeof component !== 'string') return null;
   if (!Array.isArray(components)) return null;
   if (readmeHtml !== undefined && typeof readmeHtml !== 'string') return null;
+  if (initialSearch !== undefined && typeof initialSearch !== 'string') return null;
   if (
     documentation !== undefined &&
     documentation !== null &&
@@ -49,5 +52,6 @@ export function parseInitialData(value: unknown): InitialData | null {
     components,
     readmeHtml: readmeHtml ?? '',
     documentation: documentation ?? null,
+    initialSearch: initialSearch ?? '',
   };
 }

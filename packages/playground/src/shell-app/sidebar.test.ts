@@ -37,6 +37,7 @@ const { tick } = await import('svelte');
 // the whole suite runs in one process.
 afterEach(() => {
   cleanup();
+  sessionStorage.clear();
 });
 
 const COMPONENTS = ['button', 'tag-input', 'json-schema-editor', 'card'];

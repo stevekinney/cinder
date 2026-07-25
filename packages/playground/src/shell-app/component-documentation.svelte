@@ -27,9 +27,12 @@
     <h1>{documentation.component.name}</h1>
     <p class="purpose">{documentation.component.purpose}</p>
     <code>{importStatement}</code>
+    <a class="full-documentation-link" href="/page/{componentName}">
+      Open interactive documentation
+    </a>
   </header>
 
-  <section aria-labelledby="preview-heading">
+  <section class="preview-section" aria-labelledby="preview-heading">
     <h2 id="preview-heading">Live preview</h2>
     <div class="preview">
       <PreviewFrame bind:this={previewFrame} {componentName} previewOnly />
@@ -116,6 +119,14 @@
     background: var(--cinder-surface);
   }
 
+  .full-documentation-link {
+    display: block;
+    width: fit-content;
+    margin-block-start: var(--cinder-space-4);
+    color: var(--cinder-accent);
+    font-weight: var(--cinder-font-semibold);
+  }
+
   .preview {
     display: flex;
     height: 360px;
@@ -137,6 +148,35 @@
     width: 100%;
     border-collapse: collapse;
     text-align: start;
+  }
+
+  :global(.shell.focus-mode) .documentation {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    padding: 0;
+  }
+
+  :global(.shell.focus-mode) .documentation > :not(.preview-section) {
+    display: none;
+  }
+
+  :global(.shell.focus-mode) .preview-section {
+    display: flex;
+    height: 100%;
+    margin: 0;
+    flex-direction: column;
+  }
+
+  :global(.shell.focus-mode) .preview-section > h2 {
+    display: none;
+  }
+
+  :global(.shell.focus-mode) .preview {
+    flex: 1;
+    height: auto;
+    border: 0;
+    border-radius: 0;
   }
 
   th,

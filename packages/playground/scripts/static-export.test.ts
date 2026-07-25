@@ -4,7 +4,15 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { runStaticExport } from './static-export.ts';
+import { assetUrlsFromHtml, runStaticExport } from './static-export.ts';
+
+test('HTML asset discovery normalizes query-configured routes to one static path', () => {
+  expect(
+    assetUrlsFromHtml(
+      '<iframe src="/page/button?preview=1"></iframe><a href="/page/button">Button</a>',
+    ),
+  ).toEqual(['/page/button']);
+});
 
 describe('static export', () => {
   test('writes the root landing shell instead of a redirect', async () => {
@@ -74,6 +82,7 @@ describe('static export', () => {
       expect(canonicalHtml).toContain('data-canonical-documentation');
       expect(canonicalHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
       expect(canonicalHtml).toContain('src="/page/chat?preview=1"');
+      expect(rendered.has('/page/chat?preview=1')).toBe(false);
       expect(chatStyles).toContain('.cinder-chat');
       expect(composerStyles).toContain("@import '/components/command-menu/command-menu.css';");
       expect(headerStyles).toContain("@import '/components/dropdown/dropdown.css';");

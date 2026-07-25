@@ -18,7 +18,7 @@ test.describe('playground component documentation', () => {
     });
     page.on('pageerror', (error) => errors.push(error.message));
 
-    await page.goto('/c/button', { waitUntil: 'load' });
+    await page.goto('/c/button?w=768', { waitUntil: 'load' });
     const documentation = page.locator('[data-canonical-documentation]');
     await expect(documentation).toHaveCount(1);
     await expect(documentation.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
@@ -28,6 +28,11 @@ test.describe('playground component documentation', () => {
       'src',
       '/page/button?preview=1',
     );
+    await expect(page.locator('#viewport-width-input')).toHaveValue('768');
+    await expect(
+      page.getByRole('link', { name: 'Open interactive documentation' }),
+    ).toHaveAttribute('href', '/page/button');
+    await expect(page.getByTestId('preview-loading-overlay')).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 

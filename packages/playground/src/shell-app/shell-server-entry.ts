@@ -8,8 +8,15 @@ export type ShellServerProps = {
   components: string[];
   readmeHtml: string;
   documentation: ComponentDocumentationPayload | null;
+  initialSearch: string;
 };
 
-export function renderShellBody(props: ShellServerProps): string {
-  return render(Shell, { props }).body;
+export type RenderedShell = {
+  body: string;
+  head: string;
+};
+
+export function renderShellBody(props: ShellServerProps): RenderedShell {
+  const rendered = render(Shell, { props });
+  return { body: rendered.body, head: rendered.head };
 }

@@ -18,7 +18,14 @@ import Shell from './shell.svelte';
 
 function readInitialData(): InitialData {
   const node = document.getElementById('cinder-initial');
-  if (!node) return { component: '', components: [], readmeHtml: '', documentation: null };
+  if (!node)
+    return {
+      component: '',
+      components: [],
+      readmeHtml: '',
+      documentation: null,
+      initialSearch: '',
+    };
   try {
     const parsed: unknown = JSON.parse(node.textContent ?? '{}');
     const initialData = parseInitialData(parsed);
@@ -26,7 +33,13 @@ function readInitialData(): InitialData {
   } catch (error) {
     console.error('[cinder playground] failed to parse #cinder-initial:', error);
   }
-  return { component: '', components: [], readmeHtml: '', documentation: null };
+  return {
+    component: '',
+    components: [],
+    readmeHtml: '',
+    documentation: null,
+    initialSearch: '',
+  };
 }
 
 const initial = readInitialData();
@@ -43,5 +56,6 @@ hydrate(Shell, {
     components: initial.components,
     readmeHtml: initial.readmeHtml,
     documentation: initial.documentation,
+    initialSearch: initial.initialSearch,
   },
 });

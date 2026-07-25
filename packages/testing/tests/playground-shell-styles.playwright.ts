@@ -116,6 +116,15 @@ test.describe('playground shell styles', () => {
     const focusModeButton = page.getByRole('button', { name: /Focus mode/ });
     await focusModeButton.click();
     await expect(page.locator('.shell')).toHaveClass(/focus-mode/);
+    await expect(page.locator('.documentation .hero')).toBeHidden();
+    const focusPreviewMetrics = await computedMetrics(page.locator('.documentation .preview'));
+    const focusMainMetrics = await computedMetrics(page.locator('main'));
+    expect(Math.abs(focusPreviewMetrics.height - focusMainMetrics.height)).toBeLessThanOrEqual(
+      PIXEL_TOLERANCE,
+    );
+    expect(Math.abs(focusPreviewMetrics.width - focusMainMetrics.width)).toBeLessThanOrEqual(
+      PIXEL_TOLERANCE,
+    );
     await page.keyboard.press('Escape');
     await expect(page.locator('.shell')).not.toHaveClass(/focus-mode/);
 
