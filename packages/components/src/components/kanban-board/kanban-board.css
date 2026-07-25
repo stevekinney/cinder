@@ -209,6 +209,10 @@
     min-inline-size: 0;
   }
 
+  .cinder-kanban-board .cinder-sortable-item {
+    min-inline-size: 0;
+  }
+
   .cinder-kanban-board .cinder-sortable-handle {
     align-self: start;
   }
