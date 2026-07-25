@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
 
@@ -12,6 +12,12 @@ import {
 import type { EventStreamEntry, StreamEvent } from './event-stream-viewer.types.ts';
 
 setupHappyDom();
+
+// Source-package tests do not resolve the package's self-reference through Bun's
+// export map. Keep the component on its public subpath while mapping that entry
+// to the source implementation for this focused test process.
+const { default: Input } = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => ({ default: Input }));
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: EventStreamViewer } = await import('./event-stream-viewer.svelte');
@@ -144,7 +150,9 @@ describe('EventStreamViewer', () => {
     });
 
     test('renders a log region with the default label', () => {
-      const { container } = render(EventStreamViewer, { props: { events: [] } });
+      const { container } = render(EventStreamViewer, {
+        props: { events: [], connectionState: 'connected' },
+      });
       const log = container.querySelector('[role="log"]');
       expect(log).not.toBeNull();
       expect(log?.getAttribute('aria-label')).toBe('Event stream');
@@ -159,10 +167,17 @@ describe('EventStreamViewer', () => {
     });
 
     test('renders toolbar with group role', () => {
-      const { container } = render(EventStreamViewer, { props: { events: [] } });
+      const { container } = render(EventStreamViewer, {
+        props: { events: [], connectionState: 'connected' },
+      });
       const toolbar = container.querySelector('[role="group"]');
       expect(toolbar).not.toBeNull();
       expect(toolbar?.getAttribute('aria-label')).toBe('Stream controls');
+    });
+
+    test('omits the toolbar when no controls are available', () => {
+      const { container } = render(EventStreamViewer, { props: { events: [] } });
+      expect(container.querySelector('.cinder-event-stream-viewer__toolbar')).toBeNull();
     });
 
     test('merges class prop with cinder-event-stream-viewer', () => {
@@ -835,6 +850,7 @@ describe('EventStreamViewer', () => {
         '.cinder-event-stream-viewer__filter-input',
       );
       expect(input).not.toBeNull();
+      expect(input?.classList.contains('cinder-input')).toBe(true);
       expect(input?.getAttribute('aria-label')).toBe('Filter events');
     });
 
@@ -1126,7 +1142,17 @@ describe('EventStreamViewer', () => {
 
       expect(css).toContain("@import '../copy-button/copy-button.css';");
       expect(css).toContain("@import '../json-viewer/json-viewer.css';");
+      expect(css).toContain("@import '../input/input.css';");
       expect(css).toContain("@import '../status-dot/status-dot.css';");
+    });
+
+    test('event rows keep the severity rail flush with the row edges', () => {
+      const { readFileSync } = require('node:fs');
+      const css = readFileSync(
+        new URL('./event-stream-viewer.css', import.meta.url).pathname,
+        'utf8',
+      );
+      expect(css).toContain('padding: 0 var(--cinder-space-3) 0 0;');
     });
   });
 });
