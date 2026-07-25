@@ -357,7 +357,7 @@
     <div class="cinder-transfer-list__controls" role="group" aria-label="Transfer controls">
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--forward"
         aria-label={`Move selected items to ${rightLabel}`}
         disabled={movableLeftSelectedIds.length === 0}
         onclick={moveSelectedRight}
@@ -366,7 +366,7 @@
       </button>
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--forward"
         aria-label={`Move all items to ${rightLabel}`}
         disabled={movableLeftItemIds.length === 0}
         onclick={moveAllRight}
@@ -375,7 +375,7 @@
       </button>
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--backward"
         aria-label={`Move selected items to ${leftLabel}`}
         disabled={movableRightSelectedIds.length === 0}
         onclick={moveSelectedLeft}
@@ -384,7 +384,7 @@
       </button>
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--backward"
         aria-label={`Move all items to ${leftLabel}`}
         disabled={movableRightItemIds.length === 0}
         onclick={moveAllLeft}
