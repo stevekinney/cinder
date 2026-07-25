@@ -41,6 +41,7 @@
     padding: 0;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
     overflow: hidden;
   }
 
@@ -53,7 +54,7 @@
   }
 
   .cinder-keyboard-shortcuts__row + .cinder-keyboard-shortcuts__row {
-    border-top: 1px solid var(--cinder-border);
+    border-top: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-keyboard-shortcuts__action {

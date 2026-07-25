@@ -46,7 +46,7 @@
   .cinder-date-picker__trigger {
     appearance: none;
     border: 0;
-    border-inline-start: 1px solid var(--cinder-border);
+    border-inline-start: 1px solid var(--cinder-border-muted);
     background: transparent;
     color: var(--cinder-text-muted);
     block-size: 100%;

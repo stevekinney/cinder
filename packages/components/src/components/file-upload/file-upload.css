@@ -103,7 +103,7 @@
   .cinder-file-upload__row {
     display: grid;
     gap: var(--cinder-space-2);
-    border: 1px solid var(--cinder-border);
+    border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface);
     padding: var(--cinder-space-3);

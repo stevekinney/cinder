@@ -6,6 +6,10 @@
 
   .cinder-collapsible {
     display: block;
+    background: var(--cinder-surface);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    overflow: hidden;
   }
 
   /* ----------------------------------------
@@ -26,7 +30,7 @@
     color: var(--cinder-text);
     text-align: start;
 
-    background: transparent;
+    background: var(--cinder-surface-raised);
     border: none;
     border-radius: var(--cinder-radius-md);
     cursor: pointer;
@@ -39,26 +43,31 @@
   /* Sticky-hover suppression on touch. */
   @media (hover: hover) {
     .cinder-collapsible__trigger:hover:not(:disabled) {
-      background: var(--cinder-surface-hover);
+      background: color-mix(
+        in oklch,
+        var(--cinder-surface-raised),
+        light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%
+      );
     }
   }
 
   .cinder-collapsible__trigger:active:not(:disabled) {
-    background: var(--cinder-surface-pressed);
+    background: color-mix(
+      in oklch,
+      var(--cinder-surface-raised),
+      light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
+    );
   }
 
   .cinder-collapsible__trigger:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {
     .cinder-collapsible__trigger:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;
-      /* Outset offset matches the Strategy B box-shadow ring it replaces (and the
-         rest of the sweep's outset forced-colors fallbacks). Without this the HCM
-         outline draws flush at 0px, inconsistent with every other outset site. */
-      outline-offset: 3px;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
     }
   }
 
@@ -104,6 +113,7 @@
   .cinder-collapsible__panel-inner {
     padding: var(--cinder-space-4) var(--cinder-space-5) var(--cinder-space-5);
     font-size: var(--cinder-text-base);
+    background: var(--cinder-surface);
     line-height: var(--cinder-leading-normal);
     color: var(--cinder-text-muted);
   }
