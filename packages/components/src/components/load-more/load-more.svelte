@@ -83,7 +83,6 @@
     if (!previousSentinelEnabled && sentinelEnabled) {
       sentinelReported = false;
       sentinelIntersecting = false;
-      sentinelArmed = true;
     }
     previousSentinelEnabled = sentinelEnabled;
   });
