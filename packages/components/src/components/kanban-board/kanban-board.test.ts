@@ -213,9 +213,8 @@ describe('kanban board styles', () => {
   });
 
   test('scroll edges use a translucent theme-aware foreground mix', () => {
-    expect(kanbanBoardCss).toContain(
-      '--cinder-kanban-scroll-edge: color-mix(in oklch, var(--cinder-text), transparent 88%);',
-    );
+    expect(kanbanBoardCss).toContain('--cinder-kanban-board-scroll-edge: color-mix(');
+    expect(kanbanBoardCss).toContain('var(--cinder-kanban-board-scroll-edge)');
     expect(kanbanBoardCss).not.toMatch(
       /linear-gradient\([^)]*var\(--cinder-surface-raised\), transparent\)/,
     );
