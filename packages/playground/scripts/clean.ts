@@ -5,7 +5,8 @@ const playgroundRoot = join(import.meta.dir, '..');
 await rm(join(playgroundRoot, '.tmp'), { recursive: true, force: true });
 
 const sourceDirectory = join(playgroundRoot, 'src');
-const sourceEntries = (await readdir(sourceDirectory, { withFileTypes: true }))
+const sourceDirectoryEntries = await readdir(sourceDirectory, { withFileTypes: true });
+const sourceEntries = sourceDirectoryEntries
   .filter((entry) => entry.isDirectory() && entry.name.startsWith('.tmp-'))
   .map((entry) => entry.name);
 await Promise.all(
