@@ -25,7 +25,7 @@
 
 <script lang="ts" generics="Card">
   import { classNames } from '../../utilities/class-names.ts';
-  import { ChevronDown } from '../icons/index.ts';
+  import { ChevronDown } from '@lostgradient/cinder/icons';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     SortableController,
