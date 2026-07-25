@@ -349,34 +349,35 @@
     });
   }
 
-  function handleFormReset(): void {
+  function handleFormReset(event: Event): void {
     queueMicrotask(() =>
       queueMicrotask(() => {
+        if (event.defaultPrevented) return;
         const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
         if (!rawCountry || !isCountryCode(rawCountry)) return;
         const initialParsed = parseE164Value(initialValue);
-        const resetCountry =
-          initialParsed && isCountryCode(initialParsed.country)
-            ? initialParsed.country
-            : isCountryCode(initialCountry)
-              ? initialCountry
-              : rawCountry;
+        const initialParsedCountryAllowed =
+          initialParsed !== null && isCountryCode(initialParsed.country);
+        const resetCountry = initialParsedCountryAllowed
+          ? initialParsed.country
+          : isCountryCode(initialCountry)
+            ? initialCountry
+            : rawCountry;
         country = resetCountry;
         knownCountry = resetCountry;
         value = initialValue;
         knownValue = initialValue;
-        nationalDisplay = initialParsed?.formatted ?? initialValue;
+        nationalDisplay = initialParsedCountryAllowed ? initialParsed.formatted : initialValue;
       }),
     );
   }
 
   $effect(() => {
-    const handleReset = (event: Event) => {
-      if (event.target instanceof HTMLFormElement && fieldRoot?.closest('form') === event.target)
-        handleFormReset();
-    };
-    window.addEventListener('reset', handleReset, true);
-    return () => window.removeEventListener('reset', handleReset, true);
+    const form = fieldRoot?.closest('form');
+    if (!form) return;
+    const handleReset = (event: Event) => handleFormReset(event);
+    form.addEventListener('reset', handleReset);
+    return () => form.removeEventListener('reset', handleReset);
   });
 
   const groupLabelId = $derived(label ? `${id}-label` : undefined);

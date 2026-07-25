@@ -88,6 +88,10 @@
     .cinder-phone-input__country .cinder-select {
       text-indent: -9999px;
     }
+
+    .cinder-phone-input__country .cinder-select option {
+      text-indent: 0;
+    }
   }
 
   .cinder-phone-input-field__description {

@@ -72,6 +72,8 @@ describe('PhoneInput rendering', () => {
     expect(source).toContain("from '@lostgradient/cinder/input'");
     expect(source).toContain("from '@lostgradient/cinder/select'");
     expect(styles).not.toContain('background-image');
+    expect(styles).toContain('.cinder-phone-input__country .cinder-select option');
+    expect(styles).toContain('text-indent: 0;');
     expect(container.querySelectorAll('.cinder-select-field__chevron')).toHaveLength(1);
   });
 
@@ -413,6 +415,62 @@ describe('PhoneInput allow-list expansion', () => {
     });
     expect(countrySelect(container).value).toBe('GB');
     expect(nationalInput(container).value).toContain('020');
+  });
+});
+
+describe('PhoneInput form reset', () => {
+  test('does not reset when the reset event is canceled', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US', 'GB'],
+        value: '+14155550132',
+      },
+    });
+    const input = nationalInput(rendered.container);
+    await fireEvent.input(input, { target: { value: '2025550123' } });
+    const editedDisplay = input.value;
+    let resetCanceled = false;
+    form.addEventListener('reset', (event) => {
+      event.preventDefault();
+      resetCanceled = event.defaultPrevented;
+    });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(resetCanceled).toBe(true);
+    expect(input.value).toBe(editedDisplay);
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('preserves a disallowed initial E.164 value literally on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US'],
+        value: '+442079460958',
+      },
+    });
+    const input = nationalInput(rendered.container);
+    await fireEvent.input(input, { target: { value: '2025550123' } });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(countrySelect(rendered.container).value).toBe('US');
+    expect(input.value).toBe('+442079460958');
+    rendered.unmount();
+    form.remove();
   });
 });
 
