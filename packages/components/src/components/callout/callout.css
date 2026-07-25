@@ -28,6 +28,9 @@
    * (static prose aside) from Alert (live-region notification, stripe-free). */
     border-inline-start-width: 4px;
     border-radius: var(--cinder-radius-md);
+    /* Square the leading corners so the thick accent remains a straight bar. */
+    border-start-start-radius: 0;
+    border-end-start-radius: 0;
     background: var(--cinder-surface);
     color: var(--cinder-text);
     font-size: var(--cinder-text-sm);
@@ -135,6 +138,8 @@
      * its color collapses to CanvasText along with the rest of the box. */
       border-inline-start-width: 4px;
       border-inline-start-color: CanvasText;
+      border-start-start-radius: 0;
+      border-end-start-radius: 0;
     }
   }
 }
