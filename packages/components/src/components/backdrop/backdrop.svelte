@@ -62,7 +62,7 @@
   });
 
   $effect(() => {
-    if (!open || !scrimElement) return;
+    if (!open || !scrimElement || !onclick) return;
     return pushEscapeHandler((event) => {
       if (event.defaultPrevented) return;
       event.preventDefault();

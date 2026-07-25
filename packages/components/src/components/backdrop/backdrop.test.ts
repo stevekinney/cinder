@@ -10,13 +10,14 @@ setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Backdrop } = await import('./backdrop.svelte');
+const { _resetEscapeStack, _resetScrollLock } = await import('../../_internal/overlay.ts');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  _resetEscapeStack();
 });
-const { _resetScrollLock } = await import('../../_internal/overlay.ts');
 
 describe('Backdrop', () => {
   test('renders the scrim when open=true', () => {
@@ -80,6 +81,28 @@ describe('Backdrop', () => {
     expect(backdrop).not.toBeNull();
     await fireEvent.click(backdrop);
     expect(clicked).toBe(true);
+  });
+
+  test('Escape invokes onclick for an open backdrop', async () => {
+    let dismissed = false;
+    render(Backdrop, {
+      props: { open: true, onclick: () => (dismissed = true) },
+    });
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(dismissed).toBe(true);
+  });
+
+  test('Escape does not dispatch a click path without onclick', async () => {
+    const { container } = render(Backdrop, { props: { open: true } });
+    const backdrop = container.querySelector('.cinder-backdrop') as HTMLElement;
+    let clicked = false;
+    backdrop.addEventListener('click', () => (clicked = true));
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(clicked).toBe(false);
   });
 
   test('applies custom class prop alongside cinder-backdrop', () => {
