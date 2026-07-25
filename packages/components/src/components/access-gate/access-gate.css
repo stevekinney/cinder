@@ -16,7 +16,7 @@
     display: contents;
   }
 
-  .cinder-access-gate__passthrough:has(> [data-cinder-full-width]) {
+  .cinder-access-gate__passthrough:has(> [data-cinder-full-width]):has(> :nth-child(2)) {
     display: flex;
     inline-size: 100%;
   }
