@@ -24,6 +24,10 @@
     overflow: hidden;
   }
 
+  .cinder-approval-card__surface > .cinder-card__header {
+    padding: 0;
+  }
+
   /* ----------------------------------------
    * Header
    * ---------------------------------------- */

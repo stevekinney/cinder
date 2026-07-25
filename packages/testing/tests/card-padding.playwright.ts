@@ -55,4 +55,22 @@ test.describe('Card padding', () => {
     expect(overflow.previewScrollWidth).toBeLessThanOrEqual(overflow.previewClientWidth!);
     expect(overflow.cardRight).toBeLessThanOrEqual(overflow.previewRight!);
   });
+
+  test('ApprovalCard keeps a single owned header padding layer', async ({ page }) => {
+    await page.goto('/page/approval-card?tab=examples', { waitUntil: 'load' });
+
+    const approvalCard = page.locator('.cinder-approval-card').first();
+    const cardHeader = approvalCard.locator('.cinder-card__header');
+    const ownedHeader = approvalCard.locator('.cinder-approval-card__header');
+
+    await expect(approvalCard).toBeVisible();
+    await expect(cardHeader).toHaveCSS('padding-top', '0px');
+    await expect(cardHeader).toHaveCSS('padding-right', '0px');
+    await expect(cardHeader).toHaveCSS('padding-bottom', '0px');
+    await expect(cardHeader).toHaveCSS('padding-left', '0px');
+    await expect(ownedHeader).toHaveCSS('padding-top', '16px');
+    await expect(ownedHeader).toHaveCSS('padding-right', '16px');
+    await expect(ownedHeader).toHaveCSS('padding-bottom', '16px');
+    await expect(ownedHeader).toHaveCSS('padding-left', '16px');
+  });
 });
