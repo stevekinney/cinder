@@ -5,7 +5,7 @@
  * Bottom-anchored slide-up panel (mobile-native modal analog).
  * The <dialog> fills the viewport so backdrop-click on dialog is reliable;
  * the visible panel is a child absolutely positioned at the bottom edge,
- * capped by max-height so the backdrop still covers the full viewport.
+ * capped by max-block-size so the backdrop still covers the full viewport.
  * ======================================== */
 
   .cinder-sheet {
@@ -38,7 +38,7 @@
     right: 0;
     bottom: 0;
     width: 100%;
-    max-height: 90dvh;
+    max-block-size: 90dvh;
     background: var(--cinder-surface-raised);
     border-block-start: 1px solid var(--cinder-border);
     border-start-start-radius: var(--cinder-radius-lg);
@@ -143,6 +143,7 @@
 
   .cinder-sheet__body {
     flex: 1;
+    min-block-size: 0;
     overflow-y: auto;
     padding: var(--cinder-space-6);
     overscroll-behavior: contain;
