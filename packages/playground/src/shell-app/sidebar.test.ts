@@ -130,6 +130,22 @@ describe('Sidebar', () => {
     expect(hrefs).toContain('/c/tag-input');
   });
 
+  test('groups visible compound families under a collapsible parent', () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+
+    const group = container.querySelector('.cinder-side-navigation-group');
+    expect(group?.querySelector('button[aria-expanded]')?.textContent).toContain('Chat');
+    expect(group?.querySelector('a[href="/c/chat"]')).not.toBeNull();
+    expect(group?.querySelector('a[href="/c/chat-composer-popover"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/c/button"]')).not.toBeNull();
+  });
+
   test('filter narrows the list by humanized name (case-insensitive)', async () => {
     const { container } = render(Sidebar, {
       props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },

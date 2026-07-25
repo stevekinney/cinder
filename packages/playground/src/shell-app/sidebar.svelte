@@ -13,12 +13,14 @@
   import {
     Input,
     SideNavigation,
+    SideNavigationGroup,
     SideNavigationItem,
     VisuallyHidden,
   } from '../../../components/src/index.ts';
   import { humanizeComponentName } from './humanize.ts';
   import { buildShellHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
+  import { COMPOUND_COMPONENT_FAMILIES } from '../discover.ts';
 
   type Props = {
     components: string[];
@@ -85,6 +87,23 @@
       if (name.toLowerCase().includes(needle)) return true;
       return humanizeComponentName(name).toLowerCase().includes(needle);
     });
+  });
+
+  const groupedComponents = $derived.by(() => {
+    const visible = visibleComponents;
+    const consumed: string[] = [];
+    const groups: Array<{ parent: string; children: string[] }> = [];
+    for (const [parent, children] of Object.entries(COMPOUND_COMPONENT_FAMILIES)) {
+      if (!visible.includes(parent)) continue;
+      const family = children.filter((child) => visible.includes(child));
+      if (family.length === 0) continue;
+      groups.push({ parent, children: family });
+      consumed.push(parent, ...family);
+    }
+    return {
+      groups,
+      standalone: visibleComponents.filter((name) => !consumed.includes(name)),
+    };
   });
 
   // Announced to assistive technology whenever the filtered count changes.
@@ -185,7 +204,7 @@
     </button>
   </div>
   <SideNavigation ariaLabel="Components" {@attach interceptNavClicks}>
-    {#each visibleComponents as name (name)}
+    {#each groupedComponents.standalone as name (name)}
       <SideNavigationItem
         href={buildShellHref(name)}
         active={name === currentComponent}
@@ -193,6 +212,26 @@
       >
         {humanizeComponentName(name)}
       </SideNavigationItem>
+    {/each}
+    {#each groupedComponents.groups as group (group.parent)}
+      <SideNavigationGroup label={humanizeComponentName(group.parent)}>
+        <SideNavigationItem
+          href={buildShellHref(group.parent)}
+          active={group.parent === currentComponent}
+          onclick={(event) => handleClick(event, group.parent)}
+        >
+          {humanizeComponentName(group.parent)}
+        </SideNavigationItem>
+        {#each group.children as name (name)}
+          <SideNavigationItem
+            href={buildShellHref(name)}
+            active={name === currentComponent}
+            onclick={(event) => handleClick(event, name)}
+          >
+            {humanizeComponentName(name)}
+          </SideNavigationItem>
+        {/each}
+      </SideNavigationGroup>
     {/each}
   </SideNavigation>
   {#if visibleComponents.length === 0}
