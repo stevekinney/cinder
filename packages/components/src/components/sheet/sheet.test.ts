@@ -734,8 +734,9 @@ describe('Sheet', () => {
     const cssText = await Bun.file(new URL('./sheet.css', import.meta.url)).text();
 
     expect(cssText).toMatch(
-      /\.cinder-sheet__panel\s*\{[^}]*max-height:\s*90dvh;[^}]*max-block-size:\s*90dvh;[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s,
+      /\.cinder-sheet__panel\s*\{[^}]*max-height:\s*90dvh;[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s,
     );
+    expect(cssText).not.toMatch(/\.cinder-sheet__panel\s*\{[^}]*max-block-size:\s*90dvh;/s);
     expect(cssText).toMatch(
       /\.cinder-sheet__body\s*\{[^}]*flex:\s*1;[^}]*min-block-size:\s*0;[^}]*overflow-y:\s*auto;/s,
     );
