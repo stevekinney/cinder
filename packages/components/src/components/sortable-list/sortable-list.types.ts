@@ -22,7 +22,7 @@ export type SortableListProps<Item> = {
   /** Optional snippet rendered inside the drag-handle button. Receives { pressed, label }. */
   handle?: Snippet<[{ pressed: boolean; label: string }]>;
   /** Fires with the full reordered array and change metadata on drop. */
-  onreorder: (
+  onReorder: (
     nextItems: Item[],
     change: import('../../utilities/sortable-controller.types.ts').SortableReorderChange,
   ) => void;

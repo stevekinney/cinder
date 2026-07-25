@@ -41,12 +41,12 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onacknowledge',
+        name: 'onAcknowledge',
         reason: 'function-or-snippet',
         required: true,
       },
       {
-        name: 'oncancel',
+        name: 'onCancel',
         reason: 'function-or-snippet',
       },
       {

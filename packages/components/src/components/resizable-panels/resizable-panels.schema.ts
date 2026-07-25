@@ -37,11 +37,11 @@ const schema = {
         reason: 'unknown-shape',
       },
       {
-        name: 'onlayoutchange',
+        name: 'onLayoutChange',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onlayoutcommit',
+        name: 'onLayoutCommit',
         reason: 'function-or-snippet',
       },
       {

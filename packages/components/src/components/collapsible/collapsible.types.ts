@@ -20,7 +20,7 @@ export type CollapsibleProps = Omit<
    */
   open?: boolean;
   /** Fired on every successful toggle with the next open state. Not called while disabled. */
-  ontoggle?: (open: boolean) => void;
+  onToggle?: (open: boolean) => void;
   /**
    * When true, the trigger cannot be toggled.
    * @default false

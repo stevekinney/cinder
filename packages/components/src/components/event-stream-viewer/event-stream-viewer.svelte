@@ -90,8 +90,8 @@
     loading = false,
     label = 'Event stream',
     detectSequenceGaps = false,
-    oncopyvisible,
-    onfilter,
+    onCopyVisible,
+    onFilter,
     filterQuery = '',
     class: className,
     ...rest
@@ -248,8 +248,8 @@
 
   function handleCopyVisible() {
     const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
-    if (!oncopyvisible) return;
-    oncopyvisible(text);
+    if (!onCopyVisible) return;
+    onCopyVisible(text);
     liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
     setTimeout(() => {
       liveMessage = '';
@@ -319,17 +319,17 @@
       {/if}
     </div>
     <div class="cinder-event-stream-viewer__toolbar-end">
-      {#if onfilter !== undefined}
+      {#if onFilter !== undefined}
         <input
           type="search"
           class="cinder-event-stream-viewer__filter-input"
           placeholder="Filter events…"
           aria-label="Filter events"
           value={filterQuery}
-          oninput={(e) => onfilter?.((e.currentTarget as HTMLInputElement).value)}
+          oninput={(e) => onFilter?.((e.currentTarget as HTMLInputElement).value)}
         />
       {/if}
-      {#if oncopyvisible !== undefined}
+      {#if onCopyVisible !== undefined}
         <button
           type="button"
           class="cinder-event-stream-viewer__copy-all-button"

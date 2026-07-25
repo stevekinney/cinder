@@ -22,22 +22,22 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'oncancel',
+        name: 'onCancel',
         reason: 'function-or-snippet',
         description: 'Called when the composer is canceled.',
       },
       {
-        name: 'onclose',
+        name: 'onClose',
         reason: 'function-or-snippet',
         description: 'Called when the popover should close.',
       },
       {
-        name: 'oncommentsubmit',
+        name: 'onCommentSubmit',
         reason: 'function-or-snippet',
         description: 'Called when a comment is submitted.',
       },
       {
-        name: 'onexpand',
+        name: 'onExpand',
         reason: 'function-or-snippet',
         description: 'Called when the compact action expands into the composer.',
       },

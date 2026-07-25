@@ -148,12 +148,12 @@ describe('Modal', () => {
     expect(closeButton?.getAttribute('aria-label')).toBe('Close dialog');
   });
 
-  test('showCloseButton=false omits the close button', () => {
+  test('closeButtonVisible=false omits the close button', () => {
     const { container } = render(Modal, {
       props: {
         open: true,
         title: 'Sticky Modal',
-        showCloseButton: false,
+        closeButtonVisible: false,
         children: emptySnippet,
       },
     });
@@ -388,7 +388,7 @@ describe('Modal', () => {
     expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
   });
 
-  test('ondismiss fires when native cancel event is dispatched (Escape)', async () => {
+  test('onDismiss fires when native cancel event is dispatched (Escape)', async () => {
     let dismissCount = 0;
     let openValue = true;
     const { container } = render(Modal, {
@@ -401,7 +401,7 @@ describe('Modal', () => {
         },
         title: 'Test Modal',
         children: emptySnippet,
-        ondismiss: () => {
+        onDismiss: () => {
           dismissCount++;
         },
       },
@@ -427,7 +427,7 @@ describe('Modal', () => {
     expect(cancelEvent.defaultPrevented).toBe(true);
   });
 
-  test('ondismiss fires when backdrop is clicked', async () => {
+  test('onDismiss fires when backdrop is clicked', async () => {
     let dismissCount = 0;
     let openValue = true;
     const { container } = render(Modal, {
@@ -440,7 +440,7 @@ describe('Modal', () => {
         },
         title: 'Test Modal',
         children: emptySnippet,
-        ondismiss: () => {
+        onDismiss: () => {
           dismissCount++;
         },
       },
@@ -451,7 +451,7 @@ describe('Modal', () => {
     expect(openValue).toBe(false);
   });
 
-  test('ondismiss fires when the close-X button is clicked', async () => {
+  test('onDismiss fires when the close-X button is clicked', async () => {
     let dismissCount = 0;
     let openValue = true;
     const { container } = render(Modal, {
@@ -464,7 +464,7 @@ describe('Modal', () => {
         },
         title: 'Test Modal',
         children: emptySnippet,
-        ondismiss: () => {
+        onDismiss: () => {
           dismissCount++;
         },
       },
@@ -475,7 +475,7 @@ describe('Modal', () => {
     expect(openValue).toBe(false);
   });
 
-  test('ondismiss does NOT fire when open is set to false by the parent', async () => {
+  test('onDismiss does NOT fire when open is set to false by the parent', async () => {
     let dismissCount = 0;
     let openValue = true;
     const { rerender } = render(Modal, {
@@ -488,7 +488,7 @@ describe('Modal', () => {
         },
         title: 'Test Modal',
         children: emptySnippet,
-        ondismiss: () => {
+        onDismiss: () => {
           dismissCount++;
         },
       },
@@ -686,7 +686,7 @@ describe('Modal', () => {
     document.body.style.overflow = '';
   });
 
-  test('a throwing ondismiss callback propagates the error but open is still false', async () => {
+  test('a throwing onDismiss callback propagates the error but open is still false', async () => {
     let openValue = true;
     const { container } = render(Modal, {
       props: {
@@ -698,8 +698,8 @@ describe('Modal', () => {
         },
         title: 'Test Modal',
         children: emptySnippet,
-        ondismiss: () => {
-          throw new Error('ondismiss error');
+        onDismiss: () => {
+          throw new Error('onDismiss error');
         },
       },
     });
@@ -846,7 +846,7 @@ describe('Modal', () => {
           role: 'alertdialog',
           dismissOnBackdropClick: false,
           dismissOnEscape: false,
-          showCloseButton: false,
+          closeButtonVisible: false,
           describedById: 'session-description',
           children: emptySnippet,
         },
@@ -874,7 +874,7 @@ describe('Modal', () => {
         describedById: 'manual-desc',
         dismissOnBackdropClick: false,
         dismissOnEscape: false,
-        showCloseButton: false,
+        closeButtonVisible: false,
         children: emptySnippet,
       },
     });
@@ -891,7 +891,7 @@ describe('Modal', () => {
     await fireEvent.click(dialog);
     expect(openValue).toBe(true);
 
-    // No close button rendered when showCloseButton=false.
+    // No close button rendered when closeButtonVisible=false.
     expect(container.querySelector('.cinder-modal__close')).toBeNull();
   });
 });

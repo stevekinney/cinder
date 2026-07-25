@@ -13,8 +13,7 @@
  * Tests run with TZ=UTC via the package.json test script.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { readdir, readFile } from 'node:fs/promises';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -107,8 +106,8 @@ const NO_TEST_REQUIRED_ALLOW_LIST = new Set([
  * step below resolves correctly. Falls back to top-level `<name>.svelte`
  * files for any components that have not yet been migrated.
  */
-async function getSvelteFiles(): Promise<string[]> {
-  const entries = await readdir(COMPONENTS_DIR, { withFileTypes: true });
+function getSvelteFiles(): string[] {
+  const entries = readdirSync(COMPONENTS_DIR, { withFileTypes: true });
   const files: string[] = [];
   for (const entry of entries) {
     if (entry.name.startsWith('_')) continue;
@@ -119,24 +118,17 @@ async function getSvelteFiles(): Promise<string[]> {
     if (entry.isDirectory()) {
       if (entry.name === 'experimental' || entry.name === 'icons') continue;
       const inner = `${entry.name}/${entry.name}.svelte`;
-      try {
-        await readFile(join(COMPONENTS_DIR, inner), 'utf-8');
+      if (existsSync(join(COMPONENTS_DIR, inner))) {
         files.push(inner);
-      } catch {
-        // Directory without a matching top-level .svelte — skip.
       }
     }
   }
   return files.toSorted();
 }
 
-async function getAllComponentSvelteFiles(): Promise<string[]> {
+function getAllComponentSvelteFiles(): string[] {
   const glob = new Bun.Glob('**/*.svelte');
-  const files: string[] = [];
-  for await (const file of glob.scan(COMPONENTS_DIR)) {
-    files.push(file);
-  }
-  return files.toSorted();
+  return [...glob.scanSync({ cwd: COMPONENTS_DIR })].toSorted();
 }
 
 function toPascal(kebab: string): string {
@@ -207,244 +199,248 @@ function findSpreadOnNativeElement(fragment: unknown, _restName: string): boolea
   return false;
 }
 
-describe('component conventions', () => {
-  test('every public .svelte file passes structural conventions', async () => {
-    const files = await getSvelteFiles();
-    expect(files.length).toBeGreaterThan(0);
+const publicSvelteFiles = getSvelteFiles();
+const allComponentSvelteFiles = getAllComponentSvelteFiles();
 
-    const errors: string[] = [];
+function collectStructuralConventionErrors(files: readonly string[]): string[] {
+  const errors: string[] = [];
 
-    for (const file of files) {
-      // file is either `<name>.svelte` (flat) or `<name>/<name>.svelte`
-      // (migrated). Strip both shapes to a bare kebab name.
-      const base = file.includes('/') ? file.split('/').pop()! : file;
-      const name = base.replace(/\.svelte$/, '');
-      const pascal = toPascal(name);
-      const source = await readFile(join(COMPONENTS_DIR, file), 'utf-8');
+  for (const file of files) {
+    // file is either `<name>.svelte` (flat) or `<name>/<name>.svelte`
+    // (migrated). Strip both shapes to a bare kebab name.
+    const base = file.includes('/') ? file.split('/').pop()! : file;
+    const name = base.replace(/\.svelte$/, '');
+    const pascal = toPascal(name);
+    const source = readFileSync(join(COMPONENTS_DIR, file), 'utf-8');
 
-      // 9. Every component must have a sibling <name>.test.ts containing at
-      //    least one active test()/it() call. A types-only snapshot file does
-      //    not satisfy this. Components on the NO_TEST_REQUIRED_ALLOW_LIST are
-      //    grandfathered-in gaps tracked for follow-up; everything else — and
-      //    crucially every NEW component — must ship a real test.
-      //    Detection uses the same hasSubstantiveTest predicate as the
-      //    stable-promotion gate so the "has a substantive test" signal is
-      //    identical in both places.
-      //    This requirement is evaluated FIRST, before any of the structural
-      //    `continue`s below (missing module/instance script, no $props()).
-      //    A component that lacks an instance script must still ship a test —
-      //    otherwise a new module-only component would silently skip the gate.
-      if (!NO_TEST_REQUIRED_ALLOW_LIST.has(name)) {
-        const testFilePath = join(COMPONENTS_DIR, file.replace(/\.svelte$/, '.test.ts'));
-        if (!hasSubstantiveTest(testFilePath).pass) {
-          errors.push(
-            `${file}: missing a substantive ${name}.test.ts (needs >=1 active test()/it() call; ` +
-              `a types-only snapshot does not count). Add a test, or — only if truly unavoidable — ` +
-              `add '${name}' to NO_TEST_REQUIRED_ALLOW_LIST with a TODO.`,
-          );
-        }
-      }
-
-      let ast: ReturnType<typeof parse>;
-      try {
-        ast = parse(source, { filename: file, modern: true });
-      } catch (err) {
-        errors.push(`${file}: parse error — ${String(err)}`);
-        continue;
-      }
-
-      // 1. No <style> block.
-      if (ast.css !== null && !DOMAIN_SUITE_STYLE_ALLOW_LIST.has(name)) {
-        errors.push(`${file}: has a <style> block (must be removed — use CSS partial instead)`);
-      }
-
-      // 2. Module script exports a Props type alias named ${Pascal}Props.
-      const moduleContent = ast.module?.content;
-      if (!moduleContent) {
-        errors.push(`${file}: missing module script (<script lang="ts" module>)`);
-        continue;
-      }
-
-      const moduleBody = (moduleContent as Record<string, unknown>).body as unknown[];
-      const hasPropsExport = moduleBody?.some((node: unknown) => {
-        if (!node || typeof node !== 'object') return false;
-        const n = node as Record<string, unknown>;
-        if (n.type !== 'ExportNamedDeclaration') return false;
-
-        // Direct declaration: `export type ${Pascal}Props = ...`
-        const decl = n.declaration as Record<string, unknown> | null;
-        if (decl?.type === 'TSTypeAliasDeclaration') {
-          if ((decl.id as Record<string, unknown>)?.name === `${pascal}Props`) return true;
-        }
-
-        // Re-export: `export type { ${Pascal}Props } from './...';` After the
-        // per-directory migration the type itself lives in `<name>.types.ts`
-        // and the .svelte module script only re-exports it.
-        const specifiers = n.specifiers as unknown[] | undefined;
-        if (Array.isArray(specifiers)) {
-          for (const spec of specifiers) {
-            if (!spec || typeof spec !== 'object') continue;
-            const s = spec as Record<string, unknown>;
-            const exported = s.exported as Record<string, unknown> | undefined;
-            if (exported?.name === `${pascal}Props`) return true;
-          }
-        }
-        return false;
-      });
-
-      if (!hasPropsExport) {
-        errors.push(`${file}: module script must export 'type ${pascal}Props'`);
-      }
-
-      // 3. Instance script has a $props() destructuring.
-      const instanceContent = ast.instance?.content;
-      if (!instanceContent) {
-        // Some very simple components may not need an instance script.
-        // Only flag if we expect one based on naming.
-        continue;
-      }
-
-      const instanceBody = (instanceContent as Record<string, unknown>).body as unknown[];
-      const propsDecl = instanceBody?.find((node: unknown) => {
-        if (!node || typeof node !== 'object') return false;
-        const n = node as Record<string, unknown>;
-        if (n.type !== 'VariableDeclaration') return false;
-        const decls = n.declarations as unknown[];
-        return decls?.some((d: unknown) => {
-          if (!d || typeof d !== 'object') return false;
-          const decl = d as Record<string, unknown>;
-          const init = decl.init as Record<string, unknown> | null;
-          if (!init) return false;
-          if (init.type !== 'CallExpression') return false;
-          const callee = init.callee as Record<string, unknown>;
-          return callee?.name === '$props';
-        });
-      });
-
-      if (!propsDecl) {
-        errors.push(`${file}: instance script must destructure $props()`);
-        continue;
-      }
-
-      // 4. Check $bindable() arguments are JSON-serializable (no complex expressions).
-      // Walk source looking for $bindable(complexExpr) patterns.
-      const bindableMatches = source.matchAll(/\$bindable\(([^)]+)\)/g);
-      for (const match of bindableMatches) {
-        const arg = match[1].trim();
-        // Allow: empty, string literals, number literals, boolean literals, [], {}
-        if (arg === '') continue;
-        if (/^['"`]/.test(arg)) continue; // string literal
-        if (/^-?\d/.test(arg)) continue; // number literal
-        if (arg === 'true' || arg === 'false' || arg === 'null') continue;
-        if (arg === '[]' || arg === '{}') continue;
-        if (/^\[.*\]$/.test(arg)) continue; // array of literals (basic check)
+    // 9. Every component must have a sibling <name>.test.ts containing at
+    //    least one active test()/it() call. A types-only snapshot file does
+    //    not satisfy this. Components on the NO_TEST_REQUIRED_ALLOW_LIST are
+    //    grandfathered-in gaps tracked for follow-up; everything else — and
+    //    crucially every NEW component — must ship a real test.
+    //    Detection uses the same hasSubstantiveTest predicate as the
+    //    stable-promotion gate so the "has a substantive test" signal is
+    //    identical in both places.
+    //    This requirement is evaluated FIRST, before any of the structural
+    //    `continue`s below (missing module/instance script, no $props()).
+    //    A component that lacks an instance script must still ship a test —
+    //    otherwise a new module-only component would silently skip the gate.
+    if (!NO_TEST_REQUIRED_ALLOW_LIST.has(name)) {
+      const testFilePath = join(COMPONENTS_DIR, file.replace(/\.svelte$/, '.test.ts'));
+      if (!hasSubstantiveTest(testFilePath).pass) {
         errors.push(
-          `${file}: $bindable(${arg}) — argument must be JSON-serializable (literal, [], {}, or empty)`,
+          `${file}: missing a substantive ${name}.test.ts (needs >=1 active test()/it() call; ` +
+            `a types-only snapshot does not count). Add a test, or — only if truly unavoidable — ` +
+            `add '${name}' to NO_TEST_REQUIRED_ALLOW_LIST with a TODO.`,
         );
       }
+    }
 
-      // 5. Source contains classNames( for class merging.
-      //    Pure pass-through components that render no class-bearing root
-      //    element (see NO_CLASS_MERGING_ALLOW_LIST) are exempt — they have
-      //    no element to merge classes onto.
-      if (!NO_CLASS_MERGING_ALLOW_LIST.has(name) && !source.includes('classNames(')) {
-        errors.push(`${file}: must use classNames() for class merging`);
+    let ast: ReturnType<typeof parse>;
+    try {
+      ast = parse(source, { filename: file, modern: true });
+    } catch (err) {
+      errors.push(`${file}: parse error — ${String(err)}`);
+      continue;
+    }
+
+    // 1. No <style> block.
+    if (ast.css !== null && !DOMAIN_SUITE_STYLE_ALLOW_LIST.has(name)) {
+      errors.push(`${file}: has a <style> block (must be removed — use CSS partial instead)`);
+    }
+
+    // 2. Module script exports a Props type alias named ${Pascal}Props.
+    const moduleContent = ast.module?.content;
+    if (!moduleContent) {
+      errors.push(`${file}: missing module script (<script lang="ts" module>)`);
+      continue;
+    }
+
+    const moduleBody = (moduleContent as Record<string, unknown>).body as unknown[];
+    const hasPropsExport = moduleBody?.some((node: unknown) => {
+      if (!node || typeof node !== 'object') return false;
+      const n = node as Record<string, unknown>;
+      if (n.type !== 'ExportNamedDeclaration') return false;
+
+      // Direct declaration: `export type ${Pascal}Props = ...`
+      const decl = n.declaration as Record<string, unknown> | null;
+      if (decl?.type === 'TSTypeAliasDeclaration') {
+        if ((decl.id as Record<string, unknown>)?.name === `${pascal}Props`) return true;
       }
 
-      // 6. No Snippet | undefined — optional snippets must use Snippet? syntax.
-      if (/Snippet\s*\|\s*undefined/.test(source)) {
-        errors.push(`${file}: use 'Snippet?' not 'Snippet | undefined' for optional snippets`);
+      // Re-export: `export type { ${Pascal}Props } from './...';` After the
+      // per-directory migration the type itself lives in `<name>.types.ts`
+      // and the .svelte module script only re-exports it.
+      const specifiers = n.specifiers as unknown[] | undefined;
+      if (Array.isArray(specifiers)) {
+        for (const spec of specifiers) {
+          if (!spec || typeof spec !== 'object') continue;
+          const s = spec as Record<string, unknown>;
+          const exported = s.exported as Record<string, unknown> | undefined;
+          if (exported?.name === `${pascal}Props`) return true;
+        }
       }
+      return false;
+    });
 
-      // 7. Shape B enforcement: if Props is an intersection type, the $props()
-      //    ObjectPattern must have a RestElement AND the template must spread it.
-      // We detect Shape B by looking for HTMLAttributes/HTMLInputAttributes/etc in module.
-      const isShapeB =
-        /HTMLAttributes|HTMLInputAttributes|HTMLTextareaAttributes|HTMLButtonAttributes|HTMLAnchorAttributes/.test(
-          source,
-        ) && source.includes('...rest');
+    if (!hasPropsExport) {
+      errors.push(`${file}: module script must export 'type ${pascal}Props'`);
+    }
 
-      if (isShapeB) {
-        // Find the ObjectPattern from the $props() decl and check for RestElement.
-        const decls = (propsDecl as Record<string, unknown>).declarations as unknown[];
-        const propsDeclarator = decls?.[0] as Record<string, unknown>;
-        const id = propsDeclarator?.id;
-        const hasRest = findRestElement(id);
+    // 3. Instance script has a $props() destructuring.
+    const instanceContent = ast.instance?.content;
+    if (!instanceContent) {
+      // Some very simple components may not need an instance script.
+      // Only flag if we expect one based on naming.
+      continue;
+    }
 
-        if (!hasRest) {
-          errors.push(`${file}: Shape B component must have ...rest in the $props() destructuring`);
-        } else {
-          // Check that ...rest is spread on a native DOM element in the template.
-          // Find the RestElement name.
-          const idNode = id as Record<string, unknown>;
-          const restEl = (idNode.properties as unknown[])?.find((p: unknown) => {
-            const n = p as Record<string, unknown>;
-            return n.type === 'RestElement';
-          }) as Record<string, unknown> | undefined;
-          const restName = (restEl?.argument as Record<string, unknown>)?.name as string;
+    const instanceBody = (instanceContent as Record<string, unknown>).body as unknown[];
+    const propsDecl = instanceBody?.find((node: unknown) => {
+      if (!node || typeof node !== 'object') return false;
+      const n = node as Record<string, unknown>;
+      if (n.type !== 'VariableDeclaration') return false;
+      const decls = n.declarations as unknown[];
+      return decls?.some((d: unknown) => {
+        if (!d || typeof d !== 'object') return false;
+        const decl = d as Record<string, unknown>;
+        const init = decl.init as Record<string, unknown> | null;
+        if (!init) return false;
+        if (init.type !== 'CallExpression') return false;
+        const callee = init.callee as Record<string, unknown>;
+        return callee?.name === '$props';
+      });
+    });
 
-          if (restName) {
-            const spreadFound = findSpreadOnNativeElement(ast.fragment, restName);
-            if (!spreadFound) {
-              errors.push(
-                `${file}: Shape B component destructures ...${restName} but never spreads it on a native DOM element`,
-              );
-            }
+    if (!propsDecl) {
+      errors.push(`${file}: instance script must destructure $props()`);
+      continue;
+    }
+
+    // 4. Check $bindable() arguments are JSON-serializable (no complex expressions).
+    // Walk source looking for $bindable(complexExpr) patterns.
+    const bindableMatches = source.matchAll(/\$bindable\(([^)]+)\)/g);
+    for (const match of bindableMatches) {
+      const arg = match[1].trim();
+      // Allow: empty, string literals, number literals, boolean literals, [], {}
+      if (arg === '') continue;
+      if (/^['"`]/.test(arg)) continue; // string literal
+      if (/^-?\d/.test(arg)) continue; // number literal
+      if (arg === 'true' || arg === 'false' || arg === 'null') continue;
+      if (arg === '[]' || arg === '{}') continue;
+      if (/^\[.*\]$/.test(arg)) continue; // array of literals (basic check)
+      errors.push(
+        `${file}: $bindable(${arg}) — argument must be JSON-serializable (literal, [], {}, or empty)`,
+      );
+    }
+
+    // 5. Source contains classNames( for class merging.
+    //    Pure pass-through components that render no class-bearing root
+    //    element (see NO_CLASS_MERGING_ALLOW_LIST) are exempt — they have
+    //    no element to merge classes onto.
+    if (!NO_CLASS_MERGING_ALLOW_LIST.has(name) && !source.includes('classNames(')) {
+      errors.push(`${file}: must use classNames() for class merging`);
+    }
+
+    // 6. No Snippet | undefined — optional snippets must use Snippet? syntax.
+    if (/Snippet\s*\|\s*undefined/.test(source)) {
+      errors.push(`${file}: use 'Snippet?' not 'Snippet | undefined' for optional snippets`);
+    }
+
+    // 7. Shape B enforcement: if Props is an intersection type, the $props()
+    //    ObjectPattern must have a RestElement AND the template must spread it.
+    // We detect Shape B by looking for HTMLAttributes/HTMLInputAttributes/etc in module.
+    const isShapeB =
+      /HTMLAttributes|HTMLInputAttributes|HTMLTextareaAttributes|HTMLButtonAttributes|HTMLAnchorAttributes/.test(
+        source,
+      ) && source.includes('...rest');
+
+    if (isShapeB) {
+      // Find the ObjectPattern from the $props() decl and check for RestElement.
+      const decls = (propsDecl as Record<string, unknown>).declarations as unknown[];
+      const propsDeclarator = decls?.[0] as Record<string, unknown>;
+      const id = propsDeclarator?.id;
+      const hasRest = findRestElement(id);
+
+      if (!hasRest) {
+        errors.push(`${file}: Shape B component must have ...rest in the $props() destructuring`);
+      } else {
+        // Check that ...rest is spread on a native DOM element in the template.
+        // Find the RestElement name.
+        const idNode = id as Record<string, unknown>;
+        const restEl = (idNode.properties as unknown[])?.find((p: unknown) => {
+          const n = p as Record<string, unknown>;
+          return n.type === 'RestElement';
+        }) as Record<string, unknown> | undefined;
+        const restName = (restEl?.argument as Record<string, unknown>)?.name as string;
+
+        if (restName) {
+          const spreadFound = findSpreadOnNativeElement(ast.fragment, restName);
+          if (!spreadFound) {
+            errors.push(
+              `${file}: Shape B component destructures ...${restName} but never spreads it on a native DOM element`,
+            );
           }
         }
       }
+    }
 
-      // 8. Interactive components must have a sibling .a11y.md file.
-      // After migration, the .a11y.md lives inside the component directory next
-      // to the .svelte; check both the migrated and the legacy flat locations.
-      if (INTERACTIVE_ALLOW_LIST.has(name)) {
-        const directoryPath = join(COMPONENTS_DIR, name, `${name}.a11y.md`);
-        const flatPath = join(COMPONENTS_DIR, `${name}.a11y.md`);
-        const exists =
-          (await Bun.file(directoryPath).exists()) || (await Bun.file(flatPath).exists());
-        if (!exists) {
-          errors.push(`${file}: interactive component missing ${name}.a11y.md`);
-        }
+    // 8. Interactive components must have a sibling .a11y.md file.
+    // After migration, the .a11y.md lives inside the component directory next
+    // to the .svelte; check both the migrated and the legacy flat locations.
+    if (INTERACTIVE_ALLOW_LIST.has(name)) {
+      const directoryPath = join(COMPONENTS_DIR, name, `${name}.a11y.md`);
+      const flatPath = join(COMPONENTS_DIR, `${name}.a11y.md`);
+      if (!existsSync(directoryPath) && !existsSync(flatPath)) {
+        errors.push(`${file}: interactive component missing ${name}.a11y.md`);
       }
     }
+  }
 
-    if (errors.length > 0) {
-      throw new Error(`Convention violations found:\n${errors.map((e) => `  • ${e}`).join('\n')}`);
+  return errors;
+}
+
+function collectUnprefixedIconUtilityOffenders(files: readonly string[]): string[] {
+  const offenders: string[] = [];
+  for (const file of files) {
+    const source = readFileSync(join(COMPONENTS_DIR, file), 'utf-8');
+    const matches = [...source.matchAll(UNPREFIXED_ICON_UTILITY_PATTERN)];
+    if (matches.length === 0) continue;
+
+    const lineStarts = [0];
+    for (let index = source.indexOf('\n'); index !== -1; index = source.indexOf('\n', index + 1)) {
+      lineStarts.push(index + 1);
     }
-    // Parses every public .svelte file; raise the timeout so CPU contention
-    // (parallel CI / multi-worktree) does not flake this whole-tree scan.
-  }, 60_000);
+
+    const locations = matches.map((match) => {
+      const offset = match.index ?? 0;
+      const lineIndex = lineStarts.findLastIndex((start) => start <= offset);
+      return `${file}:${lineIndex + 1}`;
+    });
+    offenders.push(...locations);
+  }
+  return offenders;
+}
+
+const structuralConventionErrors = collectStructuralConventionErrors(publicSvelteFiles);
+const unprefixedIconUtilityOffenders =
+  collectUnprefixedIconUtilityOffenders(allComponentSvelteFiles);
+
+describe('component conventions', () => {
+  test('every public .svelte file passes structural conventions', () => {
+    expect(publicSvelteFiles.length).toBeGreaterThan(0);
+    if (structuralConventionErrors.length > 0) {
+      throw new Error(
+        `Convention violations found:\n${structuralConventionErrors.map((e) => `  • ${e}`).join('\n')}`,
+      );
+    }
+  });
 });
 
 describe('component icon utility namespace', () => {
-  test('component internals do not use unprefixed icon utility classes', async () => {
-    const files = await getAllComponentSvelteFiles();
-    expect(files.length).toBeGreaterThan(0);
-
-    const offenders: string[] = [];
-    for (const file of files) {
-      const source = await readFile(join(COMPONENTS_DIR, file), 'utf-8');
-      const matches = [...source.matchAll(UNPREFIXED_ICON_UTILITY_PATTERN)];
-      if (matches.length === 0) continue;
-
-      const lineStarts = [0];
-      for (
-        let index = source.indexOf('\n');
-        index !== -1;
-        index = source.indexOf('\n', index + 1)
-      ) {
-        lineStarts.push(index + 1);
-      }
-
-      const locations = matches.map((match) => {
-        const offset = match.index ?? 0;
-        const lineIndex = lineStarts.findLastIndex((start) => start <= offset);
-        return `${file}:${lineIndex + 1}`;
-      });
-      offenders.push(...locations);
-    }
-
-    expect(offenders).toEqual([]);
+  test('component internals do not use unprefixed icon utility classes', () => {
+    expect(allComponentSvelteFiles.length).toBeGreaterThan(0);
+    expect(unprefixedIconUtilityOffenders).toEqual([]);
   });
 });
 

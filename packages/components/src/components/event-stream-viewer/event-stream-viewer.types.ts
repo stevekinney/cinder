@@ -133,15 +133,15 @@ export type EventStreamViewerProps = Omit<HTMLAttributes<HTMLDivElement>, 'class
    * Receives the text of all currently visible events. When omitted the copy
    * action is hidden.
    */
-  oncopyvisible?: (text: string) => void;
+  onCopyVisible?: (text: string) => void;
   /**
    * Callback fired when the user updates the filter query in the toolbar's
    * search field. The consumer is responsible for filtering `events` in
    * response. When omitted the filter input is hidden.
    */
-  onfilter?: (query: string) => void;
+  onFilter?: (query: string) => void;
   /**
-   * Current filter query value, for controlled usage. Pairs with `onfilter`.
+   * Current filter query value, for controlled usage. Pairs with `onFilter`.
    */
   filterQuery?: string;
   /** Additional CSS classes applied to the root element. */
@@ -196,15 +196,15 @@ export type EventStreamViewerSchemaProps = {
    * Receives the text of all currently visible events. When omitted the copy
    * action is hidden.
    */
-  oncopyvisible?: (text: string) => void;
+  onCopyVisible?: (text: string) => void;
   /**
    * Callback fired when the user updates the filter query in the toolbar's
    * search field. The consumer is responsible for filtering `events` in
    * response. When omitted the filter input is hidden.
    */
-  onfilter?: (query: string) => void;
+  onFilter?: (query: string) => void;
   /**
-   * Current filter query value, for controlled usage. Pairs with `onfilter`.
+   * Current filter query value, for controlled usage. Pairs with `onFilter`.
    */
   filterQuery?: string;
   /** Additional CSS classes applied to the root element. */

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
@@ -56,14 +57,11 @@ function resolveImport(
  * source order. `@keyframes` stops are skipped; `@media`/`@supports`/`@container`
  * inherit the enclosing layer.
  */
-async function flattenCascade(
-  file: string,
-  parentLayer: string | null = null,
-): Promise<FlatRule[]> {
+function flattenCascade(file: string, parentLayer: string | null = null): FlatRule[] {
   const out: FlatRule[] = [];
-  const root = parse(await Bun.file(file).text(), { from: file });
+  const root = parse(readFileSync(file, 'utf8'), { from: file });
 
-  const walk = async (nodes: ChildNode[], layer: string | null): Promise<void> => {
+  const walk = (nodes: ChildNode[], layer: string | null): void => {
     for (const node of nodes) {
       if (node.type === 'rule') {
         out.push({ layer, selector: node.selector.replace(/\s+/g, ' ').trim() });
@@ -77,28 +75,30 @@ async function flattenCascade(
               ? `${layer}.${resolved.layer}`
               : resolved.layer
             : layer;
-          out.push(...(await flattenCascade(resolved.target, nextLayer)));
+          out.push(...flattenCascade(resolved.target, nextLayer));
         } else if (at.name === 'layer' && at.nodes) {
           const name = at.params.trim();
-          await walk(at.nodes, layer ? `${layer}.${name}` : name);
+          walk(at.nodes, layer ? `${layer}.${name}` : name);
         } else if (/^(-\w+-)?keyframes$/i.test(at.name)) {
           // animation stops, not document-targeting rules — skip
         } else if (at.nodes) {
-          await walk(at.nodes, layer);
+          walk(at.nodes, layer);
         }
       }
     }
   };
 
-  await walk(root.nodes, parentLayer);
+  walk(root.nodes, parentLayer);
   return out;
 }
 
+const indexCascadeStream = flattenCascade(indexCss);
+const componentsCascadeStream = flattenCascade(componentsCss);
+
 describe('cascade identity (aggregated cinder/styles)', () => {
-  test('the four cascade layers resolve in declared order through index.css', async () => {
-    const stream = await flattenCascade(indexCss);
+  test('the four cascade layers resolve in declared order through index.css', () => {
     const order: string[] = [];
-    for (const { layer } of stream) {
+    for (const { layer } of indexCascadeStream) {
       if (layer && layer !== order[order.length - 1]) order.push(layer);
     }
     expect(order).toEqual([
@@ -109,15 +109,14 @@ describe('cascade identity (aggregated cinder/styles)', () => {
     ]);
   });
 
-  test('every rule reachable through components.css resolves into cinder.components', async () => {
+  test('every rule reachable through components.css resolves into cinder.components', () => {
     // Flatten `components.css` on its own (no enclosing layer, exactly as
     // `index.css` now imports it). Each rule must carry the intrinsic
     // `@layer cinder.components` membership — none may land at `null` (outside
     // any layer) or in a nested/mis-named layer.
-    const stream = await flattenCascade(componentsCss);
-    expect(stream.length).toBeGreaterThan(100);
+    expect(componentsCascadeStream.length).toBeGreaterThan(100);
 
-    const offenders = stream.filter(({ layer }) => layer !== COMPONENT_LAYER_NAME);
+    const offenders = componentsCascadeStream.filter(({ layer }) => layer !== COMPONENT_LAYER_NAME);
     expect(offenders).toEqual([]);
-  }, 10_000);
+  });
 });

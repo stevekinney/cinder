@@ -36,7 +36,7 @@ function textForLabelledBy(container: Element, labelledBy: string): string {
 describe('Slider (single)', () => {
   test('renders one role=slider with min/max/now and accessible name', () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 30 },
+      props: { label: 'Volume', value: 30 },
     });
     const thumbs = getThumbs(container);
     expect(thumbs).toHaveLength(1);
@@ -49,7 +49,7 @@ describe('Slider (single)', () => {
 
   test('ArrowRight increments by step', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      props: { label: 'Brightness', value: 20, step: 5 },
     });
     const thumb = getThumbs(container)[0]!;
     thumb.focus();
@@ -59,7 +59,7 @@ describe('Slider (single)', () => {
 
   test('ArrowLeft decrements by step', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      props: { label: 'Brightness', value: 20, step: 5 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowLeft' });
@@ -69,7 +69,7 @@ describe('Slider (single)', () => {
   test('ArrowRight decrements and ArrowLeft increments under dir=rtl', async () => {
     const { container } = render(Slider, {
       target: Object.assign(document.createElement('div'), { dir: 'rtl' }),
-      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      props: { label: 'Brightness', value: 20, step: 5 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
@@ -93,7 +93,7 @@ describe('Slider (single)', () => {
     document.body.appendChild(target);
     const { container } = render(Slider, {
       target,
-      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      props: { label: 'Brightness', value: 20, step: 5 },
     });
     const root = container.querySelector('.cinder-slider');
     const thumb = getThumbs(container)[0]!;
@@ -115,7 +115,7 @@ describe('Slider (single)', () => {
     document.body.appendChild(target);
     const { container } = render(Slider, {
       target,
-      props: { label: 'Brightness', defaultValue: 20, step: 5 },
+      props: { label: 'Brightness', value: 20, step: 5 },
     });
     const root = container.querySelector('.cinder-slider');
     const thumb = getThumbs(container)[0]!;
@@ -135,7 +135,7 @@ describe('Slider (single)', () => {
     document.documentElement.dir = 'ltr';
     try {
       const { container } = render(Slider, {
-        props: { label: 'Brightness', defaultValue: 20, step: 5 },
+        props: { label: 'Brightness', value: 20, step: 5 },
       });
 
       expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBeNull();
@@ -167,7 +167,7 @@ describe('Slider (single)', () => {
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50, step: 2 },
+      props: { label: 'Volume', value: 50, step: 2 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowUp' });
@@ -178,7 +178,7 @@ describe('Slider (single)', () => {
 
   test('Page Up / Page Down jump by pageStep (default 10× step)', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50, step: 1 },
+      props: { label: 'Volume', value: 50, step: 1 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'PageUp' });
@@ -189,7 +189,7 @@ describe('Slider (single)', () => {
 
   test('Page Up / Page Down honors custom pageStep', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50, step: 1, pageStep: 25 },
+      props: { label: 'Volume', value: 50, step: 1, pageStep: 25 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'PageUp' });
@@ -198,7 +198,7 @@ describe('Slider (single)', () => {
 
   test('Home and End clamp to min and max', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50 },
+      props: { label: 'Volume', value: 50 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'Home' });
@@ -209,7 +209,7 @@ describe('Slider (single)', () => {
 
   test('value clamps to [min, max] when arrow key would overshoot', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 99, step: 5 },
+      props: { label: 'Volume', value: 99, step: 5 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
@@ -220,7 +220,7 @@ describe('Slider (single)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 30,
+        value: 30,
         valueText: (v: number) => `${v} percent`,
       },
     });
@@ -233,7 +233,7 @@ describe('Slider (single)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 10,
+        value: 10,
         step: 5,
         onchange: (value: number) => calls.push(value),
       },
@@ -253,25 +253,23 @@ describe('Slider (single)', () => {
 
   test('initial value is clamped to the configured bounds', () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 200, min: 0, max: 100 },
+      props: { label: 'Volume', value: 200, min: 0, max: 100 },
     });
     expect(getThumbs(container)[0]!.getAttribute('aria-valuenow')).toBe('100');
   });
 
-  test('controlled value: keyboard does not mutate when no onchange echoes it back', async () => {
+  test('bindable value: keyboard mutates local value even when no onchange echoes it back', async () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', value: 30, step: 5 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
-    // value prop is the source of truth; without onchange echoing back, the
-    // controlled value stays at 30.
-    expect(thumb.getAttribute('aria-valuenow')).toBe('30');
+    expect(thumb.getAttribute('aria-valuenow')).toBe('35');
   });
 
   test('disabled slider does not move with keyboard', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 30, disabled: true },
+      props: { label: 'Volume', value: 30, disabled: true },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
@@ -282,7 +280,7 @@ describe('Slider (single)', () => {
 
   test('renders a hidden input with name for form submission', () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 42, name: 'volume' },
+      props: { label: 'Volume', value: 42, name: 'volume' },
     });
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
     expect(hidden).not.toBeNull();
@@ -292,7 +290,7 @@ describe('Slider (single)', () => {
 
   test('hidden input reflects the current value after keyboard movement', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 20, name: 'volume', step: 5 },
+      props: { label: 'Volume', value: 20, name: 'volume', step: 5 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
@@ -301,9 +299,52 @@ describe('Slider (single)', () => {
     expect(hidden?.value).toBe('25');
   });
 
+  test('canceled form reset leaves the current slider value unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(Slider, {
+      target: form,
+      props: { label: 'Volume', value: 20, name: 'volume', step: 5 },
+    });
+    const thumb = getThumbs(container)[0]!;
+
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    const valueBeforeReset = thumb.getAttribute('aria-valuenow');
+    expect(valueBeforeReset).not.toBeNull();
+    if (valueBeforeReset === null) throw new Error('Slider thumb should expose aria-valuenow');
+    expect(valueBeforeReset).not.toBe('20');
+
+    form.addEventListener('reset', (event) => event.preventDefault());
+    await fireEvent.reset(form);
+    await tick();
+
+    expect(thumb.getAttribute('aria-valuenow')).toBe(valueBeforeReset);
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.value).toBe(valueBeforeReset);
+  });
+
+  test('disabled slider still resets with its form', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container, rerender } = render(Slider, {
+      target: form,
+      props: { label: 'Volume', value: 20, name: 'volume', step: 5 },
+    });
+    const thumb = getThumbs(container)[0]!;
+
+    await rerender({ label: 'Volume', value: 25, name: 'volume', step: 5, disabled: true });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('25');
+    await fireEvent.reset(form);
+    await tick();
+
+    expect(thumb.getAttribute('aria-valuenow')).toBe('20');
+    const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    expect(hidden?.value).toBe('20');
+  });
+
   test('PageDown clamps to min when it would overshoot', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 5, step: 1, pageStep: 50 },
+      props: { label: 'Volume', value: 5, step: 1, pageStep: 50 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'PageDown' });
@@ -314,7 +355,7 @@ describe('Slider (single)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 30,
+        value: 30,
         step: 10,
         valueText: (v: number) => `${v} percent`,
       },
@@ -332,7 +373,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [20, 80],
+        value: [20, 80],
       },
     });
     const thumbs = getThumbs(container);
@@ -348,7 +389,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [20, 30],
+        value: [20, 30],
         step: 5,
       },
     });
@@ -366,7 +407,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [50, 60],
+        value: [50, 60],
         step: 5,
       },
     });
@@ -383,7 +424,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [10, 40],
+        value: [10, 40],
       },
     });
     const [low, high] = getThumbs(container);
@@ -396,7 +437,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [120, -10],
+        value: [120, -10],
         min: 0,
         max: 100,
       },
@@ -411,7 +452,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [10, 40],
+        value: [10, 40],
         name: 'price',
       },
     });
@@ -429,7 +470,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [10, 40],
+        value: [10, 40],
         step: 5,
         onchange: (value: [number, number]) => calls.push(value),
       },
@@ -444,7 +485,7 @@ describe('Slider (range)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [10, 90],
+        value: [10, 90],
         valueText: (v: number) => `$${v}`,
       },
     });
@@ -487,7 +528,7 @@ describe('Slider (range)', () => {
 describe('Slider (ticks)', () => {
   test('renders tick marks when ticks=true', () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50, step: 25, ticks: true },
+      props: { label: 'Volume', value: 50, step: 25, ticks: true },
     });
     const ticks = container.querySelectorAll('.cinder-slider__tick');
     // min=0, max=100, step=25 → 0, 25, 50, 75, 100 = 5 ticks.
@@ -498,7 +539,7 @@ describe('Slider (ticks)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 0,
+        value: 0,
         ticks: [0, 25, 50, 75, 100],
         step: 1,
       },
@@ -517,7 +558,7 @@ describe('Slider (ticks)', () => {
     // 100 → Math.round(100/30)*30 = 90, leaving aria-valuenow at 90 while
     // aria-valuemax still announced 100.
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100, step: 30 },
+      props: { label: 'Volume', value: 0, min: 0, max: 100, step: 30 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.keyDown(thumb, { key: 'End' });
@@ -533,7 +574,7 @@ describe('Slider (ticks)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 0,
+        value: 0,
         ticks: [0, 25, 50, 75, 100],
         step: 1,
       },
@@ -549,7 +590,7 @@ describe('Slider (ticks)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 0,
+        value: 0,
         ticks: [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100],
         step: 1,
         pageStep: 30,
@@ -566,7 +607,7 @@ describe('Slider (ticks)', () => {
     const { container } = render(Slider, {
       props: {
         label: 'Volume',
-        defaultValue: 0,
+        value: 0,
         ticks: [0, 25, 50, 75, 100],
       },
     });
@@ -578,7 +619,7 @@ describe('Slider (ticks)', () => {
 
   test('tick marks have aria-hidden ancestor and are decorative', () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50, step: 25, ticks: true },
+      props: { label: 'Volume', value: 50, step: 25, ticks: true },
     });
     const ticksContainer = container.querySelector('.cinder-slider__ticks');
     expect(ticksContainer?.getAttribute('aria-hidden')).toBe('true');
@@ -603,7 +644,7 @@ function mockTrackRect(track: HTMLElement, width: number) {
 describe('Slider (pointer)', () => {
   test('pointerdown on the track sets the value based on click position', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+      props: { label: 'Volume', value: 0, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
     mockTrackRect(track, 200);
@@ -614,7 +655,7 @@ describe('Slider (pointer)', () => {
 
   test('pointermove on document updates the value while dragging', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+      props: { label: 'Volume', value: 0, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
     const thumb = getThumbs(container)[0]!;
@@ -628,7 +669,7 @@ describe('Slider (pointer)', () => {
 
   test('pointerup ends the drag — further pointermove no longer mutates value', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50, min: 0, max: 100 },
+      props: { label: 'Volume', value: 50, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
     const thumb = getThumbs(container)[0]!;
@@ -645,7 +686,7 @@ describe('Slider (pointer)', () => {
 
   test('pointercancel ends the drag like pointerup', async () => {
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 30 },
+      props: { label: 'Volume', value: 30 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.pointerDown(thumb, { clientX: 0 });
@@ -660,7 +701,7 @@ describe('Slider (pointer)', () => {
     // focus to it, so the user could not immediately press ArrowRight to
     // refine the value.
     const { container } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+      props: { label: 'Volume', value: 0, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
     mockTrackRect(track, 200);
@@ -675,7 +716,7 @@ describe('Slider (pointer)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [20, 80],
+        value: [20, 80],
         min: 0,
         max: 100,
       },
@@ -694,7 +735,7 @@ describe('Slider (pointer)', () => {
       props: {
         label: 'Price',
         mode: 'range',
-        defaultValue: [20, 80],
+        value: [20, 80],
         min: 0,
         max: 100,
       },
@@ -713,7 +754,7 @@ describe('Slider (pointer)', () => {
     const target = Object.assign(document.createElement('div'), { dir: 'rtl' });
     const { container } = render(Slider, {
       target,
-      props: { label: 'Volume', defaultValue: 0, min: 0, max: 100 },
+      props: { label: 'Volume', value: 0, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
     mockTrackRect(track, 200);
@@ -728,7 +769,7 @@ describe('Slider (pointer)', () => {
     const target = Object.assign(document.createElement('div'), { dir: 'rtl' });
     const { container } = render(Slider, {
       target,
-      props: { label: 'Volume', defaultValue: 100, min: 0, max: 100 },
+      props: { label: 'Volume', value: 100, min: 0, max: 100 },
     });
     const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
     const thumb = getThumbs(container)[0]!;
@@ -743,7 +784,7 @@ describe('Slider (pointer)', () => {
 
   test('document listeners are cleaned up on unmount during drag', async () => {
     const { container, unmount } = render(Slider, {
-      props: { label: 'Volume', defaultValue: 50 },
+      props: { label: 'Volume', value: 50 },
     });
     const thumb = getThumbs(container)[0]!;
     await fireEvent.pointerDown(thumb, { clientX: 50 });

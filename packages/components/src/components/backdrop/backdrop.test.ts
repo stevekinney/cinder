@@ -113,21 +113,21 @@ describe('Backdrop body-scroll lock', () => {
     expect(document.body.style.overflow).toBe('');
   });
 
-  test('does not lock body scroll when lockScroll=false', () => {
+  test('does not lock body scroll when scrollLocked=false', () => {
     _resetScrollLock();
-    render(Backdrop, { props: { open: true, lockScroll: false } });
+    render(Backdrop, { props: { open: true, scrollLocked: false } });
     expect(document.body.style.overflow).toBe('');
   });
 
-  test('releases the lock when lockScroll is toggled false while open', async () => {
+  test('releases the lock when scrollLocked is toggled false while open', async () => {
     _resetScrollLock();
-    const { rerender } = render(Backdrop, { props: { open: true, lockScroll: true } });
+    const { rerender } = render(Backdrop, { props: { open: true, scrollLocked: true } });
     expect(document.body.style.overflow).toBe('hidden');
 
-    await rerender({ open: true, lockScroll: false });
+    await rerender({ open: true, scrollLocked: false });
     expect(document.body.style.overflow).toBe('');
 
-    await rerender({ open: true, lockScroll: true });
+    await rerender({ open: true, scrollLocked: true });
     expect(document.body.style.overflow).toBe('hidden');
     _resetScrollLock();
   });

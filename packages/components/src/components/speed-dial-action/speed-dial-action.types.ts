@@ -1,14 +1,14 @@
 import type { Snippet } from 'svelte';
 
-import type { FloatingActionButtonProps } from '../floating-action-button/floating-action-button.types.ts';
+import type { FloatingActionProps } from '../floating-action/floating-action.types.ts';
 
 /** Label placement for a SpeedDial.Action. */
 export type SpeedDialActionLabelPlacement = 'auto' | 'start' | 'end' | 'none';
 
-type FloatingActionButtonButtonProps = Extract<FloatingActionButtonProps, { href?: undefined }>;
+type FloatingActionControlProps = Extract<FloatingActionProps, { href?: undefined }>;
 
 type SpeedDialActionButtonAttributes = Omit<
-  FloatingActionButtonButtonProps,
+  FloatingActionControlProps,
   'aria-label' | 'children' | 'class' | 'disabled' | 'onclick' | 'size' | 'type'
 >;
 

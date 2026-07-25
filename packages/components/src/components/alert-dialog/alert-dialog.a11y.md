@@ -29,15 +29,15 @@ AlertDialog passes the following to Modal:
 ```
 dismissOnBackdropClick={false}
 dismissOnEscape={false}
-showCloseButton={false}
+closeButtonVisible={false}
 ```
 
 This is intentional. An `alertdialog` represents a condition the user must acknowledge; Escape, backdrop click, and a close-X would all let the user bypass acknowledgement — incorrect for the `alertdialog` contract.
 
 The only dismissal paths are:
 
-1. **Acknowledge button** — closes the dialog and fires `onacknowledge`.
-2. **Cancel button** (optional, appears when `cancelLabel` is set) — closes the dialog and fires `oncancel`.
+1. **Acknowledge button** — closes the dialog and fires `onAcknowledge`.
+2. **Cancel button** (optional, appears when `cancelLabel` is set) — closes the dialog and fires `onCancel`.
 
 There is no Escape, no backdrop dismiss, no close-X.
 
@@ -58,8 +58,8 @@ When `cancelLabel` is absent (acknowledge-only mode), the acknowledge button car
 | Tab                          | Cycles focus through the action buttons (and any other focusable elements in the body). Focus trap inherited from Modal's native `showModal()`. |
 | Shift + Tab                  | Cycles focus backward.                                                                                                                          |
 | Escape                       | **Blocked.** `dismissOnEscape={false}` means the native `cancel` event is prevented and `open` stays true.                                      |
-| Enter / Space on acknowledge | Fires `onacknowledge` and closes.                                                                                                               |
-| Enter / Space on cancel      | Fires `oncancel` and closes (when cancel button is rendered).                                                                                   |
+| Enter / Space on acknowledge | Fires `onAcknowledge` and closes.                                                                                                               |
+| Enter / Space on cancel      | Fires `onCancel` and closes (when cancel button is rendered).                                                                                   |
 
 ## Screen Reader Announcements
 

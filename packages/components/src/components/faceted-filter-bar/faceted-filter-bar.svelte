@@ -37,17 +37,17 @@
   let {
     'aria-label': ariaLabel = 'Filters',
     searchQuery,
-    showSearch = true,
+    searchVisible = true,
     searchPlaceholder = 'Search…',
     searchAriaLabel = 'Search',
     facets = [],
     appliedFilters = [],
     disabled = false,
     class: className,
-    onsearchchange,
-    onfacetchange,
-    onfilterremove,
-    onclearall,
+    onSearchChange,
+    onFacetChange,
+    onFilterRemove,
+    onClearAll,
     ...rest
   }: FacetedFilterBarProps = $props();
 
@@ -65,7 +65,7 @@
   // shows is whatever applied filter owns its key, or empty. There is no
   // separate internal source of truth — that would let a select keep showing a
   // value the parent has cleared (URL-state reset, clear-all, saved filters).
-  // A facet change is reported via `onfacetchange`; the consumer commits it
+  // A facet change is reported via `onFacetChange`; the consumer commits it
   // back through `appliedFilters`.
   function resolveFacetValue(key: string): string {
     return appliedFilters.find((filter) => filter.key === key)?.value ?? '';
@@ -78,7 +78,7 @@
   }
 
   const hasAppliedFilters = $derived(
-    appliedFilters.length > 0 || (showSearch && currentSearchQuery.length > 0),
+    appliedFilters.length > 0 || (searchVisible && currentSearchQuery.length > 0),
   );
   const totalActiveCount = $derived(appliedFilters.length);
 
@@ -95,13 +95,13 @@
     if (!isSearchControlled) {
       internalSearchQuery = value;
     }
-    onsearchchange?.(value);
+    onSearchChange?.(value);
   }
 
   async function handleFilterRemove(key: string): Promise<void> {
     const filterIndex = appliedFilters.findIndex((filter) => filter.key === key);
     const facetFallbackKey = appliedFilters[filterIndex]?.key;
-    onfilterremove?.(key);
+    onFilterRemove?.(key);
     await tick();
 
     const removeButtons = Array.from(
@@ -119,7 +119,7 @@
     if (!isSearchControlled) {
       internalSearchQuery = '';
     }
-    onclearall?.();
+    onClearAll?.();
   }
 
   function getFacetCurrentValue(key: string): string {
@@ -137,7 +137,7 @@
 >
   <!-- Controls row: search field + facet selects -->
   <div class="cinder-faceted-filter-bar__controls">
-    {#if showSearch}
+    {#if searchVisible}
       <SearchField
         id={searchId}
         class="cinder-faceted-filter-bar__search"
@@ -167,7 +167,7 @@
             aria-label={selectFacet.label}
             onchange={(event) => {
               const target = event.currentTarget as HTMLSelectElement;
-              onfacetchange?.(selectFacet.key, target.value);
+              onFacetChange?.(selectFacet.key, target.value);
             }}
           >
             <option value="">{selectFacet.placeholder ?? selectFacet.label}</option>
@@ -182,7 +182,7 @@
           {@render facet.control({
             value: getFacetCurrentValue(facet.key),
             onchange: (value: string) => {
-              onfacetchange?.(facet.key, value);
+              onFacetChange?.(facet.key, value);
             },
           })}
         </div>
@@ -200,7 +200,7 @@
           label={`${filter.label}: ${displayValue}`}
           removeAriaLabel={`Remove filter: ${filter.label}: ${displayValue}`}
           {disabled}
-          onremove={() => handleFilterRemove(filter.key)}
+          onRemove={() => handleFilterRemove(filter.key)}
         />
       {/each}
 

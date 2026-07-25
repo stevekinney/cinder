@@ -58,8 +58,8 @@ Override: pass `removeAriaLabel` for cases where the label alone is ambiguous (e
 ## Click-handler ordering
 
 1. Consumer `onclick` fires first (receives the native `MouseEvent`).
-2. If `event.defaultPrevented` is set (by calling `e.preventDefault()` in `onclick`), `onpressedchange` is **not** called.
-3. Otherwise `onpressedchange` is called with the toggled boolean value.
+2. If `event.defaultPrevented` is set (by calling `e.preventDefault()` in `onclick`), `onPressedChange` is **not** called.
+3. Otherwise `onPressedChange` is called with the toggled boolean value.
 
 This lets consumers intercept the action (e.g., show a confirmation dialog) without preventing the click event from bubbling.
 

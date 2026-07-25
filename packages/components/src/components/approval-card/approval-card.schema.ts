@@ -189,7 +189,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onresolve',
+        name: 'onResolve',
         reason: 'function-or-snippet',
         description:
           'Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload.',

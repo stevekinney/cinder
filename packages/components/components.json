@@ -326,7 +326,7 @@
           "reason": "Comparing discrete category totals — use bar-chart instead."
         }
       ],
-      "related": ["line-chart", "bar-chart", "table", "stat"],
+      "related": ["line-chart", "bar-chart", "table", "statistic"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -565,7 +565,7 @@
           "reason": "Showing magnitude under a trend — use area-chart instead."
         }
       ],
-      "related": ["line-chart", "area-chart", "table", "stat"],
+      "related": ["line-chart", "area-chart", "table", "statistic"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -783,6 +783,38 @@
       }
     },
     {
+      "name": "CallToActionSection",
+      "id": "call-to-action-section",
+      "import": "@lostgradient/cinder/call-to-action-section",
+      "exportName": "CallToActionSection",
+      "category": "domain",
+      "status": "stable",
+      "purpose": "Focused conversion band with a short headline, supporting copy, and primary/secondary action buttons.",
+      "tags": ["marketing", "cta", "conversion"],
+      "useWhen": [
+        "Inserting a repeated “ready to get started?” conversion section between page segments.",
+        "Prompting sign-up or demo actions after readers consume feature or testimonial content."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Building a full top-of-page hero with complex media and long-form messaging.",
+          "alternative": "hero-section"
+        },
+        {
+          "reason": "Capturing an email address inline with form fields.",
+          "alternative": "newsletter-section"
+        }
+      ],
+      "related": ["hero-section", "newsletter-section", "button", "container"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/call-to-action-section/schema",
+        "variables": "@lostgradient/cinder/call-to-action-section/variables",
+        "examples": "@lostgradient/cinder/call-to-action-section/examples"
+      }
+    },
+    {
       "name": "Callout",
       "id": "callout",
       "import": "@lostgradient/cinder/callout",
@@ -860,10 +892,10 @@
           "reason": "Rendering a bare visual surface without slotted regions — use surface instead."
         },
         {
-          "reason": "Presenting a single key metric — use stat or stat-group instead."
+          "reason": "Presenting a single key metric — use statistic or statistic-group instead."
         }
       ],
-      "related": ["surface", "stat", "stacked-list-item", "section-heading"],
+      "related": ["surface", "statistic", "stacked-list-item", "section-heading"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1521,38 +1553,6 @@
         "schema": "@lostgradient/cinder/copy-button/schema",
         "variables": "@lostgradient/cinder/copy-button/variables",
         "examples": "@lostgradient/cinder/copy-button/examples"
-      }
-    },
-    {
-      "name": "CtaSection",
-      "id": "cta-section",
-      "import": "@lostgradient/cinder/cta-section",
-      "exportName": "CtaSection",
-      "category": "domain",
-      "status": "stable",
-      "purpose": "Focused conversion band with a short headline, supporting copy, and primary/secondary action buttons.",
-      "tags": ["marketing", "cta", "conversion"],
-      "useWhen": [
-        "Inserting a repeated “ready to get started?” conversion section between page segments.",
-        "Prompting sign-up or demo actions after readers consume feature or testimonial content."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "Building a full top-of-page hero with complex media and long-form messaging.",
-          "alternative": "hero-section"
-        },
-        {
-          "reason": "Capturing an email address inline with form fields.",
-          "alternative": "newsletter-section"
-        }
-      ],
-      "related": ["hero-section", "newsletter-section", "button", "container"],
-      "hasConstraints": false,
-      "hasExamples": true,
-      "artifacts": {
-        "schema": "@lostgradient/cinder/cta-section/schema",
-        "variables": "@lostgradient/cinder/cta-section/variables",
-        "examples": "@lostgradient/cinder/cta-section/examples"
       }
     },
     {
@@ -2280,10 +2280,10 @@
       }
     },
     {
-      "name": "FloatingActionButton",
-      "id": "floating-action-button",
-      "import": "@lostgradient/cinder/floating-action-button",
-      "exportName": "FloatingActionButton",
+      "name": "FloatingAction",
+      "id": "floating-action",
+      "import": "@lostgradient/cinder/floating-action",
+      "exportName": "FloatingAction",
       "category": "action",
       "status": "beta",
       "purpose": "Circular button representing the single most important action on a screen.",
@@ -2301,9 +2301,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/floating-action-button/schema",
-        "variables": "@lostgradient/cinder/floating-action-button/variables",
-        "examples": "@lostgradient/cinder/floating-action-button/examples"
+        "schema": "@lostgradient/cinder/floating-action/schema",
+        "variables": "@lostgradient/cinder/floating-action/variables",
+        "examples": "@lostgradient/cinder/floating-action/examples"
       }
     },
     {
@@ -2546,14 +2546,20 @@
       "avoidWhen": [
         {
           "reason": "Presenting only a compact call-to-action strip between content sections.",
-          "alternative": "cta-section"
+          "alternative": "call-to-action-section"
         },
         {
           "reason": "Listing repeatable product benefits or cards — use a dedicated features grid instead.",
           "alternative": "feature-section"
         }
       ],
-      "related": ["cta-section", "feature-section", "section-heading", "container", "button"],
+      "related": [
+        "call-to-action-section",
+        "feature-section",
+        "section-heading",
+        "container",
+        "button"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2941,7 +2947,7 @@
           "reason": "Showing cumulative filled trends — use area-chart instead."
         }
       ],
-      "related": ["area-chart", "bar-chart", "table", "stat"],
+      "related": ["area-chart", "bar-chart", "table", "statistic"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3018,7 +3024,7 @@
           "reason": "Only one component needs a non-default locale — pass that component's locale prop directly instead."
         }
       ],
-      "related": ["number-input", "phone-input", "stat"],
+      "related": ["number-input", "phone-input", "statistic"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -3303,7 +3309,7 @@
           "alternative": "progress"
         }
       ],
-      "related": ["progress", "stat", "slider"],
+      "related": ["progress", "statistic", "slider"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3457,14 +3463,14 @@
       "avoidWhen": [
         {
           "reason": "Showing a generic call-to-action with buttons only and no data entry.",
-          "alternative": "cta-section"
+          "alternative": "call-to-action-section"
         },
         {
           "reason": "Collecting multi-field account or billing details.",
           "alternative": "form-section"
         }
       ],
-      "related": ["cta-section", "form-section", "input", "button", "container"],
+      "related": ["call-to-action-section", "form-section", "input", "button", "container"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3758,10 +3764,10 @@
           "reason": "Showing generic grouped content without a distinct price or CTA — use card instead."
         },
         {
-          "reason": "Displaying a single key metric in isolation — use stat or stat-group instead."
+          "reason": "Displaying a single key metric in isolation — use statistic or statistic-group instead."
         }
       ],
-      "related": ["card", "button", "stat", "stat-group"],
+      "related": ["card", "button", "statistic", "statistic-group"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3786,14 +3792,14 @@
       "avoidWhen": [
         {
           "reason": "Showing generic metrics without plan selection controls.",
-          "alternative": "stats-section"
+          "alternative": "statistics-section"
         },
         {
           "reason": "Rendering a single standalone plan card outside of a section context.",
           "alternative": "pricing-card"
         }
       ],
-      "related": ["pricing-card", "stats-section", "cta-section", "container"],
+      "related": ["pricing-card", "statistics-section", "call-to-action-section", "container"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -4653,7 +4659,7 @@
       "exportName": "SortableList",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Keyboard-and-pointer reorderable list that emits onreorder when the user drags or arrow-keys an item into a new position with announcer feedback.",
+      "purpose": "Keyboard-and-pointer reorderable list that emits onReorder when the user drags or arrow-keys an item into a new position with announcer feedback.",
       "tags": ["data-display", "reorder"],
       "useWhen": [
         "Letting users manually reorder a small to medium list of items via drag handle or keyboard.",
@@ -4811,7 +4817,7 @@
       "exportName": "SpeedDial",
       "category": "action",
       "status": "beta",
-      "purpose": "Floating action cluster that reveals secondary quick actions around a primary FloatingActionButton trigger.",
+      "purpose": "Floating action cluster that reveals secondary quick actions around a primary FloatingAction trigger.",
       "tags": ["action", "floating"],
       "useWhen": [
         "One primary floating action needs a small set of closely related quick actions."
@@ -4826,7 +4832,7 @@
           "alternative": "popover"
         }
       ],
-      "related": ["floating-action-button", "toolbar", "popover"],
+      "related": ["floating-action", "toolbar", "popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -4847,11 +4853,11 @@
       "useWhen": ["Rendering a secondary quick action inside SpeedDial."],
       "avoidWhen": [
         {
-          "reason": "Rendering an action outside SpeedDial - use floating-action-button directly.",
-          "alternative": "floating-action-button"
+          "reason": "Rendering an action outside SpeedDial - use floating-action directly.",
+          "alternative": "floating-action"
         }
       ],
-      "related": ["speed-dial", "floating-action-button"],
+      "related": ["speed-dial", "floating-action"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -4920,17 +4926,17 @@
       }
     },
     {
-      "name": "Stat",
-      "id": "stat",
-      "import": "@lostgradient/cinder/stat",
-      "exportName": "Stat",
+      "name": "Statistic",
+      "id": "statistic",
+      "import": "@lostgradient/cinder/statistic",
+      "exportName": "Statistic",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Single key metric with a label, formatted value, and optional change indicator that pairs into a stat-group dashboard tile.",
+      "purpose": "Single key metric with a label, formatted value, and optional change indicator that pairs into a statistic-group dashboard tile.",
       "tags": ["data-display", "metric"],
       "useWhen": [
         "Highlighting one important number such as revenue, signups, or error rate.",
-        "Composing a dashboard tile alongside other Stat instances inside stat-group."
+        "Composing a dashboard tile alongside other Statistic instances inside statistic-group."
       ],
       "avoidWhen": [
         {
@@ -4940,52 +4946,52 @@
           "reason": "Showing tabular numeric breakdowns — use table or data-list instead."
         }
       ],
-      "related": ["stat-group", "badge"],
+      "related": ["statistic-group", "badge"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/stat/schema",
-        "variables": "@lostgradient/cinder/stat/variables"
+        "schema": "@lostgradient/cinder/statistic/schema",
+        "variables": "@lostgradient/cinder/statistic/variables"
       }
     },
     {
-      "name": "StatGroup",
-      "id": "stat-group",
-      "import": "@lostgradient/cinder/stat-group",
-      "exportName": "StatGroup",
+      "name": "StatisticGroup",
+      "id": "statistic-group",
+      "import": "@lostgradient/cinder/statistic-group",
+      "exportName": "StatisticGroup",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Grid container that arranges a set of stat tiles into a responsive multi-column layout with shared labelling.",
+      "purpose": "Grid container that arranges a set of statistic tiles into a responsive multi-column layout with shared labelling.",
       "tags": ["data-display", "dashboard"],
       "useWhen": [
-        "Showing a row of related stat tiles such as the top metrics of a dashboard.",
-        "Giving a cluster of stat entries a single accessible group label."
+        "Showing a row of related statistic tiles such as the top metrics of a dashboard.",
+        "Giving a cluster of statistic entries a single accessible group label."
       ],
       "avoidWhen": [
         {
-          "reason": "Rendering exactly one metric — use stat on its own."
+          "reason": "Rendering exactly one metric — use statistic on its own."
         },
         {
           "reason": "Building a freeform card grid unrelated to numeric metrics — compose surface or grid-list directly."
         }
       ],
-      "related": ["stat"],
+      "related": ["statistic"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/stat-group/schema",
-        "variables": "@lostgradient/cinder/stat-group/variables",
-        "examples": "@lostgradient/cinder/stat-group/examples"
+        "schema": "@lostgradient/cinder/statistic-group/schema",
+        "variables": "@lostgradient/cinder/statistic-group/variables",
+        "examples": "@lostgradient/cinder/statistic-group/examples"
       }
     },
     {
-      "name": "StatsSection",
-      "id": "stats-section",
-      "import": "@lostgradient/cinder/stats-section",
-      "exportName": "StatsSection",
+      "name": "StatisticsSection",
+      "id": "statistics-section",
+      "import": "@lostgradient/cinder/statistics-section",
+      "exportName": "StatisticsSection",
       "category": "domain",
       "status": "stable",
-      "purpose": "Marketing metrics section that wraps StatGroup/Stat to present headline numbers with optional trend indicators.",
+      "purpose": "Marketing metrics section that wraps StatisticGroup/Statistic to present headline numbers with optional trend indicators.",
       "tags": ["marketing", "metrics", "stats"],
       "useWhen": [
         "Showing key outcomes such as uptime, customers, revenue, or latency in landing-page copy.",
@@ -5001,13 +5007,19 @@
           "alternative": "feature-section"
         }
       ],
-      "related": ["stat", "stat-group", "pricing-section", "feature-section", "container"],
+      "related": [
+        "statistic",
+        "statistic-group",
+        "pricing-section",
+        "feature-section",
+        "container"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/stats-section/schema",
-        "variables": "@lostgradient/cinder/stats-section/variables",
-        "examples": "@lostgradient/cinder/stats-section/examples"
+        "schema": "@lostgradient/cinder/statistics-section/schema",
+        "variables": "@lostgradient/cinder/statistics-section/variables",
+        "examples": "@lostgradient/cinder/statistics-section/examples"
       }
     },
     {

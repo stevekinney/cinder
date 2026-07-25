@@ -13,8 +13,13 @@ import {
   setScrollMeasurements,
 } from '../../test/overflow-fade-test-helpers.ts';
 import { renderToServerHtml } from '../../test/server-render.ts';
+import type { DrawerProps } from './drawer.types.ts';
 
 const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
+
+type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
+const excludesLowercaseNativeCloseHandler: HasKey<DrawerProps, 'onclose'> = false;
+const excludesLowercaseNativeCancelHandler: HasKey<DrawerProps, 'oncancel'> = false;
 
 setupHappyDom();
 
@@ -104,6 +109,11 @@ afterEach(() => {
 });
 
 describe('Drawer', () => {
+  test('omits native dialog handlers owned internally', () => {
+    expect(excludesLowercaseNativeCloseHandler).toBe(false);
+    expect(excludesLowercaseNativeCancelHandler).toBe(false);
+  });
+
   // ---- 1. Renders open dialog when open=true after hydration ----
   test('renders open <dialog> when open=true after hydration', () => {
     const { container } = render(Drawer, {
@@ -272,7 +282,7 @@ describe('Drawer', () => {
     expect(openValue).toBe(false);
   });
 
-  // ---- 10. onclose event sets open to false ----
+  // ---- 10. onClose event sets open to false ----
   test('dialog close event sets open to false', async () => {
     let openValue = true;
     const { container } = render(Drawer, {
@@ -500,8 +510,8 @@ describe('Drawer', () => {
     document.body.removeChild(triggerEl);
   });
 
-  // ---- 18. Exactly one onclose event per close path ----
-  test('exactly one onclose event fires per close path (close button)', async () => {
+  // ---- 18. Exactly one onClose event per close path ----
+  test('exactly one onClose event fires per close path (close button)', async () => {
     let closeCount = 0;
     let openValue = true;
     const { container } = render(Drawer, {

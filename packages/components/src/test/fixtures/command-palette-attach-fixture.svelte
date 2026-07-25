@@ -29,7 +29,7 @@
         {#if showMiddle}
           <CommandItem
             {value}
-            onselect={() => {
+            onSelect={() => {
               onSelected?.(value);
             }}
           >
@@ -39,7 +39,7 @@
       {:else}
         <CommandItem
           {value}
-          onselect={() => {
+          onSelect={() => {
             onSelected?.(value);
           }}
         >

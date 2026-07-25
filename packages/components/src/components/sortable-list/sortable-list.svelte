@@ -3,7 +3,7 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Keyboard-and-pointer reorderable list that emits onreorder when the user drags or arrow-keys an item into a new position with announcer feedback.
+   * @purpose Keyboard-and-pointer reorderable list that emits onReorder when the user drags or arrow-keys an item into a new position with announcer feedback.
    * @tag data-display
    * @tag reorder
    * @useWhen Letting users manually reorder a small to medium list of items via drag handle or keyboard.
@@ -33,7 +33,7 @@
     getItemLabel,
     formatHandleLabel = (label) => `Reorder ${label}`,
     handle,
-    onreorder,
+    onReorder,
     announcements,
     children: renderRow,
     label,
@@ -83,7 +83,7 @@
     commitDrop(_itemKey, itemLabel) {
       const result = controller.drop(items, itemLabel);
       if (result) {
-        onreorder(result.nextItems, result.change);
+        onReorder(result.nextItems, result.change);
       }
     },
     cancel(itemLabel) {

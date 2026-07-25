@@ -93,8 +93,8 @@
   {appliedFilters}
   {searchQuery}
   searchPlaceholder="Search by workflow name or ID…"
-  onsearchchange={(q) => (searchQuery = q)}
-  onfacetchange={handleFacetChange}
-  onfilterremove={handleFilterRemove}
-  onclearall={handleClearAll}
+  onSearchChange={(q) => (searchQuery = q)}
+  onFacetChange={handleFacetChange}
+  onFilterRemove={handleFilterRemove}
+  onClearAll={handleClearAll}
 />

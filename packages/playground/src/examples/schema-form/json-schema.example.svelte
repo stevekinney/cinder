@@ -36,7 +36,7 @@
     name="payload"
     value={{ name: 'Refresh indexes', retries: 2, enabled: true, cadence: 'daily' }}
     submitLabel="Save schedule"
-    ondraftchange={handleDraftChange}
+    onDraftChange={handleDraftChange}
     onsubmit={handleSubmit}
   />
 

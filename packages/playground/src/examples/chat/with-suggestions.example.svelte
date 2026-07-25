@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'With suggested replies';
   export const description =
-    'After the final assistant message, suggested follow-up labels appear as clickable chips. Clicking a chip calls onsuggestionselect(label). The chips are derived from message metadata — the underlying transcript is unchanged.';
+    'After the final assistant message, suggested follow-up labels appear as clickable chips. Clicking a chip calls onSuggestionSelect(label). The chips are derived from message metadata — the underlying transcript is unchanged.';
 </script>
 
 <script lang="ts">
@@ -39,7 +39,7 @@
     id="playground-suggestions-chat"
     {conversation}
     capabilities={{ attachments: false }}
-    onsuggestionselect={handleSuggestionSelect}
+    onSuggestionSelect={handleSuggestionSelect}
     onsubmit={(event) => {
       conversation = appendUserMessage(conversation, event.message.content as string);
     }}

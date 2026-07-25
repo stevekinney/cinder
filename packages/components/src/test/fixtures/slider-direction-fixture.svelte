@@ -15,9 +15,9 @@
 <LocaleProvider direction={providerDirection}>
   {#if localDirection}
     <div dir={localDirection}>
-      <Slider label="Brightness" defaultValue={20} step={5} />
+      <Slider label="Brightness" value={20} step={5} />
     </div>
   {:else}
-    <Slider label="Brightness" defaultValue={20} step={5} />
+    <Slider label="Brightness" value={20} step={5} />
   {/if}
 </LocaleProvider>

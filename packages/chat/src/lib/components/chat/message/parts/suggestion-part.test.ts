@@ -4,11 +4,11 @@
  * Covers:
  *   1. Renders as a <button type="button">.
  *   2. Button text is the suggestion label.
- *   3. Clicking calls onsuggestionselect(label).
+ *   3. Clicking calls onSuggestionSelect(label).
  *   4. Enter/Space activate the button (native button behaviour — implicit).
  *   5. data-cinder-suggestion attribute is present.
  *   6. Long labels are rendered (text-overflow is CSS-only; label is accessible).
- *   7. onsuggestionselect is optional — no callback = no error on click.
+ *   7. onSuggestionSelect is optional — no callback = no error on click.
  *   8. deriveMessageParts with suggestions produces suggestion parts in order after markdown.
  *   9. Empty suggestions array produces no suggestion parts (compatible path).
  *  10. Absent suggestions context produces no suggestion parts (compatible path).
@@ -98,16 +98,16 @@ describe('SuggestionPart — button rendering', () => {
 // ==========================================================================
 
 describe('SuggestionPart — callback', () => {
-  test('clicking calls onsuggestionselect with the label', () => {
-    const onsuggestionselect = mock((label: string) => label);
+  test('clicking calls onSuggestionSelect with the label', () => {
+    const onSuggestionSelect = mock((label: string) => label);
     const { container } = render(SuggestionPart, {
-      props: { part: makeSuggestion('Tell me more'), onsuggestionselect },
+      props: { part: makeSuggestion('Tell me more'), onSuggestionSelect },
     });
     const button = container.querySelector('button')!;
     fireEvent.click(button);
     flushSync();
-    expect(onsuggestionselect).toHaveBeenCalledTimes(1);
-    expect(onsuggestionselect).toHaveBeenCalledWith('Tell me more');
+    expect(onSuggestionSelect).toHaveBeenCalledTimes(1);
+    expect(onSuggestionSelect).toHaveBeenCalledWith('Tell me more');
   });
 
   test('clicking without a callback does not throw', () => {
@@ -119,22 +119,22 @@ describe('SuggestionPart — callback', () => {
     }).not.toThrow();
   });
 
-  test('different suggestions call onsuggestionselect with their own label', () => {
-    const onsuggestionselect = mock((label: string) => label);
+  test('different suggestions call onSuggestionSelect with their own label', () => {
+    const onSuggestionSelect = mock((label: string) => label);
     const { container: c1 } = render(SuggestionPart, {
-      props: { part: makeSuggestion('Alpha', 0), onsuggestionselect },
+      props: { part: makeSuggestion('Alpha', 0), onSuggestionSelect },
     });
     const { container: c2 } = render(SuggestionPart, {
-      props: { part: makeSuggestion('Beta', 1), onsuggestionselect },
+      props: { part: makeSuggestion('Beta', 1), onSuggestionSelect },
     });
 
     fireEvent.click(c1.querySelector('button')!);
     fireEvent.click(c2.querySelector('button')!);
     flushSync();
 
-    expect(onsuggestionselect).toHaveBeenCalledTimes(2);
-    expect(onsuggestionselect).toHaveBeenNthCalledWith(1, 'Alpha');
-    expect(onsuggestionselect).toHaveBeenNthCalledWith(2, 'Beta');
+    expect(onSuggestionSelect).toHaveBeenCalledTimes(2);
+    expect(onSuggestionSelect).toHaveBeenNthCalledWith(1, 'Alpha');
+    expect(onSuggestionSelect).toHaveBeenNthCalledWith(2, 'Beta');
   });
 });
 
@@ -393,19 +393,19 @@ describe('SuggestionPart — renderer integration', () => {
     expect(labels).toContain('Gamma');
   });
 
-  test('onsuggestionselect is forwarded to each chip', async () => {
+  test('onSuggestionSelect is forwarded to each chip', async () => {
     const { default: ChatMessagePartsRenderer } =
       await import('../chat-message-parts-renderer.svelte');
-    const onsuggestionselect = mock((label: string) => label);
+    const onSuggestionSelect = mock((label: string) => label);
     const suggestions: SuggestionMessagePart[] = [
       { type: 'suggestion', key: 'msg:suggestion:0', index: 0, label: 'Pick me' },
     ];
     const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: suggestions, onsuggestionselect },
+      props: { parts: suggestions, onSuggestionSelect },
     });
     const button = container.querySelector('button')!;
     fireEvent.click(button);
     flushSync();
-    expect(onsuggestionselect).toHaveBeenCalledWith('Pick me');
+    expect(onSuggestionSelect).toHaveBeenCalledWith('Pick me');
   });
 });

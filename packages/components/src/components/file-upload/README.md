@@ -57,7 +57,7 @@ real file input, so directory selection can use `webkitdirectory`:
 | `files`        | `(opaque)` | no       | —       | Consumer-driven file rows, including upload progress and error states. Not expressible in JSON Schema; see the component types for the signature. |
 | `idle`         | `(opaque)` | no       | —       | Replaces the default resting-state dropzone body. Not expressible in JSON Schema; see the component types for the signature.                      |
 | `onchange`     | `(opaque)` | no       | —       | Fires with accepted files after local validation passes. Not expressible in JSON Schema; see the component types for the signature.               |
-| `onreject`     | `(opaque)` | no       | —       | Fires with rejected files and reasons after local validation runs. Not expressible in JSON Schema; see the component types for the signature.     |
+| `onReject`     | `(opaque)` | no       | —       | Fires with rejected files and reasons after local validation runs. Not expressible in JSON Schema; see the component types for the signature.     |
 
 <!-- generated:props:end -->
 

@@ -27,7 +27,7 @@
     trigger,
     children,
     open = $bindable(false),
-    ontoggle,
+    onToggle,
     disabled = false,
     triggerAriaLabel,
     idBase,
@@ -61,7 +61,7 @@
     if (disabled) return;
     const next = !open;
     open = next;
-    ontoggle?.(next);
+    onToggle?.(next);
   }
 </script>
 

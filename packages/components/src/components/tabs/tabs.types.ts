@@ -59,7 +59,9 @@ export type TabsProps = {
   /** Bound active tab value. */
   value?: string;
   /** Intercept a proposed tab value before the bindable value is written. Return a replacement value to transform it. */
-  onValueChange?: (next: string) => string | void;
+  onValueChangeRequest?: (next: string) => string | void;
+  /** Notify after the bindable value has been committed. */
+  onValueChange?: (next: string) => void;
   /** Layout orientation. Affects which arrow keys move between tabs. */
   orientation?: TabsOrientation;
   /**

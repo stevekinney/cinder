@@ -9,9 +9,9 @@
    * @tag plans
    * @useWhen Presenting tiered subscription plans with features and action buttons.
    * @useWhen Highlighting a recommended plan while still allowing side-by-side comparison.
-   * @avoidWhen Showing generic metrics without plan selection controls. | stats-section
+   * @avoidWhen Showing generic metrics without plan selection controls. | statistics-section
    * @avoidWhen Rendering a single standalone plan card outside of a section context. | pricing-card
-   * @related pricing-card, stats-section, cta-section, container
+   * @related pricing-card, statistics-section, call-to-action-section, container
    */
   export type { PricingSectionPlan, PricingSectionProps } from './pricing-section.types.ts';
 </script>
@@ -72,7 +72,7 @@
               features={plan.features}
               cta={plan.cta}
               {...optionalPlanProps(plan)}
-              onselect={() => {
+              onSelect={() => {
                 onPlanSelect?.(plan, index);
               }}
             />

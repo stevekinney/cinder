@@ -38,9 +38,9 @@ export type MegaMenuProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'clas
   /** Hover opens top-level content instead of click-only mode. */
   openOnHover?: boolean;
   /** Render the shared content viewport wrapper. */
-  showViewport?: boolean;
+  viewportVisible?: boolean;
   /** Render an active trigger indicator bar. */
-  showIndicator?: boolean;
+  indicatorVisible?: boolean;
   /** Accessible name for the navigation landmark. */
   label?: string;
   /** Additional classes merged onto the root element. */

@@ -28,7 +28,7 @@
 
   let {
     variant = 'body1',
-    component,
+    as,
     gutterBottom = false,
     noWrap = false,
     class: className,
@@ -45,7 +45,7 @@
     h6: 'h6',
     // Subtitles are a VISUAL role, not a heading — default to <p> so they don't
     // inject orphaned headings into the document outline (which breaks screen-reader
-    // heading navigation). Pass component="h6" if a subtitle is genuinely a sub-heading.
+    // heading navigation). Pass as="h6" if a subtitle is genuinely a sub-heading.
     subtitle1: 'p',
     subtitle2: 'p',
     body1: 'p',
@@ -62,7 +62,7 @@
   // prototype keys like 'toString'/'constructor' don't pass as valid variants (which
   // would make defaultElements[variant] a function and break <svelte:element>).
   const resolvedVariant = $derived(Object.hasOwn(defaultElements, variant) ? variant : 'body1');
-  const resolvedTag = $derived(component ?? defaultElements[resolvedVariant]);
+  const resolvedTag = $derived(as ?? defaultElements[resolvedVariant]);
 </script>
 
 <svelte:element

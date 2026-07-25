@@ -11,12 +11,12 @@
       "description": "When true the backdrop is transparent but still captures pointer events,\nenabling click-to-close without dimming content behind it.",
       "default": false
     },
-    "lockScroll": {
+    "scrollLocked": {
       "type": "boolean",
       "description": "Lock body scroll while the backdrop is open (counted lock — safe to nest\nwith other overlays). Set false when the consumer manages scrolling itself.",
       "default": true
     },
-    "transitionDuration": {
+    "transitionDurationMilliseconds": {
       "type": "number",
       "description": "Enter/leave animation duration in milliseconds. Collapses to 0 under\n`prefers-reduced-motion`. Overrides the default when provided."
     },

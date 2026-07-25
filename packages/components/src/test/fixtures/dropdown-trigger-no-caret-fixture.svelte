@@ -6,7 +6,7 @@
 </script>
 
 <Dropdown id="no-caret-menu">
-  <DropdownTrigger class="trigger" showCaret={false}>Actions</DropdownTrigger>
+  <DropdownTrigger class="trigger" caretVisible={false}>Actions</DropdownTrigger>
   <DropdownMenu>
     <DropdownItem>Copy link</DropdownItem>
   </DropdownMenu>

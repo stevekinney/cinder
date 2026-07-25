@@ -95,8 +95,8 @@ The component treats that point as a Floating UI virtual anchor, not as the pane
   id="my-selection-popover"
   open={isOpen}
   {position}
-  onclose={handleClose}
-  oncommentsubmit={handleCommentSubmit}
+  onClose={handleClose}
+  onCommentSubmit={handleCommentSubmit}
 />
 ```
 
@@ -109,10 +109,10 @@ The component treats that point as a Floating UI virtual anchor, not as the pane
 | `class`           | `string`   | no       | —       | Additional class names merged with `.cinder-selection-popover`.                                                                      |
 | `id`              | `string`   | yes      | —       | Unique identifier for the popover.                                                                                                   |
 | `open`            | `boolean`  | no       | —       | Whether the popover is visible.                                                                                                      |
-| `oncancel`        | `(opaque)` | no       | —       | Called when the composer is canceled. Not expressible in JSON Schema; see the component types for the signature.                     |
-| `onclose`         | `(opaque)` | no       | —       | Called when the popover should close. Not expressible in JSON Schema; see the component types for the signature.                     |
-| `oncommentsubmit` | `(opaque)` | no       | —       | Called when a comment is submitted. Not expressible in JSON Schema; see the component types for the signature.                       |
-| `onexpand`        | `(opaque)` | no       | —       | Called when the compact action expands into the composer. Not expressible in JSON Schema; see the component types for the signature. |
+| `onCancel`        | `(opaque)` | no       | —       | Called when the composer is canceled. Not expressible in JSON Schema; see the component types for the signature.                     |
+| `onClose`         | `(opaque)` | no       | —       | Called when the popover should close. Not expressible in JSON Schema; see the component types for the signature.                     |
+| `onCommentSubmit` | `(opaque)` | no       | —       | Called when a comment is submitted. Not expressible in JSON Schema; see the component types for the signature.                       |
+| `onExpand`        | `(opaque)` | no       | —       | Called when the compact action expands into the composer. Not expressible in JSON Schema; see the component types for the signature. |
 | `position`        | `(opaque)` | yes      | —       | Viewport-relative anchor point for the popover. Not expressible in JSON Schema; see the component types for the signature.           |
 
 <!-- generated:props:end -->

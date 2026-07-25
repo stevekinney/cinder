@@ -96,7 +96,7 @@ describe('StatusDot status attribute (color via CSS)', () => {
 });
 
 describe('StatusDot label rendering', () => {
-  test('renders the visible label when label is provided and showLabel defaults to true', () => {
+  test('renders the visible label when label is provided and labelVisible defaults to true', () => {
     const { container } = render(StatusDot, {
       props: { status: 'online', label: 'Online' },
     });
@@ -105,9 +105,9 @@ describe('StatusDot label rendering', () => {
     expect(label?.textContent).toBe('Online');
   });
 
-  test('omits the visible label when showLabel is false', () => {
+  test('omits the visible label when labelVisible is false', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'online', label: 'Online', showLabel: false },
+      props: { status: 'online', label: 'Online', labelVisible: false },
     });
     expect(container.querySelector('.cinder-status-dot__label')).toBeNull();
   });
@@ -141,18 +141,18 @@ describe('StatusDot accessible name (WCAG 1.4.1)', () => {
     );
   });
 
-  test('uses label text as aria-label when showLabel is false but label is provided', () => {
+  test('uses label text as aria-label when labelVisible is false but label is provided', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'danger', label: 'Database unavailable', showLabel: false },
+      props: { status: 'danger', label: 'Database unavailable', labelVisible: false },
     });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'Database unavailable',
     );
   });
 
-  test('falls back to aria-label={status} when showLabel is false and label is empty', () => {
+  test('falls back to aria-label={status} when labelVisible is false and label is empty', () => {
     const { container } = render(StatusDot, {
-      props: { status: 'warning', label: '', showLabel: false },
+      props: { status: 'warning', label: '', labelVisible: false },
     });
     expect(container.querySelector('.cinder-status-dot')?.getAttribute('aria-label')).toBe(
       'warning',
@@ -260,9 +260,9 @@ describe('StatusDot connection preset', () => {
     expect(root?.hasAttribute('aria-live')).toBe(false);
   });
 
-  test('showLabel=false keeps hidden text and an accessible name for the live-region preset', () => {
+  test('labelVisible=false keeps hidden text and an accessible name for the live-region preset', () => {
     const { container } = render(StatusDot, {
-      props: { connectionState: 'connected', showLabel: false },
+      props: { connectionState: 'connected', labelVisible: false },
     });
     const root = container.querySelector('.cinder-status-dot');
 
@@ -272,9 +272,9 @@ describe('StatusDot connection preset', () => {
     expect(container.querySelector('.cinder-sr-only')?.textContent).toBe('Connected');
   });
 
-  test('showLabel=false exposes the provided label as the live-region accessible name', () => {
+  test('labelVisible=false exposes the provided label as the live-region accessible name', () => {
     const { container } = render(StatusDot, {
-      props: { connectionState: 'connecting', label: 'streaming', showLabel: false },
+      props: { connectionState: 'connecting', label: 'streaming', labelVisible: false },
     });
     const root = container.querySelector('.cinder-status-dot');
 
@@ -283,9 +283,9 @@ describe('StatusDot connection preset', () => {
     expect(within(container).getByRole('status', { name: 'streaming' })).not.toBeNull();
   });
 
-  test('showLabel=false exposes a consumer aria-label as the live-region accessible name', () => {
+  test('labelVisible=false exposes a consumer aria-label as the live-region accessible name', () => {
     const { container } = render(StatusDot, {
-      props: { connectionState: 'connected', 'aria-label': 'streaming', showLabel: false },
+      props: { connectionState: 'connected', 'aria-label': 'streaming', labelVisible: false },
     });
     expect(within(container).getByRole('status', { name: 'streaming' })).not.toBeNull();
   });

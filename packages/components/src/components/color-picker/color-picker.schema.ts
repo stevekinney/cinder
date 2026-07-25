@@ -9,10 +9,6 @@ const schema = {
       description:
         "Bindable value. Reading the value yields a hex string (`#rrggbb`, or\n`#rrggbbaa` when `alpha` is true). Setting the value accepts hex, `rgb()`,\n`rgba()`, `hsl()`, or `hsla()` input; invalid input is normalized to `''`.",
     },
-    defaultValue: {
-      type: 'string',
-      description: 'Initial color when `value` is not bound. Same input formats as `value`.',
-    },
     alpha: {
       type: 'boolean',
       description: 'Enable the alpha slider and emit `#rrggbbaa`. Default `false`.',

@@ -17,12 +17,12 @@
     parts,
     messagePart,
     expanded = false,
-    ontoggle,
+    onToggle,
     onapprove,
     ondeny,
     reasoningExpanded = false,
     onreasoning,
-    onsuggestionselect,
+    onSuggestionSelect,
   }: ChatMessagePartsRendererProps = $props();
 
   const units = $derived(toRenderUnits(parts));
@@ -77,13 +77,13 @@
   {#if part.type === 'markdown'}
     <MarkdownPart {part} />
   {:else if part.type === 'tool-call'}
-    <ToolCallPart {part} {expanded} {ontoggle} />
+    <ToolCallPart {part} {expanded} {onToggle} />
   {:else if part.type === 'tool-result'}
     <ToolResultPart {part} />
   {:else if part.type === 'tool-approval'}
     <ToolApprovalPart {part} {onapprove} {ondeny} />
   {:else if part.type === 'reasoning'}
-    <ReasoningPart {part} expanded={reasoningExpanded} ontoggle={onreasoning} />
+    <ReasoningPart {part} expanded={reasoningExpanded} onToggle={onreasoning} />
   {:else}
     <!-- Unhandled part type — a new ChatMessagePart variant was added without a
          renderer branch. `part` narrows to `never` here, so svelte-check flags
@@ -122,7 +122,7 @@
       {#each unit.suggestions as suggestion, index (suggestion.key)}
         <SuggestionPart
           part={suggestion}
-          {onsuggestionselect}
+          {onSuggestionSelect}
           tabindex={index === activeChipIndex(unit.suggestions.length) ? 0 : -1}
         />
       {/each}

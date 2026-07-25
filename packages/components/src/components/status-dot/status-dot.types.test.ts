@@ -39,10 +39,10 @@ type SnapshotStatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   status?: SnapshotStatusDotStatus;
   /** Connection preset that maps to status, label, and live-region defaults. */
   connectionState?: SnapshotStatusDotConnectionState;
-  /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
+  /** Optional human label. Rendered visibly when `labelVisible` is true; used as the accessible name either way. */
   label?: string;
   /** Whether to render the visible label. Default `true`. */
-  showLabel?: boolean;
+  labelVisible?: boolean;
   /** Whether updates should be announced by assistive technology. Defaults to `true` for `connectionState`. */
   live?: boolean;
   /** Dot size. Default `'md'`. */

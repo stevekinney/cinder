@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { SearchFieldProps } from './search-field.types.ts';
 
 setupHappyDom();
 
@@ -18,6 +19,14 @@ const { default: FormFieldSearchFieldFixture } =
   await import('../../test/fixtures/form-field-search-field-fixture.svelte');
 
 describe('SearchField rendering', () => {
+  test('type surface excludes inherited defaultValue', () => {
+    const excludesInheritedDefaultValue: 'defaultValue' extends keyof SearchFieldProps
+      ? false
+      : true = true;
+
+    expect(excludesInheritedDefaultValue).toBe(true);
+  });
+
   test('renders an input with type="search"', () => {
     const { container } = render(SearchField, { props: { id: 'search' } });
     const input = container.querySelector('#search') as HTMLInputElement;
@@ -30,7 +39,7 @@ describe('SearchField rendering', () => {
       props: {
         id: 'search',
         'aria-label': 'Search components',
-        defaultValue: 'cinder',
+        value: 'cinder',
       },
     });
 
@@ -127,21 +136,21 @@ describe('SearchField clear button', () => {
     expect(clear?.getAttribute('tabindex')).toBe('0');
   });
 
-  test('clear click fires onclear and sets value to empty string via oninput', async () => {
+  test('clear click fires onClear and sets value to empty string via oninput', async () => {
     const oninput = mock((_value: string) => {});
-    const onclear = mock(() => {});
+    const onClear = mock(() => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', value: 'hello', oninput, onclear },
+      props: { id: 'search', value: 'hello', oninput, onClear },
     });
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     await fireEvent.click(clear);
-    expect(onclear).toHaveBeenCalledTimes(1);
+    expect(onClear).toHaveBeenCalledTimes(1);
     expect(oninput).toHaveBeenCalledWith('');
   });
 
   test('clear returns focus to the input', async () => {
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: 'hello' },
+      props: { id: 'search', value: 'hello' },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
@@ -151,7 +160,7 @@ describe('SearchField clear button', () => {
 
   test('uncontrolled: clear empties the input value', async () => {
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: 'hello' },
+      props: { id: 'search', value: 'hello' },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
@@ -202,7 +211,7 @@ describe('SearchField input callbacks', () => {
   test('onsearch fires once on the native search event (Enter dispatches it in real browsers)', async () => {
     const onsearch = mock((_value: string) => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: 'query', onsearch },
+      props: { id: 'search', value: 'query', onsearch },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     await fireEvent(input, new Event('search', { bubbles: true }));
@@ -213,7 +222,7 @@ describe('SearchField input callbacks', () => {
   test('consumer onkeydown handler is composed, not dropped', async () => {
     const consumerKeyDown = mock((_event: KeyboardEvent) => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: '', onkeydown: consumerKeyDown },
+      props: { id: 'search', value: '', onkeydown: consumerKeyDown },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -230,7 +239,7 @@ describe('SearchField input callbacks', () => {
 
   test('uncontrolled: clearing also updates the reactive hasValue (clear button becomes hidden)', async () => {
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: 'hello' },
+      props: { id: 'search', value: 'hello' },
     });
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     expect(clear.hasAttribute('hidden')).toBe(false);
@@ -238,33 +247,32 @@ describe('SearchField input callbacks', () => {
     expect(clear.hasAttribute('hidden')).toBe(true);
   });
 
-  test('controlled: clear does not mutate the input DOM value when parent rejects the change', async () => {
+  test('bindable clear mutates the input DOM value', async () => {
     const { container } = render(SearchField, {
       props: { id: 'search', value: 'hello', oninput: () => {} },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     await fireEvent.click(clear);
-    // Parent did not update `value` prop, so the controlled input keeps its value.
-    expect(input.value).toBe('hello');
+    expect(input.value).toBe('');
   });
 
   test('readonly: clear button is disabled and does not mutate the value', async () => {
-    const onclear = mock(() => {});
+    const onClear = mock(() => {});
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: 'hello', readonly: true, onclear },
+      props: { id: 'search', value: 'hello', readonly: true, onClear },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     expect(clear.disabled).toBe(true);
     await fireEvent.click(clear);
     expect(input.value).toBe('hello');
-    expect(onclear).not.toHaveBeenCalled();
+    expect(onClear).not.toHaveBeenCalled();
   });
 
   test('uncontrolled: typing updates the displayed input value', async () => {
     const { container } = render(SearchField, {
-      props: { id: 'search', defaultValue: '' },
+      props: { id: 'search', value: '' },
     });
     const input = container.querySelector('#search') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'hello' } });
@@ -346,5 +354,51 @@ describe('SearchField disabled state', () => {
     });
     const root = container.querySelector('.cinder-search-field');
     expect(root?.hasAttribute('data-disabled')).toBe(true);
+  });
+});
+
+describe('SearchField form reset behavior', () => {
+  test('disabled search fields reset with their form', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { rerender } = render(SearchField, {
+      target: form,
+      props: { id: 'search', name: 'query', value: 'initial' },
+    });
+    const input = form.querySelector('#search');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Expected SearchField to render a search input.');
+    }
+
+    await fireEvent.input(input, { target: { value: 'changed' } });
+    await rerender({ id: 'search', name: 'query', value: 'changed', disabled: true });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(input.disabled).toBe(true);
+    expect(input.value).toBe('initial');
+  });
+
+  test('canceled form reset leaves the current search value unchanged', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    render(SearchField, {
+      target: form,
+      props: { id: 'search', name: 'query', value: 'initial' },
+    });
+    const input = form.querySelector('#search');
+    if (!(input instanceof HTMLInputElement)) {
+      throw new Error('Expected SearchField to render a search input.');
+    }
+
+    await fireEvent.input(input, { target: { value: 'changed' } });
+    const valueBeforeReset = input.value;
+    form.addEventListener('reset', (event) => event.preventDefault(), { once: true });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+
+    expect(input.value).toBe(valueBeforeReset);
   });
 });

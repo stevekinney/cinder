@@ -2,7 +2,7 @@ import type { Snippet } from 'svelte';
 export type CommandPaletteProps = {
   /**
    * Bindable open state. The component mutates `open = false` on Escape,
-   * backdrop click, or any explicit close path, then fires `onclose`.
+   * backdrop click, or any explicit close path, then fires `onClose`.
    */
   open: boolean;
   /** Placeholder rendered inside the search input. */
@@ -16,7 +16,7 @@ export type CommandPaletteProps = {
    */
   query?: string;
   /** Fired after any close path routed through the palette close lifecycle. */
-  onclose?: () => void;
+  onClose?: () => void;
   /** Element to restore focus to on close. Falls back to `captureFocus()`. */
   triggerRef?: HTMLElement | null;
   /** Receives the current query so consumers can filter. */

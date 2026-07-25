@@ -28,8 +28,8 @@ Responsive image wrapper with aspect-ratio preservation, lazy loading, and fallb
 | `width`       | `number`                          | no       | —       | Native pixel width.                                                                                                                                            |
 | `class`       | `(opaque)`                        | no       | —       | Additional class names merged with `.cinder-image`. Not expressible in JSON Schema; see the component types for the signature.                                 |
 | `fallback`    | `(opaque)`                        | no       | —       | Rendered in place of the `<img>` when it fails to load. Not expressible in JSON Schema; see the component types for the signature.                             |
-| `onerror`     | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
-| `onload`      | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
+| `onError`     | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
+| `onLoad`      | `(opaque)`                        | no       | —       | Forwarded after internal state updates. Not expressible in JSON Schema; see the component types for the signature.                                             |
 
 <!-- generated:props:end -->
 

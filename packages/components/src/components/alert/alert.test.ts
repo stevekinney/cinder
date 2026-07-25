@@ -114,12 +114,12 @@ describe('Alert rendering', () => {
     expect(container.querySelector('.cinder-alert')).toBeNull();
   });
 
-  test('clicking dismiss button calls ondismiss callback', async () => {
+  test('clicking dismiss button calls onDismiss callback', async () => {
     let callCount = 0;
     const { container } = render(Alert, {
       props: {
         dismissible: true,
-        ondismiss: () => {
+        onDismiss: () => {
           callCount += 1;
         },
         children: emptySnippet,

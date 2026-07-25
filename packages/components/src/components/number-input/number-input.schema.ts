@@ -30,18 +30,6 @@ const schema = {
       ],
       description: 'Bindable current numeric value, or `null` when the field is empty.',
     },
-    defaultValue: {
-      anyOf: [
-        {
-          type: 'number',
-        },
-        {
-          type: 'null',
-        },
-      ],
-      description:
-        'Initial value used when the component is uncontrolled or when the form is reset.',
-    },
     min: {
       type: 'number',
       description:

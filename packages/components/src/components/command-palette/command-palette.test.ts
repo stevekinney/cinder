@@ -115,7 +115,7 @@ describe('CommandPalette — lifecycle', () => {
     expect(dialog?.hasAttribute('open')).toBe(true);
   });
 
-  test('external open=false closes dialog, restores focus, and fires onclose once', async () => {
+  test('external open=false closes dialog, restores focus, and fires onClose once', async () => {
     let closeCount = 0;
     const { container, getByTestId } = render(CommandPaletteFixture, {
       initialOpen: false,
@@ -320,7 +320,7 @@ describe('CommandItem — context guard', () => {
       render(CommandItem, {
         props: {
           value: 'test',
-          onselect: () => {},
+          onSelect: () => {},
           children: textSnippet('Item'),
         },
       });
@@ -352,12 +352,12 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
 
-  test('Enter with no registered items does not invoke onclose', async () => {
+  test('Enter with no registered items does not invoke onClose', async () => {
     let closed = false;
     const { container } = render(CommandPalette, {
       props: {
         open: true,
-        onclose: () => {
+        onClose: () => {
           closed = true;
         },
         items: emptySnippet,
@@ -388,7 +388,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
 
-  test('Escape fires oncancel with preventDefault', async () => {
+  test('Escape fires onCancel with preventDefault', async () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
@@ -403,7 +403,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     expect(cancelPrevented).toBe(true);
   });
 
-  test('Escape key via the escape stack closes the palette and fires onclose', async () => {
+  test('Escape key via the escape stack closes the palette and fires onClose', async () => {
     // This tests the pushEscapeHandler path: opening the palette registers a
     // handler on the escape stack, and a keydown Escape on the window fires it.
     let closeFired = false;
@@ -416,7 +416,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
         set open(v: boolean) {
           openValue = v;
         },
-        onclose: () => {
+        onClose: () => {
           closeFired = true;
         },
         items: emptySnippet,
@@ -596,7 +596,7 @@ describe('CommandPalette — empty state timing', () => {
 // ── Close idempotency ─────────────────────────────────────────────────────
 
 describe('CommandPalette — close idempotency', () => {
-  test('onclose fires exactly once when close event fires', async () => {
+  test('onClose fires exactly once when close event fires', async () => {
     let closeCount = 0;
     let openValue = true;
     const { container } = render(CommandPalette, {
@@ -607,7 +607,7 @@ describe('CommandPalette — close idempotency', () => {
         set open(v: boolean) {
           openValue = v;
         },
-        onclose: () => {
+        onClose: () => {
           closeCount++;
         },
         items: emptySnippet,
@@ -779,7 +779,7 @@ describe('CommandPalette — visual contract', () => {
 
 // ── Consumer-owned filtering ───────────────────────────────────────────────
 //
-// These tests guard the searchable-example contract. With `filterItems`, the
+// These tests guard the searchable-example contract. With `filters`, the
 // fixture filters INSIDE its `{#snippet items({ query })}` using the snippet's
 // `query` argument — exactly the pattern the basic/grouped examples use. Typing a
 // query that does not match an item must remove that item from the DOM. A failure
@@ -789,7 +789,7 @@ describe('CommandPalette — visual contract', () => {
 describe('CommandPalette — consumer-owned filtering', () => {
   test('items matching the query remain visible', async () => {
     const { container } = render(CommandPaletteFixture, {
-      filterItems: true,
+      filters: true,
     });
     await settleCommandPalette();
 
@@ -805,7 +805,7 @@ describe('CommandPalette — consumer-owned filtering', () => {
 
   test('items that do not match the query are removed from the DOM', async () => {
     const { container } = render(CommandPaletteFixture, {
-      filterItems: true,
+      filters: true,
     });
     await settleCommandPalette();
 
@@ -824,7 +824,7 @@ describe('CommandPalette — consumer-owned filtering', () => {
 
   test('query that partially matches leaves only matching items in the DOM', async () => {
     const { container } = render(CommandPaletteFixture, {
-      filterItems: true,
+      filters: true,
       items: [
         { value: 'settings', label: 'Open settings' },
         { value: 'sign-out', label: 'Sign out' },

@@ -117,13 +117,13 @@ describe('SecretValueField', () => {
       expect(copyBtn?.getAttribute('type')).toBe('button');
     });
 
-    test('does not render reveal toggle by default (allowReveal is false)', () => {
+    test('does not render reveal toggle by default (revealAllowed is false)', () => {
       const { container } = render(SecretValueField, { value: 'abc123' });
       expect(container.querySelector('.cinder-secret-value-field__toggle')).toBeNull();
     });
 
-    test('renders reveal toggle when allowReveal is true', () => {
-      const { container } = render(SecretValueField, { value: 'abc123', allowReveal: true });
+    test('renders reveal toggle when revealAllowed is true', () => {
+      const { container } = render(SecretValueField, { value: 'abc123', revealAllowed: true });
       const toggle = container.querySelector('.cinder-secret-value-field__toggle');
       expect(toggle).not.toBeNull();
     });
@@ -187,7 +187,7 @@ describe('SecretValueField', () => {
       const { container } = render(SecretValueField, {
         value: secret,
         label: 'API Key',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',
@@ -254,7 +254,7 @@ describe('SecretValueField', () => {
     test('reveal toggle shows the secret value when clicked', async () => {
       const { container } = render(SecretValueField, {
         value: 'example_live_abc123',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',
@@ -274,7 +274,7 @@ describe('SecretValueField', () => {
     test('reveal toggle hides the secret again when clicked a second time', async () => {
       const { container } = render(SecretValueField, {
         value: 'example_live_abc123',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',
@@ -307,7 +307,7 @@ describe('SecretValueField', () => {
     test('changing the secret value resets a user reveal', async () => {
       const { container, rerender } = render(SecretValueField, {
         value: 'first-secret',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',
@@ -316,7 +316,7 @@ describe('SecretValueField', () => {
       await fireEvent.click(toggle);
       expect(container.textContent).toContain('first-secret');
 
-      await rerender({ value: 'second-secret', allowReveal: true });
+      await rerender({ value: 'second-secret', revealAllowed: true });
       await waitFor(() => {
         const valueEl = container.querySelector('.cinder-secret-value-field__value');
         expect(valueEl?.hasAttribute('data-cinder-masked')).toBe(true);
@@ -327,13 +327,13 @@ describe('SecretValueField', () => {
     test('changing the secret value honors an explicit initiallyRevealed value', async () => {
       const { container, rerender } = render(SecretValueField, {
         value: 'first-secret',
-        allowReveal: true,
+        revealAllowed: true,
         initiallyRevealed: true,
       });
 
       await rerender({
         value: 'second-secret',
-        allowReveal: true,
+        revealAllowed: true,
         initiallyRevealed: true,
       });
       await waitFor(() => {
@@ -343,7 +343,7 @@ describe('SecretValueField', () => {
       });
     });
 
-    test('reveal toggle does not render when allowReveal is false', () => {
+    test('reveal toggle does not render when revealAllowed is false', () => {
       const { container } = render(SecretValueField, { value: 'abc123' });
       const toggle = container.querySelector('.cinder-secret-value-field__toggle');
       expect(toggle).toBeNull();
@@ -434,7 +434,7 @@ describe('SecretValueField', () => {
       const { container } = render(SecretValueField, {
         value: 'abc123',
         label: 'Webhook Secret',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',
@@ -460,7 +460,7 @@ describe('SecretValueField', () => {
     test('reveal toggle has aria-pressed attribute starting at false', () => {
       const { container } = render(SecretValueField, {
         value: 'abc123',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector('.cinder-secret-value-field__toggle');
       expect(toggle?.hasAttribute('aria-pressed')).toBe(true);
@@ -471,7 +471,7 @@ describe('SecretValueField', () => {
       const { container } = render(SecretValueField, {
         value: 'abc123',
         label: 'API Key',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',
@@ -487,7 +487,7 @@ describe('SecretValueField', () => {
     test('keyboard: reveal toggle is focusable as a button element', () => {
       const { container } = render(SecretValueField, {
         value: 'abc123',
-        allowReveal: true,
+        revealAllowed: true,
       });
       const toggle = container.querySelector(
         '.cinder-secret-value-field__toggle',

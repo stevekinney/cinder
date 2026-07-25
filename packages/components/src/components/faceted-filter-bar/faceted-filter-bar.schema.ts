@@ -12,7 +12,7 @@ const schema = {
       type: 'string',
       description: 'Current text search query. When provided, the search field is controlled.',
     },
-    showSearch: {
+    searchVisible: {
       type: 'boolean',
       description: 'Whether to render the leading search field. Defaults to `true`.',
     },
@@ -49,22 +49,22 @@ const schema = {
           'Facet definitions rendered as filter controls after the search field.\nEach entry is either a select-type facet or a custom snippet-driven facet.',
       },
       {
-        name: 'onclearall',
+        name: 'onClearAll',
         reason: 'function-or-snippet',
         description: 'Fires when the clear-all button is clicked.',
       },
       {
-        name: 'onfacetchange',
+        name: 'onFacetChange',
         reason: 'function-or-snippet',
         description: 'Fires when a facet value changes, with the facet key and new value.',
       },
       {
-        name: 'onfilterremove',
+        name: 'onFilterRemove',
         reason: 'function-or-snippet',
         description: 'Fires when a specific applied filter chip is removed.',
       },
       {
-        name: 'onsearchchange',
+        name: 'onSearchChange',
         reason: 'function-or-snippet',
         description: 'Fires when the search query changes.',
       },

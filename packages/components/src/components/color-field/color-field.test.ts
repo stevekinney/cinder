@@ -314,12 +314,12 @@ describe('ColorField — blur idempotence', () => {
 });
 
 describe('ColorField — form reset', () => {
-  test('uncontrolled: reset reverts to defaultValue without firing onchange', async () => {
+  test('uncontrolled: reset reverts to value without firing onchange', async () => {
     const onchange = mock<(value: string) => void>(() => {});
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
-      defaultValue: '#abcdef',
+      value: '#abcdef',
       onchange,
     });
     const input = getInput(container);
@@ -333,11 +333,36 @@ describe('ColorField — form reset', () => {
     expect(onchange).toHaveBeenCalledTimes(1);
   });
 
+  test('canceled reset leaves the committed color unchanged', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      value: '',
+      onchange,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, '#123456');
+    expect(input.value).toBe('#123456');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('#123456');
+
+    const form = container;
+    form.addEventListener('reset', (event) => event.preventDefault(), { once: true });
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await Promise.resolve();
+    await tick();
+
+    expect(input.value).toBe('#123456');
+    expect(hidden.value).toBe('#123456');
+    expect(onchange).toHaveBeenCalledTimes(1);
+  });
+
   test('uncontrolled with alpha-bearing default: alpha=true reconstructs after reset', async () => {
     const { container, rerender } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
-      defaultValue: '#ff000080',
+      value: '#ff000080',
       alpha: false,
     });
     const input = getInput(container);
@@ -347,7 +372,7 @@ describe('ColorField — form reset', () => {
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
     expect(input.value).toBe('#ff0000');
-    await rerender({ id: 'color', name: 'c', defaultValue: '#ff000080', alpha: true });
+    await rerender({ id: 'color', name: 'c', value: '#ff000080', alpha: true });
     await tick();
     expect(input.value).toBe('#ff000080');
   });
@@ -372,6 +397,25 @@ describe('ColorField — controlled invalid value', () => {
     const swatch = q(container, '.cinder-color-field__swatch');
     expect(swatch.getAttribute('style') ?? '').not.toContain('bad');
     expect(swatch.getAttribute('data-cinder-empty')).toBe('');
+  });
+
+  test('clearing an external invalid value commits empty', async () => {
+    const onchange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      name: 'c',
+      value: 'bad',
+      onchange,
+    });
+    await tick();
+    const input = getInput(container);
+    await typeAndBlur(input, '');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(input.value).toBe('');
+    expect(hidden.value).toBe('');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onchange).toHaveBeenCalledTimes(1);
+    expect(onchange.mock.calls[0]?.[0]).toBe('');
   });
 });
 
@@ -429,8 +473,8 @@ describe('ColorField — controlled reconciliation', () => {
   });
 });
 
-describe('ColorField — controlled authority over alpha', () => {
-  test('parent echo without alpha + alpha toggle does not retain partial alpha', async () => {
+describe('ColorField — bindable alpha state', () => {
+  test('alpha toggle re-emits preserved partial alpha after a local bindable commit', async () => {
     const { container, rerender } = render(ColorField, {
       id: 'color',
       name: 'c',
@@ -440,14 +484,13 @@ describe('ColorField — controlled authority over alpha', () => {
     const input = getInput(container);
     await typeAndBlur(input, '#ff000080');
 
-    // Parent echoes the opaque hex (rejecting the alpha component).
     await rerender({ id: 'color', name: 'c', value: '#ff0000', alpha: false });
     await tick();
 
     await rerender({ id: 'color', name: 'c', value: '#ff0000', alpha: true });
     await tick();
     const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
-    expect(hidden.value).toBe('#ff0000');
+    expect(hidden.value).toBe('#ff000080');
   });
 });
 
@@ -501,7 +544,7 @@ describe('ColorField — composition + DOM contract', () => {
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
-      defaultValue: '#abcdef',
+      value: '#abcdef',
       onchange,
     });
     const form = container;
@@ -519,10 +562,7 @@ describe('ColorField — composition + DOM contract', () => {
     expect(onchange).toHaveBeenCalledTimes(1);
   });
 
-  test('uncontrolled→controlled mode switch leaves prior state intact', async () => {
-    // Mount uncontrolled, then rerender with `value` set. The controlled-sync
-    // effect is gated by `isControlled` captured at mount, so the field should
-    // ignore the late `value` prop and keep whatever the user has typed.
+  test('late value update reconciles into the bindable field', async () => {
     const { container, rerender } = render(ColorField, { id: 'color' });
     const input = getInput(container);
     await fireEvent.input(input, { target: { value: '#123456' } });
@@ -531,8 +571,7 @@ describe('ColorField — composition + DOM contract', () => {
     expect(input.value).toBe('#123456');
     await rerender({ id: 'color', value: '#000000' });
     await tick();
-    // Late-arriving `value` is ignored because mode was captured as uncontrolled.
-    expect(input.value).toBe('#123456');
+    expect(input.value).toBe('#000000');
   });
 });
 
@@ -586,14 +625,15 @@ describe('ColorField — controlled init honors formats gate', () => {
     expect(input.value).toBe('rgb(0,0,0)');
   });
 
-  test('formats=[hex] + defaultValue="rgb(0,0,0)" leaves field empty (silent reject)', () => {
+  test('formats=[hex] + value="rgb(0,0,0)" preserves invalid visible text', () => {
     const { container } = render(ColorField, {
       id: 'color',
       formats: ['hex'],
-      defaultValue: 'rgb(0,0,0)',
+      value: 'rgb(0,0,0)',
     });
     const input = getInput(container);
-    expect(input.value).toBe('');
+    expect(input.value).toBe('rgb(0,0,0)');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
   });
 });
 
@@ -673,7 +713,7 @@ describe('ColorField — Enter-clear sync regression', () => {
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       enterBehavior: 'commit-then-submit',
       onsubmit: onsubmitCapture,
     });
@@ -688,22 +728,22 @@ describe('ColorField — Enter-clear sync regression', () => {
 });
 
 describe('ColorField — reset honors formats gate', () => {
-  test('reset with defaultValue rejected by formats clears rather than re-applying', async () => {
+  test('reset with value rejected by formats clears rather than re-applying', async () => {
     const { container } = renderColorFieldFormFixture({
       id: 'color',
       name: 'c',
       formats: ['hex'],
-      defaultValue: 'rgb(0,0,0)',
+      value: 'rgb(0,0,0)',
     });
     const input = getInput(container);
-    // Initial: defaultValue is rgb() but formats=['hex'] — silently rejected at mount.
-    expect(input.value).toBe('');
+    // Initial: value is rgb() but formats=['hex'] — preserve it visibly with invalid state.
+    expect(input.value).toBe('rgb(0,0,0)');
     await typeAndBlur(input, '#abcdef');
     expect(input.value).toBe('#abcdef');
     const form = container;
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
-    // After reset: defaultValue still fails formats gate; field clears.
+    // After reset: value still fails formats gate; field clears.
     expect(input.value).toBe('');
   });
 });

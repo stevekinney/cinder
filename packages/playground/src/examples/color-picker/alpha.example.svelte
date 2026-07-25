@@ -10,4 +10,4 @@
   const swatches = ['#ef444480', '#22c55e80', '#3b82f680'];
 </script>
 
-<ColorPicker defaultValue="#3b82f680" label="Color with opacity" alpha {swatches} />
+<ColorPicker value="#3b82f680" label="Color with opacity" alpha {swatches} />

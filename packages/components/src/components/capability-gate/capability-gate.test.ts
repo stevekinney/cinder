@@ -68,13 +68,13 @@ describe('CapabilityGate', () => {
     expect(button).not.toBeNull();
   });
 
-  test('calls onprimaryaction when primary button is clicked', () => {
+  test('calls onPrimaryAction when primary button is clicked', () => {
     let called = false;
     const { getByRole } = render(CapabilityGate, {
       feature: 'Microphone',
       state: 'permission-needed',
       primaryAction: 'Allow access',
-      onprimaryaction: () => {
+      onPrimaryAction: () => {
         called = true;
       },
     });
@@ -104,13 +104,13 @@ describe('CapabilityGate', () => {
     expect(link?.getAttribute('href')).toBe('/settings');
   });
 
-  test('dismiss hides the component and calls ondismiss', () => {
+  test('dismiss hides the component and calls onDismiss', () => {
     let dismissed = false;
     const { container, getByRole } = render(CapabilityGate, {
       feature: 'Offline storage',
       state: 'unavailable',
       dismissAction: 'Dismiss',
-      ondismiss: () => {
+      onDismiss: () => {
         dismissed = true;
       },
     });

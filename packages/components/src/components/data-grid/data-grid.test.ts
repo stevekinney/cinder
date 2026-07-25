@@ -106,7 +106,7 @@ describe('DataGrid', () => {
   });
 
   test('lets interactive custom cell content handle bubbled shortcuts', () => {
-    const onselectionmodelchange = mock();
+    const onSelectionModelChange = mock();
     const cell = createRawSnippet(() => ({
       render: () => '<input data-testid="cell-input" value="Ada Lovelace" />',
     }));
@@ -115,7 +115,7 @@ describe('DataGrid', () => {
       columns: [{ key: 'customer', header: 'Customer', cell }],
       getRowId: getOrderId,
       selectionMode: 'multiple',
-      onselectionmodelchange,
+      onSelectionModelChange,
       'aria-label': 'Orders',
     });
 
@@ -131,7 +131,7 @@ describe('DataGrid', () => {
     input.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(false);
-    expect(onselectionmodelchange).not.toHaveBeenCalled();
+    expect(onSelectionModelChange).not.toHaveBeenCalled();
     expect(container.querySelectorAll('[role="row"][aria-selected="true"]')).toHaveLength(0);
   });
 

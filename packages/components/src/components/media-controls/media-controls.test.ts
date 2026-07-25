@@ -2,8 +2,13 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { MediaControlsProps } from './media-controls.types.ts';
 
 setupHappyDom();
+
+type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
+const excludesLowercaseNativePlayHandler: HasKey<MediaControlsProps, 'onplay'> = false;
+const excludesLowercaseNativePauseHandler: HasKey<MediaControlsProps, 'onpause'> = false;
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: MediaControls } = await import('./media-controls.svelte');
@@ -13,6 +18,11 @@ afterEach(() => {
 });
 
 describe('MediaControls', () => {
+  test('omits native media handlers owned by renamed callbacks', () => {
+    expect(excludesLowercaseNativePlayHandler).toBe(false);
+    expect(excludesLowercaseNativePauseHandler).toBe(false);
+  });
+
   test('renders the play/pause toggle (paused) by default', () => {
     const { getByRole } = render(MediaControls);
     const button = getByRole('button');
@@ -70,11 +80,11 @@ describe('MediaControls', () => {
     expect(button.hasAttribute('disabled')).toBe(true);
   });
 
-  test('calls onplay when play button is clicked', () => {
+  test('calls onPlay when play button is clicked', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       playing: false,
-      onplay: () => {
+      onPlay: () => {
         called = true;
       },
     });
@@ -82,11 +92,11 @@ describe('MediaControls', () => {
     expect(called).toBe(true);
   });
 
-  test('calls onpause when pause button is clicked', () => {
+  test('calls onPause when pause button is clicked', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       playing: true,
-      onpause: () => {
+      onPause: () => {
         called = true;
       },
     });
@@ -94,11 +104,11 @@ describe('MediaControls', () => {
     expect(called).toBe(true);
   });
 
-  test('calls onreplay when replay button is clicked', () => {
+  test('calls onReplay when replay button is clicked', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       replay: true,
-      onreplay: () => {
+      onReplay: () => {
         called = true;
       },
     });
@@ -106,11 +116,11 @@ describe('MediaControls', () => {
     expect(called).toBe(true);
   });
 
-  test('does not call onplay when disabled', () => {
+  test('does not call onPlay when disabled', () => {
     let called = false;
     const { getByRole } = render(MediaControls, {
       disabled: true,
-      onplay: () => {
+      onPlay: () => {
         called = true;
       },
     });

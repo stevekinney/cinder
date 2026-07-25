@@ -10,7 +10,7 @@ type ModalSharedProps = {
   /** When true, pressing Escape dismisses the modal. Default `true`. */
   dismissOnEscape?: boolean;
   /** When true, renders the close button in the upper corner of the modal panel. Default `true`. */
-  showCloseButton?: boolean;
+  closeButtonVisible?: boolean;
   /** Additional class names merged with the component's root class. */
   class?: string;
   children: Snippet;
@@ -21,7 +21,7 @@ type ModalSharedProps = {
    * backdrop click, and the close-X button. EXCLUDES: parent-driven open = false.
    * Callbacks are not awaited and thrown callbacks do not block close.
    */
-  ondismiss?: () => void;
+  onDismiss?: () => void;
 };
 
 type DialogModalProps = ModalSharedProps & {

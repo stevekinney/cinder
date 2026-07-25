@@ -15,12 +15,12 @@ export type BackdropProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'oncl
    * with other overlays). Set false when the consumer manages scrolling itself.
    * @default true
    */
-  lockScroll?: boolean;
+  scrollLocked?: boolean;
   /**
    * Enter/leave animation duration in milliseconds. Collapses to 0 under
    * `prefers-reduced-motion`. Overrides the default when provided.
    */
-  transitionDuration?: number;
+  transitionDurationMilliseconds?: number;
   /** Click handler — use this to wire click-to-close on the scrim. */
   onclick?: (event: MouseEvent) => void;
   /** Additional class names merged onto the root element. */

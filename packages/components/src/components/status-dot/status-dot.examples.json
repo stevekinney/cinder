@@ -7,7 +7,7 @@
       "id": "label-and-size",
       "title": "Status dot label and size",
       "description": "Visible label toggle and sm vs md sizes.",
-      "code": "<script lang=\"ts\">\n  import { StatusDot } from '@lostgradient/cinder/status-dot';\n</script>\n\n<div class=\"example-preview-column\">\n  <div class=\"example-preview-row\">\n    <StatusDot status=\"online\" label=\"Online\" showLabel={true} />\n    <StatusDot status=\"offline\" label=\"Offline\" showLabel={true} />\n    <StatusDot status=\"pending\" label=\"Pending\" showLabel={true} />\n  </div>\n  <div class=\"example-preview-row\" style=\"align-items: center;\">\n    <StatusDot status=\"online\" label=\"Small\" size=\"sm\" showLabel={true} />\n    <StatusDot status=\"online\" label=\"Medium\" size=\"md\" showLabel={true} />\n  </div>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { StatusDot } from '@lostgradient/cinder/status-dot';\n</script>\n\n<div class=\"example-preview-column\">\n  <div class=\"example-preview-row\">\n    <StatusDot status=\"online\" label=\"Online\" labelVisible={true} />\n    <StatusDot status=\"offline\" label=\"Offline\" labelVisible={true} />\n    <StatusDot status=\"pending\" label=\"Pending\" labelVisible={true} />\n  </div>\n  <div class=\"example-preview-row\" style=\"align-items: center;\">\n    <StatusDot status=\"online\" label=\"Small\" size=\"sm\" labelVisible={true} />\n    <StatusDot status=\"online\" label=\"Medium\" size=\"md\" labelVisible={true} />\n  </div>\n</div>\n"
     },
     {
       "id": "statuses",

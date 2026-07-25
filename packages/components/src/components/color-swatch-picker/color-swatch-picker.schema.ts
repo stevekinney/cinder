@@ -6,11 +6,7 @@ const schema = {
   properties: {
     value: {
       type: 'string',
-      description: 'Controlled selected color. When provided, the parent owns the state.',
-    },
-    defaultValue: {
-      type: 'string',
-      description: 'Initial selected color for uncontrolled use. Ignored when `value` is set.',
+      description: 'Bindable selected color.',
     },
     shape: {
       enum: ['circle', 'square'],

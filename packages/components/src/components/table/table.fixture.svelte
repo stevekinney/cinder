@@ -55,7 +55,7 @@
     <Table.Header
       {allSelected}
       {someSelected}
-      onselectall={setAllSelected}
+      onSelectAll={setAllSelected}
       selectAllLabel="Select all contributors"
     >
       <Table.Row>
@@ -68,7 +68,7 @@
       {#each sortedPeople as person (person.id)}
         <Table.Row
           selected={selectedIds.has(person.id)}
-          onselectedchange={(next) => setRowSelected(person.id, next)}
+          onSelectedChange={(next) => setRowSelected(person.id, next)}
           selectionLabel={`Select ${person.name}`}
         >
           <Table.Cell>{person.name}</Table.Cell>

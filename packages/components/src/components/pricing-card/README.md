@@ -20,7 +20,7 @@ Presents a single pricing plan with its name, price, feature list, an optional c
 ### Avoid When
 
 - Showing generic grouped content without a distinct price or CTA — use card instead.
-- Displaying a single key metric in isolation — use stat or stat-group instead.
+- Displaying a single key metric in isolation — use stat or statistic-group instead.
 
 ## Props
 
@@ -35,7 +35,7 @@ Presents a single pricing plan with its name, price, feature list, an optional c
 | `name`     | `string`   | yes      | —       | Plan name displayed as the card heading.                                                                          |
 | `price`    | `string`   | yes      | —       | Price string, e.g. "$9/mo" or "Free".                                                                             |
 | `selected` | `boolean`  | no       | `false` | Whether this card is the currently selected plan.                                                                 |
-| `onselect` | `(opaque)` | yes      | —       | Called when the CTA button is clicked. Not expressible in JSON Schema; see the component types for the signature. |
+| `onSelect` | `(opaque)` | yes      | —       | Called when the CTA button is clicked. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

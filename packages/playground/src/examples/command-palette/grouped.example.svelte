@@ -68,7 +68,7 @@
             <CommandItem
               value={item.id}
               accessibleLabel={item.label}
-              onselect={() => select(item.label)}
+              onSelect={() => select(item.label)}
             >
               {item.label}
             </CommandItem>
@@ -86,7 +86,7 @@
               value={action.id}
               description={action.description}
               accessibleLabel={action.label}
-              onselect={() => select(action.label)}
+              onSelect={() => select(action.label)}
             >
               {action.label}
             </CommandItem>

@@ -46,7 +46,7 @@ describe('TeamSection', () => {
     const { container } = render(TeamSection, {
       props: {
         members,
-        showAvatarGroup: true,
+        avatarGroupVisible: true,
       },
     });
     expect(container.querySelector('.cinder-avatar-group')).not.toBeNull();

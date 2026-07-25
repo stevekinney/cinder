@@ -44,7 +44,7 @@
     dragActive,
     fileList,
     onchange,
-    onreject,
+    onReject,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -200,7 +200,7 @@
     const { accepted, rejected } = validateFiles(sourceFiles);
     updateInternalEntries(accepted, rejected);
     if (accepted.length > 0) onchange?.(accepted);
-    if (rejected.length > 0) onreject?.(rejected);
+    if (rejected.length > 0) onReject?.(rejected);
     announceResult(accepted, rejected);
   }
 

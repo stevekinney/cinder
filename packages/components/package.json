@@ -837,6 +837,38 @@
       "import": "./src/components/calendar/calendar.examples.json",
       "default": "./src/components/calendar/calendar.examples.json"
     },
+    "./call-to-action-section": {
+      "types": "./dist/components/call-to-action-section/index.d.ts",
+      "browser": "./src/components/call-to-action-section/index.ts",
+      "node": "./dist/server/components/call-to-action-section/index.js",
+      "svelte": "./src/components/call-to-action-section/index.ts",
+      "import": "./src/components/call-to-action-section/index.ts",
+      "default": "./dist/components/call-to-action-section/index.js"
+    },
+    "./call-to-action-section/schema": {
+      "types": "./dist/components/call-to-action-section/call-to-action-section.schema.d.ts",
+      "browser": "./src/components/call-to-action-section/call-to-action-section.schema.ts",
+      "node": "./dist/server/components/call-to-action-section/call-to-action-section.schema.js",
+      "svelte": "./src/components/call-to-action-section/call-to-action-section.schema.ts",
+      "import": "./src/components/call-to-action-section/call-to-action-section.schema.ts",
+      "default": "./dist/components/call-to-action-section/call-to-action-section.schema.js"
+    },
+    "./call-to-action-section/variables": {
+      "types": "./dist/components/call-to-action-section/call-to-action-section.variables.d.ts",
+      "browser": "./src/components/call-to-action-section/call-to-action-section.variables.ts",
+      "node": "./dist/server/components/call-to-action-section/call-to-action-section.variables.js",
+      "svelte": "./src/components/call-to-action-section/call-to-action-section.variables.ts",
+      "import": "./src/components/call-to-action-section/call-to-action-section.variables.ts",
+      "default": "./dist/components/call-to-action-section/call-to-action-section.variables.js"
+    },
+    "./call-to-action-section/styles": {
+      "types": "./dist/components/call-to-action-section/call-to-action-section.css.d.ts",
+      "default": "./dist/components/call-to-action-section/call-to-action-section.css"
+    },
+    "./call-to-action-section/examples": {
+      "import": "./src/components/call-to-action-section/call-to-action-section.examples.json",
+      "default": "./src/components/call-to-action-section/call-to-action-section.examples.json"
+    },
     "./callout": {
       "types": "./dist/components/callout/index.d.ts",
       "browser": "./src/components/callout/index.ts",
@@ -1617,38 +1649,6 @@
       "import": "./src/components/copy-button/copy-button.examples.json",
       "default": "./src/components/copy-button/copy-button.examples.json"
     },
-    "./cta-section": {
-      "types": "./dist/components/cta-section/index.d.ts",
-      "browser": "./src/components/cta-section/index.ts",
-      "node": "./dist/server/components/cta-section/index.js",
-      "svelte": "./src/components/cta-section/index.ts",
-      "import": "./src/components/cta-section/index.ts",
-      "default": "./dist/components/cta-section/index.js"
-    },
-    "./cta-section/schema": {
-      "types": "./dist/components/cta-section/cta-section.schema.d.ts",
-      "browser": "./src/components/cta-section/cta-section.schema.ts",
-      "node": "./dist/server/components/cta-section/cta-section.schema.js",
-      "svelte": "./src/components/cta-section/cta-section.schema.ts",
-      "import": "./src/components/cta-section/cta-section.schema.ts",
-      "default": "./dist/components/cta-section/cta-section.schema.js"
-    },
-    "./cta-section/variables": {
-      "types": "./dist/components/cta-section/cta-section.variables.d.ts",
-      "browser": "./src/components/cta-section/cta-section.variables.ts",
-      "node": "./dist/server/components/cta-section/cta-section.variables.js",
-      "svelte": "./src/components/cta-section/cta-section.variables.ts",
-      "import": "./src/components/cta-section/cta-section.variables.ts",
-      "default": "./dist/components/cta-section/cta-section.variables.js"
-    },
-    "./cta-section/styles": {
-      "types": "./dist/components/cta-section/cta-section.css.d.ts",
-      "default": "./dist/components/cta-section/cta-section.css"
-    },
-    "./cta-section/examples": {
-      "import": "./src/components/cta-section/cta-section.examples.json",
-      "default": "./src/components/cta-section/cta-section.examples.json"
-    },
     "./data-grid": {
       "types": "./dist/components/data-grid/index.d.ts",
       "browser": "./src/components/data-grid/index.ts",
@@ -2361,37 +2361,37 @@
       "import": "./src/components/file-upload/file-upload.examples.json",
       "default": "./src/components/file-upload/file-upload.examples.json"
     },
-    "./floating-action-button": {
-      "types": "./dist/components/floating-action-button/index.d.ts",
-      "browser": "./src/components/floating-action-button/index.ts",
-      "node": "./dist/server/components/floating-action-button/index.js",
-      "svelte": "./src/components/floating-action-button/index.ts",
-      "import": "./src/components/floating-action-button/index.ts",
-      "default": "./dist/components/floating-action-button/index.js"
+    "./floating-action": {
+      "types": "./dist/components/floating-action/index.d.ts",
+      "browser": "./src/components/floating-action/index.ts",
+      "node": "./dist/server/components/floating-action/index.js",
+      "svelte": "./src/components/floating-action/index.ts",
+      "import": "./src/components/floating-action/index.ts",
+      "default": "./dist/components/floating-action/index.js"
     },
-    "./floating-action-button/schema": {
-      "types": "./dist/components/floating-action-button/floating-action-button.schema.d.ts",
-      "browser": "./src/components/floating-action-button/floating-action-button.schema.ts",
-      "node": "./dist/server/components/floating-action-button/floating-action-button.schema.js",
-      "svelte": "./src/components/floating-action-button/floating-action-button.schema.ts",
-      "import": "./src/components/floating-action-button/floating-action-button.schema.ts",
-      "default": "./dist/components/floating-action-button/floating-action-button.schema.js"
+    "./floating-action/schema": {
+      "types": "./dist/components/floating-action/floating-action.schema.d.ts",
+      "browser": "./src/components/floating-action/floating-action.schema.ts",
+      "node": "./dist/server/components/floating-action/floating-action.schema.js",
+      "svelte": "./src/components/floating-action/floating-action.schema.ts",
+      "import": "./src/components/floating-action/floating-action.schema.ts",
+      "default": "./dist/components/floating-action/floating-action.schema.js"
     },
-    "./floating-action-button/variables": {
-      "types": "./dist/components/floating-action-button/floating-action-button.variables.d.ts",
-      "browser": "./src/components/floating-action-button/floating-action-button.variables.ts",
-      "node": "./dist/server/components/floating-action-button/floating-action-button.variables.js",
-      "svelte": "./src/components/floating-action-button/floating-action-button.variables.ts",
-      "import": "./src/components/floating-action-button/floating-action-button.variables.ts",
-      "default": "./dist/components/floating-action-button/floating-action-button.variables.js"
+    "./floating-action/variables": {
+      "types": "./dist/components/floating-action/floating-action.variables.d.ts",
+      "browser": "./src/components/floating-action/floating-action.variables.ts",
+      "node": "./dist/server/components/floating-action/floating-action.variables.js",
+      "svelte": "./src/components/floating-action/floating-action.variables.ts",
+      "import": "./src/components/floating-action/floating-action.variables.ts",
+      "default": "./dist/components/floating-action/floating-action.variables.js"
     },
-    "./floating-action-button/styles": {
-      "types": "./dist/components/floating-action-button/floating-action-button.css.d.ts",
-      "default": "./dist/components/floating-action-button/floating-action-button.css"
+    "./floating-action/styles": {
+      "types": "./dist/components/floating-action/floating-action.css.d.ts",
+      "default": "./dist/components/floating-action/floating-action.css"
     },
-    "./floating-action-button/examples": {
-      "import": "./src/components/floating-action-button/floating-action-button.examples.json",
-      "default": "./src/components/floating-action-button/floating-action-button.examples.json"
+    "./floating-action/examples": {
+      "import": "./src/components/floating-action/floating-action.examples.json",
+      "default": "./src/components/floating-action/floating-action.examples.json"
     },
     "./focus-trap": {
       "types": "./dist/components/focus-trap/index.d.ts",
@@ -5081,97 +5081,97 @@
       "import": "./src/components/stacked-list-item/stacked-list-item.examples.json",
       "default": "./src/components/stacked-list-item/stacked-list-item.examples.json"
     },
-    "./stat": {
-      "types": "./dist/components/stat/index.d.ts",
-      "browser": "./src/components/stat/index.ts",
-      "node": "./dist/server/components/stat/index.js",
-      "svelte": "./src/components/stat/index.ts",
-      "import": "./src/components/stat/index.ts",
-      "default": "./dist/components/stat/index.js"
+    "./statistic": {
+      "types": "./dist/components/statistic/index.d.ts",
+      "browser": "./src/components/statistic/index.ts",
+      "node": "./dist/server/components/statistic/index.js",
+      "svelte": "./src/components/statistic/index.ts",
+      "import": "./src/components/statistic/index.ts",
+      "default": "./dist/components/statistic/index.js"
     },
-    "./stat/schema": {
-      "types": "./dist/components/stat/stat.schema.d.ts",
-      "browser": "./src/components/stat/stat.schema.ts",
-      "node": "./dist/server/components/stat/stat.schema.js",
-      "svelte": "./src/components/stat/stat.schema.ts",
-      "import": "./src/components/stat/stat.schema.ts",
-      "default": "./dist/components/stat/stat.schema.js"
+    "./statistic/schema": {
+      "types": "./dist/components/statistic/statistic.schema.d.ts",
+      "browser": "./src/components/statistic/statistic.schema.ts",
+      "node": "./dist/server/components/statistic/statistic.schema.js",
+      "svelte": "./src/components/statistic/statistic.schema.ts",
+      "import": "./src/components/statistic/statistic.schema.ts",
+      "default": "./dist/components/statistic/statistic.schema.js"
     },
-    "./stat/variables": {
-      "types": "./dist/components/stat/stat.variables.d.ts",
-      "browser": "./src/components/stat/stat.variables.ts",
-      "node": "./dist/server/components/stat/stat.variables.js",
-      "svelte": "./src/components/stat/stat.variables.ts",
-      "import": "./src/components/stat/stat.variables.ts",
-      "default": "./dist/components/stat/stat.variables.js"
+    "./statistic/variables": {
+      "types": "./dist/components/statistic/statistic.variables.d.ts",
+      "browser": "./src/components/statistic/statistic.variables.ts",
+      "node": "./dist/server/components/statistic/statistic.variables.js",
+      "svelte": "./src/components/statistic/statistic.variables.ts",
+      "import": "./src/components/statistic/statistic.variables.ts",
+      "default": "./dist/components/statistic/statistic.variables.js"
     },
-    "./stat/styles": {
-      "types": "./dist/components/stat/stat.css.d.ts",
-      "default": "./dist/components/stat/stat.css"
+    "./statistic/styles": {
+      "types": "./dist/components/statistic/statistic.css.d.ts",
+      "default": "./dist/components/statistic/statistic.css"
     },
-    "./stat-group": {
-      "types": "./dist/components/stat-group/index.d.ts",
-      "browser": "./src/components/stat-group/index.ts",
-      "node": "./dist/server/components/stat-group/index.js",
-      "svelte": "./src/components/stat-group/index.ts",
-      "import": "./src/components/stat-group/index.ts",
-      "default": "./dist/components/stat-group/index.js"
+    "./statistic-group": {
+      "types": "./dist/components/statistic-group/index.d.ts",
+      "browser": "./src/components/statistic-group/index.ts",
+      "node": "./dist/server/components/statistic-group/index.js",
+      "svelte": "./src/components/statistic-group/index.ts",
+      "import": "./src/components/statistic-group/index.ts",
+      "default": "./dist/components/statistic-group/index.js"
     },
-    "./stat-group/schema": {
-      "types": "./dist/components/stat-group/stat-group.schema.d.ts",
-      "browser": "./src/components/stat-group/stat-group.schema.ts",
-      "node": "./dist/server/components/stat-group/stat-group.schema.js",
-      "svelte": "./src/components/stat-group/stat-group.schema.ts",
-      "import": "./src/components/stat-group/stat-group.schema.ts",
-      "default": "./dist/components/stat-group/stat-group.schema.js"
+    "./statistic-group/schema": {
+      "types": "./dist/components/statistic-group/statistic-group.schema.d.ts",
+      "browser": "./src/components/statistic-group/statistic-group.schema.ts",
+      "node": "./dist/server/components/statistic-group/statistic-group.schema.js",
+      "svelte": "./src/components/statistic-group/statistic-group.schema.ts",
+      "import": "./src/components/statistic-group/statistic-group.schema.ts",
+      "default": "./dist/components/statistic-group/statistic-group.schema.js"
     },
-    "./stat-group/variables": {
-      "types": "./dist/components/stat-group/stat-group.variables.d.ts",
-      "browser": "./src/components/stat-group/stat-group.variables.ts",
-      "node": "./dist/server/components/stat-group/stat-group.variables.js",
-      "svelte": "./src/components/stat-group/stat-group.variables.ts",
-      "import": "./src/components/stat-group/stat-group.variables.ts",
-      "default": "./dist/components/stat-group/stat-group.variables.js"
+    "./statistic-group/variables": {
+      "types": "./dist/components/statistic-group/statistic-group.variables.d.ts",
+      "browser": "./src/components/statistic-group/statistic-group.variables.ts",
+      "node": "./dist/server/components/statistic-group/statistic-group.variables.js",
+      "svelte": "./src/components/statistic-group/statistic-group.variables.ts",
+      "import": "./src/components/statistic-group/statistic-group.variables.ts",
+      "default": "./dist/components/statistic-group/statistic-group.variables.js"
     },
-    "./stat-group/styles": {
-      "types": "./dist/components/stat-group/stat-group.css.d.ts",
-      "default": "./dist/components/stat-group/stat-group.css"
+    "./statistic-group/styles": {
+      "types": "./dist/components/statistic-group/statistic-group.css.d.ts",
+      "default": "./dist/components/statistic-group/statistic-group.css"
     },
-    "./stat-group/examples": {
-      "import": "./src/components/stat-group/stat-group.examples.json",
-      "default": "./src/components/stat-group/stat-group.examples.json"
+    "./statistic-group/examples": {
+      "import": "./src/components/statistic-group/statistic-group.examples.json",
+      "default": "./src/components/statistic-group/statistic-group.examples.json"
     },
-    "./stats-section": {
-      "types": "./dist/components/stats-section/index.d.ts",
-      "browser": "./src/components/stats-section/index.ts",
-      "node": "./dist/server/components/stats-section/index.js",
-      "svelte": "./src/components/stats-section/index.ts",
-      "import": "./src/components/stats-section/index.ts",
-      "default": "./dist/components/stats-section/index.js"
+    "./statistics-section": {
+      "types": "./dist/components/statistics-section/index.d.ts",
+      "browser": "./src/components/statistics-section/index.ts",
+      "node": "./dist/server/components/statistics-section/index.js",
+      "svelte": "./src/components/statistics-section/index.ts",
+      "import": "./src/components/statistics-section/index.ts",
+      "default": "./dist/components/statistics-section/index.js"
     },
-    "./stats-section/schema": {
-      "types": "./dist/components/stats-section/stats-section.schema.d.ts",
-      "browser": "./src/components/stats-section/stats-section.schema.ts",
-      "node": "./dist/server/components/stats-section/stats-section.schema.js",
-      "svelte": "./src/components/stats-section/stats-section.schema.ts",
-      "import": "./src/components/stats-section/stats-section.schema.ts",
-      "default": "./dist/components/stats-section/stats-section.schema.js"
+    "./statistics-section/schema": {
+      "types": "./dist/components/statistics-section/statistics-section.schema.d.ts",
+      "browser": "./src/components/statistics-section/statistics-section.schema.ts",
+      "node": "./dist/server/components/statistics-section/statistics-section.schema.js",
+      "svelte": "./src/components/statistics-section/statistics-section.schema.ts",
+      "import": "./src/components/statistics-section/statistics-section.schema.ts",
+      "default": "./dist/components/statistics-section/statistics-section.schema.js"
     },
-    "./stats-section/variables": {
-      "types": "./dist/components/stats-section/stats-section.variables.d.ts",
-      "browser": "./src/components/stats-section/stats-section.variables.ts",
-      "node": "./dist/server/components/stats-section/stats-section.variables.js",
-      "svelte": "./src/components/stats-section/stats-section.variables.ts",
-      "import": "./src/components/stats-section/stats-section.variables.ts",
-      "default": "./dist/components/stats-section/stats-section.variables.js"
+    "./statistics-section/variables": {
+      "types": "./dist/components/statistics-section/statistics-section.variables.d.ts",
+      "browser": "./src/components/statistics-section/statistics-section.variables.ts",
+      "node": "./dist/server/components/statistics-section/statistics-section.variables.js",
+      "svelte": "./src/components/statistics-section/statistics-section.variables.ts",
+      "import": "./src/components/statistics-section/statistics-section.variables.ts",
+      "default": "./dist/components/statistics-section/statistics-section.variables.js"
     },
-    "./stats-section/styles": {
-      "types": "./dist/components/stats-section/stats-section.css.d.ts",
-      "default": "./dist/components/stats-section/stats-section.css"
+    "./statistics-section/styles": {
+      "types": "./dist/components/statistics-section/statistics-section.css.d.ts",
+      "default": "./dist/components/statistics-section/statistics-section.css"
     },
-    "./stats-section/examples": {
-      "import": "./src/components/stats-section/stats-section.examples.json",
-      "default": "./src/components/stats-section/stats-section.examples.json"
+    "./statistics-section/examples": {
+      "import": "./src/components/statistics-section/statistics-section.examples.json",
+      "default": "./src/components/statistics-section/statistics-section.examples.json"
     },
     "./status-dot": {
       "types": "./dist/components/status-dot/index.d.ts",
@@ -6222,6 +6222,7 @@
     "check:no-inline-match-media": "bun run scripts/check-no-inline-match-media.ts",
     "check:pipeline-coverage": "bun run scripts/check-pipeline-coverage.ts",
     "check:placeholder-docs": "bun run scripts/check-placeholder-docs.ts",
+    "check:prop-conventions": "bun run scripts/check-prop-conventions.ts",
     "check:svelte-ts-runtime-types": "bun run scripts/check-svelte-ts-runtime-types.ts",
     "check:test-cleanup": "bun run scripts/check-test-cleanup.ts",
     "clean": "rm -rf dist coverage tsconfig.tsbuildinfo lostgradient-cinder-*.tgz cinder-*.tgz tmp fixtures/node-consumer/node_modules fixtures/node-consumer/dist fixtures/sveltekit-consumer/node_modules fixtures/sveltekit-consumer/.svelte-kit fixtures/sveltekit-consumer/build fixtures/manifest-consumer/node_modules fixtures/typescript-consumer/node_modules fixtures/typescript-consumer/src/generated fixtures/examples-consumer/node_modules fixtures/examples-consumer/.svelte-kit fixtures/examples-consumer/build fixtures/examples-consumer/src/generated fixtures/examples-consumer/src/routes/+page.svelte",
@@ -6235,7 +6236,7 @@
     "exports:generate": "bun run scripts/generate-exports.ts",
     "lint": "bun run --filter='@lostgradient/markdown' build && oxlint --type-aware --tsconfig ./tsconfig.json",
     "lint:fix": "bun run --filter='@lostgradient/markdown' build && oxlint --fix --type-aware --tsconfig ./tsconfig.json",
-    "lint:invariants": "bun run check:no-cycle-imports && bun run check:consumer-boundaries && bun run check:no-bare-console-warn && bun run check:no-inline-match-media && bun run check:svelte-ts-runtime-types && bun run check:data-cinder-boolean-attributes && bun run check:test-cleanup && bun run tokens:literals -- --strict && bun run check:pipeline-coverage",
+    "lint:invariants": "bun run check:no-cycle-imports && bun run check:consumer-boundaries && bun run check:no-bare-console-warn && bun run check:no-inline-match-media && bun run check:svelte-ts-runtime-types && bun run check:data-cinder-boolean-attributes && bun run check:prop-conventions && bun run check:test-cleanup && bun run tokens:literals -- --strict && bun run check:pipeline-coverage",
     "prepack": "bun run build",
     "package:weight": "bun run scripts/report-package-weight.ts",
     "package:weight:check": "bun run scripts/report-package-weight.ts --check",

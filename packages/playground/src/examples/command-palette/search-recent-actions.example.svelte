@@ -128,7 +128,7 @@
           value={page.id}
           description={page.description}
           accessibleLabel={page.label}
-          onselect={() => select(page.label)}
+          onSelect={() => select(page.label)}
         >
           {page.label}
         </CommandItem>
@@ -145,7 +145,7 @@
         <CommandItem
           value={item.id}
           accessibleLabel={item.label}
-          onselect={() => select(item.label)}
+          onSelect={() => select(item.label)}
         >
           {item.label}
         </CommandItem>
@@ -172,7 +172,7 @@
             : action.kbd === '⌘I'
               ? 'Meta+I'
               : undefined}
-          onselect={() => select(action.label)}
+          onSelect={() => select(action.label)}
         >
           {#snippet leading()}
             <span style="font-size: 0.875rem; font-weight: 700; line-height: 1;">{action.icon}</span

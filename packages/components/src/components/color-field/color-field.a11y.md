@@ -42,7 +42,7 @@ The component always renders a single sibling `<input type="hidden">` that serve
 
 Reset listening is wired through a `$effect` driven by `bind:this` on that same hidden input. The effect runs once on mount, attaches the `reset` listener to the input's associated form, and cleans up on unmount. Moving the component across forms at runtime is not supported in v1 — there is no `MutationObserver` watching the input's `form` property — but the listener cleanup guarantees no zombie reset handlers fire after unmount.
 
-On reset, uncontrolled fields revert to `defaultValue` (parsed and seeded into all three internal slots, with the original alpha preserved so a later `alpha={true}` toggle reconstructs `#rrggbbaa`). Reset never fires `onchange` — the parent observes resets through the native form `reset` event, not through ColorField's value callback. Controlled fields do nothing internally on reset; the parent's reset handler updates `value` and the effect reconciles.
+On reset, uncontrolled fields revert to `value` (parsed and seeded into all three internal slots, with the original alpha preserved so a later `alpha={true}` toggle reconstructs `#rrggbbaa`). Reset never fires `onchange` — the parent observes resets through the native form `reset` event, not through ColorField's value callback. Controlled fields do nothing internally on reset; the parent's reset handler updates `value` and the effect reconciles.
 
 ## Reduced motion and forced colors
 

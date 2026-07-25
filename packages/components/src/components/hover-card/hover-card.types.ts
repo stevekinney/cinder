@@ -17,7 +17,7 @@ export type HoverCardPlacement =
 export type HoverCardProps = {
   /** Controls the open state of the card; bindable for controlled usage. */
   open?: boolean;
-  onopenchange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
   /** Delay in milliseconds before the card opens after the pointer enters or focus lands on the trigger. Default `300`. */
   openDelay?: number;
   /** Delay in milliseconds before the card closes after the pointer leaves and focus departs. Default `150`. */
@@ -27,7 +27,7 @@ export type HoverCardProps = {
   /** Distance in pixels between the trigger and the card. Default `8`. */
   offset?: number;
   /** When true, renders a directional arrow pointing from the card toward the trigger. Default `false`. */
-  showArrow?: boolean;
+  arrowVisible?: boolean;
   trigger: Snippet;
   children: Snippet;
   triggerRef?: HTMLElement | null;

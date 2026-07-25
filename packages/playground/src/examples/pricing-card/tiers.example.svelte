@@ -18,7 +18,7 @@
     features={['3 projects', '1 GB storage', 'Community support']}
     cta="Get started"
     selected={selectedPlan === 'starter'}
-    onselect={() => {
+    onSelect={() => {
       selectedPlan = 'starter';
     }}
   />
@@ -29,7 +29,7 @@
     features={['Unlimited projects', '10 GB storage', 'Priority support', 'Custom domains']}
     cta="Choose Pro"
     selected={selectedPlan === 'pro'}
-    onselect={() => {
+    onSelect={() => {
       selectedPlan = 'pro';
     }}
   />
@@ -46,7 +46,7 @@
     ]}
     cta="Contact sales"
     selected={selectedPlan === 'enterprise'}
-    onselect={() => {
+    onSelect={() => {
       selectedPlan = 'enterprise';
     }}
   />

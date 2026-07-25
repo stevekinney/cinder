@@ -30,7 +30,7 @@
     placeholder = 'Search…',
     label = 'Command palette',
     query = $bindable(''),
-    onclose,
+    onClose,
     triggerRef = null,
     items,
     empty,
@@ -97,7 +97,7 @@
     releaseEscape = null;
     if (dialogElement?.open) dialogElement.close();
     returnFocus();
-    onclose?.();
+    onClose?.();
     isClosing = false;
   }
 

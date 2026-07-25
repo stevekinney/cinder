@@ -105,7 +105,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
     props: {
       variant: { optional: true, type_kind: 'TSTypeReference', default: L('info') },
       dismissible: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-      ondismiss: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+      onDismiss: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
       class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
     },
     snippets: {
@@ -123,7 +123,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         props: {
           variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
           size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
-          mono: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+          monochrome: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
           subscriptionState: { optional: false, type_kind: 'TSTypeReference', default: REQUIRED },
         },
@@ -137,7 +137,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
         props: {
           variant: { optional: true, type_kind: 'TSTypeReference', default: L('neutral') },
           size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
-          mono: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+          monochrome: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
           subscriptionState: {
             optional: true,
@@ -297,7 +297,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
       triggerLabel: { optional: true, type_kind: 'TSStringKeyword', default: L('Choose files') },
       files: { optional: true, type_kind: 'TSArrayType', default: NO_DEFAULT },
       onchange: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
-      onreject: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
+      onReject: { optional: true, type_kind: 'TSFunctionType', default: NO_DEFAULT },
     },
     snippets: {
       idle: s0(true),
@@ -339,7 +339,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
             default: L(true),
           },
           dismissOnEscape: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
-          showCloseButton: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
+          closeButtonVisible: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
           role: { optional: true, type_kind: 'TSLiteralType', default: L('dialog') },
           describedById: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
@@ -360,7 +360,7 @@ export const CONTRACT: Record<string, ComponentContract> = {
             default: L(true),
           },
           dismissOnEscape: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
-          showCloseButton: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
+          closeButtonVisible: { optional: true, type_kind: 'TSBooleanKeyword', default: L(true) },
           class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
           role: { optional: false, type_kind: 'TSLiteralType', default: REQUIRED },
           describedById: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },

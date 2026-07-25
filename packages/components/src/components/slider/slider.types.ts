@@ -25,25 +25,23 @@ type SliderBaseProps = {
   class?: string;
 };
 /**
- * Props for the single-thumb slider. `value`/`defaultValue` are scalars and
- * `onchange` receives a scalar.
+ * Props for the single-thumb slider. `value` is a scalar and `onchange`
+ * receives a scalar.
  */
 export type SliderSingleProps = SliderBaseProps & {
   /** Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`. */
   mode?: 'single';
   value?: number;
-  defaultValue?: number;
   onchange?: (value: number) => void;
 };
 /**
- * Props for the two-thumb range slider. `value`/`defaultValue` are `[low, high]`
- * tuples and `onchange` receives the same tuple shape.
+ * Props for the two-thumb range slider. `value` is a `[low, high]` tuple and
+ * `onchange` receives the same tuple shape.
  */
 export type SliderRangeProps = SliderBaseProps & {
   /** Slider mode. `"single"` renders one thumb and emits a scalar value; `"range"` renders two thumbs and emits a `[low, high]` tuple. Default `"single"`. */
   mode: 'range';
   value?: [number, number];
-  defaultValue?: [number, number];
   onchange?: (value: [number, number]) => void;
 };
 /**
@@ -54,9 +52,8 @@ export type SliderRangeProps = SliderBaseProps & {
  * `aria-valuenow`, optional `aria-valuetext`, and an accessible name from
  * either `aria-label` or `aria-labelledby`.
  *
- * The slider is controlled when `value` is supplied and uncontrolled when
- * only `defaultValue` is supplied. `onchange` fires after every committed
- * change (keyboard step, track click, end of pointer drag).
+ * `value` is bindable. `onchange` fires after every committed change
+ * (keyboard step, track click, end of pointer drag).
  *
  * Distinct from `progress.svelte` (passive read-only progress) and from
  * the internal sliders inside `color-picker.svelte` (specialized for

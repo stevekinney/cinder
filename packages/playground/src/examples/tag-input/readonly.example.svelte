@@ -13,5 +13,5 @@
   label="Applied filters"
   description="These filters are fixed for this report and cannot be edited."
 >
-  <TagInput readonly defaultValue={['Svelte', 'Bun', 'TypeScript']} />
+  <TagInput readonly value={['Svelte', 'Bun', 'TypeScript']} />
 </FormField>

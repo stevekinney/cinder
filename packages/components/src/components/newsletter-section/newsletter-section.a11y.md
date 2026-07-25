@@ -19,4 +19,4 @@ NewsletterSection captures an email address with a labeled input and submit acti
 - Tab to the email field and submit button, then submit with Enter.
 - Confirm the input has an accessible name and type `email`.
 
-Related components: `input`, `button`, `cta-section`, `form-section`.
+Related components: `input`, `button`, `call-to-action-section`, `form-section`.

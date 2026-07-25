@@ -56,12 +56,12 @@ const schema = {
         description: 'Rendered in place of the `<img>` when it fails to load.',
       },
       {
-        name: 'onerror',
+        name: 'onError',
         reason: 'function-or-snippet',
         description: 'Forwarded after internal state updates.',
       },
       {
-        name: 'onload',
+        name: 'onLoad',
         reason: 'function-or-snippet',
         description: 'Forwarded after internal state updates.',
       },

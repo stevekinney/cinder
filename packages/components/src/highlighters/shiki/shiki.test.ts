@@ -11,6 +11,7 @@ import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 setupHappyDom();
 
 const { shikiHighlighter } = await import('./default.ts');
+const { shikiHighlighter: createCoreShikiHighlighter } = await import('./index.ts');
 
 const originalConsoleWarn = console.warn;
 afterEach(() => {
@@ -176,6 +177,38 @@ describe('shikiHighlighter — happy path', () => {
 });
 
 describe('shikiHighlighter — fallback contract', () => {
+  test('core loader shares curated modules and treats preload misses as non-fatal', async () => {
+    const { warnings, restore } = captureWarnings();
+    try {
+      const highlight = createCoreShikiHighlighter({
+        languageLoaders: { typescript: () => import('@shikijs/langs/typescript') },
+        themeLoaders: {},
+        theme: 'missing-theme',
+        langs: ['missing-language'],
+      });
+
+      const html = await highlight('const answer = 42;', 'typescript');
+
+      expect(html).toBe('<pre class="shiki shiki-plaintext"><code>const answer = 42;</code></pre>');
+      expect(warnings.some((warning) => warning.includes('failed to highlight'))).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
+  test('core loader caches the empty shared module and falls back without throwing', async () => {
+    const { warnings, restore } = captureWarnings();
+    try {
+      const highlight = createCoreShikiHighlighter();
+      const html = await highlight('const answer = 42;', 'typescript');
+
+      expect(html).toBe('<pre class="shiki shiki-plaintext"><code>const answer = 42;</code></pre>');
+      expect(warnings.some((warning) => warning.includes('typescript'))).toBe(true);
+    } finally {
+      restore();
+    }
+  });
+
   test('uses curated language and theme loader maps', async () => {
     const { warnings, restore } = captureWarnings();
     try {

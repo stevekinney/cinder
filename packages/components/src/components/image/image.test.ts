@@ -184,7 +184,7 @@ describe('Image', () => {
     expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(true);
   });
 
-  test('calls consumer onload after the internal state mutation', async () => {
+  test('calls consumer onLoad after the internal state mutation', async () => {
     // Contract: handleLoad mutates loadedSource BEFORE invoking the consumer
     // callback. The DOM reflects the new state on the next microtask, so we
     // verify (a) the callback fired, (b) data-cinder-loaded is set once the
@@ -193,7 +193,7 @@ describe('Image', () => {
     const { container } = render(Image, {
       src: '/a.jpg',
       alt: 'A',
-      onload: () => {
+      onLoad: () => {
         handlerCalled = true;
       },
     });
@@ -204,12 +204,12 @@ describe('Image', () => {
     );
   });
 
-  test('calls consumer onerror after the internal state mutation', async () => {
+  test('calls consumer onError after the internal state mutation', async () => {
     let handlerCalled = false;
     const { container } = render(Image, {
       src: '/broken.jpg',
       alt: 'Broken',
-      onerror: () => {
+      onError: () => {
         handlerCalled = true;
       },
     });

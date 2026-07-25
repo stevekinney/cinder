@@ -28,8 +28,7 @@
 
   let {
     id,
-    value,
-    defaultValue,
+    value = $bindable(''),
     placeholder,
     shortcut,
     disabled,
@@ -38,7 +37,7 @@
     class: customClassName,
     oninput,
     onsearch,
-    onclear,
+    onClear,
     onkeydown: consumerKeyDown,
     ...rest
   }: SearchFieldProps = $props();
@@ -47,10 +46,9 @@
   const resolvedId = $derived(id ?? context?.controlId);
 
   let inputElement = $state<HTMLInputElement | null>(null);
-  let uncontrolledValue = $state(untrack(() => defaultValue) ?? '');
+  const resetTarget = untrack(() => value);
 
-  const isControlled = $derived(value !== undefined);
-  const currentValue = $derived(isControlled ? (value ?? '') : uncontrolledValue);
+  const currentValue = $derived(value);
   const hasValue = $derived(currentValue.length > 0);
 
   const describedBy = $derived(
@@ -76,7 +74,7 @@
   function handleInput(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
     const next = target.value;
-    if (!isControlled) uncontrolledValue = next;
+    value = next;
     oninput?.(next);
   }
 
@@ -92,14 +90,30 @@
 
   function handleClear() {
     if (clearInert) return;
-    if (!isControlled && inputElement) {
-      uncontrolledValue = '';
+    if (inputElement) {
+      value = '';
       inputElement.value = '';
     }
     inputElement?.focus();
     oninput?.('');
-    onclear?.();
+    onClear?.();
   }
+
+  $effect(() => {
+    const form = inputElement?.form;
+    if (!form) return;
+
+    const handleReset = (event: Event) => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        value = resetTarget;
+        if (inputElement) inputElement.value = resetTarget;
+      });
+    };
+
+    form.addEventListener('reset', handleReset);
+    return () => form.removeEventListener('reset', handleReset);
+  });
 </script>
 
 <div

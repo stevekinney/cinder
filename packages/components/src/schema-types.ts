@@ -16,7 +16,7 @@ export interface ComponentSchemaUnsupportedProp {
   /**
    * `true` when the prop is required on the component; omitted when it is
    * optional. Present for props that the JSON schema cannot express but that are
-   * still part of the component's API (e.g. a required `onselect: () => void`
+   * still part of the component's API (e.g. a required `onSelect: () => void`
    * callback), so tooling and docs can report them faithfully. An absent value
    * is treated as not-required.
    */

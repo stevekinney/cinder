@@ -21,7 +21,7 @@ export type JsonEditorProps = Omit<
   /** Marks the editor as required. Passed through to the native textarea. */
   required?: boolean;
   /** Whether valid JSON should render an announced success message. Defaults to true. */
-  showValidFeedback?: boolean;
+  validFeedbackVisible?: boolean;
   /** Enables a lazy syntax-highlighted view with inline parse-error annotation. Defaults to false. */
   highlight?: boolean;
   /** Called with the proposed JSON source whenever the user edits the textarea. */

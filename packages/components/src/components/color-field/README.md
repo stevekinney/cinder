@@ -17,7 +17,7 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
 </FormField>
 ```
 
-`value` is one-way: the parent sets it, the component reads it, and commits flow back through `onchange`. `bind:value` is intentionally not supported — wire up the callback explicitly so the data flow remains obvious.
+`value` is bindable. Use `bind:value` when parent state should track the committed canonical hex value, or pass `value` with `onchange` when you want to persist commits explicitly.
 
 ## Behavior
 
@@ -27,16 +27,15 @@ A text input that validates and normalizes hex, `rgb()`, and `hsl()` color strin
 - The trailing color swatch reads `committedHex` only. It never reflects unparsed text, so a malformed string never paints arbitrary content into the DOM.
 - Pressing **Enter** commits the value. With `enterBehavior='commit-then-submit'` (default), the field then calls `form.requestSubmit()` on the associated form. With `enterBehavior='commit-only'`, submission is suppressed.
 
-## Controlled vs. uncontrolled
+## Value ownership
 
-- **Controlled**: pass `value` and listen to `onchange`. The component never mutates `value`; it observes external changes via an effect. An externally-supplied invalid string preserves the visible text and raises an error rather than silently clearing.
-- **Uncontrolled**: pass `defaultValue` instead. Subsequent state is owned by the component, and consumers observe commits through `onchange`.
-
-Switching between controlled and uncontrolled at runtime is unsupported. The component captures `isControlled = value !== undefined` once at mount. In dev mode a runtime divergence logs a one-time `console.warn`.
+- **Bindable state**: `bind:value` updates only after a successful commit. Intermediate keystrokes stay local so users can type partial values like `#ab` without pushing invalid state to the parent.
+- **Explicit commit handling**: `onchange` fires when a successful commit changes the canonical hex. It is not forwarded to the inner native `<input>`.
+- **External updates**: setting `value` from the parent reconciles the visible text. Invalid external strings remain visible and raise the parse error instead of silently clearing.
 
 ## Form participation
 
-The component renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor used to attach a `reset` listener to the surrounding form. Either way, uncontrolled fields revert to `defaultValue` on form reset (no `onchange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
+The component renders a single sibling `<input type="hidden">` that serves two purposes. When `name` is set, that input carries the `name` attribute and mirrors the current committed hex so the value participates in native form submission. When `name` is not set, the same input still renders (without a `name`) and acts purely as the anchor used to attach a `reset` listener to the surrounding form. Either way, uncontrolled fields revert to `value` on form reset (no `onchange` is fired; reset is observable through native form events). Controlled fields do nothing on reset internally; the parent's reset handler updates `value` and the effect reconciles.
 
 Parse errors propagate to the visible `<input>` via `setCustomValidity`, so invalid text participates in HTML constraint validation whether the user pressed Enter or clicked a submit button.
 
@@ -66,7 +65,6 @@ Moving the component across forms at runtime is not supported in v1.
 | `aria-label`      | `string`                                  | no       | —       | Accessible label applied directly to the inner `<input>` when no `FormField` wraps it.                                                                                                                                                                                                                                                      |
 | `aria-labelledby` | `string`                                  | no       | —       | Id of an external element that labels the inner `<input>`.                                                                                                                                                                                                                                                                                  |
 | `class`           | `string`                                  | no       | —       | Additional classes merged onto the **outer wrapper** root (`.cinder-color-field`).                                                                                                                                                                                                                                                          |
-| `defaultValue`    | `string`                                  | no       | —       | Initial value when uncontrolled. Accepts any allowed `formats` input.                                                                                                                                                                                                                                                                       |
 | `disabled`        | `boolean`                                 | no       | —       | Disable the input.                                                                                                                                                                                                                                                                                                                          |
 | `enterBehavior`   | `"commit-then-submit"` \| `"commit-only"` | no       | —       | Commit-on-Enter behavior. Default `'commit-then-submit'`: - `'commit-then-submit'`: Enter commits the value, then lets the form's native submission proceed via `requestSubmit`. - `'commit-only'`: Enter commits and `preventDefault()`s, suppressing form submission (useful in dialogs / multi-field flows where Enter must not submit). |
 | `errorMessage`    | `string`                                  | no       | —       | Override the default parse-failure error message.                                                                                                                                                                                                                                                                                           |
@@ -76,7 +74,7 @@ Moving the component across forms at runtime is not supported in v1.
 | `placeholder`     | `string`                                  | no       | —       | Placeholder text for the inner `<input>`.                                                                                                                                                                                                                                                                                                   |
 | `readonly`        | `boolean`                                 | no       | —       | Render the inner `<input>` as read-only.                                                                                                                                                                                                                                                                                                    |
 | `required`        | `boolean`                                 | no       | —       | Mark the input as required for form submission and a11y.                                                                                                                                                                                                                                                                                    |
-| `value`           | `string`                                  | no       | —       | Controlled value as a hex string. One-way: parent sets, child reads. Not bindable — use `onchange` to observe commits. Accepts any color string the configured `formats` allow when set externally.                                                                                                                                         |
+| `value`           | `string`                                  | no       | —       | Bindable value as a hex string. Accepts any color string the configured `formats` allow when set externally.                                                                                                                                                                                                                                |
 | `onchange`        | `(opaque)`                                | no       | —       | Fires on successful blur-time commit when the canonical hex actually changes. Value callback by repo convention — not forwarded to the inner native `<input>`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                   |
 
 <!-- generated:props:end -->

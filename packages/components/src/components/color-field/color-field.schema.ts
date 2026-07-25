@@ -11,11 +11,7 @@ const schema = {
     value: {
       type: 'string',
       description:
-        'Controlled value as a hex string. One-way: parent sets, child reads.\nNot bindable — use `onchange` to observe commits. Accepts any color\nstring the configured `formats` allow when set externally.',
-    },
-    defaultValue: {
-      type: 'string',
-      description: 'Initial value when uncontrolled. Accepts any allowed `formats` input.',
+        'Bindable value as a hex string. Accepts any color string the configured\n`formats` allow when set externally.',
     },
     alpha: {
       type: 'boolean',

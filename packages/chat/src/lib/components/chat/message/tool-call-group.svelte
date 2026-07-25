@@ -8,7 +8,7 @@
     /** Whether the details are expanded */
     expanded?: boolean;
     /** Called when toggle is clicked */
-    ontoggle?: () => void;
+    onToggle?: () => void;
     /** Additional CSS class */
     class?: string;
   };
@@ -23,7 +23,7 @@
   let {
     pair,
     expanded = false,
-    ontoggle,
+    onToggle,
     class: className,
     ...rest
   }: ToolCallGroupProps = $props();
@@ -60,7 +60,7 @@
   const formattedResult = $derived(pair.result ? stringify(pair.result.content) : '');
 
   function handleToggle() {
-    ontoggle?.();
+    onToggle?.();
   }
 </script>
 

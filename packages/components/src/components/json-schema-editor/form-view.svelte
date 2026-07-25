@@ -4,7 +4,7 @@
   export type FormViewProps = {
     state: EditorState;
     idPrefix: string;
-    onvalidationerrorcount?: ((count: number) => void) | undefined;
+    onvalidationErrorcount?: ((count: number) => void) | undefined;
     class?: string;
   };
 </script>
@@ -16,7 +16,7 @@
   import EmptyState from '../empty-state/empty-state.svelte';
   import PropertyEditor from './property-editor.svelte';
 
-  let { state, idPrefix, onvalidationerrorcount, class: className }: FormViewProps = $props();
+  let { state, idPrefix, onvalidationErrorcount, class: className }: FormViewProps = $props();
 
   // Snapshot the committed schema each render so changes propagate via the
   // value prop on PropertyEditor. We don't pass the live committed schema by
@@ -52,7 +52,7 @@
       depth={0}
       readonly={state.readonly || state.jsonDraftIsDirty}
       value={rootSchema}
-      {onvalidationerrorcount}
+      {onvalidationErrorcount}
       onchange={(next, options) => state.commitFromForm(next, options)}
     />
   {/if}

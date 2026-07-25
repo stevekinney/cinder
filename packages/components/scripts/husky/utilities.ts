@@ -356,7 +356,7 @@ type GateLockFile = {
 };
 
 type GateLockOptions = {
-  readonly beforeMalformedLockStat?: () => void | Promise<void>;
+  readonly beforeMalformedLockStatistic?: () => void | Promise<void>;
   readonly isProcessAlive?: (pid: number) => boolean;
   readonly lockPath?: string;
   readonly malformedLockGraceMilliseconds?: number;
@@ -436,8 +436,8 @@ async function readGateLock(lockPath: string): Promise<GateLockFile | null> {
 }
 
 async function lockAgeMilliseconds(lockPath: string): Promise<number> {
-  const fileStats = await stat(lockPath);
-  return Date.now() - fileStats.mtimeMs;
+  const fileStatistics = await stat(lockPath);
+  return Date.now() - fileStatistics.mtimeMs;
 }
 
 function releaseGateLockSync(lockPath: string, token: string) {
@@ -515,7 +515,7 @@ export async function withGateLock<T>(
       const existingLock = await readGateLock(lockPath);
       if (existingLock === null) {
         malformedLockStartedAt ??= now();
-        await options.beforeMalformedLockStat?.();
+        await options.beforeMalformedLockStatistic?.();
         let existingLockAgeMilliseconds = 0;
         try {
           existingLockAgeMilliseconds = await lockAgeMilliseconds(lockPath);

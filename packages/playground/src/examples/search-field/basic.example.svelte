@@ -14,6 +14,6 @@
 <SearchField
   id={fieldId}
   aria-label="Search components"
-  defaultValue="cinder"
+  value="cinder"
   placeholder="Filter by name"
 />

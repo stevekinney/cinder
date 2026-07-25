@@ -44,7 +44,7 @@
     readonly = false,
     required,
     filterable = false,
-    filterItem,
+    filter,
     selectionFeedback = 'fixed',
     direction = 'down',
     class: className,
@@ -130,7 +130,7 @@
 
   const filteredItems = $derived.by(() => {
     if (!filterable) return items;
-    const fn = filterItem ?? defaultFilter;
+    const fn = filter ?? defaultFilter;
     return items.filter((item) => fn(item, query));
   });
 

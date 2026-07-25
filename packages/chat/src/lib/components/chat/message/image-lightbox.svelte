@@ -12,7 +12,7 @@
     /** Whether the lightbox is open */
     open?: boolean;
     /** Called when the lightbox is closed */
-    onclose?: () => void;
+    onClose?: () => void;
   };
 </script>
 
@@ -22,7 +22,7 @@
   import { createBodyScrollLock, createFocusTrap } from '@lostgradient/cinder/focus-trap';
   import { useReducedMotion } from '../../../utilities/use-reduced-motion.svelte.ts';
 
-  let { images, initialIndex = 0, open = $bindable(false), onclose }: ImageLightboxProps = $props();
+  let { images, initialIndex = 0, open = $bindable(false), onClose }: ImageLightboxProps = $props();
 
   // Respect prefers-reduced-motion: collapse the fade to an instant show/hide so
   // the lightbox does not animate for users who have opted out of motion.
@@ -65,7 +65,7 @@
   function close() {
     navigationIndex = null;
     open = false;
-    onclose?.();
+    onClose?.();
   }
 
   function previous() {

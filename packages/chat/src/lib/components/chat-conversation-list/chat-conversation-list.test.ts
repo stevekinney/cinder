@@ -40,7 +40,7 @@ describe('ChatConversationList', () => {
     const { container } = render(ChatConversationList, {
       props: {
         activeConversationId: 'newer',
-        onselectconversation: () => {},
+        onSelectConversation: () => {},
         conversations: [
           summary({
             id: 'older',
@@ -72,12 +72,12 @@ describe('ChatConversationList', () => {
     expect(buttons[0]?.hasAttribute('data-cinder-conversation-interactive')).toBe(true);
   });
 
-  test('calls onselectconversation with the selected id', async () => {
+  test('calls onSelectConversation with the selected id', async () => {
     const selected: string[] = [];
     const { container } = render(ChatConversationList, {
       props: {
         conversations: [summary({ id: 'alpha', title: 'Alpha' })],
-        onselectconversation: (id: string) => selected.push(id),
+        onSelectConversation: (id: string) => selected.push(id),
       },
     });
 
@@ -142,7 +142,7 @@ describe('ChatConversationList', () => {
   test('uses singular unread message text for one unread conversation', () => {
     const { container } = render(ChatConversationList, {
       props: {
-        onselectconversation: () => {},
+        onSelectConversation: () => {},
         conversations: [
           summary({ id: 'interactive', title: 'Interactive', unreadCount: 1 }),
           summary({
@@ -177,7 +177,7 @@ describe('ChatConversationList', () => {
     const longPreview = `${'Long preview '.repeat(12)}tail`;
     const { container } = render(ChatConversationList, {
       props: {
-        onselectconversation: () => {},
+        onSelectConversation: () => {},
         conversations: [
           summary({ id: 'single', messageCount: 1, updatedAt: '2026-06-01T00:04:00.000Z' }),
           summary({ id: 'count-only', messageCount: 4, updatedAt: '2026-06-01T00:02:00.000Z' }),

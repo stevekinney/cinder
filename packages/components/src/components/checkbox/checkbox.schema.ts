@@ -33,7 +33,7 @@ const schema = {
       type: 'string',
       description: 'Validation error message; sets `aria-invalid="true"` and `aria-describedby`.',
     },
-    fieldClass: {
+    fieldClassName: {
       type: 'string',
       description: 'Extra class names merged with the outer checkbox field wrapper.',
     },
@@ -48,6 +48,11 @@ const schema = {
       },
       {
         name: 'onValueChange',
+        reason: 'function-or-snippet',
+        description: 'Notify after the bindable value has been committed.',
+      },
+      {
+        name: 'onValueChangeRequest',
         reason: 'function-or-snippet',
         description:
           'Intercept a proposed checked state before the bindable value is written. Return a replacement value to transform it.',

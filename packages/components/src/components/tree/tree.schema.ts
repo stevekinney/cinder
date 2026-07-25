@@ -74,7 +74,7 @@ const schema = {
       description:
         "Placeholder and accessible label for the built-in search input. Default: 'Search tree'.",
     },
-    showSearch: {
+    searchVisible: {
       type: 'boolean',
       description:
         'Render the built-in search input before the role="tree" element. Default: false.',
@@ -109,12 +109,12 @@ const schema = {
           'Data-driven Tree items. Required when virtualized is true; mutually exclusive with children.',
       },
       {
-        name: 'onfilterchange',
+        name: 'onFilterChange',
         reason: 'function-or-snippet',
         description: 'Fires whenever the built-in search input changes the filter query.',
       },
       {
-        name: 'onreorder',
+        name: 'onReorder',
         reason: 'function-or-snippet',
         description:
           'Called when a draggable item is dropped before, after, or into another tree item.',

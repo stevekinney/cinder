@@ -342,7 +342,7 @@ describe('NavigationBar', () => {
     expect(container.querySelector('nav')?.getAttribute('data-collapsible')).toBe('false');
   });
 
-  test('placement defaults to top and showLabels defaults to always', () => {
+  test('placement defaults to top and labelsVisible defaults to always', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
     });
@@ -356,21 +356,21 @@ describe('NavigationBar', () => {
     let capturedPlacement: string | undefined;
     let capturedShowLabels: string | undefined;
     const captureSnippet = createRawSnippet<
-      [{ variant: string; placement: string; showLabels: string }]
+      [{ variant: string; placement: string; labelsVisible: string }]
     >((getCtx) => ({
       render: () => `<span></span>`,
       setup() {
         const context = getCtx();
         capturedVariant = context.variant;
         capturedPlacement = context.placement;
-        capturedShowLabels = context.showLabels;
+        capturedShowLabels = context.labelsVisible;
       },
     }));
 
     const { container } = render(NavigationBar, {
       items: captureSnippet as any,
       placement: 'bottom',
-      showLabels: 'active',
+      labelsVisible: 'active',
       menuToggle: toggleSnippet(),
     });
 
@@ -388,7 +388,7 @@ describe('NavigationBar', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
       placement: 'bottom',
-      showLabels: 'never',
+      labelsVisible: 'never',
       'data-cinder-placement': 'top',
       'data-cinder-label-visibility': 'always',
     } as any);

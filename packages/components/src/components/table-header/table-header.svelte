@@ -29,7 +29,7 @@
     children,
     allSelected,
     someSelected,
-    onselectall,
+    onSelectAll,
     selectAllLabel = 'Select all rows',
   }: TableHeaderProps = $props();
 
@@ -39,10 +39,10 @@
   // One-time mount-time guard; read the props untracked.
   if (
     selectionEnabled &&
-    untrack(() => allSelected === undefined || someSelected === undefined || !onselectall)
+    untrack(() => allSelected === undefined || someSelected === undefined || !onSelectAll)
   ) {
     throw new Error(
-      '[Cinder] TableHeader: `allSelected`, `someSelected`, and `onselectall` are required when Table.selectable is true.',
+      '[Cinder] TableHeader: `allSelected`, `someSelected`, and `onSelectAll` are required when Table.selectable is true.',
     );
   }
 
@@ -66,8 +66,8 @@
     get someSelected() {
       return someSelected ?? false;
     },
-    get onselectall() {
-      return onselectall ?? (() => {});
+    get onSelectAll() {
+      return onSelectAll ?? (() => {});
     },
     get selectAllLabel() {
       return selectAllLabel;

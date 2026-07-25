@@ -30,7 +30,7 @@ export type ComboboxOption<T extends string = string> = {
  *   larger lists must paginate or pre-filter externally.
  * - No multi-select or token chips; custom-value submission is opt-in.
  *
- * Custom-value submission is opt-in through `allowCustomValue`; the default
+ * Custom-value submission is opt-in through `customValueAllowed`; the default
  * remains a constrained single-select.
  */
 export type ComboboxProps<T extends string = string, AllowCustom extends boolean = false> = {
@@ -43,7 +43,7 @@ export type ComboboxProps<T extends string = string, AllowCustom extends boolean
   /** Native form field name. Renders a hidden input carrying the selected value. */
   name?: string | undefined;
   /** Free-text input value (the text the user has typed). Bindable. */
-  inputValue?: string;
+  textInputValue?: string;
   /** Full set of options to filter. The sole inference source for T. */
   options: readonly ComboboxOption<T>[];
   /** Visible label rendered in a `<label>` associated via `for`. */
@@ -73,7 +73,7 @@ export type ComboboxProps<T extends string = string, AllowCustom extends boolean
   /** Hard cap on visible filtered options. Default 200. */
   maxVisibleOptions?: number;
   /** Allow committing typed text that is not present in `options`. */
-  allowCustomValue?: AllowCustom;
+  customValueAllowed?: AllowCustom;
   /**
    * External element id(s) to compose into `aria-describedby`. Composed
    * after the component-generated description and error ids, matching the

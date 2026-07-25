@@ -61,11 +61,11 @@ describe('toMountProps', () => {
         value: 'neutral',
         hasDefault: true,
       },
-      { name: 'mono', kind: 'boolean', value: false, hasDefault: true },
+      { name: 'monochrome', kind: 'boolean', value: false, hasDefault: true },
     ];
-    expect(toMountProps(controls, { variant: 'danger', mono: true })).toEqual({
+    expect(toMountProps(controls, { variant: 'danger', monochrome: true })).toEqual({
       variant: 'danger',
-      mono: true,
+      monochrome: true,
     });
   });
 

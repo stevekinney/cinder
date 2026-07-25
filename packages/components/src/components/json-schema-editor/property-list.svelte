@@ -8,7 +8,7 @@
     path: string;
     depth?: number;
     readonly?: boolean;
-    onvalidationerrorcount?: ((count: number) => void) | undefined;
+    onvalidationErrorcount?: ((count: number) => void) | undefined;
     onchange: (properties: Record<string, JsonSchemaValue>, required: string[]) => void;
   };
 </script>
@@ -29,7 +29,7 @@
     path,
     depth = 0,
     readonly = false,
-    onvalidationerrorcount,
+    onvalidationErrorcount,
     onchange,
   }: PropertyListProps = $props();
 
@@ -51,11 +51,11 @@
   );
 
   $effect(() => {
-    onvalidationerrorcount?.(validationErrorCount);
+    onvalidationErrorcount?.(validationErrorCount);
   });
 
   onDestroy(() => {
-    onvalidationerrorcount?.(0);
+    onvalidationErrorcount?.(0);
   });
 
   function getDraftName(key: string): string {
@@ -292,7 +292,7 @@
             depth={depth + 1}
             {readonly}
             value={properties[key] ?? {}}
-            onvalidationerrorcount={(count) => setChildValidationErrorCount(key, count)}
+            onvalidationErrorcount={(count) => setChildValidationErrorCount(key, count)}
             onchange={(next) => setPropertySchema(key, next)}
           />
         </div>
@@ -315,7 +315,7 @@
             mode="removable"
             label={name}
             disabled={readonly}
-            onremove={() => removeRequiredOnly(name)}
+            onRemove={() => removeRequiredOnly(name)}
           />
         {/each}
         <Input

@@ -276,7 +276,7 @@ describe('sidebar drawer (narrow-viewport) wiring', () => {
     // happy-dom does not evaluate the `@media (max-width: 720px)` rule that
     // makes this button display:inline-flex, so it is display:none here — but
     // .click() still dispatches. That is the right thing to test: this asserts
-    // the onClose CALLBACK WIRING, not the (CSS-driven, viewport-gated)
+    // the onClose callback wiring, not the (CSS-driven, viewport-gated)
     // visibility, which is covered by the Playwright narrow-viewport test.
     closeButton?.click();
     await tick();

@@ -1,10 +1,11 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
+import type { NonVoidHTMLElementTagName } from '../../utilities/html-element-types.ts';
 
 /** Props for the BentoCell component. */
 export type BentoCellProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Number of columns this cell spans. */
-  colSpan?: number | string;
+  columnSpan?: number | string;
   /** Number of rows this cell spans. */
   rowSpan?: number | string;
   /** Explicit `grid-column-start` value. */
@@ -16,7 +17,7 @@ export type BentoCellProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Explicit `grid-row-end` value. */
   rowEnd?: number | string;
   /** Rendered HTML tag. */
-  as?: string;
+  as?: NonVoidHTMLElementTagName;
   /** Custom class merged with `.cinder-bento-cell`. */
   class?: string;
   /** Bento cell contents. */

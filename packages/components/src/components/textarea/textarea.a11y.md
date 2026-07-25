@@ -54,7 +54,7 @@ The CSS removes `resize: vertical` for disabled textareas to prevent a confusing
 
 ## Character Count
 
-When `showCount` is true and `maxlength` is set to a valid non-negative integer, an `<output id="{id}-count" for="{id}" aria-live="polite" aria-atomic="true">` renders showing `{value.length}/{maxlength}`. The `<output>` element carries the implicit ARIA role `status` (a polite live region), and `aria-atomic="true"` ensures the full "42/500" text is announced rather than just the changed portion. The count element id is included in the textarea's `aria-describedby`, so:
+When `countVisible` is true and `maxlength` is set to a valid non-negative integer, an `<output id="{id}-count" for="{id}" aria-live="polite" aria-atomic="true">` renders showing `{value.length}/{maxlength}`. The `<output>` element carries the implicit ARIA role `status` (a polite live region), and `aria-atomic="true"` ensures the full "42/500" text is announced rather than just the changed portion. The count element id is included in the textarea's `aria-describedby`, so:
 
 - On focus, screen readers announce the current count as part of the field's description.
 - During typing, the polite live region announces updates without interrupting the user.
@@ -65,7 +65,7 @@ The count uses JavaScript string length (UTF-16 code units), matching the browse
 
 **Reactivity contract.** The counter follows the component's local `value` state. User input updates the displayed count immediately; parent code should still use `bind:value` when it needs to observe or control the current value outside the component.
 
-**`showCount` without `maxlength`.** If `showCount` is `true` but `maxlength` is absent or invalid, the counter is silently omitted—the prop is advisory, not a requirement.
+**`countVisible` without `maxlength`.** If `countVisible` is `true` but `maxlength` is absent or invalid, the counter is silently omitted—the prop is advisory, not a requirement.
 
 ## Auto-Resize
 
@@ -79,12 +79,12 @@ The count uses JavaScript string length (UTF-16 code units), matching the browse
 
 ## WCAG 2.1 Compliance Summary
 
-| Success Criterion                                                                                       | Level | Satisfied by                                                                                                                  |
-| ------------------------------------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------- |
-| [1.3.1 Info and Relationships](https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html) | A     | `<label for>` association                                                                                                     |
-| [1.3.5 Identify Input Purpose](https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose.html) | AA    | Native `<textarea>` with `autocomplete` passthrough via `...rest`                                                             |
-| [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html)                   | AA    | `:focus-visible` ring; WHCM fallback outline                                                                                  |
-| [3.3.1 Error Identification](https://www.w3.org/WAI/WCAG21/Understanding/error-identification.html)     | A     | `aria-invalid="true"` + visible error `<p>`                                                                                   |
-| [3.3.2 Labels or Instructions](https://www.w3.org/WAI/WCAG21/Understanding/labels-or-instructions.html) | A     | Rendered `<label>` + optional description `<p>`                                                                               |
-| [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html)             | A     | Native `<textarea>` with programmatic label                                                                                   |
-| [4.1.3 Status Messages](https://www.w3.org/WAI/WCAG21/Understanding/status-messages.html)               | AA    | Error `<p aria-live="polite">` as live region; count `<output aria-live="polite" aria-atomic="true">` when `showCount` is set |
+| Success Criterion                                                                                       | Level | Satisfied by                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [1.3.1 Info and Relationships](https://www.w3.org/WAI/WCAG21/Understanding/info-and-relationships.html) | A     | `<label for>` association                                                                                                        |
+| [1.3.5 Identify Input Purpose](https://www.w3.org/WAI/WCAG21/Understanding/identify-input-purpose.html) | AA    | Native `<textarea>` with `autocomplete` passthrough via `...rest`                                                                |
+| [2.4.7 Focus Visible](https://www.w3.org/WAI/WCAG21/Understanding/focus-visible.html)                   | AA    | `:focus-visible` ring; WHCM fallback outline                                                                                     |
+| [3.3.1 Error Identification](https://www.w3.org/WAI/WCAG21/Understanding/error-identification.html)     | A     | `aria-invalid="true"` + visible error `<p>`                                                                                      |
+| [3.3.2 Labels or Instructions](https://www.w3.org/WAI/WCAG21/Understanding/labels-or-instructions.html) | A     | Rendered `<label>` + optional description `<p>`                                                                                  |
+| [4.1.2 Name, Role, Value](https://www.w3.org/WAI/WCAG21/Understanding/name-role-value.html)             | A     | Native `<textarea>` with programmatic label                                                                                      |
+| [4.1.3 Status Messages](https://www.w3.org/WAI/WCAG21/Understanding/status-messages.html)               | AA    | Error `<p aria-live="polite">` as live region; count `<output aria-live="polite" aria-atomic="true">` when `countVisible` is set |

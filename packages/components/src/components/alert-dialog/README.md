@@ -52,8 +52,8 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 | `destructive`      | `boolean`  | no       | —       | When true, styles the acknowledgement button as a danger action and, when a cancel button is rendered, gives it initial focus instead of the acknowledgement button. Default `false`. |
 | `open`             | `boolean`  | yes      | —       | Controls whether the alert dialog is open; bindable for controlled usage.                                                                                                             |
 | `title`            | `string`   | yes      | —       | Text rendered as the dialog's visible heading and accessible label.                                                                                                                   |
-| `onacknowledge`    | `(opaque)` | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                            |
-| `oncancel`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                            |
+| `onAcknowledge`    | `(opaque)` | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                            |
+| `onCancel`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                            |
 | `triggerRef`       | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                                               |
 
 <!-- generated:props:end -->

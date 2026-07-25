@@ -12,5 +12,5 @@
   value="example_whsec_a1b2c3d4e5f6g7h8i9j0k1l2m3n4"
   label="Webhook Secret"
   prefix="example_whsec_"
-  allowReveal={true}
+  revealAllowed={true}
 />

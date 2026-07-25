@@ -34,7 +34,7 @@ Right-click and long-press menu positioned at the user's pointer while reusing d
 | `longPressDelay` | `number`                     | no       | —       | Duration in milliseconds a touch pointer must be held before the menu opens on mobile. Default `500`.                                |
 | `open`           | `boolean`                    | no       | —       | Controls the open state of the context menu; bindable for controlled usage.                                                          |
 | `children`       | `(opaque)`                   | yes      | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.           |
-| `onopenchange`   | `(opaque)`                   | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.           |
+| `onOpenChange`   | `(opaque)`                   | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.           |
 
 <!-- generated:props:end -->
 

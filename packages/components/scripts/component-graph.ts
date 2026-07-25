@@ -35,6 +35,7 @@
  */
 
 import { Glob } from 'bun';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -847,6 +848,28 @@ export async function loadSourceFiles(): Promise<Map<string, string>> {
 }
 
 /**
+ * Synchronous form of {@link loadSourceFiles} for test fixtures that must avoid
+ * putting the full real-tree filesystem walk inside Bun's per-test hook budget.
+ */
+export function loadSourceFilesSync(): Map<string, string> {
+  const files = new Map<string, string>();
+  const glob = new Glob('**/*.{ts,tsx,svelte,mts,cts,js,mjs,cjs,css}');
+
+  for (const root of SCANNED_ROOTS) {
+    const absoluteRoot = join(workspaceRoot, root);
+    for (const relativePath of glob.scanSync({ cwd: absoluteRoot })) {
+      const absolute = join(absoluteRoot, relativePath);
+      const repoRelative = normalizeRepoPath(relative(workspaceRoot, absolute));
+      // Test files are not part of the production graph (see isTestFile).
+      if (isTestFile(repoRelative)) continue;
+      files.set(repoRelative, readFileSync(absolute, 'utf8'));
+    }
+  }
+
+  return files;
+}
+
+/**
  * Discover known component slugs by reading the components source directory:
  * a slug is a directory directly under `src/components/` that contains a
  * `<slug>.svelte`. Mirrors the playground's own discovery and the legacy
@@ -862,6 +885,23 @@ export async function loadKnownSlugs(): Promise<Set<string>> {
     if (entry.name.startsWith('_')) continue;
     const svelte = join(componentsDirectory, entry.name, `${entry.name}.svelte`);
     if (await Bun.file(svelte).exists()) slugs.add(entry.name);
+  }
+  return slugs;
+}
+
+/**
+ * Synchronous form of {@link loadKnownSlugs} for test fixtures that must avoid
+ * expensive filesystem setup inside Bun hooks.
+ */
+export function loadKnownSlugsSync(): Set<string> {
+  const componentsDirectory = join(workspaceRoot, COMPONENTS_PREFIX);
+  const entries = readdirSync(componentsDirectory, { withFileTypes: true });
+  const slugs = new Set<string>();
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    if (entry.name.startsWith('_')) continue;
+    const svelte = join(componentsDirectory, entry.name, `${entry.name}.svelte`);
+    if (existsSync(svelte)) slugs.add(entry.name);
   }
   return slugs;
 }

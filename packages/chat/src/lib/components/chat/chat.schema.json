@@ -216,7 +216,7 @@
         "reason": "function-or-snippet"
       },
       {
-        "name": "onexpandedchange",
+        "name": "onExpandedChange",
         "reason": "function-or-snippet"
       },
       {
@@ -224,7 +224,7 @@
         "reason": "function-or-snippet"
       },
       {
-        "name": "onloadhistory",
+        "name": "onLoadHistory",
         "reason": "function-or-snippet",
         "description": "Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`."
       },
@@ -255,7 +255,7 @@
         "reason": "function-or-snippet"
       },
       {
-        "name": "onsuggestionselect",
+        "name": "onSuggestionSelect",
         "reason": "function-or-snippet",
         "description": "Called when the user selects a suggestion chip. The label string is\npassed back. The consumer is responsible for submitting it as a new user\nmessage."
       },

@@ -9,8 +9,8 @@
    * @useWhen Letting users compare and select subscription tiers or product plans.
    * @useWhen Highlighting one tier as selected or recommended in a pricing comparison.
    * @avoidWhen Showing generic grouped content without a distinct price or CTA — use card instead.
-   * @avoidWhen Displaying a single key metric in isolation — use stat or stat-group instead.
-   * @related card, button, stat, stat-group
+   * @avoidWhen Displaying a single key metric in isolation — use statistic or statistic-group instead.
+   * @related card, button, statistic, statistic-group
    */
   export type { PricingCardProps } from './pricing-card.types.ts';
 </script>
@@ -26,7 +26,7 @@
     price,
     features,
     cta,
-    onselect,
+    onSelect,
     caveat,
     selected = false,
     class: className,
@@ -90,6 +90,6 @@
   </div>
 
   <div class="cinder-pricing-card__footer">
-    <Button label={cta} variant={selected ? 'primary' : 'secondary'} fullWidth onclick={onselect} />
+    <Button label={cta} variant={selected ? 'primary' : 'secondary'} fullWidth onclick={onSelect} />
   </div>
 </div>

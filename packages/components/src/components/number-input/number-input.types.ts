@@ -17,8 +17,6 @@ export type NumberInputProps = Omit<
   id: string;
   /** Bindable current numeric value, or `null` when the field is empty. */
   value?: number | null;
-  /** Initial value used when the component is uncontrolled or when the form is reset. */
-  defaultValue?: number | null;
   /** Minimum permitted value; the stepper decrement button disables when this bound is reached. */
   min?: number | undefined;
   /** Maximum permitted value; the stepper increment button disables when this bound is reached. */

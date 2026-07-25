@@ -37,6 +37,6 @@
   description="This will permanently delete your account and all associated data. This action cannot be undone."
   destructive
   confirmLabel="Delete account"
-  onconfirm={() => (lastAction = 'account deleted')}
-  oncancel={() => (lastAction = 'cancelled')}
+  onConfirm={() => (lastAction = 'account deleted')}
+  onCancel={() => (lastAction = 'cancelled')}
 />

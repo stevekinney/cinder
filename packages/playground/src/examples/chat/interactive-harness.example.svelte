@@ -438,7 +438,7 @@
     withEmptyPrompts ? { emptyPrompts: ['Tell me about alpha', 'Summarize the thread'] } : {},
   );
   const historyProps = $derived(
-    historyEnabled ? { moreHistoryAvailable: true, onloadhistory: handleLoadHistory } : {},
+    historyEnabled ? { moreHistoryAvailable: true, onLoadHistory: handleLoadHistory } : {},
   );
 </script>
 
@@ -650,7 +650,7 @@
         unreadCount: number;
         newMessageIndicatorVisible: boolean;
       }) => record('onunreadindicatorchange', event)}
-      onexpandedchange={(expanded: boolean) => record('onexpandedchange', { expanded })}
+      onExpandedChange={(expanded: boolean) => record('onExpandedChange', { expanded })}
       onattachmentadd={(attachment: { id: string }) => record('onattachmentadd', attachment.id)}
       onattachmentremove={(attachment: { id: string }) =>
         record('onattachmentremove', attachment.id)}

@@ -26,7 +26,7 @@ before the host application executes it.
   policyVersion="policy-2026-06"
   idempotencyKey="approval-01JZ8T"
   state="pending"
-  onresolve={(resolution) => resolveApproval(resolution)}
+  onResolve={(resolution) => resolveApproval(resolution)}
 />
 ```
 
@@ -36,11 +36,11 @@ the supplied context and invokes callback props for host-owned actions.
 
 ## Resolution callback
 
-`onresolve` is the single decision contract. It fires for every action —
+`onResolve` is the single decision contract. It fires for every action —
 Approve, Approve with edits, Deny, and Dismiss — with the complete
 `ApprovalResolution` payload: the selected `decision`, parsed `editedArgs` for
 edited approvals, optional `reason` text, and the `remember` checkbox state.
-Action buttons render only while the request is actionable and `onresolve` is
+Action buttons render only while the request is actionable and `onResolve` is
 wired; a card without the callback is purely presentational.
 
 `decision: 'deny'` means the approver actively refused the operation.
@@ -100,7 +100,7 @@ matching the `Card` convention.
 | `snapshotId`     | `string`                                                                                                                                                                                                                                                                                                                                          | no       | —       | Snapshot identifier for the pending approval context.                                                                                                                      |
 | `state`          | `"pending"` \| `"approved"` \| `"approved_with_edits"` \| `"denied"` \| `"expired"` \| `"cancelled"`                                                                                                                                                                                                                                              | yes      | —       | Persisted approval state.                                                                                                                                                  |
 | `tool`           | { name: `string`; risk: `"low"` \| `"medium"` \| `"high"` }                                                                                                                                                                                                                                                                                       | yes      | —       | Tool requesting approval.                                                                                                                                                  |
-| `onresolve`      | `(opaque)`                                                                                                                                                                                                                                                                                                                                        | no       | —       | Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. Not expressible in JSON Schema; see the component types for the signature. |
+| `onResolve`      | `(opaque)`                                                                                                                                                                                                                                                                                                                                        | no       | —       | Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

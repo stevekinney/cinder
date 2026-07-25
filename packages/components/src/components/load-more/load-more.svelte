@@ -21,8 +21,8 @@
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
   let {
-    onloadmore = async () => {},
-    onerror,
+    onLoadMore = async () => {},
+    onError,
     hasMore = $bindable(true),
     loading = $bindable(false),
     root = null,
@@ -91,13 +91,13 @@
     errorState = false;
 
     try {
-      await onloadmore();
+      await onLoadMore();
       if (source === 'button') {
         retryCount = 0;
       }
     } catch (error) {
       errorState = true;
-      onerror?.(error);
+      onError?.(error);
     } finally {
       // Always clear the in-flight guard once the request settles, regardless of
       // whether the parent has flipped its own `loading` prop yet.

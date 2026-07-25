@@ -31,7 +31,7 @@
     description,
     error,
     rows = 8,
-    showValidFeedback = true,
+    validFeedbackVisible = true,
     highlight = false,
     onValueChange,
     class: className,
@@ -134,7 +134,7 @@
     externalError ??
       (!parseIsValid
         ? 'Enter valid JSON.'
-        : showValidFeedback && !consumerMarksInvalid
+        : validFeedbackVisible && !consumerMarksInvalid
           ? 'Valid JSON.'
           : undefined),
   );

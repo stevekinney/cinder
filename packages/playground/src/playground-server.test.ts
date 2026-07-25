@@ -1124,7 +1124,7 @@ describe('/page/:name', () => {
     const malformedFixturePath = resolve(COMPONENTS_ROOT, 'avatar', 'avatar-fixtures.ts');
     await writeFile(
       malformedFixturePath,
-      "export default [{ name: 'bad', props: { onClick: () => undefined } }];\n",
+      "export default [{ name: 'bad', props: { onclick: () => undefined } }];\n",
     );
     try {
       const response = await handleRequest(
@@ -1179,7 +1179,7 @@ describe('/page/:name — __CINDER_EXAMPLES__ script-tag escaping', () => {
       {
         scenario: 'malicious',
         title: 'Closes early</script><script>alert(1)</script>',
-        description: 'Also nasty: </script> & <img src=x onerror=alert(1)>',
+        description: 'Also nasty: </script> & <img src=x onError=alert(1)>',
       },
     ];
 

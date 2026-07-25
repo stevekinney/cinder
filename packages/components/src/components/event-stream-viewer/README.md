@@ -21,7 +21,7 @@ EventStreamViewer renders a scrollable list of timestamped events, each with a s
 
 ### With filtering
 
-When you pass an `onfilter` callback, the viewer renders a search input. Your component is responsible for filtering the `events` array in response to the callback.
+When you pass an `onFilter` callback, the viewer renders a search input. Your component is responsible for filtering the `events` array in response to the callback.
 
 ```svelte
 <script lang="ts">
@@ -41,7 +41,7 @@ When you pass an `onfilter` callback, the viewer renders a search input. Your co
 <EventStreamViewer
   events={filteredEvents}
   filterQuery={query}
-  onfilter={(q) => {
+  onFilter={(q) => {
     query = q;
   }}
   label="Filtered event stream"
@@ -62,7 +62,7 @@ When you pass an `onfilter` callback, the viewer renders a search input. Your co
   }
 </script>
 
-<EventStreamViewer {events} oncopyvisible={handleCopyVisible} label="Event stream" />
+<EventStreamViewer {events} onCopyVisible={handleCopyVisible} label="Event stream" />
 ```
 
 ### Follow-latest with bindable state
@@ -115,7 +115,7 @@ Pass `EventStreamEntry[]` when a retained stream can resume after a network reco
 
 Set `detectSequenceGaps` only when `events` is the complete, unfiltered stream. When consecutive rendered `StreamEvent` entries both provide integer `sequence` values and the later value is not the previous value plus one, the viewer inserts a sequence-gap marker before the later event. The marker shows the expected and received sequence numbers, for example `Sequence gap — expected 8, received 10`.
 
-The `oncopyvisible` callback includes reconnect and sequence-gap markers in the copied text, so the copied stream preserves the same replay and continuity context users saw on screen.
+The `onCopyVisible` callback includes reconnect and sequence-gap markers in the copied text, so the copied stream preserves the same replay and continuity context users saw on screen.
 
 ## Props
 
@@ -127,13 +127,13 @@ The `oncopyvisible` callback includes reconnect and sequence-gap markers in the 
 | `connectionState`    | `"error"` \| `"connected"` \| `"connecting"` \| `"disconnected"`                                                                                                                                                                                                                                                                             | no       | —       | Current connection state. When provided, renders a StatusDot in the toolbar. Omit when the stream has no live transport.                                                                                                                                                 |
 | `detectSequenceGaps` | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | Enables sequence-gap markers when `events` is the complete, unfiltered stream. Leave false for retained windows, severity-filtered subsets, search results, or any other caller-trimmed event array.                                                                     |
 | `events`             | ({ datetime: `string`; details?: `unknown`; id: `string`; sequence?: `integer`; severity?: `"debug"` \| `"info"` \| `"success"` \| `"warning"` \| `"error"`; source?: `string`; summary: `string`; timestamp?: `string` } \| { datetime?: `string`; id: `string`; kind: `"reconnected"`; replayedCount: `integer`; timestamp?: `string` })[] | yes      | —       | Events and additive boundary entries to render in chronological order, oldest first.                                                                                                                                                                                     |
-| `filterQuery`        | `string`                                                                                                                                                                                                                                                                                                                                     | no       | —       | Current filter query value, for controlled usage. Pairs with `onfilter`.                                                                                                                                                                                                 |
+| `filterQuery`        | `string`                                                                                                                                                                                                                                                                                                                                     | no       | —       | Current filter query value, for controlled usage. Pairs with `onFilter`.                                                                                                                                                                                                 |
 | `followLatest`       | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | When true, new events automatically scroll the list to the bottom. Set to false to pause follow-latest (e.g. while the user reads earlier events). Bindable so the parent can read the paused state the component sets internally.                                       |
 | `label`              | `string`                                                                                                                                                                                                                                                                                                                                     | no       | —       | Accessible label for the event list region. Required for accessibility. Defaults to "Event stream".                                                                                                                                                                      |
 | `loading`            | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | Show a loading skeleton instead of the event list. Use while the first batch of events is in flight.                                                                                                                                                                     |
 | `truncated`          | `boolean`                                                                                                                                                                                                                                                                                                                                    | no       | —       | Whether to show the "events were truncated" notice. This is a boolean flag, not a count: the viewer never slices `events` itself. Set it to `true` when you have already trimmed the array (e.g. capped retention) and want users to know earlier events are not shown.  |
-| `oncopyvisible`      | `(opaque)`                                                                                                                                                                                                                                                                                                                                   | no       | —       | Callback fired when the user clicks the "Copy visible" toolbar action. Receives the text of all currently visible events. When omitted the copy action is hidden. Not expressible in JSON Schema; see the component types for the signature.                             |
-| `onfilter`           | `(opaque)`                                                                                                                                                                                                                                                                                                                                   | no       | —       | Callback fired when the user updates the filter query in the toolbar's search field. The consumer is responsible for filtering `events` in response. When omitted the filter input is hidden. Not expressible in JSON Schema; see the component types for the signature. |
+| `onCopyVisible`      | `(opaque)`                                                                                                                                                                                                                                                                                                                                   | no       | —       | Callback fired when the user clicks the "Copy visible" toolbar action. Receives the text of all currently visible events. When omitted the copy action is hidden. Not expressible in JSON Schema; see the component types for the signature.                             |
+| `onFilter`           | `(opaque)`                                                                                                                                                                                                                                                                                                                                   | no       | —       | Callback fired when the user updates the filter query in the toolbar's search field. The consumer is responsible for filtering `events` in response. When omitted the filter input is hidden. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

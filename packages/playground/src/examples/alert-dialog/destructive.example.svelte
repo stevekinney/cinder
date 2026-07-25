@@ -18,6 +18,6 @@
   acknowledgeLabel="Delete workspace"
   cancelLabel="Cancel"
   destructive
-  onacknowledge={() => {}}
-  oncancel={() => {}}
+  onAcknowledge={() => {}}
+  onCancel={() => {}}
 />

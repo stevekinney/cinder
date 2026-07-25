@@ -28,7 +28,6 @@
 
   let {
     id,
-    defaultValue = null,
     value = $bindable(null),
     min,
     max,
@@ -65,13 +64,7 @@
   let malformedError = $state(false);
   let requiredEmptyError = $state(false);
 
-  // Seed the bindable from defaultValue when the parent didn't supply a value.
-  // Read untracked: this is a one-time mount seed, not a reactive sync.
-  untrack(() => {
-    if (value === null && defaultValue !== null) {
-      value = defaultValue;
-    }
-  });
+  const resetTarget = untrack(() => value);
 
   const resolvedLocale = $derived(
     locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
@@ -114,7 +107,7 @@
   // - 'typed': user committed via blur/enter/submit — apply snap-to-grid.
   //   onchange fires unless the source is a serialization-only event.
   // - 'reset': form reset — like typed in that snap doesn't apply (we're
-  //   restoring defaultValue verbatim), but always fires onchange.
+  //   restoring value verbatim), but always fires onchange.
   type CommitSource = 'typed' | 'delta' | 'reset';
 
   /**
@@ -467,7 +460,7 @@
     };
     const onReset = () => {
       if (resolvedDisabled) return;
-      commitFromNumber('reset', defaultValue ?? null, defaultValue === null ? 'empty' : 'valid');
+      commitFromNumber('reset', resetTarget, resetTarget === null ? 'empty' : 'valid');
     };
 
     form.addEventListener('submit', onSubmit, true);

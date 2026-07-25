@@ -98,11 +98,11 @@ describe('Checkbox', () => {
     expect(input.checked).toBe(true);
   });
 
-  test('onValueChange can veto a native toggle and re-sync checked state', async () => {
+  test('onValueChangeRequest can veto a native toggle and re-sync checked state', async () => {
     const { container } = render(Checkbox, {
       id: 'c',
       checked: false,
-      onValueChange: () => false,
+      onValueChangeRequest: () => false,
     });
     const input = container.querySelector('#c') as HTMLInputElement;
 
@@ -198,10 +198,10 @@ describe('Checkbox', () => {
     expect(input.classList.contains('extra')).toBe(true);
   });
 
-  test('fieldClass prop merges with the outer checkbox field wrapper', () => {
+  test('fieldClassName prop merges with the outer checkbox field wrapper', () => {
     const { container } = render(Checkbox, {
       id: 'c',
-      fieldClass: 'align-start',
+      fieldClassName: 'align-start',
     });
     const field = container.querySelector('.cinder-checkbox-field');
     expect(field?.classList.contains('align-start')).toBe(true);

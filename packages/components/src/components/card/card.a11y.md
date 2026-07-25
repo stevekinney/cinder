@@ -14,7 +14,7 @@ Purpose: Surface container that groups related content with optional header, tit
 ## Avoid when
 
 - Rendering a bare visual surface without slotted regions — use surface instead.
-- Presenting a single key metric — use stat or stat-group instead.
+- Presenting a single key metric — use stat or statistic-group instead.
 
 ## Keyboard and focus
 
@@ -39,4 +39,4 @@ When Card accepts snippets or arbitrary children, the caller owns the semantics 
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `surface`, `stat`, `stacked-list-item`, `section-heading`.
+Related components: `surface`, `statistic`, `stacked-list-item`, `section-heading`.

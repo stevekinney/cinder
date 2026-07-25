@@ -32,10 +32,10 @@
     id,
     position,
     open = false,
-    oncommentsubmit,
-    onexpand,
-    oncancel,
-    onclose,
+    onCommentSubmit,
+    onExpand,
+    onCancel,
+    onClose,
     class: customClassName,
     ...rest
   }: SelectionPopoverProps = $props();
@@ -103,14 +103,14 @@
   }
 
   function closePopover(): void {
-    onclose?.();
+    onClose?.();
     restoreFocus();
   }
 
   function handleExpand(): void {
     rememberFocus();
     expanded = true;
-    onexpand?.();
+    onExpand?.();
     // tick() resolves once Svelte flushes the expanded state to the DOM (so the
     // textarea exists), aligned with the codebase's flush timing — faster and
     // more idiomatic than waiting a paint frame via requestAnimationFrame.
@@ -120,7 +120,7 @@
   function handleCancel(): void {
     expanded = false;
     commentBody = '';
-    oncancel?.();
+    onCancel?.();
     restoreFocus();
   }
 
@@ -128,7 +128,7 @@
     const trimmedBody = commentBody.trim();
     if (!trimmedBody) return;
 
-    oncommentsubmit?.(trimmedBody);
+    onCommentSubmit?.(trimmedBody);
     expanded = false;
     commentBody = '';
     restoreFocus();

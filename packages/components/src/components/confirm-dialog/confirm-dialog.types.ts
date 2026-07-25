@@ -44,14 +44,14 @@ export type ConfirmDialogProps = {
   /** Visible label for the typed-confirmation input. Defaults to `Type "<value>" to confirm`. */
   typeToConfirmLabel?: string;
   /** Fired when the user activates the confirm button. Required. Component closes itself after. */
-  onconfirm: () => void;
+  onConfirm: () => void;
   /**
    * Fired when the user cancels via ANY dismissal affordance — cancel button, Escape,
    * backdrop click, or the close-X button. Optional.
    * Parent-driven `open = false` does NOT fire this callback.
    * Callbacks are not awaited; thrown callbacks do not block close.
    */
-  oncancel?: () => void;
+  onCancel?: () => void;
   /** Forwarded to <Modal>; focus is restored here on close. */
   triggerRef?: HTMLElement | null;
   /** Optional extra class on the underlying <Modal>. Destructured as `class: className` per repo convention. */

@@ -267,7 +267,7 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     // The omitted function/snippet props — part of the public API but absent
     // from the allowlist — are surfaced in `unsupportedProps` (name-sorted) with
     // faithful required-ness and authored descriptions: `footer` (snippet),
-    // `ondismiss` (optional callback), `onselect` (required callback).
+    // `onDismiss` (optional callback), `onSelect` (required callback).
     expect(metadata?.unsupportedProps).toEqual([
       {
         name: 'footer',
@@ -275,12 +275,12 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
         description: 'Snippet rendered in the card footer.',
       },
       {
-        name: 'ondismiss',
+        name: 'onDismiss',
         reason: 'function-or-snippet',
         description: 'Optional teardown callback.',
       },
       {
-        name: 'onselect',
+        name: 'onSelect',
         reason: 'function-or-snippet',
         required: true,
         description: 'Fired when the option is selected.',

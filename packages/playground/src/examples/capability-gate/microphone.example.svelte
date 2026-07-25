@@ -28,11 +28,11 @@
       feature="Microphone"
       state={capabilityState}
       primaryAction="Allow microphone"
-      onprimaryaction={() => {
+      onPrimaryAction={() => {
         capabilityState = 'supported';
       }}
       fallbackAction="Use text instead"
-      onfallbackaction={() => {
+      onFallbackAction={() => {
         capabilityState = 'unsupported';
       }}
     >

@@ -53,7 +53,7 @@ const schema = {
       description: 'Grid column count.',
       default: 3,
     },
-    showAvatarGroup: {
+    avatarGroupVisible: {
       type: 'boolean',
       description: 'Whether to render a compact AvatarGroup summary above the grid.',
       default: false,

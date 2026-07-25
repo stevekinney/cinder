@@ -6,6 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
+const { enhanceJson } = await import('./json-editor-enhancement.ts');
 const { default: JsonEditor } = await import('./json-editor.svelte');
 const { default: schema } = await import('./json-editor.schema.ts');
 
@@ -54,6 +55,20 @@ describe('JsonEditor', () => {
       expect(view.container.querySelector('[data-cinder-json-lint-position]')).not.toBeNull(),
     );
     expect(view.container.querySelector('.cinder-json-lint')).not.toBeNull();
+  });
+
+  test('maps line and column syntax errors to a highlighted source position', () => {
+    const parse = spyOn(JSON, 'parse').mockImplementation(() => {
+      throw new SyntaxError('JSON Parse error: line 3 column 2');
+    });
+    try {
+      const enhanced = enhanceJson('aa\nbb\ncc');
+
+      expect(enhanced.lint).toEqual({ position: 7 });
+      expect(enhanced.html).toContain('aa\nbb\nc<span class="cinder-json-lint">c</span>');
+    } finally {
+      parse.mockRestore();
+    }
   });
 
   test('preserves native wrap and scroll props in highlighted mode', async () => {
@@ -333,7 +348,7 @@ describe('JsonEditor', () => {
       id: 'payload',
       label: 'Payload',
       value: '{}',
-      showValidFeedback: false,
+      validFeedbackVisible: false,
     });
 
     expect(view.queryByRole('status')).toBeNull();
@@ -342,7 +357,7 @@ describe('JsonEditor', () => {
       id: 'payload',
       label: 'Payload',
       value: '{',
-      showValidFeedback: false,
+      validFeedbackVisible: false,
     });
 
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');

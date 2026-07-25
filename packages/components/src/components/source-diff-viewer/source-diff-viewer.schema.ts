@@ -25,7 +25,7 @@ const schema = {
     },
     emptyMessage: {
       type: 'string',
-      description: 'Message shown when the patch is empty or contains no diffable rows.',
+      description: 'Message shown when the patch is empty or contains no displayable diff rows.',
       default: 'No patch lines to display.',
     },
     class: {

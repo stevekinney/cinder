@@ -26,7 +26,7 @@
     Use the default "panel" when the panel contains a form or requires
     immediate keyboard interaction (e.g. a search input or date picker).
   -->
-  <Popover bind:open ariaLabelledby={popoverHeadingId} showArrow focusManagement="preserve">
+  <Popover bind:open ariaLabelledby={popoverHeadingId} arrowVisible focusManagement="preserve">
     {#snippet trigger()}
       <Button label="Account settings" onclick={() => (open = !open)} />
     {/snippet}

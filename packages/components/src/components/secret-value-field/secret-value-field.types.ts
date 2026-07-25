@@ -22,12 +22,12 @@ export type SecretValueFieldProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   label?: string;
 
   /** When true, allows the user to reveal/hide the full secret. Opt-in; false by default for security. */
-  allowReveal?: boolean;
+  revealAllowed?: boolean;
 
   /**
    * Shows the full unmasked value on initial render. This is an explicit
    * one-time reveal for the "secret was just created, copy it now" flow and is
-   * INDEPENDENT of `allowReveal`: it does not add a reveal/hide toggle, it just
+   * INDEPENDENT of `revealAllowed`: it does not add a reveal/hide toggle, it just
    * starts unmasked. Only set this when the surrounding UI makes the one-time
    * exposure intentional (e.g. a "copy your new key" panel).
    */

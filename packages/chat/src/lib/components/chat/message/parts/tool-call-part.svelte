@@ -7,7 +7,7 @@
     /** Whether the tool-call card is expanded. Owned by the message. */
     expanded?: boolean;
     /** Called when the card's disclosure toggle is activated. */
-    ontoggle?: (() => void) | undefined;
+    onToggle?: (() => void) | undefined;
   };
 </script>
 
@@ -16,16 +16,16 @@
 
   const noop = (): void => {};
 
-  let { part, expanded = false, ontoggle }: ToolCallPartProps = $props();
+  let { part, expanded = false, onToggle }: ToolCallPartProps = $props();
 
-  // ToolCallGroup's `ontoggle` is non-optional under exactOptionalPropertyTypes;
+  // ToolCallGroup's `onToggle` is non-optional under exactOptionalPropertyTypes;
   // collapse an omitted handler to a noop so we never forward `undefined`.
-  const handleToggle = $derived(ontoggle ?? noop);
+  const handleToggle = $derived(onToggle ?? noop);
 </script>
 
 <!--
   A tool invocation paired with its result, if one has arrived. The disclosure
-  state stays owned by the message (forwarded through `expanded`/`ontoggle`) so
+  state stays owned by the message (forwarded through `expanded`/`onToggle`) so
   the historical "Show more / less" coupling is preserved unchanged.
 -->
-<ToolCallGroup pair={part.pair} {expanded} ontoggle={handleToggle} />
+<ToolCallGroup pair={part.pair} {expanded} onToggle={handleToggle} />

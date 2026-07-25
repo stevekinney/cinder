@@ -63,7 +63,7 @@ public range API. `insertAtRange()` updates the popover's bound value through
   id="composer-commands"
   bind:value
   items={commands}
-  onselect={(selection) => chat?.insertAtRange(selection.range, selection.item.insert)}
+  onSelect={(selection) => chat?.insertAtRange(selection.range, selection.item.insert)}
 >
   {#snippet composer(composerProps)}
     <Chat bind:this={chat} id="assistant-chat" {conversation} {...composerProps} />

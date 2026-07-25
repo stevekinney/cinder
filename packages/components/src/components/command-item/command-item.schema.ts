@@ -50,7 +50,7 @@ const schema = {
         description: 'Leading content (icon, avatar). Rendered with aria-hidden.',
       },
       {
-        name: 'onselect',
+        name: 'onSelect',
         reason: 'function-or-snippet',
         description: 'Invoked when the item is activated inside CommandPalette.',
       },

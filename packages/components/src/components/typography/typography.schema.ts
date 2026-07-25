@@ -23,7 +23,7 @@ const schema = {
       description: 'Named typographic style to apply.',
       default: 'body1',
     },
-    component: {
+    as: {
       enum: [
         'object',
         'h1',

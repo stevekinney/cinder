@@ -25,11 +25,11 @@ export type MediaControlsProps = Omit<
   /** Layout mode: `compact` renders icon-only, `expanded` renders icon+label. @default "compact" */
   layout?: MediaControlsLayout;
   /** Called when the user triggers playback. */
-  onplay?: () => void;
+  onPlay?: () => void;
   /** Called when the user pauses playback. */
-  onpause?: () => void;
+  onPause?: () => void;
   /** Called when the user triggers replay. */
-  onreplay?: () => void;
+  onReplay?: () => void;
   /** Additional class names merged with `.cinder-media-controls`. */
   class?: string;
 };
@@ -75,9 +75,9 @@ export interface MediaControlsSchemaProps {
   /** Additional class names merged with `.cinder-media-controls`. */
   class?: string;
   /** Called when the play action is triggered. */
-  onplay?: () => void;
+  onPlay?: () => void;
   /** Called when the pause action is triggered. */
-  onpause?: () => void;
+  onPause?: () => void;
   /** Called when the replay action is triggered. */
-  onreplay?: () => void;
+  onReplay?: () => void;
 }

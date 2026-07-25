@@ -429,7 +429,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
       },
     });
@@ -451,7 +451,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterPlaceholder: '   ',
         children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
       },
@@ -469,7 +469,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         children: treeItemsSnippet([
           {
@@ -499,7 +499,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         children: treeItemsSnippet([
           {
@@ -531,7 +531,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         get expandedIds() {
           return expandedIds;
@@ -567,7 +567,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         children: treeItemsSnippet([
           {
@@ -595,7 +595,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         get expandedIds() {
           return expandedIds;
@@ -629,7 +629,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         expandedIds: ['projects'],
         children: treeItemsSnippet([
@@ -661,7 +661,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         children: treeItemsSnippet([
           {
@@ -692,7 +692,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'nomatch',
         children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
       },
@@ -710,7 +710,7 @@ describe('Tree — filter/search', () => {
     const { container, rerender } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'apollo',
         children: treeItemsSnippet([
           { id: 'apollo', label: 'Apollo' },
@@ -725,7 +725,7 @@ describe('Tree — filter/search', () => {
 
     await rerender({
       'aria-label': 'Project tree',
-      showSearch: true,
+      searchVisible: true,
       filterValue: '',
       children: treeItemsSnippet([
         { id: 'apollo', label: 'Apollo' },
@@ -745,8 +745,8 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
-        onfilterchange: (value: string) => changes.push(value),
+        searchVisible: true,
+        onFilterChange: (value: string) => changes.push(value),
         children: treeItemsSnippet([
           { id: 'apollo', label: 'Apollo' },
           { id: 'archive', label: 'Archive' },
@@ -767,7 +767,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'cafe',
         children: treeItemsSnippet([{ id: 'cafe', label: 'Café' }]),
       },
@@ -782,7 +782,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'a1',
         filterPredicate: (_label: string, id: string, query: string) => id.endsWith(query),
         children: treeItemsSnippet([
@@ -801,7 +801,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         children: treeItemsSnippet([
           { id: 'alpha', label: 'Alpha' },
           { id: 'beta', label: 'Beta' },
@@ -834,7 +834,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         children: treeItemsSnippet([
           { id: 'apollo', label: 'Apollo' },
           { id: 'archive', label: 'Archive' },
@@ -860,7 +860,7 @@ describe('Tree — filter/search', () => {
     const { container } = render(Tree, {
       props: {
         'aria-label': 'Project tree',
-        showSearch: true,
+        searchVisible: true,
         filterValue: 'pol',
         children: treeItemsSnippet([{ id: 'apollo', label: 'Apollo' }]),
       },
@@ -2395,7 +2395,7 @@ describe('Tree — async loading', () => {
     });
   });
 
-  test('loader rejection invokes onloaderror and collapses branch', async () => {
+  test('loader rejection invokes onLoadError and collapses branch', async () => {
     const errors: Array<{ error: unknown; id: string }> = [];
     const loadError = new Error('fetch failed');
 
@@ -2413,7 +2413,7 @@ describe('Tree — async loading', () => {
                 loadChildren: async () => {
                   throw loadError;
                 },
-                onloaderror: (error: unknown, id: string) => errors.push({ error, id }),
+                onLoadError: (error: unknown, id: string) => errors.push({ error, id }),
               },
             });
             return () => unmount(inst);
@@ -2437,7 +2437,7 @@ describe('Tree — async loading', () => {
     });
   });
 
-  test('when onloaderror is absent, console.error is called with [cinder-tree] prefix', async () => {
+  test('when onLoadError is absent, console.error is called with [cinder-tree] prefix', async () => {
     const errorMessages: string[] = [];
     const originalError = console.error;
     console.error = (...args: unknown[]) => {
@@ -2479,7 +2479,7 @@ describe('Tree — async loading', () => {
     }
   });
 
-  test('collapsing during load aborts without calling onloaderror', async () => {
+  test('collapsing during load aborts without calling onLoadError', async () => {
     const errors: unknown[] = [];
     let aborted = false;
     const loadChildren = ({ signal }: { id: string; signal: AbortSignal }) =>
@@ -2502,7 +2502,7 @@ describe('Tree — async loading', () => {
                 id: 'abort-branch',
                 label: 'Abort Branch',
                 loadChildren,
-                onloaderror: (error: unknown) => errors.push(error),
+                onLoadError: (error: unknown) => errors.push(error),
               },
             });
             return () => unmount(inst);

@@ -31,10 +31,10 @@ export type SheetProps = {
    * Swipe-to-close gesture is a stretch goal not implemented in MVP —
    * the handle is purely a visual affordance. Default `false`.
    *
-   * Named `showDragHandle` (not `draggable`) to avoid colliding with the
+   * Named `dragHandleVisible` (not `draggable`) to avoid colliding with the
    * native HTML `draggable` attribute on the underlying `<dialog>`.
    */
-  showDragHandle?: boolean;
+  dragHandleVisible?: boolean;
   /** Custom header. Falls back to a default header that renders `title`. */
   header?: Snippet;
   /** Sheet body content. Required. */

@@ -10,9 +10,9 @@ export type ShareCardAction = {
   /** Text to copy when this action is triggered (used for copy-link/copy-text). */
   copyValue?: string;
   /** Called when this action button is clicked. */
-  onClick?: () => void;
+  onclick?: () => void;
   /** Whether to use navigator.share for this action. */
-  useNativeShare?: boolean;
+  nativeShareEnabled?: boolean;
 };
 
 /** Props for the ShareCard component. */

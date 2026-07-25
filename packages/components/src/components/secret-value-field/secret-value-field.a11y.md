@@ -29,11 +29,11 @@ The hard security constraint governs every accessibility decision: the secret va
 
 ## Mouse / pointer
 
-Clicking the copy button copies the value to the clipboard. Clicking the reveal toggle (when `allowReveal` is `true`) toggles the masked/revealed display. Both actions are purely pointer-activated; no drag or long-press behavior is defined.
+Clicking the copy button copies the value to the clipboard. Clicking the reveal toggle (when `revealAllowed` is `true`) toggles the masked/revealed display. Both actions are purely pointer-activated; no drag or long-press behavior is defined.
 
 ## Hard scope caps
 
-- The reveal toggle is **only present** when the consumer explicitly sets `allowReveal={true}`. It is never auto-enabled.
+- The reveal toggle is **only present** when the consumer explicitly sets `revealAllowed={true}`. It is never auto-enabled.
 - The component does not manage focus trap or dialog behavior — it is designed for inline use in settings tables and cards.
-- `initiallyRevealed` affects only the initial render; it does not prevent the user from re-hiding the value if `allowReveal` is also set.
+- `initiallyRevealed` affects only the initial render; it does not prevent the user from re-hiding the value if `revealAllowed` is also set.
 - The `warning` snippet renders visible advisory content adjacent to the value row, but it is not automatically wired with `aria-describedby`. Consumers that need an advisory to be announced as part of the field description should associate that text externally; the component intentionally avoids assuming a warning layout.

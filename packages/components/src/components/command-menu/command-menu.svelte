@@ -46,9 +46,9 @@
     placement = 'bottom-start',
     offset = 6,
     label = 'Commands',
-    onselect,
-    ondismiss,
-    onstatechange,
+    onSelect,
+    onDismiss,
+    onStateChange,
     class: className,
   }: CommandMenuProps = $props();
 
@@ -113,7 +113,7 @@
   });
 
   $effect(() => {
-    onstatechange?.({
+    onStateChange?.({
       listboxId: commandList.listboxId,
       activeItemId: open ? commandList.activeItemId : null,
     });
@@ -127,8 +127,8 @@
     const record = commandList.activateItemById(id);
     if (!record) return;
     // The command list activates the item callback first; the menu-level
-    // `onselect` prop then receives the committed value and query.
-    onselect?.({ value: record.getValue(), query });
+    // `onSelect` prop then receives the committed value and query.
+    onSelect?.({ value: record.getValue(), query });
   }
 
   setCommandListContext(commandList.createContext(activateItemById));
@@ -136,7 +136,7 @@
   function dismiss() {
     if (!open) return;
     open = false;
-    ondismiss?.();
+    onDismiss?.();
   }
 
   function handleKeydown(event: KeyboardEvent) {

@@ -25,7 +25,7 @@ export type DiscoveredComponent = {
  * directories and are exported flat from `@lostgradient/cinder`, but they have no meaningful
  * standalone usage — they are always rendered inside a parent compound
  * (`Tabs`, `Table`, `Dropdown`, `Accordion`, `Tree`, `Feed`, `GridList`,
- * `Grid`, `SpeedDial`, `StatGroup`, `SideNavigation`, `CommandMenu`,
+ * `Grid`, `SpeedDial`, `StatisticGroup`, `SideNavigation`, `CommandMenu`,
  * `SegmentedControl`). They are excluded from the playground sidebar so a
  * single parent entry covers the family, but they remain in
  * `discoverComponents()` so direct `/c/<leaf>` routing still works.
@@ -56,7 +56,7 @@ export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
   'grid-item',
   'grid-list-item',
   'speed-dial-action',
-  'stat',
+  'statistic',
   'side-navigation-group',
   'side-navigation-item',
 ]);

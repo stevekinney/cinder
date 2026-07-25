@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'With search filtering';
   export const description =
-    'Consumer-controlled filtering via the onfilter callback. The viewer renders a search input; the consumer owns the filtered events array.';
+    'Consumer-controlled filtering via the onFilter callback. The viewer renders a search input; the consumer owns the filtered events array.';
 </script>
 
 <script lang="ts">
@@ -84,7 +84,7 @@
 <EventStreamViewer
   events={filteredEvents}
   filterQuery={query}
-  onfilter={(q: string) => {
+  onFilter={(q: string) => {
     query = q;
   }}
   label="DataPipeline run events"

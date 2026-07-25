@@ -35,7 +35,7 @@
 
   let {
     open = $bindable(false),
-    onopenchange,
+    onOpenChange,
     anchorPoint,
     disabled = false,
     longPressDelay = 500,
@@ -56,7 +56,7 @@
   function setOpen(nextOpen: boolean) {
     if (open === nextOpen) return;
     open = nextOpen;
-    onopenchange?.(nextOpen);
+    onOpenChange?.(nextOpen);
   }
 
   function close() {

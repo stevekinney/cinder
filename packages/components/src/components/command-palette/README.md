@@ -22,8 +22,8 @@ Command items register with the palette by DOM node, so grouped results can use 
     <li role="presentation" class="cinder-command-group">
       <span class="cinder-command-group__label">Recent files</span>
       <ul role="group" aria-label="Recent files">
-        <CommandItem value="roadmap" onselect={() => openRoadmap()}>Roadmap</CommandItem>
-        <CommandItem value="settings" onselect={() => openSettings()}>Settings</CommandItem>
+        <CommandItem value="roadmap" onSelect={() => openRoadmap()}>Roadmap</CommandItem>
+        <CommandItem value="settings" onSelect={() => openSettings()}>Settings</CommandItem>
       </ul>
     </li>
   {/snippet}
@@ -38,13 +38,13 @@ Command items register with the palette by DOM node, so grouped results can use 
 | ------------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `class`       | `string`   | no       | —       | Class merged onto the palette panel.                                                                                                                                       |
 | `label`       | `string`   | no       | —       | Accessible name for the dialog, wired via `aria-label`.                                                                                                                    |
-| `open`        | `boolean`  | yes      | —       | Bindable open state. The component mutates `open = false` on Escape, backdrop click, or any explicit close path, then fires `onclose`.                                     |
+| `open`        | `boolean`  | yes      | —       | Bindable open state. The component mutates `open = false` on Escape, backdrop click, or any explicit close path, then fires `onClose`.                                     |
 | `placeholder` | `string`   | no       | —       | Placeholder rendered inside the search input.                                                                                                                              |
 | `query`       | `string`   | no       | —       | Bindable search query. Mutated by the input's oninput handler. Exposed to the items snippet so consumers can filter. Reset to an empty string each time the palette opens. |
 | `empty`       | `(opaque)` | no       | —       | Rendered when zero items are registered after filtering. Not expressible in JSON Schema; see the component types for the signature.                                        |
 | `footer`      | `(opaque)` | no       | —       | Optional footer, e.g. for keybinding hints. Not part of the listbox. Not expressible in JSON Schema; see the component types for the signature.                            |
 | `items`       | `(opaque)` | yes      | —       | Receives the current query so consumers can filter. Not expressible in JSON Schema; see the component types for the signature.                                             |
-| `onclose`     | `(opaque)` | no       | —       | Fired after any close path routed through the palette close lifecycle. Not expressible in JSON Schema; see the component types for the signature.                          |
+| `onClose`     | `(opaque)` | no       | —       | Fired after any close path routed through the palette close lifecycle. Not expressible in JSON Schema; see the component types for the signature.                          |
 | `triggerRef`  | `(opaque)` | no       | —       | Element to restore focus to on close. Falls back to `captureFocus()`. Not expressible in JSON Schema; see the component types for the signature.                           |
 
 <!-- generated:props:end -->

@@ -12,7 +12,7 @@ Conversation navigation list for switching among Chat transcripts without embedd
 <ChatConversationList
   conversations={conversationSummaries}
   activeConversationId={activeConversation.id}
-  onselectconversation={selectConversation}
+  onSelectConversation={selectConversation}
 />
 ```
 
@@ -27,7 +27,7 @@ Conversation navigation list for switching among Chat transcripts without embedd
 | `class`                | `string`           | no       | —       | Additional class name merged with `.cinder-chat-conversation-list`.                                                                                          |
 | `emptyText`            | `string`           | no       | —       | Empty state text when no conversations are present. Default `"No conversations"`.                                                                            |
 | `conversations`        | `(opaque)`         | yes      | —       | Conversation summaries to render. Sorts by latest message/update time descending. Not expressible in JSON Schema; see the component types for the signature. |
-| `onselectconversation` | `(opaque)`         | no       | —       | Called when a conversation is selected. Not expressible in JSON Schema; see the component types for the signature.                                           |
+| `onSelectConversation` | `(opaque)`         | no       | —       | Called when a conversation is selected. Not expressible in JSON Schema; see the component types for the signature.                                           |
 
 <!-- generated:props:end -->
 

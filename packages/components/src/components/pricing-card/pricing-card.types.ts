@@ -11,7 +11,7 @@ export type PricingCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'onselect'> 
   /** Label for the call-to-action button. */
   cta: string;
   /** Called when the CTA button is clicked. */
-  onselect: () => void;
+  onSelect: () => void;
   /**
    * Optional footnote or caveat displayed beneath the features list.
    * Use for legal disclaimers, billing notes, or conditional terms.

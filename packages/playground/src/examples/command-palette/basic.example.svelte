@@ -49,7 +49,7 @@
       <CommandItem
         value={command.value}
         accessibleLabel={command.label}
-        onselect={() => select(command.label)}
+        onSelect={() => select(command.label)}
       >
         {command.label}
       </CommandItem>

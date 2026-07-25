@@ -19,7 +19,6 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { devWarn } from '../../utilities/dev-warn.ts';
   import { parseColor } from '../../utilities/color-luminance.ts';
   import Input from '../input/input.svelte';
   import type { ColorFieldProps } from './color-field.types.ts';
@@ -27,8 +26,7 @@
   let {
     id,
     class: className,
-    value,
-    defaultValue,
+    value = $bindable(''),
     alpha = false,
     formats = ['hex', 'rgb', 'hsl'],
     disabled = false,
@@ -43,10 +41,6 @@
     onchange,
   }: ColorFieldProps = $props();
 
-  // Mode is captured once at mount. Runtime mode switches are unsupported.
-  // Read untracked: the mode discriminant must not become a reactive dependency.
-  const isControlled = untrack(() => value) !== undefined;
-
   type RgbaParts = { r: number; g: number; b: number; a: number };
 
   let visibleText = $state('');
@@ -54,10 +48,9 @@
   let committedRgba = $state<RgbaParts | null>(null);
   let parseError = $state<string | null>(null);
   let anchorInput: HTMLInputElement | null = $state(null);
-  // Plain (non-reactive) skip guard for the controlled-sync effect — matches
-  // color-picker's `lastEmittedHex`. Used to short-circuit reconciliation when
-  // the observed value equals the last value we already reconciled.
+  // Plain (non-reactive) skip guard for the value-sync effect.
   let lastReconciledValue = '';
+  let lastReconciledValueWasInvalid = false;
 
   function toHex2(n: number): string {
     return Math.max(0, Math.min(255, Math.round(n)))
@@ -118,56 +111,47 @@
   // ── Initialization ──────────────────────────────────────────────────────
 
   // Snapshot the seed props once. Initialization reads only the mount-time
-  // value; the controlled-sync effect (below) handles later prop changes.
+  // value; the value-sync effect below handles later prop changes.
   const initialValue = untrack(() => value);
-  const initialDefaultValue = untrack(() => defaultValue);
+  const resetTarget = initialValue;
 
-  if (isControlled) {
-    if (initialValue !== undefined && initialValue !== '') {
-      const trimmedInitial = initialValue.trim();
-      if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
-        const parsed = parseColor(trimmedInitial);
-        if (parsed !== null) {
-          seedFromParts(parsed);
-          lastReconciledValue = initialValue;
-        } else {
-          visibleText = initialValue;
-          committedHex = '';
-          committedRgba = null;
-          parseError = defaultErrorMessage();
-        }
+  if (initialValue !== '') {
+    const trimmedInitial = initialValue.trim();
+    if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
+      const parsed = parseColor(trimmedInitial);
+      if (parsed !== null) {
+        seedFromParts(parsed);
+        lastReconciledValue = initialValue;
       } else {
-        // Externally-supplied value violates the `formats` gate — preserve the
-        // visible text verbatim and surface a parse error, matching the
-        // documented contract.
         visibleText = initialValue;
         committedHex = '';
         committedRgba = null;
         parseError = defaultErrorMessage();
+        lastReconciledValueWasInvalid = true;
       }
-    }
-  } else if (initialDefaultValue !== undefined && initialDefaultValue !== '') {
-    const trimmedDefault = initialDefaultValue.trim();
-    if (trimmedDefault !== '' && passesFormatGate(trimmedDefault)) {
-      const parsed = parseColor(trimmedDefault);
-      if (parsed !== null) {
-        seedFromParts(parsed);
-      }
+    } else {
+      visibleText = initialValue;
+      committedHex = '';
+      committedRgba = null;
+      parseError = defaultErrorMessage();
+      lastReconciledValueWasInvalid = true;
     }
   }
 
-  // ── Controlled sync ─────────────────────────────────────────────────────
+  // ── Bindable value sync ─────────────────────────────────────────────────
 
   function reconcileFromValue(next: string): void {
     const trimmed = next.trim();
     if (trimmed === '') {
       clearAll();
       parseError = null;
+      lastReconciledValueWasInvalid = false;
     } else if (!passesFormatGate(trimmed)) {
       visibleText = next;
       committedHex = '';
       committedRgba = null;
       parseError = defaultErrorMessage();
+      lastReconciledValueWasInvalid = true;
     } else {
       const parsed = parseColor(trimmed);
       if (parsed === null) {
@@ -175,23 +159,20 @@
         committedHex = '';
         committedRgba = null;
         parseError = defaultErrorMessage();
+        lastReconciledValueWasInvalid = true;
       } else {
         seedFromParts(parsed);
         parseError = null;
+        lastReconciledValueWasInvalid = false;
       }
     }
     // Keep native validity in lockstep with parseError through this single
     // synchronous path — replaces the prior `void parseError` effect that
-    // lagged one microtask behind controlled-sync and alpha-toggle writes.
+    // lagged one microtask behind value-sync and alpha-toggle writes.
     syncCustomValidity();
   }
 
   $effect(() => {
-    if (!isControlled) return;
-    if (value === undefined) {
-      devWarn('[cinder/ColorField] runtime mode switch ignored (controlled -> undefined)');
-      return;
-    }
     if (value === lastReconciledValue) return;
     lastReconciledValue = value;
     reconcileFromValue(value);
@@ -200,22 +181,16 @@
   // ── alpha runtime changes ───────────────────────────────────────────────
 
   // Re-derive `committedHex` and `visibleText` from `committedRgba` when the
-  // alpha mode toggles after mount. In controlled mode the parent's value is
-  // canonical — derive from there. Never emit `onchange` on a config change.
+  // alpha mode toggles after mount. Never emit `onchange` on a config change.
   $effect(() => {
     void alpha;
-    if (isControlled) {
-      // Controlled mode: re-run reconcile against the current controlled value
-      // so the `formats` gate and parse-error surfacing stay in effect.
-      if (value !== undefined) reconcileFromValue(value);
-      return;
-    }
-    // Uncontrolled mode: re-derive from preserved committedRgba.
     if (committedRgba === null) return;
     const nextHex = emitFor(committedRgba);
     if (nextHex === committedHex) return;
     committedHex = nextHex;
     visibleText = nextHex;
+    lastReconciledValue = nextHex;
+    value = nextHex;
   });
 
   // ── formats runtime changes — display-only validation ───────────────────
@@ -248,14 +223,17 @@
 
     if (trimmed === '') {
       const hadCommitted = committedHex !== '';
-      const hadError = parseError !== null;
+      const hadInvalidReconciledValue = lastReconciledValueWasInvalid;
       clearAll();
       parseError = null;
-      if (hadCommitted) {
+      lastReconciledValueWasInvalid = false;
+      if (hadCommitted || hadInvalidReconciledValue) {
+        lastReconciledValue = '';
+        value = '';
         onchange?.('');
         return { committed: true, emittedHex: '' };
       }
-      return { committed: hadError, emittedHex: null };
+      return { committed: false, emittedHex: null };
     }
 
     // Canonical-display bypass: typing the existing committed hex back in is a no-op.
@@ -280,29 +258,15 @@
     const previousHex = committedHex;
     parseError = null;
     visibleText = normalized;
-
-    if (!isControlled) {
-      // Uncontrolled — always update all three slots so a later alpha toggle
-      // can reconstruct `#rrggbbaa` even if the strip-on-emit hid it.
-      committedRgba = parsed;
-      committedHex = normalized;
-      if (normalized !== previousHex) {
-        onchange?.(normalized);
-        return { committed: true, emittedHex: normalized };
-      }
-      return { committed: true, emittedHex: null };
-    }
-
-    // Controlled mode — only mutate committedRgba / committedHex when the
-    // emitted value actually changes. Parent authority is strict: alpha not
-    // present in `value` is not retained.
+    committedRgba = parsed;
+    committedHex = normalized;
+    lastReconciledValue = normalized;
+    value = normalized;
     if (normalized !== previousHex) {
-      committedRgba = parsed;
-      committedHex = normalized;
       onchange?.(normalized);
       return { committed: true, emittedHex: normalized };
     }
-    return { committed: false, emittedHex: null };
+    return { committed: true, emittedHex: null };
   }
 
   // Sync the parse-error state into the native input's customValidity so
@@ -338,8 +302,7 @@
     }
 
     // Submit when validation succeeded (no parse error), regardless of whether
-    // the canonical hex actually changed. A controlled field that receives the
-    // same normalized value should still let Enter submit the form.
+    // the canonical hex actually changed.
     if (parseError !== null) return;
     if (enterBehavior !== 'commit-then-submit') return;
 
@@ -353,29 +316,43 @@
 
   // ── Form reset wiring ───────────────────────────────────────────────────
 
-  function onFormReset(): void {
-    if (isControlled) return;
+  function onFormReset(event: Event): void {
+    queueMicrotask(() => {
+      if (event.defaultPrevented) return;
+      resetToInitialValue();
+    });
+  }
+
+  function resetToInitialValue(): void {
     parseError = null;
-    if (defaultValue === undefined || defaultValue === '') {
+    if (resetTarget === '') {
       clearAll();
+      lastReconciledValue = '';
+      value = '';
       // Sync after all state changes: the catch-all $effect was removed so every
       // exit path must explicitly clear the native custom-validity message.
       syncCustomValidity();
       return;
     }
-    const trimmedDefault = defaultValue.trim();
+    const trimmedDefault = resetTarget.trim();
     if (trimmedDefault === '' || !passesFormatGate(trimmedDefault)) {
       clearAll();
+      lastReconciledValue = '';
+      value = '';
       syncCustomValidity();
       return;
     }
     const parsed = parseColor(trimmedDefault);
     if (parsed === null) {
       clearAll();
+      lastReconciledValue = '';
+      value = '';
       syncCustomValidity();
       return;
     }
     seedFromParts(parsed);
+    lastReconciledValue = committedHex;
+    value = committedHex;
     syncCustomValidity();
   }
 

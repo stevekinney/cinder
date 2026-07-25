@@ -47,7 +47,7 @@ const schema = {
         required: true,
       },
       {
-        name: 'onopenchange',
+        name: 'onOpenChange',
         reason: 'function-or-snippet',
       },
     ],

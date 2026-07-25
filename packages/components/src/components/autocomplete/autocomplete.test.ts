@@ -203,14 +203,14 @@ describe('Autocomplete — suggestions and free-form input', () => {
 describe('Autocomplete — keyboard completion', () => {
   test('Arrow keys skip disabled suggestions and Enter completes the active enabled suggestion once', async () => {
     const oninput = mock((_value: string) => {});
-    const oncomplete = mock((_suggestion: Suggestion) => {});
+    const onComplete = mock((_suggestion: Suggestion) => {});
 
     const { container } = render(Autocomplete, {
       props: {
         id: 'fruit-search',
         suggestionSource: () => fruits,
         oninput,
-        oncomplete,
+        onComplete,
       },
     });
 
@@ -229,8 +229,8 @@ describe('Autocomplete — keyboard completion', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(input.value).toBe('apricot');
-    expect(oncomplete).toHaveBeenCalledTimes(1);
-    expect(oncomplete.mock.calls[0]?.[0]).toEqual({ value: 'apricot', label: 'Apricot' });
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete.mock.calls[0]?.[0]).toEqual({ value: 'apricot', label: 'Apricot' });
     expect(oninput).toHaveBeenCalledTimes(2);
     expect(oninput).toHaveBeenNthCalledWith(1, 'a');
     expect(oninput).toHaveBeenNthCalledWith(2, 'apricot');

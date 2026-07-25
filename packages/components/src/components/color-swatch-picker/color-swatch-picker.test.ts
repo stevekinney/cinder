@@ -89,17 +89,17 @@ describe('ColorSwatchPicker structure', () => {
 });
 
 describe('ColorSwatchPicker selection', () => {
-  test('no swatch is aria-selected when no value or defaultValue', () => {
+  test('no swatch is aria-selected when no value or value', () => {
     const { container } = render(ColorSwatchPicker, { colors: palette, label: 'Colors' });
     const selected = container.querySelectorAll('[aria-selected="true"]');
     expect(selected.length).toBe(0);
   });
 
-  test('defaultValue makes the matching swatch aria-selected', () => {
+  test('value makes the matching swatch aria-selected', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      defaultValue: '#00ff00',
+      value: '#00ff00',
     });
     const options = toArray(container.querySelectorAll('[role="option"]'));
     expect(options[1].getAttribute('aria-selected')).toBe('true');
@@ -194,7 +194,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       colors: palette,
       label: 'Colors',
       layout: 'grid',
-      defaultValue: '#00ff00',
+      value: '#00ff00',
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
     const options = toArray(container.querySelectorAll('[role="option"]'));
@@ -239,7 +239,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       colors: palette,
       label: 'Colors',
       layout: 'stack',
-      defaultValue: '#00ff00',
+      value: '#00ff00',
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
     const options = toArray(container.querySelectorAll('[role="option"]'));
@@ -269,7 +269,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     const { container } = render(ColorSwatchPicker, {
       colors,
       label: 'Colors',
-      defaultValue: '#0000ff',
+      value: '#0000ff',
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
     const options = toArray(container.querySelectorAll('[role="option"]'));
@@ -284,7 +284,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      defaultValue: '#ff00ff',
+      value: '#ff00ff',
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
     const options = toArray(container.querySelectorAll('[role="option"]'));
@@ -312,7 +312,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      defaultValue: '#00ff00',
+      value: '#00ff00',
     });
     const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
     const options = toArray(container.querySelectorAll('[role="option"]'));
@@ -481,7 +481,7 @@ describe('ColorSwatchPicker duplicate palette', () => {
     // {#each}, so Svelte cannot throw each_key_duplicate. The test asserts that:
     //   1. No crash occurs (no try/catch needed).
     //   2. Only the first occurrence of each color is rendered.
-    //   3. The first swatch is aria-selected when its color matches defaultValue.
+    //   3. The first swatch is aria-selected when its color matches value.
     //   4. The devWarn fires so the developer is notified.
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
@@ -493,13 +493,13 @@ describe('ColorSwatchPicker duplicate palette', () => {
       const { container } = render(ColorSwatchPicker, {
         colors: duplicateColors,
         label: 'Colors',
-        defaultValue: '#ff0000',
+        value: '#ff0000',
       });
       // Only 2 swatches render: first #ff0000 and #0000ff (duplicate dropped).
       const options = toArray(container.querySelectorAll('[role="option"]'));
       expect(options).toHaveLength(2);
       // First swatch (the first #ff0000) carries aria-selected because
-      // defaultValue matches its color.
+      // value matches its color.
       expect(options[0]?.getAttribute('aria-selected')).toBe('true');
       expect(options[1]?.getAttribute('aria-selected')).toBe('false');
       // devWarn fires exactly once to notify the developer.
@@ -582,7 +582,7 @@ describe('ColorSwatchPicker initial focus index', () => {
     const { container } = render(ColorSwatchPicker, {
       colors: palette,
       label: 'Colors',
-      defaultValue: '#0000ff',
+      value: '#0000ff',
     });
     const options = toArray(container.querySelectorAll('[role="option"]'));
     expect(options[2].getAttribute('tabindex')).toBe('0');

@@ -10,7 +10,7 @@
 | Arrow Up      | lifted | Move to previous position (clamped to first).                     |
 | Home          | lifted | Move to first position.                                           |
 | End           | lifted | Move to last position.                                            |
-| Escape        | lifted | Cancel. Restores original visual order; onreorder is not called.  |
+| Escape        | lifted | Cancel. Restores original visual order; onReorder is not called.  |
 | Tab           | lifted | Cancel and allow native focus movement to next focusable element. |
 
 Only the drag handle button is in the tab sequence. Row `<li>` elements have no `tabindex`.
@@ -41,7 +41,7 @@ All four state transitions are announced via an `aria-live="assertive"` region:
 
 `{label}` is the raw `itemLabel` (e.g., "Buy milk"), not the handle label ("Reorder Buy milk"). Announcement strings are fully overridable via the `announcements` prop.
 
-`moved` fires only when the target position actually changes. `dropped` fires even when the item returns to its original position; `onreorder` does not fire in that case.
+`moved` fires only when the target position actually changes. `dropped` fires even when the item returns to its original position; `onReorder` does not fire in that case.
 
 ## Pointer / Touch Strategy
 

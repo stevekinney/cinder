@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "call-to-action-section",
+  "import": "@lostgradient/cinder/call-to-action-section",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "CallToActionSection",
+      "description": "CallToActionSection with accent tone and primary/secondary conversion actions.",
+      "code": "<script lang=\"ts\">\n  import { CallToActionSection } from '@lostgradient/cinder/call-to-action-section';\n</script>\n\n<CallToActionSection\n  title=\"Ready to level up your product UI?\"\n  description=\"Start with Cinder and ship accessible components with confidence.\"\n  primaryActionLabel=\"Start free\"\n  secondaryActionLabel=\"Talk to sales\"\n  tone=\"accent\"\n>\n  <span>No credit card required.</span>\n</CallToActionSection>\n"
+    }
+  ]
+}

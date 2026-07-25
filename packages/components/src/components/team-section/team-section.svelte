@@ -31,7 +31,7 @@
     description,
     members,
     columns = 3,
-    showAvatarGroup = false,
+    avatarGroupVisible = false,
     avatarGroupLabel = 'Team members',
     maxWidth = 'wide',
     class: className,
@@ -66,7 +66,7 @@
         </header>
       {/if}
 
-      {#if showAvatarGroup}
+      {#if avatarGroupVisible}
         <div class="cinder-team-section__summary">
           <AvatarGroup avatars={avatarItems} label={avatarGroupLabel} maxVisible={6} />
         </div>

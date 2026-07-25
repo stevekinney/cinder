@@ -3,27 +3,27 @@
   import { NumberInput } from '../../components/number-input/index.ts';
   import { PhoneInput } from '../../components/phone-input/index.ts';
   import { Slider } from '../../components/slider/index.ts';
-  import { Stat } from '../../components/stat/index.ts';
+  import { Statistic } from '../../components/statistic/index.ts';
   import type { TextDirection } from '../../components/locale-provider/index.ts';
 
   let {
     locale = 'de-DE',
     direction,
     nestedDirection,
-    explicitStatLocale,
+    explicitStatisticLocale,
     explicitNumberLocale,
     explicitPhoneLocale,
   }: {
     locale?: string;
     direction?: TextDirection;
     nestedDirection?: TextDirection;
-    explicitStatLocale?: string;
+    explicitStatisticLocale?: string;
     explicitNumberLocale?: string;
     explicitPhoneLocale?: string;
   } = $props();
 
   const statLocaleProps = $derived(
-    explicitStatLocale === undefined ? {} : { valueLocale: explicitStatLocale },
+    explicitStatisticLocale === undefined ? {} : { valueLocale: explicitStatisticLocale },
   );
   const numberLocaleProps = $derived(
     explicitNumberLocale === undefined ? {} : { locale: explicitNumberLocale },
@@ -34,7 +34,7 @@
 </script>
 
 {#snippet controls()}
-  <Stat label="Revenue" value={1234.5} {...statLocaleProps} />
+  <Statistic label="Revenue" value={1234.5} {...statLocaleProps} />
   <NumberInput id="localized-number" label="Amount" value={1234.5} {...numberLocaleProps} />
   <PhoneInput id="localized-phone" label="Phone" countries={['US']} {...phoneLocaleProps} />
   <Slider label="Progress" value={25} />

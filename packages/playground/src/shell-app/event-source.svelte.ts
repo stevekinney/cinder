@@ -13,7 +13,7 @@
  * `$state` values rather than expecting Svelte to re-bind them.
  *
  * Usage:
- *   <div {@attach createEventSource(() => streamUrl, { onmessage, onerror })}>
+ *   <div {@attach createEventSource(() => streamUrl, { onmessage, onError })}>
  *
  * For named events (`addEventListener('reload', …)`), pass an `events` map
  * keyed by event name.
@@ -22,7 +22,7 @@ import type { Attachment } from 'svelte/attachments';
 
 export type EventSourceHandlers = {
   onmessage?: (event: MessageEvent) => void;
-  onerror?: (event: Event) => void;
+  onError?: (event: Event) => void;
   events?: Record<string, (event: MessageEvent) => void>;
 };
 
@@ -41,12 +41,12 @@ export function createEventSource(
       source = null;
       if (!url) return;
       source = new EventSource(url);
-      const { onmessage, onerror } = handlers;
+      const { onmessage, onError } = handlers;
       if (onmessage) {
         source.addEventListener('message', (event: MessageEvent) => onmessage(event));
       }
-      if (onerror) {
-        source.addEventListener('error', (event: Event) => onerror(event));
+      if (onError) {
+        source.addEventListener('error', (event: Event) => onError(event));
       }
       if (handlers.events) {
         for (const [name, handler] of Object.entries(handlers.events)) {

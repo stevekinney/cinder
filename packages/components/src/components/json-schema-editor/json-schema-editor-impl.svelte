@@ -27,8 +27,8 @@
     /** Force a draft override regardless of $schema. */
     draftOverride?: JsonSchemaKnownDraft;
     onchange?: (event: JsonSchemaEditorChangeEvent) => void;
-    onrevert?: (event: JsonSchemaEditorRevertEvent) => void;
-    onvalidate?: (result: JsonSchemaValidationResult) => void;
+    onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
+    onValidate?: (result: JsonSchemaValidationResult) => void;
     class?: string;
   };
 
@@ -81,8 +81,8 @@
     maxHistory,
     draftOverride,
     onchange,
-    onrevert,
-    onvalidate,
+    onRevert,
+    onValidate,
     class: className,
   }: JsonSchemaEditorProps = $props();
 
@@ -100,8 +100,8 @@
       schema,
       readonly,
       onchange: (event) => onchange?.(event),
-      onrevert: (event) => onrevert?.(event),
-      onvalidate: (result) => onvalidate?.(result),
+      onRevert: (event) => onRevert?.(event),
+      onValidate: (result) => onValidate?.(result),
     };
     if (original !== undefined) options.original = original;
     if (maxHistory !== undefined) options.maxHistory = maxHistory;
@@ -122,7 +122,7 @@
 
   // Sync `draftOverride` into the state container when the *prop* changes.
   // Unlike `setReadonly`, `setDraftOverride` re-runs validation and emits an
-  // `onvalidate` event, so we must skip the initial effect run (the value was
+  // `onValidate` event, so we must skip the initial effect run (the value was
   // already seeded at construction) to avoid a spurious mount-time validation
   // emit. The sentinel detects a genuine prop transition; it is not guarding a
   // reactive loop — the setter writes closure-private state, never back to the
@@ -255,7 +255,7 @@
       <FormView
         state={editorState}
         idPrefix={`${id}-form`}
-        onvalidationerrorcount={(count) => (localValidationErrorCount = count)}
+        onvalidationErrorcount={(count) => (localValidationErrorCount = count)}
       />
     </TabPanel>
     <TabPanel value="json">

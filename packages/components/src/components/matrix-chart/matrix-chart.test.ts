@@ -168,7 +168,7 @@ describe('MatrixChart', () => {
       xField: 'predicted',
       yField: 'actual',
       valueField: 'count',
-      showCellLabels: true,
+      cellLabelsVisible: true,
     });
 
     // Two categories × two categories = 4 cells; only 2 have data

@@ -17,8 +17,6 @@ export type TimeFieldProps = Omit<
   id: string;
   /** Bindable canonical 24-hour time string (`HH:mm` or `HH:mm:ss`). */
   value?: string;
-  /** Initial canonical time string used when the component is not controlled. */
-  defaultValue?: string;
   /** Time precision. Defaults to minute precision. */
   granularity?: TimeFieldGranularity;
   /** Optional timezone select values, such as `America/Denver` or `UTC`. */
@@ -50,7 +48,6 @@ export type TimeFieldProps = Omit<
 export interface TimeFieldSchemaProps {
   id: string;
   value?: string;
-  defaultValue?: string;
   granularity?: TimeFieldGranularity;
   timezones?: readonly string[];
   timezone?: string | undefined;

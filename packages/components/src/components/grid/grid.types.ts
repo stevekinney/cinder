@@ -1,5 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
+import type { NonVoidHTMLElementTagName } from '../../utilities/html-element-types.ts';
 
 /** Column definition accepted by Grid. */
 export type GridColumns = number | string;
@@ -23,7 +24,7 @@ export type GridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
    */
   minItemWidth?: string;
   /** Rendered HTML tag. */
-  as?: string;
+  as?: NonVoidHTMLElementTagName;
   /** Custom class merged with `.cinder-grid`. */
   class?: string;
   /** Grid contents. */

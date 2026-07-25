@@ -28,8 +28,8 @@ export type ChipDisplayProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & 
   // and consumers get a compile-time error if they pass toggle/removable-only props to display mode.
   pressed?: never;
   disabled?: never;
-  onpressedchange?: never;
-  onremove?: never;
+  onPressedChange?: never;
+  onRemove?: never;
   removeAriaLabel?: never;
 };
 // `aria-pressed` is owned (set from the `pressed` prop) and `type` is always `"button"`
@@ -56,11 +56,11 @@ export type ChipToggleProps = Omit<
   class?: string;
   /** Toggle mode only. Whether the chip is currently in the pressed (selected) state. Reflected as `aria-pressed`. */
   pressed: boolean;
-  onpressedchange?: (pressed: boolean) => void;
+  onPressedChange?: (pressed: boolean) => void;
   /** Toggle mode only. When true, disables the toggle button and prevents interaction. */
   disabled?: boolean;
   // Cross-variant sentinel props
-  onremove?: never;
+  onRemove?: never;
   removeAriaLabel?: never;
 };
 export type ChipRemovableProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
@@ -77,13 +77,13 @@ export type ChipRemovableProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> 
   leadingIcon?: Snippet;
   /** Additional class names merged onto the chip element. */
   class?: string;
-  onremove?: () => void;
+  onRemove?: () => void;
   /** Removable mode only. When true, disables the remove button and prevents removal. */
   disabled?: boolean;
   /** Removable mode only. Accessible label for the remove button. Defaults to `Remove` followed by the chip's `label`. */
   removeAriaLabel?: string;
   // Cross-variant sentinel props
   pressed?: never;
-  onpressedchange?: never;
+  onPressedChange?: never;
 };
 export type ChipProps = ChipDisplayProps | ChipToggleProps | ChipRemovableProps;

@@ -9,9 +9,9 @@
    * @tag form
    * @useWhen Collecting subscriber email addresses in a dedicated marketing section.
    * @useWhen Adding a lightweight signup form beneath blog or CTA content.
-   * @avoidWhen Showing a generic call-to-action with buttons only and no data entry. | cta-section
+   * @avoidWhen Showing a generic call-to-action with buttons only and no data entry. | call-to-action-section
    * @avoidWhen Collecting multi-field account or billing details. | form-section
-   * @related cta-section, form-section, input, button, container
+   * @related call-to-action-section, form-section, input, button, container
    */
   export type { NewsletterSectionProps } from './newsletter-section.types.ts';
 </script>

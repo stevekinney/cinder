@@ -31,7 +31,6 @@
   let {
     id,
     value = $bindable<string | undefined>(undefined),
-    defaultValue = '',
     granularity = 'minute',
     timezones,
     timezone = $bindable<string | undefined>(undefined),
@@ -62,10 +61,12 @@
   let skipTimezoneBaselineUpdate = false;
 
   untrack(() => {
-    if (value === undefined) value = canonicalTimeValue(defaultValue);
+    if (value === undefined) value = '';
     if (timezone === undefined && timezones && timezones.length > 0) timezone = timezones[0];
     resetTimezoneBaseline = timezone;
   });
+
+  const resetTarget = untrack(() => canonicalTimeValue(value));
 
   $effect(() => {
     if (!timezones || timezones.length === 0) {
@@ -197,7 +198,7 @@
     const input = document.getElementById(inputId);
     const form = input instanceof HTMLInputElement ? input.form : null;
     if (!form) return;
-    const resetValue = canonicalTimeValue(defaultValue);
+    const resetValue = resetTarget;
     const resetTimezone = resetTimezoneFor(timezones);
 
     const handleReset = () => {

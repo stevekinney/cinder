@@ -231,7 +231,7 @@
     else rightActiveId = id;
   }
 
-  function handleOptionClick(side: 'left' | 'right', item: TransferListItem): void {
+  function handleOptionclick(side: 'left' | 'right', item: TransferListItem): void {
     if (!canMoveItem(side, item)) return;
     setActiveId(side, item.id);
     toggleId(side, item.id);
@@ -252,7 +252,7 @@
     if (!item) return;
 
     currentTarget.focus();
-    handleOptionClick(side, item);
+    handleOptionclick(side, item);
   }
 
   function handleListFocus(side: 'left' | 'right'): void {

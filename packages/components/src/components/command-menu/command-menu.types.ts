@@ -41,11 +41,11 @@ export type CommandMenuProps = {
   /** Accessible listbox label. Default `'Commands'`. */
   label?: string;
   /** Invoked when an enabled command is activated. */
-  onselect?: (detail: CommandMenuSelection) => void;
+  onSelect?: (detail: CommandMenuSelection) => void;
   /** Invoked when Escape or outside pointerdown dismisses the menu. */
-  ondismiss?: () => void;
+  onDismiss?: () => void;
   /** One-way state output for host-owned field ARIA. */
-  onstatechange?: (state: CommandMenuState) => void;
+  onStateChange?: (state: CommandMenuState) => void;
   /** Class merged with `.cinder-command-menu`. */
   class?: string;
 };

@@ -46,7 +46,7 @@ class FakeEventSource {
   url: string;
   closed = false;
   onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
+  onError: ((event: Event) => void) | null = null;
   listeners = new Map<string, EventListener>();
 
   constructor(url: string) {
@@ -104,7 +104,7 @@ describe('createEventSource factory', () => {
     unmount();
   });
 
-  test('wires onmessage and onerror handlers', async () => {
+  test('wires onmessage and onError handlers', async () => {
     let messages = 0;
     let errors = 0;
     const { unmount } = render(Fixture, {
@@ -113,7 +113,7 @@ describe('createEventSource factory', () => {
         onmessage: () => {
           messages += 1;
         },
-        onerror: () => {
+        onError: () => {
           errors += 1;
         },
       },
@@ -121,7 +121,7 @@ describe('createEventSource factory', () => {
     await tick();
     const [source] = [...liveSources];
     expect(source).toBeDefined();
-    // Handlers are wired via addEventListener, not .onmessage/.onerror.
+    // Handlers are wired via addEventListener, not .onmessage/.onError.
     // Invoke through the listeners map to match the addEventListener implementation.
     source?.listeners.get('message')?.(new MessageEvent('message'));
     source?.listeners.get('error')?.(new Event('error'));

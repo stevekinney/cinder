@@ -43,7 +43,9 @@ export type InputProps = HTMLInputAttributes &
     /** Bindable current text value of the input. */
     value: string;
     /** Intercept a proposed value before the bindable value is written. Return a replacement value to transform it. */
-    onValueChange?: (next: string) => string | void;
+    onValueChangeRequest?: (next: string) => string | void;
+    /** Notify after the bindable value has been committed. */
+    onValueChange?: (next: string) => void;
     /** Visible label text rendered above the input and linked via `for`/`id`. */
     label?: string;
     /** Visually hide the rendered `label` while keeping it programmatically associated. */

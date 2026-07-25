@@ -40,8 +40,16 @@ export const PROP_NAME_DENYLIST = [
   'icononly',
   'leadingicon',
   'trailingicon',
-  'ondismiss',
   'onchange',
+  'onclick',
+  'defaultValue',
+  'filterItem',
+  'fieldClass',
+  'inputValue',
+  'component',
+  'mono',
+  'colSpan',
+  'lockScroll',
 ] as const satisfies readonly string[];
 
 // ---------------------------------------------------------------------------
@@ -436,11 +444,10 @@ function validatePropNameViolation(name: string): string | null {
   // Allow: aria-* and data-* passthrough
   if (name.startsWith('aria-') || name.startsWith('data-')) return null;
 
-  // Deny: check the denylist, with special handling for on* props.
-  // For event-callback props (those starting with "on"), the comparison is
-  // lowercased so that a camelCase variant (e.g. `onDismiss`) is caught by the
-  // same denylist entry as its lowercase canonical form (`ondismiss`). This
-  // prevents PascalCase-suffix event callbacks from evading the gate.
+  // Deny: check the denylist, with special handling for native on* props.
+  // Native event passthrough props use lowercase names (`onclick`, `onchange`).
+  // When a native event name is denylisted, compare lowercased so the legacy
+  // camelCase variant (`onClick`, `onChange`) is caught by the same entry.
   // For all other props (e.g. `icononly`, `className`), the comparison is
   // exact so that the correct camelCase form (`iconOnly`) is not mistakenly
   // denied by a lowercase wrong-form entry (`icononly`).

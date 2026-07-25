@@ -5,7 +5,7 @@
     /** The suggestion render part to display. */
     part: SuggestionMessagePart;
     /** Called when the user selects this suggestion chip. */
-    onsuggestionselect?: ((label: string) => void) | undefined;
+    onSuggestionSelect?: ((label: string) => void) | undefined;
     /**
      * Roving tabindex for APG toolbar keyboard navigation. The toolbar parent
      * sets `tabindex=0` on the active chip and `tabindex=-1` on all others so
@@ -18,10 +18,10 @@
 </script>
 
 <script lang="ts">
-  let { part, onsuggestionselect, tabindex = 0 }: SuggestionPartProps = $props();
+  let { part, onSuggestionSelect, tabindex = 0 }: SuggestionPartProps = $props();
 
   function handleClick(): void {
-    onsuggestionselect?.(part.label);
+    onSuggestionSelect?.(part.label);
   }
 </script>
 

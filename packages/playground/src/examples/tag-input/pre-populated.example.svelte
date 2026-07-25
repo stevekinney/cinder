@@ -12,5 +12,5 @@
   label="Technologies"
   description="Review the initial stack and remove anything that does not apply."
 >
-  <TagInput defaultValue={['Svelte', 'Bun', 'TypeScript']} placeholder="Add a technology…" />
+  <TagInput value={['Svelte', 'Bun', 'TypeScript']} placeholder="Add a technology…" />
 </FormField>

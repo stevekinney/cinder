@@ -11,7 +11,7 @@
    * @useWhen Comparing several metric series on the same numeric axis.
    * @avoidWhen Comparing discrete category totals — use bar-chart instead.
    * @avoidWhen Showing cumulative filled trends — use area-chart instead.
-   * @related area-chart, bar-chart, table, stat
+   * @related area-chart, bar-chart, table, statistic
    */
   export type { LineChartProps, LineChartSchemaProps } from './line-chart.types.ts';
 </script>

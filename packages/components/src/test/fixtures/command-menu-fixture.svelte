@@ -7,7 +7,7 @@
     value: string;
     label: string;
     disabled?: boolean;
-    onselect?: () => void;
+    onSelect?: () => void;
   };
 
   type Props = {
@@ -76,16 +76,16 @@
   anchor={textareaElement}
   {caretIndex}
   {...omitEmpty ? {} : { empty: emptySnippet }}
-  onselect={(selection) => onSelected(selection.value, selection.query)}
-  ondismiss={onDismissed}
-  onstatechange={(state) => onStateChanged(state.activeItemId, state.listboxId)}
+  onSelect={(selection) => onSelected(selection.value, selection.query)}
+  onDismiss={onDismissed}
+  onStateChange={(state) => onStateChanged(state.activeItemId, state.listboxId)}
 >
   {#snippet items({ query: menuQuery })}
     {#each commandItems.filter((item) => item.label
         .toLowerCase()
         .includes(menuQuery.toLowerCase())) as item (item.value)}
-      {#if item.onselect}
-        <CommandItem value={item.value} disabled={item.disabled === true} onselect={item.onselect}>
+      {#if item.onSelect}
+        <CommandItem value={item.value} disabled={item.disabled === true} onSelect={item.onSelect}>
           {item.label}
         </CommandItem>
       {:else}

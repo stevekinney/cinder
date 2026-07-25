@@ -8,4 +8,4 @@
   import { ColorPicker } from '@lostgradient/cinder/color-picker';
 </script>
 
-<ColorPicker defaultValue="#6366f1" label="Custom color" />
+<ColorPicker value="#6366f1" label="Custom color" />

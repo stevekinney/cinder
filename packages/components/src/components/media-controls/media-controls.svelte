@@ -29,9 +29,9 @@
     progress,
     progressLabel = 'Playback progress',
     layout = 'compact',
-    onplay,
-    onpause,
-    onreplay,
+    onPlay,
+    onPause,
+    onReplay,
     class: customClassName,
     ...rest
   }: MediaControlsProps = $props();
@@ -52,19 +52,19 @@
   function handlePlay() {
     if (isDisabled) return;
     announcement = 'Playing';
-    onplay?.();
+    onPlay?.();
   }
 
   function handlePause() {
     if (isDisabled) return;
     announcement = 'Paused';
-    onpause?.();
+    onPause?.();
   }
 
   function handleReplay() {
     if (isDisabled) return;
     announcement = 'Replaying';
-    onreplay?.();
+    onReplay?.();
   }
 
   function handlePrimaryAction() {

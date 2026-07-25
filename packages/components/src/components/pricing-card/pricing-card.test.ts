@@ -21,7 +21,7 @@ const BASE_PROPS = {
   price: '$9/mo',
   features: ['Unlimited projects', '10 GB storage', 'Priority support'],
   cta: 'Get started',
-  onselect: () => {},
+  onSelect: () => {},
 };
 
 describe('PricingCard', () => {
@@ -53,13 +53,13 @@ describe('PricingCard', () => {
     expect(button?.textContent).toContain('Get started');
   });
 
-  test('CTA button calls onselect when clicked', async () => {
-    const onselect = mock(() => {});
-    const { container } = render(PricingCard, { props: { ...BASE_PROPS, onselect } });
+  test('CTA button calls onSelect when clicked', async () => {
+    const onSelect = mock(() => {});
+    const { container } = render(PricingCard, { props: { ...BASE_PROPS, onSelect } });
     const button = container.querySelector('.cinder-pricing-card__footer button');
     expect(button).not.toBeNull();
     await fireEvent.click(button!);
-    expect(onselect).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
   test('caveat renders when provided', () => {

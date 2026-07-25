@@ -7,7 +7,7 @@
     /** Button label while loading. */
     loadingLabel?: string;
     /** Called when the user requests older messages. */
-    onload?: () => void;
+    onLoad?: () => void;
   };
 </script>
 
@@ -18,7 +18,7 @@
     loading = false,
     label = 'Load earlier messages',
     loadingLabel = 'Loading earlier messages',
-    onload,
+    onLoad,
   }: ChatHistoryTriggerProps = $props();
 
   let buttonElement: HTMLButtonElement | null = null;
@@ -45,7 +45,7 @@
     class="chat-history-trigger-button"
     disabled={loading}
     aria-busy={loading ? 'true' : undefined}
-    onclick={() => onload?.()}
+    onclick={() => onLoad?.()}
   >
     {loading ? loadingLabel : label}
   </button>

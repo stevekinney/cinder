@@ -274,14 +274,14 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * passed back. The consumer is responsible for submitting it as a new user
    * message.
    */
-  onsuggestionselect?: (label: string) => void;
+  onSuggestionSelect?: (label: string) => void;
   /** Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`. */
-  onloadhistory?: () => void | Promise<void>;
+  onLoadHistory?: () => void | Promise<void>;
   onstopgenerating?: (event: ChatStopGeneratingEvent) => void;
   onjumptolatest?: () => void;
   onscrollstatechange?: (event: ChatScrollStateChangeEvent) => void;
   onunreadindicatorchange?: (event: ChatUnreadIndicatorChangeEvent) => void;
-  onexpandedchange?: (expanded: boolean) => void;
+  onExpandedChange?: (expanded: boolean) => void;
   onattachmentadd?: (attachment: ChatAttachment) => void;
   onattachmentremove?: (attachment: ChatAttachment) => void;
   onattachmentfailure?: (file: File, error: string) => void;

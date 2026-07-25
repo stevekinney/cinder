@@ -19,7 +19,7 @@
       "id": "modes",
       "title": "Chip modes",
       "description": "Display, toggle, and removable chip modes.",
-      "code": "<script lang=\"ts\">\n  import { Chip } from '@lostgradient/cinder/chip';\n  let pressed = $state(false);\n  let tags = $state(['JavaScript', 'TypeScript', 'Svelte']);\n</script>\n\n<!-- Manual check: click anywhere on the chip label text — onremove must not fire. -->\n<div class=\"example-preview-row\">\n  <Chip label=\"Display\" />\n\n  <Chip\n    mode=\"toggle\"\n    label={pressed ? 'Active' : 'Inactive'}\n    {pressed}\n    onpressedchange={(value) => {\n      pressed = value;\n    }}\n  />\n\n  {#each tags as tag (tag)}\n    <Chip\n      mode=\"removable\"\n      label={tag}\n      onremove={() => {\n        tags = tags.filter((t) => t !== tag);\n      }}\n    />\n  {/each}\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Chip } from '@lostgradient/cinder/chip';\n  let pressed = $state(false);\n  let tags = $state(['JavaScript', 'TypeScript', 'Svelte']);\n</script>\n\n<!-- Manual check: click anywhere on the chip label text — onRemove must not fire. -->\n<div class=\"example-preview-row\">\n  <Chip label=\"Display\" />\n\n  <Chip\n    mode=\"toggle\"\n    label={pressed ? 'Active' : 'Inactive'}\n    {pressed}\n    onPressedChange={(value) => {\n      pressed = value;\n    }}\n  />\n\n  {#each tags as tag (tag)}\n    <Chip\n      mode=\"removable\"\n      label={tag}\n      onRemove={() => {\n        tags = tags.filter((t) => t !== tag);\n      }}\n    />\n  {/each}\n</div>\n"
     },
     {
       "id": "variants",

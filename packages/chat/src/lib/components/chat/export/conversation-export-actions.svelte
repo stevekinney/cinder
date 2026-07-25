@@ -112,7 +112,7 @@
   </div>
 
   <Dropdown {id}>
-    <Dropdown.Trigger class="export-trigger" aria-label="Export conversation" showCaret={false}>
+    <Dropdown.Trigger class="export-trigger" aria-label="Export conversation" caretVisible={false}>
       <Copy class="cinder-icon-sm" />
     </Dropdown.Trigger>
     <Dropdown.Menu>

@@ -30,7 +30,7 @@ export type PopoverProps = {
   /** Distance in px between trigger and panel. Default `8`. */
   offset?: number;
   /** Render a directional arrow on the panel. Default `false`. */
-  showArrow?: boolean;
+  arrowVisible?: boolean;
   /** Accessible name. Sets `aria-label` when `ariaLabelledby` is not supplied. */
   label?: string;
   /** Id of an element labelling the panel. Wins over `label`. */

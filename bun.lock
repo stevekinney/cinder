@@ -43,7 +43,7 @@
         "typescript": "^5.9.0",
       },
       "peerDependencies": {
-        "@lostgradient/cinder": "^0.19.0",
+        "@lostgradient/cinder": "^0.20.0",
         "@lostgradient/markdown": "^0.1.0",
         "svelte": ">=5.56.0 <6",
       },
@@ -127,7 +127,7 @@
         "typescript": "^5.9.0",
       },
       "peerDependencies": {
-        "@lostgradient/cinder": "^0.17.0",
+        "@lostgradient/cinder": "^0.20.0",
         "@lostgradient/markdown": "^0.1.0",
         "@milkdown/ctx": "^7.17.3",
         "@milkdown/kit": "^7.17.3",

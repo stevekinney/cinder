@@ -66,7 +66,7 @@ describe('ConfirmDialog', () => {
         open: false,
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     // Dialog element is present (mounted) but panel content is absent when closed
@@ -79,7 +79,7 @@ describe('ConfirmDialog', () => {
         open: true,
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const dialog = container.querySelector('dialog');
@@ -97,7 +97,7 @@ describe('ConfirmDialog', () => {
         title: 'Delete account?',
         description: 'This cannot be undone.',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
@@ -119,7 +119,7 @@ describe('ConfirmDialog', () => {
         open: true,
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const dialog = container.querySelector('dialog');
@@ -127,14 +127,14 @@ describe('ConfirmDialog', () => {
   });
 
   test('typed confirmation requires a trimmed case-insensitive match and resets on reopen', async () => {
-    const onconfirm = mock();
+    const onConfirm = mock();
     const view = render(ConfirmDialog, {
       props: {
         open: true,
         title: 'Delete repository?',
         confirmLabel: 'Delete',
         typeToConfirm: ' Cinder ',
-        onconfirm,
+        onConfirm,
       },
     });
 
@@ -146,14 +146,14 @@ describe('ConfirmDialog', () => {
     await fireEvent.input(input, { target: { value: '  cInDeR  ' } });
     expect(confirmButton.disabled).toBe(false);
     await fireEvent.click(confirmButton);
-    expect(onconfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
 
     await view.rerender({
       open: true,
       title: 'Delete repository?',
       confirmLabel: 'Delete',
       typeToConfirm: ' Cinder ',
-      onconfirm,
+      onConfirm,
     });
     expect((view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement).value).toBe('');
     expect((view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
@@ -167,7 +167,7 @@ describe('ConfirmDialog', () => {
         confirmLabel: 'Delete',
         typeToConfirm: 'Cinder',
         typeToConfirmLabel: 'Enter the repository name',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     expect(view.getByLabelText('Enter the repository name')).not.toBeNull();
@@ -181,7 +181,7 @@ describe('ConfirmDialog', () => {
         confirmLabel: 'Delete',
         typeToConfirm: 'Cinder',
         typeToConfirmLabel: '   ',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     expect(view.getByLabelText('Type "Cinder" to confirm')).not.toBeNull();
@@ -194,7 +194,7 @@ describe('ConfirmDialog', () => {
         title: 'Delete repository?',
         confirmLabel: 'Delete',
         typeToConfirm: '   ',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     expect(view.container.querySelector('.cinder-confirm-dialog__typed-confirmation')).toBeNull();
@@ -215,7 +215,7 @@ describe('ConfirmDialog', () => {
         title: 'Delete account?',
         cancelLabel: 'Cancel',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const [cancelBtn, confirmBtn] = footerButtons(container);
@@ -233,7 +233,7 @@ describe('ConfirmDialog', () => {
         title: 'Delete account?',
         confirmLabel: 'Delete',
         destructive: true,
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const [, confirmBtn] = footerButtons(container);
@@ -247,14 +247,14 @@ describe('ConfirmDialog', () => {
         title: 'Save changes?',
         confirmLabel: 'Save',
         destructive: false,
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const [, confirmBtn] = footerButtons(container);
     expect(confirmBtn.getAttribute('data-cinder-variant')).toBe('primary');
   });
 
-  test('onconfirm fires and dialog closes when confirm is clicked', async () => {
+  test('onConfirm fires and dialog closes when confirm is clicked', async () => {
     let confirmCount = 0;
     let cancelCount = 0;
     let openValue = true;
@@ -268,10 +268,10 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {
+        onConfirm: () => {
           confirmCount++;
         },
-        oncancel: () => {
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -283,7 +283,7 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('oncancel fires and dialog closes when cancel button is clicked', async () => {
+  test('onCancel fires and dialog closes when cancel button is clicked', async () => {
     let confirmCount = 0;
     let cancelCount = 0;
     let openValue = true;
@@ -297,10 +297,10 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {
+        onConfirm: () => {
           confirmCount++;
         },
-        oncancel: () => {
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -312,7 +312,7 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('oncancel fires on Escape (native cancel event on dialog)', async () => {
+  test('onCancel fires on Escape (native cancel event on dialog)', async () => {
     let cancelCount = 0;
     let openValue = true;
     const { container } = render(ConfirmDialog, {
@@ -325,8 +325,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -339,7 +339,7 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('oncancel fires on backdrop click', async () => {
+  test('onCancel fires on backdrop click', async () => {
     let cancelCount = 0;
     let openValue = true;
     const { container } = render(ConfirmDialog, {
@@ -352,8 +352,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -365,7 +365,7 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('oncancel fires when the close-X button is clicked', async () => {
+  test('onCancel fires when the close-X button is clicked', async () => {
     let cancelCount = 0;
     let openValue = true;
     const { container } = render(ConfirmDialog, {
@@ -378,8 +378,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -391,15 +391,15 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('parent-driven close does NOT fire oncancel', async () => {
+  test('parent-driven close does NOT fire onCancel', async () => {
     let cancelCount = 0;
     const { rerender } = render(ConfirmDialog, {
       props: {
         open: true,
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -408,7 +408,7 @@ describe('ConfirmDialog', () => {
       open: false,
       title: 'Delete account?',
       confirmLabel: 'Delete',
-      onconfirm: () => {},
+      onConfirm: () => {},
     });
     expect(cancelCount).toBe(0);
   });
@@ -420,7 +420,7 @@ describe('ConfirmDialog', () => {
         title: 'Discard?',
         cancelLabel: 'Nope',
         confirmLabel: 'Burn it',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const [cancelBtn, confirmBtn] = footerButtons(container);
@@ -448,7 +448,7 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
         triggerRef: trigger,
       },
     });
@@ -473,7 +473,7 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
 
@@ -485,14 +485,14 @@ describe('ConfirmDialog', () => {
       open: true,
       title: 'Delete account?',
       confirmLabel: 'Delete',
-      onconfirm: () => {},
+      onConfirm: () => {},
     });
 
     const [reopenedCancelBtn] = footerButtons(container);
     expect(reopenedCancelBtn.autofocus).toBe(true);
   });
 
-  test('omitting optional oncancel does not throw when cancel is clicked', async () => {
+  test('omitting optional onCancel does not throw when cancel is clicked', async () => {
     let openValue = true;
     const { container } = render(ConfirmDialog, {
       props: {
@@ -504,8 +504,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        // oncancel intentionally omitted
+        onConfirm: () => {},
+        // onCancel intentionally omitted
       },
     });
     const [cancelBtn] = footerButtons(container);
@@ -515,7 +515,7 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('thrown onconfirm does not block close — open is false after throw', async () => {
+  test('thrown onConfirm does not block close — open is false after throw', async () => {
     // Behavioral assertion: open flips to false BEFORE the callback fires, so a thrown
     // callback cannot leave the dialog stuck open. fireEvent swallows handler errors
     // internally, so we assert the state side-effect rather than the throw itself.
@@ -530,7 +530,7 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {
+        onConfirm: () => {
           throw new Error('confirm error');
         },
       },
@@ -541,8 +541,8 @@ describe('ConfirmDialog', () => {
     expect(openValue).toBe(false);
   });
 
-  test('thrown oncancel does not block close — open is false after throw', async () => {
-    // Same behavioral contract as the onconfirm throw test above.
+  test('thrown onCancel does not block close — open is false after throw', async () => {
+    // Same behavioral contract as the onConfirm throw test above.
     let openValue = true;
     const { container } = render(ConfirmDialog, {
       props: {
@@ -554,8 +554,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           throw new Error('cancel error');
         },
       },
@@ -577,7 +577,7 @@ describe('ConfirmDialog', () => {
         open: true,
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
     const [cancelBtn, confirmBtn] = footerButtons(container);
@@ -585,7 +585,7 @@ describe('ConfirmDialog', () => {
     expect(confirmBtn.autofocus).toBeFalsy();
   });
 
-  test('boundary: ConfirmDialog IS dismissable by Escape (native cancel event fires oncancel)', async () => {
+  test('boundary: ConfirmDialog IS dismissable by Escape (native cancel event fires onCancel)', async () => {
     let cancelCount = 0;
     let openValue = true;
     const { container } = render(ConfirmDialog, {
@@ -598,8 +598,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -613,7 +613,7 @@ describe('ConfirmDialog', () => {
     expect(cancelCount).toBe(1);
   });
 
-  test('boundary: ConfirmDialog IS dismissable by backdrop click (fires oncancel)', async () => {
+  test('boundary: ConfirmDialog IS dismissable by backdrop click (fires onCancel)', async () => {
     let cancelCount = 0;
     let openValue = true;
     const { container } = render(ConfirmDialog, {
@@ -626,8 +626,8 @@ describe('ConfirmDialog', () => {
         },
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
-        oncancel: () => {
+        onConfirm: () => {},
+        onCancel: () => {
           cancelCount++;
         },
       },
@@ -655,7 +655,7 @@ describe('ConfirmDialog focus trap', () => {
         open: true,
         title: 'Delete account?',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
 
@@ -686,7 +686,7 @@ describe('ConfirmDialog focus trap', () => {
         title: 'Delete account?',
         cancelLabel: 'Cancel',
         confirmLabel: 'Delete',
-        onconfirm: () => {},
+        onConfirm: () => {},
       },
     });
 

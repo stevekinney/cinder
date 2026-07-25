@@ -40,7 +40,7 @@ const schema = {
       type: 'number',
       description: 'Distance in pixels between the trigger and the card. Default `8`.',
     },
-    showArrow: {
+    arrowVisible: {
       type: 'boolean',
       description:
         'When true, renders a directional arrow pointing from the card toward the trigger. Default `false`.',
@@ -64,7 +64,7 @@ const schema = {
         required: true,
       },
       {
-        name: 'onopenchange',
+        name: 'onOpenChange',
         reason: 'function-or-snippet',
       },
       {

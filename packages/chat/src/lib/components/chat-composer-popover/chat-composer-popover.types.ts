@@ -2,7 +2,7 @@ import type { PopoverPlacement } from '@lostgradient/cinder/popover';
 import type { Snippet } from 'svelte';
 
 export type ChatComposerPopoverItem = {
-  /** Stable submitted value surfaced through onselect. */
+  /** Stable submitted value surfaced through onSelect. */
   value: string;
   /** Default visible and accessible label for the command row. */
   label: string;
@@ -81,7 +81,7 @@ export type ChatComposerPopoverProps<TItem extends ChatComposerPopoverItem> = {
   /** Override filtering. */
   filter?: (items: readonly TItem[], query: string, trigger: string) => readonly TItem[];
   /** Invoked when an enabled item is selected by keyboard or pointer. */
-  onselect?: (selection: ChatComposerPopoverSelection<TItem>) => void;
+  onSelect?: (selection: ChatComposerPopoverSelection<TItem>) => void;
   /** Invoked when Escape, trigger loss, or outside pointerdown dismisses the popover. */
-  ondismiss?: () => void;
+  onDismiss?: () => void;
 };

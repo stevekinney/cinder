@@ -102,7 +102,7 @@
     },
     "filterQuery": {
       "type": "string",
-      "description": "Current filter query value, for controlled usage. Pairs with `onfilter`."
+      "description": "Current filter query value, for controlled usage. Pairs with `onFilter`."
     },
     "class": {
       "type": "string",
@@ -114,12 +114,12 @@
   "metadata": {
     "unsupportedProps": [
       {
-        "name": "oncopyvisible",
+        "name": "onCopyVisible",
         "reason": "function-or-snippet",
         "description": "Callback fired when the user clicks the \"Copy visible\" toolbar action.\nReceives the text of all currently visible events. When omitted the copy\naction is hidden."
       },
       {
-        "name": "onfilter",
+        "name": "onFilter",
         "reason": "function-or-snippet",
         "description": "Callback fired when the user updates the filter query in the toolbar's\nsearch field. The consumer is responsible for filtering `events` in\nresponse. When omitted the filter input is hidden."
       }

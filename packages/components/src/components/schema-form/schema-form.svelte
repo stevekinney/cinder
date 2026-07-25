@@ -44,7 +44,7 @@
    * the form is an editing surface, and resetting it on every external value change
    * would discard in-progress user edits.
    *
-   * Use `ondraftchange` to observe the complete live draft without turning
+   * Use `onDraftChange` to observe the complete live draft without turning
    * `value` into a controlled binding. Draft callbacks run before schema
    * validation, while `onsubmit` runs only after validation passes.
    */

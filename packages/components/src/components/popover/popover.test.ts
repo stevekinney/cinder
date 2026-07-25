@@ -347,7 +347,7 @@ describe('Popover — portal and arrow', () => {
     expect(panel.getAttribute('data-cinder-theme')).toBe('midnight');
   });
 
-  test('renders an arrow inside a placed panel when showArrow=true', async () => {
+  test('renders an arrow inside a placed panel when arrowVisible=true', async () => {
     computePositionResult = {
       x: 10,
       y: 20,
@@ -358,7 +358,7 @@ describe('Popover — portal and arrow', () => {
     render(Popover, {
       props: {
         open: true,
-        showArrow: true,
+        arrowVisible: true,
         trigger: triggerSnippet,
         children: textSnippet('content'),
       },
@@ -828,11 +828,11 @@ describe('Popover — floating-ui wiring', () => {
     expect(offsetSpy).toHaveBeenCalledWith(16);
   });
 
-  test('arrow middleware is NOT called when showArrow=false', async () => {
+  test('arrow middleware is NOT called when arrowVisible=false', async () => {
     render(Popover, {
       props: {
         open: true,
-        showArrow: false,
+        arrowVisible: false,
         trigger: triggerSnippet,
         children: textSnippet('content'),
       },
@@ -841,11 +841,11 @@ describe('Popover — floating-ui wiring', () => {
     expect(arrowSpy).not.toHaveBeenCalled();
   });
 
-  test('arrow middleware IS called when showArrow=true', async () => {
+  test('arrow middleware IS called when arrowVisible=true', async () => {
     render(Popover, {
       props: {
         open: true,
-        showArrow: true,
+        arrowVisible: true,
         trigger: triggerSnippet,
         children: textSnippet('content'),
       },

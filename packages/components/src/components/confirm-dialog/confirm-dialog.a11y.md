@@ -38,20 +38,20 @@ The confirm button never carries `autofocus`. `ConfirmDialog` exposes no prop to
 | Key                     | Behaviour                                                                                                                            |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | Tab / Shift+Tab         | Cycles focus through focusable elements inside the dialog. Focus trap is inherited from `<Modal>` via native `<dialog>.showModal()`. |
-| Escape                  | Closes the dialog and fires `oncancel` via Modal's native `cancel` event handler.                                                    |
+| Escape                  | Closes the dialog and fires `onCancel` via Modal's native `cancel` event handler.                                                    |
 | Enter on cancel button  | Dismisses without confirming.                                                                                                        |
 | Enter on confirm button | Confirms the action and closes the dialog.                                                                                           |
 
 ## Cancellation Paths
 
-`oncancel` fires on all four user-initiated dismissal paths:
+`onCancel` fires on all four user-initiated dismissal paths:
 
 1. **Cancel button click** (button owned by `ConfirmDialog`).
-2. **Escape key** — via the native `cancel` event on `<dialog>`, routed through Modal's `ondismiss`.
-3. **Backdrop click** — routed through Modal's `ondismiss`.
-4. **Close-X button** — routed through Modal's `ondismiss`.
+2. **Escape key** — via the native `cancel` event on `<dialog>`, routed through Modal's `onDismiss`.
+3. **Backdrop click** — routed through Modal's `onDismiss`.
+4. **Close-X button** — routed through Modal's `onDismiss`.
 
-Parent-driven `open = false` does **not** fire `oncancel`.
+Parent-driven `open = false` does **not** fire `onCancel`.
 
 ## Focus Return
 

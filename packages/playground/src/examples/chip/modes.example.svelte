@@ -9,7 +9,7 @@
   let tags = $state(['JavaScript', 'TypeScript', 'Svelte']);
 </script>
 
-<!-- Manual check: click anywhere on the chip label text — onremove must not fire. -->
+<!-- Manual check: click anywhere on the chip label text — onRemove must not fire. -->
 <div class="example-preview-row">
   <Chip label="Display" />
 
@@ -17,7 +17,7 @@
     mode="toggle"
     label={pressed ? 'Active' : 'Inactive'}
     {pressed}
-    onpressedchange={(value) => {
+    onPressedChange={(value) => {
       pressed = value;
     }}
   />
@@ -26,7 +26,7 @@
     <Chip
       mode="removable"
       label={tag}
-      onremove={() => {
+      onRemove={() => {
         tags = tags.filter((t) => t !== tag);
       }}
     />

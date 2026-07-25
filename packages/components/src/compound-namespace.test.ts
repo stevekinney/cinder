@@ -2,7 +2,7 @@
  * Runtime regression test for compound-namespace exports.
  *
  * Each parent compound component (Tabs/Table/Dropdown/Accordion/Tree/Feed/
- * GridList/StatGroup/SideNavigation) exposes its compose-only leaves under
+ * GridList/StatisticGroup/SideNavigation) exposes its compose-only leaves under
  * idiomatic property names (`Tabs.List`, `Table.Body`, etc.) while preserving
  * the original flat root exports. This test pins both invariants so a future
  * refactor cannot silently drop a namespace property or accidentally divorce
@@ -31,8 +31,8 @@ import {
   SideNavigation,
   SideNavigationGroup,
   SideNavigationItem,
-  Stat,
-  StatGroup,
+  Statistic,
+  StatisticGroup,
   Tab,
   TabList,
   TabPanel,
@@ -87,8 +87,8 @@ describe('compound-namespace runtime references', () => {
     expect(GridList.Item).toBe(GridListItem);
   });
 
-  it('StatGroup exposes Stat pointing at the flat Stat export', () => {
-    expect(StatGroup.Stat).toBe(Stat);
+  it('StatisticGroup exposes Statistic pointing at the flat Statistic export', () => {
+    expect(StatisticGroup.Statistic).toBe(Statistic);
   });
 
   it('SideNavigation exposes Group/Item pointing at the flat exports', () => {
@@ -114,7 +114,7 @@ describe('compound-namespace flat-export compatibility', () => {
       GridListItem,
       SideNavigationGroup,
       SideNavigationItem,
-      Stat,
+      Statistic,
       Tab,
       TabList,
       TabPanel,
@@ -188,7 +188,9 @@ type _typeProbe_AccordionItemMatchesFlat = Expect<
 type _typeProbe_TreeItemMatchesFlat = Expect<Same<typeof Tree.Item, typeof TreeItem>>;
 type _typeProbe_FeedEventMatchesFlat = Expect<Same<typeof Feed.Event, typeof FeedEvent>>;
 type _typeProbe_GridListItemMatchesFlat = Expect<Same<typeof GridList.Item, typeof GridListItem>>;
-type _typeProbe_StatGroupStatMatchesFlat = Expect<Same<typeof StatGroup.Stat, typeof Stat>>;
+type _typeProbe_StatisticGroupStatisticMatchesFlat = Expect<
+  Same<typeof StatisticGroup.Statistic, typeof Statistic>
+>;
 type _typeProbe_SideNavigationGroupMatchesFlat = Expect<
   Same<typeof SideNavigation.Group, typeof SideNavigationGroup>
 >;
@@ -222,7 +224,7 @@ type _typeProbeBundle = [
   _typeProbe_TreeItemMatchesFlat,
   _typeProbe_FeedEventMatchesFlat,
   _typeProbe_GridListItemMatchesFlat,
-  _typeProbe_StatGroupStatMatchesFlat,
+  _typeProbe_StatisticGroupStatisticMatchesFlat,
   _typeProbe_SideNavigationGroupMatchesFlat,
   _typeProbe_SideNavigationItemMatchesFlat,
 ];

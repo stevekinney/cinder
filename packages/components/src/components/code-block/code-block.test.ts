@@ -104,24 +104,24 @@ describe('CodeBlock — static structure', () => {
     expect(container.querySelector('.cinder-code-block__header')).toBeNull();
   });
 
-  test('showLanguageLabel=false suppresses the header while keeping language semantics', () => {
+  test('languageLabelVisible=false suppresses the header while keeping language semantics', () => {
     const { container } = render(CodeBlock, {
       code: 'const x',
       language: 'ts',
       highlight: false,
-      showLanguageLabel: false,
+      languageLabelVisible: false,
     });
     expect(container.querySelector('.cinder-code-block__header')).toBeNull();
     expect(container.querySelector('.cinder-code-block__language')).toBeNull();
   });
 
-  test('showLanguageLabel=false keeps the header when copyable is set', () => {
+  test('languageLabelVisible=false keeps the header when copyable is set', () => {
     const { container } = render(CodeBlock, {
       code: 'const x',
       language: 'ts',
       highlight: false,
       copyable: true,
-      showLanguageLabel: false,
+      languageLabelVisible: false,
     });
     expect(container.querySelector('.cinder-code-block__header')).not.toBeNull();
     expect(container.querySelector('.cinder-code-block__language')).toBeNull();
@@ -363,7 +363,7 @@ describe('CodeBlock — highlight={false} absolute off switch', () => {
   test('highlight={false} + explicit highlighter → highlighter is NOT called, output escaped', async () => {
     const highlighterSpy = mock(customHighlighter);
     const { container } = render(CodeBlock, {
-      code: '<img src=x onerror=alert(1)>',
+      code: '<img src=x onError=alert(1)>',
       language: 'html',
       highlight: false,
       highlighter: highlighterSpy,
@@ -374,7 +374,7 @@ describe('CodeBlock — highlight={false} absolute off switch', () => {
     expect(loadDefaultHighlighter).not.toHaveBeenCalled();
     // Code is escaped via Svelte text interpolation, NOT {@html}.
     const code = container.querySelector('.cinder-code-block__code');
-    expect(code?.textContent).toBe('<img src=x onerror=alert(1)>');
+    expect(code?.textContent).toBe('<img src=x onError=alert(1)>');
     expect(container.querySelector('img')).toBeNull();
   });
 });
@@ -382,7 +382,7 @@ describe('CodeBlock — highlight={false} absolute off switch', () => {
 describe('CodeBlock — safe-path escaping (no {@html} on the plain paths)', () => {
   // The dangerous {@html} path is ONLY the successful custom/default highlight.
   // Every plain-fallback path must escape via Svelte interpolation.
-  const malicious = '<img src=x onerror=alert(1)><svg onload=alert(2)></svg>';
+  const malicious = '<img src=x onError=alert(1)><svg onLoad=alert(2)></svg>';
 
   test('no language → escaped, no injected nodes', () => {
     const { container } = render(CodeBlock, { code: malicious });

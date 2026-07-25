@@ -34,8 +34,8 @@
     destructive = false,
     typeToConfirm,
     typeToConfirmLabel,
-    onconfirm,
-    oncancel,
+    onConfirm,
+    onCancel,
     triggerRef = null,
     class: className,
   }: ConfirmDialogProps = $props();
@@ -59,13 +59,13 @@
     // Mirror Modal's dismiss() ordering: state first, then callback. No try/catch —
     // consumer errors must propagate so tests, error boundaries, and observability see them.
     open = false;
-    oncancel?.();
+    onCancel?.();
   }
 
   function handleConfirm() {
     // Same ordering and error policy: close first, fire callback, let errors propagate.
     open = false;
-    onconfirm();
+    onConfirm();
   }
 </script>
 
@@ -75,7 +75,7 @@
   {triggerRef}
   class={classNames('cinder-confirm-dialog', className)}
   {...describedById ? { describedById } : {}}
-  {...oncancel ? { ondismiss: oncancel } : {}}
+  {...onCancel ? { onDismiss: onCancel } : {}}
 >
   {#if description}
     <p id={descriptionId} class="cinder-confirm-dialog__description">{description}</p>

@@ -49,7 +49,7 @@ const schema = {
       enum: ['sequential', 'diverging'],
       description: 'Color interpolation scale. Default `sequential`.',
     },
-    showCellLabels: {
+    cellLabelsVisible: {
       type: 'boolean',
       description: 'Show cell value labels. Default `true`.',
     },

@@ -206,7 +206,7 @@
 
   <div class="cinder-share-card__actions" role="group" aria-label="Share actions">
     {#each resolvedActions as action (action.key)}
-      {#if action.key === 'native-share' || action.useNativeShare}
+      {#if action.key === 'native-share' || action.nativeShareEnabled}
         {@render shareButton(action)}
       {:else}
         {@render copyButton(action)}
@@ -218,7 +218,7 @@
          in the default surface (no explicit `actions`); a consumer-supplied
          native-share action goes through the `{#each}` above. -->
     {#if !actions && canNativeShare}
-      {@render shareButton({ key: 'native-share', label: shareLabel, useNativeShare: true })}
+      {@render shareButton({ key: 'native-share', label: shareLabel, nativeShareEnabled: true })}
     {/if}
   </div>
 </div>
@@ -235,10 +235,10 @@
     data-cinder-action={action.key}
     data-cinder-copied={shareCopied ? '' : undefined}
     onclick={() => {
-      // Honour a consumer onClick (analytics/side-effects) on the native share
+      // Honour a consumer onclick (analytics/side-effects) on the native share
       // action too, then run the share. `void` marks the floating promise as
       // intentional (the handler is synchronous).
-      action.onClick?.();
+      action.onclick?.();
       void handleNativeShare();
     }}
     aria-label={shareCopied ? copiedLabel : action.label}
@@ -285,7 +285,7 @@
   </button>
 {/snippet}
 
-<!-- Copy button. `onClick` is a side-effect callback (e.g. analytics), NOT an
+<!-- Copy button. `onclick` is a side-effect callback (e.g. analytics), NOT an
      override — it runs AND the copy still fires when `copyValue` is present. An
      empty string is a legitimate copyValue, so test for `undefined`, not
      truthiness. -->
@@ -296,7 +296,7 @@
     data-cinder-action={action.key}
     data-cinder-copied={copiedKey === action.key ? '' : undefined}
     onclick={() => {
-      action.onClick?.();
+      action.onclick?.();
       if (action.copyValue !== undefined) {
         void handleCopy(action.key, action.copyValue);
       }

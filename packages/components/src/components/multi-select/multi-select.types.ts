@@ -41,7 +41,7 @@ export type MultiSelectProps<T extends string = string> = {
   /** Enables the filter input rendered above the options list. */
   filterable?: boolean;
   /** Custom option filter callback. Defaults to case-insensitive label/description matching. */
-  filterItem?: (item: MultiSelectItem<T>, query: string) => boolean;
+  filter?: (item: MultiSelectItem<T>, query: string) => boolean;
   /** Selected-option ordering behavior when the menu is open. */
   selectionFeedback?: MultiSelectSelectionFeedback;
   /** Open direction for the floating panel. */

@@ -24,6 +24,6 @@
   getRowId={(row) => row.id}
   selectionMode="multiple"
   bind:selectionModel
-  onselectionmodelchange={observeSelectionModel}
+  onSelectionModelChange={observeSelectionModel}
   aria-label="Orders"
 />

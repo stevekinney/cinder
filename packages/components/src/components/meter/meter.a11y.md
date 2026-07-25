@@ -33,4 +33,4 @@ When Meter accepts snippets or arbitrary children, the caller owns the semantics
 - Inspect the accessible name, role, and value state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `progress`, `stat`, `slider`.
+Related components: `progress`, `statistic`, `slider`.

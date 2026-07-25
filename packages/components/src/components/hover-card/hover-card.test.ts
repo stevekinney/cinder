@@ -140,7 +140,7 @@ describe('HoverCard', () => {
     expect(descriptionIdInDescribedBy).toMatch(/-description$/);
   });
 
-  test('showArrow enables Floating UI arrow middleware and positions the arrow', async () => {
+  test('arrowVisible enables Floating UI arrow middleware and positions the arrow', async () => {
     computePositionResult = {
       x: 40,
       y: 52,
@@ -151,7 +151,7 @@ describe('HoverCard', () => {
     const { container } = render(HoverCard, {
       props: {
         open: true,
-        showArrow: true,
+        arrowVisible: true,
         trigger: triggerSnippet,
         children: textSnippet('Preview'),
       },
@@ -267,12 +267,12 @@ describe('HoverCard', () => {
   });
 
   test('controlled external close clears hover interest before another trigger enter', async () => {
-    const onopenchange = mock((_open: boolean) => {});
+    const onOpenChange = mock((_open: boolean) => {});
     const { container, rerender } = render(HoverCard, {
       props: {
         open: true,
         openDelay: 0,
-        onopenchange,
+        onOpenChange,
         trigger: triggerSnippet,
         children: textSnippet('Preview'),
       },
@@ -284,27 +284,27 @@ describe('HoverCard', () => {
     await rerender({
       open: false,
       openDelay: 0,
-      onopenchange,
+      onOpenChange,
       trigger: triggerSnippet,
       children: textSnippet('Preview'),
     });
     await waitFor(() => expect(queryHoverCard()).toBeNull());
 
-    onopenchange.mockClear();
+    onOpenChange.mockClear();
     await fireEvent.mouseEnter(wrapper);
     await Bun.sleep(5);
 
-    expect(onopenchange).not.toHaveBeenCalledWith(true);
+    expect(onOpenChange).not.toHaveBeenCalledWith(true);
     expect(queryHoverCard()).toBeNull();
   });
 
   test('controlled external close suppresses focus reopen while the pointer never left the trigger', async () => {
-    const onopenchange = mock((_open: boolean) => {});
+    const onOpenChange = mock((_open: boolean) => {});
     const { container, rerender } = render(HoverCard, {
       props: {
         open: true,
         openDelay: 0,
-        onopenchange,
+        onOpenChange,
         trigger: triggerSnippet,
         children: textSnippet('Preview'),
       },
@@ -316,27 +316,27 @@ describe('HoverCard', () => {
     await rerender({
       open: false,
       openDelay: 0,
-      onopenchange,
+      onOpenChange,
       trigger: triggerSnippet,
       children: textSnippet('Preview'),
     });
     await waitFor(() => expect(queryHoverCard()).toBeNull());
 
-    onopenchange.mockClear();
+    onOpenChange.mockClear();
     await fireEvent.focusIn(wrapper);
     await Bun.sleep(5);
 
-    expect(onopenchange).not.toHaveBeenCalledWith(true);
+    expect(onOpenChange).not.toHaveBeenCalledWith(true);
     expect(queryHoverCard()).toBeNull();
   });
 
   test('focus reopens the hover card after the pointer leaves following a controlled close', async () => {
-    const onopenchange = mock((_open: boolean) => {});
+    const onOpenChange = mock((_open: boolean) => {});
     const { container, rerender } = render(HoverCard, {
       props: {
         open: true,
         openDelay: 0,
-        onopenchange,
+        onOpenChange,
         trigger: triggerSnippet,
         children: textSnippet('Preview'),
       },
@@ -348,7 +348,7 @@ describe('HoverCard', () => {
     await rerender({
       open: false,
       openDelay: 0,
-      onopenchange,
+      onOpenChange,
       trigger: triggerSnippet,
       children: textSnippet('Preview'),
     });
@@ -356,7 +356,7 @@ describe('HoverCard', () => {
 
     // Tabbing away clears the suppress flag so keyboard users are never trapped.
     await fireEvent.focusOut(wrapper, { relatedTarget: document.body });
-    onopenchange.mockClear();
+    onOpenChange.mockClear();
     await fireEvent.focusIn(wrapper);
     await Bun.sleep(5);
 

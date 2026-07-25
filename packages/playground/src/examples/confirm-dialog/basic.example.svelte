@@ -37,6 +37,6 @@
   description="This permanently removes the item. This action cannot be undone."
   destructive
   confirmLabel="Delete"
-  onconfirm={() => (lastAction = 'confirmed')}
-  oncancel={() => (lastAction = 'cancelled')}
+  onConfirm={() => (lastAction = 'confirmed')}
+  onCancel={() => (lastAction = 'cancelled')}
 />

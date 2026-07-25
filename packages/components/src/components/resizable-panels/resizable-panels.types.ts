@@ -55,8 +55,8 @@ export type ResizablePanelsProps = Omit<
   snapThreshold?: ResizablePanelSize;
   collapseOnDoubleClick?: boolean;
   collapseTarget?: ResizablePanelsCollapseTarget;
-  onlayoutchange?: (event: ResizablePanelsResizeEvent) => void;
-  onlayoutcommit?: (event: ResizablePanelsResizeEvent) => void;
+  onLayoutChange?: (event: ResizablePanelsResizeEvent) => void;
+  onLayoutCommit?: (event: ResizablePanelsResizeEvent) => void;
   children: Snippet<[pane: ResizablePanelDefinition, context: ResizablePanelRenderContext]>;
   class?: string;
 };
@@ -71,8 +71,8 @@ export interface ResizablePanelsSchemaProps {
   collapseOnDoubleClick?: boolean;
   /** Which pane to collapse when double-clicking a separator: `'leading'`, `'trailing'`, or `'nearest-collapsible'` (default). */
   collapseTarget?: ResizablePanelsCollapseTarget;
-  onlayoutchange?: (event: ResizablePanelsResizeEvent) => void;
-  onlayoutcommit?: (event: ResizablePanelsResizeEvent) => void;
+  onLayoutChange?: (event: ResizablePanelsResizeEvent) => void;
+  onLayoutCommit?: (event: ResizablePanelsResizeEvent) => void;
   children: Snippet<[pane: ResizablePanelDefinition, context: ResizablePanelRenderContext]>;
   /** Additional class merged onto the `.cinder-resizable-panels` root element. */
   class?: string;

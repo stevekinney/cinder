@@ -142,13 +142,18 @@ async function main(): Promise<void> {
   const options = parseArgs();
   // Place the fixture inside the package's node_modules/.cache so workspace
   // module resolution finds the `@lostgradient/cinder` package via the parent
-  // monorepo's node_modules. A temp directory outside the repo cannot resolve
+  // monochromerepo's node_modules. A temp directory outside the repo cannot resolve
   // workspace packages.
   const packageRoot = join(import.meta.dir, '..');
-  // Place the fixture in the monorepo root's node_modules/.cache, where Bun's
+  // Place the fixture in the monochromerepo root's node_modules/.cache, where Bun's
   // standard lookup can find the workspace package and private dependencies.
-  const monorepoRoot = join(packageRoot, '..', '..');
-  const fixtureDirectory = join(monorepoRoot, 'node_modules', '.cache', 'cinder-consumer-fixture');
+  const monochromerepoRoot = join(packageRoot, '..', '..');
+  const fixtureDirectory = join(
+    monochromerepoRoot,
+    'node_modules',
+    '.cache',
+    'cinder-consumer-fixture',
+  );
   await mkdir(fixtureDirectory, { recursive: true });
   const fixtureSource = renderFixture(options);
   const fixturePath = join(fixtureDirectory, 'fixture.ts');

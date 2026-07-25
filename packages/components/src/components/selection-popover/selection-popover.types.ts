@@ -19,13 +19,13 @@ export type SelectionPopoverProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   /** Whether the popover is visible. */
   open?: boolean;
   /** Called when a comment is submitted. */
-  oncommentsubmit?: (body: string) => void;
+  onCommentSubmit?: (body: string) => void;
   /** Called when the compact action expands into the composer. */
-  onexpand?: () => void;
+  onExpand?: () => void;
   /** Called when the composer is canceled. */
-  oncancel?: () => void;
+  onCancel?: () => void;
   /** Called when the popover should close. */
-  onclose?: () => void;
+  onClose?: () => void;
   /** Additional class names merged with `.cinder-selection-popover`. */
   class?: string;
 };

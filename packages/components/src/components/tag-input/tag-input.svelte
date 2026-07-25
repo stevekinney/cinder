@@ -35,12 +35,11 @@
 
   let {
     id,
-    value,
-    defaultValue,
+    value = $bindable<string[]>([]),
     delimiter = ',',
     max,
     validate,
-    allowDuplicates = false,
+    duplicateValuesAllowed = false,
     commitOnSubmit = false,
     disabled,
     readonly = false,
@@ -61,7 +60,7 @@
     required?: boolean;
   } = $props();
 
-  const initialDefaultTags = untrack(() => [...(defaultValue ?? [])]);
+  const resetTarget = untrack(() => [...(value ?? [])]);
 
   const context = getFormFieldContext();
 
@@ -69,7 +68,6 @@
   let inputElement = $state<HTMLInputElement | null>(null);
   let draftValue = $state('');
   let inlineError = $state<string | null>(null);
-  let uncontrolledTags = $state(initialDefaultTags);
   let focusedChipIndex = $state(-1);
   let statusAnnouncement = $state('');
   // Bumped on every announce so the live region re-fires even when two consecutive
@@ -82,8 +80,7 @@
     statusAnnouncementSequence += 1;
   }
 
-  const isControlled = $derived(value !== undefined);
-  const currentTags = $derived(isControlled ? (value ?? []) : uncontrolledTags);
+  const currentTags = $derived(value ?? []);
   const resolvedReadonly = $derived(readonly === true);
 
   // Base field-control wiring: id, disabled, required, and context-provided
@@ -177,13 +174,14 @@
       }
     };
 
-    const onReset = () => {
-      draftValue = '';
-      inlineError = null;
-      focusedChipIndex = -1;
-      if (!isControlled) {
-        uncontrolledTags = [...initialDefaultTags];
-      }
+    const onReset = (event: Event) => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        draftValue = '';
+        inlineError = null;
+        focusedChipIndex = -1;
+        value = [...resetTarget];
+      });
     };
 
     form.addEventListener('submit', onSubmit, true);
@@ -216,9 +214,7 @@
 
   function setTags(nextTags: string[]): void {
     const normalized = [...nextTags];
-    if (!isControlled) {
-      uncontrolledTags = normalized;
-    }
+    value = normalized;
     onchange?.(normalized);
   }
 
@@ -227,7 +223,7 @@
       return `You can add up to ${resolvedMax} tag${resolvedMax === 1 ? '' : 's'}.`;
     }
 
-    if (!allowDuplicates && currentTags.some((tag) => tag.trim() === candidate)) {
+    if (!duplicateValuesAllowed && currentTags.some((tag) => tag.trim() === candidate)) {
       return `"${candidate}" is already added.`;
     }
 
@@ -389,7 +385,7 @@
       aria-labelledby={labelledBy}
     >
       <!-- Always key by a position-qualified composite (index:tag). A controlled
-           `value` prop can contain duplicate strings even when allowDuplicates is
+           `value` prop can contain duplicate strings even when duplicateValuesAllowed is
            false, so a pure value key would throw each_key_duplicate. -->
       {#each currentTags as tag, index (`${index}:${tag}`)}
         <li class="cinder-tag-input__chip">

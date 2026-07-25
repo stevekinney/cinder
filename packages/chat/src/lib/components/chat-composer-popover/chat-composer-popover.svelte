@@ -62,8 +62,8 @@
     empty,
     detectTrigger,
     filter = filterFuzzySubsequence,
-    onselect,
-    ondismiss,
+    onSelect,
+    onDismiss,
   }: ChatComposerPopoverProps<TItem> = $props();
 
   let open = $state(false);
@@ -138,7 +138,7 @@
     open = activeMatch !== null && anchor !== null;
     if (!open) {
       activeItemId = null;
-      if (wasOpen) ondismiss?.();
+      if (wasOpen) onDismiss?.();
     }
   }
 
@@ -160,7 +160,7 @@
     activeItemId = null;
     activeMatch = null;
     if (restoreFocus) anchor?.focus();
-    ondismiss?.();
+    onDismiss?.();
   }
 
   function handleComposerInput(nextValue: string, event?: Event): void {
@@ -301,7 +301,7 @@
       suppressNextValueSync = false;
       suppressCommittedSelectionSync = false;
     });
-    onselect?.(detail);
+    onSelect?.(detail);
   }
 </script>
 
@@ -316,9 +316,9 @@
   {offset}
   {label}
   {listboxId}
-  onselect={handleSelect}
-  ondismiss={() => dismiss({ restoreFocus: false })}
-  onstatechange={handleStateChange}
+  onSelect={handleSelect}
+  onDismiss={() => dismiss({ restoreFocus: false })}
+  onStateChange={handleStateChange}
 >
   {#snippet items()}
     {#each filteredItems as command (command.value)}

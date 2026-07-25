@@ -74,8 +74,8 @@
   id="test-composer-popover"
   bind:value
   items={commands}
-  onselect={handleSelected}
-  ondismiss={onDismissed}
+  onSelect={handleSelected}
+  onDismiss={onDismissed}
 >
   {#snippet composer(composerProps)}
     <ChatInput

@@ -54,11 +54,11 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'onpressedchange',
+        name: 'onPressedChange',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onremove',
+        name: 'onRemove',
         reason: 'function-or-snippet',
       },
     ],

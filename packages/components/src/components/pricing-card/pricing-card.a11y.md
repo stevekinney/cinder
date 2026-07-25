@@ -14,7 +14,7 @@ Purpose: Presents a single pricing plan with its name, price, feature list, and 
 ## Avoid when
 
 - Showing generic grouped content without a distinct price or CTA — use card instead.
-- Displaying a single key metric in isolation — use stat or stat-group instead.
+- Displaying a single key metric in isolation — use stat or statistic-group instead.
 
 ## Keyboard and focus
 
@@ -35,4 +35,4 @@ When PricingCard accepts snippets or arbitrary children, the caller owns the sem
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `card`, `button`, `stat`, `stat-group`.
+Related components: `card`, `button`, `statistic`, `statistic-group`.

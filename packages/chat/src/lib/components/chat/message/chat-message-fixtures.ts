@@ -483,6 +483,6 @@ export const XSS_TEST_CONTENT = `Safe content here.
 [Legitimate link](https://example.com)
 [Bad link](javascript:alert('XSS'))
 
-<img src="x" onerror="alert('XSS')">
+<img src="x" onError="alert('XSS')">
 
 <div onclick="alert('XSS')">Click me</div>`;

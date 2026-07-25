@@ -38,7 +38,7 @@
   // component-owned attrs (data-cinder-*, aria-pressed, aria-label for toggle) always win.
   //
   // `onclick` for the toggle button is read via a cast so it can be wrapped — the wrapper calls
-  // the consumer's handler first, then fires `onpressedchange` unless `defaultPrevented`.
+  // the consumer's handler first, then fires `onPressedChange` unless `defaultPrevented`.
   //
   // `aria-label` for toggle is read via a cast so empty strings can be suppressed (an empty
   // aria-label overrides the accessible-name computation per ARIA spec §4.3 without providing
@@ -52,8 +52,8 @@
   const customClassName = $derived(props.class);
   const leadingIcon = $derived(props.leadingIcon);
   const pressed = $derived(mode === 'toggle' ? (props as ChipToggleProps).pressed : false);
-  const onpressedchange = $derived(
-    mode === 'toggle' ? (props as ChipToggleProps).onpressedchange : undefined,
+  const onPressedChange = $derived(
+    mode === 'toggle' ? (props as ChipToggleProps).onPressedChange : undefined,
   );
   const disabled = $derived(
     mode !== 'display' ? (props as ChipToggleProps | ChipRemovableProps).disabled : undefined,
@@ -67,8 +67,8 @@
   const ariaLabel = $derived(
     typeof ariaLabelRaw === 'string' && ariaLabelRaw.trim().length > 0 ? ariaLabelRaw : undefined,
   );
-  const onremove = $derived(
-    mode === 'removable' ? (props as ChipRemovableProps).onremove : undefined,
+  const onRemove = $derived(
+    mode === 'removable' ? (props as ChipRemovableProps).onRemove : undefined,
   );
   const removeAriaLabel = $derived.by(() => {
     if (mode !== 'removable') return undefined;
@@ -96,9 +96,9 @@
     'leadingIcon',
     'class',
     'pressed',
-    'onpressedchange',
+    'onPressedChange',
     'disabled',
-    'onremove',
+    'onRemove',
     'removeAriaLabel',
   ]);
 
@@ -139,7 +139,7 @@
       if (disabled) return;
       consumerOnClick?.(event);
       if (!event.defaultPrevented) {
-        onpressedchange?.(!pressed);
+        onPressedChange?.(!pressed);
       }
     }}
   >
@@ -171,7 +171,7 @@
       aria-label={removeAriaLabel ?? `Remove ${label}`}
       {disabled}
       onclick={() => {
-        if (!disabled) onremove?.();
+        if (!disabled) onRemove?.();
       }}
     >
       <span aria-hidden="true">×</span>

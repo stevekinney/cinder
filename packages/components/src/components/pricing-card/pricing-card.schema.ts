@@ -42,7 +42,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onselect',
+        name: 'onSelect',
         reason: 'function-or-snippet',
         required: true,
         description: 'Called when the CTA button is clicked.',

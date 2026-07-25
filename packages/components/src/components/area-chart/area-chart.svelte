@@ -11,7 +11,7 @@
    * @useWhen Comparing cumulative or stacked contribution over an ordered domain.
    * @avoidWhen Exact point comparison matters more than area magnitude — use line-chart instead.
    * @avoidWhen Comparing discrete category totals — use bar-chart instead.
-   * @related line-chart, bar-chart, table, stat
+   * @related line-chart, bar-chart, table, statistic
    */
   export type { AreaChartProps, AreaChartSchemaProps } from './area-chart.types.ts';
 </script>

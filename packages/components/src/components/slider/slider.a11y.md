@@ -112,7 +112,7 @@ submitted payload is always up to date.
 Native form `reset` is not handled internally: a hidden input does not
 participate in the `reset` event the way `<input type="range">` does.
 Consumers that need form-reset to restore the slider should either
-re-render the component with the original `defaultValue` after reset, or
+re-render the component with the original `value` after reset, or
 prefer the controlled pattern and reset the state externally.
 
 ## Content Guidance

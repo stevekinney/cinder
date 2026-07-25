@@ -23,7 +23,7 @@ A status message that communicates contextual feedback and can optionally be dis
 | `variant`     | `"info"` \| `"success"` \| `"warning"` \| `"danger"` \| `"error"` | no       | `"info"` | Visual severity variant. `danger` is the canonical failure-severity spelling, consistent with banner and callout. `error` remains accepted as a deprecated alias. |
 | `children`    | `(opaque)`                                                        | yes      | —        | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                        |
 | `icon`        | `(opaque)`                                                        | no       | —        | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                        |
-| `ondismiss`   | `(opaque)`                                                        | no       | —        | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                        |
+| `onDismiss`   | `(opaque)`                                                        | no       | —        | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                        |
 
 <!-- generated:props:end -->
 

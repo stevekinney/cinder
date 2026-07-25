@@ -13,7 +13,7 @@ type SnapshotCollapsibleProps = {
   trigger: string | Snippet<[CollapsibleTriggerState]>;
   children: Snippet;
   open?: boolean;
-  ontoggle?: (open: boolean) => void;
+  onToggle?: (open: boolean) => void;
   disabled?: boolean;
   triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
   idBase?: string;
@@ -21,12 +21,14 @@ type SnapshotCollapsibleProps = {
 };
 
 type Assignable<A, B> = A extends B ? true : false;
+type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
 
 const aliasForward: Assignable<SnapshotCollapsibleProps, CollapsibleProps> = true;
 const componentAcceptsSnapshot: Assignable<
   SnapshotCollapsibleProps,
   ComponentProps<typeof Collapsible>
 > = true;
+const excludesLowercaseNativeToggleHandler: HasKey<CollapsibleProps, 'ontoggle'> = false;
 // CollapsibleProps spreads HTMLAttributes<HTMLDivElement>, so a full backward
 // assignability check (real → snapshot) is intentionally false and omitted —
 // unlike AccordionItemProps, which is a plain object type. To still catch the
@@ -40,5 +42,6 @@ const componentAcceptsMinimalRequired: Assignable<
 test('Collapsible public prop surface unchanged', () => {
   expect(aliasForward).toBe(true);
   expect(componentAcceptsSnapshot).toBe(true);
+  expect(excludesLowercaseNativeToggleHandler).toBe(false);
   expect(componentAcceptsMinimalRequired).toBe(true);
 });

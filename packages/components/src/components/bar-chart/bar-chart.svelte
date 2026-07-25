@@ -11,7 +11,7 @@
    * @useWhen Showing stacked contribution across known categories.
    * @avoidWhen Showing a continuous ordered trend — use line-chart instead.
    * @avoidWhen Showing magnitude under a trend — use area-chart instead.
-   * @related line-chart, area-chart, table, stat
+   * @related line-chart, area-chart, table, statistic
    */
   export type { BarChartProps, BarChartSchemaProps } from './bar-chart.types.ts';
 </script>

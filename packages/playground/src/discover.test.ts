@@ -228,7 +228,7 @@ describe('discoverSidebarComponents', () => {
   it('keeps the sidebar at or below the documented product gate', async () => {
     // The plan named a 70-entry cap based on a 99-component baseline. The
     // repository has grown to 134 components since then; adding the four
-    // new parent families (feed, grid-list, stat-group, side-navigation)
+    // new parent families (feed, grid-list, statistic-group, side-navigation)
     // lands the sidebar around 78. The three chart families (line, bar,
     // area) bumped it to 82. The P5 input and form audit brought it to 86,
     // and Selectable, CommandPalette, and CommandMenu brought it to 87. The
@@ -391,7 +391,7 @@ describe('discoverSidebarComponents', () => {
       'tree',
       'feed',
       'grid-list',
-      'stat-group',
+      'statistic-group',
       'side-navigation',
     ]) {
       expect(sidebar).toContain(parent);

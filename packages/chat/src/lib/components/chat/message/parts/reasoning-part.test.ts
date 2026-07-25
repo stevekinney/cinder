@@ -4,7 +4,7 @@
  * Covers:
  *   1. Renders a disclosure button with aria-expanded=false by default.
  *   2. Expanded=true reveals the reasoning content.
- *   3. Clicking the toggle fires ontoggle.
+ *   3. Clicking the toggle fires onToggle.
  *   4. aria-expanded matches the expanded prop.
  *   5. aria-controls points to the content region.
  *   6. While streaming, the toggle button is disabled.
@@ -75,16 +75,16 @@ describe('ReasoningPart — collapsed state (default)', () => {
     expect(root?.hasAttribute('data-cinder-expanded')).toBe(false);
   });
 
-  test('clicking the toggle fires ontoggle', () => {
-    const ontoggle = mock(() => {});
+  test('clicking the toggle fires onToggle', () => {
+    const onToggle = mock(() => {});
     const { container } = render(ReasoningPart, {
-      props: { part: makePart(), expanded: false, ontoggle },
+      props: { part: makePart(), expanded: false, onToggle },
     });
     const button = container.querySelector('button');
     expect(button).not.toBeNull();
     button && fireEvent.click(button);
     flushSync();
-    expect(ontoggle).toHaveBeenCalledTimes(1);
+    expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
   test('button has aria-controls pointing to the content region', () => {
@@ -182,15 +182,15 @@ describe('ReasoningPart — streaming state', () => {
     expect(button?.disabled).toBe(true);
   });
 
-  test('clicking disabled toggle does not fire ontoggle', () => {
-    const ontoggle = mock(() => {});
+  test('clicking disabled toggle does not fire onToggle', () => {
+    const onToggle = mock(() => {});
     const { container } = render(ReasoningPart, {
-      props: { part: makePart({ streaming: true }), ontoggle },
+      props: { part: makePart({ streaming: true }), onToggle },
     });
     const button = container.querySelector('button');
     button && fireEvent.click(button);
     flushSync();
-    expect(ontoggle).toHaveBeenCalledTimes(0);
+    expect(onToggle).toHaveBeenCalledTimes(0);
   });
 
   test('data-cinder-streaming is present when streaming', () => {

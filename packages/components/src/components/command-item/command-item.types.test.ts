@@ -7,7 +7,7 @@ const children = (() => '') as unknown as Snippet;
 
 const paletteItem: CommandItemProps = {
   value: 'open',
-  onselect: () => {},
+  onSelect: () => {},
   children,
 };
 
@@ -23,7 +23,7 @@ const inertPaletteItem: CommandItemProps = {
   children,
 };
 
-test('CommandItem props require onselect unless parent-owned selection is explicit', () => {
+test('CommandItem props require onSelect unless parent-owned selection is explicit', () => {
   expect(paletteItem.value).toBe('open');
   expect(menuItem.selectionMode).toBe('parent');
   expect(inertPaletteItem.value).toBe('open');

@@ -80,14 +80,14 @@ describe('Chat markdown-preview SSR contract', () => {
     // The fallback is a plain `{content}` text interpolation, so Svelte escapes
     // the opening `<` to `&lt;`. This proves the server path emits *text*,
     // never an unescaped `{@html}` injection of the raw message body — the
-    // `<img>` tag is neutralized and cannot execute its `onerror` handler.
+    // `<img>` tag is neutralized and cannot execute its `onError` handler.
     const result = await renderThenHydrate(MarkdownPreview, sourcePath, {
-      content: '<img src=x onerror=alert(1)>',
+      content: '<img src=x onError=alert(1)>',
     });
 
     try {
-      expect(result.ssrHtml).toContain('&lt;img src=x onerror=alert(1)>');
-      expect(result.ssrHtml).not.toContain('<img src=x onerror=alert(1)>');
+      expect(result.ssrHtml).toContain('&lt;img src=x onError=alert(1)>');
+      expect(result.ssrHtml).not.toContain('<img src=x onError=alert(1)>');
     } finally {
       result.cleanup();
     }

@@ -27,10 +27,10 @@ describe('Kbd', () => {
   });
 
   test('class prop merges with cinder-kbd', () => {
-    const { container } = render(Kbd, { class: 'mono', children: snippet('K') });
+    const { container } = render(Kbd, { class: 'monochrome', children: snippet('K') });
     const el = container.querySelector('kbd');
     expect(el?.classList.contains('cinder-kbd')).toBe(true);
-    expect(el?.classList.contains('mono')).toBe(true);
+    expect(el?.classList.contains('monochrome')).toBe(true);
   });
 
   test('rest props (e.g. data-testid) are spread onto the element', () => {

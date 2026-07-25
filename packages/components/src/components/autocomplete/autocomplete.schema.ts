@@ -72,7 +72,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'oncomplete',
+        name: 'onComplete',
         reason: 'function-or-snippet',
       },
       {

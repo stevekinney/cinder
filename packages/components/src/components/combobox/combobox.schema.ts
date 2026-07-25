@@ -12,7 +12,7 @@ const schema = {
       type: 'string',
       description: 'Native form field name. Renders a hidden input carrying the selected value.',
     },
-    inputValue: {
+    textInputValue: {
       type: 'string',
       description: 'Free-text input value (the text the user has typed). Bindable.',
     },
@@ -49,7 +49,7 @@ const schema = {
       type: 'number',
       description: 'Hard cap on visible filtered options. Default 200.',
     },
-    allowCustomValue: {
+    customValueAllowed: {
       type: 'boolean',
       description: 'Allow committing typed text that is not present in `options`.',
     },

@@ -145,6 +145,38 @@ class TestResizeObserver {
   }
 }
 
+type HydrationSnapshot = {
+  ssrHtml: string;
+  rowCount: string | null | undefined;
+  columnCount: string | null | undefined;
+};
+
+async function captureVirtualizedGridHydrationSnapshot(): Promise<HydrationSnapshot> {
+  const result = await renderThenHydrate(LogDataGrid, sourcePath, {
+    rows: makeRows(100),
+    columns,
+    getRowId: getLogRowId,
+    virtualizeRows: true,
+    rowHeight: 20,
+    'aria-label': 'Logs',
+  });
+
+  try {
+    const grid = result.container.querySelector('[role="grid"]');
+    return {
+      ssrHtml: result.ssrHtml,
+      rowCount: grid?.getAttribute('aria-rowcount'),
+      columnCount: grid?.getAttribute('aria-colcount'),
+    };
+  } finally {
+    result.cleanup();
+  }
+}
+
+// Keep the cold Svelte server compilation out of Bun's per-test timeout. The
+// named test below still owns the assertions for the captured SSR/hydration result.
+const virtualizedGridHydrationSnapshot = await captureVirtualizedGridHydrationSnapshot();
+
 describe('DataGrid row virtualization', () => {
   test('renders only a row window while aria counts reflect the full dataset', async () => {
     const rows = makeRows(1_000);
@@ -398,29 +430,15 @@ describe('DataGrid row virtualization', () => {
     }
   });
 
-  test('keeps full ARIA counts through server render and hydration', async () => {
-    const result = await renderThenHydrate(LogDataGrid, sourcePath, {
-      rows: makeRows(100),
-      columns,
-      getRowId: getLogRowId,
-      virtualizeRows: true,
-      rowHeight: 20,
-      'aria-label': 'Logs',
-    });
+  test('keeps full ARIA counts through server render and hydration', () => {
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('role="grid"');
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('aria-rowcount="101"');
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).toContain('aria-colcount="2"');
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).not.toContain('aria-activedescendant');
+    expect(virtualizedGridHydrationSnapshot.ssrHtml).not.toContain('role="gridcell"');
 
-    try {
-      expect(result.ssrHtml).toContain('role="grid"');
-      expect(result.ssrHtml).toContain('aria-rowcount="101"');
-      expect(result.ssrHtml).toContain('aria-colcount="2"');
-      expect(result.ssrHtml).not.toContain('aria-activedescendant');
-      expect(result.ssrHtml).not.toContain('role="gridcell"');
-
-      const grid = result.container.querySelector('[role="grid"]');
-      expect(grid?.getAttribute('aria-rowcount')).toBe('101');
-      expect(grid?.getAttribute('aria-colcount')).toBe('2');
-    } finally {
-      result.cleanup();
-    }
+    expect(virtualizedGridHydrationSnapshot.rowCount).toBe('101');
+    expect(virtualizedGridHydrationSnapshot.columnCount).toBe('2');
   });
 
   test('renders a horizontal column window while pinned columns stay mounted', async () => {

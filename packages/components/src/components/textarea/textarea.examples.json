@@ -24,8 +24,8 @@
     {
       "id": "with-character-count",
       "title": "Live character counter",
-      "description": "Set `showCount` together with `maxlength` to render a live `{used}/{limit}` counter below the field that updates as the user types.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let summary = $state('A short product summary.');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={summary}\n  label=\"Summary\"\n  description=\"Keep it under 200 characters.\"\n  showCount\n  maxlength={200}\n/>\n"
+      "description": "Set `countVisible` together with `maxlength` to render a live `{used}/{limit}` counter below the field that updates as the user types.",
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let summary = $state('A short product summary.');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={summary}\n  label=\"Summary\"\n  description=\"Keep it under 200 characters.\"\n  countVisible\n  maxlength={200}\n/>\n"
     },
     {
       "id": "with-error",

@@ -37,7 +37,7 @@
     yField,
     valueField,
     colorScale = 'sequential',
-    showCellLabels = true,
+    cellLabelsVisible = true,
     height = 280,
     loading = false,
     dataTableCaption,
@@ -297,7 +297,7 @@
                     : 'no data'}</title
                 >
               </rect>
-              {#if showCellLabels && cell.value !== null}
+              {#if cellLabelsVisible && cell.value !== null}
                 <text
                   class="cinder-matrix-chart__cell-label"
                   x={cell.x + cell.width / 2}

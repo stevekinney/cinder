@@ -26,7 +26,7 @@ We do not use selection-follows-focus here. Arrowing past a swatch should let us
 
 ## Form participation and form reset
 
-The component renders a hidden `<input>` so it shows up in `FormData` and participates in `<form>` submission when `name` is set. When the surrounding form fires a `reset` event, the picker reverts to `defaultValue` (or to an empty value when no default was provided). We listen for `reset` on the input's actual form element — not on a passed-in callback — so the contract matches native form controls and consumers don't have to wire anything up.
+The component renders a hidden `<input>` so it shows up in `FormData` and participates in `<form>` submission when `name` is set. When the surrounding form fires a `reset` event, the picker reverts to `value` (or to an empty value when no default was provided). We listen for `reset` on the input's actual form element — not on a passed-in callback — so the contract matches native form controls and consumers don't have to wire anything up.
 
 ## Touch precision and fine selection
 

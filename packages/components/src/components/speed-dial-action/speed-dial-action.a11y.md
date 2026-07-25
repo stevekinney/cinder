@@ -12,7 +12,7 @@ Purpose: Quick-action leaf for SpeedDial that closes the owning dial after activ
 
 ## Avoid when
 
-- Rendering an action outside SpeedDial - use floating-action-button directly.
+- Rendering an action outside SpeedDial - use floating-action directly.
 
 ## Keyboard and focus
 
@@ -33,4 +33,4 @@ When SpeedDialAction accepts snippets or arbitrary children, the caller owns the
 - Inspect the accessible name, role, and state in browser accessibility tools.
 - Check forced-colors mode when the component adds borders, focus rings, selected state, or status color.
 
-Related components: `speed-dial`, `floating-action-button`.
+Related components: `speed-dial`, `floating-action`.

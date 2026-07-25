@@ -23,6 +23,7 @@
   let {
     id,
     checked = $bindable(false),
+    onValueChangeRequest,
     onValueChange,
     label,
     disabled,
@@ -45,9 +46,14 @@
 
   function toggle(): void {
     if (!resolvedDisabled) {
-      commitValue(!checked, onValueChange, (next) => {
-        checked = next;
-      });
+      commitValue(
+        !checked,
+        onValueChangeRequest,
+        (next) => {
+          checked = next;
+        },
+        onValueChange,
+      );
     }
   }
 </script>
