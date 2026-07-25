@@ -358,8 +358,10 @@
         const initialParsed = parseE164Value(initialValue);
         const initialParsedCountryAllowed =
           initialParsed !== null && isCountryCode(initialParsed.country);
-        const resetCountry = initialParsedCountryAllowed
-          ? initialParsed.country
+        const resetCountry = initialParsed
+          ? initialParsedCountryAllowed
+            ? initialParsed.country
+            : fallbackCountry()
           : isCountryCode(initialCountry)
             ? initialCountry
             : rawCountry;

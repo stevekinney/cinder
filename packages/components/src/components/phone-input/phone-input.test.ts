@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: PhoneInput } = await import('./phone-input.svelte');
 const { default: FormFieldPhoneInputFixture } =
   await import('../../test/fixtures/form-field-phone-input-fixture.svelte');
@@ -466,6 +466,32 @@ describe('PhoneInput form reset', () => {
     const input = nationalInput(rendered.container);
     await fireEvent.input(input, { target: { value: '2025550123' } });
 
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(countrySelect(rendered.container).value).toBe('US');
+    expect(input.value).toBe('+442079460958');
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('restores the rendered fallback country for a disallowed initial E.164 value', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US', 'CA'],
+        country: 'CA',
+        value: '+442079460958',
+      },
+    });
+    const input = nationalInput(rendered.container);
+
+    await waitFor(() => expect(countrySelect(rendered.container).value).toBe('US'));
+    await fireEvent.input(input, { target: { value: '4165550123' } });
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
