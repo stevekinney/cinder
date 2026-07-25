@@ -39,7 +39,7 @@
   color: var(--cinder-text, #000);
   border: 1px solid var(--cinder-border, currentColor);
   border-radius: var(--cinder-radius-md, 0.5rem);
-  z-index: 9999;
+  z-index: var(--cinder-z-tooltip);
 }
 
 /* Namespaced icon size utilities. lucide-svelte and most icon libraries default

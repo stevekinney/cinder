@@ -23,6 +23,15 @@ const ruleName = 'cinder/z-index-scale';
 const localReasonPrefix = 'cinder-z-index-local:';
 const layerTokenPattern = /^var\(\s*(--cinder-z-[a-z0-9-]+)\s*\)$/i;
 const layerTokenReferencePattern = /^var\(\s*--cinder-z-[a-z0-9-]+\s*,/i;
+const declaredLayerTokens = new Set([
+  '--cinder-z-backdrop',
+  '--cinder-z-dropdown',
+  '--cinder-z-modal',
+  '--cinder-z-popover',
+  '--cinder-z-sheet',
+  '--cinder-z-toast',
+  '--cinder-z-tooltip',
+]);
 const allowedLocalValues = new Set(['auto', '0', '1']);
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
@@ -57,11 +66,20 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
     // This policy owns published component sidecars. Playground application
     // chrome and the separate Chat package have independent stacking systems.
     const sourceFile = root.source?.input.file?.replaceAll('\\', '/');
-    if (sourceFile && !sourceFile.includes('/packages/components/src/components/')) return;
+    if (
+      sourceFile &&
+      !sourceFile.includes('/packages/components/src/components/') &&
+      !sourceFile.includes('/packages/components/src/styles/')
+    )
+      return;
 
     root.walkDecls('z-index', (declaration) => {
       const value = declaration.value.trim();
-      if (allowedLocalValues.has(value) || layerTokenPattern.test(value)) return;
+      const tokenMatch = layerTokenPattern.exec(value);
+      if (allowedLocalValues.has(value)) return;
+      if (tokenMatch) {
+        if (declaredLayerTokens.has(tokenMatch[1])) return;
+      }
 
       if (layerTokenReferencePattern.test(value)) {
         stylelint.utils.report({
