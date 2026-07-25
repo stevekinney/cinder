@@ -4465,10 +4465,12 @@
           "reason": "Rendering a single flat horizontal nav row — use navigation-bar instead."
         },
         {
-          "reason": "Showing an in-page heading outline — use table-of-contents instead."
+          "reason": "Showing an in-page heading outline — use table-of-contents instead.",
+          "alternative": "table-of-contents"
         },
         {
-          "reason": "Rendering expandable hierarchical data — use tree instead."
+          "reason": "Rendering expandable hierarchical data — use tree instead.",
+          "alternative": "tree"
         }
       ],
       "related": [
@@ -5364,7 +5366,8 @@
           "reason": "The page has too few headings to justify a secondary navigation rail."
         },
         {
-          "reason": "Rendering expandable hierarchical navigation — use tree instead."
+          "reason": "Rendering expandable hierarchical navigation — use tree instead.",
+          "alternative": "tree"
         }
       ],
       "related": ["side-navigation", "tree", "breadcrumbs", "section-heading"],
@@ -5787,10 +5790,12 @@
           "reason": "Switching between sibling views of the same region — use tabs instead."
         },
         {
-          "reason": "Showing an in-page heading outline — use table-of-contents instead."
+          "reason": "Showing an in-page heading outline — use table-of-contents instead.",
+          "alternative": "table-of-contents"
         },
         {
-          "reason": "Providing route or section navigation — use side-navigation instead."
+          "reason": "Providing route or section navigation — use side-navigation instead.",
+          "alternative": "side-navigation"
         }
       ],
       "related": ["tree-item", "table-of-contents", "side-navigation", "accordion"],

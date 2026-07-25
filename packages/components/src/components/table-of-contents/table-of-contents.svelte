@@ -11,7 +11,7 @@
    * @useWhen Letting users jump between headings while keeping context via active-section highlighting.
    * @avoidWhen Navigating between routes or top-level app areas — use navigation-bar or side-navigation.
    * @avoidWhen The page has too few headings to justify a secondary navigation rail.
-   * @avoidWhen Rendering expandable hierarchical navigation — use tree instead.
+   * @avoidWhen Rendering expandable hierarchical navigation — use tree instead. | tree
    * @related side-navigation, tree, breadcrumbs, section-heading
    * @a11yPattern WAI-ARIA Navigation Landmark
    */
