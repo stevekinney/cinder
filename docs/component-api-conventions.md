@@ -64,3 +64,11 @@ Do not abbreviate public prop or component names. Current banned forms:
 - `FloatingActionButton` → `FloatingAction`
 - `Stat` / `StatGroup` / `StatsSection` → `Statistic` / `StatisticGroup` /
   `StatisticsSection`
+
+## Icons
+
+Use the shared Lucide icon vocabulary for interactive affordances. Disclosure
+uses a rotating chevron, and directional transfer uses single or double
+chevrons; do not use `+`, `-`, `−`, `<`, or `>` text glyphs in their place. See
+[Icon vocabulary](./icon-vocabulary.md) for sizing utilities, accessible-name
+guidance, and the current audit.
