@@ -5,7 +5,6 @@
     {
       "name": "cinder",
       "path": ".",
-      "commit": "local",
       "evidence": {
         "manifests": ["package.json"],
         "source": ["scripts/**/*.ts"],
