@@ -55,6 +55,7 @@
   .chat-participant-typing {
     /* Reserve no space when empty — the inner content drives height. */
     min-height: 0;
+    flex-shrink: 0;
   }
 
   .chat-participant-typing-indicator {
