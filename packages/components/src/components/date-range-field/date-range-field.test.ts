@@ -47,17 +47,19 @@ describe('DateRangeField', () => {
       expect(container.querySelector('.cinder-date-range-field')).not.toBeNull();
     });
 
-    test('renders start and end date inputs', () => {
+    test('renders start and end text inputs for the custom picker surface', () => {
       const { container } = render(DateRangeField, { id: 'drf' });
       const startInput = getStartInput(container);
       const endInput = getEndInput(container);
       expect(startInput).not.toBeNull();
       expect(endInput).not.toBeNull();
-      expect(startInput.type).toBe('date');
-      expect(endInput.type).toBe('date');
+      expect(startInput.type).toBe('text');
+      expect(endInput.type).toBe('text');
+      expect(startInput.getAttribute('aria-haspopup')).toBe('dialog');
+      expect(endInput.getAttribute('aria-haspopup')).toBe('dialog');
     });
 
-    test('renders datetime-local inputs when granularity includes time', () => {
+    test('keeps text inputs when granularity includes time', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'minute',
@@ -66,8 +68,8 @@ describe('DateRangeField', () => {
       const startInput = getStartInput(container);
       const endInput = getEndInput(container);
 
-      expect(startInput.type).toBe('datetime-local');
-      expect(endInput.type).toBe('datetime-local');
+      expect(startInput.type).toBe('text');
+      expect(endInput.type).toBe('text');
       expect(startInput.step).toBe('60');
       expect(endInput.step).toBe('60');
       expect(startInput.value).toBe('2026-06-01T09:30');
@@ -176,8 +178,8 @@ describe('DateRangeField', () => {
         granularity: 'hour',
       });
 
-      expect(getStartInput(container).type).toBe('datetime-local');
-      expect(getEndInput(container).type).toBe('datetime-local');
+      expect(getStartInput(container).type).toBe('text');
+      expect(getEndInput(container).type).toBe('text');
       expect(getStartInput(container).step).toBe('3600');
       expect(getEndInput(container).step).toBe('3600');
     });
