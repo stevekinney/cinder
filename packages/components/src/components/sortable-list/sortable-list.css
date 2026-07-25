@@ -10,7 +10,7 @@
     padding: 0;
   }
 
-  .cinder-sortable-item {
+  .cinder-sortable-list .cinder-sortable-item {
     display: flex;
     align-items: center;
     gap: var(--cinder-space-2);

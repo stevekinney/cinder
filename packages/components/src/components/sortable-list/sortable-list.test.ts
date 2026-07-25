@@ -68,7 +68,7 @@ describe('SortableController', () => {
   test('resting items provide an inline handle-and-label layout', () => {
     const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
     expect(stylesheet).toContain(
-      '.cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
+      '.cinder-sortable-list .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
     );
   });
 
