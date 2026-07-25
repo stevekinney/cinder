@@ -119,6 +119,9 @@ jobs:
           --filter=@lostgradient/cinder
           --filter=@lostgradient/chat
 
+      - name: Test workspace scripts
+        run: bun run test:workspace-scripts
+
       - name: Test non-Cinder workspaces
         run: >-
           bunx turbo run test

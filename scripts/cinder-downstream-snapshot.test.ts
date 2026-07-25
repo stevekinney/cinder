@@ -3,6 +3,8 @@ import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
+
 test('snapshot input is deterministic and sorted', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-'));
   await Bun.write(join(root, 'z.txt'), 'z');
@@ -111,6 +113,25 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
     'inside.txt',
   ]);
 
+  const narrowedRequest = join(parent, 'narrowed-request.json');
+  await Bun.write(
+    narrowedRequest,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [{ name: 'repo', path: root, globs: ['nested/**/*.txt'] }],
+    }),
+  );
+  const narrowedSnapshot = JSON.parse(
+    Bun.spawnSync([
+      'bun',
+      'run',
+      'scripts/cinder-downstream-snapshot.ts',
+      '--request',
+      narrowedRequest,
+    ]).stdout.toString(),
+  );
+  expect(narrowedSnapshot.repositories[0].files).toEqual([]);
+
   const escapingRequest = join(parent, 'escaping-request.json');
   await Bun.write(
     escapingRequest,
@@ -172,7 +193,7 @@ test('matches evidence case-insensitively without decoding unrelated binary file
   const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-evidence-'));
   await Bun.write(
     join(root, 'source.ts'),
-    'const CINDER_API_URL = "example";\nCINDER_API_TOKEN=super-secret\n',
+    'const CINDER_API_URL = "example";\nCINDER_API_TOKEN=super-secret\nCINDER_AUTHORIZATION=Bearer top-secret\n',
   );
   await Bun.write(join(root, 'binary.bin'), new Uint8Array([0, 255, 128]));
   const request = join(root, 'request.json');
@@ -201,6 +222,7 @@ test('matches evidence case-insensitively without decoding unrelated binary file
   expect(snapshot.repositories[0].evidence.source).toEqual([
     { path: 'source.ts', line: 1, text: 'const CINDER_API_URL = "example";' },
     { path: 'source.ts', line: 2, text: 'CINDER_API_TOKEN=[REDACTED]' },
+    { path: 'source.ts', line: 3, text: 'CINDER_AUTHORIZATION=[REDACTED]' },
   ]);
   expect(snapshot.repositories[0].evidence.missing).toEqual([]);
   expect(
@@ -254,9 +276,63 @@ test('records Git links without scanning nested checkout contents', async () => 
       file.path.startsWith('vendor/nested/'),
     ),
   ).toBe(false);
+
+  const scopedRequest = join(root, 'scoped-request.json');
+  await Bun.write(
+    scopedRequest,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [{ name: 'repo', path: root, globs: ['tracked.txt'] }],
+    }),
+  );
+  const scopedSnapshot = JSON.parse(
+    Bun.spawnSync([
+      'bun',
+      'run',
+      'scripts/cinder-downstream-snapshot.ts',
+      '--request',
+      scopedRequest,
+    ]).stdout.toString(),
+  );
+  expect(
+    scopedSnapshot.repositories[0].files.some(
+      (file: { path: string }) => file.path === 'vendor/nested',
+    ),
+  ).toBe(false);
 });
 
 test('bounds npm registry metadata requests', async () => {
   const source = await Bun.file(new URL('./cinder-downstream-snapshot.ts', import.meta.url)).text();
   expect(source).toContain('signal: AbortSignal.timeout(NPM_METADATA_TIMEOUT_MS)');
+});
+
+test('published package resolution selects the most recently published version', () => {
+  expect(
+    selectMostRecentlyPublishedVersion({
+      versions: { '1.0.0': {}, '1.1.0-beta.1': {}, '1.0.1': {} },
+      time: {
+        created: '2026-01-01T00:00:00.000Z',
+        modified: '2026-03-01T00:00:00.000Z',
+        '1.0.0': '2026-01-01T00:00:00.000Z',
+        '1.0.1': '2026-02-01T00:00:00.000Z',
+        '1.1.0-beta.1': '2026-03-01T00:00:00.000Z',
+      },
+    }),
+  ).toBe('1.1.0-beta.1');
+});
+
+test('workspace script tests are wired into documented and required CI gates', async () => {
+  const packageJson = await Bun.file(new URL('../package.json', import.meta.url)).json();
+  const unitWorkflow = await Bun.file(
+    new URL('../.github/workflows/unit-tests.yaml', import.meta.url),
+  ).text();
+  const mainWorkflow = await Bun.file(
+    new URL('../.github/workflows/main-green.yaml', import.meta.url),
+  ).text();
+  expect(packageJson.scripts['test:workspace-scripts']).toContain(
+    'scripts/cinder-downstream-snapshot.test.ts',
+  );
+  expect(packageJson.scripts.test).toContain('bun run test:workspace-scripts');
+  expect(unitWorkflow).toContain('bun run test:workspace-scripts');
+  expect(mainWorkflow).toContain('bun run test:workspace-scripts');
 });

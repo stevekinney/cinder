@@ -309,6 +309,9 @@ jobs:
           AFFECTED: ${{ github.event_name == 'pull_request' && '--affected' || '' }}
         run: bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/cinder-mcp --filter=@lostgradient/chat $AFFECTED
 
+      - name: Run workspace script unit tests
+        run: bun run test:workspace-scripts
+
       # @lostgradient/markdown and @lostgradient/editor are bundled into
       # @lostgradient/cinder (markdown is also independently published — see
       # docs/decisions/package-boundaries.md Phase 2 — but still has no
