@@ -14,7 +14,7 @@ import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import parseChangeset from '@changesets/parse';
-import type { BrowserContext, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
 import { waitForReadyHtml } from './consumer-readiness.ts';
@@ -1801,7 +1801,7 @@ async function runSvelteKitHydrationRoutesOnce(
   try {
     context = await browser.newContext();
     for (const routePath of routePaths) {
-      await assertSvelteKitHydrationRoute(context, httpPort, label, routePath);
+      await assertSvelteKitHydrationRoute(browser, context, httpPort, label, routePath);
     }
   } catch (error) {
     bodyError = error;
@@ -1819,13 +1819,27 @@ async function runSvelteKitHydrationRoutesOnce(
       context.close(),
       5_000,
       `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-    ).catch((error: unknown) => closeErrors.push(error));
+    ).catch((error: unknown) =>
+      closeErrors.push(
+        new Error(
+          `teardown phase=context.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        ),
+      ),
+    );
   }
   await promiseWithTimeout(
     browser.close(),
     5_000,
     `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-  ).catch((error: unknown) => closeErrors.push(error));
+  ).catch((error: unknown) =>
+    closeErrors.push(
+      new Error(
+        `teardown phase=browser.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      ),
+    ),
+  );
 
   // A body failure wins: its error is what the retry decision needs (a crashed
   // browser makes both closes throw too — those are swallowed). But when every
@@ -1858,6 +1872,7 @@ async function assertSvelteKitClientRoutesHydrate(
 }
 
 async function assertSvelteKitHydrationRoute(
+  browser: Browser,
   context: BrowserContext,
   httpPort: number,
   label: string,
@@ -1893,7 +1908,14 @@ async function assertSvelteKitHydrationRoute(
       page.close(),
       5_000,
       `closing SvelteKit hydration page for ${routePath}`,
-    );
+    ).catch((error: unknown) => {
+      throw new HydrationTeardownError(
+        new Error(
+          `teardown phase=page.close route=${routePath} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        ),
+      );
+    });
   }
 }
 
