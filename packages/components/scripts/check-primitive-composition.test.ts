@@ -34,6 +34,14 @@ describe('primitive composition guard', () => {
         'new-control/new-control.svelte',
       ),
     ).toEqual([]);
+    for (const value of ['', 'hidden', 'false']) {
+      expect(
+        findPrimitiveCompositionViolations(
+          `<input type="checkbox" hidden="${value}" name="value" />`,
+          'new-control/new-control.svelte',
+        ),
+      ).toEqual([]);
+    }
   });
 
   test('does not count canonical component tags as native controls', () => {
@@ -155,6 +163,13 @@ describe('primitive composition guard', () => {
         '<div class="menu cinder-_floating-surface"></div>',
       ),
     ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        `<script>import { classNames } from '../../utilities/class-names.ts'; let className;</script><div class={classNames('cinder-_floating-surface', 'menu', className)}></div>`,
+      ),
+    ).toEqual([]);
   });
 
   test('scopes the floating-surface exemption to the matching rendered element', () => {
@@ -269,6 +284,9 @@ describe('primitive composition guard', () => {
   test('excludes unpublished Svelte fixtures and type tests', () => {
     expect(shouldCheckComponentSource('input/input.fixture.svelte')).toBe(false);
     expect(shouldCheckComponentSource('select/select.type-test.svelte')).toBe(false);
+    expect(shouldCheckComponentSource('context-menu/_context-menu-test-harness.svelte')).toBe(
+      false,
+    );
     expect(shouldCheckComponentSource('input/input.svelte')).toBe(true);
   });
 });

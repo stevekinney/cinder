@@ -134,7 +134,8 @@ function hasStaticHiddenAttribute(element: UnknownRecord): boolean {
   if (!Array.isArray(attributes)) return false;
   return attributes.some((attribute) => {
     if (!isRecord(attribute) || attribute['type'] !== 'Attribute') return false;
-    if (attribute['name'] === 'hidden') return attribute['value'] === true;
+    if (attribute['name'] === 'hidden')
+      return attribute['value'] === true || staticAttributeValue(attribute) !== undefined;
     return (
       attribute['name'] === 'type' && staticAttributeValue(attribute)?.toLowerCase() === 'hidden'
     );
@@ -257,24 +258,54 @@ export function cssPrimitiveCounts(
   return { grid, floating };
 }
 
-function elementClassSet(element: UnknownRecord): Set<string> {
+function elementClassSet(
+  element: UnknownRecord,
+  bindings: ReadonlyMap<string, string>,
+): Set<string> {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return new Set();
   for (const attribute of attributes) {
     if (!isRecord(attribute) || attribute['type'] !== 'Attribute' || attribute['name'] !== 'class')
       continue;
-    return new Set(staticAttributeValue(attribute)?.split(/\s+/).filter(Boolean) ?? []);
+    const staticValue = staticAttributeValue(attribute);
+    if (staticValue !== undefined) return new Set(staticValue.split(/\s+/).filter(Boolean));
+
+    const value = attribute['value'];
+    const expressionTag =
+      isRecord(value) && value['type'] === 'ExpressionTag'
+        ? value
+        : Array.isArray(value) && value.length === 1 && isRecord(value[0])
+          ? value[0]
+          : undefined;
+    if (!expressionTag) return new Set();
+    const expression = expressionTag['expression'];
+    if (
+      !isRecord(expression) ||
+      expression['type'] !== 'CallExpression' ||
+      !isRecord(expression['callee']) ||
+      expression['callee']['type'] !== 'Identifier' ||
+      expression['callee']['name'] !== 'classNames' ||
+      !Array.isArray(expression['arguments'])
+    )
+      return new Set();
+
+    return new Set(
+      expression['arguments']
+        .flatMap((argument) => staticStringFromExpression(argument, bindings)?.split(/\s+/) ?? [])
+        .filter(Boolean),
+    );
   }
   return new Set();
 }
 
 function collectSharedFloatingClassSets(source: string): Set<string>[] {
   const fragment = parseSvelteFragment(source);
+  const bindings = staticStringBindings(source);
   const classSets: Set<string>[] = [];
   if (fragment === undefined) return classSets;
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement') return;
-    const classes = elementClassSet(node);
+    const classes = elementClassSet(node, bindings);
     if (classes.has('cinder-_floating-surface')) classSets.push(classes);
   });
   return classSets;
@@ -287,7 +318,7 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   if (fragment === undefined) return total;
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement' || !Array.isArray(node['attributes'])) return;
-    const classes = elementClassSet(node);
+    const classes = elementClassSet(node, bindings);
     const directives = new Map<string, string>();
     for (const attribute of node['attributes']) {
       if (!isRecord(attribute)) continue;
@@ -356,7 +387,11 @@ export function fieldWrapperCount(source: string): number {
 
 export function shouldCheckComponentSource(filePath: string): boolean {
   const fileName = basename(filePath);
-  return !fileName.endsWith('.fixture.svelte') && !fileName.endsWith('.type-test.svelte');
+  return (
+    !fileName.endsWith('.fixture.svelte') &&
+    !fileName.endsWith('.type-test.svelte') &&
+    !(fileName.startsWith('_') && fileName.endsWith('-test-harness.svelte'))
+  );
 }
 
 export function findPrimitiveCompositionViolations(
