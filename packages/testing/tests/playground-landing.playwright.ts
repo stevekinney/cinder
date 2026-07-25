@@ -24,9 +24,7 @@ test.describe('playground landing page', () => {
     );
   }
 
-  test('renders README content at the root and returns to it with browser history', async ({
-    page,
-  }) => {
+  test('renders README content and uses full-page canonical browser history', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
@@ -42,12 +40,16 @@ test.describe('playground landing page', () => {
 
     await page.getByRole('link', { name: 'Browse components' }).click();
     await expect(page).toHaveURL(/\/c\/[^/]+$/);
-    await expect.poll(() => readShellMarker(page)).toBe('mounted');
-    await expect(page.locator('iframe')).toHaveAttribute('src', /\/page\/[^/]+$/);
+    await expect.poll(() => readShellMarker(page)).toBeUndefined();
+    await expect(page.locator('iframe')).toHaveAttribute('src', /\/page\/[^/?]+\?preview=1$/);
+
+    await page.evaluate(() => {
+      (window as typeof window & { __cinderShellMarker?: string }).__cinderShellMarker = 'mounted';
+    });
 
     await page.goBack();
     await expect(page).toHaveURL(/\/$/);
-    await expect.poll(() => readShellMarker(page)).toBe('mounted');
+    await expect.poll(() => readShellMarker(page)).toBeUndefined();
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);
