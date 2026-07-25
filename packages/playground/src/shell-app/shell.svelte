@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   import Announcer from './announcer.svelte';
@@ -7,12 +7,7 @@
   import { createEventSource } from './event-source.svelte.ts';
   import type { ComponentDocumentationPayload } from '../component-documentation-types.ts';
   import ComponentDocumentation from './component-documentation.svelte';
-  import {
-    applyThemeToDocument,
-    PreviewStore,
-    readPersistedTheme,
-    setPreviewStore,
-  } from './preview-store.svelte.ts';
+  import { applyThemeToDocument, PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
   import { buildShellHref, readToolbarStateFromSearch } from './routing.ts';
   import ColorTokenPanel from './color-token-panel.svelte';
   import LandingPage from './landing-page.svelte';
@@ -41,13 +36,18 @@
   // next visit honors the user's last choice.
   const initialSearchValue = untrack(() => initialSearch);
   const initialUrlState = readToolbarStateFromSearch(new URLSearchParams(initialSearchValue));
-  const initialTheme = initialUrlState.theme ?? readPersistedTheme();
   const initialComponentName = untrack(() => initialComponent);
   const store = new PreviewStore(initialComponentName, {
     ...initialUrlState,
-    theme: initialTheme,
   });
   setPreviewStore(store);
+
+  // Server rendering cannot read localStorage. Keep the hydration tree seeded
+  // exclusively from request data, then restore the persisted preference once
+  // hydration has completed so the server and client markup stay identical.
+  onMount(() => {
+    if (initialUrlState.theme === null) store.syncFromUrl();
+  });
 
   // Single shared polite live region for the shell. The top bar pushes toolbar
   // feedback through it. One instance keeps exactly one live region in the

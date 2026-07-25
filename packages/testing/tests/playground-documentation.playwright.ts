@@ -17,6 +17,9 @@ test.describe('playground component documentation', () => {
       if (message.type() === 'error') errors.push(message.text());
     });
     page.on('pageerror', (error) => errors.push(error.message));
+    await page.addInitScript(() => {
+      localStorage.setItem('cinder-playground-theme', 'dark');
+    });
 
     await page.goto('/c/button?w=768', { waitUntil: 'load' });
     const documentation = page.locator('[data-canonical-documentation]');
@@ -29,6 +32,7 @@ test.describe('playground component documentation', () => {
       '/page/button?preview=1',
     );
     await expect(page.locator('#viewport-width-input')).toHaveValue('768');
+    await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked();
     await expect(
       page.getByRole('link', { name: 'Open interactive documentation' }),
     ).toHaveAttribute('href', '/page/button');

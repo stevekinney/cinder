@@ -248,10 +248,11 @@ export class PreviewStore {
   }
 
   /**
-   * Re-seed every toolbar cell from the current URL. Called by the SPA on
-   * `popstate` so back/forward navigation updates the UI. The theme override
-   * falls back to localStorage when the URL has no `theme=` param; when neither
-   * carries an override the playground follows the browser preference.
+   * Re-seed every toolbar cell from the current URL. Called after hydration so
+   * a persisted theme can be restored without changing the server-known
+   * initial tree. The theme override falls back to localStorage when the URL
+   * has no `theme=` param; when neither carries an override the playground
+   * follows the browser preference.
    */
   syncFromUrl(): void {
     if (typeof window === 'undefined') return;
