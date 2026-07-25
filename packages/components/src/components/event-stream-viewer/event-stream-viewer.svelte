@@ -29,7 +29,6 @@
 
 <script lang="ts">
   import { SvelteSet } from 'svelte/reactivity';
-  import type { Snippet } from 'svelte';
   import type {
     EventStreamEntry,
     EventStreamViewerProps,
@@ -73,8 +72,6 @@
   };
 
   type RenderedEntry = RenderedEventEntry | RenderedReconnectedBoundary | RenderedSequenceGap;
-
-  const emptyInputAdornment: Snippet = () => {};
 
   function isValidSequence(value: unknown): value is number {
     return Number.isInteger(value);
@@ -299,6 +296,8 @@
   });
 </script>
 
+{#snippet emptyInputAdornment()}{/snippet}
+
 <div
   {...rest}
   class={classNames('cinder-event-stream-viewer', className)}
@@ -326,6 +325,7 @@
       <div class="cinder-event-stream-viewer__toolbar-end">
         {#if onfilter !== undefined}
           <Input
+            id={`${instanceId}-filter`}
             type="search"
             class="cinder-event-stream-viewer__filter-input"
             placeholder="Filter events…"
