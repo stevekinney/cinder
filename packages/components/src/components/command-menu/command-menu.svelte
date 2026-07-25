@@ -64,6 +64,8 @@
     anchor: HTMLInputElement | HTMLTextAreaElement;
     value: string;
     caretIndex: number;
+    selectionStart: number | null;
+    selectionEnd: number | null;
   } | null = $state(null);
   const commandList = createCommandListState(() => listboxId);
 
@@ -128,6 +130,40 @@
   });
 
   $effect(() => {
+    const currentAnchor = anchor;
+    if (!currentAnchor) return;
+
+    function clearDismissalWhenSelectionMoves() {
+      if (
+        dismissedTrigger?.anchor === currentAnchor &&
+        (dismissedTrigger.value !== currentAnchor.value ||
+          dismissedTrigger.selectionStart !== currentAnchor.selectionStart ||
+          dismissedTrigger.selectionEnd !== currentAnchor.selectionEnd)
+      ) {
+        dismissedTrigger = null;
+      }
+    }
+
+    const stopSelectionchange = on(
+      currentAnchor,
+      'selectionchange',
+      clearDismissalWhenSelectionMoves,
+    );
+    const stopSelect = on(currentAnchor, 'select', clearDismissalWhenSelectionMoves);
+    const stopInput = on(currentAnchor, 'input', clearDismissalWhenSelectionMoves);
+    const stopClick = on(currentAnchor, 'click', clearDismissalWhenSelectionMoves);
+    const stopKeyup = on(currentAnchor, 'keyup', clearDismissalWhenSelectionMoves);
+
+    return () => {
+      stopSelectionchange();
+      stopSelect();
+      stopInput();
+      stopClick();
+      stopKeyup();
+    };
+  });
+
+  $effect(() => {
     if (!open) {
       commandList.resetActiveItem();
       return;
@@ -163,7 +199,13 @@
   function dismiss({ latch = false }: { latch?: boolean } = {}) {
     if (!open) return;
     if (latch && anchor) {
-      dismissedTrigger = { anchor, value: anchor.value, caretIndex };
+      dismissedTrigger = {
+        anchor,
+        value: anchor.value,
+        caretIndex,
+        selectionStart: anchor.selectionStart,
+        selectionEnd: anchor.selectionEnd,
+      };
     }
     open = false;
     onDismiss?.();

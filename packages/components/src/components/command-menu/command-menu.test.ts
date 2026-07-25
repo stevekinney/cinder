@@ -202,6 +202,27 @@ describe('CommandMenu', () => {
     expect(queryMenu()).toBeNull();
   });
 
+  test('moving the DOM selection clears the Escape dismissal latch', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture);
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await fireEvent.input(host, { target: { value: '/a' } });
+    host.setSelectionRange(2, 2);
+    await fireEvent.keyUp(host, { key: 'a' });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    await fireEvent.keyDown(host, { key: 'Escape' });
+    await waitFor(() => expect(queryMenu()).toBeNull());
+
+    host.setSelectionRange(0, 0);
+    await fireEvent.keyUp(host, { key: 'ArrowLeft' });
+    expect(queryMenu()).toBeNull();
+
+    host.setSelectionRange(2, 2);
+    await fireEvent.keyUp(host, { key: 'ArrowRight' });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+  });
+
   test('outside pointerdown dismisses the menu', async () => {
     let dismissCount = 0;
     const { getByTestId } = render(CommandMenuFixture, {
