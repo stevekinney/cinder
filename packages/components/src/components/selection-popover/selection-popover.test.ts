@@ -399,6 +399,41 @@ describe('SelectionPopover', () => {
     expect(document.activeElement).toBe(textarea);
   });
 
+  test('a genuine window resize dismisses while the composer is focused', async () => {
+    let closed = false;
+    const originalInnerWidth = window.innerWidth;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    textarea.focus();
+    try {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalInnerWidth + 100,
+      });
+
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalInnerWidth,
+      });
+    }
+  });
+
   test('an external scroll dismisses even while the composer is focused', async () => {
     let closed = false;
 

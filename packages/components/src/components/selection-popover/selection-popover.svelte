@@ -175,14 +175,22 @@
 
   $effect(() => {
     if (!isPositionedOpen) return;
+    let viewportWidth = window.innerWidth;
+    let viewportHeight = window.innerHeight;
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
-      if (
-        event.type === 'resize' &&
-        document.activeElement instanceof Node &&
-        popoverElement?.contains(document.activeElement)
-      ) {
-        return;
+      if (event.type === 'resize') {
+        const viewportChanged =
+          window.innerWidth !== viewportWidth || window.innerHeight !== viewportHeight;
+        viewportWidth = window.innerWidth;
+        viewportHeight = window.innerHeight;
+        if (
+          !viewportChanged &&
+          document.activeElement instanceof Node &&
+          popoverElement?.contains(document.activeElement)
+        ) {
+          return;
+        }
       }
       onClose?.();
       restoreFocus(true);
