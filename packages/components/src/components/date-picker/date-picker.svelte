@@ -204,6 +204,10 @@
     );
   }
 
+  function handleInput(event: Event) {
+    updateInputValidity(event.currentTarget as HTMLInputElement);
+  }
+
   const timeMin = $derived.by(() => {
     if (granularity === 'day' || !selectedDate || !normalizedMin) return undefined;
     if (!normalizedMin.startsWith(`${selectedDate}T`)) return undefined;
@@ -235,6 +239,7 @@
       {disabled}
       aria-invalid={invalid}
       aria-describedby={describedById}
+      oninput={handleInput}
       onchange={handleInputChange}
     />
     <button

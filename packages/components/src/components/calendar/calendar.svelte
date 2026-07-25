@@ -135,6 +135,8 @@
   ): string {
     if (valueProp && parseISODate(valueProp)) return valueProp;
     if (monthProp && parseISODate(monthProp)) return monthProp;
+    if (min && parseISODate(min) && fallbackIso < min) return min;
+    if (max && parseISODate(max) && fallbackIso > max) return max;
     return fallbackIso;
   }
 
@@ -398,7 +400,7 @@
                 commitDate(cell.iso);
               }}
               onfocus={() => {
-                focusedIso = cell.iso;
+                if (cell.iso) focusedIso = cell.iso;
               }}
             >
               {cell.day}

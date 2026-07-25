@@ -164,6 +164,10 @@ describe('Calendar', () => {
 
       await fireEvent.click(overflow!);
       expect(selected).toBeUndefined();
+
+      await fireEvent.focus(overflow!);
+      expect(overflow?.getAttribute('tabindex')).toBe('-1');
+      expect(container.querySelectorAll('.cinder-calendar__day[tabindex="0"]')).toHaveLength(1);
     },
   );
 });

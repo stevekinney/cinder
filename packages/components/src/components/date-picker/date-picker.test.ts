@@ -55,6 +55,21 @@ describe('DatePicker', () => {
     },
   );
 
+  test('marks malformed drafts invalid before change or blur', async () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: undefined,
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+    await fireEvent.input(input, {
+      target: { value: 'not-a-date' },
+    });
+
+    expect(input.value).toBe('not-a-date');
+    expect(input.checkValidity()).toBe(false);
+  });
+
   test('clears custom validity after a native form reset', async () => {
     const form = document.createElement('form');
     document.body.append(form);
@@ -107,6 +122,29 @@ describe('DatePicker', () => {
     await waitFor(() => {
       expect(nextValue.length).toBe(10);
     });
+  });
+
+  test.each([
+    {
+      bounds: { min: '2090-04-10' },
+      expectedMonth: 'April 2090',
+    },
+    {
+      bounds: { max: '2000-03-20' },
+      expectedMonth: 'March 2000',
+    },
+  ])('opens an empty bounded picker at $expectedMonth', async ({ bounds, expectedMonth }) => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: undefined,
+      ...bounds,
+    });
+
+    await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
+
+    expect(document.body.querySelector('.cinder-calendar__title')?.textContent).toContain(
+      expectedMonth,
+    );
   });
 
   test('moves focus into the custom picker when the trigger opens it', async () => {
