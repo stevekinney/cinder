@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
+@import '../select/select.css';
 @layer cinder.components {
   /* ========================================
  * PHONE INPUT
@@ -61,7 +63,7 @@
   .cinder-phone-input__country-summary {
     position: absolute;
     z-index: 1;
-    inset-block-start: calc(var(--cinder-control-height, 2.25rem) / 2);
+    inset-block-start: 50%;
     inset-inline-start: var(--cinder-space-3);
     max-inline-size: calc(100% - var(--cinder-space-10));
     overflow: hidden;
@@ -76,6 +78,10 @@
 
   .cinder-phone-input__country[data-disabled] .cinder-phone-input__country-summary {
     color: var(--cinder-text-disabled);
+  }
+
+  .cinder-phone-input__country[data-disabled] .cinder-select:disabled {
+    color: transparent;
   }
 
   .cinder-phone-input-field__description {

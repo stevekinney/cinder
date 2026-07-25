@@ -27,8 +27,8 @@
     PhoneInputCountryOption,
     PhoneInputProps,
   } from './phone-input.types.ts';
-  import Input from '../input/index.ts';
-  import Select from '../select/index.ts';
+  import Input from '@lostgradient/cinder/input';
+  import Select from '@lostgradient/cinder/select';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   import {
@@ -148,6 +148,7 @@
   let knownValue: string | null = null;
   let knownCountry: PhoneInputCountryCode | null = null;
   let knownAllowList: readonly PhoneInputCountryCode[] = [];
+  let fieldRoot = $state<HTMLElement>();
 
   /**
    * Synchronise to external `value` changes. Covers initial hydration too
@@ -345,6 +346,26 @@
     });
   }
 
+  function handleFormReset(): void {
+    queueMicrotask(() =>
+      queueMicrotask(() => {
+        const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
+        if (!rawCountry || !isCountryCode(rawCountry)) return;
+        country = rawCountry;
+        knownCountry = rawCountry;
+      }),
+    );
+  }
+
+  $effect(() => {
+    const handleReset = (event: Event) => {
+      if (event.target instanceof HTMLFormElement && fieldRoot?.closest('form') === event.target)
+        handleFormReset();
+    };
+    window.addEventListener('reset', handleReset, true);
+    return () => window.removeEventListener('reset', handleReset, true);
+  });
+
   const groupLabelId = $derived(label ? `${id}-label` : undefined);
   const countrySelectId = $derived(`${id}-country`);
   const countryLabelId = $derived(`${id}-country-label`);
@@ -437,6 +458,7 @@
 </script>
 
 <div
+  bind:this={fieldRoot}
   class={classNames('cinder-phone-input-field', className)}
   data-cinder-disabled={resolvedDisabled || undefined}
 >

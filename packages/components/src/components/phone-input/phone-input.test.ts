@@ -69,8 +69,8 @@ describe('PhoneInput rendering', () => {
     const styles = readFileSync(new URL('./phone-input.css', import.meta.url), 'utf8');
     const { container } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
 
-    expect(source).toContain("from '../input/index.ts'");
-    expect(source).toContain("from '../select/index.ts'");
+    expect(source).toContain("from '@lostgradient/cinder/input'");
+    expect(source).toContain("from '@lostgradient/cinder/select'");
     expect(styles).not.toContain('background-image');
     expect(container.querySelectorAll('.cinder-select-field__chevron')).toHaveLength(1);
   });
