@@ -97,7 +97,7 @@
     }
   }
 
-  .cinder-mega-menu__sections {
+  .cinder-mega-menu__sub .cinder-mega-menu__sections {
     display: grid;
     gap: var(--cinder-space-4);
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
