@@ -17,7 +17,7 @@ function isCinderComponentSource(root) {
 }
 
 function isInterior(selector) {
-  return /(?:__header|__footer|__row|__search|__section|__body|__trigger|__item|[+~])/i.test(
+  return /(?:__header|__footer|__row|__search|__section|__body|__trigger|__item|__cell|[+~])/i.test(
     selector,
   );
 }

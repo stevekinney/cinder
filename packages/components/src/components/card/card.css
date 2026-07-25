@@ -133,6 +133,14 @@
     background: var(--cinder-surface-inset);
   }
 
+  .cinder-card[data-cinder-variant='well'] > .cinder-card__footer {
+    background: var(--cinder-surface);
+  }
+
+  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] > .cinder-card__footer {
+    background: transparent;
+  }
+
   @media (forced-colors: active) {
     .cinder-card[data-cinder-tone='danger'] {
       background: Canvas;
