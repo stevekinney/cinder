@@ -55,11 +55,20 @@ describe('Carousel', () => {
     });
 
     await fireEvent.click(container.querySelectorAll('.cinder-carousel__control')[1]!);
+    await waitFor(() => expect(slideElements[1]?.getAttribute('aria-hidden')).toBeNull());
+    Object.defineProperty(slideElements[0], 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    Object.defineProperty(slideElements[1], 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 30, width: 100 }),
+    });
     await fireEvent.pointerDown(viewport);
     await fireEvent.scroll(viewport);
 
-    expect(slideElements[1]?.getAttribute('aria-hidden')).toBeNull();
-    expect(slideElements[1]?.hasAttribute('inert')).toBe(false);
+    expect(slideElements[0]?.getAttribute('aria-hidden')).toBeNull();
+    expect(slideElements[0]?.hasAttribute('inert')).toBe(false);
   });
 
   test('does not clear initial alignment while the viewport is hidden', async () => {
