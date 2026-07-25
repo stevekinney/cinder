@@ -35,8 +35,8 @@
 
   .cinder-footer__groups {
     display: grid;
-    gap: var(--cinder-space-5);
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--cinder-space-4);
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 12rem));
   }
 
   .cinder-footer__group-title {
@@ -81,7 +81,7 @@
 
   .cinder-footer__legal {
     display: flex;
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-space-4);
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
@@ -100,7 +100,7 @@
     flex-wrap: wrap;
   }
 
-  @container cinder-footer (min-width: 48rem) {
+  @container cinder-footer (min-width: 40rem) {
     .cinder-footer__main {
       grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
       align-items: start;
