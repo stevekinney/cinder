@@ -150,6 +150,7 @@ test.describe('Footer responsive layout', () => {
             'beforeend',
             `
               <nav aria-label="Support"><h3>Support</h3></nav>
+              <nav aria-label="Resources"><h3>Resources</h3></nav>
             `,
           );
         });
@@ -157,7 +158,7 @@ test.describe('Footer responsive layout', () => {
         const navigationRows = await groups
           .getByRole('navigation')
           .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().y));
-        expect(navigationRows).toHaveLength(3);
+        expect(navigationRows).toHaveLength(4);
         expect(new Set(navigationRows).size).toBe(1);
       }
     });
@@ -242,7 +243,7 @@ test.describe('Footer responsive layout', () => {
     );
 
     await page.locator('.cinder-footer').evaluate((footer) => {
-      footer.style.inlineSize = '40rem';
+      footer.style.inlineSize = '48rem';
     });
     const brand = page.locator('.cinder-footer__brand');
     const brandTitle = page.locator('.cinder-footer__brand-title');
