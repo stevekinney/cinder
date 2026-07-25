@@ -92,7 +92,7 @@
     position: absolute;
     inset-block-start: 0.625rem;
     block-size: 1rem;
-    inline-size: 4rem;
+    inline-size: 6rem;
     border-block-start: 1px solid var(--cinder-border-muted);
     pointer-events: none;
   }
@@ -159,11 +159,11 @@
 
   .cinder-event-timeline__cluster[data-cinder-edge='start']
     .cinder-event-timeline__cluster-surface {
-    inset-inline-start: 0;
+    left: 0;
   }
 
   .cinder-event-timeline__cluster[data-cinder-edge='end'] .cinder-event-timeline__cluster-surface {
-    inset-inline-end: 0;
+    right: 0;
   }
 
   .cinder-event-timeline__cluster-trigger {

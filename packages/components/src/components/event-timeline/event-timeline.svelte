@@ -254,7 +254,7 @@
     }
 
     const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup) => {
-      const chronologicalItems = overflowGroup.toSorted((a, b) => a.timestamp - b.timestamp);
+      const chronologicalItems = overflowGroup.slice().sort((a, b) => a.timestamp - b.timestamp);
       const first = chronologicalItems[0]!;
       const last = chronologicalItems.at(-1)!;
       const startTime = first.isoDatetime;
@@ -265,7 +265,7 @@
         count: overflowGroup.length,
         edge: edgeForPosition(first.position, collisionThresholdPercent),
         endTime,
-        key: `cluster-${chronologicalItems.map((item) => item.id ?? item.key.split('-').slice(0, -1).join('-')).join('|')}`,
+        key: `cluster-${JSON.stringify(chronologicalItems.map((item) => item.id ?? item.key))}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,
