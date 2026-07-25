@@ -241,6 +241,16 @@ test('selected text popover and composer anchor without overlapping the selectio
   expectBoxInsideViewport(expandedBox, desktopViewport);
 });
 
+test('selection popover dismisses when the viewport scrolls', async ({ componentPage }) => {
+  const page = await openPage(componentPage);
+  await selectTextInExample(page, 'appears near highlighted text');
+  const popover = page.locator('#basic-selection-popover');
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  await page.evaluate(() => window.dispatchEvent(new Event('scroll')));
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'false');
+});
+
 test('multi-line selections anchor to the first visual client rect', async ({ componentPage }) => {
   const page = await openPage(componentPage);
   const selection = await selectTextInExample(
