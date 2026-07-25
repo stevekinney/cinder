@@ -157,6 +157,10 @@
     transform: translateX(-100%);
   }
 
+  .cinder-event-timeline__cluster[data-cinder-open] {
+    z-index: 2;
+  }
+
   .cinder-event-timeline__cluster[data-cinder-edge='start']
     .cinder-event-timeline__cluster-surface {
     left: 0;

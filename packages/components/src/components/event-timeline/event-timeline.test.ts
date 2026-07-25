@@ -147,7 +147,7 @@ describe('EventTimeline', () => {
       [...container.querySelectorAll('[role="listitem"]')].map((item) =>
         item.getAttribute('data-cinder-lane'),
       ),
-    ).toEqual(['0', '0']);
+    ).toEqual(['0', '1']);
   });
 
   test('accounts for transformed labels when reusing lanes across edge boundaries', async () => {
@@ -168,6 +168,47 @@ describe('EventTimeline', () => {
         item.getAttribute('data-cinder-lane'),
       ),
     ).toEqual(['0', '1']);
+  });
+
+  test('moves near-edge labels to edge alignment before their offset can overflow', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T02:38:24.000Z', label: 'Near start' }],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(container.querySelector('[role="listitem"]')?.getAttribute('data-cinder-edge')).toBe(
+      'start',
+    );
+  });
+
+  test('reserves lanes for physical RTL bounds', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      dir: 'rtl',
+      items: [
+        { at: '2026-07-03T19:12:00.000Z', label: 'RTL first' },
+        { at: '2026-07-03T21:36:00.000Z', label: 'RTL second' },
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '1']);
+  });
+
+  test('keeps adjacent dense parity lanes separated and raises open clusters', () => {
+    expect(EVENT_TIMELINE_CSS).toContain('.cinder-event-timeline__cluster[data-cinder-open]');
+    expect(EVENT_TIMELINE_CSS).toContain('z-index: 2;');
   });
 
   test('offsets colliding lanes and renders hidden leader lines', () => {

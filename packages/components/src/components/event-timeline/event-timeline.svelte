@@ -109,8 +109,9 @@
   function edgeForPosition(
     position: number,
     thresholdPercent = FALLBACK_COLLISION_THRESHOLD_PERCENT,
+    offsetPercent = 0,
   ): PositionedEventTimelineItem['edge'] {
-    const edgeThreshold = Math.min(25, Math.max(10, thresholdPercent / 2));
+    const edgeThreshold = Math.min(40, Math.max(10, thresholdPercent / 2 + offsetPercent));
     if (position <= edgeThreshold) return 'start';
     if (position >= 100 - edgeThreshold) return 'end';
     return 'middle';
@@ -118,7 +119,6 @@
 
   function transformedLabelBounds(
     position: number,
-    lane: number,
     edge: PositionedEventTimelineItem['edge'],
     labelWidthPercent: number,
     offsetPercent: number,
@@ -126,10 +126,9 @@
     if (edge === 'start') return { start: position, end: position + labelWidthPercent };
     if (edge === 'end') return { start: position - labelWidthPercent, end: position };
 
-    const center = position + (lane % 2 === 0 ? -offsetPercent : offsetPercent);
     return {
-      start: center - labelWidthPercent / 2,
-      end: center + labelWidthPercent / 2,
+      start: position - offsetPercent - labelWidthPercent / 2,
+      end: position + offsetPercent + labelWidthPercent / 2,
     };
   }
 
@@ -221,15 +220,14 @@
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .sort((a, b) => a.position - b.position)
       .map(({ item, index, timestamp, position }) => {
-        const edge = edgeForPosition(position, collisionThresholdPercent);
         const offsetPercent =
           measuredWidth > 0
             ? ((6 * rootFontSize) / measuredWidth) * 100
             : (6 / LABEL_MAX_WIDTH_REM[size]) * collisionThresholdPercent;
+        const edge = edgeForPosition(position, collisionThresholdPercent, offsetPercent);
         const availableLane = laneBounds.findIndex((bounds, lane) => {
           const candidate = transformedLabelBounds(
             position,
-            lane,
             edge,
             collisionThresholdPercent,
             offsetPercent,
@@ -242,7 +240,6 @@
         if (!isOverflow) {
           const bounds = transformedLabelBounds(
             position,
-            lane,
             edge,
             collisionThresholdPercent,
             offsetPercent,
@@ -434,6 +431,7 @@
           class="cinder-event-timeline__cluster"
           role="listitem"
           data-cinder-edge={cluster.edge}
+          data-cinder-open={openClusterKey === cluster.key ? '' : undefined}
           data-cinder-lane={cluster.lane}
           style:left="{cluster.position}%"
           style:--_cinder-event-timeline-lane={cluster.lane}
