@@ -29,7 +29,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import { resolveTextDirection } from '../../_internal/text-direction.ts';
+  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
 
@@ -46,6 +46,7 @@
   }: MegaMenuProps = $props();
 
   let navElement = $state<HTMLElement | null>(null);
+  let directionRevision = $state(0);
   const localeContext = getLocaleContext();
   const generatedId = $props.id();
   let openItemId = $state<string | null>(null);
@@ -55,6 +56,32 @@
   // Tracks the id of the item that hover-opened; cleared once the click path runs,
   // preventing the immediately-following synthesised click from closing what hover opened.
   let hoverOpenedId = $state<string | null>(null);
+  const directionElement = $derived(
+    providedDirection === 'auto' ? navElement : (navElement?.parentElement ?? navElement),
+  );
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    return providedDirection === 'rtl' || providedDirection === 'ltr'
+      ? providedDirection
+      : resolveTextDirection(directionElement, localeContext?.direction);
+  });
+  const renderedDirection = $derived.by(() => {
+    if (
+      providedDirection === 'auto' ||
+      providedDirection === 'rtl' ||
+      providedDirection === 'ltr'
+    ) {
+      return providedDirection;
+    }
+    return localeContext?.direction ? resolvedDirection : null;
+  });
+
+  $effect(() => {
+    if (providedDirection === 'rtl' || providedDirection === 'ltr') return;
+    return observeTextDirection(directionElement, () => {
+      directionRevision += 1;
+    });
+  });
 
   const openItem = $derived(items.find((item) => item.id === openItemId) ?? null);
   const openIndex = $derived(openItemId ? items.findIndex((item) => item.id === openItemId) : -1);
@@ -211,16 +238,17 @@
   }
 
   function onTriggerKeydown(event: KeyboardEvent, index: number) {
+    const forwardIndexDelta = resolvedDirection === 'rtl' ? -1 : 1;
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
-        focusTriggerAt(index + 1);
-        if (openItemId) openItemByIndex(index + 1);
+        focusTriggerAt(index + forwardIndexDelta);
+        if (openItemId) openItemByIndex(index + forwardIndexDelta);
         break;
       case 'ArrowLeft':
         event.preventDefault();
-        focusTriggerAt(index - 1);
-        if (openItemId) openItemByIndex(index - 1);
+        focusTriggerAt(index - forwardIndexDelta);
+        if (openItemId) openItemByIndex(index - forwardIndexDelta);
         break;
       case 'Home':
         event.preventDefault();
@@ -422,7 +450,7 @@
 <nav
   id={providedId}
   {...rest}
-  dir={providedDirection ?? localeContext?.direction}
+  dir={renderedDirection}
   bind:this={navElement}
   class={classNames('cinder-mega-menu', className)}
   aria-label={label}
