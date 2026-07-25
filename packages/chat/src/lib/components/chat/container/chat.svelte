@@ -751,7 +751,8 @@
         }
 
         const correction = nonVirtualHistoryAnchorCorrection(pending);
-        if (correction === null || Math.abs(correction) < 1) return;
+        if (correction === null) return;
+        if (Math.abs(correction) < 1) continue;
         viewport.scrollTo({
           top: viewport.scrollTop + correction,
           behavior: 'instant',
@@ -767,11 +768,6 @@
   function cancelNonVirtualHistoryAnchorStabilization(): void {
     nonVirtualHistoryStabilizationGeneration += 1;
     isStabilizingNonVirtualHistoryAnchor = false;
-  }
-
-  function cancelHistoryRestorationForUserInput(): void {
-    cancelNonVirtualHistoryAnchorStabilization();
-    pendingHistoryScroll = null;
   }
 
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
@@ -1403,6 +1399,17 @@
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
+    if (
+      event.key === 'Home' ||
+      event.key === 'End' ||
+      event.key === 'PageUp' ||
+      event.key === 'PageDown' ||
+      event.key === 'ArrowUp' ||
+      event.key === 'ArrowDown'
+    ) {
+      cancelNonVirtualHistoryAnchorStabilization();
+    }
+
     // Intercept Ctrl+F / Cmd+F to open in-app search instead of browser search.
     // If the search bar is already open, refocus its input rather than being a no-op.
     if (allowSearch && (event.ctrlKey || event.metaKey) && event.key === 'f') {
@@ -1925,8 +1932,9 @@
       data-cinder-virtualized={isVirtualized ? '' : undefined}
       data-cinder-history-restoring={isRestoringNonVirtualHistory ? '' : undefined}
       tabindex="0"
-      onwheel={cancelHistoryRestorationForUserInput}
-      ontouchstart={cancelHistoryRestorationForUserInput}
+      onwheel={cancelNonVirtualHistoryAnchorStabilization}
+      ontouchstart={cancelNonVirtualHistoryAnchorStabilization}
+      onpointerdown={cancelNonVirtualHistoryAnchorStabilization}
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}

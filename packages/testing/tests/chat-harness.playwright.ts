@@ -436,7 +436,9 @@ test.describe('chat harness — scroll, unread, jump', () => {
     }
   });
 
-  test('user input cancels non-virtualized history restoration', async ({ browser }) => {
+  test('user input before a prepend retains the non-virtualized history anchor', async ({
+    browser,
+  }) => {
     const { harness, dispose } = await openHarness(browser);
     try {
       await harness.locator('#t-history').click();
@@ -444,6 +446,14 @@ test.describe('chat harness — scroll, unread, jump', () => {
 
       const timeline = harness.locator('.chat-timeline');
       await harness.locator('[data-testid="scroll-top"]').click();
+      const anchor = timeline.getByText('Tell me about alpha.').first();
+      await expect(anchor).toBeVisible();
+      const before = await anchor.boundingBox();
+      const beforeTimeline = await timeline.boundingBox();
+      expect(before).not.toBeNull();
+      expect(beforeTimeline).not.toBeNull();
+      const beforeOffset = (before?.y ?? 0) - (beforeTimeline?.y ?? 0);
+
       await timeline.evaluate((element) => {
         const loadButton = element.querySelector<HTMLButtonElement>('.chat-history-trigger-button');
         if (!loadButton) throw new Error('Load-earlier button was not rendered');
@@ -452,6 +462,13 @@ test.describe('chat harness — scroll, unread, jump', () => {
       });
 
       await expectLoggedEvent(harness, 'onloadhistory');
+      await expect
+        .poll(async () => {
+          const after = await anchor.boundingBox();
+          const afterTimeline = await timeline.boundingBox();
+          return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - beforeOffset);
+        })
+        .toBeLessThan(2);
       await expect(timeline).not.toHaveAttribute('data-cinder-history-restoring');
       await expect
         .poll(async () => timeline.evaluate((element) => getComputedStyle(element).overflowAnchor))
