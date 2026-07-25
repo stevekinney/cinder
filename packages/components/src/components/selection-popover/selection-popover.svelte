@@ -174,6 +174,17 @@
   );
 
   $effect(() => {
+    if (!isPositionedOpen) return;
+    const dismiss = () => closePopover();
+    window.addEventListener('scroll', dismiss, true);
+    window.addEventListener('resize', dismiss);
+    return () => {
+      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('resize', dismiss);
+    };
+  });
+
+  $effect(() => {
     if (!isPositionedOpen) {
       // Only act on the true -> false transition. This keeps the close logic
       // (state reset + focus restore) from re-running on unrelated effect
