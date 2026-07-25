@@ -485,56 +485,63 @@ describe('SelectionPopover', () => {
     }
   });
 
-  test('closing the visual-viewport keyboard preserves the focused draft', async () => {
-    let closed = false;
-    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
-    const visualViewport = new EventTarget() as EventTarget & {
-      height: number;
-      scale: number;
-    };
-    visualViewport.height = window.innerHeight;
-    visualViewport.scale = 1;
-    Object.defineProperty(window, 'visualViewport', {
-      configurable: true,
-      value: visualViewport,
-    });
-
-    try {
-      render(SelectionPopover, {
-        props: {
-          id: 'selection-comment',
-          open: true,
-          position: { x: 120, y: 80 },
-          onClose: () => {
-            closed = true;
-          },
-        },
+  test.each([
+    { focusState: 'focused', blurBeforeClose: false },
+    { focusState: 'just blurred', blurBeforeClose: true },
+  ])(
+    'closing the visual-viewport keyboard preserves a $focusState draft',
+    async ({ blurBeforeClose }) => {
+      let closed = false;
+      const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+      const visualViewport = new EventTarget() as EventTarget & {
+        height: number;
+        scale: number;
+      };
+      visualViewport.height = window.innerHeight;
+      visualViewport.scale = 1;
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: visualViewport,
       });
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
-      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
-      await fireEvent.input(textarea, { target: { value: 'Visual viewport draft' } });
-      textarea.focus();
+      try {
+        render(SelectionPopover, {
+          props: {
+            id: 'selection-comment',
+            open: true,
+            position: { x: 120, y: 80 },
+            onClose: () => {
+              closed = true;
+            },
+          },
+        });
 
-      visualViewport.height = window.innerHeight - 300;
-      visualViewport.dispatchEvent(new Event('resize'));
-      expect(closed).toBe(false);
+        await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+        const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+        await fireEvent.input(textarea, { target: { value: 'Visual viewport draft' } });
+        textarea.focus();
 
-      visualViewport.height = window.innerHeight;
-      visualViewport.dispatchEvent(new Event('resize'));
-      visualViewport.dispatchEvent(new Event('scroll'));
+        visualViewport.height = window.innerHeight - 300;
+        visualViewport.dispatchEvent(new Event('resize'));
+        expect(closed).toBe(false);
 
-      expect(closed).toBe(false);
-      expect((textarea as HTMLTextAreaElement).value).toBe('Visual viewport draft');
-    } finally {
-      cleanup();
-      if (originalVisualViewport) {
-        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
-      } else {
-        Reflect.deleteProperty(window, 'visualViewport');
+        if (blurBeforeClose) textarea.blur();
+        visualViewport.height = window.innerHeight;
+        visualViewport.dispatchEvent(new Event('resize'));
+        visualViewport.dispatchEvent(new Event('scroll'));
+
+        expect(closed).toBe(false);
+        expect((textarea as HTMLTextAreaElement).value).toBe('Visual viewport draft');
+      } finally {
+        cleanup();
+        if (originalVisualViewport) {
+          Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+        } else {
+          Reflect.deleteProperty(window, 'visualViewport');
+        }
       }
-    }
-  });
+    },
+  );
 
   test('a desktop height-only resize dismisses while the composer is focused', async () => {
     let closed = false;
@@ -633,6 +640,7 @@ describe('SelectionPopover', () => {
     async (eventType) => {
       let closed = false;
       const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+      const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
       const visualViewport = new EventTarget();
       Object.defineProperties(visualViewport, {
         height: { value: window.innerHeight - 100 },
@@ -641,6 +649,10 @@ describe('SelectionPopover', () => {
       Object.defineProperty(window, 'visualViewport', {
         configurable: true,
         value: visualViewport,
+      });
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
       });
 
       try {
@@ -665,6 +677,11 @@ describe('SelectionPopover', () => {
           Object.defineProperty(window, 'visualViewport', originalVisualViewport);
         } else {
           Reflect.deleteProperty(window, 'visualViewport');
+        }
+        if (originalVirtualKeyboard) {
+          Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+        } else {
+          Reflect.deleteProperty(navigator, 'virtualKeyboard');
         }
       }
     },

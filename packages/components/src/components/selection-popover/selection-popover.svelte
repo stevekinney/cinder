@@ -118,6 +118,9 @@
   }
 
   function isVirtualKeyboardResize(source: 'window' | 'visual-viewport'): boolean {
+    const visualViewport = window.visualViewport;
+    if (source === 'visual-viewport' && visualViewport?.scale !== 1) return false;
+
     const virtualKeyboard = (
       navigator as Navigator & {
         virtualKeyboard?: { boundingRect?: { height: number } };
@@ -127,12 +130,7 @@
 
     if (source === 'window') return false;
 
-    const visualViewport = window.visualViewport;
-    return (
-      visualViewport != null &&
-      visualViewport.scale === 1 &&
-      visualViewport.height < window.innerHeight
-    );
+    return visualViewport != null && visualViewport.height < window.innerHeight;
   }
 
   function handleCancel(): void {
@@ -203,7 +201,7 @@
     };
     const virtualKeyboardTransitionFrames: Partial<Record<'window' | 'visual-viewport', number>> =
       {};
-    const isVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
+    const readVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
       const isVisible = isVirtualKeyboardResize(source);
       if (isVisible) {
         const pendingFrame = virtualKeyboardTransitionFrames[source];
@@ -212,15 +210,15 @@
           delete virtualKeyboardTransitionFrames[source];
         }
         virtualKeyboardWasVisible[source] = true;
-        return true;
+        return { active: true, isVisible };
       }
-      if (!virtualKeyboardWasVisible[source]) return false;
+      if (!virtualKeyboardWasVisible[source]) return { active: false, isVisible };
 
       virtualKeyboardTransitionFrames[source] ??= window.requestAnimationFrame(() => {
         virtualKeyboardWasVisible[source] = false;
         delete virtualKeyboardTransitionFrames[source];
       });
-      return true;
+      return { active: true, isVisible };
     };
     const closeForMovement = () => {
       if (movementDismissed) return;
@@ -238,7 +236,7 @@
         const composerHasFocus =
           document.activeElement instanceof Node &&
           popoverElement?.contains(document.activeElement);
-        const virtualKeyboardTransition = isVirtualKeyboardTransition('window');
+        const virtualKeyboardTransition = readVirtualKeyboardTransition('window').active;
         if (
           !viewportWidthChanged &&
           composerHasFocus &&
@@ -252,10 +250,14 @@
     const dismissVisualViewport = (event: Event) => {
       const composerHasFocus =
         document.activeElement instanceof Node && popoverElement?.contains(document.activeElement);
+      const virtualKeyboardTransition =
+        visualViewport?.scale === 1
+          ? readVirtualKeyboardTransition('visual-viewport')
+          : { active: false, isVisible: false };
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
-        composerHasFocus &&
-        isVirtualKeyboardTransition('visual-viewport')
+        virtualKeyboardTransition.active &&
+        (composerHasFocus || !virtualKeyboardTransition.isVisible)
       ) {
         return;
       }
