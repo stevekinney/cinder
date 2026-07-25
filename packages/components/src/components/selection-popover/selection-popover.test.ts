@@ -459,6 +459,19 @@ describe('SelectionPopover', () => {
 
       expect(closed).toBe(false);
       expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
+
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
     } finally {
       Object.defineProperty(window, 'innerHeight', {
         configurable: true,
@@ -468,6 +481,56 @@ describe('SelectionPopover', () => {
         Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
       } else {
         Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      }
+    }
+  });
+
+  test('closing the visual-viewport keyboard preserves the focused draft', async () => {
+    let closed = false;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & {
+      height: number;
+      scale: number;
+    };
+    visualViewport.height = window.innerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewport,
+    });
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      await fireEvent.input(textarea, { target: { value: 'Visual viewport draft' } });
+      textarea.focus();
+
+      visualViewport.height = window.innerHeight - 300;
+      visualViewport.dispatchEvent(new Event('resize'));
+      expect(closed).toBe(false);
+
+      visualViewport.height = window.innerHeight;
+      visualViewport.dispatchEvent(new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Visual viewport draft');
+    } finally {
+      cleanup();
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
       }
     }
   });
