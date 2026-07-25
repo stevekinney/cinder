@@ -48,6 +48,7 @@
   let hasFocusWithin = $state(false);
   let userPaused = $state(false);
   let viewportElement = $state<HTMLElement | null>(null);
+  let programmaticTarget: number | null = null;
 
   const clampedLength = $derived(slides.length);
   const currentIndex = $derived.by(() => {
@@ -133,20 +134,34 @@
   }
 
   function scrollToActiveSlide(): void {
-    const slide = viewportElement?.children[currentIndex];
+    const viewport = viewportElement;
+    const slide = viewport?.children[currentIndex];
     if (!(slide instanceof HTMLElement)) return;
-    slide.scrollIntoView({
-      behavior: reducedMotion.current ? 'auto' : 'smooth',
-      block: 'nearest',
-      inline: 'start',
-    });
+    programmaticTarget = currentIndex;
+    if (typeof viewport.scrollTo === 'function') {
+      viewport.scrollTo({
+        left: slide.offsetLeft,
+        behavior: reducedMotion.current ? 'auto' : 'smooth',
+      });
+    } else {
+      viewport.scrollLeft = slide.offsetLeft;
+    }
   }
 
   function onViewportScroll(): void {
     if (clampedLength < 2 || viewportElement === null) return;
-    const slideWidth = viewportElement.clientWidth;
-    if (slideWidth < 1) return;
-    const nextIndex = Math.round(viewportElement.scrollLeft / slideWidth);
+    const viewportLeft = viewportElement.getBoundingClientRect().left;
+    const nextIndex = [...viewportElement.children].reduce((nearestIndex, slide, index) => {
+      const nearest = viewportElement.children[nearestIndex];
+      return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
+        Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
+        ? index
+        : nearestIndex;
+    }, 0);
+    if (programmaticTarget !== null) {
+      if (nextIndex === programmaticTarget) programmaticTarget = null;
+      return;
+    }
     if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
       activeIndex = nextIndex;
     }
@@ -183,12 +198,7 @@
     {liveAnnouncement}
   </p>
 
-  <div
-    class="cinder-carousel__viewport"
-    bind:this={viewportElement}
-    onscroll={onViewportScroll}
-    aria-label="Carousel slides"
-  >
+  <div class="cinder-carousel__viewport" bind:this={viewportElement} onscroll={onViewportScroll}>
     {#if slides.length > 0}
       {#each slides as slide, index (slide.id)}
         <article
@@ -206,6 +216,7 @@
                   class="cinder-carousel__image"
                   src={slide.imageSrc}
                   alt={slide.imageAlt ?? slide.title ?? slide.label}
+                  loading={index === currentIndex ? 'eager' : 'lazy'}
                 />
               {/if}
               {#if slide.title}
@@ -224,6 +235,7 @@
                 class="cinder-carousel__image"
                 src={slide.imageSrc}
                 alt={slide.imageAlt ?? slide.title ?? slide.label}
+                loading={index === currentIndex ? 'eager' : 'lazy'}
               />
             {/if}
             {#if slide.title}
@@ -241,8 +253,8 @@
     {/if}
   </div>
 
-  <div class="cinder-carousel__controls" role="group" aria-label="Carousel controls">
-    <div class="cinder-carousel__nav" role="group" aria-label="Slide navigation">
+  <div class="cinder-carousel__controls" role="group" aria-label={`${label} controls`}>
+    <div class="cinder-carousel__nav" role="group" aria-label={`${label} navigation`}>
       <button
         type="button"
         class="cinder-carousel__control"
