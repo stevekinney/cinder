@@ -34,5 +34,12 @@ describe(ruleName, () => {
     expect(
       warnings(await lint('.cinder-card { border: 1px solid var(--cinder-border); }')),
     ).toEqual([]);
+    expect(
+      warnings(
+        await lint(
+          ".cinder-stat-group[data-cinder-variant='cards'] > .cinder-stat { border: 1px solid var(--cinder-border); }",
+        ),
+      ),
+    ).toEqual([]);
   });
 });

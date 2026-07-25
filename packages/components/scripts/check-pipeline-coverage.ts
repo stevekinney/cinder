@@ -538,6 +538,13 @@ export function checkStylelintRuleCoverage(
         layer: layers[0] ?? 'unit-tests',
         detail: `Stylelint rule "${rule}" is missing from .stylelintrc.json rules.`,
       });
+    } else if (rules[rule] !== true) {
+      violations.push({
+        command: `stylelint:${rule}`,
+        kind: 'missing',
+        layer: layers[0] ?? 'unit-tests',
+        detail: `Stylelint rule "${rule}" is disabled in .stylelintrc.json rules.`,
+      });
     }
 
     const pluginName = rule.split('/').at(-1) ?? rule;

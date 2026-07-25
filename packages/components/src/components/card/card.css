@@ -15,7 +15,7 @@
   }
 
   .cinder-card[data-cinder-variant='well'] {
-    background: var(--cinder-surface);
+    background: transparent;
     box-shadow: none;
   }
 
@@ -92,7 +92,7 @@
 
   .cinder-card__body {
     padding: var(--cinder-space-4);
-    background: var(--cinder-surface);
+    background: transparent;
   }
 
   .cinder-card__body[data-cinder-tone='muted'] {
@@ -107,6 +107,10 @@
     background: var(--cinder-surface-inset);
   }
 
+  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] > .cinder-card__body {
+    background: transparent;
+  }
+
   /* ----------------------------------------
  * Footer
  * ---------------------------------------- */
@@ -118,7 +122,7 @@
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-3) var(--cinder-space-4);
     border-top: 1px solid var(--cinder-border-muted);
-    background: var(--cinder-surface);
+    background: transparent;
   }
 
   .cinder-card[data-cinder-tone='danger'] > .cinder-card__footer {
