@@ -181,6 +181,19 @@ function staticAttributeValue(attribute: UnknownRecord): string | undefined {
     : undefined;
 }
 
+function attributeValueWithDynamics(attribute: UnknownRecord): string | undefined {
+  const value = attribute['value'];
+  if (value === true) return undefined;
+  const parts = Array.isArray(value) ? value : [value];
+  return parts
+    .map((part) =>
+      isRecord(part) && part['type'] === 'Text' && typeof part['data'] === 'string'
+        ? part['data']
+        : 'var(--cinder-dynamic-value)',
+    )
+    .join('');
+}
+
 function hasStaticHiddenAttribute(element: UnknownRecord): boolean {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
@@ -248,19 +261,31 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   if (fragment === undefined) return total;
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement' || !Array.isArray(node['attributes'])) return;
+    const directives = new Map<string, string>();
     for (const attribute of node['attributes']) {
-      if (
-        !isRecord(attribute) ||
-        attribute['type'] !== 'Attribute' ||
-        attribute['name'] !== 'style'
-      )
-        continue;
-      const value = staticAttributeValue(attribute);
-      if (value === undefined) continue;
-      const counts = cssPrimitiveCounts(value);
-      total.grid += counts.grid;
-      total.floating += counts.floating;
+      if (!isRecord(attribute)) continue;
+      if (attribute['type'] === 'Attribute' && attribute['name'] === 'style') {
+        const value = attributeValueWithDynamics(attribute);
+        if (value === undefined || !value.includes(':')) continue;
+        const counts = cssPrimitiveCounts(value);
+        total.grid += counts.grid;
+        total.floating += counts.floating;
+      }
+      if (attribute['type'] === 'StyleDirective' && typeof attribute['name'] === 'string')
+        directives.set(
+          attribute['name'].toLowerCase(),
+          attributeValueWithDynamics(attribute)?.toLowerCase() ?? 'var(--cinder-dynamic-value)',
+        );
     }
+    const display = directives.get('display');
+    if (
+      (display === 'grid' || display === 'inline-grid') &&
+      (directives.has('grid-template') || directives.has('grid-template-columns'))
+    )
+      total.grid++;
+    const position = directives.get('position');
+    if ((position === 'absolute' || position === 'fixed') && directives.has('z-index'))
+      total.floating++;
   });
   return total;
 }

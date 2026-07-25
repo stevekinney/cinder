@@ -100,6 +100,12 @@ describe('primitive composition guard', () => {
         'new-grid/new-grid.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div style:display="grid" style:grid-template-columns={columns}></div>',
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('rejects a layered floating surface without the shared sidecar', () => {
@@ -133,6 +139,12 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<div style="position: absolute; z-index: 1"></div>',
+        'new-menu/new-menu.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div style="position: absolute; z-index: {layer}"></div>',
         'new-menu/new-menu.svelte',
       ),
     ).toHaveLength(1);
