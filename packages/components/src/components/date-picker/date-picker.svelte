@@ -116,20 +116,20 @@
           : 'YYYY-MM-DDTHH:mm:ss'
       : placeholder,
   );
+
+  function updateInputValidity(element: HTMLInputElement): void {
+    const current = element.value;
+    const normalizedCurrent = normalizeValue(current || undefined, granularity);
+    const valid =
+      current === '' ||
+      (normalizedCurrent === current && clampToBounds(normalizedCurrent) === normalizedCurrent);
+    element.setCustomValidity(valid ? '' : 'Enter a valid date within the allowed range.');
+  }
+
   $effect(() => {
     normalizedValue;
     if (!inputElement) return;
-    const current = inputElement.value;
-    const validFormat =
-      current === '' ||
-      (granularity === 'day'
-        ? /^\d{4}-\d{2}-\d{2}$/.test(current)
-        : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(current));
-    inputElement.setCustomValidity(
-      validFormat && (!current || clampToBounds(current) === current)
-        ? ''
-        : 'Enter a valid date within the allowed range.',
-    );
+    updateInputValidity(inputElement);
   });
   const describedById = $derived(
     [
@@ -178,6 +178,7 @@
     const target = event.currentTarget as HTMLInputElement;
     const pattern =
       granularity === 'day' ? /^\d{4}-\d{2}-\d{2}$/ : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
+    updateInputValidity(target);
     emit(
       pattern.test(target.value)
         ? clampToBounds(normalizeValue(target.value, granularity))
@@ -237,7 +238,7 @@
     triggerRef={triggerElement ?? inputElement}
     role="dialog"
     label={label ? `${label} calendar` : 'Date picker calendar'}
-    focusManagement="preserve"
+    focusManagement="panel"
     widthMode="content"
     class="cinder-date-picker__panel"
   >
@@ -250,8 +251,9 @@
     />
     {#if granularity !== 'day'}
       <div class="cinder-date-picker__time">
-        <span class="cinder-date-picker__time-label">Time</span>
+        <label class="cinder-date-picker__time-label" for={`${id}-time`}>Time</label>
         <input
+          id={`${id}-time`}
           class="cinder-date-picker__time-input"
           type="time"
           {step}

@@ -96,7 +96,7 @@ value        DateRangeValue       no        Current range. Bindable. Both fields
 label        string               no        Visible legend rendered above the inputs.
 startLabel   string               no        Label for the start input. Default: "Start date".
 endLabel     string               no        Label for the end input. Default: "End date".
-granularity  DateRangeGranularity no        Precision for native inputs: day, hour, minute, or second. Default: day.
+granularity  DateRangeGranularity no        Precision for custom picker fields: day, hour, minute, or second. Default: day.
 presets      DateRangeDatePreset[]  no      Custom preset buttons. Defaults to today, yesterday-today, last-7d.
 hidePresets  boolean              no        When true, hides the preset row. Default: false.
 description  string               no        Helper text below the field, wired via aria-describedby.
@@ -137,6 +137,6 @@ The component implements accessible form labelling throughout:
 
 ## Scope limits
 
-- Timezone conversion is caller-owned. Native `datetime-local` values are local wall-clock strings without timezone offsets.
+- Timezone conversion is caller-owned. Emitted date-time values are local wall-clock strings without timezone offsets.
 - The component owns the custom date and date-time picker UI.
-- No range constraint enforcement. The component sets `min`/`max` on the inputs to hint the browser's picker (end min = start, start max = end), but does not block the user from entering out-of-order values programmatically. Validation is the consumer's responsibility via the `error` prop.
+- Start and end constrain each other through DatePicker's `min`/`max` contract: the calendar disables out-of-range dates and manual edits are validated and clamped. Consumers still own domain-specific validation and error messaging through the `error` prop.

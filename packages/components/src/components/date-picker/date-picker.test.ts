@@ -39,6 +39,24 @@ describe('DatePicker', () => {
     expect(nextValue).toBe('');
   });
 
+  test.each(['2026-06-29junk', '2026-02-31'])(
+    'marks malformed empty-model edits invalid: %s',
+    async (rawValue) => {
+      const { container } = render(DatePicker, {
+        id: 'dp',
+        value: undefined,
+      });
+      const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+      await fireEvent.change(input, {
+        target: { value: rawValue },
+      });
+
+      expect(input.value).toBe(rawValue);
+      expect(input.checkValidity()).toBe(false);
+    },
+  );
+
   test('marks controlled out-of-range values invalid', () => {
     const { container } = render(DatePicker, {
       id: 'dp',
@@ -69,6 +87,21 @@ describe('DatePicker', () => {
     });
   });
 
+  test('moves focus into the custom picker when the trigger opens it', async () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-10',
+    });
+
+    await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
+
+    await waitFor(() => {
+      const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
+      expect(dialog).not.toBeNull();
+      expect(dialog?.contains(document.activeElement)).toBe(true);
+    });
+  });
+
   test('renders time input for minute granularity and emits datetime value', async () => {
     let nextValue = '';
     const { container } = render(DatePicker, {
@@ -85,6 +118,7 @@ describe('DatePicker', () => {
       '.cinder-date-picker__time-input',
     );
     if (!timeInput) throw new Error('time input missing');
+    expect(timeInput).toHaveAccessibleName('Time');
     await fireEvent.change(timeInput, { target: { value: '10:15' } });
 
     expect(nextValue).toBe('2026-06-29T10:15');

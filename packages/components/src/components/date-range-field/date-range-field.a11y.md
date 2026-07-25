@@ -31,5 +31,5 @@ Clicking a preset button applies that preset's resolved range, sets `aria-presse
 
 - **Timezone conversion is caller-owned.** Date-time values are local wall-clock strings, not timezone-aware instants.
 - **The picker UI is component-owned.** Calendar and time dialog interaction is exposed by the custom controls.
-- **No range constraint enforcement.** The component sets `min`/`max` on the inputs to hint the browser's picker (end min = start, start max = end), but does not block the user from entering out-of-order dates programmatically. Validation is the consumer's responsibility via the `error` prop.
+- **Range ordering is enforced by the custom pickers.** Start and end constrain each other through DatePicker's `min`/`max` contract: calendars disable out-of-range dates and manual edits are validated and clamped. Consumers still own domain-specific validation and error messaging through the `error` prop.
 - **No year/month range limits.** Consumers who need to restrict the selectable date range should pass `error` after validating the emitted value.

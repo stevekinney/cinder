@@ -1,12 +1,12 @@
 # DatePicker
 
-Controlled date/date-time picker that combines a text trigger, floating calendar, and optional time controls.
+Controlled date/date-time picker that combines a text field, calendar trigger button, floating calendar, and optional time controls.
 
 DatePicker owns the picker UI (decision B): it uses a text input and Cinder's
 Calendar as the single calendar surface. This avoids combining a browser-native
-date picker with the custom floating calendar; the input keeps its label,
-description, error, and dialog semantics while DatePicker handles parsing and
-keyboard input.
+date picker with the custom floating calendar. The text input keeps its label,
+description, and error semantics; a separate button owns the dialog trigger
+semantics. DatePicker handles parsing and keyboard input.
 
 ## Usage
 
