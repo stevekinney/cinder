@@ -38,6 +38,8 @@
     right: 0;
     bottom: 0;
     width: 100%;
+    /* Sheet is physically bottom-anchored, so preserve the physical viewport cap in vertical writing modes. */
+    max-height: 90dvh;
     max-block-size: 90dvh;
     background: var(--cinder-surface-raised);
     border-block-start: 1px solid var(--cinder-border);
