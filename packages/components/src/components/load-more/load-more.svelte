@@ -15,6 +15,7 @@
 
 <script lang="ts">
   import type { LoadMoreProps } from './load-more.types.ts';
+  import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useIntersection } from '../../utilities/use-intersection.svelte.ts';
@@ -39,6 +40,8 @@
   let sentinelRequestCount = $state(0);
   let sentinelArmed = $state(true);
   let sentinelIntersecting = $state(false);
+  let sentinelReported = $state(false);
+  let previousSentinelEnabled = false;
   // Tracks the last `hasMore` value the component reconciled against so a
   // parent-driven false -> true flip (new page of data arrived) can clear the
   // sentinel request cap and error latch exactly once per transition.
@@ -52,8 +55,8 @@
   // the attachment once (rather than inside `$derived`) avoids tearing down and
   // recreating the IntersectionObserver every time `sentinelEnabled` flips.
   const sentinelIntersection = useIntersection(handleIntersect, {
-    root,
-    rootMargin,
+    root: untrack(() => root),
+    rootMargin: untrack(() => rootMargin),
     enabled: () => sentinelEnabled,
   });
   const buttonText = $derived(errorState ? retryLabel : buttonLabel);
@@ -76,6 +79,19 @@
     previousHasMore = hasMore;
   });
 
+  $effect(() => {
+    if (!previousSentinelEnabled && sentinelEnabled) {
+      sentinelReported = false;
+      sentinelIntersecting = false;
+      sentinelArmed = true;
+    }
+    previousSentinelEnabled = sentinelEnabled;
+  });
+
+  $effect(() => {
+    requestFromSentinelIfReady();
+  });
+
   async function requestNextPage(source: 'button' | 'sentinel'): Promise<void> {
     if (!hasMore || loading || requestInFlight) {
       return;
@@ -87,9 +103,10 @@
 
     if (source === 'sentinel') {
       sentinelRequestCount += 1;
-    } else if (sentinelIntersecting) {
+    } else if (!sentinelReported || sentinelIntersecting) {
       // A manual request is itself the explicit load trigger. Do not let an
-      // already-visible sentinel immediately follow it with another request.
+      // unreported or already-visible sentinel immediately follow it with
+      // another request.
       sentinelArmed = false;
     }
 
@@ -111,7 +128,17 @@
     }
   }
 
+  function requestFromSentinelIfReady(): void {
+    if (!sentinelReported || !sentinelIntersecting || !sentinelArmed || !sentinelEnabled || busy) {
+      return;
+    }
+
+    sentinelArmed = false;
+    void requestNextPage('sentinel');
+  }
+
   function handleIntersect(entry: IntersectionObserverEntry): void {
+    sentinelReported = true;
     sentinelIntersecting = entry.isIntersecting;
 
     if (!entry.isIntersecting) {
@@ -119,19 +146,7 @@
       return;
     }
 
-    if (
-      !sentinelArmed ||
-      !hasMore ||
-      loading ||
-      requestInFlight ||
-      errorState ||
-      sentinelRequestCount >= maxRetries
-    ) {
-      return;
-    }
-
-    sentinelArmed = false;
-    void requestNextPage('sentinel');
+    requestFromSentinelIfReady();
   }
 </script>
 

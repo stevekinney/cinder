@@ -152,7 +152,28 @@ describe('LoadMore', () => {
     await waitFor(() => expect(calls).toBe(2));
   });
 
-  test('manual loading while the sentinel is visible consumes its current entry trigger', async () => {
+  test('manual loading before the sentinel reports consumes a potentially visible entry', async () => {
+    let calls = 0;
+    const rendered = render(LoadMore, {
+      props: {
+        onLoadMore: async () => {
+          calls += 1;
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+
+    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
+    expect(calls).toBe(1);
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+  });
+
+  test('loads an armed intersecting sentinel when the component becomes idle', async () => {
     let calls = 0;
     const rendered = render(LoadMore, {
       props: {
@@ -175,12 +196,8 @@ describe('LoadMore', () => {
         calls += 1;
       },
     });
-    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
-    expect(calls).toBe(1);
 
-    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
-    await Promise.resolve();
-    expect(calls).toBe(1);
+    await waitFor(() => expect(calls).toBe(1));
   });
 
   test('an intersecting sentinel entry calls onLoadMore', async () => {
@@ -251,7 +268,7 @@ describe('LoadMore', () => {
     await waitFor(() => expect(calls).toBe(2));
   });
 
-  test('ignores stale sentinel callbacks while loading or after an error', async () => {
+  test('replays a busy sentinel entry once and ignores stale callbacks after an error', async () => {
     let calls = 0;
     let rejectNextRequest = false;
 
@@ -290,9 +307,8 @@ describe('LoadMore', () => {
       loading: false,
     });
 
-    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
-
     await waitFor(() => {
+      expect(calls).toBe(1);
       expect(rendered.getByRole('button', { name: 'Retry loading' })).toBeDefined();
     });
 
