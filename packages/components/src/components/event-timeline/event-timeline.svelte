@@ -240,7 +240,7 @@
             ? ((6 * rootFontSize) / measuredWidth) * 100
             : (6 / LABEL_MAX_WIDTH_REM[size]) * collisionThresholdPercent;
         const edge = edgeForPosition(position, collisionThresholdPercent, offsetPercent);
-        const availableLane = laneBounds.findIndex((bounds, lane) => {
+        const availableLane = laneBounds.findIndex((bounds) => {
           const candidate = transformedLabelBounds(
             position,
             edge,
