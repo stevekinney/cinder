@@ -33,10 +33,9 @@ describe('TransferList', () => {
     expect(css).toContain('.cinder-transfer-list__layout');
     expect(css).toContain('.cinder-transfer-list:dir(rtl) .cinder-transfer-list__control svg');
     expect(css).toContain('transform: scaleX(-1)');
-    expect(css).toContain('.cinder-transfer-list__control--forward svg');
+    expect(css).toContain('.cinder-transfer-list .cinder-transfer-list__control--forward svg');
     expect(css).toContain('transform: rotate(90deg)');
-    expect(css).toContain('.cinder-transfer-list__control--backward svg');
-    expect(css).toContain('transform: rotate(-90deg)');
+    expect(css).toContain('.cinder-transfer-list .cinder-transfer-list__control--backward svg');
     expect(css).not.toContain('@media (max-width');
   });
 

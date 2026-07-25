@@ -139,12 +139,12 @@
       flex-wrap: wrap;
     }
 
-    .cinder-transfer-list__control--forward svg {
+    .cinder-transfer-list .cinder-transfer-list__control--forward svg {
       transform: rotate(90deg);
     }
 
-    .cinder-transfer-list__control--backward svg {
-      transform: rotate(-90deg);
+    .cinder-transfer-list .cinder-transfer-list__control--backward svg {
+      transform: rotate(90deg);
     }
   }
 }
