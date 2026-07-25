@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, test } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -10,8 +10,64 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
+const { fireEvent } = await import('@testing-library/svelte');
+const { tick } = await import('svelte');
 
 const EVENT_TIMELINE_CSS = readFileSync(join(import.meta.dir, 'event-timeline.css'), 'utf8');
+
+class TestResizeObserver implements ResizeObserver {
+  static instances: TestResizeObserver[] = [];
+  readonly callback: ResizeObserverCallback;
+  observed: Element | undefined;
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    TestResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.observed = target;
+  }
+
+  unobserve(): void {}
+
+  disconnect(): void {}
+
+  trigger(width: number): void {
+    this.callback(
+      [
+        {
+          borderBoxSize: [{ inlineSize: width }],
+          contentRect: { width },
+          target: this.observed,
+        } as unknown as ResizeObserverEntry,
+      ],
+      this as unknown as ResizeObserver,
+    );
+  }
+}
+
+const originalResizeObserver = globalThis.ResizeObserver;
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: TestResizeObserver,
+    writable: true,
+  });
+});
+
+beforeEach(() => {
+  TestResizeObserver.instances = [];
+});
+
+afterAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: originalResizeObserver,
+    writable: true,
+  });
+});
 
 describe('EventTimeline', () => {
   const start = '2026-07-03T00:00:00.000Z';
@@ -63,6 +119,81 @@ describe('EventTimeline', () => {
     const items = [...container.querySelectorAll('[role="listitem"]')];
     expect(items.map((item) => item.getAttribute('data-cinder-lane'))).toEqual(['0', '1', '2']);
     expect(items[2]?.getAttribute('data-cinder-state')).toBe('failed');
+  });
+
+  test('uses the measured pixel width to determine label collisions', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T06:00:00.000Z', label: 'A' },
+        { at: '2026-07-03T10:48:00.000Z', label: 'B' },
+      ],
+    });
+
+    await tick();
+    const observer = TestResizeObserver.instances[0];
+    observer?.trigger(400);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '1']);
+
+    observer?.trigger(1200);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '0']);
+  });
+
+  test('offsets colliding lanes and renders hidden leader lines', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T06:00:00.000Z', label: 'A' },
+        { at: '2026-07-03T06:15:00.000Z', label: 'B' },
+      ],
+    });
+
+    const items = [...container.querySelectorAll('[role="listitem"]')];
+    expect(items[0]?.getAttribute('data-cinder-lane-parity')).toBe('even');
+    expect(items[1]?.getAttribute('data-cinder-lane-parity')).toBe('odd');
+    expect(container.querySelectorAll('.cinder-event-timeline__leader')).toHaveLength(2);
+    expect(
+      [...container.querySelectorAll('.cinder-event-timeline__leader')].every(
+        (leader) => leader.getAttribute('aria-hidden') === 'true',
+      ),
+    ).toBe(true);
+  });
+
+  test('collapses excess lanes into an accessible cluster button', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [0, 1, 2, 3, 4].map((index) => ({
+        at: `2026-07-03T06:0${index}:00.000Z`,
+        label: `Event ${index + 1}`,
+      })),
+    });
+
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    );
+    expect(cluster?.textContent).toBe('+1');
+    expect(cluster?.getAttribute('aria-label')).toBe('1 event between 06:04 and 06:04');
+    expect(cluster?.tabIndex).toBe(0);
+
+    cluster?.focus();
+    await fireEvent.click(cluster!);
+    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(cluster);
   });
 
   test('allocates additional lanes for dense clusters without reusing the final lane', () => {
@@ -221,9 +352,16 @@ describe('EventTimeline', () => {
     expect(EVENT_TIMELINE_CSS).toContain('6rem,');
     expect(EVENT_TIMELINE_CSS).toContain('--_cinder-event-timeline-lane-count');
     expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='start'");
-    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(0);');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      'translateX(var(--_cinder-event-timeline-label-offset, 0px))',
+    );
     expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='end'");
-    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(-100%);');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      'translateX(calc(-100% + var(--_cinder-event-timeline-label-offset, 0px)))',
+    );
     expect(EVENT_TIMELINE_CSS).toContain('5.25rem,');
+    expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__leader');
+    expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__cluster-trigger');
+    expect(EVENT_TIMELINE_CSS).toContain(':focus-visible');
   });
 });
