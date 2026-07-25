@@ -109,6 +109,30 @@ describe('pipeline contract: commit stays cheap', () => {
 });
 
 describe('pipeline contract: checkout stays informational', () => {
+  it('hook runtime modules do not require installed packages', async () => {
+    const runtimeFiles = [
+      join(huskyDirectory, 'post-checkout.ts'),
+      join(huskyDirectory, 'post-merge.ts'),
+      join(huskyDirectory, 'pre-commit.ts'),
+      join(huskyDirectory, 'pre-push.ts'),
+      join(huskyDirectory, 'utilities.ts'),
+      join(componentsPackageRoot, 'scripts/validation-utilities.ts'),
+    ];
+
+    for (const path of runtimeFiles) {
+      const source = stripComments(await Bun.file(path).text());
+      const importSpecifiers = [...source.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(
+        (match) => match[1],
+      );
+      const installedPackageImports = importSpecifiers.filter(
+        (specifier) =>
+          specifier !== 'bun' && !specifier?.startsWith('node:') && !specifier?.startsWith('.'),
+      );
+
+      expect(installedPackageImports).toEqual([]);
+    }
+  });
+
   it('warns about changed dependencies without installing them', async () => {
     const source = stripComments(await Bun.file(join(huskyDirectory, 'post-checkout.ts')).text());
 

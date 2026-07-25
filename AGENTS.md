@@ -47,7 +47,9 @@ those broad checks.
 
 The `post-checkout` hook is informational only. When dependency files change,
 it tells you to run `bun install --frozen-lockfile`; it never installs
-automatically or mutates the checked-out worktree.
+automatically or mutates the checked-out worktree. Hook runtime modules use
+only Bun, Node, and repository-local code so checkout and push remain usable
+before a worktree has installed dependencies.
 
 ### Code Quality
 
