@@ -21,8 +21,8 @@
    * Tab to page content under an open backdrop. When you need that isolation
    * (a full-page loading dimmer, a lightbox), apply `inert` to your page-content
    * container while the backdrop is open and pair it with `@lostgradient/cinder/focus-trap`.
-   * Click-to-close via `onclick` is a pointer convenience — wire an Escape
-   * handler yourself for a keyboard dismiss path (e.g. on a lightbox).
+   * Escape dispatches through the shared overlay stack and invokes the scrim's
+   * click path when an `onclick` callback is provided.
    */
   export type { BackdropProps } from './backdrop.types.ts';
 </script>
@@ -30,7 +30,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import type { BackdropProps } from './backdrop.types.ts';
-  import { lockBodyScroll } from '../../_internal/overlay.ts';
+  import { lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
@@ -46,6 +46,7 @@
     children,
     ...rest
   }: BackdropProps = $props();
+  let currentOnclick = $state(onclick);
 
   // Respect prefers-reduced-motion: collapse the fade to an instant show/hide so
   // the scrim does not animate for users who have opted out of motion.
@@ -59,6 +60,20 @@
   let hydrated = $state(false);
   $effect(() => {
     hydrated = true;
+  });
+
+  $effect(() => {
+    currentOnclick = onclick;
+  });
+
+  $effect(() => {
+    if (!open || !scrimElement) return;
+    return pushEscapeHandler((event) => {
+      if (event.defaultPrevented) return;
+      if (!currentOnclick) return;
+      event.preventDefault();
+      scrimElement?.click();
+    });
   });
 
   // Lock body scroll while the scrim is present — including the fade-out outro, so
