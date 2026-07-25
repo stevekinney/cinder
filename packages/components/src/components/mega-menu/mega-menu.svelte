@@ -40,6 +40,7 @@
     viewportVisible = true,
     indicatorVisible = true,
     label = 'Main navigation',
+    dir: providedDirection,
     class: className,
     ...rest
   }: MegaMenuProps = $props();
@@ -279,7 +280,15 @@
       : { enter: 'ArrowRight', return: 'ArrowLeft' };
   }
 
+  function isModifiedHorizontalArrow(event: KeyboardEvent): boolean {
+    return (
+      (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
+      (event.altKey || event.ctrlKey || event.metaKey)
+    );
+  }
+
   function onSubmenuTriggerKeydown(event: KeyboardEvent, index: number) {
+    if (isModifiedHorizontalArrow(event)) return;
     const horizontalKeys = submenuHorizontalKeys(event);
     if (event.key === horizontalKeys.enter) {
       event.preventDefault();
@@ -332,6 +341,7 @@
   }
 
   function onSubmenuPanelKeydown(event: KeyboardEvent) {
+    if (isModifiedHorizontalArrow(event)) return;
     if (event.key === submenuHorizontalKeys(event).return && openItem && openSubmenu) {
       event.preventDefault();
       event.stopPropagation();
@@ -412,6 +422,7 @@
 <nav
   id={providedId}
   {...rest}
+  dir={providedDirection ?? localeContext?.direction}
   bind:this={navElement}
   class={classNames('cinder-mega-menu', className)}
   aria-label={label}
