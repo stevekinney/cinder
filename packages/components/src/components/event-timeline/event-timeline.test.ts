@@ -185,7 +185,9 @@ describe('EventTimeline', () => {
       '.cinder-event-timeline__cluster-trigger',
     );
     expect(cluster?.textContent).toBe('+1');
-    expect(cluster?.getAttribute('aria-label')).toBe('1 event between 06:04 and 06:04');
+    expect(cluster?.getAttribute('aria-label')).toBe(
+      '1 event between 2026-07-03T06:04:00.000Z and 2026-07-03T06:04:00.000Z',
+    );
     expect(cluster?.tabIndex).toBe(0);
 
     cluster?.focus();

@@ -59,9 +59,14 @@
     items: PositionedEventTimelineItem[];
   };
 
+  type EventTimelineRenderItem =
+    | { kind: 'item'; key: string; position: number; item: PositionedEventTimelineItem }
+    | { kind: 'cluster'; key: string; position: number; cluster: EventTimelineCluster };
+
   const MAX_VISIBLE_LANES = 4;
   const LABEL_MAX_WIDTH_REM = { sm: 7, md: 9 } as const;
   const FALLBACK_ROOT_FONT_SIZE_PX = 16;
+  const FALLBACK_COLLISION_THRESHOLD_PERCENT = 10;
 
   let {
     start,
@@ -76,6 +81,7 @@
   }: EventTimelineProps = $props();
 
   let measuredWidth = $state(0);
+  let rootFontSize = $state(FALLBACK_ROOT_FONT_SIZE_PX);
   let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
@@ -101,20 +107,13 @@
   }
 
   function edgeForPosition(position: number): PositionedEventTimelineItem['edge'] {
-    if (position <= 0) return 'start';
-    if (position >= 100) return 'end';
+    if (position <= 10) return 'start';
+    if (position >= 90) return 'end';
     return 'middle';
   }
 
   function getLabelMaxWidthPx(): number {
-    if (typeof window === 'undefined') {
-      return LABEL_MAX_WIDTH_REM[size] * FALLBACK_ROOT_FONT_SIZE_PX;
-    }
-
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-    const baseFontSize =
-      Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : FALLBACK_ROOT_FONT_SIZE_PX;
-    return LABEL_MAX_WIDTH_REM[size] * baseFontSize;
+    return LABEL_MAX_WIDTH_REM[size] * rootFontSize;
   }
 
   function getObservedWidth(entry: ResizeObserverEntry): number {
@@ -138,8 +137,29 @@
     return observeResize(node);
   };
 
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const updateRootFontSize = () => {
+      const value = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+      if (Number.isFinite(value) && value > 0) rootFontSize = value;
+    };
+    updateRootFontSize();
+    const observer = new MutationObserver(updateRootFontSize);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style'],
+    });
+    window.addEventListener('resize', updateRootFontSize);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateRootFontSize);
+    };
+  });
+
   const collisionThresholdPercent = $derived(
-    measuredWidth > 0 ? (getLabelMaxWidthPx() / measuredWidth) * 100 : 100,
+    measuredWidth > 0
+      ? (getLabelMaxWidthPx() / measuredWidth) * 100
+      : FALLBACK_COLLISION_THRESHOLD_PERCENT,
   );
 
   const range = $derived.by(() => {
@@ -232,8 +252,8 @@
     const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup) => {
       const first = overflowGroup[0]!;
       const last = overflowGroup.at(-1)!;
-      const startTime = new Date(first.timestamp).toISOString().slice(11, 16);
-      const endTime = new Date(last.timestamp).toISOString().slice(11, 16);
+      const startTime = first.isoDatetime;
+      const endTime = last.isoDatetime;
       const countLabel = overflowGroup.length === 1 ? 'event' : 'events';
       return {
         accessibleLabel: `${overflowGroup.length} ${countLabel} between ${startTime} and ${endTime}`,
@@ -253,6 +273,22 @@
 
   const positionedItems = $derived(positionedLayout.items);
   const clusters = $derived(positionedLayout.clusters);
+  const renderItems = $derived<EventTimelineRenderItem[]>(
+    [
+      ...positionedItems.map((item) => ({
+        kind: 'item' as const,
+        key: item.key,
+        position: item.position,
+        item,
+      })),
+      ...clusters.map((cluster) => ({
+        kind: 'cluster' as const,
+        key: cluster.key,
+        position: cluster.position,
+        cluster,
+      })),
+    ].sort((a, b) => a.position - b.position),
+  );
 
   const laneCount = $derived(
     Math.max(
@@ -285,6 +321,7 @@
       handler: closeCluster,
       enabled: () => openClusterKey !== null,
       eventType: 'pointerdown',
+      ignoreRefs: [() => clusterTrigger],
     }),
   );
 
@@ -320,77 +357,80 @@
     aria-label={accessibleName}
     style:--_cinder-event-timeline-lane-count={laneCount}
   >
-    {#each positionedItems as item (item.key)}
-      <div
-        class="cinder-event-timeline__item"
-        role="listitem"
-        data-cinder-state={item.state}
-        data-cinder-lane={item.lane}
-        data-cinder-lane-parity={item.lane % 2 === 0 ? 'even' : 'odd'}
-        data-cinder-edge={item.edge}
-        aria-label={item.accessibleLabel}
-        style:left="{item.position}%"
-        style:--_cinder-event-timeline-lane={item.lane}
-      >
-        <span class="cinder-event-timeline__dot" aria-hidden="true"></span>
-        <span class="cinder-event-timeline__leader" aria-hidden="true"></span>
-        <span class="cinder-event-timeline__content">
-          <span class="cinder-event-timeline__item-label">{item.label}</span>
-          {#if item.sublabel}
-            <time class="cinder-event-timeline__item-sublabel" datetime={item.isoDatetime}
-              >{item.sublabel}</time
-            >
-          {:else}
-            <time class="cinder-sr-only" datetime={item.isoDatetime}>{item.isoDatetime}</time>
-          {/if}
-          <span class="cinder-sr-only">{item.stateLabel}</span>
-        </span>
-      </div>
-    {/each}
-    {#each clusters as cluster (cluster.key)}
-      <div
-        class="cinder-event-timeline__cluster"
-        role="listitem"
-        data-cinder-edge={cluster.edge}
-        data-cinder-lane={cluster.lane}
-        style:left="{cluster.position}%"
-        style:--_cinder-event-timeline-lane={cluster.lane}
-      >
-        <button
-          class="cinder-event-timeline__cluster-trigger"
-          type="button"
-          tabindex="0"
-          aria-expanded={openClusterKey === cluster.key}
-          aria-label={cluster.accessibleLabel}
-          onclick={(event) => {
-            clusterTrigger = event.currentTarget as HTMLButtonElement;
-            openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
-            if (openClusterKey !== null) void tick().then(() => clusterSurface?.focus());
-          }}>+{cluster.count}</button
+    {#each renderItems as renderItem (renderItem.key)}
+      {#if renderItem.kind === 'item'}
+        {@const item = renderItem.item}
+        <div
+          class="cinder-event-timeline__item"
+          role="listitem"
+          data-cinder-state={item.state}
+          data-cinder-lane={item.lane}
+          data-cinder-lane-parity={item.lane % 2 === 0 ? 'even' : 'odd'}
+          data-cinder-edge={item.edge}
+          aria-label={item.accessibleLabel}
+          style:left="{item.position}%"
+          style:--_cinder-event-timeline-lane={item.lane}
         >
-        {#if openClusterKey === cluster.key}
-          <div
-            class="cinder-_floating-surface cinder-event-timeline__cluster-surface"
-            role="dialog"
+          <span class="cinder-event-timeline__dot" aria-hidden="true"></span>
+          <span class="cinder-event-timeline__leader" aria-hidden="true"></span>
+          <span class="cinder-event-timeline__content">
+            <span class="cinder-event-timeline__item-label">{item.label}</span>
+            {#if item.sublabel}
+              <time class="cinder-event-timeline__item-sublabel" datetime={item.isoDatetime}
+                >{item.sublabel}</time
+              >
+            {:else}
+              <time class="cinder-sr-only" datetime={item.isoDatetime}>{item.isoDatetime}</time>
+            {/if}
+            <span class="cinder-sr-only">{item.stateLabel}</span>
+          </span>
+        </div>
+      {:else}
+        {@const cluster = renderItem.cluster}
+        <div
+          class="cinder-event-timeline__cluster"
+          role="listitem"
+          data-cinder-edge={cluster.edge}
+          data-cinder-lane={cluster.lane}
+          style:left="{cluster.position}%"
+          style:--_cinder-event-timeline-lane={cluster.lane}
+        >
+          <button
+            class="cinder-event-timeline__cluster-trigger"
+            type="button"
+            tabindex="0"
+            aria-expanded={openClusterKey === cluster.key}
             aria-label={cluster.accessibleLabel}
-            bind:this={clusterSurface}
-            tabindex="-1"
-            {@attach dismissOnOutsidePointerdown}
+            onclick={(event) => {
+              clusterTrigger = event.currentTarget as HTMLButtonElement;
+              openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
+              if (openClusterKey !== null) void tick().then(() => clusterSurface?.focus());
+            }}>+{cluster.count}</button
           >
-            <strong>{cluster.accessibleLabel}</strong>
-            <ul>
-              {#each cluster.items as hiddenItem (hiddenItem.key)}
-                <li>
-                  <span>{hiddenItem.label}</span>
-                  <span class="cinder-event-timeline__cluster-item-details">
-                    {hiddenItem.sublabel ?? hiddenItem.isoDatetime} · {hiddenItem.stateLabel}
-                  </span>
-                </li>
-              {/each}
-            </ul>
-          </div>
-        {/if}
-      </div>
+          {#if openClusterKey === cluster.key}
+            <div
+              class="cinder-_floating-surface cinder-event-timeline__cluster-surface"
+              role="dialog"
+              aria-label={cluster.accessibleLabel}
+              bind:this={clusterSurface}
+              tabindex="-1"
+              {@attach dismissOnOutsidePointerdown}
+            >
+              <strong>{cluster.accessibleLabel}</strong>
+              <ul>
+                {#each cluster.items as hiddenItem (hiddenItem.key)}
+                  <li>
+                    <span>{hiddenItem.label}</span>
+                    <span class="cinder-event-timeline__cluster-item-details">
+                      {hiddenItem.sublabel ?? hiddenItem.isoDatetime} · {hiddenItem.stateLabel}
+                    </span>
+                  </li>
+                {/each}
+              </ul>
+            </div>
+          {/if}
+        </div>
+      {/if}
     {/each}
   </div>
 </div>
