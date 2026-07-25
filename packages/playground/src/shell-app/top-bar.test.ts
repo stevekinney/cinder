@@ -303,6 +303,30 @@ describe('top-bar theme selection', () => {
   });
 });
 
+describe('top-bar viewport selection', () => {
+  test('uses compact preset labels and preserves every viewport width', async () => {
+    const store = new PreviewStore('button');
+    const { container } = render(TopBarFixture, { store });
+    await tick();
+
+    for (const [label, width] of [
+      ['375px', 375],
+      ['768px', 768],
+      ['1280px', 1280],
+    ] as const) {
+      const button = buttonByText(container, label);
+      expect(button).not.toBeNull();
+      button.click();
+      await tick();
+      expect(store.previewWidth).toBe(width);
+    }
+
+    buttonByText(container, 'Full').click();
+    await tick();
+    expect(store.previewWidth).toBeNull();
+  });
+});
+
 describe('top-bar announcements', () => {
   test('aria-live region is empty until the 50 ms gap elapses, then carries the message', async () => {
     const store = new PreviewStore('button');
