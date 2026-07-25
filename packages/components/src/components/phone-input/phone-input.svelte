@@ -354,13 +354,18 @@
       queueMicrotask(() => {
         const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
         if (!rawCountry || !isCountryCode(rawCountry)) return;
-        const resetCountry = isCountryCode(initialCountry) ? initialCountry : rawCountry;
+        const initialParsed = parseE164Value(initialValue);
+        const resetCountry =
+          initialParsed && isCountryCode(initialParsed.country)
+            ? initialParsed.country
+            : isCountryCode(initialCountry)
+              ? initialCountry
+              : rawCountry;
         country = resetCountry;
         knownCountry = resetCountry;
         value = initialValue;
         knownValue = initialValue;
-        const parsed = parseE164Value(initialValue);
-        nationalDisplay = parsed?.formatted ?? initialValue;
+        nationalDisplay = initialParsed?.formatted ?? initialValue;
       }),
     );
   }

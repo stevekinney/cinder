@@ -84,6 +84,12 @@
     color: transparent;
   }
 
+  @media (forced-colors: active) {
+    .cinder-phone-input__country .cinder-select {
+      text-indent: -9999px;
+    }
+  }
+
   .cinder-phone-input-field__description {
     margin: 0;
     font-size: var(--cinder-text-xs);
