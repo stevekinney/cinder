@@ -730,6 +730,20 @@ describe('Sheet', () => {
     expect(handleRule).toMatch(/min-height:\s*(?:2\.75rem|var\(--cinder-touch-target-min\))/);
   });
 
+  test('sheet.css caps the panel and keeps overflow inside the body', async () => {
+    const cssText = await Bun.file(new URL('./sheet.css', import.meta.url)).text();
+
+    expect(cssText).toMatch(
+      /\.cinder-sheet__panel\s*\{[^}]*max-height:\s*90dvh;[^}]*display:\s*flex;[^}]*flex-direction:\s*column;[^}]*overflow:\s*hidden;/s,
+    );
+    expect(cssText).not.toMatch(/\.cinder-sheet__panel\s*\{[^}]*max-block-size:\s*90dvh;/s);
+    expect(cssText).toMatch(
+      /\.cinder-sheet__body\s*\{[^}]*flex:\s*1;[^}]*min-block-size:\s*0;[^}]*overflow-y:\s*auto;/s,
+    );
+    expect(cssText).toMatch(/\.cinder-sheet__header\s*\{[^}]*flex-shrink:\s*0;/s);
+    expect(cssText).toMatch(/\.cinder-sheet__footer\s*\{[^}]*flex-shrink:\s*0;/s);
+  });
+
   // Documents that successive open/close cycles do not leak escape-stack
   // entries. If the sheet's no-op marker handler were not released on close,
   // it would stay above this sibling handler and prevent Escape from routing
