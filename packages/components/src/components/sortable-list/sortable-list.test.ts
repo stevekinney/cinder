@@ -73,7 +73,7 @@ describe('SortableController', () => {
       container.querySelector('.cinder-sortable-list')?.hasAttribute('data-cinder-sortable-list'),
     ).toBe(true);
     expect(stylesheet).toContain(
-      '[data-cinder-sortable-list] > .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
+      '[data-cinder-sortable-list] > .cinder-sortable-item,\n  [data-cinder-sortable-list-preview] > .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
     );
     expect(stylesheet).not.toContain('.cinder-sortable-list .cinder-sortable-item');
   });
@@ -618,6 +618,28 @@ describe('SortableList pointer drag preview', () => {
     expect(container.contains(preview)).toBe(false);
 
     // Cleanup.
+    await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('standalone drag previews retain the resting row layout', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await dispatchPointerEvent(handle, 'pointerdown', {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
+
+    expect(preview?.hasAttribute('data-cinder-sortable-list-preview')).toBe(true);
+    expect(stylesheet).toContain('[data-cinder-sortable-list-preview] > .cinder-sortable-item');
+
     await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
   });
 

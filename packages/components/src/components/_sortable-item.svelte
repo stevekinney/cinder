@@ -128,6 +128,9 @@
     portal.setAttribute('aria-hidden', 'true');
     portal.setAttribute('inert', '');
     portal.className = 'cinder-sortable-drag-preview';
+    if (rowEl.closest('[data-cinder-sortable-list]')) {
+      portal.setAttribute('data-cinder-sortable-list-preview', '');
+    }
 
     // Clone the row's inner HTML into the preview so the user sees the
     // card content at the pointer location.
