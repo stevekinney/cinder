@@ -21,6 +21,7 @@ Native-style dropdown select for choosing a single option from a predefined list
 | `description` | `string`   | no       | —       | Helper text rendered below the control; wired via `aria-describedby`.                                                                                 |
 | `disabled`    | `boolean`  | no       | —       | Disables the control.                                                                                                                                 |
 | `error`       | `string`   | no       | —       | Validation error message; sets `aria-invalid="true"` and is wired via `aria-describedby`.                                                             |
+| `hideLabel`   | `boolean`  | no       | —       | Visually hides the label while keeping it available to assistive technology.                                                                          |
 | `id`          | `string`   | yes      | —       | Unique identifier — required for label association and ARIA wiring.                                                                                   |
 | `label`       | `string`   | no       | —       | Visible label rendered in a `<label>` associated via `for`.                                                                                           |
 | `required`    | `boolean`  | no       | —       | Marks the control required and sets the native `required` attribute.                                                                                  |
