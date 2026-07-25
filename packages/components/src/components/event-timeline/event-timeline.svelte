@@ -106,9 +106,13 @@
     return `${item.id ?? `${item.label}-${new Date(timestamp).toISOString()}`}-${index}`;
   }
 
-  function edgeForPosition(position: number): PositionedEventTimelineItem['edge'] {
-    if (position <= 10) return 'start';
-    if (position >= 90) return 'end';
+  function edgeForPosition(
+    position: number,
+    thresholdPercent = FALLBACK_COLLISION_THRESHOLD_PERCENT,
+  ): PositionedEventTimelineItem['edge'] {
+    const edgeThreshold = Math.min(25, Math.max(10, thresholdPercent / 2));
+    if (position <= edgeThreshold) return 'start';
+    if (position >= 100 - edgeThreshold) return 'end';
     return 'middle';
   }
 
@@ -217,7 +221,7 @@
         const positionedItem = {
           ...item,
           accessibleLabel: `${item.label}, ${timeLabel}, ${stateLabel}`,
-          edge: edgeForPosition(position),
+          edge: edgeForPosition(position, collisionThresholdPercent),
           key: keyForItem(item, index, timestamp),
           lane,
           position,
@@ -250,21 +254,22 @@
     }
 
     const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup) => {
-      const first = overflowGroup[0]!;
-      const last = overflowGroup.at(-1)!;
+      const chronologicalItems = overflowGroup.toSorted((a, b) => a.timestamp - b.timestamp);
+      const first = chronologicalItems[0]!;
+      const last = chronologicalItems.at(-1)!;
       const startTime = first.isoDatetime;
       const endTime = last.isoDatetime;
       const countLabel = overflowGroup.length === 1 ? 'event' : 'events';
       return {
         accessibleLabel: `${overflowGroup.length} ${countLabel} between ${startTime} and ${endTime}`,
         count: overflowGroup.length,
-        edge: edgeForPosition(first.position),
+        edge: edgeForPosition(first.position, collisionThresholdPercent),
         endTime,
-        key: `cluster-${first.key}`,
+        key: `cluster-${chronologicalItems.map((item) => item.id ?? item.key.split('-').slice(0, -1).join('-')).join('|')}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,
-        items: overflowGroup,
+        items: chronologicalItems,
       };
     });
 
