@@ -280,7 +280,7 @@ describe('Card', () => {
     ).toBe(true);
   });
 
-  test('padding prop is scoped to the body element', () => {
+  test('padding state remains exposed on the root while styling is scoped to the body', () => {
     const { container } = render(Card, {
       props: {
         title: 'Flush body',
@@ -290,8 +290,8 @@ describe('Card', () => {
       },
     });
 
-    expect(container.querySelector('.cinder-card')?.hasAttribute('data-cinder-padding')).toBe(
-      false,
+    expect(container.querySelector('.cinder-card')?.getAttribute('data-cinder-padding')).toBe(
+      'none',
     );
     expect(container.querySelector('.cinder-card__header')).not.toBeNull();
     expect(container.querySelector('.cinder-card__body')?.getAttribute('data-cinder-padding')).toBe(
@@ -307,6 +307,9 @@ describe('Card', () => {
       },
     });
     expect(container.querySelector('.cinder-card__body')?.getAttribute('data-cinder-padding')).toBe(
+      'default',
+    );
+    expect(container.querySelector('.cinder-card')?.getAttribute('data-cinder-padding')).toBe(
       'default',
     );
   });
