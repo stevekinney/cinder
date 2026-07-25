@@ -25,38 +25,44 @@ describe('PageHeader', () => {
     expect(titleEl?.textContent?.trim()).toBe('Approvals');
   });
 
-  test('renders meta text when provided', () => {
-    const { container } = render(PageHeader, {
-      props: { title: 'Approvals', meta: '3 pending · 12 resolved' },
-    });
-
-    const metaEl = container.querySelector('.cinder-page-header__meta');
-    expect(metaEl).not.toBeNull();
-    expect(metaEl?.textContent?.trim()).toBe('3 pending · 12 resolved');
-  });
-
-  test('does not render meta element when meta is omitted', () => {
-    const { container } = render(PageHeader, { props: { title: 'Schedules' } });
-    expect(container.querySelector('.cinder-page-header__meta')).toBeNull();
-  });
-
-  test('renders trailing actions when children snippet is provided', () => {
-    const actionsSnippet = createRawSnippet(() => ({
-      render: () => `<button>+ New schedule</button>`,
+  test('renders named title, description, breadcrumb, and action regions', () => {
+    const title = createRawSnippet(() => ({
+      render: () => `<span>Schedules</span>`,
+      setup: () => {},
+    }));
+    const description = createRawSnippet(() => ({
+      render: () => `<span>Manage automated schedules.</span>`,
+      setup: () => {},
+    }));
+    const breadcrumbs = createRawSnippet(() => ({
+      render: () => `<nav aria-label="Breadcrumb">Home / Schedules</nav>`,
+      setup: () => {},
+    }));
+    const actions = createRawSnippet(() => ({
+      render: () => `<button>New schedule</button>`,
       setup: () => {},
     }));
 
     const { container } = render(PageHeader, {
-      props: { title: 'Schedules', children: actionsSnippet },
+      props: { title, description, breadcrumbs, actions },
     });
 
-    const actionsEl = container.querySelector('.cinder-page-header__actions');
-    expect(actionsEl).not.toBeNull();
-    expect(actionsEl?.querySelector('button')?.textContent).toBe('+ New schedule');
+    expect(container.querySelector('h1')?.textContent).toBe('Schedules');
+    expect(container.querySelector('.cinder-page-header__description')?.textContent).toBe(
+      'Manage automated schedules.',
+    );
+    expect(
+      container.querySelector('.cinder-page-header__breadcrumbs nav')?.getAttribute('aria-label'),
+    ).toBe('Breadcrumb');
+    expect(container.querySelector('.cinder-page-header__actions button')?.textContent).toBe(
+      'New schedule',
+    );
   });
 
-  test('does not render actions container when children snippet is omitted', () => {
-    const { container } = render(PageHeader, { props: { title: 'Settings' } });
+  test('does not render optional named regions when they are omitted', () => {
+    const { container } = render(PageHeader, { props: { title: 'Schedules' } });
+    expect(container.querySelector('.cinder-page-header__description')).toBeNull();
+    expect(container.querySelector('.cinder-page-header__breadcrumbs')).toBeNull();
     expect(container.querySelector('.cinder-page-header__actions')).toBeNull();
   });
 

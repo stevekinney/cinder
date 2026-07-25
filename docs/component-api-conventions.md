@@ -1,7 +1,8 @@
 # Component API Conventions
 
-Cinder component props use one public vocabulary. The rules below are enforced
-by `packages/components/scripts/check-prop-conventions.ts`.
+Cinder component props use one public vocabulary. Mechanically checkable naming
+rules are enforced by `packages/components/scripts/check-prop-conventions.ts`;
+the composition rules also define the review standard for public APIs.
 
 ## Handlers
 
@@ -17,6 +18,21 @@ by `packages/components/scripts/check-prop-conventions.ts`.
 Do not expose `defaultValue`. Use `value = $bindable(fallback)` in the
 component. If native form reset needs a target, capture the mount-time `value`
 internally with `untrack(() => value)` and keep that closure variable private.
+
+## Strings and snippets
+
+- Use strings for plain labels and values whose semantic wrapper is fully owned
+  by the component.
+- Use a named `Snippet` prop for a structural region such as `actions`,
+  `breadcrumbs`, `header`, or `footer`. Region names describe placement and
+  purpose; do not collapse multiple regions into generic `children`.
+- When a text-first region intentionally supports rich phrasing, accept
+  `string | Snippet` under the region's semantic name. The component still owns
+  the heading, paragraph, or label element, and the snippet must respect that
+  element's content model.
+- Reserve `children` for components with exactly one obvious, primary content
+  region. If consumers need to reconstruct the component's layout inside
+  `children`, the API needs named regions instead.
 
 ## Boolean props
 

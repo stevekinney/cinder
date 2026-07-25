@@ -1,6 +1,6 @@
 # PageHeader
 
-Page-level heading row that pairs a required title with optional metadata and optional trailing actions.
+Page-level heading with named title, description, breadcrumb, and action regions.
 
 ## Usage
 
@@ -16,12 +16,13 @@ Page-level heading row that pairs a required title with optional metadata and op
 
 <!-- generated:props:start -->
 
-| Prop       | Type       | Required | Default | Description                                                                                                                      |
-| ---------- | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `class`    | `string`   | no       | —       | Additional class names merged with `.cinder-page-header`.                                                                        |
-| `meta`     | `string`   | no       | —       | Optional supporting metadata displayed beside the title.                                                                         |
-| `title`    | `string`   | yes      | —       | Page-level heading text. Rendered as `<h1>`.                                                                                     |
-| `children` | `(opaque)` | no       | —       | Optional trailing actions (buttons, menus, controls). Not expressible in JSON Schema; see the component types for the signature. |
+| Prop          | Type       | Required | Default | Description                                                                                                                                                           |
+| ------------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `class`       | `string`   | no       | —       | Additional class names merged with `.cinder-page-header`.                                                                                                             |
+| `actions`     | `(opaque)` | no       | —       | Optional trailing actions (buttons, menus, controls). Not expressible in JSON Schema; see the component types for the signature.                                      |
+| `breadcrumbs` | `(opaque)` | no       | —       | Optional breadcrumb navigation rendered above the heading row. Not expressible in JSON Schema; see the component types for the signature.                             |
+| `description` | `(opaque)` | no       | —       | Optional supporting content rendered below the title; snippets must emit phrasing content. Not expressible in JSON Schema; see the component types for the signature. |
+| `title`       | `(opaque)` | yes      | —       | Page-level heading content. Rendered inside `<h1>`; snippets must emit phrasing content. Not expressible in JSON Schema; see the component types for the signature.   |
 
 <!-- generated:props:end -->
 
