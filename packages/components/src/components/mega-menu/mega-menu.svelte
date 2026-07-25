@@ -28,6 +28,7 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
+  import { resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
 
@@ -262,10 +263,39 @@
     if (typeof document === 'undefined') return;
     await tick();
     const panel = document.getElementById(submenuPanelId(itemId, submenuId));
-    panel?.querySelector<HTMLElement>('a[href], button:not([disabled])')?.focus();
+    if (!(panel instanceof HTMLElement)) return;
+    const firstFocusable = panel.querySelector<HTMLElement>('a[href], button:not([disabled])');
+    (firstFocusable ?? panel).focus();
+  }
+
+  function submenuHorizontalKeys(event: KeyboardEvent): {
+    enter: 'ArrowLeft' | 'ArrowRight';
+    return: 'ArrowLeft' | 'ArrowRight';
+  } {
+    const element = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+    const isRightToLeft = resolveTextDirection(element) === 'rtl';
+    return isRightToLeft
+      ? { enter: 'ArrowLeft', return: 'ArrowRight' }
+      : { enter: 'ArrowRight', return: 'ArrowLeft' };
   }
 
   function onSubmenuTriggerKeydown(event: KeyboardEvent, index: number) {
+    const horizontalKeys = submenuHorizontalKeys(event);
+    if (event.key === horizontalKeys.enter) {
+      event.preventDefault();
+      if (openItem?.submenu?.[index]) {
+        const submenuId = openItem.submenu[index].id;
+        openSubmenuId = submenuId;
+        void focusSubmenuPanel(openItem.id, submenuId);
+      }
+      return;
+    }
+    if (event.key === horizontalKeys.return) {
+      event.preventDefault();
+      if (openItem) document.getElementById(triggerId(openItem.id))?.focus();
+      return;
+    }
+
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault();
@@ -283,7 +313,6 @@
         event.preventDefault();
         if (openItem?.submenu) focusSubmenuTriggerAt(openItem.submenu.length - 1);
         break;
-      case 'ArrowRight':
       case 'Enter':
       case ' ':
         event.preventDefault();
@@ -292,10 +321,6 @@
           openSubmenuId = submenuId;
           void focusSubmenuPanel(openItem.id, submenuId);
         }
-        break;
-      case 'ArrowLeft':
-        event.preventDefault();
-        if (openItem) document.getElementById(triggerId(openItem.id))?.focus();
         break;
       case 'Escape':
         event.preventDefault();
@@ -307,7 +332,7 @@
   }
 
   function onSubmenuPanelKeydown(event: KeyboardEvent) {
-    if (event.key === 'ArrowLeft' && openItem && openSubmenu) {
+    if (event.key === submenuHorizontalKeys(event).return && openItem && openSubmenu) {
       event.preventDefault();
       event.stopPropagation();
       document.getElementById(submenuTriggerId(openItem.id, openSubmenu.id))?.focus();
@@ -318,6 +343,12 @@
       event.stopPropagation();
       closeMenu(true);
     }
+  }
+
+  function onContentKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    closeMenu(true);
   }
 
   function onRootFocusOut(event: FocusEvent) {
@@ -413,6 +444,8 @@
 
   {#if openItem}
     <div class={viewportVisible ? 'cinder-mega-menu__viewport' : undefined}>
+      <!-- Keyboard events are delegated from focusable descendants, with tabindex as the empty-panel fallback. -->
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <section
         id={contentId(openItem.id)}
         class="cinder-mega-menu__content"
@@ -420,6 +453,7 @@
         aria-labelledby={triggerId(openItem.id)}
         tabindex="-1"
         data-motion={motionDirection}
+        onkeydown={onContentKeydown}
       >
         <div class="cinder-mega-menu__sections">
           {#each sections(openItem) as section (section.id)}
@@ -430,15 +464,7 @@
               <ul class="cinder-mega-menu__links">
                 {#each section.links as link (link.id)}
                   <li>
-                    <a
-                      class="cinder-mega-menu__link"
-                      href={link.href}
-                      onkeydown={(event) => {
-                        if (event.key !== 'Escape') return;
-                        event.preventDefault();
-                        closeMenu(true);
-                      }}
-                    >
+                    <a class="cinder-mega-menu__link" href={link.href}>
                       <span>{link.label}</span>
                       {#if link.description}
                         <span class="cinder-mega-menu__link-description">{link.description}</span>
@@ -477,11 +503,15 @@
             </ul>
 
             {#if openSubmenu}
+              <!-- Keyboard events are delegated from links, with tabindex as the empty-panel fallback. -->
+              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
               <div
                 id={submenuPanelId(openItem.id, openSubmenu.id)}
                 class="cinder-mega-menu__sections cinder-mega-menu__submenu-panel"
                 role="group"
                 aria-labelledby={submenuTriggerId(openItem.id, openSubmenu.id)}
+                tabindex="-1"
+                onkeydown={onSubmenuPanelKeydown}
               >
                 {#each sections(openSubmenu) as section (section.id)}
                   <section>
@@ -491,11 +521,7 @@
                     <ul class="cinder-mega-menu__links">
                       {#each section.links as link (link.id)}
                         <li>
-                          <a
-                            class="cinder-mega-menu__link"
-                            href={link.href}
-                            onkeydown={onSubmenuPanelKeydown}
-                          >
+                          <a class="cinder-mega-menu__link" href={link.href}>
                             <span>{link.label}</span>
                             {#if link.description}
                               <span class="cinder-mega-menu__link-description"

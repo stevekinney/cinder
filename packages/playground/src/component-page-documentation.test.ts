@@ -308,6 +308,10 @@ describe('component-page single-scroll layout', () => {
           keys: 'ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape',
           action: 'Traverses triggers and opens or closes panels.',
         },
+        {
+          keys: 'Ctrl+/',
+          action: 'Opens search.',
+        },
       ],
       notes: ['Uses a native button element.'],
     };
@@ -319,13 +323,16 @@ describe('component-page single-scroll layout', () => {
     expect(document.getElementById('accessibility')).toBeTruthy();
     expect(screen.getByText(/Implements the WAI-ARIA Button pattern/)).toBeTruthy();
     // Keyboard table built from Kbd.
-    const keyList = document.querySelector('.dx-keys__key-list');
-    expect(keyList?.getAttribute('aria-label')).toBe(
+    const keyLists = document.querySelectorAll('.dx-keys__key-list');
+    expect(keyLists[0]?.getAttribute('aria-label')).toBe(
       'ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape',
     );
     expect(
-      Array.from(keyList?.querySelectorAll('kbd') ?? []).map((key) => key.textContent),
+      Array.from(keyLists[0]?.querySelectorAll('kbd') ?? []).map((key) => key.textContent),
     ).toEqual(['ArrowLeft', 'ArrowRight', 'Home', 'End', 'ArrowDown', 'Escape']);
+    expect(
+      Array.from(keyLists[1]?.querySelectorAll('kbd') ?? []).map((key) => key.textContent),
+    ).toEqual(['Ctrl+/']);
     expect(screen.getByText('Traverses triggers and opens or closes panels.')).toBeTruthy();
     expect(screen.getByText('Uses a native button element.')).toBeTruthy();
 
