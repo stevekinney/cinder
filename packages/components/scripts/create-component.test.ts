@@ -199,7 +199,7 @@ describe('renderIndex', () => {
 describe('renderReadme', () => {
   it('includes every generated-region marker pair the README renderer expects', () => {
     const readme = renderReadme(buildContext('my-widget'));
-    for (const region of ['props', 'variables', 'subcomponents']) {
+    for (const region of ['props', 'authoring', 'variables', 'subcomponents']) {
       expect(readme).toContain(`<!-- generated:${region}:start -->`);
       expect(readme).toContain(`<!-- generated:${region}:end -->`);
     }

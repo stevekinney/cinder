@@ -201,6 +201,29 @@ describe('buildComponentDocumentation', () => {
     expect(readme.html).not.toContain('<img');
   });
 
+  it('omits contributor-only authoring guidance from the public overview', () => {
+    const readme = renderReadmeDocumentation(`
+# Example
+
+Consumer-facing introduction.
+
+## Authoring checklist
+
+<!-- generated:authoring:start -->
+Before publishing this component, complete the internal authoring pre-flight.
+<!-- generated:authoring:end -->
+
+## Usage
+
+Consumer-facing usage.
+`);
+
+    expect(readme.html).toContain('Consumer-facing introduction.');
+    expect(readme.html).toContain('Consumer-facing usage.');
+    expect(readme.html).not.toContain('Authoring checklist');
+    expect(readme.html).not.toContain('internal authoring pre-flight');
+  });
+
   it('marks unsafe README rendering and validation fails on it', async () => {
     const payload = await buildComponentDocumentation('button', await componentManifest('button'));
     const unsafeReadme = renderReadmeDocumentation('<script>alert("unsafe")</script>');

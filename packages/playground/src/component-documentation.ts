@@ -227,7 +227,7 @@ function readmePath(componentSource: ComponentSource, componentName: string): st
 }
 
 const generatedRegionPattern =
-  /^<!-- generated:(props|variables|subcomponents):start -->\n?([\s\S]*?)^<!-- generated:\1:end -->\n?/gm;
+  /^<!-- generated:(props|authoring|variables|subcomponents):start -->\n?([\s\S]*?)^<!-- generated:\1:end -->\n?/gm;
 const inlineCodeSpanPattern = /(`+[^`\n]*?`+)/g;
 const htmlLikeTagPattern =
   /<\/?[A-Za-z][A-Za-z0-9.-]*(?:\s+[A-Za-z_:][A-Za-z0-9_:.-]*(?:=(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>/g;
@@ -259,7 +259,7 @@ function normalizeReadmeMarkdownForRendering(markdown: string): string {
 // Overview prose would duplicate it. Matches the heading line through the end of
 // the `<!-- generated:…:end -->` marker (and any blank line after).
 const generatedSectionWithHeadingPattern =
-  /^#{2,3} [^\n]*\n+<!-- generated:(props|variables|subcomponents):start -->[\s\S]*?<!-- generated:\1:end -->\n*/gm;
+  /^#{2,3} [^\n]*\n+<!-- generated:(props|authoring|variables|subcomponents):start -->[\s\S]*?<!-- generated:\1:end -->\n*/gm;
 
 // The leading top-level `# <Name>` heading duplicates the hero title on the page,
 // so it is dropped from the Overview render.

@@ -227,8 +227,10 @@ ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
 
 ## Authoring checklist
 
+<!-- generated:authoring:start -->
 Before publishing this component, complete the live
 [component authoring pre-flight](${authoringChecklistPath}).
+<!-- generated:authoring:end -->
 
 ## CSS Variables
 
