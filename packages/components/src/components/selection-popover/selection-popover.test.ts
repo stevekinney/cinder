@@ -399,6 +399,43 @@ describe('SelectionPopover', () => {
     expect(document.activeElement).toBe(textarea);
   });
 
+  test('a focused height-only resize preserves the soft-keyboard draft', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+    }
+  });
+
   test('a genuine window resize dismisses while the composer is focused', async () => {
     let closed = false;
     const originalInnerWidth = window.innerWidth;
