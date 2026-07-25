@@ -338,7 +338,7 @@
   onkeydown={handleKeyDown}
 >
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'before-brand'}
-    <div class="cinder-navigation-bar__menu-toggle" onkeydown={handleToggleKeyDown}>
+    <div class="cinder-navigation-bar__menu-toggle" role="group" onkeydown={handleToggleKeyDown}>
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
@@ -354,7 +354,7 @@
   {/if}
 
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'after-brand'}
-    <div class="cinder-navigation-bar__menu-toggle" onkeydown={handleToggleKeyDown}>
+    <div class="cinder-navigation-bar__menu-toggle" role="group" onkeydown={handleToggleKeyDown}>
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
@@ -367,6 +367,7 @@
     bind:this={itemsRegionElement}
     {@attach itemsPortal}
     id={regionId}
+    role="region"
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
     data-cinder-mobile-panel={isMobileLayout || undefined}
