@@ -154,6 +154,19 @@ describe('Sidebar', () => {
     expect(container.querySelector('a[href="/c/accordion-item"]')).not.toBeNull();
   });
 
+  test('renders a family when only a child matches the filter', async () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    await fireEvent.input(getFilterInput(container), { target: { value: 'composer' } });
+    await tick();
+    expect(linkFor(container, 'chat-composer-popover')).not.toBeNull();
+  });
+
   test('reopens a collapsed family when filtering its children', async () => {
     const { container } = render(Sidebar, {
       props: {
@@ -273,6 +286,13 @@ describe('Sidebar', () => {
     await fireEvent.input(getFilterInput(container), { target: { value: 'zzz-no-match' } });
     await tick();
     expect((getLiveRegion(container).textContent ?? '').trim()).toBe('0 components shown');
+  });
+
+  test('counts injected compound children in the live region', () => {
+    const { container } = render(Sidebar, {
+      props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
+    });
+    expect((getLiveRegion(container).textContent ?? '').trim()).toBe('2 components shown');
   });
 });
 

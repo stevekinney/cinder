@@ -105,9 +105,45 @@
     return undefined;
   }
 
+  // Include a family root whenever a caller supplies one of its children. The
+  // production discovery list intentionally omits compose-only leaves, but
+  // filtered or fixture-driven callers may provide a child directly.
+  const navigationComponents = $derived.by(() => {
+    const result: string[] = [];
+    for (const name of components) {
+      const root = familyParent(name) ?? name;
+      if (!result.includes(root)) {
+        result.push(root);
+      }
+      if (!result.includes(name)) {
+        result.push(name);
+      }
+    }
+    return result;
+  });
+
+  const renderedComponentCount = $derived.by(() => {
+    const needle = filter.trim();
+    let count = 0;
+    for (const name of navigationComponents) {
+      const children = COMPOUND_COMPONENT_FAMILIES[name] ?? [];
+      if (children.length === 0) {
+        if (matchesCurrentFilter(name)) count += 1;
+        continue;
+      }
+      if (matchesCurrentFilter(name)) count += 1;
+      for (const child of children) {
+        if (needle === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)) {
+          count += 1;
+        }
+      }
+    }
+    return count;
+  });
+
   // Announced to assistive technology whenever the filtered count changes.
   const resultSummary = $derived(
-    `${visibleComponents.length} component${visibleComponents.length === 1 ? '' : 's'} shown`,
+    `${renderedComponentCount} component${renderedComponentCount === 1 ? '' : 's'} shown`,
   );
 
   // A "plain" left-click is the only gesture we handle through `onSelect`.
@@ -203,7 +239,7 @@
     </button>
   </div>
   <SideNavigation ariaLabel="Components" {@attach interceptNavClicks}>
-    {#each components as name (name)}
+    {#each navigationComponents as name (name)}
       {#if familyParent(name) === undefined}
         {#if matchesCurrentFilter(name) && (COMPOUND_COMPONENT_FAMILIES[name] ?? []).length === 0}
           <SideNavigationItem
@@ -213,7 +249,7 @@
           >
             {humanizeComponentName(name)}
           </SideNavigationItem>
-        {:else if matchesCurrentFilter(name)}
+        {:else if matchesCurrentFilter(name) || (COMPOUND_COMPONENT_FAMILIES[name] ?? []).some(matchesCurrentFilter)}
           {#key filter.trim()}
             <SideNavigationGroup label={humanizeComponentName(name)}>
               <SideNavigationItem
