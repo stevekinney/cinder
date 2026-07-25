@@ -53,7 +53,7 @@ async function focus(input: HTMLInputElement) {
 
 describe('NumberInput basics', () => {
   test('renders Lucide icons for the stepper controls', () => {
-    const { container } = render(NumberInput, { value: 2 });
+    const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
 
     expect(getIncrement(container).querySelector('svg.lucide-plus')).not.toBeNull();
     expect(getDecrement(container).querySelector('svg.lucide-minus')).not.toBeNull();
