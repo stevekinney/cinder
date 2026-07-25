@@ -1,10 +1,11 @@
 name: release
 
 # Changesets-driven release pipeline for the public `@lostgradient/markdown`,
-# `@lostgradient/cinder`, `@lostgradient/editor`, and `@lostgradient/chat` npm
-# packages. Publish order follows the peer DAG: markdown → cinder → editor →
-# chat (markdown has no peers on the others; editor peers on cinder and
-# markdown; chat peers on cinder and markdown).
+# `@lostgradient/cinder`, `@lostgradient/cinder-mcp`, `@lostgradient/editor`,
+# and `@lostgradient/chat` npm packages. Publish order follows the peer/dependency
+# DAG: markdown → cinder → cinder-mcp → editor → chat (markdown has no peers on
+# the others; cinder-mcp depends on cinder's `./knowledge` export; editor peers
+# on cinder and markdown; chat peers on cinder and markdown).
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
@@ -126,6 +127,10 @@ jobs:
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/cinder validate:consumer
 
+      - name: Validate cinder-mcp package artifact
+        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
+        run: bun run --filter=@lostgradient/cinder-mcp validate:consumer
+
       - name: Validate Editor package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/editor validate:consumer
@@ -204,6 +209,10 @@ jobs:
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
 
+      - name: Check validated cinder-mcp package artifact budget
+        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball
+
       - name: Check validated Editor package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball
@@ -248,6 +257,16 @@ jobs:
         env:
           NPM_CONFIG_PROVENANCE: 'false'
 
+      # NOTE: the FIRST publish of @lostgradient/cinder-mcp requires the same
+      # one-time manual bootstrap as Markdown above (npm Trusted Publishing
+      # cannot mint a brand-new package name) — see the "First publication"
+      # section of the standalone-MCP-package plan / docs/decisions/package-boundaries.md.
+      - name: Publish validated cinder-mcp package artifact to npm
+        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
+        run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation
+        env:
+          NPM_CONFIG_PROVENANCE: 'false'
+
       - name: Publish validated Editor package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor publish:release -- --skip-validation
@@ -269,6 +288,10 @@ jobs:
       - name: Publish Cinder (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/cinder publish:release -- --dry-run --skip-validation
+
+      - name: Publish cinder-mcp (dry-run)
+        if: github.event_name == 'workflow_dispatch'
+        run: bun run --filter=@lostgradient/cinder-mcp publish:release -- --dry-run --skip-validation
 
       - name: Publish Editor (dry-run)
         if: github.event_name == 'workflow_dispatch'

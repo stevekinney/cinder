@@ -122,9 +122,12 @@ cinder compare modal drawer --json
 cinder best-practices styles
 ```
 
-Use `cinder mcp` to start the read-only stdio MCP server. It exposes the same
-component search, detail, comparison, best-practice guidance, and generated
-artifact resources without requiring agents to parse package files directly.
+For MCP clients, install [`@lostgradient/cinder-mcp`](https://www.npmjs.com/package/@lostgradient/cinder-mcp)
+(`npm install --save-dev @lostgradient/cinder-mcp`) and point your client at
+`npx --no-install cinder-mcp`. It exposes the same component search, detail,
+comparison, best-practice guidance, and generated artifact resources without
+requiring agents to parse package files directly — see that package's README
+for verified client configuration.
 
 Cinder also ships a machine-readable manifest for environments where the CLI or
 MCP server is unavailable:

@@ -105,12 +105,6 @@ async function runParsedCommand(parsed: ParsedCommand): Promise<CommandResult> {
     return { command: 'help', data: { usage: text }, text };
   }
 
-  if (parsed.command === 'mcp') {
-    const { runMcpServer } = await import('./mcp.ts');
-    await runMcpServer();
-    return { command: 'mcp', data: null, text: '' };
-  }
-
   const knowledge = await loadCinderKnowledge();
   switch (parsed.command) {
     case 'list': {
@@ -158,7 +152,6 @@ async function runParsedCommand(parsed: ParsedCommand): Promise<CommandResult> {
         'show',
         'compare',
         'best-practices',
-        'mcp',
       ]);
   }
 }

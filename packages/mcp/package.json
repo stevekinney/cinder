@@ -1,0 +1,73 @@
+{
+  "name": "@lostgradient/cinder-mcp",
+  "version": "0.0.0",
+  "description": "Model Context Protocol server exposing Cinder component discovery, comparison, and best-practice guidance to MCP clients.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cinder",
+    "components"
+  ],
+  "homepage": "https://github.com/stevekinney/cinder#readme",
+  "bugs": {
+    "url": "https://github.com/stevekinney/cinder/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevekinney/cinder.git",
+    "directory": "packages/mcp"
+  },
+  "license": "MIT",
+  "author": "Steve Kinney <hello@stevekinney.net>",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "cinder-mcp": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.spec.*",
+    "!dist/**/*.map",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "clean": "rm -rf dist coverage node_modules/.cache lostgradient-cinder-mcp-*.tgz",
+    "lint": "oxlint --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "oxlint --fix --type-aware --tsconfig ./tsconfig.json",
+    "pack:publish": "bun run scripts/pack-for-publish.ts",
+    "package:weight:check": "bun ../components/scripts/report-package-weight.ts --check --package-root .",
+    "publish:release": "bun ../components/scripts/publish-release.ts --package-root .",
+    "test": "TZ=UTC LANG=en_US.UTF-8 bun test",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "validate": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "validate:consumer": "bun run scripts/validate-consumer.ts"
+  },
+  "dependencies": {
+    "@lostgradient/cinder": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.11",
+    "oxlint": "^1.56.0",
+    "oxlint-tsgolint": "^0.17.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": false
+  }
+}

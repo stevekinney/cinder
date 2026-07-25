@@ -184,11 +184,13 @@ cinder compare modal drawer --json
 cinder best-practices styles --json
 ```
 
-For agent runtimes that support MCP, run `cinder mcp` as a read-only stdio MCP
-server and use `search_components`, `get_component`, `compare_components`, and
-`get_best_practices`. The server also exposes `cinder://manifest` plus
-`cinder://component/{id}` and its `/schema`, `/variables`, `/examples`, and
-`/constraints` resources.
+For agent runtimes that support MCP, install `@lostgradient/cinder-mcp`
+(`npm install --save-dev @lostgradient/cinder-mcp`) and point your client at
+`npx --no-install cinder-mcp` — see that package's README for verified
+client configuration (Claude Code, Codex, GitHub Copilot, VS Code Copilot).
+It exposes `search_components`, `get_component`, `compare_components`, and
+`get_best_practices`, plus `cinder://manifest` and `cinder://component/{id}`
+(and its `/schema`, `/variables`, `/examples`, and `/constraints` resources).
 
 **2. Fall back to the manifest when the CLI/MCP path is unavailable.**
 

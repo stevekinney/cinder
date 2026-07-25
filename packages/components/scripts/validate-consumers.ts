@@ -2,7 +2,6 @@ import { Glob } from 'bun';
 import {
   existsSync,
   readFileSync,
-  readdirSync,
   realpathSync,
   statSync,
   symlinkSync,
@@ -115,10 +114,6 @@ const workspaceDependencyPackages = ['markdown'].map(
   },
 );
 
-const RICH_FEATURE_DEPENDENCY_NAMES = ['@modelcontextprotocol/sdk', 'zod'] as const;
-
-const RICH_FEATURE_LEAK_CHECK_NAMES = RICH_FEATURE_DEPENDENCY_NAMES;
-
 const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   '@lostgradient/markdown',
   '@shikijs/engine-oniguruma',
@@ -126,51 +121,6 @@ const REQUIRED_RUNTIME_DEPENDENCY_NAMES = [
   'shiki',
 ] as const;
 const REQUIRED_PEER_DEPENDENCY_NAMES: readonly string[] = [];
-
-function collectInstalledPackageNamesFromNodeModulesTree(
-  nodeModulesDirectory: string,
-): Set<string> {
-  const installedPackageNames = new Set<string>();
-  if (!existsSync(nodeModulesDirectory)) return installedPackageNames;
-
-  const pendingNodeModulesDirectories = [nodeModulesDirectory];
-
-  while (pendingNodeModulesDirectories.length > 0) {
-    const currentNodeModulesDirectory = pendingNodeModulesDirectories.pop();
-    if (currentNodeModulesDirectory === undefined) continue;
-
-    for (const entry of readdirSync(currentNodeModulesDirectory, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name === '.bin') continue;
-
-      const entryPath = join(currentNodeModulesDirectory, entry.name);
-      if (entry.name.startsWith('@')) {
-        for (const scopedEntry of readdirSync(entryPath, { withFileTypes: true })) {
-          if (!scopedEntry.isDirectory()) continue;
-          installedPackageNames.add(`${entry.name}/${scopedEntry.name}`);
-
-          const scopedNestedNodeModulesDirectory = join(
-            entryPath,
-            scopedEntry.name,
-            'node_modules',
-          );
-          if (existsSync(scopedNestedNodeModulesDirectory)) {
-            pendingNodeModulesDirectories.push(scopedNestedNodeModulesDirectory);
-          }
-        }
-        continue;
-      }
-
-      installedPackageNames.add(entry.name);
-
-      const nestedNodeModulesDirectory = join(entryPath, 'node_modules');
-      if (existsSync(nestedNodeModulesDirectory)) {
-        pendingNodeModulesDirectories.push(nestedNodeModulesDirectory);
-      }
-    }
-  }
-
-  return installedPackageNames;
-}
 
 class ValidationError extends Error {
   constructor(message: string) {
@@ -592,19 +542,6 @@ async function assertPackedManifestInvariants(extractedRoot: string): Promise<vo
       }
     }
   }
-  for (const dependencyName of RICH_FEATURE_DEPENDENCY_NAMES) {
-    if (packedManifest.dependencies?.[dependencyName] !== undefined) {
-      fail(
-        `packed manifest dependencies["${dependencyName}"] keeps a rich editor/markdown package on the base install path`,
-      );
-    }
-    if (packedManifest.peerDependencies?.[dependencyName] === undefined) {
-      fail(`packed manifest is missing optional peer dependency "${dependencyName}"`);
-    }
-    if (packedManifest.peerDependenciesMeta?.[dependencyName]?.optional !== true) {
-      fail(`packed manifest peerDependenciesMeta["${dependencyName}"].optional must be true`);
-    }
-  }
   for (const dependencyName of REQUIRED_PEER_DEPENDENCY_NAMES) {
     if (packedManifest.dependencies?.[dependencyName] !== undefined) {
       fail(`packed manifest dependencies["${dependencyName}"] must be a peer dependency`);
@@ -947,7 +884,6 @@ function injectTarballIntoFixture(
   options: {
     svelteVersion?: string;
     typescriptVersion?: string;
-    includeRichFeatureDependencies?: boolean;
     includeWorkspaceDependencyPackages?: boolean;
     includeChatPackage?: boolean;
   } = {},
@@ -994,15 +930,6 @@ function injectTarballIntoFixture(
       rawDevDependencies['typescript'] = options.typescriptVersion;
     }
   }
-  if (options.includeRichFeatureDependencies !== false) {
-    for (const dependencyName of RICH_FEATURE_DEPENDENCY_NAMES) {
-      const version = rawPeerDependencies?.[dependencyName];
-      if (version === undefined) {
-        fail(`@lostgradient/cinder/package.json is missing peer dependency "${dependencyName}"`);
-      }
-      dependencies[dependencyName] = version;
-    }
-  }
   if (options.includeWorkspaceDependencyPackages !== false) {
     for (const dependencyPackage of workspaceDependencyPackages) {
       const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
@@ -1043,10 +970,8 @@ async function runStylesConsumerFixture(): Promise<void> {
   // edge resolves to it) rather than letting `bun install` ask npm for
   // `^<version>` — during the same-train Markdown release that version is not
   // published yet, which would block `release.yaml`'s pre-publish consumer
-  // validation. The rich-feature leak check below is scoped to SDK/zod, which
-  // Markdown never pulls in, so including it does not weaken that assertion.
+  // validation.
   const restoreManifest = injectTarballIntoFixture(fixtureDirectory, {
-    includeRichFeatureDependencies: false,
     includeWorkspaceDependencyPackages: true,
   });
 
@@ -1059,19 +984,6 @@ async function runStylesConsumerFixture(): Promise<void> {
     });
     if (installResult.exitCode !== 0) {
       fail(`styles-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
-    }
-
-    const fixtureNodeModulesDirectory = join(fixtureDirectory, 'node_modules');
-    const installedPackageNames = collectInstalledPackageNamesFromNodeModulesTree(
-      fixtureNodeModulesDirectory,
-    );
-    const leakedPackages = RICH_FEATURE_LEAK_CHECK_NAMES.filter((dependencyName) =>
-      installedPackageNames.has(dependencyName),
-    );
-    if (leakedPackages.length > 0) {
-      fail(
-        `styles-consumer installed rich editor/markdown packages on a styles-only path:\n  ${leakedPackages.join('\n  ')}`,
-      );
     }
 
     const buildResult = await runHookCommand('bun', ['run', 'build'], {
@@ -1356,13 +1268,11 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
   const restoreManifest =
     svelteVersion === undefined
       ? injectTarballIntoFixture(fixtureDirectory, {
-          includeRichFeatureDependencies: false,
           includeWorkspaceDependencyPackages: true,
           includeChatPackage: true,
         })
       : injectTarballIntoFixture(fixtureDirectory, {
           svelteVersion,
-          includeRichFeatureDependencies: false,
           includeWorkspaceDependencyPackages: true,
           includeChatPackage: true,
         });

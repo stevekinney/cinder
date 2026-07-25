@@ -471,10 +471,20 @@ describe('buildableForwardClosure', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/editor']))).toEqual([]);
   });
 
-  it('closes @lostgradient/cinder to the full two-package chain', () => {
+  it('closes @lostgradient/cinder to the markdown + cinder prefix', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).toEqual([
       '@lostgradient/markdown',
       '@lostgradient/cinder',
+    ]);
+  });
+
+  it('closes @lostgradient/cinder-mcp to the full three-package chain', () => {
+    // cinder-mcp's server.ts imports @lostgradient/cinder/knowledge, which
+    // resolves to cinder's own built dist — a real build-order dependency.
+    expect(buildableForwardClosure(new Set(['@lostgradient/cinder-mcp']))).toEqual([
+      '@lostgradient/markdown',
+      '@lostgradient/cinder',
+      '@lostgradient/cinder-mcp',
     ]);
   });
 
@@ -482,6 +492,9 @@ describe('buildableForwardClosure', () => {
     expect(buildableForwardClosure(new Set(['@lostgradient/markdown']))).toEqual([
       '@lostgradient/markdown',
     ]);
+    expect(buildableForwardClosure(new Set(['@lostgradient/cinder']))).not.toContain(
+      '@lostgradient/cinder-mcp',
+    );
   });
 
   it('returns an empty list when no buildable package is touched', () => {

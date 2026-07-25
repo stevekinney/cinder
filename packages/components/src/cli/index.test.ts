@@ -41,13 +41,29 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 describe('cinder CLI', () => {
-  it('prints help without loading MCP or writing stderr', () => {
+  it('prints help without writing stderr', () => {
     const result = runCli(['--help']);
 
     expect(result.exitCode, result.stderr).toBe(0);
     expect(result.stderr).toBe('');
     expect(result.stdout).toContain('cinder search <query>');
-    expect(result.stdout).toContain('cinder mcp');
+    expect(result.stdout).not.toContain('cinder mcp');
+  });
+
+  it('rejects the removed mcp command with suggestions that exclude it', () => {
+    const result = runCli(['mcp', '--json']);
+    const payload = parseJson(result.stdout);
+    const error = payload['error'];
+
+    expect(result.exitCode).toBe(1);
+    expect(isRecord(error) && error['code']).toBe('UNKNOWN_COMMAND');
+    expect(isRecord(error) && error['suggestions']).toEqual([
+      'list',
+      'search',
+      'show',
+      'compare',
+      'best-practices',
+    ]);
   });
 
   it('prints search results in the JSON envelope', () => {

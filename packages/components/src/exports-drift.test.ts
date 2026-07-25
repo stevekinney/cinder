@@ -108,6 +108,7 @@ describe('exports drift', () => {
       './highlighters/shiki',
       './json-editor/enhancement',
       './highlighters/shiki/curated',
+      './knowledge',
     ]);
     for (const key of Object.keys(existing)) {
       if (RESERVED.has(key)) continue;
@@ -130,6 +131,12 @@ describe('exports drift', () => {
     expect(exports['./styles/foundation']).toBeDefined();
     expect(exports['./styles/utilities']).toBeDefined();
     expect(exports['./icons']).toBeDefined();
+    expect(exports['./knowledge']).toEqual({
+      types: './dist/cli/knowledge.d.ts',
+      node: './dist/cli/knowledge.js',
+      import: './dist/cli/knowledge.js',
+      default: './dist/cli/knowledge.js',
+    });
     expect(exports['./json-editor/enhancement']).toEqual({
       types: './dist/components/json-editor/json-editor-enhancement.d.ts',
       browser: './src/components/json-editor/json-editor-enhancement.ts',

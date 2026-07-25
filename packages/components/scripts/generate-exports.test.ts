@@ -25,6 +25,7 @@ import {
   computeRootExport,
   EXPLICIT_ROOT_FILE_ENTRIES,
   FORBIDDEN_EXPORT_KEY_PATTERN,
+  knowledgeExport,
   legacyEntrySourcePath,
   orderedExportEntry,
   rootLevelExportTargets,
@@ -354,6 +355,21 @@ describe('stylesGuardExport', () => {
     // A component named 'styles' would produce './styles', but the guard key
     // './styles/guard' must never appear in the computed component subpaths.
     expect(computed['./styles/guard']).toBeUndefined();
+  });
+});
+
+describe('knowledgeExport', () => {
+  it('points node/import/default at the built CLI knowledge module with no bun condition', () => {
+    const entry = knowledgeExport();
+    expect(entry).toEqual({
+      types: './dist/cli/knowledge.d.ts',
+      node: './dist/cli/knowledge.js',
+      import: './dist/cli/knowledge.js',
+      default: './dist/cli/knowledge.js',
+    });
+    // The packed tarball's `files` list ships `dist/` but not `src/cli/**` —
+    // a `bun` condition here would resolve to an unpublished source file.
+    expect(Object.keys(entry)).toEqual(['types', 'node', 'import', 'default']);
   });
 });
 

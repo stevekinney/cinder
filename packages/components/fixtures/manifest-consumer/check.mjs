@@ -175,8 +175,8 @@ function assertCliHelpWorks() {
   if (result.stderr.trim().length > 0) {
     record(`cinder --help wrote to stderr:\n${result.stderr}`);
   }
-  if (!result.stdout.includes('cinder mcp')) {
-    record('cinder --help output does not mention `cinder mcp`');
+  if (result.stdout.includes('cinder mcp')) {
+    record('cinder --help output still mentions the removed `cinder mcp` command');
   }
 }
 
@@ -257,6 +257,7 @@ const allowedNonComponentExportKeys = new Set([
   './highlighters/shiki',
   './highlighters/shiki/curated',
   './json-editor/enhancement',
+  './knowledge',
   // Upstream re-export root barrels. These (and their `/subpath` children,
   // skipped below) are not component exports; node-consumer validates them.
   './markdown',
@@ -267,6 +268,31 @@ const allowedNonComponentExportKeys = new Set([
 
 // This non-manifest runtime entry is still part of the packed resolver contract.
 assertRuntimeResolvable('@lostgradient/cinder/json-editor/enhancement');
+
+// ---------------------------------------------------------------------------
+// `@lostgradient/cinder/knowledge` — the Node-only knowledge-service boundary
+// `@lostgradient/cinder-mcp` (and any other external package) loads Cinder's
+// component metadata through. Prove it resolves AND that
+// `loadCinderKnowledge()` can find `components.json` plus a representative
+// component's artifact sidecar from the INSTALLED tarball, not just that the
+// export target exists on disk.
+// ---------------------------------------------------------------------------
+assertRuntimeResolvable('@lostgradient/cinder/knowledge');
+{
+  const { loadCinderKnowledge } = await import('@lostgradient/cinder/knowledge');
+  const knowledge = await loadCinderKnowledge();
+  if (knowledge.list().length === 0) {
+    record('@lostgradient/cinder/knowledge: loadCinderKnowledge().list() returned no components');
+  }
+  try {
+    const schema = await knowledge.artifact('button', 'schema');
+    if (!schema || typeof schema !== 'object') {
+      record('@lostgradient/cinder/knowledge: button schema artifact did not resolve to an object');
+    }
+  } catch (error) {
+    record(`@lostgradient/cinder/knowledge: button schema artifact failed to load — ${error.message}`);
+  }
+}
 
 /** Convert a `@lostgradient/cinder/...` or `@lostgradient/cinder` specifier to its `./...` export key. */
 function specifierToExportKey(specifier) {

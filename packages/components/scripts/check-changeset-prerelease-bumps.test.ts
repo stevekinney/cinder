@@ -142,6 +142,26 @@ describe('checkChangesetPrereleaseBumps', () => {
     ]);
   });
 
+  it('flags a major bump for @lostgradient/cinder-mcp while pre-1.0, same as any other public package', async () => {
+    const dir = makeChangesetDir({
+      'breaking-mcp.md': `---\n'@lostgradient/cinder-mcp': major\n---\n\nBreaking MCP change.\n`,
+    });
+    const violations = await checkPublicPackagesPrereleaseBumps({
+      changesetDirectory: dir,
+      packages: [{ packageName: '@lostgradient/cinder-mcp', version: '0.1.0' }],
+      relativeTo: dir,
+    });
+
+    expect(violations).toEqual([
+      {
+        bump: 'major',
+        filePath: 'breaking-mcp.md',
+        packageName: '@lostgradient/cinder-mcp',
+        version: '0.1.0',
+      },
+    ]);
+  });
+
   it('passes when every pre-1.0 changeset is minor or patch', async () => {
     const dir = makeChangesetDir({
       'a.md': changeset('minor'),

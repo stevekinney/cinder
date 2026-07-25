@@ -34,6 +34,7 @@ const PUBLIC_PACKAGE_DIRECTORIES = [
   'packages/chat',
   'packages/markdown',
   'packages/editor',
+  'packages/mcp',
 ] as const;
 
 export type ChangesetBumpViolation = {

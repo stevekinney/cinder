@@ -13,7 +13,7 @@ import { join } from 'node:path';
 const CANONICAL_PACKAGE = 'components';
 
 /** Every package that carries a copy of the helper, canonical listed first. */
-const PACKAGES_WITH_COPY = ['components', 'markdown', 'editor'];
+const PACKAGES_WITH_COPY = ['components', 'markdown', 'editor', 'mcp'];
 
 /** packages/<pkg>/scripts/lib/atomic-swap-dist.ts for the given package. */
 function copyPath(packageName: string): string {

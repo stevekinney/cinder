@@ -72,6 +72,18 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
     fileCount: 400,
     largestEntrypointBytes: 800_000,
   },
+  // Measured against the real 0.0.0 pack: ~4.5 KB packed, ~15.4 KB unpacked,
+  // 16 files, largest single file ~3.3 KB (dist/tools.js). Headless (no
+  // `dist/components/`) — Cinder, the MCP SDK, and zod are regular
+  // dependencies resolved at install time, never bundled in — so this stays
+  // tiny. Headroom sized generously since a handful of new tools/resources
+  // would still be a small fraction of these budgets.
+  '@lostgradient/cinder-mcp': {
+    packedBytes: 200_000,
+    unpackedBytes: 500_000,
+    fileCount: 50,
+    largestEntrypointBytes: 100_000,
+  },
 };
 
 type FileSizeEntry = {

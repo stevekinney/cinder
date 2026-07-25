@@ -264,6 +264,7 @@ const BUILDABLE_PACKAGES_IN_DEPENDENCY_ORDER = [
   '@lostgradient/markdown',
   '@lostgradient/editor',
   '@lostgradient/cinder',
+  '@lostgradient/cinder-mcp',
 ] as const;
 
 /** Map a buildable package name to its `packages/<dir>` directory name. */
@@ -274,6 +275,7 @@ const PACKAGE_DIRECTORY_BY_NAME: Record<
   '@lostgradient/markdown': 'markdown',
   '@lostgradient/editor': 'editor',
   '@lostgradient/cinder': 'components',
+  '@lostgradient/cinder-mcp': 'mcp',
 };
 
 describe('pipeline contract: builds stay skippable (source-based: reads each build.ts)', () => {

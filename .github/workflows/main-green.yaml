@@ -124,6 +124,7 @@ jobs:
           bunx turbo run test
           --filter=@lostgradient/markdown
           --filter=@lostgradient/editor
+          --filter=@lostgradient/cinder-mcp
           --filter=@cinder/playground
           --filter=@cinder/testing
 
@@ -153,6 +154,50 @@ jobs:
 
       - name: Consumer hydration smoke (cinder)
         run: bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke
+
+      # Focused Node-runtime smoke: proves the built cinder-mcp binary speaks
+      # the MCP stdio handshake under the ACTUAL `node` on this runner, not
+      # just under Bun (which every other build/test step above uses). Full
+      # tarball-consumer coverage (npm install, Bun-free env, `npx --no-install`)
+      # is release-only (validate:consumer) — this is the cheap per-merge
+      # signal that the workspace-built dist/bin.js itself runs under Node.
+      - name: Node-runtime smoke (cinder-mcp)
+        run: |
+          bun run --filter=@lostgradient/cinder-mcp build
+          node -e "
+            const { spawn } = require('node:child_process');
+            const child = spawn('node', ['packages/mcp/dist/bin.js']);
+            let out = '';
+            let err = '';
+            child.stdout.on('data', (d) => { out += d; });
+            child.stderr.on('data', (d) => { err += d; });
+            const request = JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'initialize',
+              params: {
+                protocolVersion: '2024-11-05',
+                capabilities: {},
+                clientInfo: { name: 'main-green-smoke', version: '0.0.0' },
+              },
+            }) + '\n';
+            child.stdin.write(request);
+            const timeout = setTimeout(() => {
+              console.error('cinder-mcp Node smoke timed out. stdout:', out, 'stderr:', err);
+              child.kill();
+              process.exit(1);
+            }, 10000);
+            // Node may deliver the initialize response across multiple stdout
+            // chunks — check the accumulated buffer on every 'data' event
+            // instead of deciding from the first (possibly partial) chunk.
+            child.stdout.on('data', () => {
+              if (!out.includes('\"name\":\"cinder\"')) return;
+              clearTimeout(timeout);
+              console.log('cinder-mcp Node smoke OK');
+              child.kill();
+              process.exit(0);
+            });
+          "
 
   component-tests:
     name: component-tests (${{ matrix.chunk }}/4)

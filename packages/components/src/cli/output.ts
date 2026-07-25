@@ -149,7 +149,6 @@ export function formatHelp(): string {
     '  cinder show <component-id> [--json]',
     '  cinder compare <component-id>... [--json]',
     '  cinder best-practices [imports|styles|metadata|overlap|all] [--json]',
-    '  cinder mcp',
     '',
     'Options:',
     '  --json              Print deterministic JSON.',

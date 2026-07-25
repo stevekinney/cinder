@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 import { packageTarballPath, recordEntrypointSize } from './report-package-weight.ts';
 
@@ -114,5 +114,41 @@ describe('package-weight budget gates', () => {
     if (weightCheckScript === undefined) throw new Error('Chat package weight check is missing');
 
     expect(weightCheckScript.split(/\s+/)).toContain('--check');
+  });
+
+  test('the cinder-mcp check script enables budget assertions', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    const manifest = JSON.parse(
+      readFileSync(resolve(workspaceRoot, 'packages/mcp/package.json'), 'utf8'),
+    ) as { scripts: Record<string, string> };
+    const weightCheckScript = manifest.scripts['package:weight:check'];
+    if (weightCheckScript === undefined)
+      throw new Error('cinder-mcp package weight check is missing');
+
+    expect(weightCheckScript.split(/\s+/)).toContain('--check');
+  });
+
+  test('cinder-mcp has an active weight budget and uses headless entrypoint grouping', async () => {
+    // cinder-mcp ships no `dist/components/` directory (once built) —
+    // recordEntrypointSize must therefore group it like Markdown (headless),
+    // not like Cinder/Chat. Skip this specific check when dist doesn't exist
+    // yet (a fresh checkout before the first build) rather than asserting a
+    // false negative for the wrong reason.
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    const mcpDistDirectory = resolve(workspaceRoot, 'packages/mcp/dist');
+    if (existsSync(mcpDistDirectory)) {
+      expect(existsSync(join(mcpDistDirectory, 'components'))).toBe(false);
+    }
+
+    // Running the check script against a package with no configured budget
+    // throws "no package weight budget is configured for <name>" before it
+    // ever gets to packing — importing the module and invoking its CLI would
+    // require a built tarball, so this instead pins the same source-of-truth
+    // list the runtime check reads: report-package-weight.ts must declare a
+    // budget for @lostgradient/cinder-mcp.
+    const reportPackageWeightSource = await Bun.file(
+      join(import.meta.dirname, 'report-package-weight.ts'),
+    ).text();
+    expect(reportPackageWeightSource).toMatch(/'@lostgradient\/cinder-mcp':\s*{/);
   });
 });
