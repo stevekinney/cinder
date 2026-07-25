@@ -50,10 +50,11 @@
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas: 'leading body';
     gap: var(--cinder-selectable-row-leading-gap, var(--cinder-space-3));
+    align-items: start;
   }
 
   @media (hover: hover) {
-    .cinder-selectable-row__primary:hover:not(:disabled) {
+    .cinder-selectable-row:hover:has(> .cinder-selectable-row__primary:not(:disabled)) {
       background: var(--cinder-surface-hover);
     }
   }
