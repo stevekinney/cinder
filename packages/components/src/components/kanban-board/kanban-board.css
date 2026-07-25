@@ -114,6 +114,14 @@
     fill: currentcolor;
   }
 
+  .cinder-kanban-board__collapse-chevron {
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .cinder-kanban-board__column[data-cinder-collapsed] .cinder-kanban-board__collapse-chevron {
+    transform: rotate(-90deg);
+  }
+
   .cinder-kanban-board__column-handle:focus-visible,
   .cinder-kanban-board__collapse:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;

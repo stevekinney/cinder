@@ -25,6 +25,7 @@
 
 <script lang="ts" generics="Card">
   import { classNames } from '../../utilities/class-names.ts';
+  import { ChevronDown } from '../icons/index.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     SortableController,
@@ -608,7 +609,7 @@
               aria-expanded={!column.collapsed}
               onclick={() => toggleColumn(column)}
             >
-              {column.collapsed ? '+' : '-'}
+              <ChevronDown class="cinder-kanban-board__collapse-chevron" aria-hidden="true" />
             </button>
           {/if}
         </header>
