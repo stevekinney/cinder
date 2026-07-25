@@ -34,9 +34,14 @@
   }
 
   .cinder-footer__groups {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--cinder-space-4);
-    grid-template-columns: repeat(auto-fill, minmax(10rem, 12rem));
+  }
+
+  .cinder-footer__groups > nav {
+    flex: 1 1 10rem;
+    max-inline-size: 12rem;
   }
 
   .cinder-footer__group-title {
@@ -106,7 +111,7 @@
       align-items: start;
     }
 
-    .cinder-footer__main > .cinder-footer__groups:first-child {
+    .cinder-footer__main > :only-child {
       grid-column: 1 / -1;
     }
   }

@@ -7,7 +7,7 @@ const footerCss = readFileSync(
   'utf8',
 );
 
-const containerWidths = [20, 40, 48, 64, 90] as const;
+const containerWidths = [20, 40, 43, 48, 64, 90] as const;
 
 test.describe('Footer responsive layout', () => {
   for (const width of containerWidths) {
@@ -133,6 +133,30 @@ test.describe('Footer responsive layout', () => {
         expect(productBox?.width ?? 0).toBeLessThanOrEqual(192);
         expect(companyBox?.width ?? 0).toBeLessThanOrEqual(192);
         expect((companyBox?.x ?? 0) - (productBox?.x ?? 0)).toBeLessThanOrEqual(208);
+      }
+
+      if (width === 40) {
+        await groups.evaluate((element) => element.remove());
+        await expect(brand).toHaveCSS('grid-column', '1 / -1');
+      }
+
+      if (width === 43) {
+        await brand.evaluate((element) => element.remove());
+        await groups.evaluate((element) => {
+          element.insertAdjacentHTML(
+            'beforeend',
+            `
+              <nav aria-label="Support"><h3>Support</h3></nav>
+              <nav aria-label="Resources"><h3>Resources</h3></nav>
+            `,
+          );
+        });
+
+        const navigationRows = await groups
+          .getByRole('navigation')
+          .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().y));
+        expect(navigationRows).toHaveLength(4);
+        expect(new Set(navigationRows).size).toBe(1);
       }
     });
   }
