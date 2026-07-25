@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -55,7 +55,7 @@ describe('SpeedDial', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Create' }));
     expect(container.querySelector('.cinder-speed-dial')?.contains(toolbar)).toBe(false);
-    expect(toolbar.parentElement).toBe(document.body);
+    expect(toolbar.parentElement?.parentElement).toBe(document.body);
 
     await fireEvent.click(trigger);
     expect(screen.getByTestId('open-state').textContent).toBe('closed');
@@ -72,15 +72,39 @@ describe('SpeedDial', () => {
     await flushQueuedFocus();
     const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
 
-    expect(toolbar.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
-    expect(toolbar.style.colorScheme).toBe('dark');
+    const portalScope = toolbar.parentElement!;
+    await waitFor(() => {
+      expect(portalScope.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+      expect(portalScope.style.colorScheme).toBe('dark');
+    });
+    expect(toolbar.style.getPropertyValue('--cinder-surface-raised')).toBe('');
 
     trigger.setAttribute('style', '--cinder-surface-raised: rebeccapurple; color-scheme: light;');
 
     await waitFor(() => {
-      expect(toolbar.style.getPropertyValue('--cinder-surface-raised')).toBe('rebeccapurple');
-      expect(toolbar.style.colorScheme).toBe('light');
+      expect(portalScope.style.getPropertyValue('--cinder-surface-raised')).toBe('rebeccapurple');
+      expect(portalScope.style.colorScheme).toBe('light');
     });
+  });
+
+  test('changing direction while open preserves the focused action', async () => {
+    const view = render(SpeedDialFixture, { props: { direction: 'up' } });
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const share = screen.getByRole('button', { name: 'Share' });
+    const focusSpy = spyOn(HTMLElement.prototype, 'focus');
+    share.focus();
+    focusSpy.mockClear();
+
+    try {
+      await view.rerender({ direction: 'left', open: true });
+      await flushQueuedFocus();
+      expect(focusSpy).not.toHaveBeenCalled();
+    } finally {
+      focusSpy.mockRestore();
+    }
   });
 
   test('direction controls data attributes and toolbar orientation', () => {

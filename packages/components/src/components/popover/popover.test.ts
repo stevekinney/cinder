@@ -322,7 +322,7 @@ describe('Popover — portal and arrow', () => {
 
     const panel = queryPopoverPanel()!;
     expect(document.body.contains(panel)).toBe(true);
-    expect(panel.parentElement).toBe(document.body);
+    expect(panel.parentElement?.parentElement).toBe(document.body);
     expect(container.contains(panel)).toBe(false);
   });
 
@@ -345,7 +345,32 @@ describe('Popover — portal and arrow', () => {
     await waitFor(() => {
       expect(dialog.querySelector('.cinder-popover')).not.toBeNull();
     });
-    expect(dialog.querySelector('.cinder-popover')?.parentElement).toBe(dialog);
+    expect(dialog.querySelector('.cinder-popover')?.parentElement?.parentElement).toBe(dialog);
+  });
+
+  test('inherited portal tokens remain inherited so panel classes can override them', async () => {
+    render(Popover, {
+      props: {
+        open: true,
+        class: 'consumer-popover',
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+    const trigger = document.querySelector<HTMLElement>('.cinder-popover__trigger button')!;
+    trigger.style.setProperty('--cinder-surface-raised', 'hotpink');
+
+    await waitFor(() => {
+      const portalScope = queryPopoverPanel()?.parentElement;
+      expect(portalScope?.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    });
+
+    const panel = queryPopoverPanel()!;
+    const portalScope = panel.parentElement!;
+    expect(portalScope.classList.contains('cinder-popover__portal-scope')).toBe(true);
+    expect(portalScope.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    expect(panel.style.getPropertyValue('--cinder-surface-raised')).toBe('');
+    expect(panel.classList.contains('consumer-popover')).toBe(true);
   });
 
   test('copies inherited dir and theme attributes before portaling', async () => {
@@ -372,10 +397,10 @@ describe('Popover — portal and arrow', () => {
       expect(queryPopoverPanel()).not.toBeNull();
     });
 
-    const panel = queryPopoverPanel()!;
-    expect(panel.getAttribute('dir')).toBe('rtl');
-    expect(panel.getAttribute('data-theme')).toBe('dark');
-    expect(panel.getAttribute('data-cinder-theme')).toBe('midnight');
+    const portalScope = queryPopoverPanel()!.parentElement!;
+    expect(portalScope.getAttribute('dir')).toBe('rtl');
+    expect(portalScope.getAttribute('data-theme')).toBe('dark');
+    expect(portalScope.getAttribute('data-cinder-theme')).toBe('midnight');
   });
 
   test('renders an arrow inside a placed panel when arrowVisible=true', async () => {
@@ -835,9 +860,8 @@ describe('Popover — floating-ui wiring', () => {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
+      expect(autoUpdateSpy).toHaveBeenCalled();
     });
-    expect(autoUpdateSpy).toHaveBeenCalled();
     const call = autoUpdateSpy.mock.calls[0]!;
     expect(call[0]).toBeInstanceOf(HTMLElement);
     expect(call[1]).toBeInstanceOf(HTMLElement);
@@ -854,9 +878,8 @@ describe('Popover — floating-ui wiring', () => {
       },
     });
     await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
+      expect(offsetSpy).toHaveBeenCalledWith(16);
     });
-    expect(offsetSpy).toHaveBeenCalledWith(16);
   });
 
   test('arrow middleware is NOT called when arrowVisible=false', async () => {
@@ -890,7 +913,7 @@ describe('Popover — floating-ui wiring', () => {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
+      expect(autoUpdateSpy).toHaveBeenCalled();
     });
     autoUpdateTeardown.mockClear();
     await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });

@@ -69,6 +69,7 @@
   }
 
   let triggerWrapper: HTMLDivElement | undefined = $state();
+  let portalScopeElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
   let arrowElement: HTMLSpanElement | undefined = $state();
 
@@ -101,10 +102,15 @@
     isDestroyed = true;
   });
 
-  const portalAttachment = createPortalAttachment({
+  const portalScopeAttachment = createPortalAttachment({
     target: () => anchorElement?.closest<HTMLElement>('dialog[open]') ?? document.body,
     inheritAttributes: true,
     source: () => anchorElement ?? null,
+  });
+  const panelPortalAttachment = createPortalAttachment({
+    disabled: () => !portalScopeElement,
+    target: () => portalScopeElement,
+    inheritAttributes: false,
   });
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => anchorElement,
@@ -296,8 +302,14 @@
 
 {#if mounted && open && anchorElement}
   <div
+    bind:this={portalScopeElement}
+    {@attach portalScopeAttachment}
+    class="cinder-popover__portal-scope"
+    style={`display: contents;${inheritedPortalStyle.style}`}
+  ></div>
+  <div
     bind:this={panelElement}
-    {@attach portalAttachment}
+    {@attach panelPortalAttachment}
     {@attach dismissOnOutsideMousedown}
     id={panelId}
     {role}
@@ -307,7 +319,7 @@
     class={classNames('cinder-_floating-surface', 'cinder-popover', className)}
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
-    style={`${anchoredOverlay.positionStyle};${inheritedPortalStyle.style}`}
+    style={anchoredOverlay.positionStyle}
     tabindex="-1"
   >
     {@render children()}

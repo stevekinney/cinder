@@ -46,7 +46,9 @@
 
   let rootElement = $state<HTMLDivElement | null>(null);
   let triggerWrapperElement = $state<HTMLDivElement | null>(null);
+  let actionsPortalScopeElement = $state<HTMLDivElement | null>(null);
   let actionsElement = $state<HTMLDivElement | null>(null);
+  let hasFocusedCurrentOpenSession = false;
   const actionButtons: HTMLButtonElement[] = [];
 
   const accessibleLabel = $derived(normalizeAriaLabel(ariaLabel));
@@ -60,10 +62,15 @@
           : 'right',
   );
 
-  const actionsPortal = createPortalAttachment({
+  const actionsPortalScope = createPortalAttachment({
     disabled: () => !open || hidden,
     source: () => getTriggerElement(),
     target: () => getPortalTarget(),
+  });
+  const actionsPortal = createPortalAttachment({
+    disabled: () => !open || hidden || !actionsPortalScopeElement,
+    inheritAttributes: false,
+    target: () => actionsPortalScopeElement,
   });
   const anchoredActions = createAnchoredOverlay({
     open: () => open,
@@ -213,7 +220,12 @@
   }
 
   $effect(() => {
-    if (!open || hidden || !anchoredActions.positionReady) return;
+    if (!open || hidden) {
+      hasFocusedCurrentOpenSession = false;
+      return;
+    }
+    if (!anchoredActions.positionReady || hasFocusedCurrentOpenSession) return;
+    hasFocusedCurrentOpenSession = true;
     queueMicrotask(() => getEnabledActionButtons()[0]?.focus());
   });
 
@@ -248,6 +260,12 @@
   data-cinder-hidden={hidden ? 'true' : undefined}
 >
   <div
+    bind:this={actionsPortalScopeElement}
+    {@attach actionsPortalScope}
+    class="cinder-speed-dial__portal-scope"
+    style={`display: contents;${inheritedPortalStyle.style}`}
+  ></div>
+  <div
     bind:this={actionsElement}
     {@attach actionsPortal}
     id={actionsId}
@@ -258,7 +276,7 @@
     data-cinder-open={open ? '' : undefined}
     data-cinder-direction={resolvedDirection}
     data-cinder-position-ready={anchoredActions.positionReady || undefined}
-    style={`${anchoredActions.positionStyle};${inheritedPortalStyle.style}`}
+    style={anchoredActions.positionStyle}
     aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
     inert={!open || hidden ? true : undefined}
     tabindex="-1"
