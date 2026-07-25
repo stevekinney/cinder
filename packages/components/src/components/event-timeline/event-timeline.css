@@ -111,15 +111,15 @@
     transform-origin: top right;
   }
 
-  .cinder-event-timeline[dir='rtl'] .cinder-event-timeline__item[data-cinder-lane-parity='even'] {
+  .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-lane-parity='even'] {
     --_cinder-event-timeline-label-offset: 4.5rem;
   }
 
-  .cinder-event-timeline[dir='rtl'] .cinder-event-timeline__item[data-cinder-lane-parity='odd'] {
+  .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-lane-parity='odd'] {
     --_cinder-event-timeline-label-offset: -4.5rem;
   }
 
-  .cinder-event-timeline[dir='rtl']
+  .cinder-event-timeline:dir(rtl)
     .cinder-event-timeline__item[data-cinder-lane-parity='even']
     .cinder-event-timeline__leader {
     inset-inline-start: auto;
@@ -130,7 +130,7 @@
     transform-origin: top right;
   }
 
-  .cinder-event-timeline[dir='rtl']
+  .cinder-event-timeline:dir(rtl)
     .cinder-event-timeline__item[data-cinder-lane-parity='odd']
     .cinder-event-timeline__leader {
     inset-inline-end: auto;
