@@ -163,6 +163,14 @@
     toggleElement = event.currentTarget as HTMLElement | null;
   }
 
+  function handleToggleKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
+    const firstItem = itemsRegionElement?.querySelector<HTMLElement>(navigationItemSelector);
+    if (!firstItem) return;
+    event.preventDefault();
+    firstItem.focus();
+  }
+
   function getNavigationItems(): HTMLElement[] {
     if (!itemsRegionElement) return [];
 
@@ -299,6 +307,21 @@
       },
     });
   }
+
+  $effect(() => {
+    if (!isMobileLayout || !mobileMenuOpen || !navigationBarElement || !itemsRegionElement) return;
+    const computed = getComputedStyle(navigationBarElement);
+    const copiedProperties: string[] = [];
+    for (let index = 0; index < computed.length; index += 1) {
+      const property = computed.item(index);
+      if (!property.startsWith('--cinder-')) continue;
+      itemsRegionElement.style.setProperty(property, computed.getPropertyValue(property));
+      copiedProperties.push(property);
+    }
+    return () => {
+      for (const property of copiedProperties) itemsRegionElement?.style.removeProperty(property);
+    };
+  });
 </script>
 
 <nav
@@ -315,7 +338,7 @@
   onkeydown={handleKeyDown}
 >
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'before-brand'}
-    <div class="cinder-navigation-bar__menu-toggle">
+    <div class="cinder-navigation-bar__menu-toggle" onkeydown={handleToggleKeyDown}>
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
@@ -331,7 +354,7 @@
   {/if}
 
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'after-brand'}
-    <div class="cinder-navigation-bar__menu-toggle">
+    <div class="cinder-navigation-bar__menu-toggle" onkeydown={handleToggleKeyDown}>
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
