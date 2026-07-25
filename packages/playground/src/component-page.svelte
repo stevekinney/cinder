@@ -1231,7 +1231,7 @@
                       {#each a11y.keyboard as shortcut, index (index)}
                         <div class="dx-keys__row">
                           <div class="dx-keys__key-list" role="group" aria-label={shortcut.keys}>
-                            {#each shortcut.keys.split(/\s*\/\s*/) as key, keyIndex (keyIndex)}
+                            {#each shortcut.keys.split(/\s+\/\s+/) as key, keyIndex (keyIndex)}
                               {#if keyIndex > 0}
                                 <span class="dx-keys__separator" aria-hidden="true">/</span>
                               {/if}
