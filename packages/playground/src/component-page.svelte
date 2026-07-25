@@ -122,6 +122,9 @@
     return document.documentElement.dataset['cinderTheme'] === 'dark' ? 'dark' : 'light';
   }
   let theme: 'light' | 'dark' = $state(readInitialTheme());
+  let themeToggleLabel = $derived(
+    theme === 'dark' ? 'Preview theme: switch to light' : 'Preview theme: switch to dark',
+  );
 
   function toggleTheme(): void {
     theme = theme === 'dark' ? 'light' : 'dark';
@@ -600,28 +603,32 @@
             >
           {/if}
         </nav>
-        <div class="dx-topbar__actions">
-          <a
-            class="dx-iconbtn"
-            href="https://github.com/stevekinney/cinder"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="View source on GitHub"
-          >
-            <Github size={17} strokeWidth={1.5} aria-hidden="true" />
-          </a>
-          <button
-            type="button"
-            class="dx-iconbtn"
-            onclick={toggleTheme}
-            aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-          >
-            {#if theme === 'dark'}
-              <Sun size={17} strokeWidth={1.5} aria-hidden="true" />
-            {:else}
-              <Moon size={17} strokeWidth={1.5} aria-hidden="true" />
-            {/if}
-          </button>
+        <div class="dx-topbar__actions" role="toolbar" aria-label="Page controls">
+          <Tooltip text="View source on GitHub" placement="bottom">
+            <a
+              class="dx-iconbtn"
+              href="https://github.com/stevekinney/cinder"
+              target="_blank"
+              rel="noreferrer"
+              aria-label="View source on GitHub"
+            >
+              <Github size={17} strokeWidth={1.5} aria-hidden="true" />
+            </a>
+          </Tooltip>
+          <Tooltip text={themeToggleLabel} placement="bottom">
+            <button
+              type="button"
+              class="dx-iconbtn"
+              onclick={toggleTheme}
+              aria-label={themeToggleLabel}
+            >
+              {#if theme === 'dark'}
+                <Sun size={17} strokeWidth={1.5} aria-hidden="true" />
+              {:else}
+                <Moon size={17} strokeWidth={1.5} aria-hidden="true" />
+              {/if}
+            </button>
+          </Tooltip>
         </div>
       </div>
     </header>

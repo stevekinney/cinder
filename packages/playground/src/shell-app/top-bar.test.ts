@@ -107,6 +107,14 @@ function liveRegion(container: HTMLElement): HTMLElement {
   return region;
 }
 
+function tooltipTextFor(control: HTMLElement): string | null {
+  const tooltipId = control.getAttribute('aria-describedby');
+  if (tooltipId === null) return null;
+  const tooltip = document.getElementById(tooltipId);
+  if (tooltip?.getAttribute('role') !== 'tooltip') return null;
+  return tooltip.textContent?.trim() ?? null;
+}
+
 describe('top-bar open-in-new-tab button', () => {
   test('renders the public toolbar controls', async () => {
     const store = new PreviewStore('button');
@@ -125,6 +133,35 @@ describe('top-bar open-in-new-tab button', () => {
       ),
     ).not.toBeNull();
     expect(toolbar.querySelector('input')).not.toBeNull();
+
+    unmount();
+  });
+
+  test('labels the preview theme and gives every icon-only action a visible tooltip', async () => {
+    const { container, unmount } = render(TopBarFixture, { currentComponent: 'button' });
+    await tick();
+
+    const themeGroup = container.querySelector('[role="radiogroup"]#theme-preset');
+    expect(themeGroup).not.toBeNull();
+    const themeLabelId = themeGroup?.getAttribute('aria-labelledby');
+    expect(themeLabelId).not.toBeNull();
+    expect(document.getElementById(themeLabelId ?? '')?.textContent?.trim()).toBe('Preview theme');
+
+    const expectedTooltips = new Map<string, string>([
+      ['Open GitHub repository', 'Open GitHub repository'],
+      ['Open npm package', 'Open npm package'],
+      ['Color token panel', 'Color token panel'],
+      ['Open preview in new tab', 'Open preview in new tab'],
+      ['Focus mode — hide sidebar and toolbar (press Escape to exit)', 'Focus mode'],
+    ]);
+    for (const [label, tooltip] of expectedTooltips) {
+      const control =
+        container.querySelector<HTMLElement>(`[aria-label="${label}"]`) ??
+        document.querySelector<HTMLElement>(`[aria-label="${label}"]`);
+      expect(control).not.toBeNull();
+      if (control === null) throw new Error(`No control with aria-label "${label}"`);
+      expect(tooltipTextFor(control)).toBe(tooltip);
+    }
 
     unmount();
   });
