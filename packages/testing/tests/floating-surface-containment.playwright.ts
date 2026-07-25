@@ -20,7 +20,9 @@ test.describe('floating surfaces escape component containment', () => {
     const clippingBottom = await clipComponent(page, '.cinder-speed-dial');
 
     await page.getByRole('button', { name: 'Quick actions' }).first().click();
-    const actions = page.locator('body > .cinder-speed-dial__actions').first();
+    const actions = page
+      .locator('body > .cinder-speed-dial__portal-scope > .cinder-speed-dial__actions')
+      .first();
     await expect(actions).toBeVisible();
     const box = await actions.boundingBox();
     expect(box).not.toBeNull();
@@ -34,7 +36,9 @@ test.describe('floating surfaces escape component containment', () => {
     const input = page.getByRole('combobox', { name: 'Favorite fruit' }).first();
     await input.fill('not-a-fruit');
 
-    const emptyState = page.locator('body > .cinder-popover .cinder-combobox__empty').first();
+    const emptyState = page
+      .locator('body > .cinder-popover__portal-scope > .cinder-popover .cinder-combobox__empty')
+      .first();
     await expect(emptyState).toBeVisible();
     await expect(emptyState).toHaveText('No results');
   });

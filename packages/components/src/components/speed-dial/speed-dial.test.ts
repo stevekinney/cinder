@@ -176,6 +176,19 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(create);
   });
 
+  test('Tab from the final enabled portaled action moves to the trigger', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const share = screen.getByRole('button', { name: 'Share' });
+
+    share.focus();
+    await fireEvent.keyDown(share, { key: 'Tab' });
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test('keyboard order follows resolved placement and spacing uses CSS layout', () => {
     expect(speedDialSource).toMatch(
       /getKeyboardNavigationButtons[\s\S]*?resolvedDirection === 'up' \|\| resolvedDirection === 'left'/,

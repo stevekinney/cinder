@@ -205,6 +205,32 @@
     return Array.from(itemsRegionElement.querySelectorAll<HTMLElement>(navigationItemSelector));
   }
 
+  function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
+    if (
+      event.key !== 'Tab' ||
+      event.shiftKey ||
+      menuTogglePlacement !== 'before-brand' ||
+      !isMobileLayout ||
+      !mobileMenuOpen ||
+      !anchoredItems.positionReady ||
+      !(event.target instanceof HTMLElement)
+    ) {
+      return false;
+    }
+
+    const brandTargets = Array.from(
+      navigationBarElement?.querySelectorAll<HTMLElement>(brandFocusSelector) ?? [],
+    );
+    if (event.target !== brandTargets.at(-1)) return false;
+
+    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
+    if (!firstItem) return false;
+
+    event.preventDefault();
+    firstItem.focus();
+    return true;
+  }
+
   function isEnabledNavigationItem(item: HTMLElement): boolean {
     return item.getAttribute('aria-disabled') !== 'true' && !item.hasAttribute('disabled');
   }
@@ -354,6 +380,8 @@
       (consumerOnKeyDown as (e: KeyboardEvent) => void)(withNavigationCurrentTarget(event));
     }
     if (event.defaultPrevented) return;
+
+    if (bridgeBrandTabToPortaledPanel(event)) return;
 
     if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
       mobileMenuOpen = false;

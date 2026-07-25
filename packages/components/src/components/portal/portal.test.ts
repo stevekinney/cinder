@@ -43,6 +43,14 @@ describe('Portal', () => {
     expect(inheritedStyle).toContain('color-scheme: dark');
   });
 
+  test('serializes an explicit normal color scheme for a portaled surface', () => {
+    const source = document.createElement('div');
+    source.style.colorScheme = 'normal';
+    document.body.append(source);
+
+    expect(getInheritedPortalStyle(source)).toContain('color-scheme: normal');
+  });
+
   test('moves children into a custom target', async () => {
     const host = document.createElement('div');
     host.id = 'portal-host';

@@ -85,8 +85,9 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
     inherited.setProperty(property, computed.getPropertyValue(property));
   }
 
-  if (computed.colorScheme && computed.colorScheme !== 'normal') {
-    inherited.setProperty('color-scheme', computed.colorScheme);
+  const colorScheme = computed.colorScheme || source.style.colorScheme;
+  if (colorScheme) {
+    inherited.setProperty('color-scheme', colorScheme);
   }
 
   return inherited.cssText;

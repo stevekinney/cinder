@@ -194,6 +194,13 @@
     const target = event.target instanceof HTMLButtonElement ? event.target : null;
     if (!target) return;
 
+    const tabOrderButtons = getEnabledActionButtons();
+    if (event.key === 'Tab' && !event.shiftKey && target === tabOrderButtons.at(-1)) {
+      event.preventDefault();
+      getTriggerElement()?.focus();
+      return;
+    }
+
     const enabledButtons = getKeyboardNavigationButtons();
     const currentIndex = enabledButtons.indexOf(target);
     if (currentIndex === -1) return;

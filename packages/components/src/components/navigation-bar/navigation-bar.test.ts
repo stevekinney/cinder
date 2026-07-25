@@ -9,7 +9,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup, waitFor } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -644,10 +644,11 @@ describe('NavigationBar', () => {
       const navigationBar = container.querySelector('nav') as HTMLElement;
       navigationBar.style.setProperty('--cinder-surface', 'rebeccapurple');
       navigationBar.style.colorScheme = 'light';
-      await new Promise((resolve) => setTimeout(resolve, 0));
 
-      expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('rebeccapurple');
-      expect(itemsRegion.style.colorScheme).toBe('light');
+      await waitFor(() => {
+        expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('rebeccapurple');
+        expect(itemsRegion.style.colorScheme).toBe('light');
+      });
     });
   });
 
@@ -711,6 +712,26 @@ describe('NavigationBar', () => {
       toggle.focus();
       await fireEvent.keyDown(toggle, { key: 'Tab' });
       expect(document.activeElement).toBe(brandLink);
+    });
+  });
+
+  test('brand Tab enters the portaled items after a before-brand toggle', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: brandLinkSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const brandLink = container.querySelector('#brand-link') as HTMLAnchorElement;
+      const home = itemsRegion.querySelector('[data-key="home"]');
+
+      brandLink.focus();
+      await fireEvent.keyDown(brandLink, { key: 'Tab' });
+      expect(document.activeElement).toBe(home);
     });
   });
 
