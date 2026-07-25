@@ -109,7 +109,7 @@ describe('Carousel', () => {
   });
 
   test('treats a one-pixel viewport border as aligned', async () => {
-    const { container, rerender: rerenderCarousel } = render(Carousel, { slides });
+    const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
     const slide = viewport.children[0] as HTMLElement;
     const scrollTo = jest.fn();
@@ -205,6 +205,29 @@ describe('Carousel', () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
+  test('waits for native scrolling to settle before realigning', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 1 ? 0 : 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    await fireEvent.scroll(viewport);
+    expectActiveSlide(container, 1);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
   test('does not clear initial alignment while the viewport is hidden', async () => {
     type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
     let callback: ObserverCallback | undefined;
@@ -292,6 +315,34 @@ describe('Carousel', () => {
     await waitFor(() => {
       expectActiveSlide(container, 1);
     });
+  });
+
+  test('autoplay jumps immediately across the physical wrap boundary', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, {
+      slides,
+      activeIndex: 2,
+      autoplay: true,
+      autoplayInterval: 100,
+    });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 0 ? 100 : 0, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    jest.advanceTimersByTime(100);
+    await waitFor(() => expectActiveSlide(container, 0));
+    expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'auto' });
   });
 
   test('hover and focus pause autoplay until interaction ends', async () => {

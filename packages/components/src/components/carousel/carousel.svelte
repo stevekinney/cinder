@@ -51,9 +51,11 @@
   let hasFocusWithin = $state(false);
   let userPaused = $state(false);
   let isInteracting = $state(false);
+  let isNativeScrolling = $state(false);
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
   let activePointerId: number | null = null;
+  let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clampedLength = $derived(slides.length);
   const initialSlideId = untrack(
@@ -93,7 +95,7 @@
     if (!shouldAutoplay) return;
     const timer = setInterval(() => {
       if (clampedLength < 2) return;
-      activeIndex = (currentIndex + 1) % clampedLength;
+      goNext();
     }, autoplayInterval);
     return () => clearInterval(timer);
   });
@@ -202,6 +204,15 @@
     removePointerEndListeners();
   }
 
+  function scheduleNativeScrollEnd(): void {
+    isNativeScrolling = true;
+    if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
+    nativeScrollEndTimer = setTimeout(() => {
+      nativeScrollEndTimer = null;
+      isNativeScrolling = false;
+    }, 100);
+  }
+
   function onPointerDown(event: PointerEvent): void {
     programmaticTarget = null;
     isInteracting = true;
@@ -211,11 +222,15 @@
     window.addEventListener('pointercancel', finishPointerInteraction);
   }
 
-  onDestroy(removePointerEndListeners);
+  onDestroy(() => {
+    removePointerEndListeners();
+    if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
+  });
 
   function onViewportScroll(): void {
     const viewport = viewportElement;
     if (clampedLength < 2 || viewport === null) return;
+    scheduleNativeScrollEnd();
     const viewportLeft = viewport.getBoundingClientRect().left;
     const nextIndex = [...viewport.children].reduce((nearestIndex, slide, index) => {
       const nearest = viewport.children[nearestIndex];
@@ -236,7 +251,7 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
-    if (isInteracting) return;
+    if (isInteracting || isNativeScrolling) return;
     slideIdentity;
     scrollToActiveSlide();
   });
