@@ -1,6 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import Ajv2020 from 'ajv/dist/2020';
+
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
@@ -15,8 +17,25 @@ afterEach(() => {
 
 const { createRawSnippet } = await import('svelte');
 const { default: PageHeader } = await import('./page-header.svelte');
+const { default: pageHeaderSchema } = await import('./page-header.schema.ts');
 
 describe('PageHeader', () => {
+  test('schema requires a string title and supports an optional string description', () => {
+    const validate = new Ajv2020({ strict: false }).compile(pageHeaderSchema);
+
+    expect(pageHeaderSchema.required).toEqual(['title']);
+    expect(pageHeaderSchema.properties).toMatchObject({
+      title: { type: 'string' },
+      description: { type: 'string' },
+    });
+    expect(pageHeaderSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
+      'actions',
+      'breadcrumbs',
+    ]);
+    expect(validate({ title: 'Approvals', description: 'Review pending requests.' })).toBe(true);
+    expect(validate({})).toBe(false);
+  });
+
   test('renders the required title as h1', () => {
     const { container } = render(PageHeader, { props: { title: 'Approvals' } });
     const titleEl = container.querySelector('.cinder-page-header__title');

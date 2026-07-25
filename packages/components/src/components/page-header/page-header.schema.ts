@@ -4,12 +4,21 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    title: {
+      type: 'string',
+      description: 'Page-level heading text rendered inside `<h1>`.',
+    },
+    description: {
+      type: 'string',
+      description: 'Optional supporting text rendered below the title.',
+    },
     class: {
       type: 'string',
       description: 'Additional class names merged with `.cinder-page-header`.',
     },
   },
   additionalProperties: false,
+  required: ['title'],
   metadata: {
     unsupportedProps: [
       {
@@ -21,19 +30,6 @@ const schema = {
         name: 'breadcrumbs',
         reason: 'function-or-snippet',
         description: 'Optional breadcrumb navigation rendered above the heading row.',
-      },
-      {
-        name: 'description',
-        reason: 'function-or-snippet',
-        description:
-          'Optional supporting content rendered below the title; snippets must emit phrasing content.',
-      },
-      {
-        name: 'title',
-        reason: 'function-or-snippet',
-        required: true,
-        description:
-          'Page-level heading content. Rendered inside `<h1>`; snippets must emit phrasing content.',
       },
     ],
   },
