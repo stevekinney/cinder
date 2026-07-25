@@ -86,7 +86,11 @@
     if (!previousSentinelEnabled && sentinelEnabled) {
       sentinelReported = false;
       sentinelIntersecting = false;
-      if (previousMaxRetries !== undefined && maxRetries > previousMaxRetries) {
+      if (
+        !manualObserverSuspended &&
+        previousMaxRetries !== undefined &&
+        maxRetries > previousMaxRetries
+      ) {
         sentinelArmed = true;
       }
     }

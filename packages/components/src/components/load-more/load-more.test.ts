@@ -501,6 +501,49 @@ describe('LoadMore', () => {
     await waitFor(() => expect(calls).toBe(3));
   });
 
+  test('an in-flight manual load stays disarmed when maxRetries increases', async () => {
+    let calls = 0;
+    let resolveManualRequest: (() => void) | undefined;
+    const onLoadMore = async () => {
+      calls += 1;
+      if (calls === 2) {
+        await new Promise<void>((resolve) => (resolveManualRequest = resolve));
+      }
+    };
+    const rendered = render(LoadMore, {
+      props: {
+        maxRetries: 1,
+        onLoadMore,
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [initialRecord] = FakeIntersectionObserver.records;
+    initialRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(1));
+
+    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => expect(calls).toBe(2));
+    await rendered.rerender({ maxRetries: 2, onLoadMore });
+    resolveManualRequest?.();
+
+    await waitFor(() => {
+      expect(FakeIntersectionObserver.records).toHaveLength(2);
+      expect(rendered.getByRole('button', { name: 'Load more' }).hasAttribute('disabled')).toBe(
+        false,
+      );
+    });
+
+    const currentRecord = FakeIntersectionObserver.records.at(-1);
+    currentRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await Promise.resolve();
+    expect(calls).toBe(2);
+
+    currentRecord?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    currentRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(3));
+  });
+
   test('a retry while visible does not queue a second sentinel request', async () => {
     let calls = 0;
     let resolveRetry: (() => void) | undefined;
