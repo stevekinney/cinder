@@ -15,12 +15,22 @@
   }
 
   .cinder-table-of-contents__list {
+    position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-1);
+  }
+
+  .cinder-table-of-contents__list::before {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 2px;
+    background: var(--cinder-table-of-contents-link-border-color);
+    content: '';
   }
 
   .cinder-table-of-contents__list--nested {
@@ -34,10 +44,12 @@
   }
 
   .cinder-table-of-contents__link {
+    position: relative;
+    z-index: 1;
     display: block;
     text-decoration: none;
     color: var(--cinder-table-of-contents-link-color);
-    border-inline-start: 2px solid var(--cinder-table-of-contents-link-border-color);
+    border-inline-start: 2px solid transparent;
     padding: 0.125rem 0.75rem;
     transition:
       color var(--cinder-duration-fast) var(--cinder-ease-standard),
