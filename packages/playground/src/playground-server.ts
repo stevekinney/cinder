@@ -2231,8 +2231,8 @@ export function createHttpServerOnAvailablePort(
     try {
       const server = Bun.serve({
         port,
-        fetch(request, server) {
-          configureRequestIdleTimeout(request, server);
+        fetch(request, requestServer) {
+          configureRequestIdleTimeout(request, requestServer);
           return fetchHandler(request);
         },
       });
