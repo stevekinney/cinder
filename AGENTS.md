@@ -45,6 +45,10 @@ root `bun run validate`, full test/coverage/browser suites, or consumer
 validation as an ordinary local pull request gate; required CI and release own
 those broad checks.
 
+The `post-checkout` hook is informational only. When dependency files change,
+it tells you to run `bun install --frozen-lockfile`; it never installs
+automatically or mutates the checked-out worktree.
+
 ### Code Quality
 
 ```bash
