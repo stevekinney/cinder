@@ -25,8 +25,9 @@ must not be the only way to communicate what an interactive element does.
 ## Audit (2026-07-25)
 
 The audit searched component templates for visible `+`, `-`, `−`, `×`, `<`, `>`,
-`‹`, `›`, `▾`, `▸`, `↑`, `↓`, and their HTML entities (including `&times;`,
-`&#8593;`, and `&#8595;`). It also searched component stylesheets for `content:`
+`‹`, `›`, `✓`, `▾`, `▸`, `↑`, `↓`, and their HTML entities (including named,
+decimal, and hexadecimal forms such as `&times;`, `&#215;`, `&#xD7;`, `&gt;`,
+`&#62;`, `&#x3E;`, `&#8722;`, and `&#x2212;`). It also searched component stylesheets for `content:`
 values that generate visible glyphs, then classified each hit by whether it is
 an interactive affordance.
 
@@ -44,6 +45,7 @@ an interactive affordance.
 | `diff-statistics/diff-statistics.svelte`, `json-schema-editor/diff-view.svelte`                                                                                        | Diff markers                 | Data notation, not controls; retain text markers.                                                                                                                                                                                              |
 | `invocation-rule-builder/invocation-rule-builder.svelte`                                                                                                               | Add controls                 | Additional interactive `+` affordances; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                                                 |
 | `multi-select/multi-select.svelte`                                                                                                                                     | Expanded-state trigger       | Additional interactive `▾` affordance; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                                                  |
+| `multi-select/multi-select.svelte`                                                                                                                                     | Selection state              | Interactive `✓` checkmark inside selected options; migrate to Lucide `Check` in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                    |
 | `json-schema-editor/property-list.svelte`                                                                                                                              | Property disclosure          | Additional interactive `▸` affordance; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                                                  |
 | `json-schema-editor/property-list.svelte`                                                                                                                              | Move controls                | Interactive `↑`/`↓` affordances (and `&#8593;`/`&#8595;` entity variants); tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                              |
 | `calendar/calendar.svelte`                                                                                                                                             | Month navigation controls    | Interactive `‹`/`›` affordances; migrate to `ChevronLeft`/`ChevronRight` in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                        |
@@ -55,6 +57,7 @@ an interactive affordance.
 | `access-gate/access-gate.svelte`, `access-gate/access-gate-inline.svelte`                                                                                              | Icon sizing exception        | Existing gate icons use `size={20}` and `size={14}` for their distinct full and inline chrome; retain as documented component-specific sizing.                                                                                                 |
 | `inline-loading/inline-loading.svelte`                                                                                                                                 | Icon sizing exception        | Existing status icons use `size={14}` in compact loading chrome; retain as documented component-specific sizing.                                                                                                                               |
 | `card/card.svelte`                                                                                                                                                     | Icon sizing exception        | Existing alert icon uses `size={18}` in card chrome; retain as documented component-specific sizing.                                                                                                                                           |
+| `approval-card/approval-card.svelte`                                                                                                                                   | Icon sizing exception        | Existing risk signal uses `size={16}` as documented card chrome; retain as documented component-specific sizing.                                                                                                                               |
 | `speed-dial*/**.fixture.svelte`                                                                                                                                        | Fixture-only plus marker     | Demo content, not published component UI; no action required.                                                                                                                                                                                  |
 | `speed-dial/speed-dial.examples.json`                                                                                                                                  | Published example trigger    | The exported example is instructional consumer code rather than component chrome; scope the policy to shipped component markup, and track replacing its `+` trigger with `Plus` in [#1017](https://github.com/stevekinney/cinder/issues/1017). |
 
@@ -73,7 +76,7 @@ document and search both templates and generated CSS declarations for the glyphs
 listed in the audit procedure. For example:
 
 ```sh
-rg -n -e '[×−‹›▾▸↑↓]' -e '&times;|&#8593;|&#8595;' packages/components/src/components
+rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#x8595;' packages/components/src/components
 rg -n -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n "content:\\s*['\"]" packages/components/src/components --glob '*.css'
 ```
