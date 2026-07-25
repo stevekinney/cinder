@@ -159,8 +159,8 @@ describe('Calendar', () => {
         container.querySelectorAll<HTMLButtonElement>('.cinder-calendar__day[data-outside]'),
       ).find((button) => button.textContent?.trim() === overflowDay);
 
-      expect(navigation).toBeDisabled();
-      expect(overflow).toHaveAttribute('aria-disabled', 'true');
+      expect(navigation?.disabled).toBe(true);
+      expect(overflow?.getAttribute('aria-disabled')).toBe('true');
 
       await fireEvent.click(overflow!);
       expect(selected).toBeUndefined();

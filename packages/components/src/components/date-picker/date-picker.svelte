@@ -133,9 +133,10 @@
   });
 
   $effect(() => {
+    if (!inputElement) return;
     const element = inputElement;
-    const form = element?.form;
-    if (!element || !form) return;
+    const form = element.form;
+    if (!form) return;
 
     function handleFormReset(): void {
       queueMicrotask(() => {
