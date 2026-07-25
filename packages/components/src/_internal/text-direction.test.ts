@@ -98,6 +98,43 @@ describe('resolveTextDirection', () => {
     expect(resolveTextDirection(element, 'rtl')).toBe('ltr');
   });
 
+  test('can ignore a generated element direction while preserving its inline style', () => {
+    const wrapper = document.createElement('div');
+    wrapper.dir = 'rtl';
+    const element = document.createElement('div');
+    element.dir = 'rtl';
+    element.style.direction = 'ltr';
+    wrapper.append(element);
+    document.body.append(wrapper);
+
+    expect(
+      resolveTextDirection(element, 'rtl', {
+        ignoreElementDirectionAttribute: true,
+      }),
+    ).toBe('ltr');
+  });
+
+  test('can ignore a generated element direction while preserving its class style', () => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = '.local-ltr { direction: ltr; }';
+    document.head.append(styleElement);
+    const wrapper = document.createElement('div');
+    wrapper.dir = 'rtl';
+    const element = document.createElement('div');
+    element.dir = 'rtl';
+    element.className = 'local-ltr';
+    wrapper.append(element);
+    document.body.append(wrapper);
+
+    expect(
+      resolveTextDirection(element, 'rtl', {
+        ignoreElementDirectionAttribute: true,
+      }),
+    ).toBe('ltr');
+
+    styleElement.remove();
+  });
+
   test('prefers provider fallback over document root direction', () => {
     document.documentElement.dir = 'ltr';
     const element = document.createElement('div');

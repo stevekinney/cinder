@@ -61,8 +61,11 @@
   );
   const resolvedDirection = $derived.by(() => {
     directionRevision;
-    return providedDirection === 'rtl' || providedDirection === 'ltr'
-      ? providedDirection
+    if (providedDirection === 'rtl' || providedDirection === 'ltr') return providedDirection;
+    return navElement
+      ? resolveTextDirection(navElement, localeContext?.direction, {
+          ignoreElementDirectionAttribute: true,
+        })
       : resolveTextDirection(directionElement, localeContext?.direction);
   });
   const renderedDirection = $derived.by(() => {
@@ -78,7 +81,7 @@
 
   $effect(() => {
     if (providedDirection === 'rtl' || providedDirection === 'ltr') return;
-    return observeTextDirection(directionElement, () => {
+    return observeTextDirection(navElement, () => {
       directionRevision += 1;
     });
   });
