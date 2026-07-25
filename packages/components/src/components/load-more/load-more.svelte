@@ -38,6 +38,7 @@
   let errorState = $state(false);
   let sentinelRequestCount = $state(0);
   let sentinelArmed = $state(true);
+  let sentinelIntersecting = $state(false);
   // Tracks the last `hasMore` value the component reconciled against so a
   // parent-driven false -> true flip (new page of data arrived) can clear the
   // sentinel request cap and error latch exactly once per transition.
@@ -69,6 +70,7 @@
     if (!previousHasMore && hasMore) {
       sentinelRequestCount = 0;
       sentinelArmed = true;
+      sentinelIntersecting = false;
       errorState = false;
     }
     previousHasMore = hasMore;
@@ -85,7 +87,7 @@
 
     if (source === 'sentinel') {
       sentinelRequestCount += 1;
-    } else {
+    } else if (sentinelIntersecting) {
       // A manual request is itself the explicit load trigger. Do not let an
       // already-visible sentinel immediately follow it with another request.
       sentinelArmed = false;
@@ -110,6 +112,8 @@
   }
 
   function handleIntersect(entry: IntersectionObserverEntry): void {
+    sentinelIntersecting = entry.isIntersecting;
+
     if (!entry.isIntersecting) {
       sentinelArmed = true;
       return;

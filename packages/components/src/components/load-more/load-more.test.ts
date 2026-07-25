@@ -131,6 +131,58 @@ describe('LoadMore', () => {
     expect(calls).toBe(1);
   });
 
+  test('manual loading while the sentinel is off-screen preserves its next entry trigger', async () => {
+    let calls = 0;
+    const rendered = render(LoadMore, {
+      props: {
+        onLoadMore: async () => {
+          calls += 1;
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+
+    record?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
+    expect(calls).toBe(1);
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(2));
+  });
+
+  test('manual loading while the sentinel is visible consumes its current entry trigger', async () => {
+    let calls = 0;
+    const rendered = render(LoadMore, {
+      props: {
+        loading: true,
+        onLoadMore: async () => {
+          calls += 1;
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    expect(calls).toBe(0);
+
+    await rendered.rerender({
+      loading: false,
+      onLoadMore: async () => {
+        calls += 1;
+      },
+    });
+    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
+    expect(calls).toBe(1);
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await Promise.resolve();
+    expect(calls).toBe(1);
+  });
+
   test('an intersecting sentinel entry calls onLoadMore', async () => {
     let calls = 0;
     const { container } = render(LoadMore, {
@@ -155,7 +207,7 @@ describe('LoadMore', () => {
     let calls = 0;
     const { container } = render(LoadMore, {
       props: {
-        onloadmore: async () => {
+        onLoadMore: async () => {
           calls += 1;
         },
       },
@@ -181,7 +233,7 @@ describe('LoadMore', () => {
     let calls = 0;
     const { container } = render(LoadMore, {
       props: {
-        onloadmore: async () => {
+        onLoadMore: async () => {
           calls += 1;
         },
       },
