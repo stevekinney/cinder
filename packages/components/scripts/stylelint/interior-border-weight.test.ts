@@ -58,6 +58,16 @@ describe(ruleName, () => {
     ).toEqual([]);
   });
 
+  test('rejects a muted full border around a raised surface', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.cinder-card { background: var(--cinder-surface-raised); border: 1px solid var(--cinder-border-muted); }',
+        ),
+      ),
+    ).toHaveLength(1);
+  });
+
   test('matches interior BEM elements at a name boundary', async () => {
     expect(
       warnings(

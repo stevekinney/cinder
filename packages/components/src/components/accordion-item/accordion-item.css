@@ -65,20 +65,12 @@
   /* Sticky-hover suppression on touch. */
   @media (hover: hover) {
     .cinder-accordion-item__trigger:hover:not(:disabled) {
-      background: color-mix(
-        in oklch,
-        var(--cinder-surface-raised),
-        light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%
-      );
+      background: var(--cinder-surface-raised-hover);
     }
   }
 
   .cinder-accordion-item__trigger:active:not(:disabled) {
-    background: color-mix(
-      in oklch,
-      var(--cinder-surface-raised),
-      light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
-    );
+    background: var(--cinder-surface-raised-pressed);
   }
 
   .cinder-accordion-item__trigger:focus-visible {

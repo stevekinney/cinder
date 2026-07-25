@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -126,6 +127,18 @@ describe('FloatingAction — data attributes', () => {
       ).toBe(variant);
       unmount();
     }
+  });
+});
+
+describe('FloatingAction — secondary surface states', () => {
+  test('derives hover and pressed feedback from the raised resting fill', () => {
+    const source = readFileSync(new URL('./floating-action.css', import.meta.url), 'utf8');
+    expect(source).toMatch(
+      /data-cinder-variant='secondary'\]:hover[\s\S]*?background:\s*var\(--cinder-surface-raised-hover\)/,
+    );
+    expect(source).toMatch(
+      /data-cinder-variant='secondary'\]:active[\s\S]*?background:\s*var\(--cinder-surface-raised-pressed\)/,
+    );
   });
 });
 

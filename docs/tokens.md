@@ -135,18 +135,20 @@ Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinde
 
 Background and surface tokens for the three core elevations — page background, default surface, and raised surface — plus an inset variant for sunken regions and `hover`/`pressed` derivatives that lift or darken via `color-mix`. The light and dark ramps intentionally leave enough lightness separation for panels and their children to communicate hierarchy without relying on decorative hairlines.
 
-| Token                              | Default                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `--cinder-bg`                      | `light-dark(oklch(95% 0.01 245), oklch(15% 0.035 245))`                                     |
-| `--cinder-surface`                 | `light-dark(oklch(98% 0.008 245), oklch(21% 0.04 245))`                                     |
-| `--cinder-surface-raised`          | `light-dark(oklch(100% 0.006 245), oklch(28% 0.045 245))`                                   |
-| `--cinder-surface-inset`           | `light-dark(oklch(94% 0.01 245), oklch(11% 0.03 245))`                                      |
-| `--cinder-surface-hover`           | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
-| `--cinder-surface-pressed`         | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
-| `--cinder-surface-upcoming-marker` | `light-dark(var(--cinder-surface-inset), var(--cinder-surface))`                            |
-| `--cinder-surface-inverse`         | `light-dark(var(--cinder-text), var(--cinder-surface-raised))`                              |
-| `--cinder-text-inverse`            | `light-dark(var(--cinder-surface), var(--cinder-text))`                                     |
-| `--cinder-border-inverse`          | `light-dark(transparent, var(--cinder-border-strong))`                                      |
+| Token                              | Default                                                                                            |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `--cinder-bg`                      | `light-dark(oklch(95% 0.01 245), oklch(15% 0.035 245))`                                            |
+| `--cinder-surface`                 | `light-dark(oklch(98% 0.008 245), oklch(21% 0.04 245))`                                            |
+| `--cinder-surface-raised`          | `light-dark(oklch(100% 0.006 245), oklch(28% 0.045 245))`                                          |
+| `--cinder-surface-inset`           | `light-dark(oklch(94% 0.01 245), oklch(11% 0.03 245))`                                             |
+| `--cinder-surface-hover`           | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)`        |
+| `--cinder-surface-pressed`         | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)`        |
+| `--cinder-surface-raised-hover`    | `color-mix(in oklch, var(--cinder-surface-raised), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
+| `--cinder-surface-raised-pressed`  | `color-mix(in oklch, var(--cinder-surface-raised), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
+| `--cinder-surface-upcoming-marker` | `light-dark(var(--cinder-surface-inset), var(--cinder-surface))`                                   |
+| `--cinder-surface-inverse`         | `light-dark(var(--cinder-text), var(--cinder-surface-raised))`                                     |
+| `--cinder-text-inverse`            | `light-dark(var(--cinder-surface), var(--cinder-text))`                                            |
+| `--cinder-border-inverse`          | `light-dark(transparent, var(--cinder-border-strong))`                                             |
 
 `--cinder-surface-upcoming-marker` is the background for Steps component upcoming-state markers. In light mode it resolves to `--cinder-surface-inset` (visibly recessed); in dark mode it lifts to `--cinder-surface` so the marker is visible against the dark stage. `--cinder-surface-inverse`, `--cinder-text-inverse`, and `--cinder-border-inverse` form the dark-overlay triple used by Tooltip — both arms render a dark overlay with legible light text (no theme inversion occurs in dark mode).
 

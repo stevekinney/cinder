@@ -5,6 +5,8 @@ const ruleName = 'cinder/interior-border-weight';
 const messages = stylelint.utils.ruleMessages(ruleName, {
   border: () =>
     'Interior dividers must use `--cinder-border-muted`; reserve `--cinder-border` for a component outer edge.',
+  raisedOuterBorder: () =>
+    'Raised surfaces with a full outer border must use `--cinder-border`, not the muted interior-divider token.',
 });
 
 function isCinderComponentSource(root) {
@@ -29,6 +31,24 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
   if (!isCinderComponentSource(root)) return;
   root.walkRules((rule) => {
     rule.walkDecls((decl) => {
+      if (
+        decl.prop === 'border' &&
+        decl.value.includes('var(--cinder-border-muted)') &&
+        rule.nodes.some(
+          (candidate) =>
+            candidate.type === 'decl' &&
+            (candidate.prop === 'background' || candidate.prop === 'background-color') &&
+            candidate.value.includes('var(--cinder-surface-raised)'),
+        )
+      ) {
+        stylelint.utils.report({
+          ruleName,
+          result,
+          node: decl,
+          message: messages.raisedOuterBorder(),
+        });
+        return;
+      }
       if (!/^border(?:-(?:block|inline)-(?:start|end)|-(?:top|bottom))?$/.test(decl.prop)) return;
       if (!isInteriorDivider(rule.selector, decl.prop)) return;
       if (decl.value.includes('var(--cinder-border)')) {
