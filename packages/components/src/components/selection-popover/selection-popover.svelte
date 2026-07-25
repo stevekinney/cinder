@@ -129,7 +129,7 @@
 
     const visualViewport = window.visualViewport;
     return (
-      visualViewport !== null &&
+      visualViewport != null &&
       visualViewport.scale === 1 &&
       visualViewport.height < window.innerHeight
     );
@@ -196,6 +196,16 @@
     let viewportWidth = window.innerWidth;
     let viewportHeight = window.innerHeight;
     const visualViewport = window.visualViewport;
+    const virtualKeyboardWasVisible = {
+      window: isVirtualKeyboardResize('window'),
+      'visual-viewport': isVirtualKeyboardResize('visual-viewport'),
+    };
+    const isVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
+      const isVisible = isVirtualKeyboardResize(source);
+      const isTransition = isVisible || virtualKeyboardWasVisible[source];
+      virtualKeyboardWasVisible[source] = isVisible;
+      return isTransition;
+    };
     const closeForMovement = () => {
       onClose?.();
       restoreFocus(true);
@@ -210,10 +220,11 @@
         const composerHasFocus =
           document.activeElement instanceof Node &&
           popoverElement?.contains(document.activeElement);
+        const virtualKeyboardTransition = isVirtualKeyboardTransition('window');
         if (
           !viewportWidthChanged &&
           composerHasFocus &&
-          (!viewportHeightChanged || isVirtualKeyboardResize('window'))
+          (!viewportHeightChanged || virtualKeyboardTransition)
         ) {
           return;
         }
@@ -226,7 +237,7 @@
       if (
         event.type === 'resize' &&
         composerHasFocus &&
-        isVirtualKeyboardResize('visual-viewport')
+        isVirtualKeyboardTransition('visual-viewport')
       ) {
         return;
       }
