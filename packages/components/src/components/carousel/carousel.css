@@ -7,13 +7,26 @@
 
   .cinder-carousel__viewport {
     position: relative;
-    overflow: hidden;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
   }
 
+  .cinder-carousel__viewport::-webkit-scrollbar {
+    display: none;
+  }
+
   .cinder-carousel__slide {
+    flex: 0 0 100%;
+    min-inline-size: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
     display: grid;
     gap: var(--cinder-space-3);
     padding: var(--cinder-space-4);
@@ -82,14 +95,31 @@
   }
 
   .cinder-carousel__dot {
-    width: 0.625rem;
-    height: 0.625rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
   }
 
-  .cinder-carousel__dot[aria-current='true'] {
+  .cinder-carousel__dot::before {
+    content: '';
+    display: block;
+    width: 0.625rem;
+    height: 0.625rem;
+    margin: auto;
+    border-radius: var(--cinder-radius-full);
+    background: currentColor;
+    opacity: 0.55;
+  }
+
+  .cinder-carousel__dot[aria-current='true']::before {
     background: var(--cinder-accent);
-    border-color: var(--cinder-accent);
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-carousel__viewport {
+      scroll-behavior: auto;
+    }
   }
 
   @media (hover: hover) {

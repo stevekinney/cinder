@@ -47,6 +47,7 @@
   let isHovered = $state(false);
   let hasFocusWithin = $state(false);
   let userPaused = $state(false);
+  let viewportElement = $state<HTMLElement | null>(null);
 
   const clampedLength = $derived(slides.length);
   const currentIndex = $derived.by(() => {
@@ -89,6 +90,7 @@
   function goTo(index: number) {
     if (clampedLength < 1) return;
     activeIndex = ((index % clampedLength) + clampedLength) % clampedLength;
+    scrollToActiveSlide();
   }
 
   function goPrevious() {
@@ -129,6 +131,31 @@
     }
     hasFocusWithin = false;
   }
+
+  function scrollToActiveSlide(): void {
+    const slide = viewportElement?.children[currentIndex];
+    if (!(slide instanceof HTMLElement)) return;
+    slide.scrollIntoView({
+      behavior: reducedMotion.current ? 'auto' : 'smooth',
+      block: 'nearest',
+      inline: 'start',
+    });
+  }
+
+  function onViewportScroll(): void {
+    if (clampedLength < 2 || viewportElement === null) return;
+    const slideWidth = viewportElement.clientWidth;
+    if (slideWidth < 1) return;
+    const nextIndex = Math.round(viewportElement.scrollLeft / slideWidth);
+    if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
+      activeIndex = nextIndex;
+    }
+  }
+
+  $effect(() => {
+    if (viewportElement === null || clampedLength < 1) return;
+    scrollToActiveSlide();
+  });
 </script>
 
 <section
@@ -156,36 +183,24 @@
     {liveAnnouncement}
   </p>
 
-  <div class="cinder-carousel__viewport">
+  <div
+    class="cinder-carousel__viewport"
+    bind:this={viewportElement}
+    onscroll={onViewportScroll}
+    aria-label="Carousel slides"
+  >
     {#if slides.length > 0}
       {#each slides as slide, index (slide.id)}
-        {#if index === currentIndex}
-          <article
-            class="cinder-carousel__slide"
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
-          >
-            {#if slide.href}
-              <a class="cinder-carousel__link" href={slide.href}>
-                {#if slide.imageSrc}
-                  <img
-                    class="cinder-carousel__image"
-                    src={slide.imageSrc}
-                    alt={slide.imageAlt ?? slide.title ?? slide.label}
-                  />
-                {/if}
-                {#if slide.title}
-                  <h3 class="cinder-carousel__title">{slide.title}</h3>
-                {/if}
-                {#if slide.description}
-                  <p class="cinder-carousel__description">{slide.description}</p>
-                {/if}
-                {#if !slide.imageSrc && !slide.title && !slide.description}
-                  <p class="cinder-carousel__description">{slide.label}</p>
-                {/if}
-              </a>
-            {:else}
+        <article
+          class="cinder-carousel__slide"
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
+          aria-hidden={index === currentIndex ? undefined : 'true'}
+          inert={index !== currentIndex}
+        >
+          {#if slide.href}
+            <a class="cinder-carousel__link" href={slide.href}>
               {#if slide.imageSrc}
                 <img
                   class="cinder-carousel__image"
@@ -202,15 +217,32 @@
               {#if !slide.imageSrc && !slide.title && !slide.description}
                 <p class="cinder-carousel__description">{slide.label}</p>
               {/if}
+            </a>
+          {:else}
+            {#if slide.imageSrc}
+              <img
+                class="cinder-carousel__image"
+                src={slide.imageSrc}
+                alt={slide.imageAlt ?? slide.title ?? slide.label}
+              />
             {/if}
-          </article>
-        {/if}
+            {#if slide.title}
+              <h3 class="cinder-carousel__title">{slide.title}</h3>
+            {/if}
+            {#if slide.description}
+              <p class="cinder-carousel__description">{slide.description}</p>
+            {/if}
+            {#if !slide.imageSrc && !slide.title && !slide.description}
+              <p class="cinder-carousel__description">{slide.label}</p>
+            {/if}
+          {/if}
+        </article>
       {/each}
     {/if}
   </div>
 
-  <div class="cinder-carousel__controls">
-    <div class="cinder-carousel__nav">
+  <div class="cinder-carousel__controls" role="group" aria-label="Carousel controls">
+    <div class="cinder-carousel__nav" role="group" aria-label="Slide navigation">
       <button
         type="button"
         class="cinder-carousel__control"
