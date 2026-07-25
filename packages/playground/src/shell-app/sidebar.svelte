@@ -78,17 +78,6 @@
     }
   }
 
-  // Case-insensitive substring match against both the humanized label and the
-  // raw kebab name, so "side nav" and "side-nav" both find side-navigation.
-  const visibleComponents = $derived.by(() => {
-    const needle = filter.trim().toLowerCase();
-    if (needle === '') return components;
-    return components.filter((name) => {
-      if (name.toLowerCase().includes(needle)) return true;
-      return humanizeComponentName(name).toLowerCase().includes(needle);
-    });
-  });
-
   function matchesCurrentFilter(name: string): boolean {
     const needle = filter.trim().toLowerCase();
     return (
