@@ -58,24 +58,6 @@
 
   .cinder-testimonial-section__person {
     margin-top: var(--cinder-space-4);
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-3);
-  }
-
-  .cinder-testimonial-section__person-meta {
-    display: grid;
-    gap: var(--cinder-space-1);
-  }
-
-  .cinder-testimonial-section__name,
-  .cinder-testimonial-section__role {
-    margin: 0;
-    font-size: var(--cinder-text-sm);
-  }
-
-  .cinder-testimonial-section__role {
-    color: var(--cinder-text-muted);
   }
 
   @container cinder-testimonial-section (max-width: 56rem) {

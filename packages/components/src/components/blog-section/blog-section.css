@@ -52,15 +52,12 @@
   }
 
   .cinder-blog-section__meta,
-  .cinder-blog-section__excerpt,
-  .cinder-blog-section__author-name,
-  .cinder-blog-section__author-role {
+  .cinder-blog-section__excerpt {
     margin: 0;
   }
 
   .cinder-blog-section__meta,
-  .cinder-blog-section__excerpt,
-  .cinder-blog-section__author-role {
+  .cinder-blog-section__excerpt {
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
   }
@@ -81,14 +78,6 @@
 
   .cinder-blog-section__author {
     margin-top: var(--cinder-space-4);
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-3);
-  }
-
-  .cinder-blog-section__author-meta {
-    display: grid;
-    gap: var(--cinder-space-1);
   }
 
   @container cinder-blog-section (max-width: 56rem) {

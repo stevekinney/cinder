@@ -47,7 +47,7 @@ describe('TestimonialSection', () => {
     expect(container.querySelector('.cinder-testimonial-section__quote')?.textContent).toContain(
       'Cinder cut our implementation time in half.',
     );
-    expect(container.querySelector('.cinder-testimonial-section__name')?.textContent).toContain(
+    expect(container.querySelector('.cinder-person-byline__name')?.textContent).toContain(
       'Alex Rivera',
     );
   });

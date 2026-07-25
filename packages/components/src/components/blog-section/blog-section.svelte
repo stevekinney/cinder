@@ -17,7 +17,7 @@
 </script>
 
 <script lang="ts">
-  import Avatar from '../avatar/avatar.svelte';
+  import PersonByline from '../_internal/person-byline.svelte';
   import Container from '../container/container.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -33,10 +33,6 @@
     class: className,
     ...rest
   }: BlogSectionProps = $props();
-
-  function avatarProps(name: string, src: string | undefined): { name: string; src?: string } {
-    return src ? { name, src } : { name };
-  }
 
   function postMetadata(category: string | undefined, publishedAt: string | undefined): string {
     return [category, publishedAt].filter(Boolean).join(' · ');
@@ -89,13 +85,11 @@
                 </h3>
                 <p class="cinder-blog-section__excerpt">{post.excerpt}</p>
                 <div class="cinder-blog-section__author">
-                  <Avatar {...avatarProps(post.authorName, post.authorAvatarSrc)} size="sm" />
-                  <div class="cinder-blog-section__author-meta">
-                    <p class="cinder-blog-section__author-name">{post.authorName}</p>
-                    {#if post.authorRole}
-                      <p class="cinder-blog-section__author-role">{post.authorRole}</p>
-                    {/if}
-                  </div>
+                  <PersonByline
+                    name={post.authorName}
+                    role={post.authorRole}
+                    avatarSrc={post.authorAvatarSrc}
+                  />
                 </div>
               </div>
             </article>

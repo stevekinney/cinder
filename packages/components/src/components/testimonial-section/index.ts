@@ -1,3 +1,4 @@
+import '../_internal/person-byline.css';
 import './testimonial-section.css';
 import TestimonialSection from './testimonial-section.svelte';
 

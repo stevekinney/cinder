@@ -48,24 +48,10 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .cinder-team-section__person {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-3);
-  }
-
-  .cinder-team-section__meta {
-    display: grid;
-    gap: var(--cinder-space-1);
-  }
-
-  .cinder-team-section__name,
-  .cinder-team-section__role,
   .cinder-team-section__bio {
     margin: 0;
   }
 
-  .cinder-team-section__role,
   .cinder-team-section__bio {
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);

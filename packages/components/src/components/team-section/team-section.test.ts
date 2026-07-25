@@ -34,10 +34,10 @@ describe('TeamSection', () => {
     const element = container.querySelector('.cinder-team-section');
     expect(element).not.toBeNull();
     expect(container.querySelectorAll('.cinder-team-section__item')).toHaveLength(2);
-    expect(container.querySelector('.cinder-team-section__name')?.textContent).toContain(
+    expect(container.querySelector('.cinder-person-byline__name')?.textContent).toContain(
       'Jordan Lee',
     );
-    expect(container.querySelector('.cinder-team-section__role')?.textContent).toContain(
+    expect(container.querySelector('.cinder-person-byline__role')?.textContent).toContain(
       'Engineering Lead',
     );
   });

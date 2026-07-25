@@ -1,0 +1,26 @@
+.cinder-person-byline {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3);
+}
+
+.cinder-person-byline__meta {
+  display: grid;
+  gap: var(--cinder-space-1);
+}
+
+.cinder-person-byline__name,
+.cinder-person-byline__role {
+  margin: 0;
+  line-height: var(--cinder-leading-snug);
+}
+
+.cinder-person-byline__name {
+  font-size: var(--cinder-text-sm);
+  font-weight: var(--cinder-font-semibold);
+}
+
+.cinder-person-byline__role {
+  color: var(--cinder-text-muted);
+  font-size: var(--cinder-text-sm);
+}
