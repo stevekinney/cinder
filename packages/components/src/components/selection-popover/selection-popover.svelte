@@ -178,6 +178,7 @@
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
       if (
+        event.type === 'resize' &&
         document.activeElement instanceof Node &&
         popoverElement?.contains(document.activeElement)
       ) {
