@@ -254,6 +254,10 @@
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
   let isStabilizingNonVirtualHistoryAnchor = $state(false);
   let nonVirtualHistoryStabilizationGeneration = 0;
+  let isHistoryRestorationUserScrolling = false;
+  let deferredHistoryTriggerFocus = $state<
+    { conversationId: string; pending: PendingHistoryScroll } | undefined
+  >();
   let pendingHistoryAnchorRecaptureRaf: number | undefined;
   let deferredAdapterHasMoreHistory: boolean | null = null;
   let historyAnchorMessageId = $state<string | null>(null);
@@ -520,6 +524,18 @@
     previousHistoryAdapter = currentAdapter;
   });
 
+  $effect(() => {
+    const deferredFocus = deferredHistoryTriggerFocus;
+    if (deferredFocus === undefined || isLoadingHistory) return;
+
+    deferredHistoryTriggerFocus = undefined;
+    void tick().then(() => {
+      if (conversationId === deferredFocus.conversationId) {
+        focusAfterHistoryRestore(deferredFocus.pending, true);
+      }
+    });
+  });
+
   // A retry/edit affordance shows when EITHER a callback OR the adapter can
   // handle it — so an adapter-only consumer (no `onretry`/`onedit`) still gets
   // working buttons, and a callback-only consumer is unchanged.
@@ -713,9 +729,13 @@
         historyAnnouncement = '';
       }
     }, 1000);
-    void tick().then(() => {
-      focusAfterHistoryRestore(pending, pending.focusHistoryTriggerAfterRestore);
-    });
+    if (pending.focusHistoryTriggerAfterRestore) {
+      deferredHistoryTriggerFocus = { conversationId, pending };
+    } else {
+      void tick().then(() => {
+        focusAfterHistoryRestore(pending, false);
+      });
+    }
     return true;
   }
 
@@ -739,6 +759,8 @@
   }
 
   async function stabilizeNonVirtualHistoryAnchor(pending: PendingHistoryScroll): Promise<void> {
+    if (isHistoryRestorationUserScrolling) return;
+
     const generation = ++nonVirtualHistoryStabilizationGeneration;
     const stabilizationConversationId = conversationId;
     isStabilizingNonVirtualHistoryAnchor = true;
@@ -771,6 +793,7 @@
   function cancelNonVirtualHistoryAnchorStabilization(): void {
     nonVirtualHistoryStabilizationGeneration += 1;
     isStabilizingNonVirtualHistoryAnchor = false;
+    deferredHistoryTriggerFocus = undefined;
   }
 
   function cancelPendingHistoryAnchorRecapture(): void {
@@ -802,6 +825,14 @@
   }
 
   function handleHistoryRestorationUserInput(): void {
+    if (
+      pendingHistoryScroll === null &&
+      !isStabilizingNonVirtualHistoryAnchor &&
+      deferredHistoryTriggerFocus === undefined
+    ) {
+      return;
+    }
+    isHistoryRestorationUserScrolling = true;
     cancelNonVirtualHistoryAnchorStabilization();
     if (pendingHistoryScroll !== null) {
       pendingHistoryScroll.focusHistoryTriggerAfterRestore = false;
@@ -989,9 +1020,16 @@
   const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
     const handleScroll = () => {
       clearHistoryAnchorAfterScroll(node.scrollTop);
+      if (isHistoryRestorationUserScrolling && pendingHistoryScroll === null) {
+        cancelNonVirtualHistoryAnchorStabilization();
+      }
       schedulePendingHistoryAnchorRecapture();
     };
     const handleScrollEnd = () => {
+      if (isHistoryRestorationUserScrolling && pendingHistoryScroll === null) {
+        cancelNonVirtualHistoryAnchorStabilization();
+      }
+      isHistoryRestorationUserScrolling = false;
       cancelPendingHistoryAnchorRecapture();
       recapturePendingHistoryAnchor(pendingHistoryScroll);
     };

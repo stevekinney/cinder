@@ -489,6 +489,80 @@ test.describe('chat harness — scroll, unread, jump', () => {
     }
   });
 
+  test('a delayed history load restores focus after its trigger is enabled', async ({
+    browser,
+  }) => {
+    const { harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await harness.locator('[data-testid="scroll-top"]').click();
+      const trigger = timeline.getByRole('button', { name: /load earlier messages/i });
+      await trigger.click();
+      const resolveHistory = harness.locator('[data-testid="resolve-history"]');
+      await expect(resolveHistory).toBeEnabled();
+      await resolveHistory.dispatchEvent('click');
+
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect(trigger).toBeEnabled();
+      await expect(trigger).toBeFocused();
+    } finally {
+      await dispose();
+    }
+  });
+
+  test('continued user scrolling wins over non-virtualized history stabilization', async ({
+    browser,
+  }) => {
+    const { harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      await expect(harness.locator('[data-testid="resolve-history"]')).toBeEnabled();
+      await timeline.dispatchEvent('pointerdown');
+      await timeline.evaluate((element) => {
+        document.querySelector<HTMLButtonElement>('[data-testid="resolve-history"]')?.click();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            element.scrollTop = element.scrollHeight;
+            element.dispatchEvent(new Event('scroll'));
+          });
+        });
+      });
+
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await timeline.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            let frames = 0;
+            const wait = () => {
+              frames += 1;
+              if (frames >= 8) resolve();
+              else requestAnimationFrame(wait);
+            };
+            requestAnimationFrame(wait);
+          }),
+      );
+      await expect
+        .poll(async () =>
+          timeline.evaluate((element) =>
+            Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop),
+          ),
+        )
+        .toBeLessThan(2);
+    } finally {
+      await dispose();
+    }
+  });
+
   test('jumping to latest invalidates a pending non-virtualized history anchor', async ({
     browser,
   }) => {
