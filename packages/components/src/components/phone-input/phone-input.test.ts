@@ -421,6 +421,33 @@ describe('PhoneInput allow-list expansion', () => {
 });
 
 describe('PhoneInput form reset', () => {
+  test('restores the initial national formatting on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        country: 'US',
+        value: '4155550132',
+      },
+    });
+    const input = nationalInput(rendered.container);
+
+    await waitFor(() => expect(input.value).toBe('(415) 555-0132'));
+    await fireEvent.input(input, { target: { value: '2025550123' } });
+    expect(input.value).toBe('(202) 555-0123');
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(countrySelect(rendered.container).value).toBe('US');
+    expect(input.value).toBe('(415) 555-0132');
+    rendered.unmount();
+    form.remove();
+  });
+
   test('does not reset when the reset event is canceled', async () => {
     const form = document.createElement('form');
     document.body.append(form);

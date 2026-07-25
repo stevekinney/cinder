@@ -369,7 +369,11 @@
         knownCountry = resetCountry;
         value = initialValue;
         knownValue = initialValue;
-        nationalDisplay = initialParsedCountryAllowed ? initialParsed.formatted : initialValue;
+        nationalDisplay = initialParsedCountryAllowed
+          ? initialParsed.formatted
+          : initialParsed
+            ? initialValue
+            : formatNationalAsYouType(resetCountry, digitsOnly(initialValue));
       }),
     );
   }
