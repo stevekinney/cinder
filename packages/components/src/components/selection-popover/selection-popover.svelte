@@ -117,7 +117,7 @@
     void tick().then(() => textareaElement?.focus({ preventScroll: true }));
   }
 
-  function isVirtualKeyboardResize(): boolean {
+  function isVirtualKeyboardResize(source: 'window' | 'visual-viewport'): boolean {
     const virtualKeyboard = (
       navigator as Navigator & {
         virtualKeyboard?: { boundingRect?: { height: number } };
@@ -125,8 +125,14 @@
     ).virtualKeyboard;
     if ((virtualKeyboard?.boundingRect?.height ?? 0) > 0) return true;
 
-    if (window.visualViewport && window.visualViewport.height < window.innerHeight) return true;
-    return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    if (source === 'window') return false;
+
+    const visualViewport = window.visualViewport;
+    return (
+      visualViewport !== null &&
+      visualViewport.scale === 1 &&
+      visualViewport.height < window.innerHeight
+    );
   }
 
   function handleCancel(): void {
@@ -189,6 +195,11 @@
     if (!isPositionedOpen) return;
     let viewportWidth = window.innerWidth;
     let viewportHeight = window.innerHeight;
+    const visualViewport = window.visualViewport;
+    const closeForMovement = () => {
+      onClose?.();
+      restoreFocus(true);
+    };
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
       if (event.type === 'resize') {
@@ -202,19 +213,34 @@
         if (
           !viewportWidthChanged &&
           composerHasFocus &&
-          (!viewportHeightChanged || isVirtualKeyboardResize())
+          (!viewportHeightChanged || isVirtualKeyboardResize('window'))
         ) {
           return;
         }
       }
-      onClose?.();
-      restoreFocus(true);
+      closeForMovement();
+    };
+    const dismissVisualViewport = (event: Event) => {
+      const composerHasFocus =
+        document.activeElement instanceof Node && popoverElement?.contains(document.activeElement);
+      if (
+        event.type === 'resize' &&
+        composerHasFocus &&
+        isVirtualKeyboardResize('visual-viewport')
+      ) {
+        return;
+      }
+      closeForMovement();
     };
     window.addEventListener('scroll', dismiss, true);
     window.addEventListener('resize', dismiss);
+    visualViewport?.addEventListener('scroll', dismissVisualViewport);
+    visualViewport?.addEventListener('resize', dismissVisualViewport);
     return () => {
       window.removeEventListener('scroll', dismiss, true);
       window.removeEventListener('resize', dismiss);
+      visualViewport?.removeEventListener('scroll', dismissVisualViewport);
+      visualViewport?.removeEventListener('resize', dismissVisualViewport);
     };
   });
 
