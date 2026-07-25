@@ -60,7 +60,11 @@
 </script>
 
 {#if granted}
-  <span {...passthroughAttributes} class="cinder-access-gate__passthrough">
+  <span
+    {...passthroughAttributes}
+    class="cinder-access-gate__passthrough"
+    data-cinder-variant={variant}
+  >
     {@render children?.()}
   </span>
 {:else if variant === 'section'}
