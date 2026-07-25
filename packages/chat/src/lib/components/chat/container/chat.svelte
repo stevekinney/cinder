@@ -255,8 +255,10 @@
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
   let isStabilizingNonVirtualHistoryAnchor = $state(false);
   let nonVirtualHistoryStabilizationGeneration = 0;
+  let deferredNonVirtualHistoryStabilization: PendingHistoryScroll | null = null;
   let isHistoryRestorationUserScrolling = false;
   let historyLoadRequestId = 0;
+  let historyRestorationExpectedScrollTop: number | null = null;
   let historyRestorationUserScrollObserved = false;
   let historyRestorationUserScrollResetRaf: number | undefined;
   let deferredHistoryTriggerFocus = $state<
@@ -535,11 +537,25 @@
 
     deferredHistoryTriggerFocus = undefined;
     void tick().then(() => {
-      if (conversationId === deferredFocus.conversationId) {
+      if (
+        conversationId === deferredFocus.conversationId &&
+        canRestoreDeferredHistoryTriggerFocus()
+      ) {
         focusAfterHistoryRestore(deferredFocus.pending, true);
       }
     });
   });
+
+  function canRestoreDeferredHistoryTriggerFocus(): boolean {
+    const activeElement = document.activeElement;
+    return (
+      activeElement === null ||
+      activeElement === document.body ||
+      activeElement === document.documentElement ||
+      (activeElement instanceof HTMLElement &&
+        activeElement.closest('[data-cinder-history-trigger]') !== null)
+    );
+  }
 
   // A retry/edit affordance shows when EITHER a callback OR the adapter can
   // handle it — so an adapter-only consumer (no `onretry`/`onedit`) still gets
@@ -719,6 +735,7 @@
         anchorCorrection === null
           ? pending.previousScrollTop + (viewport.scrollHeight - pending.previousScrollHeight)
           : viewport.scrollTop + anchorCorrection;
+      historyRestorationExpectedScrollTop = targetScrollTop;
       viewport.scrollTo({
         top: targetScrollTop,
         behavior: 'instant',
@@ -738,7 +755,9 @@
       deferredHistoryTriggerFocus = { conversationId, pending };
     } else {
       void tick().then(() => {
-        focusAfterHistoryRestore(pending, false);
+        if (canRestoreDeferredHistoryTriggerFocus()) {
+          focusAfterHistoryRestore(pending, false);
+        }
       });
     }
     return true;
@@ -764,6 +783,11 @@
   }
 
   async function stabilizeNonVirtualHistoryAnchor(pending: PendingHistoryScroll): Promise<void> {
+    if (isHistoryRestorationUserScrolling && !historyRestorationUserScrollObserved) {
+      deferredNonVirtualHistoryStabilization = pending;
+      return;
+    }
+    deferredNonVirtualHistoryStabilization = null;
     const userScrolled = historyRestorationUserScrollObserved;
     resetHistoryRestorationUserScrolling();
     if (userScrolled) return;
@@ -800,6 +824,7 @@
   function cancelNonVirtualHistoryAnchorStabilization(): void {
     nonVirtualHistoryStabilizationGeneration += 1;
     isStabilizingNonVirtualHistoryAnchor = false;
+    deferredNonVirtualHistoryStabilization = null;
     deferredHistoryTriggerFocus = undefined;
   }
 
@@ -851,6 +876,8 @@
 
   function resetHistoryRestorationUserScrolling(): void {
     cancelHistoryRestorationUserScrollReset();
+    deferredNonVirtualHistoryStabilization = null;
+    historyRestorationExpectedScrollTop = null;
     isHistoryRestorationUserScrolling = false;
     historyRestorationUserScrollObserved = false;
   }
@@ -871,6 +898,11 @@
         historyRestorationUserScrollResetRaf = requestAnimationFrame(() => {
           historyRestorationUserScrollResetRaf = undefined;
           isHistoryRestorationUserScrolling = false;
+          const pending = deferredNonVirtualHistoryStabilization;
+          deferredNonVirtualHistoryStabilization = null;
+          if (pending !== null) {
+            void stabilizeNonVirtualHistoryAnchor(pending);
+          }
         });
       });
     });
@@ -1058,8 +1090,15 @@
   const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
     const handleScroll = () => {
       clearHistoryAnchorAfterScroll(node.scrollTop);
-      if (isHistoryRestorationUserScrolling) {
+      const isExpectedRestorationScroll =
+        historyRestorationExpectedScrollTop !== null &&
+        Math.abs(node.scrollTop - historyRestorationExpectedScrollTop) < 1;
+      if (historyRestorationExpectedScrollTop !== null) {
+        historyRestorationExpectedScrollTop = null;
+      }
+      if (isHistoryRestorationUserScrolling && !isExpectedRestorationScroll) {
         historyRestorationUserScrollObserved = true;
+        deferredNonVirtualHistoryStabilization = null;
         cancelHistoryRestorationUserScrollReset();
       }
       if (isHistoryRestorationUserScrolling && pendingHistoryScroll === null) {

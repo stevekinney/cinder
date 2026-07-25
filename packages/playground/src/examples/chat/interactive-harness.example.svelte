@@ -56,7 +56,8 @@
   let virtualized = $state(false);
   let historyEnabled = $state(false);
   let delayedHistory = $state(false);
-  let resolveDelayedHistory = $state<(() => void) | undefined>();
+  let historyGeneration = 0;
+  let pendingHistoryRequest = $state<{ generation: number; resolve: () => void } | undefined>();
   let historyPage = 0;
 
   // --- Reply controls ---
@@ -344,6 +345,7 @@
   // --- Seed / clear ---
   function seedThread(): void {
     cancelPending('discard');
+    cancelPendingHistoryRequest();
     let next = createConversation({ id: 'harness-seeded' });
     // Repeated token "alpha" for deterministic search assertions, plus enough
     // messages to overflow the fixed-height viewport.
@@ -369,6 +371,7 @@
 
   function clearConversation(): void {
     cancelPending('discard');
+    cancelPendingHistoryRequest();
     conversation = createConversation({ id: 'harness-cleared' });
     delayedHistory = false;
     historyPage = 0;
@@ -390,18 +393,40 @@
     conversation = replaceMessageContent(conversation, event.messageId, event.content);
   }
 
-  async function handleLoadHistory(): Promise<void> {
-    if (delayedHistory) {
-      await new Promise<void>((resolve) => {
-        resolveDelayedHistory = resolve;
-      });
-      resolveDelayedHistory = undefined;
+  function cancelPendingHistoryRequest(): void {
+    historyGeneration += 1;
+    const pending = pendingHistoryRequest;
+    pendingHistoryRequest = undefined;
+    pending?.resolve();
+  }
+
+  $effect(() => {
+    if (!delayedHistory && pendingHistoryRequest !== undefined) {
+      cancelPendingHistoryRequest();
     }
+  });
+
+  async function handleLoadHistory(): Promise<void> {
+    const generation = ++historyGeneration;
+    if (delayedHistory) {
+      let request!: { generation: number; resolve: () => void };
+      await new Promise<void>((resolve) => {
+        request = { generation, resolve };
+        pendingHistoryRequest = request;
+      });
+      if (pendingHistoryRequest === request) {
+        pendingHistoryRequest = undefined;
+      }
+    }
+    if (generation !== historyGeneration) return;
     conversation = prependHistoryMessages(conversation);
     record('onloadhistory', historyPage);
   }
 
-  onDestroy(() => cancelPending('destroy'));
+  onDestroy(() => {
+    cancelPending('destroy');
+    cancelPendingHistoryRequest();
+  });
 
   const surfaceMode = $derived<'default' | 'transparent'>(
     transparentSurface ? 'transparent' : 'default',
@@ -533,8 +558,8 @@
           <Button
             data-testid="resolve-history"
             variant="secondary"
-            disabled={!resolveDelayedHistory}
-            onclick={() => resolveDelayedHistory?.()}
+            disabled={!pendingHistoryRequest}
+            onclick={() => pendingHistoryRequest?.resolve()}
           >
             Resolve history response
           </Button>
