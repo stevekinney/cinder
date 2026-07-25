@@ -429,10 +429,11 @@ describe('DateRangeField', () => {
         startLabel: 'From',
         endLabel: 'To',
       });
-      const labels = container.querySelectorAll('.cinder-date-range-field__input-label');
+      const labels = container.querySelectorAll('.cinder-date-picker__label');
       const labelTexts = Array.from(labels).map((l) => l.textContent?.trim());
       expect(labelTexts).toContain('From');
       expect(labelTexts).toContain('To');
+      expect(container.querySelectorAll('label')).toHaveLength(2);
     });
 
     test('uses datetime-aware default labels for datetime granularities', () => {
@@ -440,9 +441,9 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
       });
-      const labelTexts = Array.from(
-        container.querySelectorAll('.cinder-date-range-field__input-label'),
-      ).map((labelElement) => labelElement.textContent?.trim());
+      const labelTexts = Array.from(container.querySelectorAll('.cinder-date-picker__label')).map(
+        (labelElement) => labelElement.textContent?.trim(),
+      );
 
       expect(labelTexts).toEqual(['Start date and time', 'End date and time']);
     });

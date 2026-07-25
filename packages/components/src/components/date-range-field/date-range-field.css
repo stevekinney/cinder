@@ -100,17 +100,6 @@
     min-inline-size: 0;
   }
 
-  .cinder-date-range-field__input-label {
-    display: block;
-    font-size: var(--cinder-text-xs);
-    font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
-  }
-
-  .cinder-date-range-field__input-label[data-disabled] {
-    color: var(--cinder-text-disabled);
-  }
-
   .cinder-date-range-field__date-input {
     display: block;
     width: 100%;
