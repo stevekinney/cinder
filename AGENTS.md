@@ -6,6 +6,28 @@
 
 This file covers repo-wide Bun workspace conventions.
 
+## Component authoring pre-flight
+
+Before adding a component, load the repository-local `cinder-component-authoring`
+skill (mirrored under `.agents/skills/` and `.claude/skills/`) and complete its
+checklist. In particular:
+
+- Search the existing component inventory and compose a primitive before adding a
+  new one ([#919](https://github.com/stevekinney/cinder/issues/919),
+  [#929](https://github.com/stevekinney/cinder/issues/929)).
+- Consult [`docs/component-api-conventions.md`](./docs/component-api-conventions.md)
+  before naming a public prop ([#922](https://github.com/stevekinney/cinder/issues/922)).
+- Use the shared `_floating-surface.css` for floating surfaces and compose form
+  controls from `Input`/`FormField` ([#921](https://github.com/stevekinney/cinder/issues/921),
+  [#923](https://github.com/stevekinney/cinder/issues/923)).
+- Use the rotating disclosure chevron and `lucide-svelte` icons ([#957](https://github.com/stevekinney/cinder/issues/957)).
+- Test resulting state and resting appearance, not only transitions
+  ([#931](https://github.com/stevekinney/cinder/issues/931)).
+
+The checklist's machine-readable source of truth is
+`packages/components/scripts/component-conventions.ts`; `components:create`
+includes it in every new component README.
+
 ## Essential Commands
 
 ### Development

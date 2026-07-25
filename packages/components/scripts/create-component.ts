@@ -50,6 +50,8 @@ import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { renderComponentAuthoringChecklist } from './component-conventions.ts';
+
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const PACKAGES_ROOT = join(PACKAGE_ROOT, '..');
 const COMPONENTS_DIR = join(PACKAGE_ROOT, 'src', 'components');
@@ -221,6 +223,16 @@ ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
 
 <!-- generated:props:start -->
 <!-- generated:props:end -->
+
+## Authoring checklist
+
+Before publishing this component, work through the shared pre-flight checklist:
+
+${renderComponentAuthoringChecklist()}
+
+The canonical checklist lives in scripts/component-conventions.ts; keep the
+repository AGENTS/CLAUDE mirrors and the cinder-component-authoring skill
+synchronized with it.
 
 ## CSS Variables
 

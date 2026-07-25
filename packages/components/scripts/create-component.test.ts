@@ -157,6 +157,21 @@ describe('renderReadme', () => {
     const readme = renderReadme(buildContext('experimental/json-viewer'));
     expect(readme).toContain('EXPERIMENTAL');
   });
+
+  it('includes the shared component-authoring checklist', () => {
+    const readme = renderReadme(buildContext('my-widget'));
+    expect(readme).toContain('Search the component inventory');
+    expect(readme).toContain('docs/component-api-conventions.md');
+    expect(readme).toContain('_floating-surface.css');
+    expect(readme).toContain('Input and FormField');
+    expect(readme).toContain('#919');
+    expect(readme).toContain('#921');
+    expect(readme).toContain('#922');
+    expect(readme).toContain('#923');
+    expect(readme).toContain('#929');
+    expect(readme).toContain('#931');
+    expect(readme).toContain('#957');
+  });
 });
 
 describe('renderExample', () => {
