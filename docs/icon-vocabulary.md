@@ -22,9 +22,9 @@ must not be the only way to communicate what an interactive element does.
 
 ## Audit (2026-07-25)
 
-The audit searched component templates for visible `+`, `-`, `−`, `<`, `>`, and
-their HTML entities, then classified each hit by whether it is an interactive
-affordance.
+The audit searched component templates for visible `+`, `-`, `−`, `<`, `>`, `▾`,
+`▸`, and their HTML entities, then classified each hit by whether it is an
+interactive affordance.
 
 | Location                                                                             | Finding                      | Disposition                                                                                                          |
 | ------------------------------------------------------------------------------------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -34,12 +34,15 @@ affordance.
 | `menu-bar/menu-bar.svelte`                                                           | Submenu indicator            | Additional interactive `>` affordance; tracked in [#1015](https://github.com/stevekinney/cinder/issues/1015).        |
 | `keyboard-shortcuts/keyboard-shortcuts.svelte`, `shortcut-hint/shortcut-hint.svelte` | Key-combination separators   | Intentional typography inside `aria-hidden` visual keycaps; no icon replacement needed.                              |
 | `diff-statistics/diff-statistics.svelte`, `json-schema-editor/diff-view.svelte`      | Diff markers                 | Data notation, not controls; retain text markers.                                                                    |
+| `invocation-rule-builder/invocation-rule-builder.svelte`                             | Add controls                 | Additional interactive `+` affordances; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).       |
+| `multi-select/multi-select.svelte`                                                   | Expanded-state trigger       | Additional interactive `▾` affordance; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).        |
+| `json-schema-editor/property-list.svelte`                                            | Property disclosure          | Additional interactive `▸` affordance; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).        |
 | `speed-dial*/**.fixture.svelte`                                                      | Fixture-only plus marker     | Demo content, not published component UI; no action required.                                                        |
 
-No other text glyphs were found as interactive affordances in the component
-templates. Future audits should keep this distinction: a glyph that conveys
-data is not an icon affordance, while a glyph inside a button or menu trigger
-must follow this vocabulary.
+The rows above account for every interactive text-glyph affordance found by the
+audit. Future audits should keep this distinction: a glyph that conveys data is
+not an icon affordance, while a glyph inside a button or menu trigger must
+follow this vocabulary.
 
 ## Enforcement
 

@@ -2,7 +2,9 @@
 
 Cinder component props use one public vocabulary. Mechanically checkable naming
 rules are enforced by `packages/components/scripts/check-prop-conventions.ts`;
-the composition rules also define the review standard for public APIs.
+the composition rules define the review standard for public APIs, while
+cross-cutting visual policies are documented alongside them and require
+component-level review.
 
 ## Handlers
 
