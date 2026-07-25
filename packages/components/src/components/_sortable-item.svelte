@@ -555,7 +555,9 @@
     className,
   )}
 >
-  {@render children(itemContext)}
+  <div class="cinder-sortable-item__content">
+    {@render children(itemContext)}
+  </div>
 
   <button
     bind:this={handleEl}
