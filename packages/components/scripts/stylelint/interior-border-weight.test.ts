@@ -73,5 +73,12 @@ describe(ruleName, () => {
         ),
       ),
     ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.cinder-number-input__stepper { border-inline-start: 1px solid var(--cinder-border); }',
+        ),
+      ),
+    ).toHaveLength(1);
   });
 });

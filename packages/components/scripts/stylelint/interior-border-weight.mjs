@@ -18,7 +18,9 @@ function isCinderComponentSource(root) {
 
 function isInteriorDivider(selector, property) {
   if (property === 'border') return false;
-  return /(?:__(?:header|footer|search|section|body|trigger|cell)(?![\w-])|[+~])/i.test(selector);
+  return /(?:__(?:header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|[+~])/i.test(
+    selector,
+  );
 }
 
 const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {

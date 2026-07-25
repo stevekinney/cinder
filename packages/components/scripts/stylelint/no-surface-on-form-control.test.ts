@@ -4,8 +4,12 @@ import stylelint from 'stylelint';
 const ruleName = 'cinder/no-surface-on-form-control';
 const pluginPath = new URL('./no-surface-on-form-control.mjs', import.meta.url).pathname;
 
-async function lint(code: string) {
-  return stylelint.lint({ code, config: { plugins: [pluginPath], rules: { [ruleName]: true } } });
+async function lint(code: string, codeFilename?: string) {
+  return stylelint.lint({
+    code,
+    ...(codeFilename ? { codeFilename } : {}),
+    config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+  });
 }
 
 function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
@@ -35,5 +39,16 @@ describe(ruleName, () => {
     expect(warnings(await lint('.chat-input-area { background: var(--cinder-surface); }'))).toEqual(
       [],
     );
+  });
+
+  test('checks the shared input frame recipe in the component styles directory', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.cinder-_input-frame { background: var(--cinder-surface); }',
+          '/workspace/packages/components/src/styles/components/_input-frame.css',
+        ),
+      ),
+    ).toHaveLength(1);
   });
 });

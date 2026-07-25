@@ -12,12 +12,12 @@ function isCinderComponentSource(root) {
   return (
     file === undefined ||
     file.startsWith('<') ||
-    /packages[\\/]components[\\/]src[\\/]components[\\/]/.test(file)
+    /packages[\\/]components[\\/]src[\\/](?:components|styles[\\/]components)[\\/]/.test(file)
   );
 }
 
 function isFormControl(selector) {
-  return /(?:^|[\s,>+~])(?:input|textarea|select|\.cinder-(?:input|textarea|select))(?=[.#:[\s]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
+  return /(?:^|[\s,>+~])(?:input|textarea|select|\.cinder-(?:input|textarea|select)|\.cinder-_input-frame)(?=[.#:[\s]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
     selector,
   );
 }
