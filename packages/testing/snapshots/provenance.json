@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "card",
-    "logo-cloud"
+    "mega-menu"
   ],
-  "renderedSourceSha": "407db1e151d31a34b6db629bd4d9cc4139a17654",
+  "renderedSourceSha": "de4f373b5ee4bd0011533d905a822247b207e3d2",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
