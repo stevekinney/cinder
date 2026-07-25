@@ -30,13 +30,12 @@ export type DateRangeDatePreset = {
  *
  * Scope:
  * - Accepts and emits ISO-8601 local strings for start and end.
- * - `granularity="day"` uses native date inputs and emits `YYYY-MM-DD`.
- * - `granularity="hour" | "minute" | "second"` uses native datetime-local
- *   inputs and emits `YYYY-MM-DDTHH:mm` or `YYYY-MM-DDTHH:mm:ss`.
+ * - `granularity="day"` uses the custom calendar surface and emits `YYYY-MM-DD`.
+ * - `granularity="hour" | "minute" | "second"` uses the custom calendar/time
+ *   surface and emits `YYYY-MM-DDTHH:mm` or `YYYY-MM-DDTHH:mm:ss`.
  * - Timezone conversion is caller-owned; browser `datetime-local` values are
  *   local wall-clock values by design.
- * - Sets the native inputs' min/max so the browser picker hints valid bounds
- *   (end's min = start, start's max = end), but does NOT block out-of-order
+ * - Sets min/max bounds on the custom inputs, but does NOT block out-of-order
  *   entry. Validation feedback is the consumer's responsibility via `error`.
  * - Supports optional consumer-supplied presets (e.g. last 7 days).
  * - Does not own routing, query-string sync, or data fetching.

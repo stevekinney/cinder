@@ -18,8 +18,25 @@ describe('DatePicker', () => {
     const { container } = render(DatePicker, { id: 'dp', value: '2026-06-29' });
     const input = container.querySelector<HTMLInputElement>('#dp');
     expect(input?.type).toBe('text');
-    expect(input?.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(input?.getAttribute('aria-haspopup')).toBeNull();
     expect(container.querySelector('.cinder-date-picker__trigger')).not.toBeNull();
+  });
+
+  test('rejects trailing characters in manually entered day values', async () => {
+    let nextValue = 'sentinel';
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => {
+        nextValue = value ?? '';
+      },
+    });
+
+    await fireEvent.change(container.querySelector<HTMLInputElement>('#dp')!, {
+      target: { value: '2026-06-29junk' },
+    });
+
+    expect(nextValue).toBe('');
   });
 
   test('opens calendar popover and selects a date', async () => {

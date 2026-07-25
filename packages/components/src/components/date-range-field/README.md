@@ -4,9 +4,9 @@ Controlled start/end date range picker with preset shortcuts and validation feed
 
 ## Overview
 
-`DateRangeField` renders two native date or date-time inputs (start and end) along with a row of preset shortcut buttons (Today, Yesterday & today, Last 7 days by default). It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
+`DateRangeField` renders two text inputs backed by custom calendar/time popovers (start and end) along with preset shortcut buttons. It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
 
-Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; `granularity="hour"`, `"minute"`, and `"second"` use native `datetime-local` inputs and emit values truncated to the selected precision.
+Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time granularities use the custom time popover and emit values truncated to the selected precision.
 
 ## Usage
 
@@ -138,5 +138,5 @@ The component implements accessible form labelling throughout:
 ## Scope limits
 
 - Timezone conversion is caller-owned. Native `datetime-local` values are local wall-clock strings without timezone offsets.
-- The browser owns the date and date-time picker UI. Keyboard behavior inside those native pickers is browser-controlled.
+- The component owns the custom date and date-time picker UI.
 - No range constraint enforcement. The component sets `min`/`max` on the inputs to hint the browser's picker (end min = start, start max = end), but does not block the user from entering out-of-order values programmatically. Validation is the consumer's responsibility via the `error` prop.

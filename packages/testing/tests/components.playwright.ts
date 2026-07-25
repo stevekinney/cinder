@@ -161,12 +161,15 @@ test.describe('date picker surface ownership', () => {
     await expect(
       datePicker.locator('input[type="date"], input[type="datetime-local"]'),
     ).toHaveCount(0);
-    await expect(datePicker.locator('.cinder-date-picker__input')).toHaveAttribute(
+    await expect(datePicker.locator('.cinder-date-picker__trigger')).toHaveAttribute(
       'aria-haspopup',
       'dialog',
     );
 
-    await datePicker.getByRole('button', { name: /open .*calendar|open date picker/i }).click();
+    await datePicker
+      .getByRole('button', { name: /open .*calendar|open date picker/i })
+      .first()
+      .click();
     await expect(page.locator('.cinder-date-picker__panel')).toHaveCount(1);
     await expect(page.locator('.cinder-date-picker__panel')).toBeVisible();
 

@@ -55,8 +55,8 @@ describe('DateRangeField', () => {
       expect(endInput).not.toBeNull();
       expect(startInput.type).toBe('text');
       expect(endInput.type).toBe('text');
-      expect(startInput.getAttribute('aria-haspopup')).toBe('dialog');
-      expect(endInput.getAttribute('aria-haspopup')).toBe('dialog');
+      expect(startInput.getAttribute('aria-haspopup')).toBeNull();
+      expect(endInput.getAttribute('aria-haspopup')).toBeNull();
     });
 
     test('keeps text inputs when granularity includes time', () => {

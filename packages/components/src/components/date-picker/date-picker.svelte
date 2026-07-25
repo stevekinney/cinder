@@ -152,7 +152,13 @@
 
   function handleInputChange(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
-    emit(clampToBounds(normalizeValue(target.value, granularity)));
+    const pattern =
+      granularity === 'day' ? /^\d{4}-\d{2}-\d{2}$/ : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
+    emit(
+      pattern.test(target.value)
+        ? clampToBounds(normalizeValue(target.value, granularity))
+        : undefined,
+    );
   }
 
   const timeMin = $derived.by(() => {
@@ -178,7 +184,6 @@
       class="cinder-date-picker__input"
       {id}
       type="text"
-      inputmode="numeric"
       value={normalizedValue ?? ''}
       min={normalizedMin}
       max={normalizedMax}
@@ -187,7 +192,6 @@
       {disabled}
       aria-invalid={invalid}
       aria-describedby={describedById}
-      aria-haspopup="dialog"
       onchange={handleInputChange}
     />
     <button
