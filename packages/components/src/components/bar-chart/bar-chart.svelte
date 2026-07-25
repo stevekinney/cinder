@@ -31,6 +31,7 @@
     createBarFocusRingGeometry,
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
+  import ChartDataTable from '../_internal/chart-data-table.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { BarChartProps } from './bar-chart.types.ts';
 
@@ -393,24 +394,19 @@
       Series/X/Value (line/area). This reflects that bar charts are category-
       primary: each row is one category, with each series as a column value.
     -->
-    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
-      <caption>{dataTableCaption ?? label}</caption>
-      <thead
-        ><tr><th scope="col">Category</th><th scope="col">Series</th><th scope="col">Value</th></tr
-        ></thead
-      >
-      <tbody>
-        {#each model.tableRows as row (row.categoryKey)}
-          {#each row.values as value (value.seriesId)}
-            <tr
-              ><th scope="row">{row.categoryLabel}</th><td>{value.seriesLabel}</td><td
-                >{value.valueLabel}</td
-              ></tr
-            >
-          {/each}
-        {/each}
-      </tbody>
-    </table>
+    <ChartDataTable
+      caption={dataTableCaption ?? label}
+      headers={['Category', 'Series', 'Value']}
+      rows={model.tableRows.flatMap((row) =>
+        row.values.map((value) => ({
+          id: JSON.stringify([row.categoryKey, value.seriesId]),
+          header: row.categoryLabel,
+          cells: [value.seriesLabel, value.valueLabel],
+        })),
+      )}
+      visibilityClass={dataTableClass(dataTableVisibility)}
+      describedBy={guidanceId}
+    />
   {/if}
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
     <div class="cinder-bar-chart__legend" aria-label="Series">

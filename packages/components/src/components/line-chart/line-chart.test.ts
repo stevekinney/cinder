@@ -50,6 +50,12 @@ describe('LineChart', () => {
     });
 
     expect(container.querySelector('table caption')?.textContent).toBe('Monthly revenue');
+    expect(container.querySelector('table.cinder-table')).not.toBeNull();
+    expect(container.querySelector('thead.cinder-table__header')).not.toBeNull();
+    expect(container.querySelector('tbody.cinder-table__body')).not.toBeNull();
+    expect(container.querySelector('tr.cinder-table__row')).not.toBeNull();
+    expect(container.querySelector('th.cinder-table__header-cell')).not.toBeNull();
+    expect(container.querySelector('td.cinder-table__cell')).not.toBeNull();
     expect(container.querySelector('table')?.className).not.toContain('cinder-sr-only');
   });
 

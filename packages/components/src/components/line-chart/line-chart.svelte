@@ -31,6 +31,7 @@
     createPointFocusRingGeometry,
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
+  import ChartDataTable from '../_internal/chart-data-table.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { LineChartProps } from './line-chart.types.ts';
 
@@ -391,20 +392,17 @@
   {/if}
 
   {#if hasDataTable}
-    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
-      <caption>{dataTableCaption ?? label}</caption>
-      <thead
-        ><tr><th scope="col">Series</th><th scope="col">X</th><th scope="col">Value</th></tr></thead
-      >
-      <tbody>
-        {#each model.tableRows as row (row.id)}
-          <tr
-            ><th scope="row">{row.seriesLabel}</th><td>{row.xLabel}</td><td>{row.valueLabel}</td
-            ></tr
-          >
-        {/each}
-      </tbody>
-    </table>
+    <ChartDataTable
+      caption={dataTableCaption ?? label}
+      headers={['Series', 'X', 'Value']}
+      rows={model.tableRows.map((row) => ({
+        id: row.id,
+        header: row.seriesLabel,
+        cells: [row.xLabel, row.valueLabel],
+      }))}
+      visibilityClass={dataTableClass(dataTableVisibility)}
+      describedBy={guidanceId}
+    />
   {/if}
 
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
