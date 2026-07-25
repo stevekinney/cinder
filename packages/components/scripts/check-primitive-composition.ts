@@ -58,6 +58,53 @@ const allowedRawControlPaths = new Set([
   'input/input.svelte',
 ]);
 
+// Expected visible control counts. Hidden form-submission inputs and markup in
+// comments are excluded; changing a tracked component still requires updating
+// this number deliberately rather than silently expanding its exemption.
+const allowedRawControlCounts = new Map([
+  ['time-field/time-field.svelte', 2],
+  ['selection-popover/selection-popover.svelte', 1],
+  ['tree/tree.svelte', 2],
+  ['multi-select/multi-select.svelte', 2],
+  ['textarea/textarea.svelte', 1],
+  ['json-editor/json-editor.svelte', 1],
+  ['command-palette/command-palette.svelte', 1],
+  ['pin-input/pin-input.svelte', 1],
+  ['combobox/combobox.svelte', 1],
+  ['event-stream-viewer/event-stream-viewer.svelte', 1],
+  ['number-input/number-input.svelte', 1],
+  ['schema-form/schema-form-body.svelte', 3],
+  ['slider/slider.svelte', 0],
+  ['phone-input/phone-input.svelte', 2],
+  ['toggle/toggle.svelte', 1],
+  ['rating/rating.svelte', 0],
+  ['segmented-control/segmented-control.svelte', 0],
+  ['select/select.svelte', 2],
+  ['invocation-rule-builder/invocation-rule-builder.svelte', 8],
+  ['table-row/table-row.svelte', 3],
+  ['tag-input/tag-input.svelte', 1],
+  ['checkbox/checkbox.svelte', 1],
+  ['autocomplete/autocomplete.svelte', 1],
+  ['radio-group/radio-group.svelte', 0],
+  ['date-picker/date-picker.svelte', 2],
+  ['_radio/radio.svelte', 1],
+  ['input/input.svelte', 1],
+  ['color-field/color-field.svelte', 1],
+  ['file-upload/file-upload.svelte', 1],
+  ['tree-item/tree-item.svelte', 2],
+  ['approval-card/approval-card-actions.svelte', 2],
+  ['faceted-filter-bar/faceted-filter-bar.svelte', 1],
+  ['color-picker/color-picker.svelte', 0],
+  ['search-field/search-field.svelte', 1],
+  ['schedule-builder/schedule-builder.svelte', 3],
+  ['select/select.type-test.svelte', 4],
+  ['json-schema-editor/json-view.svelte', 1],
+  ['json-schema-editor/property-editor.svelte', 8],
+  ['json-schema-editor/property-list.svelte', 2],
+  ['confirm-dialog/confirm-dialog.svelte', 1],
+  ['newsletter-section/newsletter-section.svelte', 1],
+]);
+
 const allowedGridPaths = new Set([
   'testimonial-section/testimonial-section.css',
   'bento-grid/bento-grid.css',
@@ -204,6 +251,8 @@ const allowedFieldWrapperPaths = new Set([
   'select/select.svelte',
   'checkbox/checkbox.svelte',
   'form-field/form-field.svelte',
+  'invocation-rule-builder/invocation-rule-builder.svelte',
+  'tree/tree.svelte',
 ]);
 
 export type PrimitiveCompositionViolation = {
@@ -211,26 +260,46 @@ export type PrimitiveCompositionViolation = {
   message: string;
 };
 
+export function visibleControlCount(source: string): number {
+  const withoutComments = source
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  let count = 0;
+  for (const match of withoutComments.matchAll(/<(?:input|select|textarea)\b[^>]*>/gi)) {
+    if (!/\btype\s*=\s*["']hidden["']/i.test(match[0])) count++;
+  }
+  return count;
+}
+
 export function findPrimitiveCompositionViolations(
   source: string,
   filePath: string,
 ): PrimitiveCompositionViolation[] {
   const normalized = filePath.replaceAll('\\', '/').replace(/^.*components\//, '');
   const violations: PrimitiveCompositionViolation[] = [];
-  if (
-    normalized.endsWith('.svelte') &&
-    /<(?:input|select|textarea)\b/i.test(source) &&
-    !allowedRawControlPaths.has(normalized)
-  ) {
+  const rawControlCount = normalized.endsWith('.svelte') ? visibleControlCount(source) : 0;
+  if (rawControlCount > 0 && !allowedRawControlPaths.has(normalized)) {
     violations.push({
       filePath,
       message: 'Compose the canonical form-control primitive instead of rendering a raw control.',
     });
   }
   if (
+    rawControlCount > 0 &&
+    allowedRawControlPaths.has(normalized) &&
+    allowedRawControlCounts.get(normalized) !== rawControlCount
+  ) {
+    violations.push({
+      filePath,
+      message:
+        'A tracked raw-control count changed; migrate it or update the explicit migration record.',
+    });
+  }
+  if (
     normalized.endsWith('.css') &&
-    /display\s*:\s*grid\b/i.test(source) &&
-    /grid-template-columns\s*:/i.test(source) &&
+    /display\s*:\s*(?:inline-)?grid\b/i.test(source) &&
+    /grid-template(?:-columns)?\s*:/i.test(source) &&
     !allowedGridPaths.has(normalized)
   ) {
     violations.push({
@@ -243,7 +312,7 @@ export function findPrimitiveCompositionViolations(
     /position\s*:\s*(?:absolute|fixed)\b/i.test(source) &&
     /z-index\s*:/i.test(source) &&
     !allowedFloatingPaths.has(normalized) &&
-    !/@import[^;]*_floating-surface\.css/.test(source)
+    !/cinder-_floating-surface/.test(source)
   ) {
     violations.push({
       filePath,
@@ -253,8 +322,8 @@ export function findPrimitiveCompositionViolations(
   if (
     normalized.endsWith('.svelte') &&
     /<label\b/i.test(source) &&
-    /description/i.test(source) &&
-    /error/i.test(source) &&
+    /(?:description|help(?:text)?|hint|assist)/i.test(source) &&
+    /(?:error|validation|invalid|message)/i.test(source) &&
     !allowedFieldWrapperPaths.has(normalized)
   ) {
     violations.push({

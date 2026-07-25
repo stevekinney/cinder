@@ -15,6 +15,21 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('ignores hidden submission inputs and controls mentioned in comments', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<!-- <input> --><input type="hidden" name="value" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('rejects an added raw control in a tracked file', () => {
+    expect(
+      findPrimitiveCompositionViolations('<input /><input />', 'autocomplete/autocomplete.svelte'),
+    ).toHaveLength(1);
+  });
+
   test('rejects an untracked hand-rolled grid', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -45,16 +60,34 @@ describe('primitive composition guard', () => {
   test('allows a floating surface that imports the shared sidecar', () => {
     expect(
       findPrimitiveCompositionViolations(
-        "@import '../_internal/_floating-surface.css'; position: absolute; z-index: 1;",
+        'position: absolute; z-index: 1; .cinder-_floating-surface {}',
         'new-menu/new-menu.css',
       ),
     ).toEqual([]);
+  });
+
+  test('detects inline-grid and grid-template shorthand', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        'display: inline-grid; grid-template: "main aside" / 1fr auto;',
+        'new-grid/new-grid.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('rejects an untracked hand-rolled field wrapper', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<label>Label</label><p>description</p><p>error</p>',
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('recognizes alternate help and validation field names', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label>Label</label><p>{helpText}</p><p>{validationMessage}</p>',
         'new-field/new-field.svelte',
       ),
     ).toHaveLength(1);
