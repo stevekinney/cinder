@@ -66,6 +66,21 @@ describe('checkStylelintRuleCoverage', () => {
     expect(violations).toHaveLength(6);
     expect(violations.some((violation) => violation.layer === 'main-green')).toBe(true);
   });
+
+  it('rejects covered rules that are present but disabled', () => {
+    const violations = checkStylelintRuleCoverage(
+      {
+        plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+        rules: {
+          'cinder/no-surface-on-form-control': true,
+          'cinder/interior-border-weight': false,
+        },
+      },
+      { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.command).toBe('stylelint:cinder/interior-border-weight');
+  });
 });
 
 describe('extractRunStepBodies', () => {
