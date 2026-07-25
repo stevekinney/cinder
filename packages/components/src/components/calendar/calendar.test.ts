@@ -74,6 +74,15 @@ describe('Calendar', () => {
     expect(selected).toBe('0099-06-15');
   });
 
+  test('renders the skipped Pacific/Apia civil date when run in that timezone', () => {
+    const { container } = render(Calendar, { value: '2011-12-30' });
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain(
+      'December 2011',
+    );
+    expect(container.querySelector('[id$="-day-2011-12-30"]')).not.toBeNull();
+  });
+
   test('arrow keys move focus and enter selects the focused date', async () => {
     let selected = '';
     const { container } = render(Calendar, {
