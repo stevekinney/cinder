@@ -801,7 +801,11 @@
                     }}
                   >
                     <span class="cinder-menu-bar__item-label">{entry.label}</span>
-                    <span class="cinder-menu-bar__submenu-indicator" aria-hidden="true">
+                    <span
+                      class="cinder-menu-bar__submenu-indicator"
+                      dir={submenuDirection(submenuTrigger)}
+                      aria-hidden="true"
+                    >
                       <ChevronRight size={16} strokeWidth={2} />
                     </span>
                   </DropdownItem>
