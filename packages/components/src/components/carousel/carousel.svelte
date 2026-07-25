@@ -137,6 +137,10 @@
     const viewport = viewportElement;
     const slide = viewport?.children[currentIndex];
     if (!(slide instanceof HTMLElement)) return;
+    if (Math.abs(slide.getBoundingClientRect().left - viewport.getBoundingClientRect().left) < 1) {
+      programmaticTarget = null;
+      return;
+    }
     programmaticTarget = currentIndex;
     if (typeof viewport.scrollTo === 'function') {
       viewport.scrollTo({
