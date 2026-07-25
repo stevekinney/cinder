@@ -36,7 +36,6 @@
 
   let requestInFlight = $state(false);
   let errorState = $state(false);
-  let retryCount = $state(0);
   let autoLoadCount = $state(0);
   // Tracks the last `hasMore` value the component reconciled against so a
   // parent-driven false -> true flip (new page of data arrived) can clear both
@@ -69,7 +68,6 @@
   // cleared in `requestNextPage`'s `finally`, so neither needs an effect.
   $effect(() => {
     if (!previousHasMore && hasMore) {
-      retryCount = 0;
       autoLoadCount = 0;
       errorState = false;
     }
@@ -95,7 +93,6 @@
     try {
       await onLoadMore();
       if (source === 'button') {
-        retryCount = 0;
         autoLoadCount = 0;
       }
     } catch (error) {

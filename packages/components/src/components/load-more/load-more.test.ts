@@ -156,7 +156,7 @@ describe('LoadMore', () => {
     const rendered = render(LoadMore, {
       props: {
         maxRetries: 2,
-        onloadmore: () => {
+        onLoadMore: () => {
           calls += 1;
         },
       },
