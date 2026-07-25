@@ -1,5 +1,8 @@
 /// <reference lib="dom" />
+import { readFileSync } from 'node:fs';
+
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { parse } from 'postcss';
 import type { ComponentProps } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -13,6 +16,7 @@ const { default: ColorFieldFormFixture } =
   await import('../../test/fixtures/color-field-form-fixture.svelte');
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
+const colorFieldCss = readFileSync(new URL('./color-field.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
@@ -41,11 +45,36 @@ function getInput(container: ParentNode, id = 'color'): HTMLInputElement {
   return q<HTMLInputElement>(container, `#${id}`);
 }
 
+function getCssDeclaration(selector: string, property: string): string | undefined {
+  let value: string | undefined;
+  parse(colorFieldCss).walkRules((rule) => {
+    if (rule.selector !== selector) return;
+    rule.walkDecls(property, (declaration) => {
+      value = declaration.value;
+    });
+  });
+  return value;
+}
+
 async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void> {
   await fireEvent.input(input, { target: { value: text } });
   await fireEvent.blur(input);
   await tick();
 }
+
+describe('ColorField — decorative swatch', () => {
+  test('stays hidden from assistive technology and ignores pointer interaction', () => {
+    const { container } = render(ColorField, { id: 'color', name: 'color' });
+    const swatch = q<HTMLElement>(container, '.cinder-color-field__swatch');
+
+    expect(swatch.tagName).toBe('SPAN');
+    expect(swatch.getAttribute('aria-hidden')).toBe('true');
+    expect(swatch.hasAttribute('role')).toBe(false);
+    expect(swatch.tabIndex).toBe(-1);
+    expect(getCssDeclaration('.cinder-color-field__swatch', 'pointer-events')).toBe('none');
+    expect(getCssDeclaration('.cinder-color-field__swatch', 'cursor')).toBe('default');
+  });
+});
 
 describe('ColorField — parse round-trips', () => {
   const cases = [

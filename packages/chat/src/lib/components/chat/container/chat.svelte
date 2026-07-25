@@ -258,7 +258,7 @@
   let deferredNonVirtualHistoryStabilization: PendingHistoryScroll | null = null;
   let isHistoryRestorationUserScrolling = false;
   let historyLoadRequestId = 0;
-  let historyRestorationExpectedScrollTop: number | null = null;
+  let historyRestorationScrollPending = false;
   let historyRestorationUserScrollObserved = false;
   let historyRestorationUserScrollResetRaf: number | undefined;
   let deferredHistoryTriggerFocus = $state<
@@ -735,7 +735,7 @@
         anchorCorrection === null
           ? pending.previousScrollTop + (viewport.scrollHeight - pending.previousScrollHeight)
           : viewport.scrollTop + anchorCorrection;
-      historyRestorationExpectedScrollTop = targetScrollTop;
+      historyRestorationScrollPending = true;
       viewport.scrollTo({
         top: targetScrollTop,
         behavior: 'instant',
@@ -877,7 +877,7 @@
   function resetHistoryRestorationUserScrolling(): void {
     cancelHistoryRestorationUserScrollReset();
     deferredNonVirtualHistoryStabilization = null;
-    historyRestorationExpectedScrollTop = null;
+    historyRestorationScrollPending = false;
     isHistoryRestorationUserScrolling = false;
     historyRestorationUserScrollObserved = false;
   }
@@ -1090,24 +1090,28 @@
   const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
     const handleScroll = () => {
       clearHistoryAnchorAfterScroll(node.scrollTop);
-      const isExpectedRestorationScroll =
-        historyRestorationExpectedScrollTop !== null &&
-        Math.abs(node.scrollTop - historyRestorationExpectedScrollTop) < 1;
-      if (historyRestorationExpectedScrollTop !== null) {
-        historyRestorationExpectedScrollTop = null;
-      }
+      const isExpectedRestorationScroll = historyRestorationScrollPending;
+      historyRestorationScrollPending = false;
       if (isHistoryRestorationUserScrolling && !isExpectedRestorationScroll) {
         historyRestorationUserScrollObserved = true;
         deferredNonVirtualHistoryStabilization = null;
         cancelHistoryRestorationUserScrollReset();
       }
-      if (isHistoryRestorationUserScrolling && pendingHistoryScroll === null) {
+      if (
+        isHistoryRestorationUserScrolling &&
+        historyRestorationUserScrollObserved &&
+        pendingHistoryScroll === null
+      ) {
         cancelNonVirtualHistoryAnchorStabilization();
       }
       schedulePendingHistoryAnchorRecapture();
     };
     const handleScrollEnd = () => {
-      if (isHistoryRestorationUserScrolling && pendingHistoryScroll === null) {
+      if (
+        isHistoryRestorationUserScrolling &&
+        historyRestorationUserScrollObserved &&
+        pendingHistoryScroll === null
+      ) {
         cancelNonVirtualHistoryAnchorStabilization();
       }
       isHistoryRestorationUserScrolling = false;

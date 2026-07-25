@@ -41,14 +41,16 @@ export function isSnapshotMode(search: URLSearchParams): boolean {
  * receiving `data-preserve-motion` on themselves or a containing ancestor.
  */
 export const SNAPSHOT_MODE_CSS = `
-  /* Snapshot mode: zero all animation/transition durations so screenshots
-     are stable. Elements with data-preserve-motion (or inside such an
-     ancestor) are exempted — they render their own deterministic end state. */
+  /* Snapshot mode: freeze motion and fully render offscreen content so
+     screenshots and accessibility scans see one complete, stable tree.
+     Elements with data-preserve-motion (or inside such an ancestor) keep
+     their own deterministic motion state. */
   [data-snapshot-mode] *:not([data-preserve-motion]):not([data-preserve-motion] *) {
     animation-duration: 0s !important;
     animation-delay: 0s !important;
     transition-duration: 0s !important;
     transition-delay: 0s !important;
+    content-visibility: visible !important;
   }
 
   /* Hide text insertion carets globally. Prevents cursor-blink diffs between

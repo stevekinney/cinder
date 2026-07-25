@@ -16,6 +16,8 @@
     background-color: var(--cinder-color-field-swatch, transparent);
     border: 1px solid var(--cinder-border);
     vertical-align: middle;
+    pointer-events: none;
+    cursor: default;
   }
 
   .cinder-color-field__swatch[data-cinder-empty] {
