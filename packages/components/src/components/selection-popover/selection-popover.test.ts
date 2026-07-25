@@ -522,6 +522,7 @@ describe('SelectionPopover', () => {
 
       visualViewport.height = window.innerHeight;
       visualViewport.dispatchEvent(new Event('resize'));
+      visualViewport.dispatchEvent(new Event('scroll'));
 
       expect(closed).toBe(false);
       expect((textarea as HTMLTextAreaElement).value).toBe('Visual viewport draft');
