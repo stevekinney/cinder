@@ -9,6 +9,12 @@ const { render } = await import('@testing-library/svelte');
 const { default: Avatar } = await import('./avatar.svelte');
 
 describe('Avatar', () => {
+  test('placeholder relies on the root chrome instead of adding a second border', () => {
+    const { container } = render(Avatar, {});
+    const placeholder = container.querySelector('.cinder-avatar__placeholder');
+    expect(placeholder).not.toBeNull();
+    expect(getComputedStyle(placeholder!).borderWidth).toBe('');
+  });
   test('renders an <img> when src is supplied', () => {
     const { container } = render(Avatar, { src: '/me.jpg', alt: 'Alice' });
     const img = container.querySelector('img');
@@ -80,8 +86,8 @@ describe('Avatar', () => {
     const css = await Bun.file(new URL('./avatar.css', import.meta.url)).text();
     const placeholderBlock = css.match(/\.cinder-avatar__placeholder\s*\{[^}]*\}/)?.[0] ?? '';
     expect(placeholderBlock).not.toContain('linear-gradient');
-    expect(placeholderBlock).toContain('background: var(--cinder-surface-inset)');
-    expect(placeholderBlock).toContain('border: 1px solid var(--cinder-border-muted)');
+    expect(placeholderBlock).not.toContain('background: var(--cinder-surface-inset)');
+    expect(placeholderBlock).not.toContain('border: 1px solid var(--cinder-border-muted)');
   });
 
   test('falls back to initials when the image fails to load', async () => {
