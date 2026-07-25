@@ -150,6 +150,26 @@ describe('EventTimeline', () => {
     ).toEqual(['0', '0']);
   });
 
+  test('accounts for transformed labels when reusing lanes across edge boundaries', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T02:24:00.000Z', label: 'Edge event' },
+        { at: '2026-07-03T05:16:48.000Z', label: 'Middle event' },
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '1']);
+  });
+
   test('offsets colliding lanes and renders hidden leader lines', () => {
     const { container } = render(EventTimeline, {
       start,

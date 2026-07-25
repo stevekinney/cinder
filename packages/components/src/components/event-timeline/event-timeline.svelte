@@ -116,6 +116,23 @@
     return 'middle';
   }
 
+  function transformedLabelBounds(
+    position: number,
+    lane: number,
+    edge: PositionedEventTimelineItem['edge'],
+    labelWidthPercent: number,
+    offsetPercent: number,
+  ): { start: number; end: number } {
+    if (edge === 'start') return { start: position, end: position + labelWidthPercent };
+    if (edge === 'end') return { start: position - labelWidthPercent, end: position };
+
+    const center = position + (lane % 2 === 0 ? -offsetPercent : offsetPercent);
+    return {
+      start: center - labelWidthPercent / 2,
+      end: center + labelWidthPercent / 2,
+    };
+  }
+
   function getLabelMaxWidthPx(): number {
     return LABEL_MAX_WIDTH_REM[size] * rootFontSize;
   }
@@ -185,7 +202,7 @@
     clusters: EventTimelineCluster[];
     items: PositionedEventTimelineItem[];
   }>(() => {
-    const lanePositions: number[] = [];
+    const laneBounds: Array<{ end: number }> = [];
     const visibleItems: PositionedEventTimelineItem[] = [];
     const overflowItems: PositionedEventTimelineItem[] = [];
 
@@ -204,13 +221,34 @@
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .sort((a, b) => a.position - b.position)
       .map(({ item, index, timestamp, position }) => {
-        const availableLane = lanePositions.findIndex(
-          (lastPosition) => position - lastPosition >= collisionThresholdPercent,
-        );
-        const nextLane = availableLane === -1 ? lanePositions.length : availableLane;
+        const edge = edgeForPosition(position, collisionThresholdPercent);
+        const offsetPercent =
+          measuredWidth > 0
+            ? ((6 * rootFontSize) / measuredWidth) * 100
+            : (6 / LABEL_MAX_WIDTH_REM[size]) * collisionThresholdPercent;
+        const availableLane = laneBounds.findIndex((bounds, lane) => {
+          const candidate = transformedLabelBounds(
+            position,
+            lane,
+            edge,
+            collisionThresholdPercent,
+            offsetPercent,
+          );
+          return candidate.start >= bounds.end;
+        });
+        const nextLane = availableLane === -1 ? laneBounds.length : availableLane;
         const isOverflow = availableLane === -1 && nextLane >= MAX_VISIBLE_LANES;
         const lane = isOverflow ? MAX_VISIBLE_LANES : nextLane;
-        if (!isOverflow) lanePositions[lane] = position;
+        if (!isOverflow) {
+          const bounds = transformedLabelBounds(
+            position,
+            lane,
+            edge,
+            collisionThresholdPercent,
+            offsetPercent,
+          );
+          laneBounds[lane] = { end: bounds.end };
+        }
 
         const isoDatetime = new Date(timestamp).toISOString();
         const state = item.state ?? 'upcoming';
@@ -221,7 +259,7 @@
         const positionedItem = {
           ...item,
           accessibleLabel: `${item.label}, ${timeLabel}, ${stateLabel}`,
-          edge: edgeForPosition(position, collisionThresholdPercent),
+          edge,
           key: keyForItem(item, index, timestamp),
           lane,
           position,
