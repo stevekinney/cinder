@@ -1,4 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../table/table.css';
 @layer cinder.components {
   .cinder-matrix-chart {
     display: grid;

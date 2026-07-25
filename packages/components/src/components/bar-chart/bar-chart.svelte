@@ -31,6 +31,7 @@
     createBarFocusRingGeometry,
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
+  import ChartDataTable from '../../_internal/chart/chart-data-table.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { BarChartProps } from './bar-chart.types.ts';
 
@@ -393,31 +394,19 @@
       Series/X/Value (line/area). This reflects that bar charts are category-
       primary: each row is one category, with each series as a column value.
     -->
-    <table
-      class={classNames('cinder-table', dataTableClass(dataTableVisibility))}
-      aria-describedby={guidanceId}
-    >
-      <caption class="cinder-table__caption">{dataTableCaption ?? label}</caption>
-      <thead class="cinder-table__header"
-        ><tr class="cinder-table__row"
-          ><th class="cinder-table__header-cell" scope="col">Category</th><th
-            class="cinder-table__header-cell"
-            scope="col">Series</th
-          ><th class="cinder-table__header-cell" scope="col">Value</th></tr
-        ></thead
-      >
-      <tbody class="cinder-table__body">
-        {#each model.tableRows as row (row.categoryKey)}
-          {#each row.values as value (value.seriesId)}
-            <tr class="cinder-table__row"
-              ><th class="cinder-table__cell" scope="row">{row.categoryLabel}</th><td
-                class="cinder-table__cell">{value.seriesLabel}</td
-              ><td class="cinder-table__cell">{value.valueLabel}</td></tr
-            >
-          {/each}
-        {/each}
-      </tbody>
-    </table>
+    <ChartDataTable
+      caption={dataTableCaption ?? label}
+      headers={['Category', 'Series', 'Value']}
+      rows={model.tableRows.flatMap((row) =>
+        row.values.map((value) => ({
+          id: `${row.categoryKey}:${value.seriesId}`,
+          header: row.categoryLabel,
+          cells: [value.seriesLabel, value.valueLabel],
+        })),
+      )}
+      visibilityClass={dataTableClass(dataTableVisibility)}
+      describedBy={guidanceId}
+    />
   {/if}
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
     <div class="cinder-bar-chart__legend" aria-label="Series">

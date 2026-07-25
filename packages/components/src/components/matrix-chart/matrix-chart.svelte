@@ -19,6 +19,7 @@
 
 <script lang="ts">
   import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
+  import ChartDataTable from '../../_internal/chart/chart-data-table.svelte';
   import {
     heatmapCellFill,
     heatmapDomain,
@@ -315,26 +316,15 @@
     </svg>
   </div>
   {#if hasDataTable}
-    <table class={dataTableClass(dataTableVisibility)}>
-      <caption>{dataTableCaption ?? label}</caption>
-      <thead>
-        <tr>
-          <th scope="col">{yField}</th>
-          {#each xLabels as xLabel (xLabel)}
-            <th scope="col">{xLabel}</th>
-          {/each}
-        </tr>
-      </thead>
-      <tbody>
-        {#each tableRows as row (row.yLabel)}
-          <tr>
-            <th scope="row">{row.yLabel}</th>
-            {#each row.values as cell (cell.xLabel)}
-              <td>{cell.value !== null ? formatValue(cell.value) : '—'}</td>
-            {/each}
-          </tr>
-        {/each}
-      </tbody>
-    </table>
+    <ChartDataTable
+      caption={dataTableCaption ?? label}
+      headers={[yField, ...xLabels]}
+      rows={tableRows.map((row) => ({
+        id: row.yLabel,
+        header: row.yLabel,
+        cells: row.values.map((cell) => (cell.value !== null ? formatValue(cell.value) : '—')),
+      }))}
+      visibilityClass={dataTableClass(dataTableVisibility)}
+    />
   {/if}
 </figure>

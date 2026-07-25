@@ -31,6 +31,7 @@
     createPointFocusRingGeometry,
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
+  import ChartDataTable from '../../_internal/chart/chart-data-table.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { LineChartProps } from './line-chart.types.ts';
 
@@ -391,29 +392,17 @@
   {/if}
 
   {#if hasDataTable}
-    <table
-      class={classNames('cinder-table', dataTableClass(dataTableVisibility))}
-      aria-describedby={guidanceId}
-    >
-      <caption class="cinder-table__caption">{dataTableCaption ?? label}</caption>
-      <thead class="cinder-table__header">
-        <tr class="cinder-table__row"
-          ><th class="cinder-table__header-cell" scope="col">Series</th><th
-            class="cinder-table__header-cell"
-            scope="col">X</th
-          ><th class="cinder-table__header-cell" scope="col">Value</th></tr
-        >
-      </thead>
-      <tbody class="cinder-table__body">
-        {#each model.tableRows as row (row.id)}
-          <tr class="cinder-table__row"
-            ><th class="cinder-table__cell" scope="row">{row.seriesLabel}</th><td
-              class="cinder-table__cell">{row.xLabel}</td
-            ><td class="cinder-table__cell">{row.valueLabel}</td></tr
-          >
-        {/each}
-      </tbody>
-    </table>
+    <ChartDataTable
+      caption={dataTableCaption ?? label}
+      headers={['Series', 'X', 'Value']}
+      rows={model.tableRows.map((row) => ({
+        id: row.id,
+        header: row.seriesLabel,
+        cells: [row.xLabel, row.valueLabel],
+      }))}
+      visibilityClass={dataTableClass(dataTableVisibility)}
+      describedBy={guidanceId}
+    />
   {/if}
 
   {#if legendVisible(legendPosition, series.length) && legendPosition === 'bottom'}
