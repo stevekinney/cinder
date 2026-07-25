@@ -61,6 +61,18 @@
     hydrated = true;
   });
 
+  $effect(() => {
+    if (!open || !onclick) return;
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault();
+        onclick?.(event as unknown as MouseEvent);
+      }
+    };
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  });
+
   // Lock body scroll while the scrim is present — including the fade-out outro, so
   // the page can't scroll under a still-visible dimmer. We track the rendered scrim
   // element rather than keying on `open`: the {#if open} block sets `scrimElement` on
