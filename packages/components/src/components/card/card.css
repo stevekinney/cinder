@@ -26,8 +26,8 @@
   }
 
   .cinder-card[data-cinder-tone='danger'] > .cinder-card__header,
-  .cinder-card[data-cinder-tone='danger'] > .cinder-card__body,
-  .cinder-card[data-cinder-tone='danger'] > .cinder-card__footer {
+  .cinder-card[data-cinder-tone='danger'] > .cinder-card__body:not([data-cinder-tone='muted']),
+  .cinder-card[data-cinder-tone='danger'] > .cinder-card__footer:not([data-cinder-tone='muted']) {
     background: transparent;
   }
 
@@ -107,7 +107,8 @@
     background: var(--cinder-surface-inset);
   }
 
-  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] > .cinder-card__body {
+  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well']
+    > .cinder-card__body:not([data-cinder-tone='muted']) {
     background: transparent;
   }
 
@@ -137,7 +138,8 @@
     background: var(--cinder-surface);
   }
 
-  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well'] > .cinder-card__footer {
+  .cinder-card[data-cinder-tone='danger'][data-cinder-variant='well']
+    > .cinder-card__footer:not([data-cinder-tone='muted']) {
     background: transparent;
   }
 
