@@ -227,9 +227,10 @@
 
   function handleClick(event: MouseEvent): void {
     if (consumerOnClick) {
+      const consumerEvent = withNavigationCurrentTarget(event);
       (consumerOnClick as (this: HTMLElement | null, e: MouseEvent) => void).call(
         navigationBarElement,
-        event,
+        consumerEvent,
       );
     }
     if (event.defaultPrevented) return;
@@ -261,7 +262,7 @@
   function handleKeyDown(event: KeyboardEvent): void {
     // Consumer handler runs first; if it cancels, skip the internal close.
     if (consumerOnKeyDown) {
-      (consumerOnKeyDown as (e: KeyboardEvent) => void)(event);
+      (consumerOnKeyDown as (e: KeyboardEvent) => void)(withNavigationCurrentTarget(event));
     }
     if (event.defaultPrevented) return;
 
@@ -288,12 +289,23 @@
       }
     }
   }
+
+  function withNavigationCurrentTarget<T extends Event>(event: T): T {
+    return new Proxy(event, {
+      get(target, property) {
+        if (property === 'currentTarget') return navigationBarElement;
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+    });
+  }
 </script>
 
 <nav
   {...rest}
   bind:this={navigationBarElement}
   aria-label={label}
+  aria-owns={isMobileLayout && mobileMenuOpen ? regionId : undefined}
   class={classNames('cinder-navigation-bar', className)}
   data-collapsible={isCollapsible ? 'true' : 'false'}
   data-cinder-placement={placement}
@@ -335,6 +347,7 @@
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
     data-cinder-mobile-panel={isMobileLayout || undefined}
+    aria-label={isMobileLayout ? label : undefined}
     data-cinder-position-ready={anchoredItems.positionReady || undefined}
     style={anchoredItems.positionStyle}
     inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}

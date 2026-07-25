@@ -63,15 +63,16 @@
   );
 
   const actionsPortal = createPortalAttachment({
-    disabled: () => !open,
+    disabled: () => !open || hidden,
     source: () => getTriggerElement(),
+    target: () => getPortalTarget(),
   });
   const anchoredActions = createAnchoredOverlay({
     open: () => open,
     anchor: () => getTriggerElement(),
     panel: () => actionsElement,
     placement: () => placement,
-    offset: () => 12,
+    offset: () => getSpacingOffset(),
     widthMode: () => 'none',
   });
 
@@ -82,6 +83,23 @@
 
   function getTriggerElement(): HTMLElement | null {
     return triggerWrapperElement?.querySelector<HTMLElement>('.cinder-floating-action') ?? null;
+  }
+
+  function getPortalTarget(): HTMLElement | null {
+    return getTriggerElement()?.closest<HTMLElement>('dialog[open]') ?? null;
+  }
+
+  function getSpacingOffset(): number {
+    const trigger = getTriggerElement();
+    if (!trigger || typeof window === 'undefined') return 12;
+    const value = getComputedStyle(trigger).getPropertyValue('--cinder-space-3').trim();
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return 12;
+    if (value.endsWith('rem')) {
+      const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+      return parsed * (Number.isFinite(root) && root > 0 ? root : 16);
+    }
+    return parsed;
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
@@ -173,7 +191,7 @@
   }
 
   $effect(() => {
-    if (!open) return;
+    if (!open || hidden || !anchoredActions.positionReady) return;
     queueMicrotask(() => getEnabledActionButtons()[0]?.focus());
   });
 
@@ -199,6 +217,7 @@
   hidden={hidden ? true : undefined}
   role="group"
   aria-label={accessibleLabel}
+  aria-owns={open && !hidden ? actionsId : undefined}
   aria-hidden={hidden ? 'true' : undefined}
   inert={hidden ? true : undefined}
   class={classNames('cinder-speed-dial', customClassName)}
@@ -215,10 +234,13 @@
     aria-orientation={orientation}
     class="cinder-speed-dial__actions"
     data-cinder-open={open ? '' : undefined}
-    data-cinder-direction={direction}
+    data-cinder-direction={anchoredActions.positionReady
+      ? anchoredActions.resolvedPlacement.split('-')[0]
+      : direction}
     data-cinder-position-ready={anchoredActions.positionReady || undefined}
     style={anchoredActions.positionStyle}
-    inert={!open ? true : undefined}
+    aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
+    inert={!open || hidden ? true : undefined}
     tabindex="-1"
     onkeydown={handleActionsKeydown}
   >
