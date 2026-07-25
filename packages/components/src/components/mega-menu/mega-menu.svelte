@@ -28,6 +28,7 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
@@ -44,6 +45,7 @@
   }: MegaMenuProps = $props();
 
   let navElement = $state<HTMLElement | null>(null);
+  const localeContext = getLocaleContext();
   const generatedId = $props.id();
   let openItemId = $state<string | null>(null);
   let previousOpenIndex = $state<number | null>(null);
@@ -271,7 +273,7 @@
     return: 'ArrowLeft' | 'ArrowRight';
   } {
     const element = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    const isRightToLeft = resolveTextDirection(element) === 'rtl';
+    const isRightToLeft = resolveTextDirection(element, localeContext?.direction) === 'rtl';
     return isRightToLeft
       ? { enter: 'ArrowLeft', return: 'ArrowRight' }
       : { enter: 'ArrowRight', return: 'ArrowLeft' };
