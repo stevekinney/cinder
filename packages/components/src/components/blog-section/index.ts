@@ -1,4 +1,3 @@
-import '../_internal/person-byline.css';
 import './blog-section.css';
 import BlogSection from './blog-section.svelte';
 
