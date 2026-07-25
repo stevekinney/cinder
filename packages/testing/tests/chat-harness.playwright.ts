@@ -436,6 +436,31 @@ test.describe('chat harness — scroll, unread, jump', () => {
     }
   });
 
+  test('user input cancels non-virtualized history restoration', async ({ browser }) => {
+    const { harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await timeline.evaluate((element) => {
+        const loadButton = element.querySelector<HTMLButtonElement>('.chat-history-trigger-button');
+        if (!loadButton) throw new Error('Load-earlier button was not rendered');
+        loadButton.click();
+        element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 120 }));
+      });
+
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect(timeline).not.toHaveAttribute('data-cinder-history-restoring');
+      await expect
+        .poll(async () => timeline.evaluate((element) => getComputedStyle(element).overflowAnchor))
+        .toBe('auto');
+    } finally {
+      await dispose();
+    }
+  });
+
   test('non-virtualized history loading preserves the visible scroll anchor', async ({
     browser,
   }) => {
@@ -446,6 +471,9 @@ test.describe('chat harness — scroll, unread, jump', () => {
 
       const timeline = harness.locator('.chat-timeline');
       await harness.locator('[data-testid="scroll-top"]').click();
+      await expect
+        .poll(async () => timeline.evaluate((element) => getComputedStyle(element).overflowAnchor))
+        .toBe('auto');
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
       const before = await anchor.boundingBox();
@@ -467,6 +495,9 @@ test.describe('chat harness — scroll, unread, jump', () => {
       await expect
         .poll(async () => timeline.evaluate((element) => element.scrollTop))
         .toBeGreaterThan(0);
+      await expect
+        .poll(async () => timeline.evaluate((element) => getComputedStyle(element).overflowAnchor))
+        .toBe('auto');
     } finally {
       await dispose();
     }

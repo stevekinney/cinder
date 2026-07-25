@@ -251,6 +251,8 @@
   let consumerPoliteAnnouncementTimeout: ReturnType<typeof setTimeout> | undefined;
   let consumerAssertiveAnnouncementTimeout: ReturnType<typeof setTimeout> | undefined;
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
+  let isStabilizingNonVirtualHistoryAnchor = $state(false);
+  let nonVirtualHistoryStabilizationGeneration = 0;
   let deferredAdapterHasMoreHistory: boolean | null = null;
   let historyAnchorMessageId = $state<string | null>(null);
   let historyAnchorViewportOffset = $state<number | null>(null);
@@ -477,6 +479,9 @@
     onloadhistory !== undefined || adapter?.loadOlderMessages !== undefined,
   );
   const showHistoryTrigger = $derived(hasHistoryLoader && effectiveHasMoreHistory);
+  const isRestoringNonVirtualHistory = $derived(
+    !isVirtualized && (pendingHistoryScroll !== null || isStabilizingNonVirtualHistoryAnchor),
+  );
 
   $effect(() => {
     chatVirtualizer.setScrollElement(isVirtualized ? viewport : null);
@@ -502,6 +507,7 @@
       currentConversationId !== previousHistoryConversationId ||
       currentAdapter !== previousHistoryAdapter
     ) {
+      cancelNonVirtualHistoryAnchorStabilization();
       adapterHasMoreHistory = undefined;
       pendingHistoryScroll = null;
       deferredAdapterHasMoreHistory = null;
@@ -730,17 +736,42 @@
   }
 
   async function stabilizeNonVirtualHistoryAnchor(pending: PendingHistoryScroll): Promise<void> {
-    for (let attempt = 0; attempt < 5; attempt += 1) {
-      await waitForLayoutFrame();
-      if (!viewport) return;
+    const generation = ++nonVirtualHistoryStabilizationGeneration;
+    const stabilizationConversationId = conversationId;
+    isStabilizingNonVirtualHistoryAnchor = true;
+    try {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        await waitForLayoutFrame();
+        if (
+          !viewport ||
+          generation !== nonVirtualHistoryStabilizationGeneration ||
+          conversationId !== stabilizationConversationId
+        ) {
+          return;
+        }
 
-      const correction = nonVirtualHistoryAnchorCorrection(pending);
-      if (correction === null || Math.abs(correction) < 1) return;
-      viewport.scrollTo({
-        top: viewport.scrollTop + correction,
-        behavior: 'instant',
-      });
+        const correction = nonVirtualHistoryAnchorCorrection(pending);
+        if (correction === null || Math.abs(correction) < 1) return;
+        viewport.scrollTo({
+          top: viewport.scrollTop + correction,
+          behavior: 'instant',
+        });
+      }
+    } finally {
+      if (generation === nonVirtualHistoryStabilizationGeneration) {
+        isStabilizingNonVirtualHistoryAnchor = false;
+      }
     }
+  }
+
+  function cancelNonVirtualHistoryAnchorStabilization(): void {
+    nonVirtualHistoryStabilizationGeneration += 1;
+    isStabilizingNonVirtualHistoryAnchor = false;
+  }
+
+  function cancelHistoryRestorationForUserInput(): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    pendingHistoryScroll = null;
   }
 
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
@@ -1088,6 +1119,7 @@
   }
 
   function captureHistoryScroll(): void {
+    cancelNonVirtualHistoryAnchorStabilization();
     const previousFirstTranscriptMessageId = messages[0]?.id ?? null;
     const visibleAnchor = firstVisibleRenderedMessage();
     const previousFirstMessageId = visibleAnchor?.messageId ?? previousFirstTranscriptMessageId;
@@ -1891,7 +1923,10 @@
       aria-live={isVirtualized ? 'off' : 'polite'}
       aria-relevant={isVirtualized ? undefined : 'additions'}
       data-cinder-virtualized={isVirtualized ? '' : undefined}
+      data-cinder-history-restoring={isRestoringNonVirtualHistory ? '' : undefined}
       tabindex="0"
+      onwheel={cancelHistoryRestorationForUserInput}
+      ontouchstart={cancelHistoryRestorationForUserInput}
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}
@@ -2090,13 +2125,16 @@
   .chat-timeline {
     flex: 1;
     overflow-y: auto;
-    /* Chat owns append and prepend restoration. Native anchoring can apply a
-       second offset while content-visibility measurements settle. */
-    overflow-anchor: none;
     padding: var(--cinder-chat-timeline-padding);
     display: flex;
     flex-direction: column;
     gap: var(--cinder-chat-message-gap);
+  }
+
+  .chat-timeline[data-cinder-history-restoring] {
+    /* Chat owns prepend restoration while this marker is present. Native
+       anchoring would otherwise apply a second offset as measurements settle. */
+    overflow-anchor: none;
   }
 
   .chat-timeline[data-cinder-virtualized] {
