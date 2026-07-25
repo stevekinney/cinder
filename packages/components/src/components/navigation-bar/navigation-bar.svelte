@@ -63,9 +63,9 @@
   const brandFocusSelector =
     '.cinder-navigation-bar__brand button:not([disabled]), .cinder-navigation-bar__brand [href], .cinder-navigation-bar__brand input:not([disabled]), .cinder-navigation-bar__brand select:not([disabled]), .cinder-navigation-bar__brand textarea:not([disabled]), .cinder-navigation-bar__brand [tabindex]:not([tabindex="-1"])';
   const actionFocusSelector =
-    '.cinder-navigation-bar__actions button:not([disabled]), .cinder-navigation-bar__actions [href], .cinder-navigation-bar__actions input:not([disabled]), .cinder-navigation-bar__actions select:not([disabled]), .cinder-navigation-bar__actions textarea:not([disabled]), .cinder-navigation-bar__actions [tabindex]:not([tabindex="-1"])';
+    '.cinder-navigation-bar__actions button:not([disabled]), .cinder-navigation-bar__actions [href], .cinder-navigation-bar__actions input:not([disabled]):not([type="hidden"]), .cinder-navigation-bar__actions select:not([disabled]), .cinder-navigation-bar__actions textarea:not([disabled]), .cinder-navigation-bar__actions [tabindex]:not([tabindex="-1"])';
   const documentFocusSelector =
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
@@ -289,7 +289,9 @@
 
   function getFocusTargetBeforeItems(): HTMLElement | null {
     if (menuTogglePlacement === 'before-brand') {
-      const brandTarget = navigationBarElement?.querySelector<HTMLElement>(brandFocusSelector);
+      const brandTarget = Array.from(
+        navigationBarElement?.querySelectorAll<HTMLElement>(brandFocusSelector) ?? [],
+      ).at(-1);
       if (brandTarget) return brandTarget;
     }
     return (
@@ -297,8 +299,17 @@
     );
   }
 
+  function isRenderedFocusTarget(candidate: HTMLElement): boolean {
+    return (
+      !(candidate instanceof HTMLInputElement && candidate.type === 'hidden') &&
+      !candidate.closest('[hidden], [inert], [aria-hidden="true"]')
+    );
+  }
+
   function getFocusTargetAfterItems(): HTMLElement | null {
-    const actionTarget = navigationBarElement?.querySelector<HTMLElement>(actionFocusSelector);
+    const actionTarget = Array.from(
+      navigationBarElement?.querySelectorAll<HTMLElement>(actionFocusSelector) ?? [],
+    ).find(isRenderedFocusTarget);
     if (actionTarget) return actionTarget;
     const navigationBar = navigationBarElement;
     if (!navigationBar || typeof document === 'undefined') return null;
@@ -307,7 +318,7 @@
         (candidate) =>
           !navigationBar.contains(candidate) &&
           !itemsRegionElement?.contains(candidate) &&
-          !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+          isRenderedFocusTarget(candidate) &&
           Boolean(
             navigationBar.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING,
           ),

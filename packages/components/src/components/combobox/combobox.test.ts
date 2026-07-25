@@ -562,8 +562,8 @@ describe('Combobox filtering', () => {
       expect(emptyState?.textContent?.trim()).toBe('No results');
       expect(emptyState?.closest('[role="listbox"]')?.id).toBe('fruit-listbox');
       expect(emptyState?.closest('.cinder-combobox')).toBeNull();
-      expect(panel?.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
-      expect(panel?.style.colorScheme).toBe('dark');
+      expect(panel?.parentElement?.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
+      expect(panel?.parentElement?.style.colorScheme).toBe('dark');
       expect(input.getAttribute('aria-expanded')).toBe('true');
       expect(input.getAttribute('aria-controls')).toBe('fruit-listbox');
     });

@@ -3,6 +3,7 @@ import type { Attachment } from 'svelte/attachments';
 import { devWarn } from '../../utilities/dev-warn.ts';
 
 import { readOption } from '../../utilities/read-option.ts';
+import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
 export type PortalTargetInput = HTMLElement | string | null | undefined;
 
@@ -53,8 +54,6 @@ type ResolvedPortalTarget =
   | { kind: 'resolved'; target: HTMLElement }
   | { kind: 'unresolved'; key: string };
 
-const inheritedPortalMediaQueries = ['(prefers-reduced-motion: reduce)'] as const;
-
 export function resolvePortalTarget(target: PortalTargetInput): ResolvedPortalTarget | null {
   if (typeof document === 'undefined') return null;
 
@@ -100,8 +99,10 @@ export function createInheritedPortalStyle(
   active: () => boolean,
 ): { readonly style: string } {
   let style = $state('');
+  const reducedMotion = useReducedMotion();
 
   $effect(() => {
+    void reducedMotion.current;
     if (!active()) {
       style = '';
       return;
@@ -212,19 +213,8 @@ function observeInheritedPortalAttributes(
   }
   observe(document.documentElement);
 
-  const mediaQueryLists =
-    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
-      ? []
-      : inheritedPortalMediaQueries.map((query) => window.matchMedia(query));
-  for (const mediaQueryList of mediaQueryLists) {
-    mediaQueryList.addEventListener('change', syncAttributes);
-  }
-
   return () => {
     observer.disconnect();
-    for (const mediaQueryList of mediaQueryLists) {
-      mediaQueryList.removeEventListener('change', syncAttributes);
-    }
   };
 }
 
@@ -232,6 +222,7 @@ export function createPortalAttachment(
   options: PortalAttachmentOptions = {},
 ): Attachment<HTMLElement> {
   let lastWarnedUnresolvedKey: string | null = null;
+  const reducedMotion = useReducedMotion();
 
   return (element) => {
     // Capture the *original* parentElement once, before any mounting moves the wrapper. After
@@ -320,6 +311,7 @@ export function createPortalAttachment(
     // detaches the previous mount before re-resolving — this guards against the wrapper being
     // stranded in the old target when `target` changes or `disabled` flips true.
     $effect(() => {
+      void reducedMotion.current;
       let stopObservingInheritedAttributes: (() => void) | null = null;
       const disabled = readOption(options.disabled ?? false);
       const inheritAttributes = readOption(options.inheritAttributes ?? true);

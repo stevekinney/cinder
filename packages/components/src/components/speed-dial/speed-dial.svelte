@@ -32,6 +32,8 @@
 
   const actionsId = $props.id();
   const defaultAriaLabel = 'Quick actions';
+  const documentFocusSelector =
+    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   let {
     open = $bindable(false),
@@ -118,7 +120,7 @@
   function getSpacingOffset(): number {
     const pixels = spacingProbeElement?.getBoundingClientRect().width;
 
-    return pixels !== undefined && Number.isFinite(pixels) && pixels > 0 ? pixels : 12;
+    return pixels !== undefined && Number.isFinite(pixels) && pixels >= 0 ? pixels : 12;
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
@@ -130,6 +132,25 @@
     return resolvedDirection === 'up' || resolvedDirection === 'left'
       ? [...enabledButtons].reverse()
       : enabledButtons;
+  }
+
+  function getFocusTargetBeforeSpeedDial(): HTMLElement | null {
+    const speedDialRoot = rootElement;
+    if (!speedDialRoot || typeof document === 'undefined') return null;
+
+    return (
+      Array.from(document.querySelectorAll<HTMLElement>(documentFocusSelector))
+        .filter(
+          (candidate) =>
+            !speedDialRoot.contains(candidate) &&
+            !actionsElement?.contains(candidate) &&
+            !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+            Boolean(
+              candidate.compareDocumentPosition(speedDialRoot) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ),
+        )
+        .at(-1) ?? null
+    );
   }
 
   function focusTrigger(): void {
@@ -185,6 +206,13 @@
     if (!target) return;
 
     const tabOrderButtons = getEnabledActionButtons();
+    if (event.key === 'Tab' && event.shiftKey && target === tabOrderButtons[0]) {
+      const previousTarget = getFocusTargetBeforeSpeedDial();
+      if (!previousTarget) return;
+      event.preventDefault();
+      previousTarget.focus();
+      return;
+    }
     if (event.key === 'Tab' && !event.shiftKey && target === tabOrderButtons.at(-1)) {
       event.preventDefault();
       getTriggerElement()?.focus();

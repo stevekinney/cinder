@@ -177,9 +177,23 @@ function actionButtonSnippet() {
   }));
 }
 
+function hiddenThenActionButtonSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<div><input type="hidden" id="hidden-action"><button type="button" id="nav-action">Account</button></div>',
+  }));
+}
+
 function brandLinkSnippet() {
   return createRawSnippet(() => ({
     render: () => '<a href="/home" id="brand-link">Acme</a>',
+  }));
+}
+
+function multiControlBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<div><a href="/home" id="brand-home">Home</a><a href="/products" id="brand-products">Products</a></div>',
   }));
 }
 
@@ -677,6 +691,25 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('portaled menu skips hidden action controls at the end of its tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        actions: hiddenThenActionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+      const settings = itemsRegion.querySelector('[data-key="settings"]') as HTMLButtonElement;
+
+      settings.focus();
+      await fireEvent.keyDown(settings, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
   test('toggle Tab skips disabled navigation items', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -732,6 +765,26 @@ describe('NavigationBar', () => {
       brandLink.focus();
       await fireEvent.keyDown(brandLink, { key: 'Tab' });
       expect(document.activeElement).toBe(home);
+    });
+  });
+
+  test('reverse Tab from portaled items returns to the final brand control', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: multiControlBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const home = itemsRegion.querySelector('[data-key="home"]') as HTMLButtonElement;
+      const finalBrandControl = container.querySelector('#brand-products');
+
+      home.focus();
+      await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(finalBrandControl);
     });
   });
 
