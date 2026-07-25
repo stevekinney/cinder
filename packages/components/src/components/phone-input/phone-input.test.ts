@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -7,6 +8,8 @@ setupHappyDom();
 
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: PhoneInput } = await import('./phone-input.svelte');
+const { default: FormFieldPhoneInputFixture } =
+  await import('../../test/fixtures/form-field-phone-input-fixture.svelte');
 
 function nationalInput(container: Element): HTMLInputElement {
   return container.querySelector<HTMLInputElement>('input[type="tel"]')!;
@@ -31,7 +34,45 @@ describe('PhoneInput rendering', () => {
 
   test('country select accessible name includes the full selected country', () => {
     const { getByRole } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
-    expect(getByRole('combobox', { name: /Country: United States, \+1/ })).not.toBeNull();
+    expect(getByRole('combobox', { name: 'Phone Country: United States, +1' })).not.toBeNull();
+  });
+
+  test('visible country summary stays compact while options retain full names', () => {
+    const { container } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', country: 'AE', countries: ['US', 'AE'] },
+    });
+
+    expect(container.querySelector('.cinder-phone-input__country-summary')?.textContent).toBe(
+      'AE +971',
+    );
+    expect(Array.from(countrySelect(container).options, (option) => option.textContent)).toContain(
+      'United Arab Emirates +971',
+    );
+  });
+
+  test('multiple instances prefix child controls with their field label', () => {
+    const home = render(PhoneInput, { props: { id: 'home', label: 'Home phone' } });
+    const work = render(PhoneInput, { props: { id: 'work', label: 'Work phone' } });
+
+    expect(
+      home.getByRole('combobox', { name: 'Home phone Country: United States, +1' }),
+    ).not.toBeNull();
+    expect(home.getByRole('textbox', { name: 'Home phone Phone number' })).not.toBeNull();
+    expect(
+      work.getByRole('combobox', { name: 'Work phone Country: United States, +1' }),
+    ).not.toBeNull();
+    expect(work.getByRole('textbox', { name: 'Work phone Phone number' })).not.toBeNull();
+  });
+
+  test('loads the shared Input and Select styled entries without painting another chevron', () => {
+    const source = readFileSync(new URL('./phone-input.svelte', import.meta.url), 'utf8');
+    const styles = readFileSync(new URL('./phone-input.css', import.meta.url), 'utf8');
+    const { container } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
+
+    expect(source).toContain("from '../input/index.ts'");
+    expect(source).toContain("from '../select/index.ts'");
+    expect(styles).not.toContain('background-image');
+    expect(container.querySelectorAll('.cinder-select-field__chevron')).toHaveLength(1);
   });
 
   test('country defaults to US', () => {
@@ -332,6 +373,21 @@ describe('PhoneInput error / disabled / required', () => {
       props: { id: 'p', label: 'Phone', required: true },
     });
     expect(nationalInput(container).required).toBe(true);
+    expect(countrySelect(container).required).toBe(true);
+  });
+
+  test('explicit required=false overrides required FormField context for both controls', () => {
+    const { container } = render(FormFieldPhoneInputFixture, {
+      props: {
+        fieldId: 'phone',
+        fieldLabel: 'Phone',
+        fieldRequired: true,
+        phoneRequired: false,
+      },
+    });
+
+    expect(countrySelect(container).required).toBe(false);
+    expect(nationalInput(container).required).toBe(false);
   });
 });
 

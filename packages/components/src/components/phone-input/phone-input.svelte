@@ -27,8 +27,8 @@
     PhoneInputCountryOption,
     PhoneInputProps,
   } from './phone-input.types.ts';
-  import Input from '../input/input.svelte';
-  import Select from '../select/select.svelte';
+  import Input from '../input/index.ts';
+  import Select from '../select/index.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   import {
@@ -347,7 +347,9 @@
 
   const groupLabelId = $derived(label ? `${id}-label` : undefined);
   const countrySelectId = $derived(`${id}-country`);
+  const countryLabelId = $derived(`${id}-country-label`);
   const nationalInputId = $derived(id);
+  const nationalLabelId = $derived(`${id}-national-label`);
   const selectedCountryOption = $derived(
     countryOptions.find((option) => option.code === country) ?? countryOptions[0],
   );
@@ -355,6 +357,11 @@
     selectedCountryOption
       ? `Country: ${selectedCountryOption.displayName}, +${selectedCountryOption.callingCode}`
       : 'Country',
+  );
+  const countrySummary = $derived(
+    selectedCountryOption
+      ? `${selectedCountryOption.code} +${selectedCountryOption.callingCode}`
+      : country,
   );
 
   const defaultDescriptionId = $derived(describeId(id, !!description));
@@ -384,6 +391,16 @@
   const groupAriaLabel = $derived(
     !resolvedGroupLabelledBy && !ariaLabelledBy ? ariaLabel : undefined,
   );
+
+  function controlLabelledBy(controlLabelId: string): string | undefined {
+    if (resolvedGroupLabelledBy) return `${resolvedGroupLabelledBy} ${controlLabelId}`;
+    if (groupAriaLabel) return undefined;
+    return controlLabelId;
+  }
+
+  function controlAriaLabel(controlLabel: string): string | undefined {
+    return groupAriaLabel ? `${groupAriaLabel} ${controlLabel}` : undefined;
+  }
 
   const hasGroupAccessibleName = $derived(
     !!label || !!context?.labelId || !!ariaLabelledBy || !!ariaLabel,
@@ -454,28 +471,39 @@
     aria-required={resolvedRequired || undefined}
     aria-disabled={resolvedDisabled || undefined}
   >
-    <Select
-      id={countrySelectId}
+    <div
       class="cinder-phone-input__country"
-      label={countryAccessibleLabel}
-      hideLabel
-      options={selectOptions}
-      value={isAllowed(country) ? country : fallbackCountry()}
-      aria-describedby={describedBy}
-      aria-invalid={resolvedAriaInvalid}
-      disabled={resolvedDisabled}
-      onchange={handleCountryChange}
-    />
+      data-disabled={resolvedDisabled || undefined}
+      data-invalid={resolvedAriaInvalid === 'true' || undefined}
+    >
+      <span id={countryLabelId} class="cinder-sr-only">{countryAccessibleLabel}</span>
+      <Select
+        id={countrySelectId}
+        options={selectOptions}
+        value={isAllowed(country) ? country : fallbackCountry()}
+        aria-label={controlAriaLabel(countryAccessibleLabel)}
+        aria-labelledby={controlLabelledBy(countryLabelId)}
+        aria-describedby={describedBy}
+        aria-invalid={resolvedAriaInvalid}
+        disabled={resolvedDisabled}
+        required={resolvedRequired}
+        onchange={handleCountryChange}
+      />
+      <span class="cinder-phone-input__country-summary" aria-hidden="true">
+        {countrySummary}
+      </span>
+    </div>
 
+    <span id={nationalLabelId} class="cinder-sr-only">Phone number</span>
     <Input
       id={nationalInputId}
       class="cinder-phone-input__national"
-      label="Phone number"
-      hideLabel
       type="tel"
       inputmode="tel"
       autocomplete="tel-national"
       value={nationalDisplay}
+      aria-label={controlAriaLabel('Phone number')}
+      aria-labelledby={controlLabelledBy(nationalLabelId)}
       aria-describedby={describedBy}
       aria-invalid={resolvedAriaInvalid}
       aria-required={resolvedRequired || undefined}
