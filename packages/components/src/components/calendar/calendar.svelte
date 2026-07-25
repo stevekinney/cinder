@@ -32,6 +32,13 @@
 
   const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
 
+  function createLocalDate(year: number, monthValue: number, day: number): Date {
+    const date = new Date(0);
+    date.setHours(0, 0, 0, 0);
+    date.setFullYear(year, monthValue, day);
+    return date;
+  }
+
   let {
     id,
     value = $bindable<string | undefined>(undefined),
@@ -61,7 +68,7 @@
     const monthValue = Number(match[2]);
     const day = Number(match[3]);
     if (monthValue < 1 || monthValue > 12) return null;
-    const date = new Date(year, monthValue - 1, day);
+    const date = createLocalDate(year, monthValue - 1, day);
     if (
       date.getFullYear() !== year ||
       date.getMonth() !== monthValue - 1 ||
@@ -80,7 +87,7 @@
   }
 
   function startOfMonth(date: Date): Date {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
+    return createLocalDate(date.getFullYear(), date.getMonth(), 1);
   }
 
   function addDays(date: Date, days: number): Date {
@@ -90,7 +97,7 @@
   }
 
   function addMonths(date: Date, months: number): Date {
-    return new Date(date.getFullYear(), date.getMonth() + months, 1);
+    return createLocalDate(date.getFullYear(), date.getMonth() + months, 1);
   }
 
   function startOfWeek(date: Date, weekStart: number): Date {
@@ -214,8 +221,8 @@
   }
 
   function clampDayToMonth(year: number, monthValue: number, day: number): Date {
-    const lastDay = new Date(year, monthValue + 1, 0).getDate();
-    return new Date(year, monthValue, Math.min(day, lastDay));
+    const lastDay = createLocalDate(year, monthValue + 1, 0).getDate();
+    return createLocalDate(year, monthValue, Math.min(day, lastDay));
   }
 
   async function moveFocusedByMonths(delta: number, moveDomFocus = true) {
@@ -284,14 +291,14 @@
   function canGoPrevMonth(): boolean {
     if (!min) return true;
     const prev = addMonths(visibleMonthDate, -1);
-    const monthEnd = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+    const monthEnd = createLocalDate(prev.getFullYear(), prev.getMonth() + 1, 0);
     return toISODate(monthEnd) >= min;
   }
 
   function canGoNextMonth(): boolean {
     if (!max) return true;
     const next = addMonths(visibleMonthDate, 1);
-    const monthStart = new Date(next.getFullYear(), next.getMonth(), 1);
+    const monthStart = createLocalDate(next.getFullYear(), next.getMonth(), 1);
     return toISODate(monthStart) <= max;
   }
 </script>

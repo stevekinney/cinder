@@ -35,8 +35,9 @@ export type DateRangeDatePreset = {
  *   surface and emits `YYYY-MM-DDTHH:mm` or `YYYY-MM-DDTHH:mm:ss`.
  * - Timezone conversion is caller-owned; browser `datetime-local` values are
  *   local wall-clock values by design.
- * - Sets min/max bounds on the custom inputs, but does NOT block out-of-order
- *   entry. Validation feedback is the consumer's responsibility via `error`.
+ * - Start and end constrain each other through DatePicker's min/max contract:
+ *   the calendar disables out-of-range dates and manual edits are clamped.
+ *   Consumers still own domain-specific validation feedback via `error`.
  * - Supports optional consumer-supplied presets (e.g. last 7 days).
  * - Does not own routing, query-string sync, or data fetching.
  */

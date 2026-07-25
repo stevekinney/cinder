@@ -56,6 +56,24 @@ describe('Calendar', () => {
     expect(selected).toBe('0999-06-15');
   });
 
+  test('preserves years below 100 without applying the Date constructor offset', async () => {
+    let selected: string | undefined;
+    const { container } = render(Calendar, {
+      month: '0099-06-01',
+      onchange: (value: string) => {
+        selected = value;
+      },
+    });
+
+    const day = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-calendar__day'),
+    ).find((button) => button.textContent?.trim() === '15' && !button.hasAttribute('data-outside'));
+    if (!day) throw new Error('day button missing');
+    await fireEvent.click(day);
+
+    expect(selected).toBe('0099-06-15');
+  });
+
   test('arrow keys move focus and enter selects the focused date', async () => {
     let selected = '';
     const { container } = render(Calendar, {
