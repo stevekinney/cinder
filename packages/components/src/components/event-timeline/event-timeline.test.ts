@@ -2,13 +2,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
 const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
@@ -60,6 +60,10 @@ beforeAll(() => {
 
 beforeEach(() => {
   TestResizeObserver.instances = [];
+});
+
+afterEach(() => {
+  cleanup();
 });
 
 afterAll(() => {
