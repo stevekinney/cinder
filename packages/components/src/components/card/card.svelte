@@ -84,8 +84,8 @@
   class={classNames('cinder-card', className)}
   data-cinder-variant={variant}
   data-cinder-tone={tone}
-  data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
   data-cinder-padding={padding}
+  data-cinder-edge-to-edge-mobile={edgeToEdgeOnMobile ? '' : undefined}
   {...labelAttributes}
 >
   {#if header}

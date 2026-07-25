@@ -55,6 +55,18 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
 }
 
 describe('ApprovalCard', () => {
+  test('keeps a single owned padding layer inside Card', () => {
+    const styles = readFileSync(new URL('./approval-card.css', import.meta.url), 'utf8');
+    const surfaceHeaderRule =
+      styles.match(
+        /\.cinder-approval-card__surface\s*>\s*\.cinder-card__header\s*\{[^}]*\}/,
+      )?.[0] ?? '';
+    const ownedHeaderRule = styles.match(/\.cinder-approval-card__header\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(surfaceHeaderRule).toContain('padding: 0');
+    expect(ownedHeaderRule).toContain('padding: var(--cinder-space-4)');
+  });
+
   test('imports JsonEditor through its public component subpath', () => {
     const actionsSource = readFileSync(
       new URL('./approval-card-actions.svelte', import.meta.url),
