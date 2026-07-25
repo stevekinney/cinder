@@ -15,6 +15,10 @@
 </script>
 
 <script lang="ts">
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import ChevronsLeft from 'lucide-svelte/icons/chevrons-left';
+  import ChevronsRight from 'lucide-svelte/icons/chevrons-right';
   import { tick } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
 
@@ -358,7 +362,7 @@
         disabled={movableLeftSelectedIds.length === 0}
         onclick={moveSelectedRight}
       >
-        Add
+        <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -367,7 +371,7 @@
         disabled={movableLeftItemIds.length === 0}
         onclick={moveAllRight}
       >
-        Add all
+        <ChevronsRight size={18} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -376,7 +380,7 @@
         disabled={movableRightSelectedIds.length === 0}
         onclick={moveSelectedLeft}
       >
-        Remove
+        <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
@@ -385,7 +389,7 @@
         disabled={movableRightItemIds.length === 0}
         onclick={moveAllLeft}
       >
-        Remove all
+        <ChevronsLeft size={18} strokeWidth={2} aria-hidden="true" />
       </button>
     </div>
 
