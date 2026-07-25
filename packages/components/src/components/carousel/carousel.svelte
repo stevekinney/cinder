@@ -139,6 +139,7 @@
 
   function scrollToActiveSlide(behavior?: ScrollBehavior): void {
     const viewport = viewportElement;
+    if (viewport === null) return;
     const slide = viewport?.children[currentIndex];
     if (!(slide instanceof HTMLElement)) return;
     const viewportRect = viewport.getBoundingClientRect();
@@ -169,10 +170,12 @@
   }
 
   function onViewportScroll(): void {
-    if (clampedLength < 2 || viewportElement === null) return;
-    const viewportLeft = viewportElement.getBoundingClientRect().left;
-    const nextIndex = [...viewportElement.children].reduce((nearestIndex, slide, index) => {
-      const nearest = viewportElement.children[nearestIndex];
+    const viewport = viewportElement;
+    if (clampedLength < 2 || viewport === null) return;
+    const viewportLeft = viewport.getBoundingClientRect().left;
+    const nextIndex = [...viewport.children].reduce((nearestIndex, slide, index) => {
+      const nearest = viewport.children[nearestIndex];
+      if (!nearest) return index;
       return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
         Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
         ? index
