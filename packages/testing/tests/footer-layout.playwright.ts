@@ -160,4 +160,73 @@ test.describe('Footer responsive layout', () => {
       }
     });
   }
+
+  test('long group link labels wrap inside capped navigation columns', async ({ page }) => {
+    await page.setContent(`
+      <style>
+        :root {
+          --cinder-space-2: 0.5rem;
+          --cinder-space-4: 1rem;
+          --cinder-space-6: 1.5rem;
+          --cinder-border-muted: #d1d5db;
+          --cinder-surface: #ffffff;
+          --cinder-text: #111827;
+          --cinder-text-muted: #4b5563;
+          --cinder-text-sm: 0.875rem;
+          --cinder-text-lg: 1.125rem;
+          --cinder-font-semibold: 600;
+          --cinder-font-sans: sans-serif;
+          --cinder-ring-width: 0.1875rem;
+          --cinder-ring-color: #2563eb;
+          --cinder-radius-sm: 0.25rem;
+        }
+
+        body {
+          margin: 0;
+        }
+
+        ${footerCss}
+
+        .cinder-footer {
+          box-sizing: content-box;
+          inline-size: 64rem;
+        }
+      </style>
+
+      <footer class="cinder-footer" aria-label="Footer">
+        <div class="cinder-footer__main">
+          <section class="cinder-footer__brand">
+            <h2 class="cinder-footer__brand-title">Acme</h2>
+          </section>
+          <div class="cinder-footer__groups">
+            <nav aria-label="Product">
+              <ul class="cinder-footer__list">
+                <li>
+                  <a class="cinder-footer__link" href="/international">
+                    AcmeInternationalizationDocumentation
+                  </a>
+                </li>
+              </ul>
+            </nav>
+            <nav aria-label="Company">
+              <h3 class="cinder-footer__group-title">Company</h3>
+            </nav>
+          </div>
+        </div>
+      </footer>
+    `);
+
+    const product = page.getByRole('navigation', { name: 'Product' });
+    const longLink = product.getByRole('link');
+    const [productBox, longLinkBox] = await Promise.all([
+      product.boundingBox(),
+      longLink.boundingBox(),
+    ]);
+
+    expect(productBox).not.toBeNull();
+    expect(longLinkBox).not.toBeNull();
+    expect((longLinkBox?.x ?? 0) + (longLinkBox?.width ?? 0)).toBeLessThanOrEqual(
+      (productBox?.x ?? 0) + (productBox?.width ?? 0),
+    );
+  });
 });

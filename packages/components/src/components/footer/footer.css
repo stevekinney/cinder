@@ -60,6 +60,7 @@
   .cinder-footer__link {
     color: var(--cinder-text-muted);
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
 
   @media (hover: hover) {
