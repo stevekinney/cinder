@@ -31,6 +31,8 @@ describe('TransferList', () => {
     expect(css).toContain('container-name: cinder-transfer-list;');
     expect(css).toContain('@container cinder-transfer-list (max-width: 42rem)');
     expect(css).toContain('.cinder-transfer-list__layout');
+    expect(css).toContain('.cinder-transfer-list:dir(rtl) .cinder-transfer-list__control svg');
+    expect(css).toContain('transform: scaleX(-1)');
     expect(css).not.toContain('@media (max-width');
   });
 
@@ -52,7 +54,7 @@ describe('TransferList', () => {
       ['Move all items to Selected', 'lucide-chevrons-right'],
       ['Move selected items to Available', 'lucide-chevron-left'],
       ['Move all items to Available', 'lucide-chevrons-left'],
-    ];
+    ] as const;
     for (const [accessibleName, iconClassName] of expectedControls) {
       const control = screen.getByRole('button', { name: accessibleName });
       expect(control.querySelector(`svg.${iconClassName}`)).toBeTruthy();
