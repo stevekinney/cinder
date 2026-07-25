@@ -280,16 +280,24 @@ describe('Card', () => {
     ).toBe(true);
   });
 
-  test('padding prop is reflected as data-cinder-padding on the body element', () => {
+  test('padding prop is scoped to the body element', () => {
     const { container } = render(Card, {
       props: {
+        title: 'Flush body',
         children: emptySnippet,
+        footer: textSnippet('footer-content'),
         padding: 'none',
       },
     });
+
+    expect(container.querySelector('.cinder-card')?.hasAttribute('data-cinder-padding')).toBe(
+      false,
+    );
+    expect(container.querySelector('.cinder-card__header')).not.toBeNull();
     expect(container.querySelector('.cinder-card__body')?.getAttribute('data-cinder-padding')).toBe(
       'none',
     );
+    expect(container.querySelector('.cinder-card__footer')).not.toBeNull();
   });
 
   test('padding defaults to "default" when not provided', () => {
@@ -305,6 +313,13 @@ describe('Card', () => {
 });
 
 describe('Card CSS contract', () => {
+  test('padding="none" targets only the body', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+
+    expect(css).toContain(".cinder-card__body[data-cinder-padding='none']");
+    expect(css).not.toContain(".cinder-card[data-cinder-padding='none']");
+  });
+
   test('title uses the primary text token', async () => {
     const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
     const titleBlock = css.match(/\.cinder-card__title\s*\{[^}]*\}/)?.[0] ?? '';

@@ -14,4 +14,7 @@
   >
     full-bleed content area
   </div>
+  {#snippet footer()}
+    Footer actions retain their standard inset.
+  {/snippet}
 </Card>

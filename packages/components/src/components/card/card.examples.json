@@ -31,7 +31,7 @@
       "id": "flush-body",
       "title": "Flush body (padding=\"none\")",
       "description": "Pass padding=\"none\" to remove the body padding for full-bleed content such as an image or a data table.",
-      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n</script>\n\n<Card title=\"Full-bleed image card\" padding=\"none\">\n  <div\n    style=\"min-block-size: 8rem; background: var(--cinder-surface-inset); border-top: 1px solid var(--cinder-border-muted); display: flex; align-items: center; justify-content: center; color: var(--cinder-text-subtle); font-size: var(--cinder-text-sm);\"\n  >\n    full-bleed content area\n  </div>\n</Card>\n"
+      "code": "<script lang=\"ts\">\n  import { Card } from '@lostgradient/cinder/card';\n</script>\n\n<Card title=\"Full-bleed image card\" padding=\"none\">\n  <div\n    style=\"min-block-size: 8rem; background: var(--cinder-surface-inset); border-top: 1px solid var(--cinder-border-muted); display: flex; align-items: center; justify-content: center; color: var(--cinder-text-subtle); font-size: var(--cinder-text-sm);\"\n  >\n    full-bleed content area\n  </div>\n  {#snippet footer()}\n    Footer actions retain their standard inset.\n  {/snippet}\n</Card>\n"
     },
     {
       "id": "well-edge-to-edge-mobile",
