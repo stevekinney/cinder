@@ -30,7 +30,7 @@
 
   .cinder-phone-input {
     display: grid;
-    grid-template-columns: minmax(7rem, max-content) 1fr;
+    grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
     gap: var(--cinder-space-2);
     align-items: stretch;
   }
