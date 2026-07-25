@@ -226,6 +226,11 @@ describe('primitive composition guard', () => {
         '@media (min-width: 800px) { .layout { display: grid; } } @media (max-width: 799px) { .layout { grid-template-columns: 1fr; } }',
       ).grid,
     ).toBe(0);
+    expect(
+      cssPrimitiveCounts(
+        '@media (min-width: 800px) { .layout { display: grid; } } @media (orientation: landscape) { .layout { grid-template-columns: 1fr; } }',
+      ).grid,
+    ).toBe(1);
   });
 
   test('rejects a hand-rolled grid in an inline style', () => {

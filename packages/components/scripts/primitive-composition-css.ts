@@ -89,15 +89,20 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
   );
 }
 
-function conditionalScope(rule: Rule): string[] {
-  const scope: string[] = [];
+type ConditionalScope = { name: string; parameters: string };
+
+function conditionalScope(rule: Rule): ConditionalScope[] {
+  const scope: ConditionalScope[] = [];
   let parent = rule.parent;
   while (parent !== undefined) {
     if (
       parent.type === 'atrule' &&
       ['container', 'document', 'media', 'supports'].includes(parent.name.toLowerCase())
     )
-      scope.unshift(`${parent.name.toLowerCase()} ${parent.params.trim()}`);
+      scope.unshift({
+        name: parent.name.toLowerCase(),
+        parameters: parent.params.trim().replace(/\s+/g, ' ').toLowerCase(),
+      });
     const nextParent = parent.parent;
     if (nextParent?.type === 'document') break;
     parent = nextParent;
@@ -105,13 +110,54 @@ function conditionalScope(rule: Rule): string[] {
   return scope;
 }
 
+function widthBounds(parameters: string): { minimum?: number; maximum?: number } {
+  const minimumMatch = /\(\s*min-width\s*:\s*(\d+(?:\.\d+)?)px\s*\)/i.exec(parameters);
+  const maximumMatch = /\(\s*max-width\s*:\s*(\d+(?:\.\d+)?)px\s*\)/i.exec(parameters);
+  return {
+    ...(minimumMatch?.[1] === undefined ? {} : { minimum: Number(minimumMatch[1]) }),
+    ...(maximumMatch?.[1] === undefined ? {} : { maximum: Number(maximumMatch[1]) }),
+  };
+}
+
+function discreteConditions(parameters: string): Map<string, string> {
+  const conditions = new Map<string, string>();
+  for (const match of parameters.matchAll(
+    /\(\s*(orientation|prefers-color-scheme|prefers-reduced-motion)\s*:\s*([^)]+?)\s*\)/gi,
+  ))
+    if (match[1] !== undefined && match[2] !== undefined)
+      conditions.set(match[1].toLowerCase(), match[2].toLowerCase());
+  return conditions;
+}
+
+function conditionalScopesConflict(left: ConditionalScope, right: ConditionalScope): boolean {
+  if (left.name !== right.name) return false;
+  if (left.name === 'supports') {
+    const leftWithoutNot = left.parameters.replace(/^not\s+/, '');
+    const rightWithoutNot = right.parameters.replace(/^not\s+/, '');
+    return (
+      leftWithoutNot === rightWithoutNot &&
+      left.parameters.startsWith('not ') !== right.parameters.startsWith('not ')
+    );
+  }
+  if (left.name !== 'media' && left.name !== 'container') return false;
+  const leftBounds = widthBounds(left.parameters);
+  const rightBounds = widthBounds(right.parameters);
+  const minimum = Math.max(leftBounds.minimum ?? -Infinity, rightBounds.minimum ?? -Infinity);
+  const maximum = Math.min(leftBounds.maximum ?? Infinity, rightBounds.maximum ?? Infinity);
+  if (minimum > maximum) return true;
+  const leftDiscrete = discreteConditions(left.parameters);
+  const rightDiscrete = discreteConditions(right.parameters);
+  return [...leftDiscrete].some(
+    ([feature, value]) => rightDiscrete.has(feature) && rightDiscrete.get(feature) !== value,
+  );
+}
+
 function conditionalScopesCanOverlap(left: Rule, right: Rule): boolean {
   const leftScope = conditionalScope(left);
   const rightScope = conditionalScope(right);
-  const sharedDepth = Math.min(leftScope.length, rightScope.length);
-  for (let index = 0; index < sharedDepth; index += 1)
-    if (leftScope[index] !== rightScope[index]) return false;
-  return true;
+  return !leftScope.some((leftCondition) =>
+    rightScope.some((rightCondition) => conditionalScopesConflict(leftCondition, rightCondition)),
+  );
 }
 
 function selectorsCanMatchSameElement(left: Rule, right: Rule): boolean {
