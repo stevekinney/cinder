@@ -139,7 +139,7 @@
     height: var(--preview-height, auto);
     z-index: var(--cinder-z-drag-preview, 9999);
     pointer-events: none;
-    box-shadow: var(--cinder-shadow-lg);
+    box-shadow: var(--cinder-shadow-md);
     border-radius: var(--cinder-radius-md, 4px);
     /* Subtle rotation and scale to distinguish preview from the placeholder. */
     transform: rotate(2deg) scale(1.02);
