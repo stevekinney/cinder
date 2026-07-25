@@ -119,4 +119,41 @@ describe('Calendar', () => {
     expect(disabledDays.includes('1')).toBe(true);
     expect(disabledDays.includes('30')).toBe(true);
   });
+
+  test.each([
+    {
+      month: '9999-12-01',
+      navigationLabel: 'Next month',
+      overflowDay: '1',
+    },
+    {
+      month: '0000-01-01',
+      navigationLabel: 'Previous month',
+      overflowDay: '31',
+    },
+  ])(
+    'stops navigation and overflow selection at the four-digit year boundary for $month',
+    async ({ month, navigationLabel, overflowDay }) => {
+      let selected: string | undefined;
+      const { container } = render(Calendar, {
+        month,
+        onchange: (value: string) => {
+          selected = value;
+        },
+      });
+
+      const navigation = container.querySelector<HTMLButtonElement>(
+        `[aria-label="${navigationLabel}"]`,
+      );
+      const overflow = Array.from(
+        container.querySelectorAll<HTMLButtonElement>('.cinder-calendar__day[data-outside]'),
+      ).find((button) => button.textContent?.trim() === overflowDay);
+
+      expect(navigation).toBeDisabled();
+      expect(overflow).toHaveAttribute('aria-disabled', 'true');
+
+      await fireEvent.click(overflow!);
+      expect(selected).toBeUndefined();
+    },
+  );
 });

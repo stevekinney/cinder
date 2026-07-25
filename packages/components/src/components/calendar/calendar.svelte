@@ -31,6 +31,8 @@
   };
 
   const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
+  const MINIMUM_CALENDAR_YEAR = 0;
+  const MAXIMUM_CALENDAR_YEAR = 9999;
 
   function createCalendarDate(year: number, monthValue: number, day: number): Date {
     const date = new Date(0);
@@ -84,6 +86,11 @@
     const monthValue = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${monthValue}-${day}`;
+  }
+
+  function isSupportedCalendarDate(date: Date): boolean {
+    const year = date.getUTCFullYear();
+    return year >= MINIMUM_CALENDAR_YEAR && year <= MAXIMUM_CALENDAR_YEAR;
   }
 
   function localTodayIso(): string {
@@ -183,12 +190,13 @@
     const next: CalendarCell[] = [];
     for (let index = 0; index < 42; index += 1) {
       const date = addDays(gridStart, index);
-      const iso = toISODate(date);
+      const supported = isSupportedCalendarDate(date);
+      const iso = supported ? toISODate(date) : '';
       next.push({
         iso,
         day: date.getUTCDate(),
         inMonth: date.getUTCMonth() === visibleMonthDate.getUTCMonth(),
-        disabled: disabled || isDateDisabled(iso),
+        disabled: disabled || !supported || isDateDisabled(iso),
         focused: iso === focused,
         selected: iso === selectedIso,
         ariaLabel: dayLabelFmt.format(date),
@@ -206,11 +214,10 @@
   });
 
   async function focusDate(iso: string, moveDomFocus = false) {
-    focusedIso = iso;
     const parsed = parseISODate(iso);
-    if (parsed) {
-      visibleMonthDate = startOfMonth(parsed);
-    }
+    if (!parsed) return;
+    focusedIso = iso;
+    visibleMonthDate = startOfMonth(parsed);
     if (!moveDomFocus) return;
     await tick();
     const target = document.getElementById(focusedDayId) as HTMLButtonElement | null;
@@ -218,7 +225,7 @@
   }
 
   function commitDate(iso: string) {
-    if (disabled || isDateDisabled(iso)) return;
+    if (disabled || !parseISODate(iso) || isDateDisabled(iso)) return;
     value = iso;
     focusedIso = iso;
     onchange?.(iso);
@@ -299,15 +306,17 @@
   }
 
   function canGoPrevMonth(): boolean {
-    if (!min) return true;
     const prev = addMonths(visibleMonthDate, -1);
+    if (!isSupportedCalendarDate(prev)) return false;
+    if (!min) return true;
     const monthEnd = createCalendarDate(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 0);
     return toISODate(monthEnd) >= min;
   }
 
   function canGoNextMonth(): boolean {
-    if (!max) return true;
     const next = addMonths(visibleMonthDate, 1);
+    if (!isSupportedCalendarDate(next)) return false;
+    if (!max) return true;
     const monthStart = createCalendarDate(next.getUTCFullYear(), next.getUTCMonth(), 1);
     return toISODate(monthStart) <= max;
   }
@@ -354,9 +363,9 @@
     tabindex="-1"
     onkeydown={handleKeydown}
   >
-    {#each rows as row, rowIndex (row[0]?.iso ?? rowIndex)}
+    {#each rows as row, rowIndex (row[0]?.iso || rowIndex)}
       <div role="row" class="cinder-calendar__grid-row">
-        {#each row as cell (cell.iso)}
+        {#each row as cell, cellIndex (cell.iso || cellIndex)}
           <div
             role="gridcell"
             aria-selected={cell.selected || undefined}
@@ -364,7 +373,7 @@
           >
             <button
               type="button"
-              id={`${monthGridId}-day-${cell.iso}`}
+              id={cell.iso ? `${monthGridId}-day-${cell.iso}` : undefined}
               class="cinder-calendar__day"
               data-outside={cell.inMonth ? undefined : ''}
               data-selected={cell.selected ? '' : undefined}

@@ -55,6 +55,30 @@ describe('DatePicker', () => {
     },
   );
 
+  test('clears custom validity after a native form reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(DatePicker, {
+      target: form,
+      props: {
+        id: 'dp',
+        value: undefined,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+    await fireEvent.change(input, {
+      target: { value: 'not-a-date' },
+    });
+    expect(input.checkValidity()).toBe(false);
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(input.value).toBe('');
+    expect(input.checkValidity()).toBe(true);
+  });
+
   test('marks controlled out-of-range values invalid', () => {
     const { container } = render(DatePicker, {
       id: 'dp',

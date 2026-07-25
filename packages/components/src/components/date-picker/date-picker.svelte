@@ -131,6 +131,24 @@
     if (!inputElement) return;
     updateInputValidity(inputElement);
   });
+
+  $effect(() => {
+    const element = inputElement;
+    const form = element?.form;
+    if (!element || !form) return;
+
+    function handleFormReset(): void {
+      queueMicrotask(() => {
+        if (inputElement === element) updateInputValidity(element);
+      });
+    }
+
+    form.addEventListener('reset', handleFormReset);
+    return () => {
+      form.removeEventListener('reset', handleFormReset);
+    };
+  });
+
   const describedById = $derived(
     [
       ariaDescribedBy,
