@@ -14,6 +14,7 @@ const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 
 const EVENT_TIMELINE_CSS = readFileSync(join(import.meta.dir, 'event-timeline.css'), 'utf8');
+const EVENT_TIMELINE_SOURCE = readFileSync(join(import.meta.dir, 'event-timeline.svelte'), 'utf8');
 
 class TestResizeObserver implements ResizeObserver {
   static instances: TestResizeObserver[] = [];
@@ -209,6 +210,8 @@ describe('EventTimeline', () => {
   test('keeps adjacent dense parity lanes separated and raises open clusters', () => {
     expect(EVENT_TIMELINE_CSS).toContain('.cinder-event-timeline__cluster[data-cinder-open]');
     expect(EVENT_TIMELINE_CSS).toContain('z-index: 2;');
+    expect(EVENT_TIMELINE_CSS).toContain('.cinder-event-timeline:dir(rtl)');
+    expect(EVENT_TIMELINE_SOURCE).toContain('createPortalAttachment');
   });
 
   test('offsets colliding lanes and renders hidden leader lines', () => {
@@ -253,12 +256,12 @@ describe('EventTimeline', () => {
 
     cluster?.focus();
     await fireEvent.click(cluster!);
-    const dialog = container.querySelector('[role="dialog"]');
+    const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
     expect(document.activeElement).toBe(dialog);
     expect(dialog?.textContent).toContain('Upcoming');
     await fireEvent.keyDown(window, { key: 'Escape' });
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(cluster);
   });
 

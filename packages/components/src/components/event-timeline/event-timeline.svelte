@@ -24,6 +24,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import { tick } from 'svelte';
@@ -85,6 +86,20 @@
   let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
+  let clusterSurfaceStyle = $state<string | undefined>();
+
+  const clusterPortalAttachment = createPortalAttachment({
+    target: () => document.body,
+    inheritAttributes: true,
+    source: () => clusterTrigger,
+  });
+
+  function positionClusterSurface(): void {
+    const trigger = clusterTrigger;
+    if (!trigger) return;
+    const bounds = trigger.getBoundingClientRect();
+    clusterSurfaceStyle = `position: fixed; left: ${Math.round(bounds.left)}px; top: ${Math.round(bounds.bottom + 8)}px;`;
+  }
 
   function toTimestamp(value: EventTimelineDate | undefined): number | undefined {
     if (value === undefined) return undefined;
@@ -111,7 +126,7 @@
     thresholdPercent = FALLBACK_COLLISION_THRESHOLD_PERCENT,
     offsetPercent = 0,
   ): PositionedEventTimelineItem['edge'] {
-    const edgeThreshold = Math.min(40, Math.max(10, thresholdPercent / 2 + offsetPercent));
+    const edgeThreshold = Math.max(10, thresholdPercent / 2 + offsetPercent);
     if (position <= edgeThreshold) return 'start';
     if (position >= 100 - edgeThreshold) return 'end';
     return 'middle';
@@ -445,7 +460,11 @@
             onclick={(event) => {
               clusterTrigger = event.currentTarget as HTMLButtonElement;
               openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
-              if (openClusterKey !== null) void tick().then(() => clusterSurface?.focus());
+              if (openClusterKey !== null)
+                void tick().then(() => {
+                  positionClusterSurface();
+                  clusterSurface?.focus();
+                });
             }}>+{cluster.count}</button
           >
           {#if openClusterKey === cluster.key}
@@ -454,7 +473,9 @@
               role="dialog"
               aria-label={cluster.accessibleLabel}
               bind:this={clusterSurface}
+              {@attach clusterPortalAttachment}
               tabindex="-1"
+              style={clusterSurfaceStyle}
               {@attach dismissOnOutsidePointerdown}
             >
               <strong>{cluster.accessibleLabel}</strong>

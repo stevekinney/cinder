@@ -83,6 +83,16 @@
     text-align: end;
   }
 
+  .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-edge='start'] {
+    justify-items: end;
+    text-align: end;
+  }
+
+  .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-edge='end'] {
+    justify-items: start;
+    text-align: start;
+  }
+
   .cinder-event-timeline__item[data-cinder-edge='start'] .cinder-event-timeline__leader,
   .cinder-event-timeline__item[data-cinder-edge='end'] .cinder-event-timeline__leader {
     display: none;
