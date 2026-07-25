@@ -1,14 +1,7 @@
 #!/usr/bin/env bun
 import { $ } from 'bun';
 
-import {
-  fileChangedBetween,
-  header,
-  info,
-  isContinuousIntegration,
-  success,
-  warning,
-} from './utilities.ts';
+import { fileChangedBetween, header, info, isContinuousIntegration, warning } from './utilities.ts';
 
 if (isContinuousIntegration()) {
   info('Skipping hook in CI');
@@ -29,17 +22,9 @@ if (packageChanged) info('package.json has changed');
 if (lockChanged) info('bun.lock has changed');
 
 if (lockChanged) {
-  info('Dependencies changed, installing…');
-  try {
-    await $`bun install --frozen-lockfile`;
-    success('Dependencies installed');
-    const stat = await $`git diff --stat ${prevHead}..${newHead} -- package.json bun.lock`.text();
-    await Bun.write(Bun.stdout, stat);
-  } catch {
-    warning(
-      'Failed to install dependencies from the checked-out bun.lock — run bun install manually',
-    );
-  }
+  warning("bun.lock changed — run 'bun install --frozen-lockfile' before local validation");
+  const stat = await $`git diff --stat ${prevHead}..${newHead} -- package.json bun.lock`.text();
+  await Bun.write(Bun.stdout, stat);
 } else if (packageChanged) {
   warning("package.json changed but bun.lock didn't");
   info("You may need to run 'bun install' to update dependencies");

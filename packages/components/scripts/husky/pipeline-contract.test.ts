@@ -108,12 +108,15 @@ describe('pipeline contract: commit stays cheap', () => {
   });
 });
 
-describe('pipeline contract: checkout never rewrites the lockfile', () => {
-  it('installs changed dependencies with the checked-out lockfile frozen', async () => {
+describe('pipeline contract: checkout stays informational', () => {
+  it('warns about changed dependencies without installing them', async () => {
     const source = stripComments(await Bun.file(join(huskyDirectory, 'post-checkout.ts')).text());
 
-    expect(source).toContain('$`bun install --frozen-lockfile`');
-    expect(source).not.toContain('$`bun install`');
+    expect(source).toContain(
+      'warning("bun.lock changed — run \'bun install --frozen-lockfile\' before local validation")',
+    );
+    expect(source).not.toContain('$`bun install');
+    expect(source).not.toMatch(/\bBun\.(?:spawn|spawnSync)\b/);
   });
 });
 
