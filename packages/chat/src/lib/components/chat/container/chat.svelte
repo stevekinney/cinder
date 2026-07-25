@@ -69,6 +69,7 @@
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
   type ChatMessageRenderRow = Extract<ChatRenderRow, { type: 'message' }>;
   type PendingHistoryScroll = {
+    focusHistoryTriggerAfterRestore: boolean;
     previousFirstMessageId: string | null;
     previousFirstTranscriptMessageId: string | null;
     previousFirstMessageViewportOffset: number;
@@ -712,12 +713,8 @@
         historyAnnouncement = '';
       }
     }, 1000);
-    // Freeze the target before yielding. The loader can clear isLoadingHistory
-    // before tick() resolves; rereading it in the callback would race between
-    // focusing the preserved anchor and the history trigger.
-    const focusHistoryTriggerAfterRestore = !isLoadingHistory;
     void tick().then(() => {
-      focusAfterHistoryRestore(pending, focusHistoryTriggerAfterRestore);
+      focusAfterHistoryRestore(pending, pending.focusHistoryTriggerAfterRestore);
     });
     return true;
   }
@@ -787,22 +784,28 @@
     cancelPendingHistoryAnchorRecapture();
   }
 
-  function recapturePendingHistoryAnchor(): void {
-    if (pendingHistoryScroll === null) return;
+  function recapturePendingHistoryAnchor(pending: PendingHistoryScroll | null): void {
+    if (pending === null || pendingHistoryScroll !== pending || historyTranscriptChanged(pending)) {
+      return;
+    }
     captureHistoryScroll();
   }
 
   function schedulePendingHistoryAnchorRecapture(): void {
-    if (pendingHistoryScroll === null) return;
+    const pending = pendingHistoryScroll;
+    if (pending === null) return;
     cancelPendingHistoryAnchorRecapture();
     pendingHistoryAnchorRecaptureRaf = requestAnimationFrame(() => {
       pendingHistoryAnchorRecaptureRaf = undefined;
-      recapturePendingHistoryAnchor();
+      recapturePendingHistoryAnchor(pending);
     });
   }
 
   function handleHistoryRestorationUserInput(): void {
     cancelNonVirtualHistoryAnchorStabilization();
+    if (pendingHistoryScroll !== null) {
+      pendingHistoryScroll.focusHistoryTriggerAfterRestore = false;
+    }
   }
 
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
@@ -990,7 +993,7 @@
     };
     const handleScrollEnd = () => {
       cancelPendingHistoryAnchorRecapture();
-      recapturePendingHistoryAnchor();
+      recapturePendingHistoryAnchor(pendingHistoryScroll);
     };
     node.addEventListener('scroll', handleScroll, { passive: true });
     node.addEventListener('scrollend', handleScrollEnd);
@@ -1167,6 +1170,8 @@
   function captureHistoryScroll(): void {
     cancelNonVirtualHistoryAnchorStabilization();
     cancelPendingHistoryAnchorRecapture();
+    const focusHistoryTriggerAfterRestore =
+      pendingHistoryScroll?.focusHistoryTriggerAfterRestore ?? true;
     const previousFirstTranscriptMessageId = messages[0]?.id ?? null;
     const visibleAnchor = firstVisibleRenderedMessage();
     const previousFirstMessageId = visibleAnchor?.messageId ?? previousFirstTranscriptMessageId;
@@ -1180,6 +1185,7 @@
           viewport.getBoundingClientRect().top
         : 0);
     pendingHistoryScroll = {
+      focusHistoryTriggerAfterRestore,
       previousFirstMessageId,
       previousFirstTranscriptMessageId,
       previousFirstMessageViewportOffset,

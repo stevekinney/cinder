@@ -56,6 +56,7 @@
   let virtualized = $state(false);
   let historyEnabled = $state(false);
   let delayedHistory = $state(false);
+  let resolveDelayedHistory = $state<(() => void) | undefined>();
   let historyPage = 0;
 
   // --- Reply controls ---
@@ -391,7 +392,10 @@
 
   async function handleLoadHistory(): Promise<void> {
     if (delayedHistory) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 150));
+      await new Promise<void>((resolve) => {
+        resolveDelayedHistory = resolve;
+      });
+      resolveDelayedHistory = undefined;
     }
     conversation = prependHistoryMessages(conversation);
     record('onloadhistory', historyPage);
@@ -525,6 +529,16 @@
         <Toggle id="t-virtualized" label="Virtualized transcript" bind:checked={virtualized} />
         <Toggle id="t-history" label="History pagination" bind:checked={historyEnabled} />
         <Toggle id="t-history-delay" label="Delay history response" bind:checked={delayedHistory} />
+        {#if delayedHistory}
+          <Button
+            data-testid="resolve-history"
+            variant="secondary"
+            disabled={!resolveDelayedHistory}
+            onclick={() => resolveDelayedHistory?.()}
+          >
+            Resolve history response
+          </Button>
+        {/if}
       </div>
     </section>
 

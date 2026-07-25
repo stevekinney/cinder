@@ -450,6 +450,8 @@ test.describe('chat harness — scroll, unread, jump', () => {
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
       await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      const resolveHistory = harness.locator('[data-testid="resolve-history"]');
+      await expect(resolveHistory).toBeEnabled();
       await timeline.dispatchEvent('pointerdown');
       await timeline.evaluate(async (element) => {
         for (const scrollTop of [40, 80, 120]) {
@@ -466,6 +468,7 @@ test.describe('chat harness — scroll, unread, jump', () => {
       expect(movedTimeline).not.toBeNull();
       const movedOffset = (moved?.y ?? 0) - (movedTimeline?.y ?? 0);
 
+      await resolveHistory.dispatchEvent('click');
       await expectLoggedEvent(harness, 'onloadhistory');
       await expect
         .poll(async () => {
@@ -498,7 +501,10 @@ test.describe('chat harness — scroll, unread, jump', () => {
       const timeline = harness.locator('.chat-timeline');
       await harness.locator('[data-testid="scroll-top"]').click();
       await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      const resolveHistory = harness.locator('[data-testid="resolve-history"]');
+      await expect(resolveHistory).toBeEnabled();
       await harness.locator('.chat-jump-button').click();
+      await resolveHistory.dispatchEvent('click');
 
       await expectLoggedEvent(harness, 'onloadhistory');
       await expect
@@ -508,6 +514,33 @@ test.describe('chat harness — scroll, unread, jump', () => {
           ),
         )
         .toBeLessThan(2);
+    } finally {
+      await dispose();
+    }
+  });
+
+  test('an arriving prepend wins over a queued anchor recapture', async ({ browser }) => {
+    const { harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      await expect(harness.locator('[data-testid="resolve-history"]')).toBeEnabled();
+      await timeline.evaluate((element) => {
+        element.scrollTop = 120;
+        element.dispatchEvent(new Event('scroll'));
+        document.querySelector<HTMLButtonElement>('[data-testid="resolve-history"]')?.click();
+      });
+
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect(timeline).not.toHaveAttribute('data-cinder-history-restoring');
+      await expect
+        .poll(async () => timeline.evaluate((element) => getComputedStyle(element).overflowAnchor))
+        .toBe('auto');
     } finally {
       await dispose();
     }
