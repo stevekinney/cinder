@@ -83,6 +83,12 @@ describe('primitive composition guard', () => {
         'new-control/new-control.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<svelte:element this={'INPUT'} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('rejects an added raw control in a tracked file', () => {
@@ -148,6 +154,26 @@ describe('primitive composition guard', () => {
         '.layout { display: grid; } .layout.compact { grid-template-columns: 1fr; } .layout.wide { grid-template-columns: 1fr 1fr; }',
       ).grid,
     ).toBe(2);
+  });
+
+  test('associates matching type, id, and attribute selectors across rules', () => {
+    for (const source of [
+      '#layout { display: grid; } #layout[data-columns] { grid-template-columns: 1fr; }',
+      'main { display: grid; } main[data-columns] { grid-template-columns: 1fr; }',
+      '[data-layout] { display: grid; } [data-layout][data-columns] { grid-template-columns: 1fr; }',
+    ])
+      expect(cssPrimitiveCounts(source).grid).toBe(1);
+  });
+
+  test('recognizes row, area, auto-column, and grid shorthand layouts', () => {
+    for (const property of [
+      'grid-template-rows',
+      'grid-template-areas',
+      'grid-auto-columns',
+      'grid-auto-rows',
+      'grid',
+    ])
+      expect(cssPrimitiveCounts(`.layout { display: grid; ${property}: initial; }`).grid).toBe(1);
   });
 
   test('rejects a hand-rolled grid in an inline style', () => {
@@ -223,6 +249,13 @@ describe('primitive composition guard', () => {
         floatingCss,
         'new-menu/new-menu.css',
         '<!-- cinder-_floating-surface --><div class="other"></div>',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu.copy { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        '<div class="menu cinder-_floating-surface"></div><div class="menu copy"></div>',
       ),
     ).toHaveLength(1);
     expect(
@@ -384,6 +417,15 @@ describe('primitive composition guard', () => {
         'new-field/new-field.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('does not merge zero-label help and error evidence into a sibling label', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<header><label>Sort</label></header><section><p>Help</p><p>Error log</p></section>',
+        'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('excludes unpublished Svelte fixtures and type tests', () => {

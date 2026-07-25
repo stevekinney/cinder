@@ -156,12 +156,13 @@ export function visibleControlCount(source: string): number {
   if (fragment === undefined) return 0;
   let count = 0;
   walkAst(fragment, (node) => {
-    const elementName =
+    const elementName = (
       node['type'] === 'RegularElement'
         ? node['name']
         : node['type'] === 'SvelteElement'
           ? staticStringFromExpression(node['tag'], bindings)
-          : undefined;
+          : undefined
+    )?.toLowerCase();
     if (
       (elementName === 'input' || elementName === 'select' || elementName === 'textarea') &&
       !hasStaticHiddenAttribute(node, elementName)
@@ -285,12 +286,9 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   return total;
 }
 
-function renderedMarkupEvidence(
-  node: unknown,
-  source: string,
-): { labelCount: number; terms: string } {
+function localMarkupEvidence(node: unknown, source: string): { labelCount: number; terms: string } {
   if (!isRecord(node) || node['type'] === 'Component') return { labelCount: 0, terms: '' };
-  let labelCount = node['type'] === 'RegularElement' && node['name'] === 'label' ? 1 : 0;
+  const labelCount = node['type'] === 'RegularElement' && node['name'] === 'label' ? 1 : 0;
   const terms: string[] = [];
   if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
   if (
@@ -305,38 +303,48 @@ function renderedMarkupEvidence(
     typeof node['end'] === 'number'
   )
     terms.push(source.slice(node['start'], node['end']));
+  return { labelCount, terms: terms.join(' ') };
+}
+
+type FieldEvidence = {
+  count: number;
+  labelCount: number;
+  terms: string;
+};
+
+function qualifyingFieldLabels(node: unknown, source: string): FieldEvidence {
+  if (!isRecord(node) || node['type'] === 'Component')
+    return { count: 0, labelCount: 0, terms: '' };
+  const localEvidence = localMarkupEvidence(node, source);
+  let count = 0;
+  let labelCount = localEvidence.labelCount;
+  const terms = [localEvidence.terms];
   for (const value of Object.values(node)) {
     const children = Array.isArray(value) ? value : [value];
     for (const child of children) {
       if (!isRecord(child)) continue;
-      const evidence = renderedMarkupEvidence(child, source);
-      labelCount += evidence.labelCount;
-      terms.push(evidence.terms);
+      const childEvidence = qualifyingFieldLabels(child, source);
+      count += childEvidence.count;
+      if (childEvidence.count > 0) continue;
+      const childHasHelp = /(?:description|help(?:text)?|hint|assist)/i.test(childEvidence.terms);
+      const childHasError = /(?:error|validation|invalid|message)/i.test(childEvidence.terms);
+      if (childEvidence.labelCount === 0 && childHasHelp && childHasError) continue;
+      labelCount += childEvidence.labelCount;
+      terms.push(childEvidence.terms);
     }
   }
-  return { labelCount, terms: terms.join(' ') };
-}
 
-function qualifyingFieldLabels(node: unknown, source: string): number {
-  if (!isRecord(node) || node['type'] === 'Component') return 0;
-  let childCount = 0;
-  for (const value of Object.values(node)) {
-    const children = Array.isArray(value) ? value : [value];
-    for (const child of children)
-      if (isRecord(child)) childCount += qualifyingFieldLabels(child, source);
-  }
-  if (childCount > 0) return childCount;
-
-  const evidence = renderedMarkupEvidence(node, source);
+  const combinedTerms = terms.join(' ');
   const qualifies =
-    /(?:description|help(?:text)?|hint|assist)/i.test(evidence.terms) &&
-    /(?:error|validation|invalid|message)/i.test(evidence.terms);
-  return qualifies ? evidence.labelCount : 0;
+    /(?:description|help(?:text)?|hint|assist)/i.test(combinedTerms) &&
+    /(?:error|validation|invalid|message)/i.test(combinedTerms);
+  if (qualifies && labelCount > 0) return { count: count + labelCount, labelCount: 0, terms: '' };
+  return { count, labelCount, terms: combinedTerms };
 }
 
 export function fieldWrapperCount(source: string): number {
   const fragment = parseSvelteFragment(source);
-  return fragment === undefined ? 0 : qualifyingFieldLabels(fragment, source);
+  return fragment === undefined ? 0 : qualifyingFieldLabels(fragment, source).count;
 }
 
 export function shouldCheckComponentSource(filePath: string): boolean {
