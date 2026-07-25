@@ -607,6 +607,7 @@
             target="_blank"
             rel="noreferrer"
             aria-label="View source on GitHub"
+            title="View source on GitHub"
           >
             <Github size={17} strokeWidth={1.5} aria-hidden="true" />
           </a>
@@ -615,6 +616,7 @@
             class="dx-iconbtn"
             onclick={toggleTheme}
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
           >
             {#if theme === 'dark'}
               <Sun size={17} strokeWidth={1.5} aria-hidden="true" />
