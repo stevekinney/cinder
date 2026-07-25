@@ -29,6 +29,7 @@
 
 <script lang="ts">
   import { SvelteSet } from 'svelte/reactivity';
+  import type { Snippet } from 'svelte';
   import type {
     EventStreamEntry,
     EventStreamViewerProps,
@@ -72,6 +73,8 @@
   };
 
   type RenderedEntry = RenderedEventEntry | RenderedReconnectedBoundary | RenderedSequenceGap;
+
+  const emptyInputAdornment: Snippet = () => {};
 
   function isValidSequence(value: unknown): value is number {
     return Number.isInteger(value);
@@ -329,6 +332,8 @@
             label="Filter events"
             hideLabel
             aria-label="Filter events"
+            leading={emptyInputAdornment}
+            trailing={emptyInputAdornment}
             value={filterQuery}
             oninput={(e) => onfilter?.((e.currentTarget as HTMLInputElement).value)}
           />
