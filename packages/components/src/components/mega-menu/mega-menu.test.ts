@@ -161,6 +161,48 @@ describe('MegaMenu', () => {
     expect(document.activeElement).toBe(products);
   });
 
+  test('does not consume modified nested horizontal-arrow shortcuts', async () => {
+    const { container } = render(MegaMenu, { items });
+    const products = getTriggerByLabel(container, 'Products');
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowDown' });
+
+    const frontend = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    ).find((trigger) => trigger.textContent?.trim() === 'Frontend');
+    if (!frontend) throw new Error('Missing nested submenu trigger.');
+    frontend.focus();
+
+    for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        [modifier]: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      frontend.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(frontend);
+    }
+
+    await fireEvent.keyDown(frontend, { key: 'ArrowRight' });
+    const svelteLink = container.querySelector<HTMLAnchorElement>('a[href="/svelte"]');
+    if (!svelteLink) throw new Error('Missing nested submenu link.');
+    expect(document.activeElement).toBe(svelteLink);
+
+    for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+      const event = new KeyboardEvent('keydown', {
+        key: 'ArrowLeft',
+        [modifier]: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      svelteLink.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(svelteLink);
+    }
+  });
+
   test('mirrors nested submenu enter and return arrows in right-to-left direction', async () => {
     const { container } = render(MegaMenu, { items, dir: 'rtl' });
     const products = getTriggerByLabel(container, 'Products');
@@ -187,6 +229,7 @@ describe('MegaMenu', () => {
       direction: 'rtl',
     });
     const products = getTriggerByLabel(container, 'Products');
+    expect(container.querySelector('nav')?.getAttribute('dir')).toBe('rtl');
     products.focus();
 
     await fireEvent.keyDown(products, { key: 'ArrowDown' });
@@ -202,6 +245,16 @@ describe('MegaMenu', () => {
     if (!svelteLink) throw new Error('Missing nested submenu link.');
     await fireEvent.keyDown(svelteLink, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(frontend);
+  });
+
+  test('preserves an explicit menu direction over LocaleProvider direction', () => {
+    const { container } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'rtl',
+      menuDirection: 'ltr',
+    });
+
+    expect(container.querySelector('nav')?.getAttribute('dir')).toBe('ltr');
   });
 
   test('closes stale open menu state when the current item is removed', async () => {
