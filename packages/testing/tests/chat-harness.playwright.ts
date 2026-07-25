@@ -546,6 +546,56 @@ test.describe('chat harness — scroll, unread, jump', () => {
     }
   });
 
+  test('search navigation wins over non-virtualized history stabilization', async ({ browser }) => {
+    const { page, harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await timeline.click();
+      await page.keyboard.press('ControlOrMeta+f');
+      await expect(harness.locator('.chat-search-input')).toBeVisible();
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      await expect(harness.locator('[data-testid="resolve-history"]')).toBeEnabled();
+
+      await timeline.evaluate(() => {
+        document.querySelector<HTMLButtonElement>('[data-testid="resolve-history"]')?.click();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const input = document.querySelector<HTMLInputElement>('.chat-search-input');
+            if (!input) return;
+            input.value = 'Detailed answer number 12';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          });
+        });
+      });
+
+      const target = timeline
+        .locator('.chat-message-wrapper[data-search-match]')
+        .filter({ hasText: 'Detailed answer number 12, with alpha context.' });
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect(target).toBeAttached();
+      await timeline.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            let frames = 0;
+            const wait = () => {
+              frames += 1;
+              if (frames >= 8) resolve();
+              else requestAnimationFrame(wait);
+            };
+            requestAnimationFrame(wait);
+          }),
+      );
+      await expect(target).toBeInViewport();
+    } finally {
+      await dispose();
+    }
+  });
+
   test('non-virtualized history loading preserves the visible scroll anchor', async ({
     browser,
   }) => {

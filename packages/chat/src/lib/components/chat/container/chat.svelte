@@ -1575,6 +1575,7 @@
   async function scrollCurrentSearchMatch(messageId: string): Promise<void> {
     if (!viewport) return;
 
+    cancelNonVirtualHistoryAnchorStabilization();
     if (isVirtualized) {
       const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
       if (targetIndex >= 0) {
