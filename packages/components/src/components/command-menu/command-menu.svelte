@@ -199,12 +199,27 @@
     const clearEscapeDismissal = () => {
       escapeDismissal = null;
     };
+    const clearEscapeDismissalWhenSelectionChanges = () => {
+      if (
+        !escapeDismissal ||
+        escapeDismissal.anchor !== anchor ||
+        (anchor.selectionStart === escapeDismissal.selectionStart &&
+          anchor.selectionEnd === escapeDismissal.selectionEnd)
+      ) {
+        return;
+      }
+      escapeDismissal = null;
+    };
     const stopInput = on(anchor, 'input', clearEscapeDismissal, { capture: true });
     const stopPointerdown = on(anchor, 'pointerdown', clearEscapeDismissal, { capture: true });
+    const stopKeyup = on(anchor, 'keyup', clearEscapeDismissalWhenSelectionChanges);
+    const stopSelect = on(anchor, 'select', clearEscapeDismissalWhenSelectionChanges);
 
     return () => {
       stopInput();
       stopPointerdown();
+      stopKeyup();
+      stopSelect();
     };
   });
 
