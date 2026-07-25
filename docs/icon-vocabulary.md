@@ -27,7 +27,7 @@ must not be the only way to communicate what an interactive element does.
 The audit searched component templates for visible `+`, `-`, `−`, `×`, `<`, `>`,
 `‹`, `›`, `✓`, `▾`, `▸`, `↑`, `↓`, and their HTML entities (including named,
 decimal, and hexadecimal forms such as `&times;`, `&#215;`, `&#xD7;`, `&gt;`,
-`&#62;`, `&#x3E;`, `&#8722;`, and `&#x2212;`). It also searched component stylesheets for `content:`
+`&#62;`, `&#x3E;`, `&#8722;`, `&#x2212;`, `&#x2191;`, and `&#x2193;`). It also searched component stylesheets for `content:`
 values that generate visible glyphs, then classified each hit by whether it is
 an interactive affordance.
 
@@ -51,6 +51,7 @@ an interactive affordance.
 | `calendar/calendar.svelte`                                                                                                                                             | Month navigation controls    | Interactive `‹`/`›` affordances; migrate to `ChevronLeft`/`ChevronRight` in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                        |
 | `json-schema-editor/json-schema-editor.css`                                                                                                                            | Generated disclosure         | `content: '▸'` on clickable constraint summaries; migrate to the named disclosure icon in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                          |
 | `invocation-rule-builder/invocation-rule-builder.svelte`                                                                                                               | Remove controls              | Three hand-authored X-shaped SVG remove affordances; migrate to the named Lucide remove icon alongside the add controls in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                         |
+| `modal/modal.svelte`, `sheet/sheet.svelte`, `drawer/drawer.svelte`, `alert/alert.svelte`, `banner/banner.svelte`, `toast-region/toast-region.svelte`                   | Dismiss controls             | Shared hand-authored X-shaped dismiss SVGs; migrate to Lucide `X` in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                                                               |
 | `transfer-list/transfer-list.svelte`                                                                                                                                   | Icon sizing exception        | Existing transfer icons use `size={18}` as a documented component chrome exception; retain until the visual contract is migrated, and scope the utility scale requirement to new work.                                                         |
 | `permission-matrix/permission-matrix.svelte`                                                                                                                           | Icon sizing exception        | Existing status icons use `size={16}` as table chrome; retain as documented component-specific sizing.                                                                                                                                         |
 | `connection-indicator/connection-indicator.svelte`                                                                                                                     | Icon sizing exception        | Existing status icon uses `size={13}` to fit the compact indicator; retain as documented component-specific sizing.                                                                                                                            |
@@ -60,6 +61,8 @@ an interactive affordance.
 | `approval-card/approval-card.svelte`                                                                                                                                   | Icon sizing exception        | Existing risk signal uses `size={16}` as documented card chrome; retain as documented component-specific sizing.                                                                                                                               |
 | `speed-dial*/**.fixture.svelte`                                                                                                                                        | Fixture-only plus marker     | Demo content, not published component UI; no action required.                                                                                                                                                                                  |
 | `speed-dial/speed-dial.examples.json`                                                                                                                                  | Published example trigger    | The exported example is instructional consumer code rather than component chrome; scope the policy to shipped component markup, and track replacing its `+` trigger with `Plus` in [#1017](https://github.com/stevekinney/cinder/issues/1017). |
+| `command-palette/command-palette.examples.json`                                                                                                                        | Published example trigger    | The exported example's `+` new-project affordance is instructional consumer code; replace it with Lucide `Plus` in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                 |
+| `select/select.svelte`, `faceted-filter-bar/faceted-filter-bar.svelte`                                                                                                 | Native-select disclosure     | CSS mask/border chevrons are native-select chrome; track migration or an explicit native-select exception in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                                       |
 
 The rows above account for every interactive text-glyph affordance found by the
 audit. Future audits should keep this distinction: a glyph that conveys data is
@@ -76,7 +79,7 @@ document and search both templates and generated CSS declarations for the glyphs
 listed in the audit procedure. For example:
 
 ```sh
-rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#x8595;' packages/components/src/components
+rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#8595;|&#x2191;|&#x2193;' packages/components/src/components
 rg -n -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n "content:\\s*['\"]" packages/components/src/components --glob '*.css'
 ```
