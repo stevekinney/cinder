@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -302,6 +303,14 @@ describe('Popover — rendering', () => {
 // ---------------------------------------------------------------------------
 
 describe('Popover — portal and arrow', () => {
+  test('overlaps the panel border in every arrow placement', () => {
+    const css = readFileSync(new URL('./popover.css', import.meta.url), 'utf8');
+    expect(css).toContain('top: 1px;');
+    expect(css).toContain('bottom: 1px;');
+    expect(css).toContain('left: 1px;');
+    expect(css).toContain('right: 1px;');
+  });
+
   test('moves the panel to document.body when open', async () => {
     const { container } = render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
