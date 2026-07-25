@@ -101,6 +101,18 @@
     return `cinder-mega-menu-${instanceId}-content-${normalized}-${stableHash(itemId)}`;
   }
 
+  function submenuTriggerId(itemId: string, submenuId: string): string {
+    const normalizedItem = safeDomId(itemId) || 'item';
+    const normalizedSubmenu = safeDomId(submenuId) || 'submenu';
+    return `cinder-mega-menu-${instanceId}-submenu-trigger-${normalizedItem}-${normalizedSubmenu}-${stableHash(`${itemId}:${submenuId}`)}`;
+  }
+
+  function submenuPanelId(itemId: string, submenuId: string): string {
+    const normalizedItem = safeDomId(itemId) || 'item';
+    const normalizedSubmenu = safeDomId(submenuId) || 'submenu';
+    return `cinder-mega-menu-${instanceId}-submenu-panel-${normalizedItem}-${normalizedSubmenu}-${stableHash(`${itemId}:${submenuId}`)}`;
+  }
+
   function updateIndicator() {
     if (!indicatorVisible || !navElement || !openItemId) {
       indicatorStyle = '';
@@ -184,9 +196,11 @@
     await tick();
     const panel = document.getElementById(contentId(itemId));
     if (!(panel instanceof HTMLElement)) return;
-    const firstFocusable = panel.querySelector<HTMLElement>(
-      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-    );
+    const firstFocusable =
+      panel.querySelector<HTMLElement>('.cinder-mega-menu__submenu-trigger') ??
+      panel.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
     if (firstFocusable) {
       firstFocusable.focus();
       return;
@@ -234,10 +248,76 @@
     }
   }
 
-  function onContentKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    closeMenu(true);
+  function focusSubmenuTriggerAt(index: number) {
+    if (!openItem?.submenu?.length || typeof document === 'undefined') return;
+    const bounded =
+      ((index % openItem.submenu.length) + openItem.submenu.length) % openItem.submenu.length;
+    const target = openItem.submenu[bounded];
+    if (!target) return;
+    openSubmenuId = target.id;
+    document.getElementById(submenuTriggerId(openItem.id, target.id))?.focus();
+  }
+
+  async function focusSubmenuPanel(itemId: string, submenuId: string) {
+    if (typeof document === 'undefined') return;
+    await tick();
+    const panel = document.getElementById(submenuPanelId(itemId, submenuId));
+    panel?.querySelector<HTMLElement>('a[href], button:not([disabled])')?.focus();
+  }
+
+  function onSubmenuTriggerKeydown(event: KeyboardEvent, index: number) {
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        focusSubmenuTriggerAt(index + 1);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        focusSubmenuTriggerAt(index - 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        focusSubmenuTriggerAt(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        if (openItem?.submenu) focusSubmenuTriggerAt(openItem.submenu.length - 1);
+        break;
+      case 'ArrowRight':
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (openItem?.submenu?.[index]) {
+          const submenuId = openItem.submenu[index].id;
+          openSubmenuId = submenuId;
+          void focusSubmenuPanel(openItem.id, submenuId);
+        }
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        if (openItem) document.getElementById(triggerId(openItem.id))?.focus();
+        break;
+      case 'Escape':
+        event.preventDefault();
+        closeMenu(true);
+        break;
+      default:
+        break;
+    }
+  }
+
+  function onSubmenuPanelKeydown(event: KeyboardEvent) {
+    if (event.key === 'ArrowLeft' && openItem && openSubmenu) {
+      event.preventDefault();
+      event.stopPropagation();
+      document.getElementById(submenuTriggerId(openItem.id, openSubmenu.id))?.focus();
+      return;
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu(true);
+    }
   }
 
   function onRootFocusOut(event: FocusEvent) {
@@ -340,7 +420,6 @@
         aria-labelledby={triggerId(openItem.id)}
         tabindex="-1"
         data-motion={motionDirection}
-        onkeydown={onContentKeydown}
       >
         <div class="cinder-mega-menu__sections">
           {#each sections(openItem) as section (section.id)}
@@ -351,7 +430,15 @@
               <ul class="cinder-mega-menu__links">
                 {#each section.links as link (link.id)}
                   <li>
-                    <a class="cinder-mega-menu__link" href={link.href}>
+                    <a
+                      class="cinder-mega-menu__link"
+                      href={link.href}
+                      onkeydown={(event) => {
+                        if (event.key !== 'Escape') return;
+                        event.preventDefault();
+                        closeMenu(true);
+                      }}
+                    >
                       <span>{link.label}</span>
                       {#if link.description}
                         <span class="cinder-mega-menu__link-description">{link.description}</span>
@@ -367,14 +454,21 @@
         {#if openItem.submenu && openItem.submenu.length > 0}
           <section class="cinder-mega-menu__sub" aria-label={`${openItem.label} submenu`}>
             <ul class="cinder-mega-menu__submenu-list">
-              {#each openItem.submenu as sub (sub.id)}
+              {#each openItem.submenu as sub, subIndex (sub.id)}
                 <li>
                   <button
+                    id={submenuTriggerId(openItem.id, sub.id)}
                     type="button"
                     class="cinder-mega-menu__submenu-trigger"
+                    aria-controls={openSubmenu?.id === sub.id
+                      ? submenuPanelId(openItem.id, sub.id)
+                      : undefined}
+                    aria-expanded={openSubmenu?.id === sub.id ? 'true' : 'false'}
                     data-active={openSubmenu?.id === sub.id ? 'true' : 'false'}
                     onmouseenter={() => (openSubmenuId = sub.id)}
                     onclick={() => (openSubmenuId = sub.id)}
+                    onfocus={() => (openSubmenuId = sub.id)}
+                    onkeydown={(event) => onSubmenuTriggerKeydown(event, subIndex)}
                   >
                     {sub.label}
                   </button>
@@ -383,7 +477,12 @@
             </ul>
 
             {#if openSubmenu}
-              <div class="cinder-mega-menu__sections">
+              <div
+                id={submenuPanelId(openItem.id, openSubmenu.id)}
+                class="cinder-mega-menu__sections cinder-mega-menu__submenu-panel"
+                role="group"
+                aria-labelledby={submenuTriggerId(openItem.id, openSubmenu.id)}
+              >
                 {#each sections(openSubmenu) as section (section.id)}
                   <section>
                     {#if section.title && section.title !== openSubmenu.label}
@@ -392,7 +491,11 @@
                     <ul class="cinder-mega-menu__links">
                       {#each section.links as link (link.id)}
                         <li>
-                          <a class="cinder-mega-menu__link" href={link.href}>
+                          <a
+                            class="cinder-mega-menu__link"
+                            href={link.href}
+                            onkeydown={onSubmenuPanelKeydown}
+                          >
                             <span>{link.label}</span>
                             {#if link.description}
                               <span class="cinder-mega-menu__link-description"

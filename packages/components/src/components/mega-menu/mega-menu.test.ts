@@ -33,6 +33,17 @@ const items = [
           },
         ],
       },
+      {
+        id: 'backend',
+        label: 'Backend',
+        sections: [
+          {
+            id: 'be',
+            title: 'Backend',
+            links: [{ id: 'apis', label: 'APIs', href: '/apis' }],
+          },
+        ],
+      },
     ],
   },
   {
@@ -72,7 +83,9 @@ describe('MegaMenu', () => {
 
     const panelId = trigger.getAttribute('aria-controls') as string;
     const panel = container.querySelector(`#${panelId}`) as HTMLElement;
-    await fireEvent.keyDown(panel, { key: 'Escape' });
+    const firstLink = panel.querySelector('a');
+    if (!firstLink) throw new Error('Missing panel link.');
+    await fireEvent.keyDown(firstLink, { key: 'Escape' });
     expect(container.querySelector(`#${panelId}`)).toBeNull();
   });
 
@@ -83,6 +96,43 @@ describe('MegaMenu', () => {
     first.focus();
     await fireEvent.keyDown(first, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(second);
+  });
+
+  test('arrow keys enter, traverse, and leave a nested submenu', async () => {
+    const { container } = render(MegaMenu, { items });
+    const products = getTriggerByLabel(container, 'Products');
+    products.focus();
+
+    await fireEvent.keyDown(products, { key: 'ArrowDown' });
+
+    const frontend = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    ).find((trigger) => trigger.textContent?.trim() === 'Frontend');
+    const backend = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    ).find((trigger) => trigger.textContent?.trim() === 'Backend');
+    if (!frontend || !backend) throw new Error('Missing nested submenu triggers.');
+
+    expect(document.activeElement).toBe(frontend);
+    expect(frontend.getAttribute('aria-expanded')).toBe('true');
+    expect(frontend.getAttribute('aria-controls')).not.toBeNull();
+
+    await fireEvent.keyDown(frontend, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(backend);
+    expect(backend.getAttribute('aria-expanded')).toBe('true');
+
+    await fireEvent.keyDown(backend, { key: 'ArrowRight' });
+    const apis = container.querySelector<HTMLAnchorElement>('a[href="/apis"]');
+    expect(document.activeElement).toBe(apis);
+
+    if (!apis) throw new Error('Missing nested submenu link.');
+    await fireEvent.keyDown(apis, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(backend);
+
+    await fireEvent.keyDown(backend, { key: 'Escape' });
+    await Promise.resolve();
+    expect(container.querySelector('.cinder-mega-menu__content')).toBeNull();
+    expect(document.activeElement).toBe(products);
   });
 
   test('closes stale open menu state when the current item is removed', async () => {
