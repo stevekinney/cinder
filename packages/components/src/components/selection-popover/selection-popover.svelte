@@ -114,7 +114,19 @@
     // tick() resolves once Svelte flushes the expanded state to the DOM (so the
     // textarea exists), aligned with the codebase's flush timing — faster and
     // more idiomatic than waiting a paint frame via requestAnimationFrame.
-    void tick().then(() => textareaElement?.focus());
+    void tick().then(() => textareaElement?.focus({ preventScroll: true }));
+  }
+
+  function isVirtualKeyboardResize(): boolean {
+    const virtualKeyboard = (
+      navigator as Navigator & {
+        virtualKeyboard?: { boundingRect?: { height: number } };
+      }
+    ).virtualKeyboard;
+    if ((virtualKeyboard?.boundingRect?.height ?? 0) > 0) return true;
+
+    if (window.visualViewport && window.visualViewport.height < window.innerHeight) return true;
+    return window.matchMedia?.('(pointer: coarse)').matches ?? false;
   }
 
   function handleCancel(): void {
@@ -176,15 +188,21 @@
   $effect(() => {
     if (!isPositionedOpen) return;
     let viewportWidth = window.innerWidth;
+    let viewportHeight = window.innerHeight;
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
       if (event.type === 'resize') {
         const viewportWidthChanged = window.innerWidth !== viewportWidth;
+        const viewportHeightChanged = window.innerHeight !== viewportHeight;
         viewportWidth = window.innerWidth;
+        viewportHeight = window.innerHeight;
+        const composerHasFocus =
+          document.activeElement instanceof Node &&
+          popoverElement?.contains(document.activeElement);
         if (
           !viewportWidthChanged &&
-          document.activeElement instanceof Node &&
-          popoverElement?.contains(document.activeElement)
+          composerHasFocus &&
+          (!viewportHeightChanged || isVirtualKeyboardResize())
         ) {
           return;
         }

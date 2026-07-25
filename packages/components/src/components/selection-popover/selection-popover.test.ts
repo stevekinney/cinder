@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SelectionPopover } = await import('./selection-popover.svelte');
 
 afterEach(() => cleanup());
@@ -70,6 +70,32 @@ describe('SelectionPopover', () => {
 
     expect(submitted).toEqual(['Please clarify this.']);
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+  });
+
+  test('expanding focuses the composer without scrolling the page', async () => {
+    const originalFocus = HTMLTextAreaElement.prototype.focus;
+    let focusOptions: FocusOptions | undefined;
+    HTMLTextAreaElement.prototype.focus = function (options?: FocusOptions): void {
+      focusOptions = options;
+      originalFocus.call(this, options);
+    };
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox')));
+
+      expect(focusOptions).toEqual({ preventScroll: true });
+    } finally {
+      HTMLTextAreaElement.prototype.focus = originalFocus;
+    }
   });
 
   test('Escape closes when collapsed and cancels when expanded', async () => {
@@ -402,6 +428,7 @@ describe('SelectionPopover', () => {
   test('a focused height-only resize preserves the soft-keyboard draft', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
 
     render(SelectionPopover, {
       props: {
@@ -420,6 +447,10 @@ describe('SelectionPopover', () => {
     textarea.focus();
 
     try {
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
       Object.defineProperty(window, 'innerHeight', {
         configurable: true,
         value: originalInnerHeight - 100,
@@ -428,6 +459,46 @@ describe('SelectionPopover', () => {
 
       expect(closed).toBe(false);
       expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard) {
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      } else {
+        Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      }
+    }
+  });
+
+  test('a desktop height-only resize dismisses while the composer is focused', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    textarea.focus();
+    try {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight + 100,
+      });
+
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(true);
     } finally {
       Object.defineProperty(window, 'innerHeight', {
         configurable: true,
