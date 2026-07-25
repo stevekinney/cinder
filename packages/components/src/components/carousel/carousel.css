@@ -27,7 +27,6 @@
     flex: 0 0 100%;
     min-inline-size: 100%;
     scroll-snap-align: start;
-    scroll-snap-stop: always;
     display: grid;
     gap: var(--cinder-space-3);
     padding: var(--cinder-space-4);

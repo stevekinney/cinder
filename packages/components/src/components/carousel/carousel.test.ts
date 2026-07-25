@@ -1,9 +1,14 @@
 /// <reference lib="dom" />
+import { join } from 'node:path';
+
 import { afterEach, describe, expect, jest, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 setupHappyDom();
+
+const CAROUSEL_SOURCE = join(import.meta.dir, 'carousel.svelte');
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: Carousel } = await import('./carousel.svelte');
@@ -47,6 +52,62 @@ function expectActiveSlide(container: HTMLElement, index: number): void {
 }
 
 describe('Carousel', () => {
+  test('does not capture pointerdown from a slide link', async () => {
+    const linkedSlides = [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)];
+    const { container } = render(Carousel, { slides: linkedSlides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const link = container.querySelector('.cinder-carousel__link') as HTMLAnchorElement;
+    const setPointerCapture = jest.fn();
+    Object.defineProperty(viewport, 'setPointerCapture', {
+      configurable: true,
+      value: setPointerCapture,
+    });
+
+    await fireEvent.pointerDown(link, { pointerId: 7 });
+    await fireEvent.pointerUp(window, { pointerId: 7 });
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
+  });
+
+  test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {
+    const css = await Bun.file(new URL('./carousel.css', import.meta.url)).text();
+    expect(css).not.toContain('scroll-snap-stop: always');
+
+    const { container } = render(Carousel, { slides });
+    const root = container.querySelector('.cinder-carousel') as HTMLElement;
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    await fireEvent.keyDown(root, { key: 'End' });
+
+    expectActiveSlide(container, 2);
+    expect(scrollTo).toHaveBeenCalledWith({ left: 200, behavior: 'smooth' });
+  });
+
+  test('server-renders a nonzero active slide at the initial scroll position', async () => {
+    const html = await renderToServerHtml(CAROUSEL_SOURCE, { slides, activeIndex: 2 });
+    const document = new DOMParser().parseFromString(html, 'text/html');
+    const articles = [...document.querySelectorAll<HTMLElement>('article.cinder-carousel__slide')];
+
+    expect(articles[2]?.style.order).toBe('0');
+    expect(articles[2]?.getAttribute('aria-hidden')).toBeNull();
+    expect(articles[2]?.hasAttribute('inert')).toBe(false);
+    expect(articles[0]?.style.order).toBe('1');
+  });
+
   test('reconciles the active slide when a pointer takes over a pending scroll', async () => {
     const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
@@ -127,7 +188,7 @@ describe('Carousel', () => {
   test('renders region semantics and first slide by default', () => {
     const { container } = render(Carousel, { slides, label: 'Highlights' });
     const root = container.querySelector('.cinder-carousel');
-    expect(root?.getAttribute('role')).toBe('region');
+    expect(root?.tagName).toBe('SECTION');
     expect(root?.getAttribute('aria-roledescription')).toBe('carousel');
     expect(root?.getAttribute('aria-label')).toBe('Highlights');
     expectActiveSlide(container, 0);

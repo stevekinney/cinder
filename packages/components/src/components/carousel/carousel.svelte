@@ -25,6 +25,8 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy, untrack } from 'svelte';
+
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
@@ -51,8 +53,12 @@
   let isInteracting = $state(false);
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
+  let activePointerId: number | null = null;
 
   const clampedLength = $derived(slides.length);
+  const initialSlideId = untrack(
+    () => slides[Math.max(0, Math.min(slides.length - 1, activeIndex))]?.id ?? slides[0]?.id,
+  );
   const currentIndex = $derived.by(() => {
     if (clampedLength < 1) return 0;
     return Math.max(0, Math.min(clampedLength - 1, activeIndex));
@@ -137,6 +143,15 @@
     hasFocusWithin = false;
   }
 
+  function initialSlideOrder(index: number): number {
+    if (slides.length < 1) return 0;
+    const initialSlideIndex = Math.max(
+      0,
+      slides.findIndex((slide) => slide.id === initialSlideId),
+    );
+    return (index - initialSlideIndex + slides.length) % slides.length;
+  }
+
   function scrollToActiveSlide(behavior?: ScrollBehavior): void {
     const viewport = viewportElement;
     if (viewport === null) return;
@@ -164,13 +179,29 @@
     if (entries[0]?.contentRect.width) scrollToActiveSlide('auto');
   });
 
+  function removePointerEndListeners(): void {
+    if (typeof window === 'undefined') return;
+    window.removeEventListener('pointerup', finishPointerInteraction);
+    window.removeEventListener('pointercancel', finishPointerInteraction);
+  }
+
+  function finishPointerInteraction(event: PointerEvent): void {
+    if (activePointerId !== null && event.pointerId !== activePointerId) return;
+    activePointerId = null;
+    isInteracting = false;
+    removePointerEndListeners();
+  }
+
   function onPointerDown(event: PointerEvent): void {
     programmaticTarget = null;
     isInteracting = true;
-    if (event.pointerId !== -1 && typeof viewportElement?.setPointerCapture === 'function') {
-      viewportElement.setPointerCapture(event.pointerId);
-    }
+    activePointerId = event.pointerId;
+    removePointerEndListeners();
+    window.addEventListener('pointerup', finishPointerInteraction);
+    window.addEventListener('pointercancel', finishPointerInteraction);
   }
+
+  onDestroy(removePointerEndListeners);
 
   function onViewportScroll(): void {
     const viewport = viewportElement;
@@ -202,11 +233,9 @@
 <section
   {...rest}
   class={classNames('cinder-carousel', className)}
-  role="region"
   aria-roledescription="carousel"
   aria-label={label}
   aria-describedby={description ? descriptionId : undefined}
-  tabindex="0"
   onkeydown={onKeydown}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}
@@ -232,8 +261,6 @@
     {@attach observeViewport}
     onscroll={onViewportScroll}
     onpointerdown={onPointerDown}
-    onpointerup={() => (isInteracting = false)}
-    onpointercancel={() => (isInteracting = false)}
   >
     {#if slides.length > 0}
       {#each slides as slide, index (slide.id)}
@@ -244,6 +271,7 @@
           aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
           aria-hidden={index === currentIndex ? undefined : 'true'}
           inert={index !== currentIndex}
+          style:order={initialSlideOrder(index)}
         >
           {#if slide.href}
             <a class="cinder-carousel__link" href={slide.href}>
