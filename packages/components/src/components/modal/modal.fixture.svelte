@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Modal } from './index.ts';
+  import { untrack } from 'svelte';
 
   type FixtureProps = {
     describedById?: string;
@@ -8,7 +9,7 @@
   };
 
   let { describedById, open = true, title = 'Fixture dialog' }: FixtureProps = $props();
-  let modalOpen = $state(open);
+  let modalOpen = $state(untrack(() => open));
   let triggerRef: HTMLButtonElement | null = $state(null);
 </script>
 
@@ -65,7 +66,7 @@
   }
 
   .modal-fixture__trigger {
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     border-radius: 0.375rem;
     background: var(--cinder-surface);
     color: var(--cinder-text);

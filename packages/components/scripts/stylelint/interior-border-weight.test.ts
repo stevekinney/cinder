@@ -53,6 +53,9 @@ describe(ruleName, () => {
         ),
       ),
     ).toEqual([]);
+    expect(
+      warnings(await lint('.modal-fixture__trigger { border: 1px solid var(--cinder-border); }')),
+    ).toEqual([]);
   });
 
   test('matches interior BEM elements at a name boundary', async () => {
@@ -63,5 +66,12 @@ describe(ruleName, () => {
         ),
       ),
     ).toEqual([]);
+    expect(
+      warnings(
+        await lint(
+          '.cinder-navigation__trigger { border-block-end: 1px solid var(--cinder-border); }',
+        ),
+      ),
+    ).toHaveLength(1);
   });
 });

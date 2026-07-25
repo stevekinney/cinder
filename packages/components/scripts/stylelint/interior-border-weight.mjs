@@ -16,7 +16,8 @@ function isCinderComponentSource(root) {
   );
 }
 
-function isInterior(selector) {
+function isInteriorDivider(selector, property) {
+  if (property === 'border') return false;
   return /(?:__(?:header|footer|search|section|body|trigger|cell)(?![\w-])|[+~])/i.test(selector);
 }
 
@@ -25,9 +26,9 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
     return;
   if (!isCinderComponentSource(root)) return;
   root.walkRules((rule) => {
-    if (!isInterior(rule.selector)) return;
     rule.walkDecls((decl) => {
       if (!/^border(?:-(?:block|inline)-(?:start|end)|-(?:top|bottom))?$/.test(decl.prop)) return;
+      if (!isInteriorDivider(rule.selector, decl.prop)) return;
       if (decl.value.includes('var(--cinder-border)')) {
         stylelint.utils.report({ ruleName, result, node: decl, message: messages.border() });
       }

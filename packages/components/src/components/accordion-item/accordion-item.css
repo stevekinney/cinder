@@ -9,7 +9,7 @@
     --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
     --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
     --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
-    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-medium);
+    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
     --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
     --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
     --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
@@ -48,7 +48,7 @@
       var(--cinder-accordion-item-trigger-padding-inline, var(--cinder-space-5));
 
     font-size: var(--cinder-accordion-item-trigger-font-size, var(--cinder-text-base));
-    font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-medium));
+    font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-semibold));
     line-height: var(--cinder-leading-snug);
     color: var(--cinder-text);
     text-align: start;

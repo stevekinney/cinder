@@ -151,13 +151,15 @@
     background: var(--cinder-surface);
   }
 
-  .cinder-drawer__body[data-cinder-overflows] {
-    mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
-    mask-size: 100% 100%;
-    mask-repeat: no-repeat;
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
-    -webkit-mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat;
+  .cinder-drawer__body[data-cinder-overflows]::after {
+    content: '';
+    position: sticky;
+    inset-block-end: 0;
+    display: block;
+    height: 1.5rem;
+    margin-block-start: -1.5rem;
+    background: linear-gradient(to bottom, transparent, var(--cinder-surface));
+    pointer-events: none;
   }
 
   .cinder-drawer__footer {
