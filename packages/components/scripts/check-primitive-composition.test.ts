@@ -136,6 +136,16 @@ describe('primitive composition guard', () => {
       ).toHaveLength(1);
   });
 
+  test('counts raw controls in mutable polymorphic expression branches', () => {
+    for (const source of [
+      "<script>let tag = 'div'; tag = editable ? 'input' : 'div';</script><svelte:element this={tag} />",
+      "<script>const inputTag = 'input'; let tag = 'div'; tag = editable ? inputTag : 'div';</script><svelte:element this={tag} />",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(source, 'new-control/new-control.svelte'),
+      ).toHaveLength(1);
+  });
+
   test('rejects an added raw control in a tracked file', () => {
     expect(
       findPrimitiveCompositionViolations('<input /><input />', 'pin-input/pin-input.svelte'),
@@ -280,6 +290,19 @@ describe('primitive composition guard', () => {
     ).toBe(0);
   });
 
+  test('preserves comma-separated conditional query branches', () => {
+    expect(
+      cssPrimitiveCounts(
+        '@media (max-width: 40rem), (min-width: 80rem) { .layout { display: grid; grid-template-columns: 1fr; } }',
+      ).grid,
+    ).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        '@media (max-width: 40rem), (min-width: 80rem) { .layout { display: grid; } } @media (min-width: 60rem) and (max-width: 70rem) { .layout { grid-template-columns: 1fr; } }',
+      ).grid,
+    ).toBe(0);
+  });
+
   test('rejects a hand-rolled grid in an inline style', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -323,6 +346,21 @@ describe('primitive composition guard', () => {
         'new-grid/new-grid.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('resolves top-level writes to mutable style-object bindings', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; layout = { display: 'block' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('rejects a layered floating surface without the shared sidecar', () => {
@@ -421,6 +459,26 @@ describe('primitive composition guard', () => {
         '<div id="local" class="menu cinder-_floating-surface" data-local></div>',
       ),
     ).toEqual([]);
+  });
+
+  test('preserves functional pseudo-class constraints on floating targets', () => {
+    const sharedMarkup = '<div class="menu cinder-_floating-surface"></div>';
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu:not(.cinder-_floating-surface) { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        sharedMarkup,
+      ),
+    ).toHaveLength(1);
+    for (const pseudoClass of ['is', 'where']) {
+      expect(
+        findPrimitiveCompositionViolations(
+          `.menu:${pseudoClass}(.cinder-_floating-surface, .other) { position: absolute; z-index: 1; }`,
+          'new-menu/new-menu.css',
+          sharedMarkup,
+        ),
+      ).toEqual([]);
+    }
   });
 
   test('does not combine floating declarations from separate CSS rules', () => {
@@ -575,6 +633,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('does not treat wrapper component props as rendered field evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<Card description={helpText} error={errorMessage}><label>Sort</label></Card>',
+        'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('recognizes grouped messages next to their direct label', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -623,6 +690,15 @@ describe('primitive composition guard', () => {
     expect(shouldCheckComponentSource('context-menu/_context-menu-test-harness.svelte')).toBe(
       false,
     );
+    expect(shouldCheckComponentSource('collapsible/collapsible-bindable-harness.svelte')).toBe(
+      false,
+    );
+    expect(shouldCheckComponentSource('tab-panel/tab-panel-aria-labelledby-harness.svelte')).toBe(
+      false,
+    );
+    expect(
+      shouldCheckComponentSource('copy-button/__test-helpers__/copy-state-wrapper.svelte'),
+    ).toBe(false);
     expect(shouldCheckComponentSource('input/input.svelte')).toBe(true);
   });
 

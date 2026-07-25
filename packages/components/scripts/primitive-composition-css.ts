@@ -42,7 +42,40 @@ type SelectorTarget = {
   id?: string;
   classes: Set<string>;
   attributes: Map<string, AttributeConstraint>;
+  functionalConstraints: Array<{
+    kind: 'not' | 'any';
+    alternatives: SelectorTarget[];
+  }>;
 };
+
+function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): SelectorTarget {
+  const target: SelectorTarget = {
+    classes: new Set(),
+    attributes: new Map(),
+    functionalConstraints: [],
+  };
+  for (const node of nodes) {
+    if (node.type === 'class') target.classes.add(node.value);
+    if (node.type === 'id') target.id = node.value;
+    if (node.type === 'tag') target.tag = node.value.toLowerCase();
+    if (node.type === 'attribute')
+      target.attributes.set(node.attribute.toLowerCase(), {
+        operator: node.operator,
+        value: node.value,
+        insensitive: node.insensitive === true,
+      });
+    if (
+      node.type === 'pseudo' &&
+      (node.value === ':not' || node.value === ':is' || node.value === ':where') &&
+      Array.isArray(node.nodes)
+    )
+      target.functionalConstraints.push({
+        kind: node.value === ':not' ? 'not' : 'any',
+        alternatives: node.nodes.map((selectorNode) => selectorTargetFromNodes(selectorNode.nodes)),
+      });
+  }
+  return target;
+}
 
 function selectorTargets(selector: string): SelectorTarget[] {
   const targets: SelectorTarget[] = [];
@@ -51,22 +84,7 @@ function selectorTargets(selector: string): SelectorTarget[] {
       const lastCombinator = selectorNode.nodes.findLastIndex((node) => node.type === 'combinator');
       const targetNodes = selectorNode.nodes.slice(lastCombinator + 1);
       if (targetNodes.some((node) => node.type === 'pseudo' && node.value.startsWith('::'))) return;
-      const target: SelectorTarget = {
-        classes: new Set(),
-        attributes: new Map(),
-      };
-      for (const node of targetNodes) {
-        if (node.type === 'class') target.classes.add(node.value);
-        if (node.type === 'id') target.id = node.value;
-        if (node.type === 'tag') target.tag = node.value.toLowerCase();
-        if (node.type === 'attribute')
-          target.attributes.set(node.attribute.toLowerCase(), {
-            operator: node.operator,
-            value: node.value,
-            insensitive: node.insensitive === true,
-          });
-      }
-      targets.push(target);
+      targets.push(selectorTargetFromNodes(targetNodes));
     });
   }).processSync(selector);
   return targets;
@@ -148,18 +166,24 @@ function discreteConditions(parameters: string): Map<string, string> {
   return conditions;
 }
 
-function conditionalScopesConflict(left: ConditionalScope, right: ConditionalScope): boolean {
-  if (left.name !== right.name) return false;
-  if (left.name === 'supports') {
-    const leftWithoutNot = left.parameters.replace(/^not\s+/, '');
-    const rightWithoutNot = right.parameters.replace(/^not\s+/, '');
-    return (
-      leftWithoutNot === rightWithoutNot &&
-      left.parameters.startsWith('not ') !== right.parameters.startsWith('not ')
-    );
+function conditionalQueryBranches(parameters: string): string[] {
+  const branches: string[] = [];
+  let parenthesisDepth = 0;
+  let branchStart = 0;
+  for (let index = 0; index < parameters.length; index++) {
+    const character = parameters[index];
+    if (character === '(') parenthesisDepth++;
+    if (character === ')') parenthesisDepth--;
+    if (character !== ',' || parenthesisDepth !== 0) continue;
+    branches.push(parameters.slice(branchStart, index).trim());
+    branchStart = index + 1;
   }
-  if (left.name !== 'media' && left.name !== 'container') return false;
-  const bounds = [...widthBounds(left.parameters), ...widthBounds(right.parameters)];
+  branches.push(parameters.slice(branchStart).trim());
+  return branches.filter(Boolean);
+}
+
+function conditionalQueryBranchesConflict(left: string, right: string): boolean {
+  const bounds = [...widthBounds(left), ...widthBounds(right)];
   for (const unit of ['px', 'root-em'] as const) {
     const comparableBounds = bounds.filter((bound) => bound.unit === unit);
     const minimum = Math.max(
@@ -172,10 +196,28 @@ function conditionalScopesConflict(left: ConditionalScope, right: ConditionalSco
     );
     if (minimum > maximum) return true;
   }
-  const leftDiscrete = discreteConditions(left.parameters);
-  const rightDiscrete = discreteConditions(right.parameters);
+  const leftDiscrete = discreteConditions(left);
+  const rightDiscrete = discreteConditions(right);
   return [...leftDiscrete].some(
     ([feature, value]) => rightDiscrete.has(feature) && rightDiscrete.get(feature) !== value,
+  );
+}
+
+function conditionalScopesConflict(left: ConditionalScope, right: ConditionalScope): boolean {
+  if (left.name !== right.name) return false;
+  if (left.name === 'supports') {
+    const leftWithoutNot = left.parameters.replace(/^not\s+/, '');
+    const rightWithoutNot = right.parameters.replace(/^not\s+/, '');
+    return (
+      leftWithoutNot === rightWithoutNot &&
+      left.parameters.startsWith('not ') !== right.parameters.startsWith('not ')
+    );
+  }
+  if (left.name !== 'media' && left.name !== 'container') return false;
+  const leftBranches = conditionalQueryBranches(left.parameters);
+  const rightBranches = conditionalQueryBranches(right.parameters);
+  return leftBranches.every((leftBranch) =>
+    rightBranches.every((rightBranch) => conditionalQueryBranchesConflict(leftBranch, rightBranch)),
   );
 }
 
@@ -241,6 +283,15 @@ function targetMatchesSharedFloatingElement(
     [...target.classes].every((className) => sharedTarget.classes.has(className)) &&
     [...target.attributes].every(([name, constraint]) =>
       attributeConstraintMatches(sharedTarget.attributes.get(name), constraint),
+    ) &&
+    target.functionalConstraints.every(({ kind, alternatives }) =>
+      kind === 'not'
+        ? alternatives.every(
+            (alternative) => !targetMatchesSharedFloatingElement(alternative, sharedTarget),
+          )
+        : alternatives.some((alternative) =>
+            targetMatchesSharedFloatingElement(alternative, sharedTarget),
+          ),
     )
   );
 }

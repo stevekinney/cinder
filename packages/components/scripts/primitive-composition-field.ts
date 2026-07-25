@@ -130,7 +130,8 @@ function qualifyingFieldLabels(
   const terms = [localEvidence.terms];
   const deferredMessageTerms: string[] = [];
   const childEvidence: FieldEvidence[] = [];
-  for (const value of Object.values(node)) {
+  for (const [key, value] of Object.entries(node)) {
+    if (node['type'] === 'Component' && key === 'attributes') continue;
     const children = Array.isArray(value) ? value : [value];
     for (const child of children) {
       if (!isRecord(child)) continue;

@@ -124,18 +124,19 @@ function staticStringBindings(source: string): Map<string, string> {
   return bindings;
 }
 
-function possibleMutableControlName(source: string, expression: unknown): string | undefined {
+function possibleMutableControlNames(source: string, expression: unknown): Set<string> {
   if (
     !isRecord(expression) ||
     expression['type'] !== 'Identifier' ||
     typeof expression['name'] !== 'string'
   )
-    return undefined;
+    return new Set();
   const bindingName = expression['name'];
   const root: unknown = parseSvelte(source, { modern: true });
   if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
-    return undefined;
-  let possibleControl: string | undefined;
+    return new Set();
+  const possibleControls = new Set<string>();
+  const bindings = staticStringBindings(source);
   walkAst(root['instance']['content'], (node) => {
     let candidate: unknown;
     if (
@@ -152,10 +153,17 @@ function possibleMutableControlName(source: string, expression: unknown): string
       node['left']['name'] === bindingName
     )
       candidate = node['right'];
-    const value = staticStringFromExpression(candidate, new Map())?.toLowerCase();
-    if (value === 'input' || value === 'select' || value === 'textarea') possibleControl = value;
+    for (const value of possibleStaticStringsFromExpression(candidate, bindings)) {
+      const normalizedValue = value.toLowerCase();
+      if (
+        normalizedValue === 'input' ||
+        normalizedValue === 'select' ||
+        normalizedValue === 'textarea'
+      )
+        possibleControls.add(normalizedValue);
+    }
   });
-  return possibleControl;
+  return possibleControls;
 }
 
 function staticAttributeValue(attribute: UnknownRecord): string | undefined {
@@ -232,8 +240,8 @@ export function visibleControlCount(source: string): number {
     if (node['type'] === 'SvelteElement') {
       for (const name of possibleStaticStringsFromExpression(node['tag'], bindings))
         elementNames.add(name.toLowerCase());
-      const mutableControlName = possibleMutableControlName(source, node['tag']);
-      if (mutableControlName !== undefined) elementNames.add(mutableControlName);
+      for (const mutableControlName of possibleMutableControlNames(source, node['tag']))
+        elementNames.add(mutableControlName);
     }
     const controlNames = new Set(
       [...elementNames].filter(

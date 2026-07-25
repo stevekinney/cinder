@@ -64,30 +64,52 @@ function collectObjectDeclarations(
 
 function staticBindings(instance: unknown): Map<string, unknown> {
   const bindings = new Map<string, unknown>();
+  const mutableBindings = new Set<string>();
   if (!isRecord(instance) || !isRecord(instance['content'])) return bindings;
   const body = instance['content']['body'];
   if (!Array.isArray(body)) return bindings;
   for (const statement of body) {
+    if (!isRecord(statement)) continue;
+    if (statement['type'] === 'VariableDeclaration' && Array.isArray(statement['declarations'])) {
+      for (const declaration of statement['declarations']) {
+        if (
+          !isRecord(declaration) ||
+          !isRecord(declaration['id']) ||
+          declaration['id']['type'] !== 'Identifier' ||
+          typeof declaration['id']['name'] !== 'string'
+        )
+          continue;
+        if (statement['kind'] !== 'const') {
+          mutableBindings.add(declaration['id']['name']);
+          bindings.delete(declaration['id']['name']);
+          continue;
+        }
+        const initializer = declaration['init'];
+        if (isRecord(initializer) && initializer['type'] === 'ObjectExpression')
+          bindings.set(declaration['id']['name'], initializer);
+        else if (isRecord(initializer) && initializer['type'] === 'Literal')
+          bindings.set(declaration['id']['name'], initializer['value']);
+        else bindings.delete(declaration['id']['name']);
+      }
+      continue;
+    }
+    const expression = statement['type'] === 'ExpressionStatement' ? statement['expression'] : null;
     if (
-      !isRecord(statement) ||
-      statement['type'] !== 'VariableDeclaration' ||
-      !Array.isArray(statement['declarations'])
+      !isRecord(expression) ||
+      expression['type'] !== 'AssignmentExpression' ||
+      expression['operator'] !== '=' ||
+      !isRecord(expression['left']) ||
+      expression['left']['type'] !== 'Identifier' ||
+      typeof expression['left']['name'] !== 'string'
     )
       continue;
-    for (const declaration of statement['declarations']) {
-      if (
-        !isRecord(declaration) ||
-        !isRecord(declaration['id']) ||
-        declaration['id']['type'] !== 'Identifier' ||
-        typeof declaration['id']['name'] !== 'string'
-      )
-        continue;
-      const initializer = declaration['init'];
-      if (isRecord(initializer) && initializer['type'] === 'ObjectExpression')
-        bindings.set(declaration['id']['name'], initializer);
-      if (isRecord(initializer) && initializer['type'] === 'Literal')
-        bindings.set(declaration['id']['name'], initializer['value']);
-    }
+    if (!mutableBindings.has(expression['left']['name'])) continue;
+    const assignedValue = expression['right'];
+    if (isRecord(assignedValue) && assignedValue['type'] === 'ObjectExpression')
+      bindings.set(expression['left']['name'], assignedValue);
+    else if (isRecord(assignedValue) && assignedValue['type'] === 'Literal')
+      bindings.set(expression['left']['name'], assignedValue['value']);
+    else bindings.delete(expression['left']['name']);
   }
   return bindings;
 }
