@@ -101,6 +101,8 @@
     display: grid;
     gap: var(--cinder-space-4);
     grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    border-inline-start: 1px solid var(--cinder-border-muted);
+    padding-inline-start: var(--cinder-space-4);
   }
 
   .cinder-mega-menu__section-title {
