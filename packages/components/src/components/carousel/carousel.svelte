@@ -236,6 +236,7 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
+    if (isInteracting) return;
     slideIdentity;
     scrollToActiveSlide();
   });

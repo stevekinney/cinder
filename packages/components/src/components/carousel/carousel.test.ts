@@ -180,6 +180,31 @@ describe('Carousel', () => {
     expect(slideElements[0]?.hasAttribute('inert')).toBe(false);
   });
 
+  test('does not start programmatic scrolling while a native drag updates the active slide', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 1 ? 0 : 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    await fireEvent.pointerDown(viewport, { pointerId: 12 });
+    await fireEvent.scroll(viewport);
+
+    expectActiveSlide(container, 1);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
   test('does not clear initial alignment while the viewport is hidden', async () => {
     type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
     let callback: ObserverCallback | undefined;
