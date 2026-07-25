@@ -23,6 +23,8 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
+  import { createClickOutside } from '../../utilities/attachments.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import { tick } from 'svelte';
 
@@ -74,8 +76,9 @@
   }: EventTimelineProps = $props();
 
   let measuredWidth = $state(0);
-  let openCluster = $state(false);
+  let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
+  let clusterSurface = $state<HTMLDivElement | null>(null);
 
   function toTimestamp(value: EventTimelineDate | undefined): number | undefined {
     if (value === undefined) return undefined;
@@ -213,25 +216,37 @@
         return positionedItem;
       });
 
-    const clusters: EventTimelineCluster[] = [];
-    if (overflowItems.length > 0) {
-      const first = overflowItems[0]!;
-      const last = overflowItems.at(-1)!;
+    const overflowGroups: PositionedEventTimelineItem[][] = [];
+    for (const item of overflowItems) {
+      const group = overflowGroups.at(-1);
+      if (
+        group === undefined ||
+        item.position - group.at(-1)!.position >= collisionThresholdPercent
+      ) {
+        overflowGroups.push([item]);
+      } else {
+        group.push(item);
+      }
+    }
+
+    const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup) => {
+      const first = overflowGroup[0]!;
+      const last = overflowGroup.at(-1)!;
       const startTime = new Date(first.timestamp).toISOString().slice(11, 16);
       const endTime = new Date(last.timestamp).toISOString().slice(11, 16);
-      const countLabel = overflowItems.length === 1 ? 'event' : 'events';
-      clusters.push({
-        accessibleLabel: `${overflowItems.length} ${countLabel} between ${startTime} and ${endTime}`,
-        count: overflowItems.length,
+      const countLabel = overflowGroup.length === 1 ? 'event' : 'events';
+      return {
+        accessibleLabel: `${overflowGroup.length} ${countLabel} between ${startTime} and ${endTime}`,
+        count: overflowGroup.length,
         edge: edgeForPosition(first.position),
         endTime,
         key: `cluster-${first.key}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,
-        items: overflowItems,
-      });
-    }
+        items: overflowGroup,
+      };
+    });
 
     return { clusters, items: visibleItems };
   });
@@ -261,18 +276,33 @@
   const accessibleName = $derived(normalizedAriaLabel ?? normalizedLabel ?? 'Event timeline');
 
   function closeCluster(): void {
-    openCluster = false;
+    openClusterKey = null;
     void tick().then(() => clusterTrigger?.focus());
   }
 
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Escape' || !openCluster) return;
-    event.preventDefault();
-    closeCluster();
-  }
-</script>
+  const dismissOnOutsidePointerdown = $derived(
+    createClickOutside({
+      handler: closeCluster,
+      enabled: () => openClusterKey !== null,
+      eventType: 'pointerdown',
+    }),
+  );
 
-<svelte:window onkeydown={handleKeydown} />
+  $effect(() => {
+    if (openClusterKey !== null && !clusters.some((cluster) => cluster.key === openClusterKey)) {
+      openClusterKey = null;
+      clusterTrigger = null;
+    }
+  });
+
+  $effect(() => {
+    if (openClusterKey === null) return;
+    return pushEscapeHandler((event) => {
+      event.preventDefault();
+      closeCluster();
+    });
+  });
+</script>
 
 <div {...rest} class={classNames('cinder-event-timeline', customClassName)} data-cinder-size={size}>
   {#if normalizedLabel}
@@ -330,23 +360,32 @@
           class="cinder-event-timeline__cluster-trigger"
           type="button"
           tabindex="0"
-          aria-expanded={openCluster}
+          aria-expanded={openClusterKey === cluster.key}
           aria-label={cluster.accessibleLabel}
           onclick={(event) => {
             clusterTrigger = event.currentTarget as HTMLButtonElement;
-            openCluster = !openCluster;
+            openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
+            if (openClusterKey !== null) void tick().then(() => clusterSurface?.focus());
           }}>+{cluster.count}</button
         >
-        {#if openCluster}
+        {#if openClusterKey === cluster.key}
           <div
-            class="cinder-event-timeline__cluster-surface"
+            class="cinder-_floating-surface cinder-event-timeline__cluster-surface"
             role="dialog"
             aria-label={cluster.accessibleLabel}
+            bind:this={clusterSurface}
+            tabindex="-1"
+            {@attach dismissOnOutsidePointerdown}
           >
             <strong>{cluster.accessibleLabel}</strong>
             <ul>
               {#each cluster.items as hiddenItem (hiddenItem.key)}
-                <li>{hiddenItem.label}</li>
+                <li>
+                  <span>{hiddenItem.label}</span>
+                  <span class="cinder-event-timeline__cluster-item-details">
+                    {hiddenItem.sublabel ?? hiddenItem.isoDatetime} · {hiddenItem.stateLabel}
+                  </span>
+                </li>
               {/each}
             </ul>
           </div>

@@ -190,10 +190,35 @@ describe('EventTimeline', () => {
 
     cluster?.focus();
     await fireEvent.click(cluster!);
-    expect(container.querySelector('[role="dialog"]')).not.toBeNull();
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(document.activeElement).toBe(dialog);
+    expect(dialog?.textContent).toContain('Upcoming');
     await fireEvent.keyDown(window, { key: 'Escape' });
     expect(container.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(cluster);
+  });
+
+  test('creates one cluster marker per separated dense region', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        ...[0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Morning ${index + 1}`,
+        })),
+        ...[0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T18:0${index}:00.000Z`,
+          label: `Evening ${index + 1}`,
+        })),
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(container.querySelectorAll('.cinder-event-timeline__cluster-trigger')).toHaveLength(2);
   });
 
   test('allocates additional lanes for dense clusters without reusing the final lane', () => {
