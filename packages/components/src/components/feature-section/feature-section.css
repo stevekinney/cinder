@@ -90,13 +90,13 @@
     overflow: auto;
   }
 
-  @container cinder-feature-section (max-width: 48rem) {
+  @container cinder-feature-section (max-width: 64rem) {
     .cinder-feature-section__list {
       grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     }
   }
 
-  @container cinder-feature-section (min-width: 48rem) {
+  @container cinder-feature-section (min-width: 64rem) {
     .cinder-feature-section[data-cinder-layout='split'][data-cinder-has-media]
       .cinder-feature-section__body {
       grid-template-columns: repeat(2, minmax(0, 1fr));
