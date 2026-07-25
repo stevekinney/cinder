@@ -211,6 +211,15 @@ describe('kanban board styles', () => {
     expect(kanbanBoardCss).toMatch(dragPreviewShadow);
     expect(sortableListCss).toMatch(dragPreviewShadow);
   });
+
+  test('scroll edges use a translucent theme-aware foreground mix', () => {
+    expect(kanbanBoardCss).toContain(
+      '--cinder-kanban-scroll-edge: color-mix(in oklch, var(--cinder-text), transparent 88%);',
+    );
+    expect(kanbanBoardCss).not.toMatch(
+      /linear-gradient\([^)]*var\(--cinder-surface-raised\), transparent\)/,
+    );
+  });
 });
 
 describe('KanbanBoard', () => {

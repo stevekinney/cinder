@@ -5,6 +5,7 @@
     --cinder-kanban-column-gap: var(--cinder-space-4);
     --cinder-kanban-column-background: var(--cinder-surface-raised);
     --cinder-kanban-card-background: var(--cinder-surface);
+    --cinder-kanban-scroll-edge: color-mix(in oklch, var(--cinder-text), transparent 88%);
 
     display: block;
     overflow-x: auto;
@@ -14,10 +15,10 @@
         no-repeat local,
       linear-gradient(270deg, var(--cinder-surface) 30%, transparent) right center / 2rem 100%
         no-repeat local,
-      linear-gradient(90deg, var(--cinder-surface-raised), transparent) left center / 1rem 100%
+      linear-gradient(90deg, var(--cinder-kanban-scroll-edge), transparent) left center / 1rem 100%
         no-repeat scroll,
-      linear-gradient(270deg, var(--cinder-surface-raised), transparent) right center / 1rem 100%
-        no-repeat scroll;
+      linear-gradient(270deg, var(--cinder-kanban-scroll-edge), transparent) right center / 1rem
+        100% no-repeat scroll;
   }
 
   .cinder-kanban-board__keyboard-hint {
