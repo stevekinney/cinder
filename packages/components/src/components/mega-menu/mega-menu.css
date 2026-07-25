@@ -137,6 +137,7 @@
     display: grid;
     gap: var(--cinder-space-4);
     grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+    align-items: start;
   }
 
   .cinder-mega-menu__submenu-trigger {
@@ -151,8 +152,9 @@
   }
 
   .cinder-mega-menu__submenu-trigger[data-active='true'] {
-    border-color: var(--cinder-border-muted);
+    border-color: var(--cinder-accent);
     background: var(--cinder-surface-hover);
+    font-weight: var(--cinder-font-semibold);
   }
 
   @media (hover: hover) {
