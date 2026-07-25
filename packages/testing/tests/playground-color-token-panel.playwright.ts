@@ -709,8 +709,8 @@ test.describe('playground color token panel', () => {
 
     await page.reload({ waitUntil: 'load' });
     await waitForPlayground(page);
-    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_ADVANCED_OVERRIDE);
-    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(LIGHT_ADVANCED_OVERRIDE);
+    await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
+    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
   });
 
   test('keeps token row actions and value input usable at narrow widths', async ({ page }) => {
