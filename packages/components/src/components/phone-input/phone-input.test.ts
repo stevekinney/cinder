@@ -1,15 +1,17 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: PhoneInput } = await import('./phone-input.svelte');
 const { default: FormFieldPhoneInputFixture } =
   await import('../../test/fixtures/form-field-phone-input-fixture.svelte');
+
+afterEach(cleanup);
 
 function nationalInput(container: Element): HTMLInputElement {
   return container.querySelector<HTMLInputElement>('input[type="tel"]')!;
