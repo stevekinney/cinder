@@ -41,7 +41,9 @@
   let sentinelArmed = $state(true);
   let sentinelIntersecting = $state(false);
   let sentinelReported = $state(false);
+  let manualObserverSuspended = $state(false);
   let previousSentinelEnabled = false;
+  let previousSentinelCapped = false;
   // Tracks the last `hasMore` value the component reconciled against so a
   // parent-driven false -> true flip (new page of data arrived) can clear the
   // sentinel request cap and error latch exactly once per transition.
@@ -50,6 +52,7 @@
   const mergedClassName = $derived(classNames('cinder-load-more', customClassName));
   const busy = $derived(loading || requestInFlight);
   const sentinelEnabled = $derived(hasMore && !errorState && sentinelRequestCount < maxRetries);
+  const sentinelObserverEnabled = $derived(sentinelEnabled && !manualObserverSuspended);
   // `enabled` is a getter, so `useIntersection`'s own `$effect` re-evaluates
   // `sentinelEnabled` reactively and toggles the observer in place. Constructing
   // the attachment once (rather than inside `$derived`) avoids tearing down and
@@ -57,7 +60,7 @@
   const sentinelIntersection = useIntersection(handleIntersect, {
     root: untrack(() => root),
     rootMargin: untrack(() => rootMargin),
-    enabled: () => sentinelEnabled,
+    enabled: () => sentinelObserverEnabled,
   });
   const buttonText = $derived(errorState ? retryLabel : buttonLabel);
   const buttonDisabled = $derived(busy && !errorState);
@@ -80,11 +83,17 @@
   });
 
   $effect(() => {
+    const sentinelCapped = sentinelRequestCount >= maxRetries;
+
     if (!previousSentinelEnabled && sentinelEnabled) {
       sentinelReported = false;
       sentinelIntersecting = false;
+      if (previousSentinelCapped && !sentinelCapped) {
+        sentinelArmed = true;
+      }
     }
     previousSentinelEnabled = sentinelEnabled;
+    previousSentinelCapped = sentinelCapped;
   });
 
   $effect(() => {
@@ -102,11 +111,14 @@
 
     if (source === 'sentinel') {
       sentinelRequestCount += 1;
-    } else if (!sentinelEnabled || !sentinelReported || sentinelIntersecting) {
-      // A manual request is itself the explicit load trigger. Do not let an
-      // unreported or already-visible sentinel immediately follow it with
-      // another request.
+    } else {
+      // A manual request supersedes every entry queued by the current observer.
+      // Suspending the observer makes its callback stale immediately; the
+      // replacement must report off-screen before it can re-arm.
       sentinelArmed = false;
+      sentinelReported = false;
+      sentinelIntersecting = false;
+      manualObserverSuspended = true;
     }
 
     requestInFlight = true;
@@ -124,6 +136,9 @@
       // Always clear the in-flight guard once the request settles, regardless of
       // whether the parent has flipped its own `loading` prop yet.
       requestInFlight = false;
+      if (source === 'button') {
+        manualObserverSuspended = false;
+      }
     }
   }
 

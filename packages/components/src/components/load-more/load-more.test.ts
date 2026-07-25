@@ -148,7 +148,48 @@ describe('LoadMore', () => {
     await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
     expect(calls).toBe(1);
 
-    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(FakeIntersectionObserver.records).toHaveLength(2));
+    const currentRecord = FakeIntersectionObserver.records.at(-1);
+    currentRecord?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    currentRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(2));
+  });
+
+  test('manual loading consumes intersections queued by the previous observer', async () => {
+    let calls = 0;
+    let resolveManualRequest: (() => void) | undefined;
+    const rendered = render(LoadMore, {
+      props: {
+        onLoadMore: async () => {
+          calls += 1;
+          if (calls === 1) {
+            await new Promise<void>((resolve) => (resolveManualRequest = resolve));
+          }
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [initialRecord] = FakeIntersectionObserver.records;
+
+    initialRecord?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    await fireEvent.click(rendered.getByRole('button', { name: 'Load more' }));
+    await waitFor(() => expect(calls).toBe(1));
+
+    initialRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    resolveManualRequest?.();
+
+    await waitFor(() => {
+      expect(FakeIntersectionObserver.records).toHaveLength(2);
+      expect(rendered.getByRole('button', { name: 'Load more' }).hasAttribute('disabled')).toBe(
+        false,
+      );
+    });
+    expect(calls).toBe(1);
+
+    const currentRecord = FakeIntersectionObserver.records.at(-1);
+    currentRecord?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    currentRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
     await waitFor(() => expect(calls).toBe(2));
   });
 
@@ -399,6 +440,35 @@ describe('LoadMore', () => {
     });
   });
 
+  test('raising maxRetries re-arms the sentinel with the reconnected observer', async () => {
+    let calls = 0;
+    const rendered = render(LoadMore, {
+      props: {
+        maxRetries: 1,
+        onLoadMore: async () => {
+          calls += 1;
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [initialRecord] = FakeIntersectionObserver.records;
+    initialRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(1));
+
+    await rendered.rerender({
+      maxRetries: 2,
+      onLoadMore: async () => {
+        calls += 1;
+      },
+    });
+
+    await waitFor(() => expect(FakeIntersectionObserver.records).toHaveLength(2));
+    const currentRecord = FakeIntersectionObserver.records.at(-1);
+    currentRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(2));
+  });
+
   test('a retry while visible does not queue a second sentinel request', async () => {
     let calls = 0;
     let resolveRetry: (() => void) | undefined;
@@ -429,7 +499,8 @@ describe('LoadMore', () => {
     const retrySentinel = rendered.container.querySelector(
       '.cinder-load-more__sentinel',
     ) as Element;
-    record?.callback([createEntry(retrySentinel, true)], {} as IntersectionObserver);
+    const retryRecord = FakeIntersectionObserver.records.at(-1);
+    retryRecord?.callback([createEntry(retrySentinel, true)], {} as IntersectionObserver);
     resolveRetry?.();
 
     await waitFor(() => {
@@ -476,7 +547,8 @@ describe('LoadMore', () => {
     const retrySentinel = rendered.container.querySelector(
       '.cinder-load-more__sentinel',
     ) as Element;
-    record?.callback([createEntry(retrySentinel, true)], {} as IntersectionObserver);
+    const retryRecord = FakeIntersectionObserver.records.at(-1);
+    retryRecord?.callback([createEntry(retrySentinel, true)], {} as IntersectionObserver);
     resolveRetry?.();
 
     await waitFor(() => {
