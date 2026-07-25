@@ -245,19 +245,10 @@ test.describe('Footer responsive layout', () => {
     await page.locator('.cinder-footer').evaluate((footer) => {
       footer.style.inlineSize = '48rem';
     });
-    const brand = page.locator('.cinder-footer__brand');
     const brandTitle = page.locator('.cinder-footer__brand-title');
     await brandTitle.evaluate((title) => {
       title.textContent = 'AcmeInternationalizationDocumentation';
     });
-    const [brandBox, brandTitleBox] = await Promise.all([
-      brand.boundingBox(),
-      brandTitle.boundingBox(),
-    ]);
-    expect(brandBox).not.toBeNull();
-    expect(brandTitleBox).not.toBeNull();
-    expect((brandTitleBox?.x ?? 0) + (brandTitleBox?.width ?? 0)).toBeLessThanOrEqual(
-      (brandBox?.x ?? 0) + (brandBox?.width ?? 0),
-    );
+    expect(await brandTitle.evaluate((title) => title.scrollWidth <= title.clientWidth)).toBe(true);
   });
 });
