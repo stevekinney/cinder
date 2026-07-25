@@ -350,4 +350,53 @@ describe('SelectionPopover', () => {
 
     expect(closed).toBe(false);
   });
+
+  test('scrolling the expanded comment field preserves the draft and keeps the popover open', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onclose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Draft comment' } });
+    textarea.dispatchEvent(new Event('scroll'));
+
+    expect(closed).toBe(false);
+    expect((textarea as HTMLTextAreaElement).value).toBe('Draft comment');
+  });
+
+  test('movement dismissal restores focus without scrolling the prior focus owner', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusOptions: FocusOptions | undefined;
+    trigger.focus = (options?: FocusOptions) => {
+      focusOptions = options;
+    };
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: false,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    await rerender({ open: true, position: { x: 120, y: 80 } });
+    await fireEvent.scroll(window);
+
+    expect(focusOptions).toEqual({ preventScroll: true });
+    trigger.remove();
+  });
 });

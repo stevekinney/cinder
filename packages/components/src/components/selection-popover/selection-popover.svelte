@@ -97,8 +97,8 @@
     restoreFocusElement = activeElement instanceof HTMLElement ? activeElement : null;
   }
 
-  function restoreFocus(): void {
-    restoreFocusElement?.focus();
+  function restoreFocus(preventScroll = false): void {
+    restoreFocusElement?.focus({ preventScroll });
     restoreFocusElement = null;
   }
 
@@ -175,7 +175,11 @@
 
   $effect(() => {
     if (!isPositionedOpen) return;
-    const dismiss = () => closePopover();
+    const dismiss = (event: Event) => {
+      if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
+      onclose?.();
+      restoreFocus(true);
+    };
     window.addEventListener('scroll', dismiss, true);
     window.addEventListener('resize', dismiss);
     return () => {
