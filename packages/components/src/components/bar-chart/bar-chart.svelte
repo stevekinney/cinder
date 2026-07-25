@@ -31,7 +31,7 @@
     createBarFocusRingGeometry,
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
-  import ChartDataTable from '../../_internal/chart/chart-data-table.svelte';
+  import ChartDataTable from '../_internal/chart-data-table.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { BarChartProps } from './bar-chart.types.ts';
 
@@ -399,7 +399,7 @@
       headers={['Category', 'Series', 'Value']}
       rows={model.tableRows.flatMap((row) =>
         row.values.map((value) => ({
-          id: `${row.categoryKey}:${value.seriesId}`,
+          id: JSON.stringify([row.categoryKey, value.seriesId]),
           header: row.categoryLabel,
           cells: [value.seriesLabel, value.valueLabel],
         })),

@@ -31,7 +31,7 @@
     createPointFocusRingGeometry,
   } from '../../_internal/chart/chart-focus-ring.ts';
   import { ChartInteraction } from '../../_internal/chart/chart-interaction.svelte.ts';
-  import ChartDataTable from '../../_internal/chart/chart-data-table.svelte';
+  import ChartDataTable from '../_internal/chart-data-table.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { AreaChartProps } from './area-chart.types.ts';
 

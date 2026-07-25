@@ -27,7 +27,7 @@
 <TableRoot {caption} class={classNames(visibilityClass)} aria-describedby={describedBy}>
   <TableHeader>
     <TableRow>
-      {#each headers as header (header)}
+      {#each headers as header, index (index)}
         <TableHeaderCell>{header}</TableHeaderCell>
       {/each}
     </TableRow>

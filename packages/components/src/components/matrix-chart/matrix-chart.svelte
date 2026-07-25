@@ -19,7 +19,7 @@
 
 <script lang="ts">
   import { dataTableClass } from '../../_internal/chart/chart-utilities.ts';
-  import ChartDataTable from '../../_internal/chart/chart-data-table.svelte';
+  import ChartDataTable from '../_internal/chart-data-table.svelte';
   import {
     heatmapCellFill,
     heatmapDomain,
