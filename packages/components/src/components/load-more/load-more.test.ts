@@ -151,6 +151,34 @@ describe('LoadMore', () => {
     });
   });
 
+  test('caps repeated sentinel callbacks independently from the error retry count', async () => {
+    let calls = 0;
+    const rendered = render(LoadMore, {
+      props: {
+        maxRetries: 2,
+        onloadmore: () => {
+          calls += 1;
+        },
+      },
+    });
+
+    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+    const entry = createEntry(sentinel, true);
+
+    record?.callback([entry], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(1));
+    await waitFor(() =>
+      expect(rendered.container.firstElementChild?.getAttribute('aria-busy')).toBe('false'),
+    );
+    record?.callback([entry], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(2));
+    record?.callback([entry], {} as IntersectionObserver);
+    await Promise.resolve();
+
+    expect(calls).toBe(2);
+  });
+
   test('ignores stale sentinel callbacks while loading or after an error', async () => {
     let calls = 0;
     let rejectNextRequest = false;

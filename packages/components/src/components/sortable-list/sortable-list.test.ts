@@ -1,6 +1,7 @@
 // @ts-nocheck — test file; noUncheckedIndexedAccess and bun:test types disabled per project convention
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -64,6 +65,13 @@ function renderList(overrides?: Record<string, unknown>) {
 // ---------------------------------------------------------------------------
 
 describe('SortableController', () => {
+  test('resting items provide an inline handle-and-label layout', () => {
+    const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
+    expect(stylesheet).toContain(
+      '.cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
+    );
+  });
+
   test('lift sets phase, key, from/to, liftedLabel, and calls announce', () => {
     const announce = mock();
     const controller = new SortableController({ announce });
