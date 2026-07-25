@@ -3,8 +3,8 @@
  *
  * Runs at http://localhost:5555 by default, or the next available port. Routes:
  *   GET /              → shell HTML with README landing content
- *   GET /c/:name       → shell HTML (sidebar + iframe pointing at /page/:name)
- *   GET /page/:name    → component page HTML (the iframe target — lists examples)
+ *   GET /c/:name       → server-rendered canonical documentation + isolated preview iframe
+ *   GET /page/:name    → standalone component documentation or preview-only iframe page
  *   GET /page-bundle/:name.js → page-bundle entry OR a hashed code-split chunk.
  *                              Entry URLs are bare component names (e.g. chat.js);
  *                              chunk URLs are hashed (e.g. core-abc123.js). Both
@@ -28,6 +28,7 @@
 import { randomUUID } from 'node:crypto';
 import { existsSync, rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { initializeHighlighter, renderMarkdown } from '@lostgradient/markdown/rendering';
 import type { BuildArtifact } from 'bun';
@@ -86,6 +87,7 @@ import {
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import { stripExampleHarness } from '../../components/scripts/lib/strip-example-harness.ts';
+import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 import {
   isSnapshotMode,
   snapshotModeHtmlAttribute,
@@ -179,6 +181,15 @@ const fixtureArtifactByPath = new Map<string, string>();
 const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
 let shellBuildPromise: Promise<string | null> | null = null;
+type ShellServerRenderer = (props: {
+  initialComponent: string;
+  components: string[];
+  readmeHtml: string;
+  documentation: ComponentDocumentationPayload | null;
+  initialSearch: string;
+}) => { body: string; head: string };
+let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
+let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
@@ -286,6 +297,7 @@ const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/;
 let manifestCache: ComponentManifest[] | null = null;
 /** In-flight analyzeAll() promise — prevents duplicate concurrent analyses. */
 let manifestPromise: Promise<ComponentManifest[]> | null = null;
+const componentManifestCache = new Map<string, ComponentManifest>();
 
 /**
  * Invalidation generation. Bumped synchronously by `invalidateCachesForChange`
@@ -390,6 +402,7 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   invalidateDiscoveryCache();
   manifestCache = null;
   manifestPromise = null;
+  componentManifestCache.clear();
   // Dispose the shared ts-morph project so the next analyzeAll() rebuilds
   // from fresh compiler state rather than reusing sources from before this
   // change.
@@ -435,11 +448,11 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   // component barrel (`../../../components/src/index.ts`), so a
   // components-package change can affect the shell's own compiled output,
   // not just page bundles. The only difference between the two scopes is
-  // which SSE event to emit: `shell-reload` forces a live browser reload
-  // (needed when shell-app sources themselves changed); `reload` doesn't
-  // (a components-only change still leaves the shell CACHE fresh for
-  // whenever a real reload next happens, without disrupting the current
-  // session on every component edit).
+  // which files caused the invalidation. Both tiers emit `shell-reload`: the
+  // canonical shell now owns README and prop metadata as well as the preview,
+  // so reloading only the iframe would leave that outer documentation stale.
+  // Session-only shell state is persisted before navigation, so the document
+  // refresh does not discard filters or color-token overrides.
   pageEntryByName.clear();
   pageArtifactByPath.clear();
   pageBuildPromiseByKey.clear();
@@ -450,8 +463,9 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   // above — a post-invalidation request must not join a pre-edit build.
   shellStale = true;
   shellBuildPromise = null;
+  shellServerRendererPromise = null;
 
-  triggerReload(scope.kind === 'shell' ? 'shell-reload' : 'reload');
+  triggerReload('shell-reload');
 }
 
 /** Set of active SSE stream controllers. */
@@ -882,7 +896,11 @@ if (target === null) {
 // back to the default export — the whole namespace is handed over so both
 // resolve. Threaded as a prop (not a \`window\` global) so the live preview is
 // wired explicitly to the bundle that mounted the page.
-mount(ComponentPage, { target, props: { bareComponentModule: BareComponentModule } });
+const previewOnly = new URLSearchParams(window.location.search).get('preview') === '1';
+mount(ComponentPage, {
+  target,
+  props: { bareComponentModule: BareComponentModule, previewOnly },
+});
 `;
 
   try {
@@ -1166,6 +1184,63 @@ async function compileShellBundleArtifacts(): Promise<{
   }
 }
 
+/** Return the last-good value after a failed rebuild, or preserve the original failure. */
+export function fallbackToLastGood<T>(lastGood: T | null, error: unknown): T {
+  if (lastGood === null) throw error;
+  return lastGood;
+}
+
+async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
+  if (shellServerRendererPromise !== null) return shellServerRendererPromise;
+
+  shellServerRendererPromise = (async () => {
+    try {
+      const generationAtStart = rebuildGeneration;
+      const result = await Bun.build({
+        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
+        plugins: [sveltePlugin({ generate: 'server' })],
+        target: 'bun',
+        format: 'esm',
+        conditions: ['bun', 'svelte'],
+        splitting: false,
+      });
+      if (!result.success || result.outputs[0] === undefined) {
+        throw new Error(`Shell server bundle failed:\n${result.logs.join('\n')}`);
+      }
+
+      const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+      const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
+      let loaded: unknown;
+      try {
+        await Bun.write(serverBundlePath, await result.outputs[0].text());
+        loaded = await import(pathToFileURL(serverBundlePath).href);
+      } finally {
+        rmSync(serverBundleDirectory, { recursive: true, force: true });
+      }
+      if (
+        typeof loaded !== 'object' ||
+        loaded === null ||
+        typeof Reflect.get(loaded, 'renderShellBody') !== 'function'
+      ) {
+        throw new Error('Shell server bundle did not export renderShellBody');
+      }
+      const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
+      if (generationAtStart === rebuildGeneration) {
+        lastGoodShellServerRenderer = renderer;
+      }
+      return renderer;
+    } catch (error) {
+      console.error(
+        '[playground] shell server rebuild failed; serving the last-good renderer:',
+        error,
+      );
+      return fallbackToLastGood(lastGoodShellServerRenderer, error);
+    }
+  })();
+
+  return shellServerRendererPromise;
+}
+
 /**
  * Lazy-build wrapper: compile the shell bundle and publish into shared
  * caches. Used by `/shell-bundle/shell.js` as a fallback when the shell
@@ -1255,6 +1330,9 @@ async function getManifests(): Promise<ComponentManifest[]> {
     // `invalidateCachesForChange` cleared it.
     if (generationAtStart === rebuildGeneration) {
       manifestCache = manifests;
+      for (const manifest of manifests) {
+        componentManifestCache.set(manifest.kebabName, manifest);
+      }
     }
     return manifests;
   } finally {
@@ -1263,6 +1341,25 @@ async function getManifests(): Promise<ComponentManifest[]> {
     // clobbering a newer call's in-flight promise.
     if (manifestPromise === inFlight) manifestPromise = null;
   }
+}
+
+async function getComponentManifest(componentName: string): Promise<ComponentManifest | null> {
+  const cached = componentManifestCache.get(componentName);
+  if (cached !== undefined) return cached;
+  if (manifestCache !== null) {
+    return manifestCache.find((manifest) => manifest.kebabName === componentName) ?? null;
+  }
+
+  const definition = await discoverComponentDefinition(componentName);
+  if (definition === undefined) return null;
+  const generationAtStart = rebuildGeneration;
+  const manifest = await analyzeComponent(definition.filePath, {
+    importPath: definition.importPath,
+  });
+  if (generationAtStart === rebuildGeneration) {
+    componentManifestCache.set(componentName, manifest);
+  }
+  return manifest;
 }
 
 /**
@@ -1423,6 +1520,14 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
   // line/paragraph separators so a `</script>` in an example title/description
   // cannot terminate this inline script early or inject markup.
   const examplesJson = jsonForScriptTag(examples);
+  const documentation = await buildValidatedComponentDocumentation(componentName);
+  if (documentation === null) {
+    throw new ComponentDocumentationError(
+      'unknown-component',
+      `Documentation for "${componentName}" not found`,
+    );
+  }
+  const documentationJson = jsonForScriptTag(documentation);
   const htmlAttribute = snapshotModeHtmlAttribute(snapshotMode);
   const styleTag = snapshotModeStyleTag(snapshotMode);
   const humanName = escapeHtml(humanizeComponentName(componentName));
@@ -1468,11 +1573,37 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
     ${renderPreviewMessageBridgeScript()}
   </head>
   <body>
+    <script type="application/json" id="cinder-documentation">${documentationJson}</script>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
     <div id="app"></div>
     <script type="module" src="/page-bundle/${componentName}.js"></script>
   </body>
 </html>`;
+}
+
+async function buildValidatedComponentDocumentation(
+  componentName: string,
+): Promise<ComponentDocumentationPayload | null> {
+  const manifest = await getComponentManifest(componentName);
+  if (manifest === null) return null;
+
+  const componentDefinition = await discoverComponentDefinition(componentName);
+  if (componentDefinition === undefined) return null;
+
+  const documentation = await buildComponentDocumentation(
+    componentName,
+    manifest,
+    undefined,
+    componentDefinition.source,
+  );
+  const validationErrors = validateComponentDocumentationPayload(documentation);
+  if (validationErrors.length > 0) {
+    throw new Error(
+      `Documentation payload for "${componentName}" failed validation:\n` +
+        validationErrors.map((validationError) => `  - ${validationError}`).join('\n'),
+    );
+  }
+  return documentation;
 }
 
 function renderFixturePageHtml(
@@ -1926,29 +2057,11 @@ export async function handleRequest(request: Request): Promise<Response> {
   if (apiDocumentationMatch) {
     const componentName = apiDocumentationMatch[1]!;
     if (!isSafeSegment(componentName)) return notFound();
-    const manifests = await getManifests();
-    const manifest = manifests.find((m) => m.kebabName === componentName);
-    if (manifest === undefined) {
-      return notFound(`Documentation for "${componentName}" not found`);
-    }
-    const componentDefinition = await discoverComponentDefinition(componentName);
-    if (componentDefinition === undefined) {
-      return notFound(`Documentation for "${componentName}" not found`);
-    }
 
     try {
-      const documentation = await buildComponentDocumentation(
-        componentName,
-        manifest,
-        undefined,
-        componentDefinition.source,
-      );
-      const validationErrors = validateComponentDocumentationPayload(documentation);
-      if (validationErrors.length > 0) {
-        throw new Error(
-          `Documentation payload for "${componentName}" failed validation:\n` +
-            validationErrors.map((validationError) => `  - ${validationError}`).join('\n'),
-        );
+      const documentation = await buildValidatedComponentDocumentation(componentName);
+      if (documentation === null) {
+        return notFound(`Documentation for "${componentName}" not found`);
       }
       return new Response(JSON.stringify(documentation), {
         headers: { 'Content-Type': 'application/json' },
@@ -2026,15 +2139,47 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
     const sidebarComponents = await discoverSidebarComponents();
-    const html = renderShell(componentName, sidebarComponents);
+    const documentation = await buildValidatedComponentDocumentation(componentName);
+    if (documentation === null) {
+      return notFound(`Documentation for "${componentName}" not found`);
+    }
+    const renderShellBody = await loadShellServerRenderer();
+    const renderedShell = renderShellBody({
+      initialComponent: componentName,
+      components: sidebarComponents,
+      readmeHtml: '',
+      documentation,
+      initialSearch: url.search,
+    });
+    const html = renderShell(componentName, sidebarComponents, {
+      documentation,
+      shellBody: renderedShell.body,
+      shellHead: renderedShell.head,
+      initialSearch: url.search,
+    });
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
   // GET / → README-backed landing shell
   if (pathname === '/') {
-    const sidebarComponents = await discoverSidebarComponents();
-    const readmeHtml = await renderLandingReadmeHtml();
-    const html = renderShell(null, sidebarComponents, { readmeHtml });
+    const [sidebarComponents, readmeHtml] = await Promise.all([
+      discoverSidebarComponents(),
+      renderLandingReadmeHtml(),
+    ]);
+    const renderShellBody = await loadShellServerRenderer();
+    const renderedShell = renderShellBody({
+      initialComponent: '',
+      components: sidebarComponents,
+      readmeHtml,
+      documentation: null,
+      initialSearch: url.search,
+    });
+    const html = renderShell(null, sidebarComponents, {
+      readmeHtml,
+      shellBody: renderedShell.body,
+      shellHead: renderedShell.head,
+      initialSearch: url.search,
+    });
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 

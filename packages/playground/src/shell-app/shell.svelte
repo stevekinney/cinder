@@ -1,23 +1,14 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   import Announcer from './announcer.svelte';
-  import {
-    announceLandingNavigation,
-    announceNavigation,
-    Announcer as AnnouncerStore,
-    setAnnouncer,
-  } from './announcer.svelte.ts';
+  import { Announcer as AnnouncerStore, setAnnouncer } from './announcer.svelte.ts';
   import { createEventSource } from './event-source.svelte.ts';
-  import PreviewFrame, { type PreviewFrameHandle } from './preview-frame.svelte';
-  import {
-    applyThemeToDocument,
-    PreviewStore,
-    readPersistedTheme,
-    setPreviewStore,
-  } from './preview-store.svelte.ts';
-  import { buildShellHref, parseComponentFromPath, readToolbarStateFromSearch } from './routing.ts';
+  import type { ComponentDocumentationPayload } from '../component-documentation-types.ts';
+  import ComponentDocumentation from './component-documentation.svelte';
+  import { applyThemeToDocument, PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
+  import { buildShellHref, readToolbarStateFromSearch } from './routing.ts';
   import ColorTokenPanel from './color-token-panel.svelte';
   import LandingPage from './landing-page.svelte';
   import Sidebar, { type SidebarHandle } from './sidebar.svelte';
@@ -27,35 +18,38 @@
     initialComponent: string;
     components: string[];
     readmeHtml: string;
+    documentation: ComponentDocumentationPayload | null;
+    initialSearch: string;
   };
 
-  let { initialComponent, components, readmeHtml }: Props = $props();
+  let { initialComponent, components, readmeHtml, documentation, initialSearch }: Props = $props();
 
   // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
   let sidebar = $state<SidebarHandle | null>(null);
 
   // Bound to the PreviewFrame so live-reload events reload through it (re-arming
   // the loading overlay) instead of poking the raw iframe.
-  let previewFrame = $state<PreviewFrameHandle | null>(null);
+  let componentDocumentation = $state<ComponentDocumentation | null>(null);
 
-  // Seed the toolbar from the URL (shareable, survives reload). When the URL
-  // is silent about theme, fall back to the localStorage preference so the
-  // next visit honors the user's last choice.
-  const initialSearch =
-    typeof window === 'undefined'
-      ? new URLSearchParams()
-      : new URL(window.location.href).searchParams;
-  const initialUrlState = readToolbarStateFromSearch(initialSearch);
-  const initialTheme = initialUrlState.theme ?? readPersistedTheme();
-  const store = new PreviewStore(initialComponent, {
+  // Seed the hydration tree exclusively from shareable, server-known URL state.
+  const initialSearchValue = untrack(() => initialSearch);
+  const initialUrlState = readToolbarStateFromSearch(new URLSearchParams(initialSearchValue));
+  const initialComponentName = untrack(() => initialComponent);
+  const store = new PreviewStore(initialComponentName, {
     ...initialUrlState,
-    theme: initialTheme,
   });
   setPreviewStore(store);
 
-  // Single shared polite live region for the shell. The top bar pushes
-  // toolbar feedback through it; client-side navigation (below) announces the
-  // newly-viewed component. One instance keeps exactly one live region in the
+  // Server rendering cannot read localStorage. Keep the hydration tree seeded
+  // exclusively from request data, then restore the persisted preference once
+  // hydration has completed so the server and client markup stay identical.
+  onMount(() => {
+    store.enableBrowserThemeResolution();
+    if (initialUrlState.theme === null) store.syncFromUrl();
+  });
+
+  // Single shared polite live region for the shell. The top bar pushes toolbar
+  // feedback through it. One instance keeps exactly one live region in the
   // document (two would double-read every message).
   const announcer = new AnnouncerStore();
   setAnnouncer(announcer);
@@ -68,8 +62,7 @@
   // pure lifecycle cleanup that never tracks reactive state.
   onDestroy(() => announcer.cancel());
 
-  // `<main>` is programmatically focusable (tabindex="-1") so keyboard focus
-  // can move to the freshly-rendered content after client-side navigation.
+  // `<main>` is bound so the narrow sidebar can make background content inert.
   let mainEl = $state<HTMLElement | null>(null);
 
   // True below the responsive breakpoint, where the sidebar is a modal-style
@@ -143,43 +136,15 @@
     store.applyActiveColorTokenOverridesToDocument(document);
   });
 
-  async function selectComponent(name: string): Promise<void> {
+  function selectComponent(name: string): void {
     // Selecting from the off-canvas drawer (narrow viewports) should always
     // dismiss it so the preview is visible — including when the user taps the
     // already-active component, which short-circuits below. Harmless on wide
     // viewports where the drawer is the static sidebar.
     store.isSidebarOpen = false;
     if (name === store.currentComponent) return;
-    store.currentComponent = name;
-    // Preserve the current query string (e.g. ?focus=1) and hash when
-    // navigating between components.
     const { search, hash } = window.location;
-    history.pushState({}, '', `${buildShellHref(name)}${search}${hash}`);
-
-    // Title (2.4.2) + live-region announcement (4.1.3) + focus move to the
-    // freshly-rendered <main> (2.4.3). Centralized in announceNavigation so the
-    // shell and its tests exercise the same code path.
-    await announceNavigation(announcer, name, () => mainEl);
-  }
-
-  async function handlePopState(): Promise<void> {
-    const parsed = parseComponentFromPath(window.location.pathname);
-    const isRootPath = window.location.pathname === '/';
-    if (parsed !== null) {
-      store.currentComponent = parsed;
-    } else if (isRootPath) {
-      store.currentComponent = '';
-    }
-    // Re-sync the toolbar (theme/viewport/focus mode) from the URL *before*
-    // announcing so the toolbar reflects the restored state by the time focus
-    // lands on <main>.
-    store.syncFromUrl();
-    // Browser back/forward is client-side navigation too: apply the same
-    // title + live-region + focus side effects as selectComponent (WCAG
-    // 2.4.2 / 4.1.3 / 2.4.3). Guard on a resolved component, mirroring the
-    // null check above.
-    if (parsed !== null) await announceNavigation(announcer, parsed, () => mainEl);
-    else if (isRootPath) await announceLandingNavigation(announcer, () => mainEl);
+    window.location.assign(`${buildShellHref(name)}${search}${hash}`);
   }
 
   /**
@@ -267,7 +232,7 @@
     // Reload through the PreviewFrame handle (not the raw iframe) so the loading
     // overlay re-arms during hot reload — a direct contentWindow.reload() keeps
     // the same src, so the overlay would otherwise never show.
-    previewFrame?.reload();
+    componentDocumentation?.reloadPreview();
   }
 
   function handleShellReloadEvent(): void {
@@ -275,7 +240,7 @@
   }
 </script>
 
-<svelte:window onpopstate={handlePopState} onkeydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <!--
   Layout overview
@@ -332,8 +297,12 @@
         firstComponent={components[0] ?? ''}
         onBrowseComponent={selectComponent}
       />
-    {:else}
-      <PreviewFrame bind:this={previewFrame} componentName={store.currentComponent} />
+    {:else if documentation !== null}
+      <ComponentDocumentation
+        bind:this={componentDocumentation}
+        componentName={store.currentComponent}
+        {documentation}
+      />
     {/if}
   </main>
   <Announcer />

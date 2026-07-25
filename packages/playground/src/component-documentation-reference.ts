@@ -7,6 +7,8 @@ import type {
 } from './component-documentation-types.ts';
 import { isComponentManifest } from './manifest-reference.ts';
 
+export const COMPONENT_DOCUMENTATION_DATA_ISLAND_ID = 'cinder-documentation';
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -117,6 +119,28 @@ export function isComponentDocumentationPayload(
     (readProperty(value, 'examples') === null || isJsonValue(readProperty(value, 'examples'))) &&
     isRawArtifacts(readProperty(value, 'rawArtifacts'))
   );
+}
+
+export function readComponentDocumentationDataIsland(
+  root: Pick<Document, 'getElementById'> = document,
+): ComponentDocumentationPayload {
+  const node = root.getElementById(COMPONENT_DOCUMENTATION_DATA_ISLAND_ID);
+  if (node === null) {
+    throw new Error(
+      `Documentation data island #${COMPONENT_DOCUMENTATION_DATA_ISLAND_ID} was not found`,
+    );
+  }
+
+  let value: unknown;
+  try {
+    value = JSON.parse(node.textContent ?? '');
+  } catch {
+    throw new Error('Documentation data island did not contain valid JSON');
+  }
+  if (!isComponentDocumentationPayload(value)) {
+    throw new Error('Documentation data island was not a valid ComponentDocumentationPayload');
+  }
+  return value;
 }
 
 export function variablesList(value: JsonValue): string[] {

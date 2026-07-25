@@ -33,6 +33,7 @@ import {
   PORT,
   createHttpServerOnAvailablePort,
   createSharedDisposer,
+  fallbackToLastGood,
   handleRequest,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
@@ -69,6 +70,18 @@ beforeAll(async () => {
 });
 
 const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
+
+describe('last-good rebuild fallback', () => {
+  it('keeps a successful renderer available through a transient rebuild failure', () => {
+    const renderer = () => ({ body: '<main>last good</main>', head: '' });
+    expect(fallbackToLastGood(renderer, new Error('transient compile failure'))).toBe(renderer);
+  });
+
+  it('preserves the original failure when no successful renderer exists yet', () => {
+    const error = new Error('initial compile failure');
+    expect(() => fallbackToLastGood(null, error)).toThrow(error);
+  });
+});
 
 afterEach(async () => {
   const servers = temporaryServers.splice(0);
@@ -349,6 +362,36 @@ describe('/c/:name', () => {
     expect(html).toContain('/shell-bundle/shell.js');
   });
 
+  it('server-renders crawlable documentation and scopes the iframe to the live preview', async () => {
+    const response = await handleRequest(req('/c/button'));
+    const html = await response.text();
+
+    expect(html).toContain('data-canonical-documentation');
+    expect(html).toMatch(/<h1[^>]*>.*Button.*<\/h1>/s);
+    expect(html).toContain('Overview');
+    expect(html).toContain('Props');
+    expect(html).toContain('src="/page/button?preview=1"');
+    expect(html).toContain('href="/page/button"');
+    expect(html.match(/data-canonical-documentation/g)).toHaveLength(1);
+  });
+
+  it('seeds SSR and hydration from the same toolbar query', async () => {
+    const response = await handleRequest(req('/c/button?w=768&focus=1'));
+    const html = await response.text();
+
+    expect(html).toContain('id="viewport-width-input"');
+    expect(html).toContain('value="768"');
+    expect(html).toContain('"initialSearch":"?w=768\\u0026focus=1"');
+    expect(html).toMatch(/class="shell [^"]*focus-mode"/);
+  });
+
+  it('includes server-rendered scoped shell styles for no-JavaScript rendering', async () => {
+    const response = await handleRequest(req('/c/button'));
+    const html = await response.text();
+
+    expect(html).toMatch(/<style[^>]*>[\s\S]*\.documentation/);
+  });
+
   it('embeds the active component name in the cinder-initial data island', async () => {
     const response = await handleRequest(req('/c/button'));
     const html = await response.text();
@@ -360,6 +403,7 @@ describe('/c/:name', () => {
     expect(payload.component).toBe('button');
     expect(payload.components).toContain('button');
     expect(payload.components).toContain('avatar');
+    expect(payload).toHaveProperty('documentation.component.id', 'button');
   });
 
   it('loads the shell CSS bundle so Cinder shell chrome is styled', async () => {
@@ -812,6 +856,21 @@ describe('/page/:name', () => {
     const html = await response.text();
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('id="app"');
+  });
+
+  it('embeds the validated documentation payload in a JSON data island', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    const match =
+      /<script type="application\/json" id="cinder-documentation">([^<]+)<\/script>/.exec(html);
+
+    expect(match).not.toBeNull();
+    const documentation: unknown = JSON.parse(match![1]!);
+    expect(isComponentDocumentationPayload(documentation)).toBe(true);
+    if (isComponentDocumentationPayload(documentation)) {
+      expect(documentation.component.id).toBe(FIXTURE_COMPONENT);
+      expect(documentation.component.purpose).not.toBe('');
+    }
   });
 
   it('returns 404 for an unknown component', async () => {

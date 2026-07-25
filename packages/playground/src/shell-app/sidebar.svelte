@@ -9,6 +9,7 @@
 </script>
 
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     Input,
     SideNavigation,
@@ -40,6 +41,26 @@
   let { components, currentComponent, onSelect, isOpen = false, onClose }: Props = $props();
 
   let filter = $state('');
+  let restoredSessionFilter = $state(false);
+  const FILTER_SESSION_KEY = 'cinder-playground-sidebar-filter';
+
+  onMount(() => {
+    try {
+      filter = sessionStorage.getItem(FILTER_SESSION_KEY) ?? '';
+    } catch {
+      filter = '';
+    }
+    restoredSessionFilter = true;
+  });
+
+  $effect(() => {
+    if (!restoredSessionFilter) return;
+    try {
+      sessionStorage.setItem(FILTER_SESSION_KEY, filter);
+    } catch {
+      /* ignore — degraded but functional */
+    }
+  });
 
   // The cinder Input owns its native <input> and does not forward a ref, so
   // the focus handle resolves the element by its stable id. The id is unique
@@ -71,7 +92,7 @@
     `${visibleComponents.length} component${visibleComponents.length === 1 ? '' : 's'} shown`,
   );
 
-  // A "plain" left-click is the only gesture we hijack for SPA navigation.
+  // A "plain" left-click is the only gesture we handle through `onSelect`.
   // Modified clicks (cmd/ctrl/shift/alt) and middle-clicks fall through to
   // native browser behavior so open-in-new-tab, "Copy Link Address", and
   // status-bar URL preview all keep working like regular anchor semantics.
@@ -84,19 +105,15 @@
     if (!isPlainLeftClick(event)) return;
     // Belt-and-suspenders: the capture-phase handler below normally fires first
     // and has already preventDefaulted + routed this exact click. Bailing on an
-    // already-handled event keeps onSelect from firing twice (which would push a
-    // duplicate history entry). If the capture handler somehow didn't run, this
-    // bubble-phase path still selects — so the SPA navigation never silently
-    // falls through to a native page load.
+    // already-handled event keeps onSelect from firing twice. If the capture
+    // handler somehow didn't run, this bubble-phase path still selects.
     if (event.defaultPrevented) return;
     event.preventDefault();
     onSelect(componentName);
   }
 
-  // Capture-phase delegation on the nav container. This is the GUARANTEE that a
-  // plain left-click never triggers the default anchor navigation (which would
-  // be a full page load to `/c/<name>` — a route the SPA owns but the static
-  // server does not, landing the user on a "page that doesn't exist").
+  // Capture-phase delegation on the nav container guarantees that a plain
+  // left-click delegates selection exactly once through `onSelect`.
   //
   // The per-item `onclick` below forwards through cinder's NavigationItem and
   // already calls preventDefault, but it runs in the BUBBLE phase and depends on

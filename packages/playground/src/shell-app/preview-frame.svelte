@@ -18,16 +18,19 @@
 
   type Props = {
     componentName: string;
+    previewOnly?: boolean;
   };
 
-  let { componentName }: Props = $props();
+  let { componentName, previewOnly = false }: Props = $props();
 
   const store = getPreviewStore();
 
   let iframeEl = $state<HTMLIFrameElement | null>(null);
   let lastSyncedTheme: ThemeChoice | null = null;
 
-  let src = $derived(buildIframeSrc(componentName));
+  let src = $derived(
+    previewOnly ? `${buildIframeSrc(componentName)}?preview=1` : buildIframeSrc(componentName),
+  );
 
   // The src whose document has finished painting, set in `handleLoad`. Loading
   // is then a pure derivation: we're loading whenever the current `src` hasn't
@@ -112,6 +115,18 @@
     const element = iframeEl;
     if (element === null) return;
     element.addEventListener('load', handleLoad);
+    // SSR emits the iframe before the hydration bundle. A cached preview can
+    // finish before this listener attaches, so recognize that exact completed
+    // document immediately. Do not mistake the initial about:blank document
+    // for readiness: its URL will not equal the requested preview URL.
+    const documentUrl = element.contentDocument?.URL;
+    if (element.contentDocument?.readyState === 'complete' && documentUrl) {
+      const expectedUrl = new URL(src, 'http://cinder.local');
+      const loadedUrl = new URL(documentUrl, 'http://cinder.local');
+      if (loadedUrl.pathname === expectedUrl.pathname && loadedUrl.search === expectedUrl.search) {
+        handleLoad();
+      }
+    }
     return () => {
       element.removeEventListener('load', handleLoad);
     };

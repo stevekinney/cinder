@@ -36,6 +36,7 @@ const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
 /** Persisted theme key — must match `PRE_PAINT_THEME_SCRIPT` in render-shell.ts. */
 export const THEME_STORAGE_KEY = 'cinder-playground-theme';
+export const COLOR_TOKEN_SESSION_KEY = 'cinder-playground-color-token-overrides';
 
 const THEME_VALUES: ReadonlySet<ThemeChoice> = new Set(['light', 'dark']);
 
@@ -61,6 +62,39 @@ export function readPersistedTheme(): ThemeChoice | null {
 export function writePersistedTheme(value: ThemeChoice): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, value);
+  } catch {
+    /* ignore — degraded but functional */
+  }
+}
+
+function readSessionColorTokenOverrides(): ColorTokenOverrideState {
+  const empty: ColorTokenOverrideState = { light: {}, dark: {} };
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(COLOR_TOKEN_SESSION_KEY) ?? 'null');
+    if (typeof parsed !== 'object' || parsed === null) return empty;
+    const result: ColorTokenOverrideState = { light: {}, dark: {} };
+    for (const theme of THEME_VALUES) {
+      const entries = Reflect.get(parsed, theme);
+      if (typeof entries !== 'object' || entries === null) continue;
+      for (const [tokenName, value] of Object.entries(entries)) {
+        if (
+          isColorTokenName(tokenName) &&
+          typeof value === 'string' &&
+          isSafeColorTokenValue(value)
+        ) {
+          result[theme][tokenName] = value.trim();
+        }
+      }
+    }
+    return result;
+  } catch {
+    return empty;
+  }
+}
+
+function writeSessionColorTokenOverrides(overrides: ColorTokenOverrideState): void {
+  try {
+    sessionStorage.setItem(COLOR_TOKEN_SESSION_KEY, JSON.stringify(overrides));
   } catch {
     /* ignore — degraded but functional */
   }
@@ -117,15 +151,15 @@ export class PreviewStore {
   #isFocusMode = $state<boolean>(false);
   /**
    * The explicit theme override, or `null` when the user has made no choice and
-   * the playground should follow the browser. `#browserPrefersDark` tracks the
-   * live `prefers-color-scheme` so the resolved {@link theme} updates the moment
-   * the OS setting flips while no override is active.
+   * the playground should follow the browser. `#browserThemeQuery` tracks the
+   * live `prefers-color-scheme` after hydration so the resolved {@link theme}
+   * updates the moment the OS setting flips while no override is active.
    */
   #override = $state<ThemeChoice | null>(null);
-  // Fallback `false` keeps the resolved theme deterministic on the server (where
-  // there's no `matchMedia`): with no override the playground resolves to light
-  // until the client hydrates and the real preference takes over.
-  #browserPrefersDark = new MediaQuery('(prefers-color-scheme: dark)', false);
+  // Keep browser media state absent through hydration so both the server and
+  // client begin from the same deterministic light fallback. Shell enables the
+  // live query in `onMount`, after Svelte has reconciled the server tree.
+  #browserThemeQuery = $state<MediaQuery | null>(null);
   #previewWidth = $state<number | null>(null);
 
   colorTokenOverrides = $state<ColorTokenOverrideState>({ light: {}, dark: {} });
@@ -146,6 +180,9 @@ export class PreviewStore {
     this.#isFocusMode = initialState.isFocusMode ?? false;
     this.#override = initialState.theme ?? null;
     this.#previewWidth = initialState.previewWidth ?? null;
+    if (typeof window !== 'undefined') {
+      this.colorTokenOverrides = readSessionColorTokenOverrides();
+    }
   }
 
   get isFocusMode(): boolean {
@@ -178,9 +215,15 @@ export class PreviewStore {
     return this.#override;
   }
 
+  /** Begin resolving the OS color scheme after hydration has completed. */
+  enableBrowserThemeResolution(): void {
+    if (typeof window === 'undefined' || this.#browserThemeQuery !== null) return;
+    this.#browserThemeQuery = new MediaQuery('(prefers-color-scheme: dark)', false);
+  }
+
   /** Map the live `prefers-color-scheme` media query to a concrete theme. */
   #resolvedBrowserTheme(): ThemeChoice {
-    return this.#browserPrefersDark.current ? 'dark' : 'light';
+    return this.#browserThemeQuery?.current ? 'dark' : 'light';
   }
 
   /** null = full / unconstrained width. Number = pixel width applied to the iframe. */
@@ -211,10 +254,11 @@ export class PreviewStore {
   }
 
   /**
-   * Re-seed every toolbar cell from the current URL. Called by the SPA on
-   * `popstate` so back/forward navigation updates the UI. The theme override
-   * falls back to localStorage when the URL has no `theme=` param; when neither
-   * carries an override the playground follows the browser preference.
+   * Re-seed every toolbar cell from the current URL. Called after hydration so
+   * a persisted theme can be restored without changing the server-known
+   * initial tree. The theme override falls back to localStorage when the URL
+   * has no `theme=` param; when neither carries an override the playground
+   * follows the browser preference.
    */
   syncFromUrl(): void {
     if (typeof window === 'undefined') return;
@@ -258,6 +302,7 @@ export class PreviewStore {
         [tokenName]: value.trim(),
       },
     };
+    writeSessionColorTokenOverrides(this.colorTokenOverrides);
 
     if (theme === this.theme && typeof document !== 'undefined') {
       this.applyActiveColorTokenOverridesToDocument(document);
@@ -272,6 +317,7 @@ export class PreviewStore {
       ...this.colorTokenOverrides,
       [theme]: nextThemeOverrides,
     };
+    writeSessionColorTokenOverrides(this.colorTokenOverrides);
 
     if (theme === this.theme && typeof document !== 'undefined') {
       this.applyActiveColorTokenOverridesToDocument(document);
@@ -283,6 +329,7 @@ export class PreviewStore {
       ...this.colorTokenOverrides,
       [theme]: {},
     };
+    writeSessionColorTokenOverrides(this.colorTokenOverrides);
 
     if (theme === this.theme && typeof document !== 'undefined') {
       this.applyActiveColorTokenOverridesToDocument(document);

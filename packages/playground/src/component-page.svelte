@@ -1,4 +1,4 @@
-<!-- dev-only playground scaffold; window.__CINDER_EXAMPLES__ is injected server-side -->
+<!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
   import { mount, unmount } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
@@ -10,7 +10,6 @@
   import { CodeBlock } from '@lostgradient/cinder/code-block';
   import { Collapsible } from '@lostgradient/cinder/collapsible';
   import { Kbd } from '@lostgradient/cinder/kbd';
-  import { Skeleton } from '@lostgradient/cinder/skeleton';
   import { StatusDot } from '@lostgradient/cinder/status-dot';
   import { Table } from '@lostgradient/cinder/table';
   import { Toggle } from '@lostgradient/cinder/toggle';
@@ -32,7 +31,7 @@
     type MountErrorDetail,
     type SourceErrorDetail,
   } from './example-error.ts';
-  import { fetchComponentDocumentation } from './component-documentation-reference.ts';
+  import { readComponentDocumentationDataIsland } from './component-documentation-reference.ts';
   import type {
     ComponentDocumentationPayload,
     JsonValue,
@@ -72,7 +71,10 @@
   // from a `window` global so the live preview (#405) is wired explicitly to the
   // bundle that mounted it — no out-of-band global to go stale against the page.
   // Defaults to `undefined` for the no-prop mount paths (tests, SSR render).
-  let { bareComponentModule }: { bareComponentModule?: unknown } = $props();
+  let {
+    bareComponentModule,
+    previewOnly = false,
+  }: { bareComponentModule?: unknown; previewOnly?: boolean } = $props();
 
   // Height of the sticky top bar, in pixels — used for scroll-spy activation
   // and smooth-scroll offset so anchored sections clear the bar.
@@ -278,12 +280,18 @@
     return () => observer.disconnect();
   }
 
-  // --- Documentation payload (fetched once) -----------------------------
-  let documentation = $state<ComponentDocumentationPayload | null>(null);
-  let documentationLoading = $state(true);
+  // --- Documentation payload --------------------------------------------
+  // Documentation is immutable for a deployed build, so the server embeds it
+  // in the page HTML and the client reads it synchronously before first render.
+  let documentation: ComponentDocumentationPayload | null = $state(null);
   let documentationError: string | null = $state(null);
+  try {
+    documentation = readComponentDocumentationDataIsland();
+  } catch (error) {
+    documentationError =
+      error instanceof Error ? error.message : 'Failed to read component documentation.';
+  }
 
-  const skeletonRowCount = 5;
   const propRows = $derived(
     documentation === null ? [] : toPropReferenceRows(documentation.propsManifest),
   );
@@ -321,30 +329,6 @@
         return 'neutral';
     }
   }
-
-  $effect(() => {
-    if (componentName === '') {
-      documentationLoading = false;
-      return;
-    }
-    let cancelled = false;
-    fetchComponentDocumentation(componentName)
-      .then((payload) => {
-        if (!cancelled) documentation = payload;
-      })
-      .catch((error: unknown) => {
-        if (!cancelled) {
-          documentationError =
-            error instanceof Error ? error.message : 'Failed to load documentation.';
-        }
-      })
-      .finally(() => {
-        if (!cancelled) documentationLoading = false;
-      });
-    return () => {
-      cancelled = true;
-    };
-  });
 
   // --- Import line copy --------------------------------------------------
   let importCopied = $state(false);
@@ -563,7 +547,19 @@
   }
 </script>
 
-{#if snapshotMode}
+{#if previewOnly}
+  <div class="canonical-preview" data-component-preview>
+    {#if overviewExample === undefined}
+      <h1 class="snapshot-empty-heading">{humanizeId(componentName)}</h1>
+    {:else}
+      <div
+        class="example-preview"
+        id="canonical-preview-mount-{overviewExample.scenario}"
+        {@attach mountScenario(overviewExample.scenario)}
+      ></div>
+    {/if}
+  </div>
+{:else if snapshotMode}
   <!-- Snapshot mode (`?snapshot=1`): the visual-regression / a11y test harness
        loads this route and screenshots / axe-scans the page, expecting a clean
        single mount of each example with no docs chrome (matching the prior
@@ -630,13 +626,7 @@
       </div>
     </header>
 
-    {#if documentationLoading}
-      <div class="dx__inner dx-loading" aria-hidden="true">
-        {#each Array.from({ length: skeletonRowCount }, (_, index) => index) as row (row)}
-          <Skeleton height="2rem" radius="var(--cinder-radius-sm)" />
-        {/each}
-      </div>
-    {:else if documentationError !== null}
+    {#if documentationError !== null}
       <div class="dx__inner dx-error-region">
         <Alert variant="danger">
           Could not load documentation: {documentationError}
@@ -1447,12 +1437,6 @@
     }
   }
 
-  .dx-loading {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-3);
-    padding-block: var(--cinder-space-8);
-  }
   .dx-error-region {
     padding-block: var(--cinder-space-8);
   }

@@ -111,7 +111,7 @@ async function writeFile(path: string, contents: string): Promise<void> {
  * Pull every same-origin asset URL the given HTML references — the `<script
  * src>` bundles and `<link href>` stylesheets — as root-relative paths.
  */
-function assetUrlsFromHtml(html: string): string[] {
+export function assetUrlsFromHtml(html: string): string[] {
   const urls = new Set<string>();
   const attribute = /\b(?:src|href)="(\/[^"]+)"/g;
   let match: RegExpExecArray | null;
@@ -119,7 +119,10 @@ function assetUrlsFromHtml(html: string): string[] {
     const url = match[1]!;
     // Only crawlable GET routes — skip in-page anchors and the SSE stream.
     if (url === '/events' || url.startsWith('#')) continue;
-    urls.add(url);
+    // Queries configure browser behavior but do not identify a second static
+    // file. Materialize `/page/button?preview=1` at the already-exported
+    // `/page/button` path instead of creating a literal `?preview=1` directory.
+    urls.add(new URL(url, ORIGIN).pathname);
   }
   return [...urls];
 }

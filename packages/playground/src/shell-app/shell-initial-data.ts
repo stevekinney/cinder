@@ -1,4 +1,13 @@
-export type InitialData = { component: string; components: string[]; readmeHtml: string };
+import { isComponentDocumentationPayload } from '../component-documentation-reference.ts';
+import type { ComponentDocumentationPayload } from '../component-documentation-types.ts';
+
+export type InitialData = {
+  component: string;
+  components: string[];
+  readmeHtml: string;
+  documentation: ComponentDocumentationPayload | null;
+  initialSearch: string;
+};
 
 function getOwnProperty(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value;
@@ -14,9 +23,19 @@ export function parseInitialData(value: unknown): InitialData | null {
   const component = getOwnProperty(value, 'component');
   const components = getOwnProperty(value, 'components');
   const readmeHtml = getOwnProperty(value, 'readmeHtml');
+  const documentation = getOwnProperty(value, 'documentation');
+  const initialSearch = getOwnProperty(value, 'initialSearch');
   if (typeof component !== 'string') return null;
   if (!Array.isArray(components)) return null;
   if (readmeHtml !== undefined && typeof readmeHtml !== 'string') return null;
+  if (initialSearch !== undefined && typeof initialSearch !== 'string') return null;
+  if (
+    documentation !== undefined &&
+    documentation !== null &&
+    !isComponentDocumentationPayload(documentation)
+  ) {
+    return null;
+  }
   const componentNamePattern = /^[a-z0-9][a-z0-9-]*$/;
   // The active component can legitimately be absent from `components`: the
   // server lists only sidebar-eligible components there (those with at least
@@ -32,5 +51,7 @@ export function parseInitialData(value: unknown): InitialData | null {
     component,
     components,
     readmeHtml: readmeHtml ?? '',
+    documentation: documentation ?? null,
+    initialSearch: initialSearch ?? '',
   };
 }
