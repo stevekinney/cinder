@@ -16,7 +16,7 @@ test('carousel uses a native snapping track and keeps pagination in sync', async
 
   const viewport = page.locator('.cinder-carousel__viewport');
   await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
-  await expect(viewport).toHaveCSS('touch-action', 'pan-x pinch-zoom');
+  await expect(viewport).toHaveCSS('touch-action', 'pan-x pan-y pinch-zoom');
   await expect(viewport.locator('.cinder-carousel__slide')).toHaveCount(3);
 
   await viewport.evaluate((element) => {
@@ -44,7 +44,7 @@ test('carousel track remains scrollable in a touch-capable context', async ({ br
     await page.goto('/page/carousel?snapshot=1', { waitUntil: 'load' });
     const viewport = page.locator('.cinder-carousel__viewport');
     await expect(viewport).toBeVisible();
-    await expect(viewport).toHaveCSS('touch-action', 'pan-x pinch-zoom');
+    await expect(viewport).toHaveCSS('touch-action', 'pan-x pan-y pinch-zoom');
     await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
   } finally {
     await context.close();

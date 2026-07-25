@@ -10,7 +10,7 @@
     display: flex;
     overflow-x: auto;
     overflow-y: hidden;
-    touch-action: pan-x pinch-zoom;
+    touch-action: pan-x pan-y pinch-zoom;
     scroll-snap-type: x mandatory;
     overscroll-behavior-x: contain;
     scrollbar-width: none;

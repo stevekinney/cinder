@@ -47,6 +47,7 @@
   let isHovered = $state(false);
   let hasFocusWithin = $state(false);
   let userPaused = $state(false);
+  let isInteracting = $state(false);
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
 
@@ -72,6 +73,7 @@
       !reducedMotion.current &&
       !isHovered &&
       !hasFocusWithin &&
+      !isInteracting &&
       !userPaused,
   );
   const liveAnnouncement = $derived.by(() => {
@@ -90,8 +92,9 @@
 
   function goTo(index: number) {
     if (clampedLength < 1) return;
+    const wrapped = index < 0 || index >= clampedLength;
     activeIndex = ((index % clampedLength) + clampedLength) % clampedLength;
-    scrollToActiveSlide();
+    scrollToActiveSlide(wrapped ? 'auto' : undefined);
   }
 
   function goPrevious() {
@@ -133,7 +136,7 @@
     hasFocusWithin = false;
   }
 
-  function scrollToActiveSlide(): void {
+  function scrollToActiveSlide(behavior?: ScrollBehavior): void {
     const viewport = viewportElement;
     const slide = viewport?.children[currentIndex];
     if (!(slide instanceof HTMLElement)) return;
@@ -145,7 +148,7 @@
     if (typeof viewport.scrollTo === 'function') {
       viewport.scrollTo({
         left: slide.offsetLeft,
-        behavior: reducedMotion.current ? 'auto' : 'smooth',
+        behavior: behavior ?? (reducedMotion.current ? 'auto' : 'smooth'),
       });
     } else {
       viewport.scrollLeft = slide.offsetLeft;
@@ -202,7 +205,16 @@
     {liveAnnouncement}
   </p>
 
-  <div class="cinder-carousel__viewport" bind:this={viewportElement} onscroll={onViewportScroll}>
+  <div
+    class="cinder-carousel__viewport"
+    role="group"
+    aria-label={`${label} slides`}
+    bind:this={viewportElement}
+    onscroll={onViewportScroll}
+    onpointerdown={() => (isInteracting = true)}
+    onpointerup={() => (isInteracting = false)}
+    onpointercancel={() => (isInteracting = false)}
+  >
     {#if slides.length > 0}
       {#each slides as slide, index (slide.id)}
         <article
