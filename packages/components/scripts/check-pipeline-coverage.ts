@@ -144,6 +144,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
+  'check:primitive-composition': {
+    layers: ['unit-tests', 'main-green'],
+    reason: 'Member of lint:invariants — primitive reuse guard and migration tracker.',
+  },
   'check:svelte-ts-runtime-types': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
