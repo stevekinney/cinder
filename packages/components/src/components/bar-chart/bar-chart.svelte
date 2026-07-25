@@ -393,7 +393,10 @@
       Series/X/Value (line/area). This reflects that bar charts are category-
       primary: each row is one category, with each series as a column value.
     -->
-    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
+    <table
+      class={`cinder-table ${dataTableClass(dataTableVisibility)}`}
+      aria-describedby={guidanceId}
+    >
       <caption>{dataTableCaption ?? label}</caption>
       <thead
         ><tr><th scope="col">Category</th><th scope="col">Series</th><th scope="col">Value</th></tr

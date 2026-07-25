@@ -391,7 +391,10 @@
   {/if}
 
   {#if hasDataTable}
-    <table class={dataTableClass(dataTableVisibility)} aria-describedby={guidanceId}>
+    <table
+      class={`cinder-table ${dataTableClass(dataTableVisibility)}`}
+      aria-describedby={guidanceId}
+    >
       <caption>{dataTableCaption ?? label}</caption>
       <thead
         ><tr><th scope="col">Series</th><th scope="col">X</th><th scope="col">Value</th></tr></thead
