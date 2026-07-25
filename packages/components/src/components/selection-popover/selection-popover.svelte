@@ -196,6 +196,7 @@
     let viewportWidth = window.innerWidth;
     let viewportHeight = window.innerHeight;
     const visualViewport = window.visualViewport;
+    let movementDismissed = false;
     const virtualKeyboardWasVisible = {
       window: isVirtualKeyboardResize('window'),
       'visual-viewport': isVirtualKeyboardResize('visual-viewport'),
@@ -207,6 +208,8 @@
       return isTransition;
     };
     const closeForMovement = () => {
+      if (movementDismissed) return;
+      movementDismissed = true;
       onClose?.();
       restoreFocus(true);
     };
@@ -235,7 +238,7 @@
       const composerHasFocus =
         document.activeElement instanceof Node && popoverElement?.contains(document.activeElement);
       if (
-        event.type === 'resize' &&
+        (event.type === 'resize' || event.type === 'scroll') &&
         composerHasFocus &&
         isVirtualKeyboardTransition('visual-viewport')
       ) {
