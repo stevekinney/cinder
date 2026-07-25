@@ -43,7 +43,7 @@
   let sentinelReported = $state(false);
   let manualObserverSuspended = $state(false);
   let previousSentinelEnabled = false;
-  let previousSentinelCapped = false;
+  let previousMaxRetries: number | undefined;
   // Tracks the last `hasMore` value the component reconciled against so a
   // parent-driven false -> true flip (new page of data arrived) can clear the
   // sentinel request cap and error latch exactly once per transition.
@@ -83,17 +83,15 @@
   });
 
   $effect(() => {
-    const sentinelCapped = sentinelRequestCount >= maxRetries;
-
     if (!previousSentinelEnabled && sentinelEnabled) {
       sentinelReported = false;
       sentinelIntersecting = false;
-      if (previousSentinelCapped && !sentinelCapped) {
+      if (previousMaxRetries !== undefined && maxRetries > previousMaxRetries) {
         sentinelArmed = true;
       }
     }
     previousSentinelEnabled = sentinelEnabled;
-    previousSentinelCapped = sentinelCapped;
+    previousMaxRetries = maxRetries;
   });
 
   $effect(() => {
