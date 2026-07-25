@@ -201,11 +201,26 @@
       window: isVirtualKeyboardResize('window'),
       'visual-viewport': isVirtualKeyboardResize('visual-viewport'),
     };
+    const virtualKeyboardTransitionFrames: Partial<Record<'window' | 'visual-viewport', number>> =
+      {};
     const isVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
       const isVisible = isVirtualKeyboardResize(source);
-      const isTransition = isVisible || virtualKeyboardWasVisible[source];
-      virtualKeyboardWasVisible[source] = isVisible;
-      return isTransition;
+      if (isVisible) {
+        const pendingFrame = virtualKeyboardTransitionFrames[source];
+        if (pendingFrame !== undefined) {
+          window.cancelAnimationFrame(pendingFrame);
+          delete virtualKeyboardTransitionFrames[source];
+        }
+        virtualKeyboardWasVisible[source] = true;
+        return true;
+      }
+      if (!virtualKeyboardWasVisible[source]) return false;
+
+      virtualKeyboardTransitionFrames[source] ??= window.requestAnimationFrame(() => {
+        virtualKeyboardWasVisible[source] = false;
+        delete virtualKeyboardTransitionFrames[source];
+      });
+      return true;
     };
     const closeForMovement = () => {
       if (movementDismissed) return;
@@ -251,6 +266,9 @@
     visualViewport?.addEventListener('scroll', dismissVisualViewport);
     visualViewport?.addEventListener('resize', dismissVisualViewport);
     return () => {
+      for (const frame of Object.values(virtualKeyboardTransitionFrames)) {
+        window.cancelAnimationFrame(frame);
+      }
       window.removeEventListener('scroll', dismiss, true);
       window.removeEventListener('resize', dismiss);
       visualViewport?.removeEventListener('scroll', dismissVisualViewport);
