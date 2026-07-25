@@ -36,17 +36,16 @@
 
   let requestInFlight = $state(false);
   let errorState = $state(false);
-  let autoLoadCount = $state(0);
+  let sentinelRequestCount = $state(0);
+  let sentinelArmed = $state(true);
   // Tracks the last `hasMore` value the component reconciled against so a
-  // parent-driven false -> true flip (new page of data arrived) can clear both
-  // sentinel and error budgets exactly once per transition.
+  // parent-driven false -> true flip (new page of data arrived) can clear the
+  // sentinel request cap and error latch exactly once per transition.
   let previousHasMore = hasMore;
 
   const mergedClassName = $derived(classNames('cinder-load-more', customClassName));
   const busy = $derived(loading || requestInFlight);
-  const sentinelEnabled = $derived(
-    hasMore && !loading && !errorState && !requestInFlight && autoLoadCount < maxRetries,
-  );
+  const sentinelEnabled = $derived(hasMore && !errorState && sentinelRequestCount < maxRetries);
   // `enabled` is a getter, so `useIntersection`'s own `$effect` re-evaluates
   // `sentinelEnabled` reactively and toggles the observer in place. Constructing
   // the attachment once (rather than inside `$derived`) avoids tearing down and
@@ -68,7 +67,8 @@
   // cleared in `requestNextPage`'s `finally`, so neither needs an effect.
   $effect(() => {
     if (!previousHasMore && hasMore) {
-      autoLoadCount = 0;
+      sentinelRequestCount = 0;
+      sentinelArmed = true;
       errorState = false;
     }
     previousHasMore = hasMore;
@@ -79,12 +79,16 @@
       return;
     }
 
-    if (source === 'sentinel' && (errorState || autoLoadCount >= maxRetries)) {
+    if (source === 'sentinel' && (errorState || sentinelRequestCount >= maxRetries)) {
       return;
     }
 
     if (source === 'sentinel') {
-      autoLoadCount += 1;
+      sentinelRequestCount += 1;
+    } else {
+      // A manual request is itself the explicit load trigger. Do not let an
+      // already-visible sentinel immediately follow it with another request.
+      sentinelArmed = false;
     }
 
     requestInFlight = true;
@@ -93,7 +97,7 @@
     try {
       await onLoadMore();
       if (source === 'button') {
-        autoLoadCount = 0;
+        sentinelRequestCount = 0;
       }
     } catch (error) {
       errorState = true;
@@ -106,7 +110,23 @@
   }
 
   function handleIntersect(entry: IntersectionObserverEntry): void {
-    if (!entry.isIntersecting) return;
+    if (!entry.isIntersecting) {
+      sentinelArmed = true;
+      return;
+    }
+
+    if (
+      !sentinelArmed ||
+      !hasMore ||
+      loading ||
+      requestInFlight ||
+      errorState ||
+      sentinelRequestCount >= maxRetries
+    ) {
+      return;
+    }
+
+    sentinelArmed = false;
     void requestNextPage('sentinel');
   }
 </script>

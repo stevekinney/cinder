@@ -151,32 +151,52 @@ describe('LoadMore', () => {
     });
   });
 
-  test('caps repeated sentinel callbacks independently from the error retry count', async () => {
+  test('does not reconnect or load again while the sentinel remains intersecting', async () => {
     let calls = 0;
-    const rendered = render(LoadMore, {
+    const { container } = render(LoadMore, {
       props: {
-        maxRetries: 2,
-        onLoadMore: () => {
+        onloadmore: async () => {
           calls += 1;
         },
       },
     });
 
-    const sentinel = rendered.container.querySelector('.cinder-load-more__sentinel') as Element;
-    const [record] = FakeIntersectionObserver.records;
-    const entry = createEntry(sentinel, true);
+    const sentinel = container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [initialRecord] = FakeIntersectionObserver.records;
 
-    record?.callback([entry], {} as IntersectionObserver);
-    await waitFor(() => expect(calls).toBe(1));
-    await waitFor(() =>
-      expect(rendered.container.firstElementChild?.getAttribute('aria-busy')).toBe('false'),
-    );
-    record?.callback([entry], {} as IntersectionObserver);
-    await waitFor(() => expect(calls).toBe(2));
-    record?.callback([entry], {} as IntersectionObserver);
+    initialRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+
+    await waitFor(() => {
+      expect(calls).toBe(1);
+      expect(FakeIntersectionObserver.records).toHaveLength(1);
+    });
+
+    initialRecord?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+
     await Promise.resolve();
+    expect(calls).toBe(1);
+  });
 
-    expect(calls).toBe(2);
+  test('re-arms auto-loading after the sentinel leaves and re-enters the observer root', async () => {
+    let calls = 0;
+    const { container } = render(LoadMore, {
+      props: {
+        onloadmore: async () => {
+          calls += 1;
+        },
+      },
+    });
+
+    const sentinel = container.querySelector('.cinder-load-more__sentinel') as Element;
+    const [record] = FakeIntersectionObserver.records;
+
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(1));
+
+    record?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+
+    await waitFor(() => expect(calls).toBe(2));
   });
 
   test('ignores stale sentinel callbacks while loading or after an error', async () => {
@@ -265,7 +285,7 @@ describe('LoadMore', () => {
     });
   });
 
-  test('manual loads reset the sentinel retry budget after a failure', async () => {
+  test('manual loads reset the sentinel request cap after a failure', async () => {
     let calls = 0;
     let shouldFail = true;
 
@@ -297,6 +317,7 @@ describe('LoadMore', () => {
       expect(calls).toBe(2);
     });
 
+    record?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
     record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
 
     await waitFor(() => {
