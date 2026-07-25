@@ -6,6 +6,16 @@ export type CssPrimitiveCounts = {
   floating: number;
 };
 
+export const gridDefinitionProperties = [
+  'grid',
+  'grid-template',
+  'grid-template-areas',
+  'grid-template-columns',
+  'grid-template-rows',
+  'grid-auto-columns',
+  'grid-auto-rows',
+] as const;
+
 export function declarationMap(rule: Rule): Map<string, string> {
   const declarations = new Map<string, string>();
   rule.each((node) => {
@@ -18,7 +28,10 @@ type SelectorTarget = {
   tag?: string;
   id?: string;
   classes: Set<string>;
-  attributes: Set<string>;
+  attributes: Map<
+    string,
+    { operator: string | undefined; value: string | undefined; insensitive: boolean }
+  >;
 };
 
 function selectorTargets(selector: string): SelectorTarget[] {
@@ -30,13 +43,18 @@ function selectorTargets(selector: string): SelectorTarget[] {
       if (targetNodes.some((node) => node.type === 'pseudo' && node.value.startsWith('::'))) return;
       const target: SelectorTarget = {
         classes: new Set(),
-        attributes: new Set(),
+        attributes: new Map(),
       };
       for (const node of targetNodes) {
         if (node.type === 'class') target.classes.add(node.value);
         if (node.type === 'id') target.id = node.value;
         if (node.type === 'tag') target.tag = node.value.toLowerCase();
-        if (node.type === 'attribute') target.attributes.add(node.attribute.toLowerCase());
+        if (node.type === 'attribute')
+          target.attributes.set(node.attribute.toLowerCase(), {
+            operator: node.operator,
+            value: node.value,
+            insensitive: node.insensitive === true,
+          });
       }
       targets.push(target);
     });
@@ -45,19 +63,59 @@ function selectorTargets(selector: string): SelectorTarget[] {
 }
 
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
+  const hasConflictingAttribute = [...left.attributes].some(([attribute, leftConstraint]) => {
+    const rightConstraint = right.attributes.get(attribute);
+    if (
+      rightConstraint?.operator !== '=' ||
+      leftConstraint.operator !== '=' ||
+      rightConstraint.value === undefined ||
+      leftConstraint.value === undefined
+    )
+      return false;
+    return leftConstraint.insensitive || rightConstraint.insensitive
+      ? leftConstraint.value.toLowerCase() !== rightConstraint.value.toLowerCase()
+      : leftConstraint.value !== rightConstraint.value;
+  });
   const shareAnchor =
     (left.id !== undefined && left.id === right.id) ||
     (left.tag !== undefined && left.tag === right.tag) ||
     [...left.classes].some((className) => right.classes.has(className)) ||
-    [...left.attributes].some((attribute) => right.attributes.has(attribute));
+    [...left.attributes.keys()].some((attribute) => right.attributes.has(attribute));
   return (
     shareAnchor &&
+    !hasConflictingAttribute &&
     (left.id === undefined || right.id === undefined || left.id === right.id) &&
     (left.tag === undefined || right.tag === undefined || left.tag === right.tag)
   );
 }
 
+function conditionalScope(rule: Rule): string[] {
+  const scope: string[] = [];
+  let parent = rule.parent;
+  while (parent !== undefined) {
+    if (
+      parent.type === 'atrule' &&
+      ['container', 'document', 'media', 'supports'].includes(parent.name.toLowerCase())
+    )
+      scope.unshift(`${parent.name.toLowerCase()} ${parent.params.trim()}`);
+    const nextParent = parent.parent;
+    if (nextParent?.type === 'document') break;
+    parent = nextParent;
+  }
+  return scope;
+}
+
+function conditionalScopesCanOverlap(left: Rule, right: Rule): boolean {
+  const leftScope = conditionalScope(left);
+  const rightScope = conditionalScope(right);
+  const sharedDepth = Math.min(leftScope.length, rightScope.length);
+  for (let index = 0; index < sharedDepth; index += 1)
+    if (leftScope[index] !== rightScope[index]) return false;
+  return true;
+}
+
 function selectorsCanMatchSameElement(left: Rule, right: Rule): boolean {
+  if (!conditionalScopesCanOverlap(left, right)) return false;
   const leftTargets = selectorTargets(left.selector);
   const rightTargets = selectorTargets(right.selector);
   return leftTargets.some((leftTarget) =>
@@ -71,7 +129,9 @@ function isInsideKeyframes(rule: Rule): boolean {
   let parent = rule.parent;
   while (parent !== undefined) {
     if (parent.type === 'atrule' && /keyframes$/i.test(parent.name)) return true;
-    parent = parent.parent;
+    const nextParent = parent.parent;
+    if (nextParent?.type === 'document') break;
+    parent = nextParent;
   }
   return false;
 }
@@ -80,18 +140,17 @@ function ruleUsesSharedFloatingSurface(
   rule: Rule,
   sharedClassSets: readonly ReadonlySet<string>[],
 ): boolean {
-  if (
-    selectorTargets(rule.selector).some((target) => target.classes.has('cinder-_floating-surface'))
-  )
-    return true;
-  return selectorTargets(rule.selector).some((target) =>
-    target.classes.size > 0
-      ? sharedClassSets.some((sharedClasses) =>
-          [...target.classes]
-            .filter((className) => className !== 'cinder-_floating-surface')
-            .every((className) => sharedClasses.has(className)),
-        )
-      : false,
+  const targets = selectorTargets(rule.selector);
+  return (
+    targets.length > 0 &&
+    targets.every(
+      (target) =>
+        target.classes.has('cinder-_floating-surface') ||
+        (target.classes.size > 0 &&
+          sharedClassSets.some((sharedClasses) =>
+            [...target.classes].every((className) => sharedClasses.has(className)),
+          )),
+    )
   );
 }
 
@@ -107,15 +166,6 @@ export function cssPrimitiveCounts(
       rules.push({ rule, declarations: declarationMap(rule) });
   });
 
-  const gridDefinitionProperties = [
-    'grid',
-    'grid-template',
-    'grid-template-areas',
-    'grid-template-columns',
-    'grid-template-rows',
-    'grid-auto-columns',
-    'grid-auto-rows',
-  ];
   const templateRules = rules.filter(({ declarations }) =>
     gridDefinitionProperties.some((property) => declarations.has(property)),
   );

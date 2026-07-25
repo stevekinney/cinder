@@ -18,6 +18,7 @@ import { isExcludedComponentSource } from './component-source-filter.ts';
 import {
   cssPrimitiveCounts,
   declarationMap,
+  gridDefinitionProperties,
   type CssPrimitiveCounts,
 } from './primitive-composition-css.ts';
 import {
@@ -89,7 +90,12 @@ function staticStringBindings(source: string): Map<string, string> {
   const body = root['instance']['content']['body'];
   if (!Array.isArray(body)) return bindings;
   for (const statement of body) {
-    if (!isRecord(statement) || statement['type'] !== 'VariableDeclaration') continue;
+    if (
+      !isRecord(statement) ||
+      statement['type'] !== 'VariableDeclaration' ||
+      statement['kind'] !== 'const'
+    )
+      continue;
     const declarations = statement['declarations'];
     if (!Array.isArray(declarations)) continue;
     for (const declaration of declarations) {
@@ -105,6 +111,40 @@ function staticStringBindings(source: string): Map<string, string> {
     }
   }
   return bindings;
+}
+
+function possibleMutableControlName(source: string, expression: unknown): string | undefined {
+  if (
+    !isRecord(expression) ||
+    expression['type'] !== 'Identifier' ||
+    typeof expression['name'] !== 'string'
+  )
+    return undefined;
+  const bindingName = expression['name'];
+  const root: unknown = parseSvelte(source, { modern: true });
+  if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
+    return undefined;
+  let possibleControl: string | undefined;
+  walkAst(root['instance']['content'], (node) => {
+    let candidate: unknown;
+    if (
+      node['type'] === 'VariableDeclarator' &&
+      isRecord(node['id']) &&
+      node['id']['type'] === 'Identifier' &&
+      node['id']['name'] === bindingName
+    )
+      candidate = node['init'];
+    if (
+      node['type'] === 'AssignmentExpression' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      node['left']['name'] === bindingName
+    )
+      candidate = node['right'];
+    const value = staticStringFromExpression(candidate, new Map())?.toLowerCase();
+    if (value === 'input' || value === 'select' || value === 'textarea') possibleControl = value;
+  });
+  return possibleControl;
 }
 
 function staticAttributeValue(attribute: UnknownRecord): string | undefined {
@@ -140,8 +180,22 @@ function hasStaticHiddenAttribute(element: UnknownRecord, elementName: string): 
   if (!Array.isArray(attributes)) return false;
   return attributes.some((attribute) => {
     if (!isRecord(attribute) || attribute['type'] !== 'Attribute') return false;
-    if (attribute['name'] === 'hidden')
-      return attribute['value'] === true || staticAttributeValue(attribute) !== undefined;
+    if (attribute['name'] === 'hidden') {
+      if (attribute['value'] === true || staticAttributeValue(attribute) !== undefined) return true;
+      const value = attribute['value'];
+      const expressionTag = isRecord(value)
+        ? value
+        : Array.isArray(value) && value.length === 1 && isRecord(value[0])
+          ? value[0]
+          : undefined;
+      const expression = expressionTag?.['expression'];
+      return (
+        expressionTag?.['type'] === 'ExpressionTag' &&
+        isRecord(expression) &&
+        expression['type'] === 'Literal' &&
+        expression['value'] === true
+      );
+    }
     return (
       elementName === 'input' &&
       attribute['name'] === 'type' &&
@@ -156,13 +210,15 @@ export function visibleControlCount(source: string): number {
   if (fragment === undefined) return 0;
   let count = 0;
   walkAst(fragment, (node) => {
-    const elementName = (
+    const resolvedElementName =
       node['type'] === 'RegularElement'
         ? node['name']
         : node['type'] === 'SvelteElement'
-          ? staticStringFromExpression(node['tag'], bindings)
-          : undefined
-    )?.toLowerCase();
+          ? (staticStringFromExpression(node['tag'], bindings) ??
+            possibleMutableControlName(source, node['tag']))
+          : undefined;
+    const elementName =
+      typeof resolvedElementName === 'string' ? resolvedElementName.toLowerCase() : undefined;
     if (
       (elementName === 'input' || elementName === 'select' || elementName === 'textarea') &&
       !hasStaticHiddenAttribute(node, elementName)
@@ -270,7 +326,7 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
     const display = declarations.get('display');
     if (
       (display === 'grid' || display === 'inline-grid') &&
-      (declarations.has('grid-template') || declarations.has('grid-template-columns'))
+      gridDefinitionProperties.some((property) => declarations.has(property))
     )
       total.grid++;
     const position = declarations.get('position');
@@ -286,9 +342,27 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   return total;
 }
 
-function localMarkupEvidence(node: unknown, source: string): { labelCount: number; terms: string } {
-  if (!isRecord(node) || node['type'] === 'Component') return { labelCount: 0, terms: '' };
-  const labelCount = node['type'] === 'RegularElement' && node['name'] === 'label' ? 1 : 0;
+function isCanonicalFieldComponent(node: UnknownRecord): boolean {
+  if (node['type'] !== 'Component' || typeof node['name'] !== 'string') return false;
+  return node['name'] === 'FormField' || node['name'].startsWith('FormField.');
+}
+
+function localMarkupEvidence(
+  node: unknown,
+  source: string,
+  bindings: ReadonlyMap<string, string>,
+): { labelCount: number; terms: string } {
+  if (!isRecord(node) || isCanonicalFieldComponent(node)) return { labelCount: 0, terms: '' };
+  const resolvedElementName =
+    node['type'] === 'RegularElement'
+      ? node['name']
+      : node['type'] === 'SvelteElement'
+        ? staticStringFromExpression(node['tag'], bindings)
+        : undefined;
+  const labelCount =
+    typeof resolvedElementName === 'string' && resolvedElementName.toLowerCase() === 'label'
+      ? 1
+      : 0;
   const terms: string[] = [];
   if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
   if (
@@ -308,43 +382,79 @@ function localMarkupEvidence(node: unknown, source: string): { labelCount: numbe
 
 type FieldEvidence = {
   count: number;
+  isolatedMessages: boolean;
   labelCount: number;
+  rootLabelCount: number;
   terms: string;
 };
 
-function qualifyingFieldLabels(node: unknown, source: string): FieldEvidence {
-  if (!isRecord(node) || node['type'] === 'Component')
-    return { count: 0, labelCount: 0, terms: '' };
-  const localEvidence = localMarkupEvidence(node, source);
+function qualifyingFieldLabels(
+  node: unknown,
+  source: string,
+  bindings: ReadonlyMap<string, string>,
+): FieldEvidence {
+  if (!isRecord(node) || isCanonicalFieldComponent(node))
+    return {
+      count: 0,
+      isolatedMessages: false,
+      labelCount: 0,
+      rootLabelCount: 0,
+      terms: '',
+    };
+  const localEvidence = localMarkupEvidence(node, source, bindings);
   let count = 0;
   let labelCount = localEvidence.labelCount;
   const terms = [localEvidence.terms];
+  const deferredMessageTerms: string[] = [];
+  const childEvidence: FieldEvidence[] = [];
   for (const value of Object.values(node)) {
     const children = Array.isArray(value) ? value : [value];
     for (const child of children) {
       if (!isRecord(child)) continue;
-      const childEvidence = qualifyingFieldLabels(child, source);
-      count += childEvidence.count;
-      if (childEvidence.count > 0) continue;
-      const childHasHelp = /(?:description|help(?:text)?|hint|assist)/i.test(childEvidence.terms);
-      const childHasError = /(?:error|validation|invalid|message)/i.test(childEvidence.terms);
-      if (childEvidence.labelCount === 0 && childHasHelp && childHasError) continue;
-      labelCount += childEvidence.labelCount;
-      terms.push(childEvidence.terms);
+      childEvidence.push(qualifyingFieldLabels(child, source, bindings));
     }
   }
+  const hasDirectLabel =
+    localEvidence.labelCount > 0 || childEvidence.some((evidence) => evidence.rootLabelCount > 0);
+  for (const evidence of childEvidence) {
+    count += evidence.count;
+    if (evidence.count > 0) continue;
+    if (evidence.isolatedMessages && !hasDirectLabel) {
+      deferredMessageTerms.push(evidence.terms);
+      continue;
+    }
+    labelCount += evidence.labelCount;
+    terms.push(evidence.terms);
+  }
 
-  const combinedTerms = terms.join(' ');
+  let combinedTerms = terms.join(' ');
+  if (labelCount === 0 && deferredMessageTerms.length > 0)
+    combinedTerms = `${combinedTerms} ${deferredMessageTerms.join(' ')}`;
   const qualifies =
     /(?:description|help(?:text)?|hint|assist)/i.test(combinedTerms) &&
     /(?:error|validation|invalid|message)/i.test(combinedTerms);
-  if (qualifies && labelCount > 0) return { count: count + labelCount, labelCount: 0, terms: '' };
-  return { count, labelCount, terms: combinedTerms };
+  if (qualifies && labelCount > 0)
+    return {
+      count: count + labelCount,
+      isolatedMessages: false,
+      labelCount: 0,
+      rootLabelCount: 0,
+      terms: '',
+    };
+  return {
+    count,
+    isolatedMessages: qualifies && labelCount === 0,
+    labelCount,
+    rootLabelCount: localEvidence.labelCount,
+    terms: combinedTerms,
+  };
 }
 
 export function fieldWrapperCount(source: string): number {
   const fragment = parseSvelteFragment(source);
-  return fragment === undefined ? 0 : qualifyingFieldLabels(fragment, source).count;
+  return fragment === undefined
+    ? 0
+    : qualifyingFieldLabels(fragment, source, staticStringBindings(source)).count;
 }
 
 export function shouldCheckComponentSource(filePath: string): boolean {
@@ -367,7 +477,7 @@ export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>):
 export function findPrimitiveCompositionViolations(
   source: string,
   filePath: string,
-  companionSource = '',
+  companionSource: string | readonly string[] = '',
 ): PrimitiveCompositionViolation[] {
   const normalized = filePath.replaceAll('\\', '/').replace(/^.*components\//, '');
   const violations: PrimitiveCompositionViolation[] = [];
@@ -386,8 +496,13 @@ export function findPrimitiveCompositionViolations(
         'A tracked raw-control count changed; migrate it or update the explicit migration record.',
     });
   }
+  const companionSources =
+    typeof companionSource === 'string' ? [companionSource] : companionSource;
   const counts = normalized.endsWith('.css')
-    ? cssPrimitiveCounts(source, collectSharedFloatingClassSets(companionSource))
+    ? cssPrimitiveCounts(
+        source,
+        companionSources.flatMap((candidate) => collectSharedFloatingClassSets(candidate)),
+      )
     : normalized.endsWith('.svelte')
       ? inlineStylePrimitiveCounts(source)
       : { grid: 0, floating: 0 };
@@ -439,24 +554,37 @@ async function main(): Promise<void> {
   const violations: PrimitiveCompositionViolation[] = [];
   const existingPaths = new Set<string>();
   const glob = new Glob('**/*.{svelte,css}');
+  const componentSources: Array<{
+    absolutePath: string;
+    relativePath: string;
+    source: string;
+  }> = [];
   for await (const absolutePath of glob.scan({ cwd: componentsRoot, absolute: true })) {
     const relativePath = relative(componentsRoot, absolutePath).replaceAll('\\', '/');
     if (!shouldCheckComponentSource(relativePath)) continue;
     existingPaths.add(relativePath);
-    const companionPath = absolutePath.endsWith('.css')
-      ? absolutePath.replace(/\.css$/, '.svelte')
-      : '';
-    const companionSource =
-      companionPath !== '' && (await Bun.file(companionPath).exists())
-        ? await Bun.file(companionPath).text()
-        : '';
-    violations.push(
-      ...findPrimitiveCompositionViolations(
-        await Bun.file(absolutePath).text(),
-        relativePath,
-        companionSource,
-      ),
-    );
+    componentSources.push({
+      absolutePath,
+      relativePath,
+      source: await Bun.file(absolutePath).text(),
+    });
+  }
+  const svelteSources = componentSources.filter(({ relativePath }) =>
+    relativePath.endsWith('.svelte'),
+  );
+  for (const { absolutePath, relativePath, source } of componentSources) {
+    const styledFamily = relativePath.split('/')[0] ?? '';
+    const companionSources = absolutePath.endsWith('.css')
+      ? svelteSources
+          .filter(({ relativePath: candidatePath }) => {
+            const candidateFamily = candidatePath.split('/')[0] ?? '';
+            return (
+              candidateFamily === styledFamily || candidateFamily.startsWith(`${styledFamily}-`)
+            );
+          })
+          .map(({ source: candidateSource }) => candidateSource)
+      : [];
+    violations.push(...findPrimitiveCompositionViolations(source, relativePath, companionSources));
   }
   for (const filePath of missingMigrationRecordPaths(existingPaths))
     violations.push({

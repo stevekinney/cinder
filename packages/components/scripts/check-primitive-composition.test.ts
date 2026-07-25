@@ -59,6 +59,18 @@ describe('primitive composition guard', () => {
         ),
       ).toEqual([]);
     }
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input type="checkbox" hidden={true} name="value" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input type="checkbox" hidden={false} name="value" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('does not count canonical component tags as native controls', () => {
@@ -86,6 +98,12 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<svelte:element this={'INPUT'} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; tag = 'input';</script><svelte:element this={tag} />",
         'new-control/new-control.svelte',
       ),
     ).toHaveLength(1);
@@ -176,6 +194,40 @@ describe('primitive composition guard', () => {
       expect(cssPrimitiveCounts(`.layout { display: grid; ${property}: initial; }`).grid).toBe(1);
   });
 
+  test('recognizes every grid-defining property in inline styles', () => {
+    for (const property of [
+      'grid',
+      'grid-template',
+      'grid-template-areas',
+      'grid-template-columns',
+      'grid-template-rows',
+      'grid-auto-columns',
+      'grid-auto-rows',
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<div style="display: grid; ${property}: initial"></div>`,
+          'new-grid/new-grid.svelte',
+        ),
+      ).toHaveLength(1);
+  });
+
+  test('does not combine declarations from conflicting attribute selectors', () => {
+    expect(
+      cssPrimitiveCounts(
+        "[data-layout='grid'] { display: grid; } [data-layout='list'] { grid-template-columns: 1fr; }",
+      ).grid,
+    ).toBe(0);
+  });
+
+  test('does not combine declarations from different conditional scopes', () => {
+    expect(
+      cssPrimitiveCounts(
+        '@media (min-width: 800px) { .layout { display: grid; } } @media (max-width: 799px) { .layout { grid-template-columns: 1fr; } }',
+      ).grid,
+    ).toBe(0);
+  });
+
   test('rejects a hand-rolled grid in an inline style', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -228,6 +280,16 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
     expect(
       findPrimitiveCompositionViolations(
+        '.cinder-dropdown-menu { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        [
+          '<div class="unrelated"></div>',
+          '<div class="cinder-dropdown-menu cinder-_floating-surface"></div>',
+        ],
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
         '.menu { position: absolute; z-index: 1; }',
         'new-menu/new-menu.css',
         `<script>import { classNames } from '../../utilities/class-names.ts'; let className;</script><div class={classNames('cinder-_floating-surface', 'menu', className)}></div>`,
@@ -249,6 +311,13 @@ describe('primitive composition guard', () => {
         floatingCss,
         'new-menu/new-menu.css',
         '<!-- cinder-_floating-surface --><div class="other"></div>',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '.cinder-_floating-surface, .local-menu { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        '<div class="cinder-_floating-surface"></div>',
       ),
     ).toHaveLength(1);
     expect(
@@ -408,6 +477,33 @@ describe('primitive composition guard', () => {
         'new-field/new-field.svelte',
       ),
     ).toEqual([]);
+  });
+
+  test('traverses field markup nested inside unrelated wrapper components', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<Card><label>Name</label><p>Help</p><p>Error</p></Card>',
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('recognizes grouped messages next to their direct label', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label>Name</label><div><p>Help</p><p>Error</p></div>',
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('recognizes statically resolved polymorphic labels', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<svelte:element this={'label'}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('counts only labels in the field subtree that supplies help and error evidence', () => {
