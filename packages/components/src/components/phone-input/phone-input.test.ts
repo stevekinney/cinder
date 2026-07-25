@@ -29,14 +29,9 @@ describe('PhoneInput rendering', () => {
     expect(group.getAttribute('aria-labelledby')).toBe('p-label');
   });
 
-  test('country select and national input compose the group label with their per-control label', () => {
-    const { container } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
-    const select = countrySelect(container);
-    const input = nationalInput(container);
-    expect(select.getAttribute('aria-labelledby')).toBe('p-label p-country-label');
-    expect(input.getAttribute('aria-labelledby')).toBe('p-label p-national-label');
-    expect(container.querySelector('#p-country-label')?.textContent).toBe('Country code');
-    expect(container.querySelector('#p-national-label')?.textContent).toBe('Phone number');
+  test('country select accessible name includes the full selected country', () => {
+    const { getByRole } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
+    expect(getByRole('combobox', { name: /Country: United States, \+1/ })).not.toBeNull();
   });
 
   test('country defaults to US', () => {

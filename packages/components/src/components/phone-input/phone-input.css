@@ -41,7 +41,7 @@
     }
   }
 
-  .cinder-phone-input__country,
+  .cinder-phone-input__country .cinder-select,
   .cinder-phone-input__national {
     min-height: 2.25rem;
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
@@ -59,7 +59,7 @@
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .cinder-phone-input__country {
+  .cinder-phone-input__country .cinder-select {
     cursor: pointer;
     padding-inline-end: var(--cinder-space-6);
     background-image:
@@ -74,32 +74,32 @@
     background-repeat: no-repeat;
   }
 
-  .cinder-phone-input__country::-ms-expand {
+  .cinder-phone-input__country .cinder-select::-ms-expand {
     display: none;
   }
 
   @media (hover: hover) {
-    .cinder-phone-input__country:hover:not(:disabled),
+    .cinder-phone-input__country .cinder-select:hover:not(:disabled),
     .cinder-phone-input__national:hover:not(:disabled) {
       border-color: var(--cinder-border-strong);
     }
   }
 
-  .cinder-phone-input__country:focus-visible,
+  .cinder-phone-input__country .cinder-select:focus-visible,
   .cinder-phone-input__national:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
     border-color: var(--cinder-border-strong);
   }
 
-  .cinder-phone-input__country[aria-invalid='true'],
+  .cinder-phone-input__country .cinder-select[aria-invalid='true'],
   .cinder-phone-input__national[aria-invalid='true'],
-  .cinder-phone-input[aria-invalid='true'] .cinder-phone-input__country,
+  .cinder-phone-input[aria-invalid='true'] .cinder-phone-input__country .cinder-select,
   .cinder-phone-input[aria-invalid='true'] .cinder-phone-input__national {
     border-color: var(--cinder-danger);
   }
 
-  .cinder-phone-input__country:disabled,
+  .cinder-phone-input__country .cinder-select:disabled,
   .cinder-phone-input__national:disabled {
     cursor: not-allowed;
     color: var(--cinder-text-disabled);
@@ -107,7 +107,7 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-phone-input__country:focus-visible,
+    .cinder-phone-input__country .cinder-select:focus-visible,
     .cinder-phone-input__national:focus-visible {
       outline: var(--cinder-ring-width) solid Highlight;
     }
