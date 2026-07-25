@@ -29,9 +29,9 @@ export function useIntersection(
         return;
       }
 
-      observer = new IntersectionObserver(
+      const currentObserver = new IntersectionObserver(
         (entries) => {
-          if (!enabled()) {
+          if (observer !== currentObserver || !enabled()) {
             return;
           }
 
@@ -46,7 +46,8 @@ export function useIntersection(
         },
       );
 
-      observer.observe(node);
+      observer = currentObserver;
+      currentObserver.observe(node);
 
       return () => {
         disconnectObserver();

@@ -262,8 +262,10 @@ describe('LoadMore', () => {
     record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
     await waitFor(() => expect(calls).toBe(1));
 
-    record?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
-    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    const resetSentinel = container.querySelector('.cinder-load-more__sentinel') as Element;
+    const resetRecord = FakeIntersectionObserver.records.at(-1);
+    resetRecord?.callback([createEntry(resetSentinel, false)], {} as IntersectionObserver);
+    resetRecord?.callback([createEntry(resetSentinel, true)], {} as IntersectionObserver);
 
     await waitFor(() => expect(calls).toBe(2));
   });
@@ -385,8 +387,12 @@ describe('LoadMore', () => {
       expect(calls).toBe(2);
     });
 
-    record?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
-    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    const resetSentinel = rendered.container.querySelector(
+      '.cinder-load-more__sentinel',
+    ) as Element;
+    const resetRecord = FakeIntersectionObserver.records.at(-1);
+    resetRecord?.callback([createEntry(resetSentinel, false)], {} as IntersectionObserver);
+    resetRecord?.callback([createEntry(resetSentinel, true)], {} as IntersectionObserver);
 
     await waitFor(() => {
       expect(calls).toBe(3);
