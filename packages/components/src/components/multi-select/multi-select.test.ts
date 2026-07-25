@@ -38,6 +38,9 @@ describe('MultiSelect', () => {
   test('renders trigger, placeholder, and listbox semantics', async () => {
     const { container } = render(MultiSelect, { id: 'fruits', items });
     expect(container.querySelector('#fruits')?.textContent).toContain('Select options');
+    const chevron = container.querySelector('.cinder-multi-select__chevron');
+    expect(chevron?.querySelector('svg')).not.toBeNull();
+    expect(chevron?.textContent?.trim()).toBe('');
     await openMenu(container);
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-multiselectable')).toBe('true');

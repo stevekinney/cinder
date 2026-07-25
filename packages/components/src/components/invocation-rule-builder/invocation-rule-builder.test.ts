@@ -338,6 +338,21 @@ describe('InvocationRuleBuilder', () => {
       expect(container.querySelector('[data-irb-add-rule]')).not.toBeNull();
     });
 
+    test('renders Lucide icons without text glyphs in add controls', () => {
+      const { container } = renderBuilder([makeRule()]);
+      const controls = [
+        ['[data-irb-add-condition]', 'Add condition'],
+        ['[data-irb-add-action]', 'Add action'],
+        ['[data-irb-add-rule]', 'Add rule'],
+      ] as const;
+
+      for (const [selector, label] of controls) {
+        const control = container.querySelector<HTMLButtonElement>(selector);
+        expect(control?.querySelector('svg')).not.toBeNull();
+        expect(control?.textContent?.trim()).toBe(label);
+      }
+    });
+
     test('does not render add-rule button in readonly mode', () => {
       const { container } = renderBuilder([makeRule()], { readonly: true });
       expect(container.querySelector('[data-irb-add-rule]')).toBeNull();

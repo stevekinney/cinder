@@ -22,6 +22,7 @@
 </script>
 
 <script lang="ts" generics="T extends string = string">
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { tick, untrack } from 'svelte';
 
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
@@ -432,7 +433,9 @@
       {#if selectedCount > 0}
         <span class="cinder-multi-select__count" aria-hidden="true">{selectedCount}</span>
       {/if}
-      <span class="cinder-multi-select__chevron" aria-hidden="true">▾</span>
+      <span class="cinder-multi-select__chevron" aria-hidden="true">
+        <ChevronDown size={16} strokeWidth={2} />
+      </span>
     </button>
 
     {#if selectedCount > 0 && !field.disabled && !readonly}

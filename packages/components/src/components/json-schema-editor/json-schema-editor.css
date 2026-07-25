@@ -241,16 +241,14 @@
   }
 
   .cinder-jse-property-row__chevron {
-    display: inline-block;
-    font-size: var(--cinder-text-xs);
+    display: block;
+    flex: 0 0 auto;
     color: var(--cinder-text-subtle);
-    transition: transform var(--cinder-duration-fast) ease;
-    width: 0.75rem;
-    text-align: center;
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .cinder-jse-property-row__trigger[aria-expanded='true'] > .cinder-jse-property-row__chevron {
-    transform: rotate(90deg);
+    transform: rotate(180deg);
   }
 
   .cinder-jse-property-row__name {

@@ -16,6 +16,29 @@ const { calculatePropertyValidationErrorCount } = await import('./property-list-
 afterEach(() => cleanup());
 
 describe('PropertyList', () => {
+  test('uses a rotating Lucide chevron for property disclosure', async () => {
+    const { container } = render(PropertyList, {
+      idPrefix: 'properties',
+      path: '/properties',
+      properties: { name: { type: 'string' } },
+      required: [],
+      onchange: () => {},
+    });
+
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Expand name property"]',
+    );
+    const chevron = trigger?.querySelector('.cinder-jse-property-row__chevron');
+    expect(chevron?.tagName.toLowerCase()).toBe('svg');
+    expect(trigger?.textContent).not.toContain('▸');
+    expect(trigger?.getAttribute('aria-expanded')).toBe('false');
+
+    const css = await Bun.file(new URL('./json-schema-editor.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-jse-property-row__trigger\[aria-expanded='true'\]\s*>\s*\.cinder-jse-property-row__chevron\s*\{[^}]*transform:\s*rotate\(180deg\)/,
+    );
+  });
+
   test('can add the first required-only property name', async () => {
     let latestRequired: string[] = [];
     const { container } = render(PropertyList, {
