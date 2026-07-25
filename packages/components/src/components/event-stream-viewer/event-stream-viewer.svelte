@@ -39,7 +39,7 @@
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
-  import Input from '../input/index.ts';
+  import Input from '@lostgradient/cinder/input';
   import {
     detailsIdForKey,
     reconnectedBoundaryKey,
@@ -296,8 +296,6 @@
   });
 </script>
 
-{#snippet emptyInputAdornment()}{/snippet}
-
 <div
   {...rest}
   class={classNames('cinder-event-stream-viewer', className)}
@@ -332,8 +330,6 @@
             label="Filter events"
             hideLabel
             aria-label="Filter events"
-            leading={emptyInputAdornment}
-            trailing={emptyInputAdornment}
             value={filterQuery}
             oninput={(e) => onfilter?.((e.currentTarget as HTMLInputElement).value)}
           />
