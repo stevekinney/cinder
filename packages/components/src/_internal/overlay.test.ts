@@ -28,6 +28,7 @@ describe('Z_LAYERS', () => {
     expect(Z_LAYERS.backdrop).toBeLessThan(Z_LAYERS.modal);
     expect(Z_LAYERS.modal).toBe(Z_LAYERS.sheet);
     expect(Z_LAYERS.sheet).toBeLessThan(Z_LAYERS.toast);
+    expect(Z_LAYERS.toast).toBeLessThan(Z_LAYERS.dragPreview);
   });
 });
 

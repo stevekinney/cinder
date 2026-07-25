@@ -189,6 +189,7 @@
   });
 
   const listboxVisible = $derived(open && filteredOptions.length > 0);
+  const emptyVisible = $derived(open && filteredOptions.length === 0);
   const activeOptionId = $derived(
     listboxVisible && activeIndex >= 0 && activeIndex < filteredOptions.length
       ? `${id}-option-${activeIndex}`
@@ -471,14 +472,25 @@
     </Popover>
   {/if}
 
-  <!-- Always in DOM so screen readers hear "No results" when text is injected.
-       Freshly-mounted role="status" nodes are not reliably announced by NVDA/JAWS. -->
-  <div
-    class="cinder-combobox__empty"
-    role="status"
-    data-cinder-active={(open && filteredOptions.length === 0) || undefined}
-  >
-    {open && filteredOptions.length === 0 ? 'No results' : ''}
+  {#if emptyVisible}
+    <Popover
+      bind:open
+      triggerRef={inputElement}
+      role="group"
+      focusManagement="preserve"
+      wireTriggerAria={false}
+      closeOnEscape={false}
+      widthMode="match-anchor"
+      class="cinder-combobox__empty-panel"
+    >
+      <div class="cinder-combobox__empty" data-cinder-active>No results</div>
+    </Popover>
+  {/if}
+
+  <!-- Keep the live region mounted while the visible empty-state surface uses
+       the same portal and Floating UI path as the options panel. -->
+  <div class="cinder-combobox__empty-status" role="status">
+    {emptyVisible ? 'No results' : ''}
   </div>
 
   {#if description}

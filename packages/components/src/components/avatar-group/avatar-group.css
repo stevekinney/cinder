@@ -15,6 +15,7 @@
 
   .cinder-avatar-group__item {
     position: relative;
+    /* cinder-z-index-local: caller-provided item order controls overlap inside this group. */
     z-index: var(--cinder-avatar-group-index, 0);
 
     display: inline-flex;
@@ -24,6 +25,7 @@
   }
 
   .cinder-avatar-group__item:focus-within {
+    /* cinder-z-index-local: focused avatar rises above every sibling in this group. */
     z-index: calc(var(--cinder-avatar-group-index, 0) + 100);
   }
 

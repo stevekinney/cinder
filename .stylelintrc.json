@@ -3,7 +3,8 @@
     "stylelint-use-logical",
     "./packages/components/scripts/stylelint/no-focus-visible-colored-outline.mjs",
     "./packages/components/scripts/stylelint/no-unguarded-hover-colors.cjs",
-    "./packages/components/scripts/stylelint/require-forced-colors-focus-fallback.mjs"
+    "./packages/components/scripts/stylelint/require-forced-colors-focus-fallback.mjs",
+    "./packages/components/scripts/stylelint/z-index-scale.mjs"
   ],
   "overrides": [
     {
@@ -21,6 +22,7 @@
     "cinder/no-focus-visible-colored-outline": true,
     "cinder/no-unguarded-hover-colors": true,
     "cinder/require-forced-colors-focus-fallback": true,
+    "cinder/z-index-scale": true,
     "csstools/use-logical": [
       "always",
       {

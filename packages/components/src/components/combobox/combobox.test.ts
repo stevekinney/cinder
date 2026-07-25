@@ -545,9 +545,10 @@ describe('Combobox filtering', () => {
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
       expect(container.querySelector('[role="option"]')).toBeNull();
-      expect(container.querySelector('.cinder-combobox__empty')?.textContent?.trim()).toBe(
-        'No results',
-      );
+      const emptyState = container.querySelector('.cinder-combobox__empty');
+      expect(emptyState?.textContent?.trim()).toBe('No results');
+      expect(emptyState?.closest('.cinder-popover')).not.toBeNull();
+      expect(emptyState?.closest('.cinder-combobox')).toBeNull();
     });
   });
 

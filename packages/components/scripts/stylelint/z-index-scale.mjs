@@ -1,0 +1,95 @@
+/**
+ * Stylelint rule: cinder/z-index-scale.
+ *
+ * Global layers must use the public `--cinder-z-*` scale, and those references
+ * deliberately have no inline fallback: tokens-base.css is the sole source of
+ * truth. The only universally valid local stacking values are `auto`, `0`,
+ * and `1`.
+ *
+ * A component may need a higher local layer (for example, a marker that must
+ * paint above an overlapping focus ring). Keep that exceptional relationship
+ * explicit by placing this comment immediately before the declaration:
+ *
+ *   /* cinder-z-index-local: <why this is local and needs a higher level>. *\/
+ *   z-index: 2;
+ *
+ * The reason is attached to the declaration instead of a filename allow-list,
+ * so refactors cannot silently transfer an unexplained exemption.
+ */
+
+import stylelint from 'stylelint';
+
+const ruleName = 'cinder/z-index-scale';
+const localReasonPrefix = 'cinder-z-index-local:';
+const layerTokenPattern = /^var\(\s*(--cinder-z-[a-z0-9-]+)\s*\)$/i;
+const layerTokenReferencePattern = /^var\(\s*--cinder-z-[a-z0-9-]+\s*,/i;
+const allowedLocalValues = new Set(['auto', '0', '1']);
+
+const messages = stylelint.utils.ruleMessages(ruleName, {
+  fallback:
+    'A `--cinder-z-*` token must not have a fallback; define the token once in tokens-base.css.',
+  invalid:
+    '`z-index` must be `auto`, `0`, `1`, or a `--cinder-z-*` token without a fallback. ' +
+    'Higher component-local values require an adjacent `cinder-z-index-local:` reason.',
+});
+
+const meta = {
+  url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index',
+};
+
+function hasAdjacentLocalReason(declaration) {
+  const previous = declaration.prev();
+  if (previous?.type !== 'comment') return false;
+
+  const text = previous.text.trim();
+  if (!text.startsWith(localReasonPrefix)) return false;
+  return text.slice(localReasonPrefix.length).trim().length > 0;
+}
+
+const plugin = stylelint.createPlugin(ruleName, (primary) => {
+  return (root, result) => {
+    const validOptions = stylelint.utils.validateOptions(result, ruleName, {
+      actual: primary,
+      possible: [true],
+    });
+    if (!validOptions) return;
+
+    // This policy owns published component sidecars. Playground application
+    // chrome and the separate Chat package have independent stacking systems.
+    const sourceFile = root.source?.input.file?.replaceAll('\\', '/');
+    if (sourceFile && !sourceFile.includes('/packages/components/src/components/')) return;
+
+    root.walkDecls('z-index', (declaration) => {
+      const value = declaration.value.trim();
+      if (allowedLocalValues.has(value) || layerTokenPattern.test(value)) return;
+
+      if (layerTokenReferencePattern.test(value)) {
+        stylelint.utils.report({
+          ruleName,
+          result,
+          node: declaration,
+          message: messages.fallback,
+        });
+        return;
+      }
+
+      // The adjacent reason is the explicit, refactor-safe allow-list for
+      // component-local relationships above the universal 0/1 threshold.
+      // Never allow the historical magic escape hatch back, even with a note.
+      if (value !== '9999' && hasAdjacentLocalReason(declaration)) return;
+
+      stylelint.utils.report({
+        ruleName,
+        result,
+        node: declaration,
+        message: messages.invalid,
+      });
+    });
+  };
+});
+
+plugin.ruleName = ruleName;
+plugin.messages = messages;
+plugin.meta = meta;
+
+export default plugin;

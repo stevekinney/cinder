@@ -43,14 +43,17 @@ describe('SpeedDial', () => {
   });
 
   test('trigger click opens and closes through bind:open', async () => {
-    render(SpeedDialFixture);
+    const { container } = render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
 
     await fireEvent.click(trigger);
     await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
     expect(screen.getByTestId('open-state').textContent).toBe('open');
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Create' }));
+    expect(container.querySelector('.cinder-speed-dial')?.contains(toolbar)).toBe(false);
+    expect(toolbar.parentElement).toBe(document.body);
 
     await fireEvent.click(trigger);
     expect(screen.getByTestId('open-state').textContent).toBe('closed');

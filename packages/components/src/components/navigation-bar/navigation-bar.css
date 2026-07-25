@@ -137,58 +137,57 @@
       .cinder-navigation-bar__menu-toggle {
       margin-inline-start: auto;
     }
+  }
 
-    .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
-      position: absolute;
-      inset-inline: 0;
-      top: 100%;
-      flex-direction: column;
-      align-items: stretch;
-      padding: var(--cinder-space-2);
-      background: var(--cinder-surface);
-      border-bottom: 1px solid var(--cinder-border-muted);
-      z-index: var(--cinder-z-dropdown, 1100);
+  .cinder-navigation-bar__items[data-cinder-mobile-panel] {
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--cinder-space-2);
+    background: var(--cinder-surface);
+    border-bottom: 1px solid var(--cinder-border-muted);
+    z-index: var(--cinder-z-dropdown);
 
-      /* Open → visible, slide in */
-      transition:
-        transform 200ms ease,
-        opacity 200ms ease;
-    }
+    /* Open → visible, slide in */
+    transition:
+      transform 200ms ease,
+      opacity 200ms ease;
+  }
 
-    /* Closed: remove from focus/AT trees immediately via visibility. */
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='false'] {
-      visibility: hidden;
-      transform: translateY(-0.5rem);
-      opacity: 0;
-      pointer-events: none;
-    }
+  /* Closed: remove from focus/AT trees immediately via visibility. */
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='false'] {
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    opacity: 0;
+    pointer-events: none;
+  }
 
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='true'] {
-      visibility: visible;
-      transform: none;
-      opacity: 1;
-    }
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true'] {
+    visibility: visible;
+    transform: none;
+    opacity: 1;
+  }
 
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='true']
-      .cinder-navigation-item[data-variant='mobile'] {
-      display: flex;
-      inline-size: 100%;
-      justify-content: flex-start;
-      padding-block: var(--cinder-space-3);
-      border-bottom: none;
-      border-inline-start: 2px solid transparent;
-      border-radius: var(--cinder-radius-sm);
-    }
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']:not(
+      [data-cinder-position-ready]
+    ) {
+    visibility: hidden;
+  }
 
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='true']
-      .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
-      border-inline-start-color: var(--cinder-accent);
-      background-color: var(--cinder-surface-inset);
-    }
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']
+    .cinder-navigation-item[data-variant='mobile'] {
+    display: flex;
+    inline-size: 100%;
+    justify-content: flex-start;
+    padding-block: var(--cinder-space-3);
+    border-bottom: none;
+    border-inline-start: 2px solid transparent;
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']
+    .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
+    border-inline-start-color: var(--cinder-accent);
+    background-color: var(--cinder-surface-inset);
   }
 
   /* ----------------------------------------
@@ -196,7 +195,7 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    .cinder-navigation-bar__items[data-cinder-mobile-panel] {
       transition: none;
     }
   }
@@ -206,7 +205,7 @@
  * ---------------------------------------- */
 
   @media (forced-colors: active) {
-    .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    .cinder-navigation-bar__items[data-cinder-mobile-panel] {
       border-bottom-color: CanvasText;
     }
 

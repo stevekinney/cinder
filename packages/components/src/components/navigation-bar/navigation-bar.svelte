@@ -24,9 +24,12 @@
 </script>
 
 <script lang="ts">
+  import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import { BROWSER as browser } from 'esm-env';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
   const FALLBACK_ROOT_FONT_SIZE_PX = 16;
@@ -72,6 +75,18 @@
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
   let itemsRegionElement: HTMLDivElement | null = null;
+  const itemsPortal = createPortalAttachment({
+    disabled: () => !isMobileLayout || !mobileMenuOpen,
+    source: () => navigationBarElement,
+  });
+  const anchoredItems = createAnchoredOverlay({
+    open: () => isMobileLayout && mobileMenuOpen,
+    anchor: () => navigationBarElement,
+    panel: () => itemsRegionElement,
+    placement: () => 'bottom-start' as Placement,
+    offset: () => 0,
+    widthMode: () => 'match-anchor',
+  });
 
   function getCollapsibleMaxWidthPx(): number {
     if (typeof window === 'undefined') {
@@ -197,7 +212,10 @@
 
     const activeElement = document.activeElement;
     if (activeElement instanceof Element && itemsRegionElement.contains(activeElement)) {
-      focusMenuToggle();
+      // Closing changes the items snippet from mobile to horizontal and moves
+      // the portaled region back inline. Restore focus after that DOM move so
+      // the browser cannot discard the focus request with the old subtree.
+      queueMicrotask(focusMenuToggle);
     }
   }
 
@@ -209,10 +227,8 @@
 
   function handleClick(event: MouseEvent): void {
     if (consumerOnClick) {
-      const currentTarget =
-        event.currentTarget instanceof HTMLElement ? event.currentTarget : navigationBarElement;
       (consumerOnClick as (this: HTMLElement | null, e: MouseEvent) => void).call(
-        currentTarget,
+        navigationBarElement,
         event,
       );
     }
@@ -268,6 +284,7 @@
       event.preventDefault();
       if (isEnabledNavigationItem(navigationItem)) {
         navigationItem.click();
+        if (!mobileMenuOpen) queueMicrotask(focusMenuToggle);
       }
     }
   }
@@ -313,10 +330,16 @@
 
   <div
     bind:this={itemsRegionElement}
+    {@attach itemsPortal}
     id={regionId}
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
+    data-cinder-mobile-panel={isMobileLayout || undefined}
+    data-cinder-position-ready={anchoredItems.positionReady || undefined}
+    style={anchoredItems.positionStyle}
     inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
+    onclick={isMobileLayout ? handleClick : undefined}
+    onkeydown={isMobileLayout ? handleKeyDown : undefined}
   >
     {@render items({ variant, placement, labelsVisible })}
   </div>

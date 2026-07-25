@@ -20,9 +20,12 @@
 </script>
 
 <script lang="ts">
+  import type { Placement } from '@floating-ui/dom';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
+  import { createPortalAttachment } from '../portal/index.ts';
   import { setSpeedDialContext } from './speed-dial.context.ts';
   import type { SpeedDialProps } from './speed-dial.types.ts';
 
@@ -42,12 +45,35 @@
 
   let rootElement = $state<HTMLDivElement | null>(null);
   let triggerWrapperElement = $state<HTMLDivElement | null>(null);
+  let actionsElement = $state<HTMLDivElement | null>(null);
   const actionButtons: HTMLButtonElement[] = [];
 
   const orientation = $derived(
     direction === 'left' || direction === 'right' ? 'horizontal' : 'vertical',
   );
   const accessibleLabel = $derived(normalizeAriaLabel(ariaLabel));
+  const placement = $derived<Placement>(
+    direction === 'up'
+      ? 'top'
+      : direction === 'down'
+        ? 'bottom'
+        : direction === 'left'
+          ? 'left'
+          : 'right',
+  );
+
+  const actionsPortal = createPortalAttachment({
+    disabled: () => !open,
+    source: () => getTriggerElement(),
+  });
+  const anchoredActions = createAnchoredOverlay({
+    open: () => open,
+    anchor: () => getTriggerElement(),
+    panel: () => actionsElement,
+    placement: () => placement,
+    offset: () => 12,
+    widthMode: () => 'none',
+  });
 
   function normalizeAriaLabel(label: string | null | undefined): string {
     const trimmed = label?.trim() ?? '';
@@ -138,7 +164,12 @@
   function handleDocumentClick(event: MouseEvent): void {
     if (!open) return;
     if (rootElement?.contains(event.target as Node)) return;
-    close({ focusTrigger: rootElement?.contains(document.activeElement) ?? false });
+    if (actionsElement?.contains(event.target as Node)) return;
+    close({
+      focusTrigger:
+        (rootElement?.contains(document.activeElement) ?? false) ||
+        (actionsElement?.contains(document.activeElement) ?? false),
+    });
   }
 
   $effect(() => {
@@ -176,12 +207,17 @@
   data-cinder-hidden={hidden ? 'true' : undefined}
 >
   <div
+    bind:this={actionsElement}
+    {@attach actionsPortal}
     id={actionsId}
     role="toolbar"
     aria-label="Actions"
     aria-orientation={orientation}
     class="cinder-speed-dial__actions"
     data-cinder-open={open ? '' : undefined}
+    data-cinder-direction={direction}
+    data-cinder-position-ready={anchoredActions.positionReady || undefined}
+    style={anchoredActions.positionStyle}
     inert={!open ? true : undefined}
     tabindex="-1"
     onkeydown={handleActionsKeydown}

@@ -296,17 +296,25 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 
 ## Z-index layers
 
-Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open. Override these only if you are integrating cinder into an app with its own established stacking contract.
+Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast < drag preview. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open, while the active drag preview remains attached to the pointer above every surface. Override these only if you are integrating cinder into an app with its own established stacking contract.
 
-| Token                 | Default |
-| --------------------- | ------- |
-| `--cinder-z-tooltip`  | `1000`  |
-| `--cinder-z-dropdown` | `1100`  |
-| `--cinder-z-popover`  | `1100`  |
-| `--cinder-z-backdrop` | `1150`  |
-| `--cinder-z-modal`    | `1200`  |
-| `--cinder-z-sheet`    | `1200`  |
-| `--cinder-z-toast`    | `1300`  |
+The token table is the single source of truth. A `z-index` reference must use
+`var(--cinder-z-*)` without an inline fallback; otherwise a partial stylesheet
+can silently put two components that name the same layer at different heights.
+Component-local stacking may use `0` or `1`. A higher local relationship needs
+an adjacent `cinder-z-index-local:` reason so Stylelint can distinguish it from
+a new global layer.
+
+| Token                     | Default |
+| ------------------------- | ------- |
+| `--cinder-z-tooltip`      | `1000`  |
+| `--cinder-z-dropdown`     | `1100`  |
+| `--cinder-z-popover`      | `1100`  |
+| `--cinder-z-backdrop`     | `1150`  |
+| `--cinder-z-modal`        | `1200`  |
+| `--cinder-z-sheet`        | `1200`  |
+| `--cinder-z-toast`        | `1300`  |
+| `--cinder-z-drag-preview` | `1400`  |
 
 ## Overlay surfaces
 

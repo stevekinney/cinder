@@ -70,7 +70,8 @@ function emitNavigationBarResize(target: Element, width: number): void {
 }
 
 function getItemsRegion(container: HTMLElement): HTMLElement {
-  return container.querySelector('.cinder-navigation-bar__items') as HTMLElement;
+  return (container.querySelector('.cinder-navigation-bar__items') ??
+    document.body.querySelector('.cinder-navigation-bar__items')) as HTMLElement;
 }
 
 async function openCollapsedMobileMenu(container: HTMLElement): Promise<HTMLElement> {
@@ -551,6 +552,22 @@ describe('NavigationBar', () => {
     expect(itemsRegion?.hasAttribute('inert')).toBe(false);
   });
 
+  test('an open collapsed menu is portaled outside the navigation stacking context', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+      });
+
+      const nav = await openCollapsedMobileMenu(container);
+      const itemsRegion = getItemsRegion(container);
+
+      expect(nav.contains(itemsRegion)).toBe(false);
+      expect(itemsRegion.parentElement).toBe(document.body);
+      expect(itemsRegion.getAttribute('data-cinder-mobile-panel')).toBe('true');
+    });
+  });
+
   test('clicking the toggle a second time closes the menu', async () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
@@ -580,14 +597,10 @@ describe('NavigationBar', () => {
       await tick();
 
       await fireEvent.click(toggle);
-      expect(
-        container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-      ).toBe('true');
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
 
       await fireEvent.keyDown(nav, { key: 'Escape' });
-      expect(
-        container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-      ).toBe('false');
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
     });
   });
 
@@ -833,7 +846,7 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      const docs = getItemsRegion(container).querySelector('[data-key="docs"]') as HTMLElement;
       await fireEvent.click(docs);
 
       expect(clicks['docs']).toBe(1);
@@ -851,7 +864,9 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const icon = container.querySelector('[data-testid="home-icon"]') as SVGElement;
+      const icon = getItemsRegion(container).querySelector(
+        '[data-testid="home-icon"]',
+      ) as SVGElement;
       await fireEvent.click(icon);
 
       expect(clicks['home']).toBe(1);
@@ -874,7 +889,7 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      const docs = getItemsRegion(container).querySelector('[data-key="docs"]') as HTMLElement;
       await fireEvent.click(docs);
 
       expect(clicks['docs']).toBe(1);
@@ -892,7 +907,7 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      const docs = getItemsRegion(container).querySelector('[data-key="docs"]') as HTMLElement;
       await fireEvent.click(docs);
 
       expect(clicks['docs']).toBe(1);
@@ -910,13 +925,13 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      const docs = getItemsRegion(container).querySelector('[data-key="docs"]') as HTMLElement;
       docs.focus();
       await fireEvent.keyDown(docs, { key: 'Enter' });
 
       expect(clicks['docs']).toBe(1);
       expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
-      expect(document.activeElement).toBe(container.querySelector('#toggle-btn'));
+      expect(document.activeElement?.id).toBe('toggle-btn');
     });
   });
 
@@ -931,13 +946,13 @@ describe('NavigationBar', () => {
 
       await setCollapsedMobileLayout(container);
 
-      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      const docs = getItemsRegion(container).querySelector('[data-key="docs"]') as HTMLElement;
       docs.focus();
       await fireEvent.keyDown(docs, { key: 'Enter' });
 
       expect(clicks['docs']).toBe(1);
       expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
-      expect(document.activeElement).toBe(container.querySelector('#toggle-btn'));
+      expect(document.activeElement?.id).toBe('toggle-btn');
     });
   });
 
@@ -951,7 +966,7 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const docs = container.querySelector('[data-key="docs"]') as HTMLElement;
+      const docs = getItemsRegion(container).querySelector('[data-key="docs"]') as HTMLElement;
       docs.focus();
       await fireEvent.keyDown(docs, { key: ' ' });
 
@@ -970,7 +985,9 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
 
-      const billing = container.querySelector('[data-key="billing"]') as HTMLElement;
+      const billing = getItemsRegion(container).querySelector(
+        '[data-key="billing"]',
+      ) as HTMLElement;
       await fireEvent.click(billing);
       billing.focus();
       await fireEvent.keyDown(billing, { key: 'Enter' });
@@ -983,11 +1000,11 @@ describe('NavigationBar', () => {
 });
 
 describe('NavigationBar responsive CSS', () => {
-  test('mobile item geometry is owned by the bar container query', () => {
+  test('mobile item geometry follows the ResizeObserver-backed mobile panel state', () => {
     expect(navigationBarCss).toContain('container-name: cinder-navigation-bar;');
     expect(navigationBarCss).toContain('@container cinder-navigation-bar (max-width: 47.99rem)');
     expect(navigationBarCss).toMatch(
-      /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
     );
   });
 
@@ -1014,10 +1031,10 @@ describe('NavigationBar responsive CSS', () => {
 
   test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
     expect(navigationBarCss).toMatch(
-      /\.cinder-navigation-bar\[data-collapsible='true'\][\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,
     );
     expect(navigationBarCss).toMatch(
-      /\.cinder-navigation-bar\[data-collapsible='true'\][\s\S]*?\.cinder-navigation-bar__items\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\]\[data-active='true'\][\s\S]*?border-inline-start-color:\s*var\(--cinder-accent\);[\s\S]*?background-color:\s*var\(--cinder-surface-inset\);/,
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\]\[data-active='true'\][\s\S]*?border-inline-start-color:\s*var\(--cinder-accent\);[\s\S]*?background-color:\s*var\(--cinder-surface-inset\);/,
     );
   });
 });
