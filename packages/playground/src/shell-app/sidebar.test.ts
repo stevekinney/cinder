@@ -190,6 +190,31 @@ describe('Sidebar', () => {
     expect(linkFor(container, 'chat-composer-popover')).not.toBeNull();
   });
 
+  test('restores a collapsed family after clearing a filter', async () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    const toggle = container.querySelector<HTMLButtonElement>(
+      '.cinder-side-navigation-group__trigger',
+    );
+    if (toggle === null) throw new Error('Expected Chat group toggle');
+    await fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await fireEvent.input(getFilterInput(container), { target: { value: 'composer' } });
+    await tick();
+    await fireEvent.input(getFilterInput(container), { target: { value: '' } });
+    await tick();
+    expect(
+      container
+        .querySelector<HTMLButtonElement>('.cinder-side-navigation-group__trigger')
+        ?.getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
   test('filter narrows the list by humanized name (case-insensitive)', async () => {
     const { container } = render(Sidebar, {
       props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },

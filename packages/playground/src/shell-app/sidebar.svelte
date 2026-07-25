@@ -43,6 +43,15 @@
   let { components, currentComponent, onSelect, isOpen = false, onClose }: Props = $props();
 
   let filter = $state('');
+  let expandedFamilies = $state<Record<string, boolean>>({
+    accordion: true,
+    'bento-grid': true,
+    card: true,
+    table: true,
+    chat: true,
+  });
+  let savedExpansion: Record<string, boolean> = {};
+  let filterWasActive = false;
   let restoredSessionFilter = $state(false);
   const FILTER_SESSION_KEY = 'cinder-playground-sidebar-filter';
 
@@ -90,6 +99,22 @@
   function familyParent(name: string): string | undefined {
     return COMPOUND_COMPONENT_PARENTS[name];
   }
+
+  $effect(() => {
+    const filterIsActive = filter.trim() !== '';
+    if (filterIsActive && !filterWasActive) {
+      savedExpansion = { ...expandedFamilies };
+      for (const name of navigationComponents) {
+        if ((COMPOUND_COMPONENT_FAMILIES[name] ?? []).length > 0) {
+          expandedFamilies[name] = true;
+        }
+      }
+    } else if (!filterIsActive && filterWasActive) {
+      expandedFamilies = savedExpansion;
+      savedExpansion = {};
+    }
+    filterWasActive = filterIsActive;
+  });
 
   // Include a family root whenever a caller supplies one of its children. The
   // production discovery list intentionally omits compose-only leaves, but
@@ -232,27 +257,28 @@
             {humanizeComponentName(name)}
           </SideNavigationItem>
         {:else if matchesCurrentFilter(name) || (COMPOUND_COMPONENT_FAMILIES[name] ?? []).some(matchesCurrentFilter)}
-          {#key filter.trim()}
-            <SideNavigationGroup label={humanizeComponentName(name)}>
-              <SideNavigationItem
-                href={buildShellHref(name)}
-                active={name === currentComponent}
-                onclick={(event) => handleClick(event, name)}
-              >
-                {humanizeComponentName(name)}
-              </SideNavigationItem>
-              {#each COMPOUND_COMPONENT_FAMILIES[name] ?? [] as child (child)}
-                {#if filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)}
-                  <SideNavigationItem
-                    href={buildShellHref(child)}
-                    active={child === currentComponent}
-                  >
-                    {humanizeComponentName(child)}
-                  </SideNavigationItem>
-                {/if}
-              {/each}
-            </SideNavigationGroup>
-          {/key}
+          <SideNavigationGroup
+            label={humanizeComponentName(name)}
+            bind:expanded={expandedFamilies[name]}
+          >
+            <SideNavigationItem
+              href={buildShellHref(name)}
+              active={name === currentComponent}
+              onclick={(event) => handleClick(event, name)}
+            >
+              {humanizeComponentName(name)}
+            </SideNavigationItem>
+            {#each COMPOUND_COMPONENT_FAMILIES[name] ?? [] as child (child)}
+              {#if filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)}
+                <SideNavigationItem
+                  href={buildShellHref(child)}
+                  active={child === currentComponent}
+                >
+                  {humanizeComponentName(child)}
+                </SideNavigationItem>
+              {/if}
+            {/each}
+          </SideNavigationGroup>
         {/if}
       {/if}
     {/each}
