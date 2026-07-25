@@ -46,6 +46,7 @@
     children,
     ...rest
   }: BackdropProps = $props();
+  let currentOnclick = $state(onclick);
 
   // Respect prefers-reduced-motion: collapse the fade to an instant show/hide so
   // the scrim does not animate for users who have opted out of motion.
@@ -62,9 +63,14 @@
   });
 
   $effect(() => {
-    if (!open || !scrimElement || !onclick) return;
+    currentOnclick = onclick;
+  });
+
+  $effect(() => {
+    if (!open || !scrimElement) return;
     return pushEscapeHandler((event) => {
       if (event.defaultPrevented) return;
+      if (!currentOnclick) return;
       event.preventDefault();
       scrimElement?.click();
     });
