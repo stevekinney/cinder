@@ -2198,6 +2198,23 @@ type PlaygroundHttpServer = {
   server: BunServer;
   port: number;
 };
+type RequestIdleTimeoutController = {
+  timeout: (request: Request, seconds: number) => unknown;
+};
+
+/**
+ * Keep the live-reload event stream open between edits without weakening the
+ * timeout for ordinary HTTP requests. Bun applies its default ten-second idle
+ * timeout to streaming responses unless the request opts out explicitly.
+ */
+export function configureRequestIdleTimeout(
+  request: Request,
+  server: RequestIdleTimeoutController,
+): void {
+  if (new URL(request.url).pathname === '/events') {
+    server.timeout(request, 0);
+  }
+}
 
 function isAddressInUseError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
@@ -2214,7 +2231,10 @@ export function createHttpServerOnAvailablePort(
     try {
       const server = Bun.serve({
         port,
-        fetch: fetchHandler,
+        fetch(request, server) {
+          configureRequestIdleTimeout(request, server);
+          return fetchHandler(request);
+        },
       });
       return { server, port };
     } catch (error) {

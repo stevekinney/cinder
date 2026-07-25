@@ -31,6 +31,7 @@ import { isComponentDocumentationPayload } from './component-documentation-refer
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
   PORT,
+  configureRequestIdleTimeout,
   createHttpServerOnAvailablePort,
   createSharedDisposer,
   fallbackToLastGood,
@@ -91,6 +92,23 @@ afterEach(async () => {
 function req(path: string, options?: RequestInit): Request {
   return new Request(`http://localhost:${PORT}${path}`, options);
 }
+
+describe('request idle timeout configuration', () => {
+  it('disables the idle timeout only for the long-lived SSE route', () => {
+    const calls: Array<{ request: Request; seconds: number }> = [];
+    const server = {
+      timeout(request: Request, seconds: number) {
+        calls.push({ request, seconds });
+      },
+    };
+    const eventsRequest = req('/events');
+
+    configureRequestIdleTimeout(eventsRequest, server);
+    configureRequestIdleTimeout(req('/ping'), server);
+
+    expect(calls).toEqual([{ request: eventsRequest, seconds: 0 }]);
+  });
+});
 
 function cssImportUrlsFrom(cssUrl: string, css: string): string[] {
   const urls = new Set<string>();

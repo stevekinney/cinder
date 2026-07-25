@@ -155,6 +155,21 @@ afterEach(() => {
 });
 
 describe('component-page single-scroll layout', () => {
+  test('groups standalone page actions and exposes focus-visible tooltips', async () => {
+    const { container, unmount } = render(ComponentPage);
+    await tick();
+
+    const toolbar = container.querySelector('[role="toolbar"][aria-label="Page controls"]');
+    expect(toolbar).not.toBeNull();
+    expect(toolbar?.querySelector('[data-tooltip="View source on GitHub"]')).not.toBeNull();
+    expect(toolbar?.querySelector('[data-tooltip="Preview theme: switch to dark"]')).not.toBeNull();
+    expect(toolbar?.querySelectorAll('button[aria-label^="Preview theme: switch to"]').length).toBe(
+      1,
+    );
+
+    unmount();
+  });
+
   test('reads documentation synchronously without an initial fetch', async () => {
     const originalFetch = globalThis.fetch;
     const fetchSpy = mock(async () => new Response('unexpected request', { status: 500 }));
