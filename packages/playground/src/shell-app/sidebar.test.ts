@@ -146,12 +146,12 @@ describe('Sidebar', () => {
     expect(container.querySelector('a[href="/c/button"]')).not.toBeNull();
   });
 
-  test('keeps compose-only leaves under their parent family', () => {
+  test('keeps compose-only leaves out of sidebar navigation', () => {
     const { container } = render(Sidebar, {
       props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
     });
     expect(container.querySelector('a[href="/c/accordion"]')).not.toBeNull();
-    expect(container.querySelector('a[href="/c/accordion-item"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/c/accordion-item"]')).toBeNull();
   });
 
   test('renders a family when only a child matches the filter', async () => {
@@ -288,11 +288,15 @@ describe('Sidebar', () => {
     expect((getLiveRegion(container).textContent ?? '').trim()).toBe('0 components shown');
   });
 
-  test('counts injected compound children in the live region', () => {
+  test('counts rendered compound children in the live region', () => {
     const { container } = render(Sidebar, {
-      props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
+      props: {
+        components: ['chat'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
     });
-    expect((getLiveRegion(container).textContent ?? '').trim()).toBe('2 components shown');
+    expect((getLiveRegion(container).textContent ?? '').trim()).toBe('4 components shown');
   });
 });
 

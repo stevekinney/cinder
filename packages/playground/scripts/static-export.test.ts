@@ -96,18 +96,18 @@ describe('static export', () => {
     }
   }, 120_000);
 
-  test('materializes shell routes for compose-only family children', async () => {
+  test('materializes shell routes for navigable family children', async () => {
     const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-export-family-'));
     try {
       const rendered = await runStaticExport({
         outputDirectory,
-        sidebarComponents: ['accordion'],
+        sidebarComponents: ['chat'],
         allComponents: [],
       });
-      expect(rendered.has('/c/accordion')).toBe(true);
-      expect(rendered.has('/c/accordion-item')).toBe(true);
+      expect(rendered.has('/c/chat')).toBe(true);
+      expect(rendered.has('/c/chat-composer-popover')).toBe(true);
       await expect(
-        readFile(join(outputDirectory, 'c', 'accordion-item', 'index.html'), 'utf8'),
+        readFile(join(outputDirectory, 'c', 'chat-composer-popover', 'index.html'), 'utf8'),
       ).resolves.toContain('data-canonical-documentation');
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });

@@ -20,7 +20,7 @@
   import { humanizeComponentName } from './humanize.ts';
   import { buildShellHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
-  import { COMPOUND_COMPONENT_FAMILIES } from './compound-families.ts';
+  import { COMPOUND_COMPONENT_FAMILIES, COMPOUND_COMPONENT_PARENTS } from './compound-families.ts';
 
   type Props = {
     components: string[];
@@ -99,10 +99,7 @@
   }
 
   function familyParent(name: string): string | undefined {
-    for (const [parent, children] of Object.entries(COMPOUND_COMPONENT_FAMILIES)) {
-      if (children.includes(name)) return parent;
-    }
-    return undefined;
+    return COMPOUND_COMPONENT_PARENTS[name];
   }
 
   // Include a family root whenever a caller supplies one of its children. The
@@ -115,15 +112,11 @@
       if (!result.includes(root)) {
         result.push(root);
       }
-      if (!result.includes(name)) {
-        result.push(name);
-      }
     }
     return result;
   });
 
   const renderedComponentCount = $derived.by(() => {
-    const needle = filter.trim();
     let count = 0;
     for (const name of navigationComponents) {
       const children = COMPOUND_COMPONENT_FAMILIES[name] ?? [];
@@ -133,7 +126,7 @@
       }
       if (matchesCurrentFilter(name)) count += 1;
       for (const child of children) {
-        if (needle === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)) {
+        if (filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)) {
           count += 1;
         }
       }
@@ -275,7 +268,7 @@
       {/if}
     {/each}
   </SideNavigation>
-  {#if visibleComponents.length === 0}
+  {#if renderedComponentCount === 0}
     <!-- Visible text only — NOT a live region. The persistent aria-live region
          below ("N components shown") is the single announcement source; marking
          this paragraph role="status" too would double-announce on zero results. -->
