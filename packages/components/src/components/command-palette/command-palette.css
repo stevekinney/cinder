@@ -80,7 +80,7 @@
        focused text field). So :focus-within and :has(input:focus-visible) behave
        identically for this row; :focus-within is the simpler, support-safe form. */
     border-block-end: 2px solid var(--cinder-border-muted);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     flex-shrink: 0;
     transition: border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }

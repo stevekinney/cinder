@@ -731,6 +731,9 @@ describe('CommandPalette — visual contract', () => {
     expect(css).toMatch(
       /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?border-block-end-color:\s*Highlight;/,
     );
+    expect(css).toMatch(
+      /\.cinder-command-palette__search\s*\{[\s\S]*?background:\s*var\(--cinder-surface-raised\);/,
+    );
   });
 
   test('the search input carries NO ring of its own (the edgeless input must not float a box)', async () => {
