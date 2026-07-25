@@ -564,6 +564,48 @@ describe('SelectionPopover', () => {
     expect(closed).toBe(true);
   });
 
+  test.each(['scroll', 'resize'])(
+    'a visual viewport %s dismisses a focused composer',
+    async (eventType) => {
+      let closed = false;
+      const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+      const visualViewport = new EventTarget();
+      Object.defineProperties(visualViewport, {
+        height: { value: window.innerHeight - 100 },
+        scale: { value: 2 },
+      });
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: visualViewport,
+      });
+
+      try {
+        render(SelectionPopover, {
+          props: {
+            id: 'selection-comment',
+            open: true,
+            position: { x: 120, y: 80 },
+            onClose: () => {
+              closed = true;
+            },
+          },
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+        visualViewport.dispatchEvent(new Event(eventType));
+
+        expect(closed).toBe(true);
+      } finally {
+        cleanup();
+        if (originalVisualViewport) {
+          Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+        } else {
+          Reflect.deleteProperty(window, 'visualViewport');
+        }
+      }
+    },
+  );
+
   test('movement dismissal restores focus without scrolling the prior focus owner', async () => {
     const trigger = document.createElement('button');
     trigger.textContent = 'Open selection actions';
