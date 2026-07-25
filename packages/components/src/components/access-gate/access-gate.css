@@ -5,10 +5,11 @@
   }
 
   .cinder-access-gate__passthrough {
-    display: inline-flex;
+    display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: var(--cinder-space-2);
+    inline-size: 100%;
     vertical-align: baseline;
   }
 
@@ -16,14 +17,10 @@
     display: contents;
   }
 
-  .cinder-access-gate__passthrough:has(> [data-cinder-full-width]):has(> :nth-child(2)) {
-    display: flex;
-    inline-size: 100%;
-  }
-
   .cinder-access-gate__passthrough:has(> [data-cinder-icon-only]):has(> :nth-child(2)) {
     display: inline-flex;
     align-items: center;
+    inline-size: auto;
   }
 
   .cinder-access-gate__passthrough[data-cinder-variant='section'] {
