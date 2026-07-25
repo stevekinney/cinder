@@ -450,6 +450,32 @@ describe('KanbanBoard', () => {
     });
   });
 
+  test('collapse disclosure uses the shared chevron state convention', async () => {
+    const { container } = renderBoard({ collapsible: true });
+    const column = container.querySelector('.cinder-kanban-board__column')!;
+    const button = container.querySelector(
+      '[aria-label="Collapse To do (2 cards)"]',
+    ) as HTMLButtonElement;
+    const chevron = button.querySelector('.cinder-kanban-board__collapse-chevron');
+
+    expect(column.hasAttribute('data-cinder-expanded')).toBe(true);
+    expect(chevron).not.toBeNull();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+
+    cleanup();
+    const columns = makeColumns();
+    columns[0] = { ...columns[0], collapsed: true };
+    const collapsed = renderBoard({ collapsible: true, columns });
+    const collapsedColumn = collapsed.container.querySelector('.cinder-kanban-board__column')!;
+    const collapsedButton = collapsed.container.querySelector(
+      '[aria-label="Expand To do (2 cards)"]',
+    ) as HTMLButtonElement;
+
+    expect(collapsedColumn.hasAttribute('data-cinder-expanded')).toBe(false);
+    expect(collapsedButton.getAttribute('aria-expanded')).toBe('false');
+    expect(collapsedButton.textContent).not.toMatch(/[+−-]/);
+  });
+
   test('column keyboard reorder emits column metadata', async () => {
     const { container, onchange } = renderBoard();
     const handle = container.querySelector('[aria-label="Reorder To do column"]') as HTMLElement;

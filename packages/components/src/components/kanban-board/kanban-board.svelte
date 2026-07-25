@@ -25,6 +25,7 @@
 
 <script lang="ts" generics="Card">
   import { classNames } from '../../utilities/class-names.ts';
+  import { ChevronDown } from '@lostgradient/cinder/icons';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import {
     SortableController,
@@ -565,7 +566,7 @@
         class="cinder-kanban-board__column"
         role="listitem"
         aria-label={getColumnLabel(column)}
-        data-cinder-collapsed={column.collapsed ? '' : undefined}
+        data-cinder-expanded={!column.collapsed ? '' : undefined}
       >
         <header class="cinder-kanban-board__column-header">
           {#if reorderColumns}
@@ -608,7 +609,7 @@
               aria-expanded={!column.collapsed}
               onclick={() => toggleColumn(column)}
             >
-              {column.collapsed ? '+' : '-'}
+              <ChevronDown class="cinder-kanban-board__collapse-chevron" aria-hidden="true" />
             </button>
           {/if}
         </header>
