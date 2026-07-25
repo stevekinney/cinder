@@ -64,7 +64,7 @@
     position: absolute;
     /* stylelint-disable csstools/use-logical */
     left: -7px;
-    top: 2px;
+    top: 1px;
     border-left: 7px solid transparent;
     border-right: 7px solid transparent;
     border-bottom: 7px solid var(--cinder-surface);
@@ -87,7 +87,7 @@
     position: absolute;
     /* stylelint-disable csstools/use-logical */
     left: -7px;
-    bottom: 2px;
+    bottom: 1px;
     border-left: 7px solid transparent;
     border-right: 7px solid transparent;
     border-top: 7px solid var(--cinder-surface);
@@ -110,7 +110,7 @@
     content: '';
     position: absolute;
     /* stylelint-disable csstools/use-logical */
-    left: 2px;
+    left: 1px;
     top: -7px;
     border-top: 7px solid transparent;
     border-bottom: 7px solid transparent;
@@ -133,7 +133,7 @@
     content: '';
     position: absolute;
     /* stylelint-disable csstools/use-logical */
-    right: 2px;
+    right: 1px;
     top: -7px;
     border-top: 7px solid transparent;
     border-bottom: 7px solid transparent;
