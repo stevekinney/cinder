@@ -439,40 +439,43 @@ test.describe('chat harness — scroll, unread, jump', () => {
   test('user input before a prepend retains the non-virtualized history anchor', async ({
     browser,
   }) => {
-    const { harness, dispose } = await openHarness(browser);
+    const { page, harness, dispose } = await openHarness(browser);
     try {
       await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
       await harness.locator('[data-testid="seed-thread"]').click();
 
       const timeline = harness.locator('.chat-timeline');
       await harness.locator('[data-testid="scroll-top"]').click();
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
-      const before = await anchor.boundingBox();
-      const beforeTimeline = await timeline.boundingBox();
-      expect(before).not.toBeNull();
-      expect(beforeTimeline).not.toBeNull();
-      const beforeOffset = (before?.y ?? 0) - (beforeTimeline?.y ?? 0);
-
-      await timeline.evaluate((element) => {
-        const loadButton = element.querySelector<HTMLButtonElement>('.chat-history-trigger-button');
-        if (!loadButton) throw new Error('Load-earlier button was not rendered');
-        loadButton.click();
-        element.dispatchEvent(new WheelEvent('wheel', { bubbles: true, deltaY: 120 }));
-      });
+      await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      await timeline.hover();
+      await page.mouse.wheel(0, 120);
+      await expect
+        .poll(async () => timeline.evaluate((element) => element.scrollTop))
+        .toBeGreaterThan(0);
+      const moved = await anchor.boundingBox();
+      const movedTimeline = await timeline.boundingBox();
+      expect(moved).not.toBeNull();
+      expect(movedTimeline).not.toBeNull();
+      const movedOffset = (moved?.y ?? 0) - (movedTimeline?.y ?? 0);
 
       await expectLoggedEvent(harness, 'onloadhistory');
       await expect
         .poll(async () => {
           const after = await anchor.boundingBox();
           const afterTimeline = await timeline.boundingBox();
-          return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - beforeOffset);
+          return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - movedOffset);
         })
         .toBeLessThan(2);
       await expect(timeline).not.toHaveAttribute('data-cinder-history-restoring');
       await expect
         .poll(async () => timeline.evaluate((element) => getComputedStyle(element).overflowAnchor))
         .toBe('auto');
+      await expect(
+        timeline.locator('.chat-message').filter({ hasText: 'Tell me about alpha.' }).first(),
+      ).toBeFocused();
     } finally {
       await dispose();
     }

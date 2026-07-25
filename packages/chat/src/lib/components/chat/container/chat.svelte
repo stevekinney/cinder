@@ -253,6 +253,7 @@
   let pendingHistoryScroll: PendingHistoryScroll | null = $state(null);
   let isStabilizingNonVirtualHistoryAnchor = $state(false);
   let nonVirtualHistoryStabilizationGeneration = 0;
+  let pendingHistoryAnchorRecaptureRaf: number | undefined;
   let deferredAdapterHasMoreHistory: boolean | null = null;
   let historyAnchorMessageId = $state<string | null>(null);
   let historyAnchorViewportOffset = $state<number | null>(null);
@@ -508,6 +509,7 @@
       currentAdapter !== previousHistoryAdapter
     ) {
       cancelNonVirtualHistoryAnchorStabilization();
+      cancelPendingHistoryAnchorRecapture();
       adapterHasMoreHistory = undefined;
       pendingHistoryScroll = null;
       deferredAdapterHasMoreHistory = null;
@@ -770,6 +772,26 @@
     isStabilizingNonVirtualHistoryAnchor = false;
   }
 
+  function cancelPendingHistoryAnchorRecapture(): void {
+    if (pendingHistoryAnchorRecaptureRaf === undefined) return;
+    cancelAnimationFrame(pendingHistoryAnchorRecaptureRaf);
+    pendingHistoryAnchorRecaptureRaf = undefined;
+  }
+
+  function handleHistoryRestorationUserInput(): void {
+    const pending = pendingHistoryScroll;
+    cancelNonVirtualHistoryAnchorStabilization();
+    cancelPendingHistoryAnchorRecapture();
+    if (pending === null) return;
+
+    pendingHistoryAnchorRecaptureRaf = requestAnimationFrame(() => {
+      pendingHistoryAnchorRecaptureRaf = undefined;
+      if (pendingHistoryScroll === pending) {
+        captureHistoryScroll();
+      }
+    });
+  }
+
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
     historyAnchorMessageId = pending.previousFirstMessageId;
     historyAnchorViewportOffset = pending.previousFirstMessageViewportOffset;
@@ -828,7 +850,7 @@
   function focusAfterHistoryRestore(pending: PendingHistoryScroll): void {
     if (!viewport) return;
 
-    if (showHistoryTrigger && historyTriggerRef) {
+    if (!isLoadingHistory && showHistoryTrigger && historyTriggerRef) {
       historyTriggerRef.focus({ preventScroll: true });
       return;
     }
@@ -864,6 +886,7 @@
         cancelAnimationFrame(streamingScrollRaf);
         streamingScrollRaf = undefined;
       }
+      cancelPendingHistoryAnchorRecapture();
       clearConsumerAnnouncements();
     };
   });
@@ -1007,6 +1030,8 @@
   }
 
   function handleJumpToLatest(): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    cancelPendingHistoryAnchorRecapture();
     if (isVirtualized) {
       // Supersede any stale guard from an earlier top-scroll (scrollToTop()/
       // Home) that hasn't expired yet. This jump's own target (the bottom)
@@ -1087,6 +1112,8 @@
   }
 
   function handleSubmit(message: MessageInput, attachments: ChatAttachment[]): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    cancelPendingHistoryAnchorRecapture();
     // Fire-and-forget the command (the dispatcher owns awaiting + error routing);
     // scroll immediately so the round-trip latency never delays the auto-scroll.
     // `Promise.resolve(...)` normalizes a sync-returning method to a promise so
@@ -1116,6 +1143,7 @@
 
   function captureHistoryScroll(): void {
     cancelNonVirtualHistoryAnchorStabilization();
+    cancelPendingHistoryAnchorRecapture();
     const previousFirstTranscriptMessageId = messages[0]?.id ?? null;
     const visibleAnchor = firstVisibleRenderedMessage();
     const previousFirstMessageId = visibleAnchor?.messageId ?? previousFirstTranscriptMessageId;
@@ -1407,7 +1435,7 @@
       event.key === 'ArrowUp' ||
       event.key === 'ArrowDown'
     ) {
-      cancelNonVirtualHistoryAnchorStabilization();
+      handleHistoryRestorationUserInput();
     }
 
     // Intercept Ctrl+F / Cmd+F to open in-app search instead of browser search.
@@ -1590,6 +1618,8 @@
   // ==========================================================================
 
   export function scrollToBottom(): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    cancelPendingHistoryAnchorRecapture();
     // Reaching the bottom — sync both the internal helper and the bindable
     // prop synchronously (matching the submit auto-scroll path) rather than
     // waiting for the real scroll listener's rAF-deferred recompute.
@@ -1608,6 +1638,8 @@
   }
 
   export function scrollToTop(): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    cancelPendingHistoryAnchorRecapture();
     if (isVirtualized) {
       // Leaving the bottom deliberately — but only if the viewport can
       // actually move. A transcript short enough to fit entirely within the
@@ -1932,9 +1964,9 @@
       data-cinder-virtualized={isVirtualized ? '' : undefined}
       data-cinder-history-restoring={isRestoringNonVirtualHistory ? '' : undefined}
       tabindex="0"
-      onwheel={cancelNonVirtualHistoryAnchorStabilization}
-      ontouchstart={cancelNonVirtualHistoryAnchorStabilization}
-      onpointerdown={cancelNonVirtualHistoryAnchorStabilization}
+      onwheel={handleHistoryRestorationUserInput}
+      ontouchstart={handleHistoryRestorationUserInput}
+      onpointerdown={handleHistoryRestorationUserInput}
       {@attach scrollAttachment}
       {@attach historyAnchorScrollAttachment}
       {@attach viewportAttach}

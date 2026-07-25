@@ -55,6 +55,7 @@
   let autoReply = $state(true);
   let virtualized = $state(false);
   let historyEnabled = $state(false);
+  let delayedHistory = $state(false);
   let historyPage = 0;
 
   // --- Reply controls ---
@@ -368,6 +369,7 @@
   function clearConversation(): void {
     cancelPending('discard');
     conversation = createConversation({ id: 'harness-cleared' });
+    delayedHistory = false;
     historyPage = 0;
   }
 
@@ -388,6 +390,9 @@
   }
 
   async function handleLoadHistory(): Promise<void> {
+    if (delayedHistory) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 150));
+    }
     conversation = prependHistoryMessages(conversation);
     record('onloadhistory', historyPage);
   }
@@ -519,6 +524,7 @@
         <Toggle id="t-autoreply" label="Auto-reply on submit" bind:checked={autoReply} />
         <Toggle id="t-virtualized" label="Virtualized transcript" bind:checked={virtualized} />
         <Toggle id="t-history" label="History pagination" bind:checked={historyEnabled} />
+        <Toggle id="t-history-delay" label="Delay history response" bind:checked={delayedHistory} />
       </div>
     </section>
 
