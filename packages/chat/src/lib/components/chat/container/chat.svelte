@@ -712,8 +712,12 @@
         historyAnnouncement = '';
       }
     }, 1000);
+    // Freeze the target before yielding. The loader can clear isLoadingHistory
+    // before tick() resolves; rereading it in the callback would race between
+    // focusing the preserved anchor and the history trigger.
+    const focusHistoryTriggerAfterRestore = !isLoadingHistory;
     void tick().then(() => {
-      focusAfterHistoryRestore(pending);
+      focusAfterHistoryRestore(pending, focusHistoryTriggerAfterRestore);
     });
     return true;
   }
@@ -856,10 +860,13 @@
     return Math.max(0, Number.isFinite(rectOffset) ? rectOffset : offsetTop);
   }
 
-  function focusAfterHistoryRestore(pending: PendingHistoryScroll): void {
+  function focusAfterHistoryRestore(
+    pending: PendingHistoryScroll,
+    focusHistoryTrigger: boolean,
+  ): void {
     if (!viewport) return;
 
-    if (!isLoadingHistory && showHistoryTrigger && historyTriggerRef) {
+    if (focusHistoryTrigger && showHistoryTrigger && historyTriggerRef) {
       historyTriggerRef.focus({ preventScroll: true });
       return;
     }
