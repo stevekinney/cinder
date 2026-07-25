@@ -205,6 +205,11 @@ describe('CommandMenu', () => {
       await settleCommandMenu();
       expect(queryMenu()).toBeNull();
 
+      await fireEvent.keyDown(host, { key: 'Shift' });
+      await fireEvent.keyUp(host, { key: 'Shift' });
+      await settleCommandMenu();
+      expect(queryMenu()).toBeNull();
+
       await fireEvent.blur(host);
       await fireEvent.focus(host);
       await settleCommandMenu();

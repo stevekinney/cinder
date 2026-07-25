@@ -160,8 +160,8 @@
     const anchorElement = anchor;
     if (reason === 'escape' && anchorElement) {
       // Keep host-owned text intact while suppressing re-evaluation of the exact
-      // trigger state. Input, navigation, paste, and undo/redo clear this guard;
-      // blur and refocus alone do not.
+      // trigger state. Input, caret movement, paste, undo/redo, and pointer
+      // interaction clear this guard; modifier keys and refocus alone do not.
       escapeDismissal = {
         anchor: anchorElement,
         value: anchorElement.value,
@@ -199,17 +199,12 @@
     const clearEscapeDismissal = () => {
       escapeDismissal = null;
     };
-    const clearEscapeDismissalOnKeydown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') clearEscapeDismissal();
-    };
     const stopInput = on(anchor, 'input', clearEscapeDismissal, { capture: true });
     const stopPointerdown = on(anchor, 'pointerdown', clearEscapeDismissal, { capture: true });
-    const stopKeydown = on(anchor, 'keydown', clearEscapeDismissalOnKeydown, { capture: true });
 
     return () => {
       stopInput();
       stopPointerdown();
-      stopKeydown();
     };
   });
 
