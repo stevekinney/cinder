@@ -16,7 +16,8 @@ setupHappyDom();
 // Source-package tests do not resolve the package's self-reference through Bun's
 // export map. Keep the component on its public subpath while mapping that entry
 // to the source implementation for this focused test process.
-mock.module('@lostgradient/cinder/input', () => import('../input/index.ts'));
+const { default: Input } = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => ({ default: Input }));
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: EventStreamViewer } = await import('./event-stream-viewer.svelte');
