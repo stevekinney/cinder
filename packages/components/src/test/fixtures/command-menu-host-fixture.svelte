@@ -75,6 +75,7 @@
     aria-controls={open ? listboxId : undefined}
     aria-activedescendant={open ? activeItemId : undefined}
     aria-autocomplete="list"
+    onfocus={(event) => syncTrigger(event.currentTarget)}
     oninput={(event) => syncTrigger(event.currentTarget)}
     onclick={(event) => syncTrigger(event.currentTarget)}
     onkeyup={(event) => syncTrigger(event.currentTarget)}
@@ -87,6 +88,7 @@
     aria-controls={open ? listboxId : undefined}
     aria-activedescendant={open ? activeItemId : undefined}
     aria-autocomplete="list"
+    onfocus={(event) => syncTrigger(event.currentTarget)}
     oninput={(event) => syncTrigger(event.currentTarget)}
     onclick={(event) => syncTrigger(event.currentTarget)}
     onkeyup={(event) => syncTrigger(event.currentTarget)}

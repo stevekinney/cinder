@@ -189,6 +189,62 @@ describe('CommandMenu', () => {
     expect(dismissCount).toBe(1);
   });
 
+  test.each([{ value: '/' }, { value: '/a' }])(
+    'Escape keeps the menu dismissed for unchanged trigger text $value',
+    async ({ value }) => {
+      const { getByTestId } = render(CommandMenuHostFixture);
+      const host = getByTestId('host') as HTMLTextAreaElement;
+
+      await fireEvent.input(host, { target: { value } });
+      host.setSelectionRange(value.length, value.length);
+      await fireEvent.keyUp(host, { key: value.at(-1) });
+      await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+      await fireEvent.keyDown(host, { key: 'Escape' });
+      await fireEvent.keyUp(host, { key: 'Escape' });
+      await settleCommandMenu();
+      expect(queryMenu()).toBeNull();
+
+      await fireEvent.keyDown(host, { key: 'Shift' });
+      await fireEvent.keyUp(host, { key: 'Shift' });
+      await settleCommandMenu();
+      expect(queryMenu()).toBeNull();
+
+      await fireEvent.blur(host);
+      await fireEvent.focus(host);
+      await settleCommandMenu();
+      expect(queryMenu()).toBeNull();
+
+      await fireEvent.input(host, { target: { value: '' } });
+      await fireEvent.input(host, { target: { value } });
+      host.setSelectionRange(value.length, value.length);
+      await waitFor(() => expect(queryMenu()).not.toBeNull());
+    },
+  );
+
+  test('caret movement away from a dismissed trigger permits reopening when it returns', async () => {
+    const { getByTestId } = render(CommandMenuHostFixture);
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await fireEvent.input(host, { target: { value: '/' } });
+    host.setSelectionRange(1, 1);
+    await fireEvent.keyUp(host, { key: '/' });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    await fireEvent.keyDown(host, { key: 'Escape' });
+    await fireEvent.keyUp(host, { key: 'Escape' });
+    await settleCommandMenu();
+    expect(queryMenu()).toBeNull();
+
+    host.setSelectionRange(0, 0);
+    await fireEvent.keyUp(host, { key: 'ArrowLeft' });
+    expect(queryMenu()).toBeNull();
+
+    host.setSelectionRange(1, 1);
+    await fireEvent.keyUp(host, { key: 'ArrowRight' });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+  });
+
   test('outside pointerdown dismisses the menu', async () => {
     let dismissCount = 0;
     const { getByTestId } = render(CommandMenuFixture, {
