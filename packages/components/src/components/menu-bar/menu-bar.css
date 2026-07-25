@@ -112,7 +112,13 @@
   }
 
   .cinder-menu-bar__submenu-indicator {
+    display: inline-flex;
+    align-items: center;
     color: var(--cinder-text-muted);
     margin-inline-start: var(--cinder-space-4);
+  }
+
+  .cinder-menu-bar:dir(rtl) .cinder-menu-bar__submenu-indicator {
+    transform: rotate(180deg);
   }
 }

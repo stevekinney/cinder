@@ -28,6 +28,7 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
 
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
@@ -800,7 +801,9 @@
                     }}
                   >
                     <span class="cinder-menu-bar__item-label">{entry.label}</span>
-                    <span class="cinder-menu-bar__submenu-indicator" aria-hidden="true">&gt;</span>
+                    <span class="cinder-menu-bar__submenu-indicator" aria-hidden="true">
+                      <ChevronRight size={16} strokeWidth={2} />
+                    </span>
                   </DropdownItem>
 
                   <MenuBarDropdownContext
