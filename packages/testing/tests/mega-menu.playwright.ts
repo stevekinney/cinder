@@ -26,9 +26,13 @@ test('nested submenu keyboard navigation enters, traverses, and exits', async ({
   await products.focus();
   await products.press('ArrowDown');
 
-  const uiKit = page.getByRole('link', { name: 'UI Kit Components and tokens' });
-  await expect(uiKit).toBeFocused();
-  await uiKit.press('Tab');
+  const components = page.locator('a[href="/components"]');
+  await expect(components).toBeFocused();
+  await components.press('Tab');
+
+  const designTokens = page.locator('a[href="/tokens"]');
+  await expect(designTokens).toBeFocused();
+  await designTokens.press('Tab');
 
   const frontend = page.getByRole('button', { name: 'Frontend' });
   await expect(frontend).toBeFocused();
