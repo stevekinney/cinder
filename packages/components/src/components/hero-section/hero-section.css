@@ -58,13 +58,22 @@
   }
 
   .cinder-hero-section__media {
-    border: 1px solid var(--cinder-border-muted);
-    background: var(--cinder-surface-raised);
-    border-radius: var(--cinder-radius-lg);
-    padding: var(--cinder-space-4);
+    min-inline-size: 0;
   }
 
-  @container cinder-hero-section (min-width: 64rem) {
+  .cinder-hero-section__media img,
+  .cinder-hero-section__media video,
+  .cinder-hero-section__media canvas,
+  .cinder-hero-section__media iframe {
+    position: absolute;
+    inset: 0;
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  @container cinder-hero-section (min-width: 48rem) {
     .cinder-hero-section[data-cinder-has-media] .cinder-hero-section__inner {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }

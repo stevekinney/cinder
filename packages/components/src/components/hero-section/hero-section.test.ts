@@ -1,5 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -16,6 +18,8 @@ const runtimePatchSnippet = createRawSnippet(() => ({
   setup: () => {},
 }));
 void runtimePatchSnippet;
+
+const HERO_SECTION_CSS = readFileSync(join(import.meta.dir, 'hero-section.css'), 'utf8');
 
 describe('HeroSection', () => {
   test('renders title and optional description copy', () => {
@@ -71,5 +75,27 @@ describe('HeroSection', () => {
     const element = container.querySelector('.cinder-hero-section');
     expect(element?.classList.contains('cinder-hero-section')).toBe(true);
     expect(element?.classList.contains('my-custom-class')).toBe(true);
+  });
+
+  test('gives intrinsic media a full-width aspect-ratio box without a card frame', () => {
+    const media = createRawSnippet(() => ({
+      render: () => '<img src="placeholder.png" alt="Product preview" />',
+    }));
+    const { container } = render(HeroSection, {
+      props: { title: 'Hero', media },
+    });
+
+    expect(container.querySelector('.cinder-hero-section__media-ratio')).not.toBeNull();
+    expect(container.querySelector('.cinder-hero-section__media img')?.getAttribute('alt')).toBe(
+      'Product preview',
+    );
+    expect(HERO_SECTION_CSS).toContain('inline-size: 100%;');
+    expect(HERO_SECTION_CSS).toContain('position: absolute;');
+    expect(HERO_SECTION_CSS).not.toContain('cinder-hero-section__media {\n    border:');
+  });
+
+  test('splits media layouts at the 48rem container threshold', () => {
+    expect(HERO_SECTION_CSS).toContain('@container cinder-hero-section (min-width: 48rem)');
+    expect(HERO_SECTION_CSS).not.toContain('@container cinder-hero-section (min-width: 64rem)');
   });
 });

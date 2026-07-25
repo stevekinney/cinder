@@ -22,6 +22,7 @@
 
 <script lang="ts">
   import Container from '../container/container.svelte';
+  import AspectRatio from '../aspect-ratio/index.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { HeroSectionProps } from './hero-section.types.ts';
@@ -73,7 +74,9 @@
       </div>
       {#if media}
         <div class="cinder-hero-section__media">
-          {@render media()}
+          <AspectRatio class="cinder-hero-section__media-ratio">
+            {@render media()}
+          </AspectRatio>
         </div>
       {/if}
     </div>
