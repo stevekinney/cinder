@@ -65,7 +65,7 @@
   }
 
   .modal-fixture__trigger {
-    border: 1px solid var(--cinder-border);
+    border: 1px solid var(--cinder-border-muted);
     border-radius: 0.375rem;
     background: var(--cinder-surface);
     color: var(--cinder-text);

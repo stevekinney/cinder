@@ -10,7 +10,7 @@
     padding: var(--cinder-space-3);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     color: var(--cinder-text);
     box-shadow: var(--cinder-shadow-lg);
     opacity: 1;
@@ -67,7 +67,7 @@
     top: 1px;
     border-left: 7px solid transparent;
     border-right: 7px solid transparent;
-    border-bottom: 7px solid var(--cinder-surface);
+    border-bottom: 7px solid var(--cinder-surface-raised);
     /* stylelint-enable csstools/use-logical */
   }
 
@@ -90,7 +90,7 @@
     bottom: 1px;
     border-left: 7px solid transparent;
     border-right: 7px solid transparent;
-    border-top: 7px solid var(--cinder-surface);
+    border-top: 7px solid var(--cinder-surface-raised);
     /* stylelint-enable csstools/use-logical */
   }
 
@@ -114,7 +114,7 @@
     top: -7px;
     border-top: 7px solid transparent;
     border-bottom: 7px solid transparent;
-    border-right: 7px solid var(--cinder-surface);
+    border-right: 7px solid var(--cinder-surface-raised);
     /* stylelint-enable csstools/use-logical */
   }
 
@@ -137,7 +137,7 @@
     top: -7px;
     border-top: 7px solid transparent;
     border-bottom: 7px solid transparent;
-    border-left: 7px solid var(--cinder-surface);
+    border-left: 7px solid var(--cinder-surface-raised);
     /* stylelint-enable csstools/use-logical */
   }
 

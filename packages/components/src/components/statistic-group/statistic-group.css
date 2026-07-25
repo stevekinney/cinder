@@ -56,7 +56,7 @@
   .cinder-statistic-group[data-cinder-variant='cards'] > .cinder-statistic {
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
-    border: 1px solid var(--cinder-border);
+    border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md, 0.5rem);
     box-shadow: var(--cinder-shadow-sm);
   }

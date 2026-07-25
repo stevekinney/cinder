@@ -20,7 +20,7 @@
     flex-direction: column;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     overflow: hidden;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
@@ -89,7 +89,7 @@
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     color: var(--cinder-text);
     font-size: var(--cinder-text-xs);
     font-family: inherit;

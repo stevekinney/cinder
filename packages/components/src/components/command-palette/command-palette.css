@@ -79,7 +79,8 @@
        of input modality (the UA's :focus-visible heuristic always matches a
        focused text field). So :focus-within and :has(input:focus-visible) behave
        identically for this row; :focus-within is the simpler, support-safe form. */
-    border-block-end: 2px solid var(--cinder-border);
+    border-block-end: 2px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
     flex-shrink: 0;
     transition: border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
@@ -180,7 +181,8 @@
     align-items: center;
     gap: var(--cinder-space-3);
     padding: var(--cinder-space-2) var(--cinder-space-4);
-    border-block-start: 1px solid var(--cinder-border);
+    border-block-start: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
     flex-shrink: 0;
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-muted);

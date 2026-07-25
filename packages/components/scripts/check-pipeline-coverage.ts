@@ -66,6 +66,12 @@ export const LAYERS = [
   'changeset-guard',
 ] as const;
 
+/** Stylelint rule coverage is documented alongside the command-layer map. */
+export const STYLELINT_RULE_COVERAGE = {
+  'cinder/no-surface-on-form-control': ['unit-tests', 'main-green'],
+  'cinder/interior-border-weight': ['unit-tests', 'main-green'],
+} as const satisfies Record<string, readonly Layer[]>;
+
 export type Layer = (typeof LAYERS)[number];
 
 /** Layers discovered from hook sources are advisory — a parse failure warns, not fails. */
@@ -503,6 +509,61 @@ export type CheckResult = {
   violations: Violation[];
   warnings: string[];
 };
+
+type StylelintConfiguration = {
+  plugins?: unknown;
+  rules?: Record<string, unknown>;
+};
+
+/**
+ * Validate that every declared custom Stylelint rule is both enabled in the
+ * repository configuration and covered by the layers that run Stylelint.
+ * Keeping this check here makes STYLELINT_RULE_COVERAGE executable rather than
+ * merely documentary.
+ */
+export function checkStylelintRuleCoverage(
+  configuration: StylelintConfiguration,
+  declarationTable: Record<string, DeclarationRow>,
+): Violation[] {
+  const violations: Violation[] = [];
+  const stylelintLayers = new Set(declarationTable['stylelint']?.layers ?? []);
+  const plugins = Array.isArray(configuration.plugins) ? configuration.plugins : [];
+  const rules = configuration.rules ?? {};
+
+  for (const [rule, layers] of Object.entries(STYLELINT_RULE_COVERAGE)) {
+    if (!(rule in rules)) {
+      violations.push({
+        command: `stylelint:${rule}`,
+        kind: 'missing',
+        layer: layers[0] ?? 'unit-tests',
+        detail: `Stylelint rule "${rule}" is missing from .stylelintrc.json rules.`,
+      });
+    }
+
+    const pluginName = rule.split('/').at(-1) ?? rule;
+    if (!plugins.some((plugin) => typeof plugin === 'string' && plugin.includes(pluginName))) {
+      violations.push({
+        command: `stylelint:${rule}`,
+        kind: 'missing',
+        layer: layers[0] ?? 'unit-tests',
+        detail: `Stylelint plugin for "${rule}" is missing from .stylelintrc.json plugins.`,
+      });
+    }
+
+    for (const layer of layers) {
+      if (!stylelintLayers.has(layer)) {
+        violations.push({
+          command: `stylelint:${rule}`,
+          kind: 'missing',
+          layer,
+          detail: `Stylelint is not declared in layer "${layer}".`,
+        });
+      }
+    }
+  }
+
+  return violations;
+}
 
 /**
  * Expand a package.json script body into the set of `bun run <name>` script
@@ -979,6 +1040,10 @@ function formatViolation(violation: Violation): string {
 async function main(): Promise<void> {
   const sources = await loadParsedSources();
   const { violations, warnings } = checkPipelineCoverage(DECLARATION_TABLE, sources);
+  const stylelintConfiguration = parseJsonFile<StylelintConfiguration>(
+    await Bun.file(join(repoRoot, '.stylelintrc.json')).text(),
+  );
+  violations.push(...checkStylelintRuleCoverage(stylelintConfiguration, DECLARATION_TABLE));
 
   for (const warning of warnings) {
     process.stderr.write(`check-pipeline-coverage — warning: ${warning}\n`);
