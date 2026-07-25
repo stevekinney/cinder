@@ -85,6 +85,8 @@
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
     padding: var(--cinder-space-4);
+    min-block-size: 12rem;
+    max-block-size: 32rem;
   }
 
   @container cinder-feature-section (max-width: 48rem) {
@@ -93,7 +95,7 @@
     }
   }
 
-  @container cinder-feature-section (min-width: 64rem) {
+  @container cinder-feature-section (min-width: 48rem) {
     .cinder-feature-section[data-cinder-layout='split'][data-cinder-has-media]
       .cinder-feature-section__body {
       grid-template-columns: repeat(2, minmax(0, 1fr));
