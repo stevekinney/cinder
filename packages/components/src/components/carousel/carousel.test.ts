@@ -37,6 +37,15 @@ const slides = [
   { id: 'three', label: 'Slide three', title: 'Three', description: 'Third' },
 ];
 
+function expectActiveSlide(container: HTMLElement, index: number): void {
+  const articles = [...container.querySelectorAll('article.cinder-carousel__slide')];
+  expect(articles[index]?.getAttribute('aria-hidden')).toBeNull();
+  expect(articles[index]?.hasAttribute('inert')).toBe(false);
+  articles.forEach((article, articleIndex) => {
+    if (articleIndex !== index) expect(article.getAttribute('aria-hidden')).toBe('true');
+  });
+}
+
 describe('Carousel', () => {
   test('reconciles the active slide when a pointer takes over a pending scroll', async () => {
     const { container } = render(Carousel, { slides });
@@ -121,7 +130,7 @@ describe('Carousel', () => {
     expect(root?.getAttribute('role')).toBe('region');
     expect(root?.getAttribute('aria-roledescription')).toBe('carousel');
     expect(root?.getAttribute('aria-label')).toBe('Highlights');
-    expect(container.textContent).toContain('One');
+    expectActiveSlide(container, 0);
   });
 
   test('next and previous controls change the active slide', async () => {
@@ -131,19 +140,19 @@ describe('Carousel', () => {
     const nextButton = controls[1] as HTMLButtonElement;
 
     await fireEvent.click(nextButton);
-    expect(container.textContent).toContain('Two');
+    expectActiveSlide(container, 1);
 
     await fireEvent.click(previousButton);
-    expect(container.textContent).toContain('One');
+    expectActiveSlide(container, 0);
   });
 
   test('arrow keys and home/end move between slides', async () => {
     const { container } = render(Carousel, { slides });
     const root = container.querySelector('.cinder-carousel') as HTMLElement;
     await fireEvent.keyDown(root, { key: 'End' });
-    expect(container.textContent).toContain('Three');
+    expectActiveSlide(container, 2);
     await fireEvent.keyDown(root, { key: 'Home' });
-    expect(container.textContent).toContain('One');
+    expectActiveSlide(container, 0);
     await fireEvent.keyDown(root, { key: 'ArrowRight' });
     expect(container.textContent).toContain('Two');
   });
@@ -156,7 +165,7 @@ describe('Carousel', () => {
     jest.advanceTimersByTime(100);
 
     await waitFor(() => {
-      expect(container.textContent).toContain('Two');
+      expectActiveSlide(container, 1);
     });
   });
 
@@ -167,22 +176,22 @@ describe('Carousel', () => {
 
     await fireEvent.mouseEnter(root);
     jest.advanceTimersByTime(250);
-    expect(container.textContent).toContain('One');
+    expectActiveSlide(container, 0);
 
     await fireEvent.mouseLeave(root);
     jest.advanceTimersByTime(100);
     await waitFor(() => {
-      expect(container.textContent).toContain('Two');
+      expectActiveSlide(container, 1);
     });
 
     await fireEvent.focusIn(root);
     jest.advanceTimersByTime(250);
-    expect(container.textContent).toContain('Two');
+    expectActiveSlide(container, 1);
 
     await fireEvent.focusOut(root);
     jest.advanceTimersByTime(100);
     await waitFor(() => {
-      expect(container.textContent).toContain('Three');
+      expectActiveSlide(container, 2);
     });
   });
 
@@ -195,7 +204,7 @@ describe('Carousel', () => {
       jest.advanceTimersByTime(300);
 
       await waitFor(() => {
-        expect(container.textContent).toContain('One');
+        expectActiveSlide(container, 0);
       });
     } finally {
       restoreMatchMedia();

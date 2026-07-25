@@ -164,9 +164,12 @@
     if (entries[0]?.contentRect.width) scrollToActiveSlide('auto');
   });
 
-  function onPointerDown(): void {
+  function onPointerDown(event: PointerEvent): void {
     programmaticTarget = null;
     isInteracting = true;
+    if (event.pointerId !== -1 && typeof viewportElement?.setPointerCapture === 'function') {
+      viewportElement.setPointerCapture(event.pointerId);
+    }
   }
 
   function onViewportScroll(): void {
