@@ -17,7 +17,9 @@
     display: contents;
   }
 
-  .cinder-access-gate__passthrough:has(> [data-cinder-icon-only]):has(> :nth-child(2)) {
+  .cinder-access-gate__passthrough:where(
+    :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only])))
+  ) {
     display: inline-flex;
     align-items: center;
     inline-size: auto;
@@ -25,6 +27,7 @@
 
   .cinder-access-gate__passthrough[data-cinder-variant='section'] {
     display: contents;
+    inline-size: auto;
   }
 
   .cinder-access-gate[data-cinder-variant='inline'] {

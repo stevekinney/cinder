@@ -49,14 +49,14 @@ describe('AccessGate', () => {
       '.cinder-access-gate__passthrough:has(> [data-cinder-full-width])',
     );
     expect(styles).toContain(
-      '.cinder-access-gate__passthrough:has(> [data-cinder-icon-only]):has(> :nth-child(2))',
+      '.cinder-access-gate__passthrough:where(\n    :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only])))',
     );
     expect(styles).not.toContain(
       '.cinder-access-gate__passthrough:has(> [data-cinder-icon-only]) {',
     );
     expect(styles).toContain('inline-size: auto;');
     expect(styles).toContain(
-      ".cinder-access-gate__passthrough[data-cinder-variant='section'] {\n    display: contents;",
+      ".cinder-access-gate__passthrough[data-cinder-variant='section'] {\n    display: contents;\n    inline-size: auto;",
     );
     expect(styles).toContain(
       ".cinder-access-gate[data-cinder-variant='inline']:has(\n      .cinder-access-gate__inline-content > [data-cinder-icon-only]",
