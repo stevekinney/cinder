@@ -13,9 +13,9 @@ describe('primitive composition guard', () => {
   });
 
   test('allows a tracked raw-control offender', () => {
-    expect(
-      findPrimitiveCompositionViolations('<input />', 'autocomplete/autocomplete.svelte'),
-    ).toEqual([]);
+    expect(findPrimitiveCompositionViolations('<input />', 'pin-input/pin-input.svelte')).toEqual(
+      [],
+    );
   });
 
   test('ignores hidden submission inputs and controls mentioned in comments', () => {
@@ -45,15 +45,30 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('counts static and statically traceable svelte:element controls', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<svelte:element this={'input'} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const tag = 'select';</script><svelte:element this={tag} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('rejects an added raw control in a tracked file', () => {
     expect(
-      findPrimitiveCompositionViolations('<input /><input />', 'autocomplete/autocomplete.svelte'),
+      findPrimitiveCompositionViolations('<input /><input />', 'pin-input/pin-input.svelte'),
     ).toHaveLength(1);
   });
 
   test('rejects a completed raw-control migration that remains tracked', () => {
     expect(
-      findPrimitiveCompositionViolations('<Input />', 'autocomplete/autocomplete.svelte'),
+      findPrimitiveCompositionViolations('<Input />', 'pin-input/pin-input.svelte'),
     ).toHaveLength(1);
   });
 
@@ -93,6 +108,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('combines grid declarations from selectors that can match the same element', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout { display: grid; } .layout.columns { grid-template-columns: 1fr 1fr; }',
+        'new-grid/new-grid.css',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('rejects a hand-rolled grid in an inline style', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -103,6 +127,12 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<div style:display="grid" style:grid-template-columns={columns}></div>',
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const layoutStyle = 'display: grid; grid-template-columns: 1fr 1fr';</script><div style={layoutStyle}></div>",
         'new-grid/new-grid.svelte',
       ),
     ).toHaveLength(1);
@@ -117,13 +147,39 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
-  test('allows a floating surface that imports the shared sidecar', () => {
+  test('allows a floating surface composed on the matching rendered element', () => {
     expect(
       findPrimitiveCompositionViolations(
-        'position: absolute; z-index: 1; .cinder-_floating-surface {}',
+        '.menu { position: absolute; z-index: 1; }',
         'new-menu/new-menu.css',
+        '<div class="menu cinder-_floating-surface"></div>',
       ),
     ).toEqual([]);
+  });
+
+  test('scopes the floating-surface exemption to the matching rendered element', () => {
+    const floatingCss = '.menu { position: absolute; z-index: 1; }';
+    expect(
+      findPrimitiveCompositionViolations(
+        floatingCss,
+        'new-menu/new-menu.css',
+        '<div class="menu cinder-_floating-surface"></div>',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        floatingCss,
+        'new-menu/new-menu.css',
+        '<!-- cinder-_floating-surface --><div class="other"></div>',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        floatingCss,
+        'new-menu/new-menu.css',
+        '<div class="other cinder-_floating-surface"></div><div class="menu"></div>',
+      ),
+    ).toHaveLength(1);
   });
 
   test('does not combine floating declarations from separate CSS rules', () => {
@@ -131,6 +187,15 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         '.icon { position: absolute; } .item { z-index: 1; }',
         'new-menu/new-menu.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('ignores layout declarations inside keyframes', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@keyframes enter { from { position: absolute; z-index: 0; display: grid; grid-template-columns: 1fr; } }',
+        'new-animation/new-animation.css',
       ),
     ).toEqual([]);
   });
@@ -173,6 +238,21 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         '<label>Label</label><p>{helpText}</p><p>{validationMessage}</p>',
         'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('tracks field-wrapper occurrences in migration files', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label>Label<input /></label><p>description</p><p>error</p>',
+        'input/input.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label>First<input /></label><label>Second</label><p>description</p><p>error</p>',
+        'input/input.svelte',
       ),
     ).toHaveLength(1);
   });

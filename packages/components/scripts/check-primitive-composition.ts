@@ -47,7 +47,7 @@ const allowedRawControlCounts = new Map([
   ['tree-item/tree-item.svelte', 2],
 ]);
 
-const allowedGridCounts = new Map(
+const allowedGridCounts = new Map<string, number>(
   [
     'action-row/action-row.css',
     'access-gate/access-gate.css',
@@ -64,7 +64,9 @@ const allowedGridCounts = new Map(
     'form-section/form-section.css',
     'grid-list/grid-list.css',
     'grid/grid.css',
+    'hero-section/hero-section.css',
     'logo-cloud/logo-cloud.css',
+    'newsletter-section/newsletter-section.css',
     'phone-input/phone-input.css',
     'pricing-section/pricing-section.css',
     'radio-group/radio-group.css',
@@ -73,6 +75,7 @@ const allowedGridCounts = new Map(
     'source-diff-viewer/source-diff-viewer.css',
     'stacked-list-item/stacked-list-item.css',
     'statistic/statistic.css',
+    'statistic-group/statistic-group.css',
     'team-section/team-section.css',
     'testimonial-section/testimonial-section.css',
     'timeline/timeline.css',
@@ -80,13 +83,14 @@ const allowedGridCounts = new Map(
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedGridCounts.set('description-list/description-list.css', 2);
+allowedGridCounts.set('feature-section/feature-section.css', 2);
 allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('kanban-board/kanban-board.css', 2);
 allowedGridCounts.set('mega-menu/mega-menu.css', 2);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
 allowedGridCounts.set('steps/steps.css', 2);
 
-const allowedFloatingCounts = new Map(
+const allowedFloatingCounts = new Map<string, number>(
   [
     'area-chart/area-chart.css',
     'backdrop/backdrop.css',
@@ -104,7 +108,6 @@ const allowedFloatingCounts = new Map(
     'marquee/marquee.css',
     'matrix-chart/matrix-chart.css',
     'meter/meter.css',
-    'multi-select/multi-select.css',
     'navigation-bar/navigation-bar.css',
     'popover/popover.css',
     'radio-group/radio-group.css',
@@ -123,26 +126,27 @@ const allowedFloatingCounts = new Map(
 );
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 
-const allowedFieldWrapperPaths = new Set([
-  'toggle/toggle.svelte',
-  '_radio/radio.svelte',
-  'input/input.svelte',
-  'multi-select/multi-select.svelte',
-  'json-editor/json-editor.svelte',
-  'autocomplete/autocomplete.svelte',
-  'combobox/combobox.svelte',
-  'number-input/number-input.svelte',
-  'time-field/time-field.svelte',
-  'textarea/textarea.svelte',
-  'date-picker/date-picker.svelte',
-  'approval-card/approval-card-actions.svelte',
-  'date-range-field/date-range-field.svelte',
-  'select/select.svelte',
-  'checkbox/checkbox.svelte',
-  'form-field/form-field.svelte',
-  'invocation-rule-builder/invocation-rule-builder.svelte',
-  'tree/tree.svelte',
-]);
+const allowedFieldWrapperCounts = new Map<string, number>(
+  [
+    '_radio/radio.svelte',
+    'input/input.svelte',
+    'multi-select/multi-select.svelte',
+    'json-editor/json-editor.svelte',
+    'autocomplete/autocomplete.svelte',
+    'combobox/combobox.svelte',
+    'number-input/number-input.svelte',
+    'time-field/time-field.svelte',
+    'textarea/textarea.svelte',
+    'date-picker/date-picker.svelte',
+    'approval-card/approval-card-actions.svelte',
+    'date-range-field/date-range-field.svelte',
+    'select/select.svelte',
+    'checkbox/checkbox.svelte',
+    'form-field/form-field.svelte',
+  ].map((filePath) => [filePath, 1] as const),
+);
+allowedFieldWrapperCounts.set('approval-card/approval-card-actions.svelte', 2);
+allowedFieldWrapperCounts.set('date-range-field/date-range-field.svelte', 2);
 
 export type PrimitiveCompositionViolation = {
   filePath: string;
@@ -173,6 +177,54 @@ function parseSvelteFragment(source: string): UnknownRecord | undefined {
   return root['fragment'];
 }
 
+function staticStringFromExpression(
+  expression: unknown,
+  bindings: ReadonlyMap<string, string>,
+): string | undefined {
+  if (!isRecord(expression)) return undefined;
+  if (expression['type'] === 'Literal' && typeof expression['value'] === 'string')
+    return expression['value'];
+  if (
+    expression['type'] === 'TemplateLiteral' &&
+    Array.isArray(expression['expressions']) &&
+    expression['expressions'].length === 0 &&
+    Array.isArray(expression['quasis']) &&
+    isRecord(expression['quasis'][0])
+  ) {
+    const value = expression['quasis'][0]['value'];
+    return isRecord(value) && typeof value['cooked'] === 'string' ? value['cooked'] : undefined;
+  }
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
+    return bindings.get(expression['name']);
+  return undefined;
+}
+
+function staticStringBindings(source: string): Map<string, string> {
+  const root: unknown = parseSvelte(source, { modern: true });
+  const bindings = new Map<string, string>();
+  if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
+    return bindings;
+  const body = root['instance']['content']['body'];
+  if (!Array.isArray(body)) return bindings;
+  for (const statement of body) {
+    if (!isRecord(statement) || statement['type'] !== 'VariableDeclaration') continue;
+    const declarations = statement['declarations'];
+    if (!Array.isArray(declarations)) continue;
+    for (const declaration of declarations) {
+      if (
+        !isRecord(declaration) ||
+        !isRecord(declaration['id']) ||
+        declaration['id']['type'] !== 'Identifier' ||
+        typeof declaration['id']['name'] !== 'string'
+      )
+        continue;
+      const value = staticStringFromExpression(declaration['init'], bindings);
+      if (value !== undefined) bindings.set(declaration['id']['name'], value);
+    }
+  }
+  return bindings;
+}
+
 function staticAttributeValue(attribute: UnknownRecord): string | undefined {
   const value = attribute['value'];
   if (!Array.isArray(value) || value.length !== 1 || !isRecord(value[0])) return undefined;
@@ -181,16 +233,23 @@ function staticAttributeValue(attribute: UnknownRecord): string | undefined {
     : undefined;
 }
 
-function attributeValueWithDynamics(attribute: UnknownRecord): string | undefined {
+function attributeValueWithDynamics(
+  attribute: UnknownRecord,
+  bindings: ReadonlyMap<string, string> = new Map(),
+): string | undefined {
   const value = attribute['value'];
   if (value === true) return undefined;
   const parts = Array.isArray(value) ? value : [value];
   return parts
-    .map((part) =>
-      isRecord(part) && part['type'] === 'Text' && typeof part['data'] === 'string'
-        ? part['data']
-        : 'var(--cinder-dynamic-value)',
-    )
+    .map((part) => {
+      if (isRecord(part) && part['type'] === 'Text' && typeof part['data'] === 'string')
+        return part['data'];
+      if (isRecord(part) && part['type'] === 'ExpressionTag')
+        return (
+          staticStringFromExpression(part['expression'], bindings) ?? 'var(--cinder-dynamic-value)'
+        );
+      return 'var(--cinder-dynamic-value)';
+    })
     .join('');
 }
 
@@ -208,15 +267,21 @@ function hasStaticHiddenAttribute(element: UnknownRecord): boolean {
 
 export function visibleControlCount(source: string): number {
   const fragment = parseSvelteFragment(source);
+  const bindings = staticStringBindings(source);
   if (fragment === undefined) return 0;
   let count = 0;
   walkAst(fragment, (node) => {
+    const elementName =
+      node['type'] === 'RegularElement'
+        ? node['name']
+        : node['type'] === 'SvelteElement'
+          ? staticStringFromExpression(node['tag'], bindings)
+          : undefined;
     if (
-      node['type'] === 'RegularElement' &&
-      (node['name'] === 'input' || node['name'] === 'select' || node['name'] === 'textarea') &&
+      (elementName === 'input' || elementName === 'select' || elementName === 'textarea') &&
       !hasStaticHiddenAttribute(node)
     )
-      count++;
+      count += 1;
   });
   return count;
 }
@@ -235,46 +300,133 @@ function declarationMap(rule: Rule): Map<string, string> {
   return declarations;
 }
 
-export function cssPrimitiveCounts(source: string): CssPrimitiveCounts {
+function selectorTargetClasses(selector: string): Set<string>[] {
+  return selector.split(',').map((branch) => {
+    const target =
+      branch
+        .trim()
+        .split(/[\s>+~]+/)
+        .at(-1) ?? '';
+    return new Set([...target.matchAll(/\.([a-zA-Z0-9_-]+)/g)].map((match) => match[1] ?? ''));
+  });
+}
+
+function selectorsCanMatchSameElement(left: Rule, right: Rule): boolean {
+  if (left === right) return true;
+  const leftTargets = selectorTargetClasses(left.selector);
+  const rightTargets = selectorTargetClasses(right.selector);
+  return leftTargets.some((leftClasses) =>
+    rightTargets.some((rightClasses) =>
+      [...leftClasses].some((className) => rightClasses.has(className)),
+    ),
+  );
+}
+
+function isInsideKeyframes(rule: Rule): boolean {
+  let parent: unknown = rule.parent;
+  while (isRecord(parent)) {
+    if (parent['type'] === 'atrule' && /keyframes$/i.test(String(parent['name']))) return true;
+    parent = parent['parent'];
+  }
+  return false;
+}
+
+function ruleUsesSharedFloatingSurface(
+  rule: Rule,
+  sharedClassSets: readonly ReadonlySet<string>[],
+): boolean {
+  if (rule.selector.includes('cinder-_floating-surface')) return true;
+  return selectorTargetClasses(rule.selector).some((targetClasses) =>
+    sharedClassSets.some((sharedClasses) =>
+      [...targetClasses].some(
+        (className) => className !== 'cinder-_floating-surface' && sharedClasses.has(className),
+      ),
+    ),
+  );
+}
+
+export function cssPrimitiveCounts(
+  source: string,
+  sharedClassSets: readonly ReadonlySet<string>[] = [],
+): CssPrimitiveCounts {
   let root = parseCss(source);
   if (root.nodes.some((node) => node.type === 'decl')) root = parseCss(`:root { ${source} }`);
-  let grid = 0;
-  let floating = 0;
+  const rules: Array<{ rule: Rule; declarations: Map<string, string> }> = [];
   root.walkRules((rule) => {
-    const declarations = declarationMap(rule);
-    const display = declarations.get('display');
-    if (
-      (display === 'grid' || display === 'inline-grid') &&
-      (declarations.has('grid-template') || declarations.has('grid-template-columns'))
-    )
-      grid++;
-    const position = declarations.get('position');
-    if ((position === 'absolute' || position === 'fixed') && declarations.has('z-index'))
-      floating++;
+    if (!isInsideKeyframes(rule)) rules.push({ rule, declarations: declarationMap(rule) });
   });
+  const templateRules = rules.filter(
+    ({ declarations }) =>
+      declarations.has('grid-template') || declarations.has('grid-template-columns'),
+  );
+  const grid = rules.filter(({ rule, declarations }) => {
+    const display = declarations.get('display');
+    return (
+      (display === 'grid' || display === 'inline-grid') &&
+      templateRules.some(({ rule: templateRule }) =>
+        selectorsCanMatchSameElement(rule, templateRule),
+      )
+    );
+  }).length;
+  let floating = 0;
+  for (const { rule, declarations } of rules) {
+    const position = declarations.get('position');
+    if (
+      (position === 'absolute' || position === 'fixed') &&
+      declarations.has('z-index') &&
+      !ruleUsesSharedFloatingSurface(rule, sharedClassSets)
+    )
+      floating += 1;
+  }
   return { grid, floating };
+}
+
+function elementClassSet(element: UnknownRecord): Set<string> {
+  const attributes = element['attributes'];
+  if (!Array.isArray(attributes)) return new Set();
+  for (const attribute of attributes) {
+    if (!isRecord(attribute) || attribute['type'] !== 'Attribute' || attribute['name'] !== 'class')
+      continue;
+    return new Set(staticAttributeValue(attribute)?.split(/\s+/).filter(Boolean) ?? []);
+  }
+  return new Set();
+}
+
+function collectSharedFloatingClassSets(source: string): Set<string>[] {
+  const fragment = parseSvelteFragment(source);
+  const classSets: Set<string>[] = [];
+  if (fragment === undefined) return classSets;
+  walkAst(fragment, (node) => {
+    if (node['type'] !== 'RegularElement') return;
+    const classes = elementClassSet(node);
+    if (classes.has('cinder-_floating-surface')) classSets.push(classes);
+  });
+  return classSets;
 }
 
 function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   const fragment = parseSvelteFragment(source);
+  const bindings = staticStringBindings(source);
   const total: CssPrimitiveCounts = { grid: 0, floating: 0 };
   if (fragment === undefined) return total;
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement' || !Array.isArray(node['attributes'])) return;
+    const classes = elementClassSet(node);
     const directives = new Map<string, string>();
     for (const attribute of node['attributes']) {
       if (!isRecord(attribute)) continue;
       if (attribute['type'] === 'Attribute' && attribute['name'] === 'style') {
-        const value = attributeValueWithDynamics(attribute);
+        const value = attributeValueWithDynamics(attribute, bindings);
         if (value === undefined || !value.includes(':')) continue;
         const counts = cssPrimitiveCounts(value);
         total.grid += counts.grid;
-        total.floating += counts.floating;
+        if (!classes.has('cinder-_floating-surface')) total.floating += counts.floating;
       }
       if (attribute['type'] === 'StyleDirective' && typeof attribute['name'] === 'string')
         directives.set(
           attribute['name'].toLowerCase(),
-          attributeValueWithDynamics(attribute)?.toLowerCase() ?? 'var(--cinder-dynamic-value)',
+          attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
+            'var(--cinder-dynamic-value)',
         );
     }
     const display = directives.get('display');
@@ -284,19 +436,23 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
     )
       total.grid++;
     const position = directives.get('position');
-    if ((position === 'absolute' || position === 'fixed') && directives.has('z-index'))
+    if (
+      (position === 'absolute' || position === 'fixed') &&
+      directives.has('z-index') &&
+      !classes.has('cinder-_floating-surface')
+    )
       total.floating++;
   });
   return total;
 }
 
-function renderedMarkupEvidence(source: string): { hasLabel: boolean; terms: string } {
+function renderedMarkupEvidence(source: string): { labelCount: number; terms: string } {
   const fragment = parseSvelteFragment(source);
-  let hasLabel = false;
+  let labelCount = 0;
   const terms: string[] = [];
-  if (fragment === undefined) return { hasLabel, terms: '' };
+  if (fragment === undefined) return { labelCount, terms: '' };
   walkAst(fragment, (node) => {
-    if (node['type'] === 'RegularElement' && node['name'] === 'label') hasLabel = true;
+    if (node['type'] === 'RegularElement' && node['name'] === 'label') labelCount += 1;
     if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
     if (
       (node['type'] === 'ExpressionTag' || node['type'] === 'IfBlock') &&
@@ -311,7 +467,15 @@ function renderedMarkupEvidence(source: string): { hasLabel: boolean; terms: str
     )
       terms.push(source.slice(node['start'], node['end']));
   });
-  return { hasLabel, terms: terms.join(' ') };
+  return { labelCount, terms: terms.join(' ') };
+}
+
+export function fieldWrapperCount(source: string): number {
+  const markup = renderedMarkupEvidence(source);
+  return /(?:description|help(?:text)?|hint|assist)/i.test(markup.terms) &&
+    /(?:error|validation|invalid|message)/i.test(markup.terms)
+    ? markup.labelCount
+    : 0;
 }
 
 export function shouldCheckComponentSource(filePath: string): boolean {
@@ -342,7 +506,7 @@ export function findPrimitiveCompositionViolations(
     });
   }
   const counts = normalized.endsWith('.css')
-    ? cssPrimitiveCounts(source)
+    ? cssPrimitiveCounts(source, collectSharedFloatingClassSets(companionSource))
     : normalized.endsWith('.svelte')
       ? inlineStylePrimitiveCounts(source)
       : { grid: 0, floating: 0 };
@@ -360,10 +524,7 @@ export function findPrimitiveCompositionViolations(
     });
   }
   const expectedFloatingCount = allowedFloatingCounts.get(normalized);
-  const consumesFloatingSurface =
-    source.includes('cinder-_floating-surface') ||
-    companionSource.includes('cinder-_floating-surface');
-  if (counts.floating > 0 && expectedFloatingCount === undefined && !consumesFloatingSurface) {
+  if (counts.floating > 0 && expectedFloatingCount === undefined) {
     violations.push({
       filePath,
       message: 'Consume _floating-surface.css for positioned, layered surfaces.',
@@ -376,18 +537,18 @@ export function findPrimitiveCompositionViolations(
         'A tracked floating-surface count changed; migrate it or update the migration record.',
     });
   }
-  const markup = normalized.endsWith('.svelte')
-    ? renderedMarkupEvidence(source)
-    : { hasLabel: false, terms: '' };
-  if (
-    markup.hasLabel &&
-    /(?:description|help(?:text)?|hint|assist)/i.test(markup.terms) &&
-    /(?:error|validation|invalid|message)/i.test(markup.terms) &&
-    !allowedFieldWrapperPaths.has(normalized)
-  ) {
+  const wrappers = normalized.endsWith('.svelte') ? fieldWrapperCount(source) : 0;
+  const expectedWrapperCount = allowedFieldWrapperCounts.get(normalized);
+  if (wrappers > 0 && expectedWrapperCount === undefined) {
     violations.push({
       filePath,
       message: 'Compose FormField instead of hand-rolling label, description, and error wrappers.',
+    });
+  }
+  if (expectedWrapperCount !== undefined && expectedWrapperCount !== wrappers) {
+    violations.push({
+      filePath,
+      message: 'A tracked field-wrapper count changed; migrate it or update the migration record.',
     });
   }
   return violations;
