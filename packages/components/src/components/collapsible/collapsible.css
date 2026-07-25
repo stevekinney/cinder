@@ -40,6 +40,11 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
+  .cinder-collapsible[data-cinder-expanded] .cinder-collapsible__trigger {
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+  }
+
   /* Sticky-hover suppression on touch. */
   @media (hover: hover) {
     .cinder-collapsible__trigger:hover:not(:disabled) {

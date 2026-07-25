@@ -17,9 +17,7 @@ function isCinderComponentSource(root) {
 }
 
 function isInterior(selector) {
-  return /(?:__header|__footer|__row|__search|__section|__body|__trigger|__item|__cell|[+~])/i.test(
-    selector,
-  );
+  return /(?:__(?:header|footer|search|section|body|trigger|cell)(?![\w-])|[+~])/i.test(selector);
 }
 
 const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {

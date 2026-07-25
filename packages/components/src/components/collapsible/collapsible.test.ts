@@ -34,6 +34,17 @@ function trigger(container: HTMLElement): HTMLButtonElement {
   return container.querySelector('.cinder-collapsible__trigger') as HTMLButtonElement;
 }
 
+test('expanded trigger clears its bottom radii at the panel seam', async () => {
+  const css = await Bun.file(new URL('./collapsible.css', import.meta.url)).text();
+  const expandedTriggerBlock =
+    css.match(
+      /\.cinder-collapsible\[data-cinder-expanded\]\s+\.cinder-collapsible__trigger\s*\{[^}]*\}/,
+    )?.[0] ?? '';
+
+  expect(expandedTriggerBlock).toContain('border-end-start-radius: 0');
+  expect(expandedTriggerBlock).toContain('border-end-end-radius: 0');
+});
+
 function panel(container: HTMLElement): HTMLElement | null {
   return container.querySelector('.cinder-collapsible__panel');
 }

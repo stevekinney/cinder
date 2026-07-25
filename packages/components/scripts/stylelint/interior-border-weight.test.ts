@@ -41,5 +41,22 @@ describe(ruleName, () => {
         ),
       ),
     ).toEqual([]);
+    expect(
+      warnings(
+        await lint(
+          '.cinder-checkbox-group__items > .cinder-checkbox-field { border: 1px solid var(--cinder-border); }',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  test('matches interior BEM elements at a name boundary', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.cinder-card__header-actions { border-block-end: 1px solid var(--cinder-border); }',
+        ),
+      ),
+    ).toEqual([]);
   });
 });

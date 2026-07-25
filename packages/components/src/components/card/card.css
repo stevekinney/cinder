@@ -133,7 +133,7 @@
     background: var(--cinder-surface-inset);
   }
 
-  .cinder-card[data-cinder-variant='well'] > .cinder-card__footer {
+  .cinder-card[data-cinder-variant='well'] > .cinder-card__footer:not([data-cinder-tone='muted']) {
     background: var(--cinder-surface);
   }
 

@@ -330,6 +330,12 @@ describe('Card CSS contract', () => {
     expect(titleBlock).not.toContain('color: var(--cinder-text-muted)');
   });
 
+  test('well footer preserves an explicit muted tone', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+
+    expect(css).toContain(".cinder-card__footer:not([data-cinder-tone='muted'])");
+  });
+
   test('danger tone paints the container surface, border, and icon', async () => {
     const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
     const dangerBlock =
