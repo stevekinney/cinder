@@ -8,6 +8,21 @@ const packageRoot = process.cwd();
 const workspaceRoot = `${packageRoot}/../..`;
 const distributionDirectory = `${packageRoot}/dist`;
 
+// `@lostgradient/cinder`'s own `dist/` must be fresh before the `tsc` build
+// below runs: `errors.ts` imports `@lostgradient/cinder/knowledge`, whose
+// `types` condition points at `dist/cli/knowledge.d.ts`, so declaration
+// emission needs that file to exist. Mirrors how Cinder's own build.ts builds
+// `@lostgradient/markdown` first for the same reason.
+const cinderBuildResult =
+  await $`bun run --cwd ${workspaceRoot}/packages/components build`.nothrow();
+if (cinderBuildResult.exitCode !== 0) {
+  process.stderr.write(
+    `Build aborted: upstream @lostgradient/cinder build failed (exit ${cinderBuildResult.exitCode}).\n` +
+      `${cinderBuildResult.stderr.toString()}\n`,
+  );
+  process.exit(1);
+}
+
 const buildCacheInputs = {
   packageRoot,
   sourceGlobRoots: [`${packageRoot}/src`, `${packageRoot}/scripts`],

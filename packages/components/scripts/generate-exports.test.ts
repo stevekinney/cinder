@@ -359,16 +359,17 @@ describe('stylesGuardExport', () => {
 });
 
 describe('knowledgeExport', () => {
-  it('points node/import/default at the built CLI knowledge module and bun at source', () => {
+  it('points node/import/default at the built CLI knowledge module with no bun condition', () => {
     const entry = knowledgeExport();
     expect(entry).toEqual({
       types: './dist/cli/knowledge.d.ts',
-      bun: './src/cli/knowledge.ts',
       node: './dist/cli/knowledge.js',
       import: './dist/cli/knowledge.js',
       default: './dist/cli/knowledge.js',
     });
-    expect(Object.keys(entry)).toEqual(['types', 'bun', 'node', 'import', 'default']);
+    // The packed tarball's `files` list ships `dist/` but not `src/cli/**` —
+    // a `bun` condition here would resolve to an unpublished source file.
+    expect(Object.keys(entry)).toEqual(['types', 'node', 'import', 'default']);
   });
 });
 

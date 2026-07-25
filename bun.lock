@@ -71,7 +71,6 @@
         "@changesets/get-release-plan": "4.0.16",
         "@changesets/parse": "0.4.3",
         "@cinder/testing": "workspace:*",
-        "@modelcontextprotocol/sdk": "^1.29.0",
         "@playwright/test": "1.60.0",
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/svelte": "^5.2.7",
@@ -97,17 +96,11 @@
         "ts-morph": "^28.0.0",
         "typescript": "^5.9.0",
         "vite": "^8.0.9",
-        "zod": "4.4.1",
-      },
-      "peerDependencies": {
-        "@modelcontextprotocol/sdk": "^1.29.0",
-        "svelte": ">=5.56.0 <6",
         "zod": "^4.0.0",
       },
-      "optionalPeers": [
-        "@modelcontextprotocol/sdk",
-        "zod",
-      ],
+      "peerDependencies": {
+        "svelte": ">=5.56.0 <6",
+      },
     },
     "packages/editor": {
       "name": "@lostgradient/editor",

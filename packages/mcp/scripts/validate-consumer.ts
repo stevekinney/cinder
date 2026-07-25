@@ -19,6 +19,7 @@ import { packForPublish, parsePackageManifest, type PackageManifest } from './pa
 const packageRoot = join(import.meta.dir, '..');
 const workspaceRoot = resolve(packageRoot, '..', '..');
 const componentsRoot = join(workspaceRoot, 'packages', 'components');
+const markdownRoot = join(workspaceRoot, 'packages', 'markdown');
 
 function fail(message: string): never {
   throw new Error(`[validate-consumer] ${message}`);
@@ -44,33 +45,50 @@ async function run(command: string, arguments_: string[], cwd: string, env?: Nod
   return { stdout, stderr };
 }
 
-/** Build + pack `@lostgradient/cinder`'s own tarball via its existing staged packer. */
-async function packCinderTarball(): Promise<string> {
-  process.stdout.write('[validate-consumer] building @lostgradient/cinder…\n');
-  await run('bun', ['run', '--filter=@lostgradient/cinder', 'build'], workspaceRoot);
-  const cinderPacker: unknown = await import(
-    join(componentsRoot, 'scripts', 'pack-for-publish.ts')
-  );
+/** Build + pack a sibling workspace package via its own staged packer script. */
+async function packSiblingTarball(
+  turboFilter: string,
+  siblingPackageRoot: string,
+  packageLabel: string,
+): Promise<string> {
+  process.stdout.write(`[validate-consumer] building ${packageLabel}…\n`);
+  await run('bun', ['run', `--filter=${turboFilter}`, 'build'], workspaceRoot);
+  const packerModulePath = join(siblingPackageRoot, 'scripts', 'pack-for-publish.ts');
+  const packer: unknown = await import(packerModulePath);
   if (
-    typeof cinderPacker !== 'object' ||
-    cinderPacker === null ||
-    !('packForPublish' in cinderPacker) ||
-    typeof cinderPacker.packForPublish !== 'function'
+    typeof packer !== 'object' ||
+    packer === null ||
+    !('packForPublish' in packer) ||
+    typeof packer.packForPublish !== 'function'
   ) {
-    fail(
-      `${componentsRoot}/scripts/pack-for-publish.ts does not export a packForPublish function.`,
-    );
+    fail(`${packerModulePath} does not export a packForPublish function.`);
   }
-  const result: unknown = await cinderPacker.packForPublish();
+  const result: unknown = await packer.packForPublish();
   if (
     typeof result !== 'object' ||
     result === null ||
     !('tarballPath' in result) ||
     typeof result.tarballPath !== 'string'
   ) {
-    fail("@lostgradient/cinder's packForPublish() did not return a string tarballPath.");
+    fail(`${packageLabel}'s packForPublish() did not return a string tarballPath.`);
   }
   return result.tarballPath;
+}
+
+/** Build + pack `@lostgradient/cinder`'s own tarball via its existing staged packer. */
+async function packCinderTarball(): Promise<string> {
+  return packSiblingTarball('@lostgradient/cinder', componentsRoot, '@lostgradient/cinder');
+}
+
+/**
+ * Build + pack `@lostgradient/markdown`'s own tarball. Cinder's packed
+ * manifest rewrites its `workspace:*` dependency on Markdown to a concrete
+ * `^<version>` range — if a release bumps both Markdown and Cinder together,
+ * that version won't exist on npm yet, so this fixture must override it to
+ * the staged tarball too, exactly like it does for Cinder.
+ */
+async function packMarkdownTarball(): Promise<string> {
+  return packSiblingTarball('@lostgradient/markdown', markdownRoot, '@lostgradient/markdown');
 }
 
 /** Build + pack this package's own tarball. */
@@ -319,6 +337,7 @@ async function runMcpHandshake(fixtureRoot: string, env: Record<string, string>)
 }
 
 export async function validateConsumer(): Promise<void> {
+  const markdownTarballPath = await packMarkdownTarball();
   const cinderTarballPath = await packCinderTarball();
   const mcpTarballPath = await packMcpTarball();
 
@@ -336,12 +355,16 @@ export async function validateConsumer(): Promise<void> {
           dependencies: {
             '@lostgradient/cinder-mcp': `file:${mcpTarballPath}`,
           },
-          // Forces npm to resolve @lostgradient/cinder-mcp's own `^<version>` dependency
-          // to THIS staged tarball instead of the public registry — the plan's
-          // required failure signal is npm silently substituting a registry
-          // Cinder for the one we just built.
+          // Forces npm to resolve @lostgradient/cinder-mcp's transitive
+          // dependencies to THESE staged tarballs instead of the public
+          // registry — the plan's required failure signal is npm silently
+          // substituting a registry package for one we just built. Markdown
+          // is included because Cinder's own packed manifest pins a concrete
+          // `^<version>` range on it, which may not exist on npm yet when
+          // both packages release together.
           overrides: {
             '@lostgradient/cinder': `file:${cinderTarballPath}`,
+            '@lostgradient/markdown': `file:${markdownTarballPath}`,
           },
         },
         null,
@@ -360,6 +383,9 @@ export async function validateConsumer(): Promise<void> {
     const installedCinderRoot = join(fixtureRoot, 'node_modules', '@lostgradient', 'cinder');
     if (!existsSync(installedCinderRoot))
       fail('@lostgradient/cinder did not install (override failed)');
+    const installedMarkdownRoot = join(fixtureRoot, 'node_modules', '@lostgradient', 'markdown');
+    if (!existsSync(installedMarkdownRoot))
+      fail('@lostgradient/markdown did not install (override failed)');
 
     await assertPackedManifest(installedMcpRoot);
     await assertNoDevArtifacts(installedMcpRoot);

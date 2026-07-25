@@ -133,7 +133,6 @@ describe('exports drift', () => {
     expect(exports['./icons']).toBeDefined();
     expect(exports['./knowledge']).toEqual({
       types: './dist/cli/knowledge.d.ts',
-      bun: './src/cli/knowledge.ts',
       node: './dist/cli/knowledge.js',
       import: './dist/cli/knowledge.js',
       default: './dist/cli/knowledge.js',

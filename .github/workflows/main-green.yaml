@@ -183,17 +183,16 @@ jobs:
             }) + '\n';
             child.stdin.write(request);
             const timeout = setTimeout(() => {
-              console.error('cinder-mcp Node smoke timed out. stderr:', err);
+              console.error('cinder-mcp Node smoke timed out. stdout:', out, 'stderr:', err);
               child.kill();
               process.exit(1);
             }, 10000);
-            child.stdout.once('data', () => {
+            // Node may deliver the initialize response across multiple stdout
+            // chunks — check the accumulated buffer on every 'data' event
+            // instead of deciding from the first (possibly partial) chunk.
+            child.stdout.on('data', () => {
+              if (!out.includes('\"name\":\"cinder\"')) return;
               clearTimeout(timeout);
-              if (!out.includes('\"name\":\"cinder\"')) {
-                console.error('unexpected initialize response:', out);
-                child.kill();
-                process.exit(1);
-              }
               console.log('cinder-mcp Node smoke OK');
               child.kill();
               process.exit(0);

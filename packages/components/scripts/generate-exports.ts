@@ -198,9 +198,12 @@ function highlightersShikiExport(source = 'default'): ExportEntry {
  * in this monorepo; every other consumer resolves the built `dist/cli/knowledge.js`.
  */
 export function knowledgeExport(): ExportEntry {
+  // Node-only by design (see docs/decisions/package-boundaries.md): the packed
+  // tarball's `files` list ships `dist/` but not `src/cli/**`, so a `bun`
+  // condition pointing at source here would resolve to a file that was never
+  // published — deliberately absent, not an oversight.
   return orderedExportEntry({
     types: './dist/cli/knowledge.d.ts',
-    bun: './src/cli/knowledge.ts',
     node: './dist/cli/knowledge.js',
     import: './dist/cli/knowledge.js',
     default: './dist/cli/knowledge.js',
