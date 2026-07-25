@@ -22,8 +22,8 @@ must not be the only way to communicate what an interactive element does.
 
 ## Audit (2026-07-25)
 
-The audit searched component templates for visible `+`, `-`, `−`, `<`, `>`, `▾`,
-`▸`, and their HTML entities, then classified each hit by whether it is an
+The audit searched component templates for visible `+`, `-`, `−`, `×`, `<`, `>`,
+`▾`, `▸`, and their HTML entities, then classified each hit by whether it is an
 interactive affordance.
 
 | Location                                                                             | Finding                      | Disposition                                                                                                          |
@@ -32,6 +32,8 @@ interactive affordance.
 | `transfer-list/transfer-list.svelte`                                                 | Four transfer controls       | Uses `ChevronLeft`, `ChevronRight`, `ChevronsLeft`, and `ChevronsRight`; the former text glyphs are tracked by #940. |
 | `number-input/number-input.svelte`                                                   | Increment/decrement steppers | Additional interactive `+`/`−` affordance; tracked in [#1014](https://github.com/stevekinney/cinder/issues/1014).    |
 | `menu-bar/menu-bar.svelte`                                                           | Submenu indicator            | Additional interactive `>` affordance; tracked in [#1015](https://github.com/stevekinney/cinder/issues/1015).        |
+| `dropdown-trigger/dropdown-trigger.svelte`                                            | Disclosure indicator         | Existing hand-authored caret exception; it must be migrated to `ChevronDown` with expanded-state rotation.             |
+| `chip/chip.svelte`, `multi-select/multi-select.svelte`                                | Remove/clear controls        | Interactive `×` affordances; include `×`, `&times;`, and numeric entity variants in future audits.                    |
 | `keyboard-shortcuts/keyboard-shortcuts.svelte`, `shortcut-hint/shortcut-hint.svelte` | Key-combination separators   | Intentional typography inside `aria-hidden` visual keycaps; no icon replacement needed.                              |
 | `diff-statistics/diff-statistics.svelte`, `json-schema-editor/diff-view.svelte`      | Diff markers                 | Data notation, not controls; retain text markers.                                                                    |
 | `invocation-rule-builder/invocation-rule-builder.svelte`                             | Add controls                 | Additional interactive `+` affordances; tracked in [#1017](https://github.com/stevekinney/cinder/issues/1017).       |
