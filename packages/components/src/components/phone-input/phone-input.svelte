@@ -69,6 +69,9 @@
     onchange,
   }: PhoneInputProps = $props();
 
+  const initialCountry = country;
+  const initialValue = value;
+
   const context = getFormFieldContext();
   const localeContext = getLocaleContext();
 
@@ -351,8 +354,13 @@
       queueMicrotask(() => {
         const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
         if (!rawCountry || !isCountryCode(rawCountry)) return;
-        country = rawCountry;
-        knownCountry = rawCountry;
+        const resetCountry = isCountryCode(initialCountry) ? initialCountry : rawCountry;
+        country = resetCountry;
+        knownCountry = resetCountry;
+        value = initialValue;
+        knownValue = initialValue;
+        const parsed = parseE164Value(initialValue);
+        nationalDisplay = parsed?.formatted ?? initialValue;
       }),
     );
   }
