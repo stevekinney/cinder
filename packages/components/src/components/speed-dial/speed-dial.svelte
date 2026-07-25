@@ -51,6 +51,7 @@
   let actionsPortalScopeElement = $state<HTMLDivElement | null>(null);
   let actionsElement = $state<HTMLDivElement | null>(null);
   let spacingProbeElement = $state<HTMLSpanElement | null>(null);
+  let sourceSubtreeUnavailable = $state(false);
   let hasFocusedCurrentOpenSession = false;
   const actionButtons: HTMLButtonElement[] = [];
 
@@ -66,12 +67,12 @@
   );
 
   const actionsPortalScope = createPortalAttachment({
-    disabled: () => !open || hidden,
+    disabled: () => !open || hidden || sourceSubtreeUnavailable,
     source: () => getTriggerElement(),
     target: () => getPortalTarget(),
   });
   const actionsPortal = createPortalAttachment({
-    disabled: () => !open || hidden || !actionsPortalScopeElement,
+    disabled: () => !open || hidden || sourceSubtreeUnavailable || !actionsPortalScopeElement,
     inheritAttributes: false,
     target: () => actionsPortalScopeElement,
   });
@@ -233,6 +234,27 @@
     enabledButtons[nextIndex]?.focus();
   }
 
+  function bridgePortaledEvent(event: MouseEvent | KeyboardEvent): void {
+    const bridgeTarget = rootElement;
+    if (!bridgeTarget) return;
+
+    event.stopPropagation();
+    const bridgedEvent =
+      event instanceof KeyboardEvent
+        ? new KeyboardEvent(event.type, event)
+        : new MouseEvent(event.type, event);
+    if (!bridgeTarget.dispatchEvent(bridgedEvent)) {
+      event.preventDefault();
+    }
+  }
+
+  function handlePortaledActionsKeydown(event: KeyboardEvent): void {
+    bridgePortaledEvent(event);
+    if (!event.defaultPrevented) {
+      handleActionsKeydown(event);
+    }
+  }
+
   function handleDocumentClick(event: MouseEvent): void {
     if (!open) return;
     if (rootElement?.contains(event.target as Node)) return;
@@ -252,6 +274,35 @@
     if (!anchoredActions.positionReady || hasFocusedCurrentOpenSession) return;
     hasFocusedCurrentOpenSession = true;
     queueMicrotask(() => getEnabledActionButtons()[0]?.focus());
+  });
+
+  $effect(() => {
+    const source = rootElement;
+    if (!source || typeof MutationObserver === 'undefined') return;
+
+    const syncSourceAvailability = () => {
+      sourceSubtreeUnavailable = Boolean(
+        source.closest<HTMLElement>('[hidden], [inert], [aria-hidden="true"]'),
+      );
+      if (sourceSubtreeUnavailable && open) {
+        close();
+      }
+    };
+    const observer = new MutationObserver(syncSourceAvailability);
+
+    let ancestor: HTMLElement | null = source;
+    while (ancestor) {
+      observer.observe(ancestor, {
+        attributes: true,
+        attributeFilter: ['hidden', 'inert', 'aria-hidden'],
+      });
+      ancestor = ancestor.parentElement;
+    }
+    syncSourceAvailability();
+
+    return () => {
+      observer.disconnect();
+    };
   });
 
   setSpeedDialContext({
@@ -303,9 +354,10 @@
     data-cinder-position-ready={anchoredActions.positionReady || undefined}
     style={anchoredActions.positionStyle}
     aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
-    inert={!open || hidden ? true : undefined}
+    inert={!open || hidden || sourceSubtreeUnavailable ? true : undefined}
     tabindex="-1"
-    onkeydown={handleActionsKeydown}
+    onclick={bridgePortaledEvent}
+    onkeydown={handlePortaledActionsKeydown}
   >
     <span
       bind:this={spacingProbeElement}

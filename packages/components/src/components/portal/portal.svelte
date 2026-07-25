@@ -47,6 +47,7 @@
     inheritAttributes: () => inheritAttributes,
     explicitAttributes: () => ({
       dir: rest.dir,
+      lang: rest.lang,
       dataTheme: rest['data-theme'],
       theme: rest['data-cinder-theme'],
     }),

@@ -116,13 +116,59 @@ describe('SpeedDial', () => {
 
       const computedStyleSpy = spyOn(globalThis, 'getComputedStyle');
       computedStyleSpy.mockClear();
+      const focusedAction = screen.getByRole('button', { name: 'Create' });
+      expect(document.activeElement).toBe(focusedAction);
       for (const listener of listeners) listener(new Event('change'));
 
       await waitFor(() => expect(computedStyleSpy).toHaveBeenCalledWith(trigger));
+      expect(document.activeElement).toBe(focusedAction);
       computedStyleSpy.mockRestore();
     } finally {
       window.matchMedia = originalMatchMedia;
     }
+  });
+
+  test('portaled actions preserve the scoped language', async () => {
+    const { container } = render(SpeedDialFixture);
+    container.setAttribute('lang', 'fr');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    await flushQueuedFocus();
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    expect(toolbar.parentElement?.getAttribute('lang')).toBe('fr');
+  });
+
+  test('portaled action events bubble through the original component ancestry', async () => {
+    const { container } = render(SpeedDialFixture);
+    const bubbledEventTypes: string[] = [];
+    container.addEventListener('click', () => bubbledEventTypes.push('click'));
+    container.addEventListener('keydown', () => bubbledEventTypes.push('keydown'));
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    await flushQueuedFocus();
+    bubbledEventTypes.length = 0;
+
+    const action = screen.getByRole('button', { name: 'Create' });
+    await fireEvent.keyDown(action, { key: 'a' });
+    await fireEvent.click(action);
+
+    expect(bubbledEventTypes).toEqual(['keydown', 'click']);
+  });
+
+  test('an unavailable source ancestor closes and disables portaled actions', async () => {
+    const { container } = render(SpeedDialFixture);
+    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    await flushQueuedFocus();
+
+    container.setAttribute('inert', '');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('open-state').textContent).toBe('closed');
+    });
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+    expect(toolbar.hasAttribute('inert')).toBe(true);
+    expect(container.contains(toolbar)).toBe(true);
   });
 
   test('changing direction while open preserves the focused action', async () => {

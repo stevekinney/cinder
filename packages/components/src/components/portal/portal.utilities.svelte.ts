@@ -21,7 +21,7 @@ export type PortalAttachmentOptions = {
    */
   disabled?: boolean | (() => boolean);
   /**
-   * When true (default), inherit `dir`, `data-theme`, and `data-cinder-theme` from the nearest
+   * When true (default), inherit `dir`, `lang`, `data-theme`, and `data-cinder-theme` from the nearest
    * matching ancestor of `source` while mounted. Explicit attributes on the portal wrapper win over
    * inherited values.
    */
@@ -33,11 +33,13 @@ export type PortalAttachmentOptions = {
   explicitAttributes?:
     | {
         dir?: string | null | undefined;
+        lang?: string | null | undefined;
         dataTheme?: string | null | undefined;
         theme?: string | null | undefined;
       }
     | (() => {
         dir?: string | null | undefined;
+        lang?: string | null | undefined;
         dataTheme?: string | null | undefined;
         theme?: string | null | undefined;
       });
@@ -128,13 +130,16 @@ export function copyInheritedPortalAttributes(
   inheritAttributes: boolean,
   fallbackAttributes: {
     dir: string | null;
+    lang?: string | null;
     dataTheme: string | null;
     theme: string | null;
     preserveDirection?: boolean;
+    preserveLanguage?: boolean;
     preserveDataTheme?: boolean;
     preserveTheme?: boolean;
   } = {
     dir: element.getAttribute('dir'),
+    lang: element.getAttribute('lang'),
     dataTheme: element.getAttribute('data-theme'),
     theme: element.getAttribute('data-cinder-theme'),
   },
@@ -150,6 +155,18 @@ export function copyInheritedPortalAttributes(
     element.setAttribute('dir', nextDir);
   } else {
     element.removeAttribute('dir');
+  }
+
+  const preservesExplicitLanguage = fallbackAttributes.preserveLanguage === true;
+  const inheritedLanguage =
+    inheritAttributes && source && !preservesExplicitLanguage
+      ? source.closest<HTMLElement>('[lang]')?.getAttribute('lang')
+      : null;
+  const nextLanguage = inheritedLanguage ?? fallbackAttributes.lang;
+  if (nextLanguage) {
+    element.setAttribute('lang', nextLanguage);
+  } else {
+    element.removeAttribute('lang');
   }
 
   const preservesExplicitDataTheme = fallbackAttributes.preserveDataTheme === true;
@@ -181,6 +198,7 @@ export function copyInheritedPortalAttributes(
 
   return {
     dir: inheritedDir ?? null,
+    lang: inheritedLanguage ?? null,
     dataTheme: inheritedDataTheme ?? null,
     theme: inheritedTheme ?? null,
   };
@@ -201,7 +219,7 @@ function observeInheritedPortalAttributes(
     observedElements.push(elementToObserve);
     observer.observe(elementToObserve, {
       attributes: true,
-      attributeFilter: ['class', 'style', 'dir', 'data-theme', 'data-cinder-theme'],
+      attributeFilter: ['class', 'style', 'dir', 'lang', 'data-theme', 'data-cinder-theme'],
     });
   }
   const observedElements: HTMLElement[] = [];
@@ -222,20 +240,20 @@ export function createPortalAttachment(
   options: PortalAttachmentOptions = {},
 ): Attachment<HTMLElement> {
   let lastWarnedUnresolvedKey: string | null = null;
-  const reducedMotion = useReducedMotion();
-
   return (element) => {
     // Capture the *original* parentElement once, before any mounting moves the wrapper. After
     // `appendChild`, `element.parentElement` becomes the portal target — which would defeat the
-    // "inherit dir/data-theme/data-cinder-theme from the trigger subtree" contract.
+    // "inherit dir/lang/data-theme/data-cinder-theme from the trigger subtree" contract.
     const initialParent = element.parentElement;
     const initialAttributes = {
       dir: element.getAttribute('dir'),
+      lang: element.getAttribute('lang'),
       dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
     const managedAttributes = {
       dir: null as string | null,
+      lang: null as string | null,
       dataTheme: null as string | null,
       theme: null as string | null,
     };
@@ -243,9 +261,11 @@ export function createPortalAttachment(
     function currentFallbackAttributes() {
       const explicitAttributes = readOption(options.explicitAttributes ?? {});
       const explicitDirection = explicitAttributes.dir;
+      const explicitLanguage = explicitAttributes.lang;
       const explicitDataTheme = explicitAttributes.dataTheme;
       const explicitTheme = explicitAttributes.theme;
       const direction = element.getAttribute('dir');
+      const language = element.getAttribute('lang');
       const dataTheme = element.getAttribute('data-theme');
       const theme = element.getAttribute('data-cinder-theme');
 
@@ -257,6 +277,13 @@ export function createPortalAttachment(
               ? direction
               : initialAttributes.dir,
         preserveDirection: explicitDirection !== undefined,
+        lang:
+          explicitLanguage !== undefined
+            ? explicitLanguage
+            : language !== managedAttributes.lang
+              ? language
+              : initialAttributes.lang,
+        preserveLanguage: explicitLanguage !== undefined,
         dataTheme:
           explicitDataTheme !== undefined
             ? explicitDataTheme
@@ -285,6 +312,7 @@ export function createPortalAttachment(
         currentFallbackAttributes(),
       );
       managedAttributes.dir = nextManagedAttributes.dir;
+      managedAttributes.lang = nextManagedAttributes.lang;
       managedAttributes.dataTheme = nextManagedAttributes.dataTheme;
       managedAttributes.theme = nextManagedAttributes.theme;
     }
@@ -311,7 +339,6 @@ export function createPortalAttachment(
     // detaches the previous mount before re-resolving — this guards against the wrapper being
     // stranded in the old target when `target` changes or `disabled` flips true.
     $effect(() => {
-      void reducedMotion.current;
       let stopObservingInheritedAttributes: (() => void) | null = null;
       const disabled = readOption(options.disabled ?? false);
       const inheritAttributes = readOption(options.inheritAttributes ?? true);
