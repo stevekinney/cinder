@@ -1,10 +1,8 @@
 /// <reference lib="dom" />
-import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
-expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
@@ -104,7 +102,7 @@ describe('DatePicker', () => {
 
   test('renders time input for minute granularity and emits datetime value', async () => {
     let nextValue = '';
-    const { container } = render(DatePicker, {
+    const rendered = render(DatePicker, {
       id: 'dp',
       granularity: 'minute',
       value: '2026-06-29T09:30',
@@ -112,13 +110,11 @@ describe('DatePicker', () => {
         nextValue = value ?? '';
       },
     });
+    const { container } = rendered;
 
     await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
-    const timeInput = document.body.querySelector<HTMLInputElement>(
-      '.cinder-date-picker__time-input',
-    );
-    if (!timeInput) throw new Error('time input missing');
-    expect(timeInput).toHaveAccessibleName('Time');
+    const timeInput = rendered.getByLabelText('Time') as HTMLInputElement;
+    expect(timeInput.classList.contains('cinder-date-picker__time-input')).toBe(true);
     await fireEvent.change(timeInput, { target: { value: '10:15' } });
 
     expect(nextValue).toBe('2026-06-29T10:15');
