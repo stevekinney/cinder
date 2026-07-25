@@ -399,6 +399,28 @@ describe('SelectionPopover', () => {
     expect(document.activeElement).toBe(textarea);
   });
 
+  test('an external scroll dismisses even while the composer is focused', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    textarea.focus();
+    await fireEvent.scroll(window);
+
+    expect(closed).toBe(true);
+  });
+
   test('movement dismissal restores focus without scrolling the prior focus owner', async () => {
     const trigger = document.createElement('button');
     trigger.textContent = 'Open selection actions';
