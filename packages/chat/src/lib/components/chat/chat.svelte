@@ -151,5 +151,5 @@
   class={mergedClassName}
   onatbottombindingchange={handleAtBottomBindingChange}
   onunreadcountbindingchange={handleUnreadCountBindingChange}
-  onnewmessageindicatorvisiblebindingchange={handleNewMessageIndicatorVisibleBindingChange}
+  onNewMessageIndicatorVisibleBindingChange={handleNewMessageIndicatorVisibleBindingChange}
 />

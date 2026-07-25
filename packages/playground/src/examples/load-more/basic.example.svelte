@@ -27,4 +27,4 @@
   {/each}
 </ul>
 
-<LoadMore onloadmore={fetchNext} bind:loading bind:hasMore />
+<LoadMore onLoadMore={fetchNext} bind:loading bind:hasMore />

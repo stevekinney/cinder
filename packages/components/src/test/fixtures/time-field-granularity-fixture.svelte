@@ -15,4 +15,4 @@
   Minute granularity
 </button>
 
-<TimeField id="reminder" {granularity} defaultValue="09:30:45" name="reminder_time" />
+<TimeField id="reminder" {granularity} value="09:30:45" name="reminder_time" />

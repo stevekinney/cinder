@@ -262,7 +262,7 @@
   --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
   --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
   /* Pressed fill for SOLID accent surfaces that carry the --cinder-accent-contrast label
-     (primary Button, FloatingActionButton). The indigo accent darkens on press; the white
+     (primary Button, FloatingAction). The indigo accent darkens on press; the white
      light-mode label only gets MORE legible as the fill darkens (l-0.11 → L=0.39 → white at
      10.5:1), so this token tracks the general pressed darkening. Kept distinct from
      --cinder-accent-active so label-bearing and non-label consumers can diverge if ever needed. */
@@ -354,7 +354,7 @@
   /* Ring color tuned for use on solid accent/fill surfaces. Light arm is a
    * near-black that contrasts both the accent fill (≥11:1) and the page bg
    * (≥19:1). Dark arm is a near-white that contrasts the bright dark-mode
-   * accent (≥5:1) and the dark page bg (≥18:1). Used by FloatingActionButton
+   * accent (≥5:1) and the dark page bg (≥18:1). Used by FloatingAction
    * primary variant. Raw oklch is legitimate here (tokens-base.css is the
    * one place raw colors are allowed). */
   --cinder-ring-on-accent: light-dark(oklch(20% 0.02 245), oklch(95% 0.01 245));

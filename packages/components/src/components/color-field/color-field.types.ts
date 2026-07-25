@@ -6,13 +6,10 @@ export type ColorFieldProps = {
   /** Inner `<input>` id. Required (mirrors Input). */
   id: string;
   /**
-   * Controlled value as a hex string. One-way: parent sets, child reads.
-   * Not bindable — use `onchange` to observe commits. Accepts any color
-   * string the configured `formats` allow when set externally.
+   * Bindable value as a hex string. Accepts any color string the configured
+   * `formats` allow when set externally.
    */
   value?: string;
-  /** Initial value when uncontrolled. Accepts any allowed `formats` input. */
-  defaultValue?: string;
   /**
    * Accept and emit alpha when the parsed value has partial alpha. When
    * `false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed

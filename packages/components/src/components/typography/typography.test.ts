@@ -117,7 +117,7 @@ describe('Typography subtitle variants', () => {
   test('subtitle can opt into a heading element via the component override', () => {
     const { container } = render(Typography, {
       variant: 'subtitle1',
-      component: 'h6',
+      as: 'h6',
       children: textSnippet('Real sub-heading'),
     });
     expect(container.querySelector('h6')?.getAttribute('data-cinder-variant')).toBe('subtitle1');
@@ -204,7 +204,7 @@ describe('Typography component override', () => {
   test('component="span" with variant="h1" renders <span> element', () => {
     const { container } = render(Typography, {
       variant: 'h1',
-      component: 'span',
+      as: 'span',
       children: textSnippet('Hero heading'),
     });
     const span = container.querySelector('span');
@@ -215,7 +215,7 @@ describe('Typography component override', () => {
   test('component override preserves data-cinder-variant from the variant prop', () => {
     const { container } = render(Typography, {
       variant: 'h1',
-      component: 'span',
+      as: 'span',
       children: textSnippet('Hero heading'),
     });
     const span = container.querySelector('span');
@@ -225,7 +225,7 @@ describe('Typography component override', () => {
   test('component="div" with variant="body1" renders <div> element', () => {
     const { container } = render(Typography, {
       variant: 'body1',
-      component: 'div',
+      as: 'div',
       children: textSnippet('Content'),
     });
     expect(container.querySelector('div')).not.toBeNull();

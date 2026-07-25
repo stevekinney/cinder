@@ -22,10 +22,8 @@ type SupportedInputAttributes = Pick<
 export type TagInputProps = SupportedInputAttributes & {
   /** Stable id for the visible text input. Falls back to FormField context or a generated id. */
   id?: string;
-  /** Controlled tags. When provided, the parent owns the tag array. */
+  /** Bindable tags. */
   value?: string[];
-  /** Initial tags for uncontrolled usage. Ignored after mount. */
-  defaultValue?: string[];
   /** Key that commits the current input into a tag. Enter always commits separately. */
   delimiter?: string | RegExp;
   /** Maximum number of tags allowed. Non-finite values disable the cap. */
@@ -33,7 +31,7 @@ export type TagInputProps = SupportedInputAttributes & {
   /** Optional per-tag validation hook. */
   validate?: (tag: string) => boolean | string;
   /** Allow the same trimmed tag value to appear more than once. */
-  allowDuplicates?: boolean;
+  duplicateValuesAllowed?: boolean;
   /** Commit a non-empty pending draft before the parent form submits. */
   commitOnSubmit?: boolean;
   /** Disable the input and chip removal affordances. */
@@ -53,14 +51,12 @@ export interface TagInputSchemaProps {
   max?: number;
   /** Stable id for the visible text input. Falls back to FormField context or a generated id. */
   id?: string;
-  /** Controlled tags. When provided, the parent owns the tag array. */
+  /** Bindable tags. */
   value?: string[];
-  /** Initial tags for uncontrolled usage. Ignored after mount. */
-  defaultValue?: string[];
   /** Key that commits the current input into a tag. Enter always commits separately. */
   delimiter?: string | RegExp;
   /** Allow the same trimmed tag value to appear more than once. */
-  allowDuplicates?: boolean;
+  duplicateValuesAllowed?: boolean;
   /** Commit a non-empty pending draft before the parent form submits. */
   commitOnSubmit?: boolean;
   /** Autocomplete hint forwarded to the visible text input. */

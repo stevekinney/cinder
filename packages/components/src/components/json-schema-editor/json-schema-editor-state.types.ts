@@ -14,8 +14,8 @@ export interface CreateEditorStateOptions {
   readonly?: boolean;
   maxHistory?: number;
   onchange?: (event: JsonSchemaEditorChangeEvent) => void;
-  onrevert?: (event: JsonSchemaEditorRevertEvent) => void;
-  onvalidate?: (result: JsonSchemaValidationResult) => void;
+  onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
+  onValidate?: (result: JsonSchemaValidationResult) => void;
 }
 
 export type EditorState = ReturnType<typeof createEditorState>;

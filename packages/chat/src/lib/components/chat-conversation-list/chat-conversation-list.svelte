@@ -29,7 +29,7 @@
     ariaLabel = 'Conversations',
     emptyText = 'No conversations',
     class: className,
-    onselectconversation,
+    onSelectConversation,
     ...rest
   }: ChatConversationListProps = $props();
 
@@ -66,7 +66,7 @@
       {#each sortedConversations as conversation (conversation.id)}
         {@const isActive = conversation.id === activeConversationId}
         <li class="cinder-chat-conversation-list__item">
-          {#if onselectconversation}
+          {#if onSelectConversation}
             <button
               type="button"
               class="cinder-chat-conversation-list__button"
@@ -74,7 +74,7 @@
               data-cinder-conversation-item
               data-cinder-conversation-interactive
               data-cinder-conversation-selected={isActive ? '' : undefined}
-              onclick={() => onselectconversation(conversation.id)}
+              onclick={() => onSelectConversation(conversation.id)}
             >
               <span class="cinder-chat-conversation-list__title">{conversation.title}</span>
               <span class="cinder-chat-conversation-list__preview">{preview(conversation)}</span>

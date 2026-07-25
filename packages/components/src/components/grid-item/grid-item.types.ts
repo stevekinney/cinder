@@ -1,5 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
+import type { NonVoidHTMLElementTagName } from '../../utilities/html-element-types.ts';
 
 /** Props for the GridItem component. */
 export type GridItemProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
@@ -14,7 +15,7 @@ export type GridItemProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Explicit `grid-row-start` value. */
   rowStart?: number | string;
   /** Rendered HTML tag. */
-  as?: string;
+  as?: NonVoidHTMLElementTagName;
   /** Custom class merged with `.cinder-grid-item`. */
   class?: string;
   /** Grid item contents. */

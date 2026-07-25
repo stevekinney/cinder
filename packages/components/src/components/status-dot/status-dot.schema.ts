@@ -17,9 +17,9 @@ const schema = {
     label: {
       type: 'string',
       description:
-        'Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way.',
+        'Optional human label. Rendered visibly when `labelVisible` is true; used as the accessible name either way.',
     },
-    showLabel: {
+    labelVisible: {
       type: 'boolean',
       description: 'Whether to render the visible label.',
       default: true,

@@ -19,7 +19,7 @@
   import type { BentoCellProps } from './bento-cell.types.ts';
 
   let {
-    colSpan,
+    columnSpan,
     rowSpan,
     columnStart,
     columnEnd,
@@ -31,7 +31,7 @@
     ...rest
   }: BentoCellProps = $props();
 
-  const resolvedColSpan = $derived(colSpan !== undefined ? String(colSpan) : undefined);
+  const resolvedColSpan = $derived(columnSpan !== undefined ? String(columnSpan) : undefined);
   const resolvedRowSpan = $derived(rowSpan !== undefined ? String(rowSpan) : undefined);
   const resolvedColumnStart = $derived(columnStart !== undefined ? String(columnStart) : undefined);
   const resolvedColumnEnd = $derived(columnEnd !== undefined ? String(columnEnd) : undefined);

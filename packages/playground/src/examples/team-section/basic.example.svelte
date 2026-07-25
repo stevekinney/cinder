@@ -33,5 +33,5 @@
   title="Meet the team behind Cinder"
   description="A cross-functional group of engineers, designers, and educators."
   {members}
-  showAvatarGroup
+  avatarGroupVisible
 />

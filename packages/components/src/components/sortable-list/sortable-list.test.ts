@@ -44,19 +44,19 @@ function emptySnippet() {
 }
 
 function renderList(overrides?: Record<string, unknown>) {
-  const onreorder = mock();
+  const onReorder = mock();
   const { container, ...rest } = render(SortableList as any, {
     props: {
       items: ITEMS,
       getKey,
       getItemLabel,
-      onreorder,
+      onReorder,
       label: 'Test list',
       children: emptySnippet(),
       ...overrides,
     },
   });
-  return { container, onreorder, ...rest };
+  return { container, onReorder, ...rest };
 }
 
 // ---------------------------------------------------------------------------
@@ -443,16 +443,16 @@ describe('SortableList', () => {
     expect(rows[0].getAttribute('data-key')).toBe('b'); // Beta moved to index 0.
   });
 
-  test('Space drops and calls onreorder with reordered array', async () => {
-    const { container, onreorder } = renderList();
+  test('Space drops and calls onReorder with reordered array', async () => {
+    const { container, onReorder } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift Alpha.
     await fireEvent.keyDown(handle, { key: 'ArrowDown' }); // Move to position 2.
     await fireEvent.keyDown(handle, { key: ' ' }); // Drop.
 
-    expect(onreorder).toHaveBeenCalledTimes(1);
-    const [nextItems, change] = onreorder.mock.calls[0];
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    const [nextItems, change] = onReorder.mock.calls[0];
     expect(nextItems.map((i: Item) => i.id)).toEqual(['b', 'a', 'c']);
     expect(change.fromIndex).toBe(0);
     expect(change.toIndex).toBe(1);
@@ -460,30 +460,30 @@ describe('SortableList', () => {
     expect(handle.getAttribute('aria-pressed')).toBe('false');
   });
 
-  test('Escape cancels — onreorder not called, aria-pressed returns false', async () => {
-    const { container, onreorder } = renderList();
+  test('Escape cancels — onReorder not called, aria-pressed returns false', async () => {
+    const { container, onReorder } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowDown' });
     await fireEvent.keyDown(handle, { key: 'Escape' });
 
-    expect(onreorder).not.toHaveBeenCalled();
+    expect(onReorder).not.toHaveBeenCalled();
     expect(handle.getAttribute('aria-pressed')).toBe('false');
   });
 
-  test('drop at same position does not call onreorder', async () => {
-    const { container, onreorder } = renderList();
+  test('drop at same position does not call onReorder', async () => {
+    const { container, onReorder } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift.
     await fireEvent.keyDown(handle, { key: ' ' }); // Drop at same index.
 
-    expect(onreorder).not.toHaveBeenCalled();
+    expect(onReorder).not.toHaveBeenCalled();
   });
 
-  test('onreorder receives full reordered array and correct change metadata', async () => {
-    const { container, onreorder } = renderList();
+  test('onReorder receives full reordered array and correct change metadata', async () => {
+    const { container, onReorder } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
     const lastHandle = handles[handles.length - 1] as HTMLElement; // Gamma (index 2).
 
@@ -491,8 +491,8 @@ describe('SortableList', () => {
     await fireEvent.keyDown(lastHandle, { key: 'ArrowUp' }); // Move to index 1.
     await fireEvent.keyDown(lastHandle, { key: ' ' }); // Drop.
 
-    expect(onreorder).toHaveBeenCalledTimes(1);
-    const [nextItems, change] = onreorder.mock.calls[0];
+    expect(onReorder).toHaveBeenCalledTimes(1);
+    const [nextItems, change] = onReorder.mock.calls[0];
     expect(nextItems.length).toBe(3);
     expect(change.itemKey).toBe('c');
     expect(change.fromIndex).toBe(2);
@@ -505,7 +505,7 @@ describe('SortableList', () => {
       { id: 'b', label: 'Beta' },
     ];
     const frozen = Object.freeze(original.map((i) => Object.freeze({ ...i })));
-    const { container, onreorder } = renderList({
+    const { container, onReorder } = renderList({
       items: frozen as any,
       label: 'Frozen list',
     });
@@ -517,7 +517,7 @@ describe('SortableList', () => {
     await fireEvent.keyDown(handle, { key: ' ' });
 
     // If items were mutated, the frozen object would throw. No throw = no mutation.
-    expect(onreorder).toHaveBeenCalledTimes(1);
+    expect(onReorder).toHaveBeenCalledTimes(1);
     expect(frozen.map((i: Item) => i.id)).toEqual(['a', 'b']); // Unchanged.
   });
 
@@ -964,7 +964,7 @@ describe('SortableList pointer drag preview', () => {
         items: singleItem,
         getKey: (item: { id: string }) => item.id,
         getItemLabel: (item: { label: string }) => item.label,
-        onreorder: mock(),
+        onReorder: mock(),
         label: 'Id test list',
         children: idSnippet,
       },

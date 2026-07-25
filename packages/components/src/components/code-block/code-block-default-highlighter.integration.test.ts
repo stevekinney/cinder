@@ -21,7 +21,7 @@ function runSeamProbe(): { exitCode: number; stdout: string; stderr: string } {
     const first = await loadDefaultHighlighter();
     const second = await loadDefaultHighlighter();
     const ts = await first('const x: number = 1;', 'typescript');
-    const escaped = await first('<img src=x onerror=alert(1)>', 'html');
+    const escaped = await first('<img src=x onError=alert(1)>', 'html');
     process.stdout.write(JSON.stringify({ memoized: first === second, ts, escaped }));
   `;
   const result = Bun.spawnSync({
@@ -53,7 +53,7 @@ describe('CodeBlock default-highlighter seam (real Shiki adapter)', () => {
 
     // The bundled default escapes code text — no live tag injected. Shiki
     // emits the `<` as an HTML entity (`&lt;` or `&#x3C;`) inside its spans.
-    expect(probe.escaped).not.toContain('<img src=x onerror=alert(1)>');
+    expect(probe.escaped).not.toContain('<img src=x onError=alert(1)>');
     expect(probe.escaped.toLowerCase()).toMatch(/&lt;|&#x3c;|&#60;/);
   }, 30_000);
 

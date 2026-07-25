@@ -55,17 +55,17 @@ const schema = {
         description: 'Custom content rendered below the status text and before the actions.',
       },
       {
-        name: 'ondismiss',
+        name: 'onDismiss',
         reason: 'function-or-snippet',
         description: 'Called when the gate is dismissed.',
       },
       {
-        name: 'onfallbackaction',
+        name: 'onFallbackAction',
         reason: 'function-or-snippet',
         description: 'Called when the fallback action button is activated.',
       },
       {
-        name: 'onprimaryaction',
+        name: 'onPrimaryAction',
         reason: 'function-or-snippet',
         description: 'Called when the primary action button is activated.',
       },

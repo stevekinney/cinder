@@ -46,7 +46,7 @@
     connectionState,
     label,
     live,
-    showLabel = true,
+    labelVisible = true,
     size = 'md',
     class: className,
     'aria-label': ariaLabel,
@@ -65,7 +65,7 @@
         ? undefined
         : connectionLabels[connectionState],
   );
-  const hasVisibleLabel = $derived(showLabel && normalizedLabel !== undefined);
+  const hasVisibleLabel = $derived(labelVisible && normalizedLabel !== undefined);
 
   // `role="img"` needs an author-provided name. Blank labels are treated as
   // absent so status is never communicated by color alone.

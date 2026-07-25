@@ -56,7 +56,7 @@
     ),
   );
 
-  type ButtonClickHandler = (
+  type ButtonclickHandler = (
     event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
   ) => void;
 
@@ -77,7 +77,7 @@
           event as MouseEvent & { currentTarget: EventTarget & HTMLAnchorElement },
         );
       } else {
-        (onclick as ButtonClickHandler)(
+        (onclick as ButtonclickHandler)(
           event as MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
         );
       }

@@ -16,7 +16,7 @@
 
   /*
    * Backdrop is a low-level primitive: it dims/captures pointer events and locks
-   * body scroll (`lockScroll`, default true), but it does NOT trap focus or
+   * body scroll (`scrollLocked`, default true), but it does NOT trap focus or
    * isolate the content behind it from the keyboard. A keyboard user can still
    * Tab to page content under an open backdrop. When you need that isolation
    * (a full-page loading dimmer, a lightbox), apply `inert` to your page-content
@@ -39,8 +39,8 @@
   let {
     open,
     invisible = false,
-    lockScroll = true,
-    transitionDuration = DEFAULT_TRANSITION_DURATION,
+    scrollLocked = true,
+    transitionDurationMilliseconds = DEFAULT_TRANSITION_DURATION,
     onclick,
     class: className,
     children,
@@ -50,7 +50,7 @@
   // Respect prefers-reduced-motion: collapse the fade to an instant show/hide so
   // the scrim does not animate for users who have opted out of motion.
   const reducedMotion = useReducedMotion();
-  const effectiveDuration = $derived(reducedMotion.current ? 0 : transitionDuration);
+  const effectiveDuration = $derived(reducedMotion.current ? 0 : transitionDurationMilliseconds);
 
   // SSR/hydration gate (overlay contract — see _internal/overlay.ts / OVERLAY-POLICY.md).
   // `$effect` runs only on the client, so `hydrated` stays false through SSR and the
@@ -69,7 +69,7 @@
   // nest with other overlays.
   let scrimElement: HTMLElement | undefined = $state();
   $effect(() => {
-    if (!scrimElement || !lockScroll) return;
+    if (!scrimElement || !scrollLocked) return;
     const release = lockBodyScroll();
     return release;
   });

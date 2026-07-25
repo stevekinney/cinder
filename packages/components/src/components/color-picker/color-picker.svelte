@@ -29,8 +29,7 @@
   const pickerId = $props.id();
 
   let {
-    value = $bindable(),
-    defaultValue,
+    value = $bindable(''),
     alpha = false,
     name,
     swatches,
@@ -139,24 +138,11 @@
   // Snapshot the seed props once. Initialization reads only the mount-time
   // values; the controlled-sync effect (below) handles later `value` changes.
   const initialValue = untrack(() => value);
-  const initialDefaultValue = untrack(() => defaultValue);
+  const resetTarget = initialValue;
   const initialAlpha = untrack(() => alpha);
 
-  // Initialize from defaultValue (only when uncontrolled).
-  if (initialValue === undefined && initialDefaultValue) {
-    const parsed = parseToHsla(initialDefaultValue);
-    if (parsed) {
-      applyHsla(parsed);
-      internalValue = formatHex(parsed.h, parsed.s, parsed.l, parsed.a, initialAlpha);
-    } else {
-      hue = 0;
-      saturation = 0;
-      lightnessValue = 0;
-      alphaValue = 1;
-      internalValue = '';
-      lastEmittedHex = '';
-    }
-  } else if (initialValue !== undefined) {
+  // Initialize from the mount-time bindable value.
+  if (initialValue !== '') {
     const parsed = parseToHsla(initialValue);
     if (parsed) {
       applyHsla(parsed);
@@ -480,9 +466,13 @@
    * never matches the selected value, so it can never show as selected or be committed.
    */
   const normalizedSwatchColors = $derived<ColorSwatch[]>(
-    (swatches ?? []).map((swatch) => ({
-      color: normalizeSwatch(swatch) ?? swatch,
-    })),
+    (swatches ?? []).map((swatch) => {
+      const normalized = normalizeSwatch(swatch);
+      return {
+        color: normalized ?? swatch,
+        disabled: normalized === null,
+      };
+    }),
   );
 
   const currentHex = $derived(formatHex(hue, saturation, lightnessValue, alphaValue, alpha));
@@ -510,8 +500,7 @@
     if (form === null) return;
 
     function resetToDefault(): void {
-      const fallback = defaultValue ?? '';
-      const parsed = fallback === '' ? null : parseToHsla(fallback);
+      const parsed = resetTarget === '' ? null : parseToHsla(resetTarget);
       if (parsed === null) {
         hue = 0;
         saturation = 0;

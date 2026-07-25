@@ -45,7 +45,7 @@ export interface UnsupportedProp {
    * `true` when the prop is required on the component; omitted when it is
    * optional. Recorded so the generated README can show a faithful Required
    * column for props the JSON schema cannot express (e.g. a required
-   * `onselect: () => void` callback). The renderer treats an absent value as
+   * `onSelect: () => void` callback). The renderer treats an absent value as
    * not-required.
    */
   required?: boolean;
@@ -175,7 +175,7 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
           hasJsDocTag(symbol, 'schemaObject') || hasSchemaObjectTagDeep(propType),
         );
     if (converted.kind === 'unsupported') {
-      if (propName === 'allowCustomValue') {
+      if (propName === 'customValueAllowed') {
         const description = readJsDocDescription(symbol);
         properties[propName] = {
           type: 'boolean',
@@ -205,7 +205,7 @@ export function generateSchemaForComponent(options: GenerateOptions): GenerateRe
   // `<Name>Props` but are deliberately omitted from the allowlist never reach the
   // loop above. That is correct for HTML-attribute and expressible props — the
   // allowlist is the curated JSON-expressible surface. But a component-authored
-  // FUNCTION or SNIPPET prop (e.g. a required `onselect: () => void`) is part of
+  // FUNCTION or SNIPPET prop (e.g. a required `onSelect: () => void`) is part of
   // the public API and JSON Schema simply cannot represent it. Omitting it
   // silently means tooling and the generated README have no way to discover the
   // prop exists at all. Record exactly those props in `unsupportedProps` so they
@@ -291,7 +291,7 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
   }
 
   if (componentName === 'bento-cell') {
-    for (const spanProp of ['colSpan', 'rowSpan']) {
+    for (const spanProp of ['columnSpan', 'rowSpan']) {
       const prop = schema.properties[spanProp];
       if (prop?.anyOf) {
         prop.anyOf = prop.anyOf.map((entry) =>

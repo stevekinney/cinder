@@ -115,8 +115,8 @@
   id={popoverId}
   open={isOpen}
   {position}
-  onclose={handleClose}
-  oncommentsubmit={recordComment}
+  onClose={handleClose}
+  onCommentSubmit={recordComment}
 />
 
 {#if lastSubmitted}

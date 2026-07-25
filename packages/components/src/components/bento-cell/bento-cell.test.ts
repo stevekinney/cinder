@@ -63,9 +63,9 @@ describe('BentoCell', () => {
     expect(root.hasAttribute('data-cinder-row-span')).toBe(false);
   });
 
-  test('threads colSpan and rowSpan into CSS variables', () => {
+  test('threads columnSpan and rowSpan into CSS variables', () => {
     const { container } = render(BentoCell, {
-      props: { colSpan: 2, rowSpan: 3, children: textSnippet('content') },
+      props: { columnSpan: 2, rowSpan: 3, children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-cell') as HTMLElement;
     expect(root.style.getPropertyValue('--cinder-bento-cell-col-span')).toBe('2');
@@ -77,7 +77,7 @@ describe('BentoCell', () => {
   test('explicit column and row end values win over span state', () => {
     const { container } = render(BentoCell, {
       props: {
-        colSpan: 2,
+        columnSpan: 2,
         rowSpan: 3,
         columnEnd: 'span 1',
         rowEnd: 4,

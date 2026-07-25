@@ -38,5 +38,5 @@
   policyVersion="policy-2026-06"
   idempotencyKey="approval-patch-01"
   state="pending"
-  onresolve={() => undefined}
+  onResolve={() => undefined}
 />

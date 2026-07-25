@@ -63,7 +63,7 @@ export type ChatMessagePartsRendererProps = {
   /** Disclosure state for tool-call parts. Owned by the message. */
   expanded?: boolean;
   /** Called when a tool-call part's disclosure toggle is activated. */
-  ontoggle?: (() => void) | undefined;
+  onToggle?: (() => void) | undefined;
   /** Called when the user approves an action-required tool call. */
   onapprove?: ((toolCallId: string) => void) | undefined;
   /** Called when the user denies an action-required tool call. */
@@ -73,7 +73,7 @@ export type ChatMessagePartsRendererProps = {
   /** Called when the reasoning disclosure toggle is activated. */
   onreasoning?: (() => void) | undefined;
   /** Called when the user selects a suggestion chip. */
-  onsuggestionselect?: ((label: string) => void) | undefined;
+  onSuggestionSelect?: ((label: string) => void) | undefined;
 };
 
 /** A renderable unit: a single body part, a contiguous run of image parts, a group of step parts, or a group of suggestion chips. */

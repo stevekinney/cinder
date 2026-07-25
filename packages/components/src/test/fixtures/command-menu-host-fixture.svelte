@@ -100,15 +100,15 @@
   bind:query
   {anchor}
   {caretIndex}
-  onselect={(selection) => selectCommand(selection.value)}
-  ondismiss={() => {
+  onSelect={(selection) => selectCommand(selection.value)}
+  onDismiss={() => {
     open = false;
     query = '';
     triggerRange = null;
     activeItemId = undefined;
     onDismissed();
   }}
-  onstatechange={(state) => {
+  onStateChange={(state) => {
     listboxId = state.listboxId;
     activeItemId = state.activeItemId ?? undefined;
   }}

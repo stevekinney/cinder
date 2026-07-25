@@ -77,7 +77,7 @@ function hiddenValues(container: HTMLElement, name: string): string[] {
 describe('TagInput rendering', () => {
   test('renders committed tags as a list with the input after it in DOM order', () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun'] },
+      props: { value: ['Svelte', 'Bun'] },
     });
 
     const control = container.querySelector('.cinder-tag-input__control');
@@ -98,7 +98,7 @@ describe('TagInput rendering', () => {
 
   test('hidden input mirrors committed tags when name is provided', () => {
     const { container } = render(TagInput, {
-      props: { name: 'tags', defaultValue: ['Svelte', 'Bun'] },
+      props: { name: 'tags', value: ['Svelte', 'Bun'] },
     });
 
     const hiddenInputs = Array.from(
@@ -109,7 +109,7 @@ describe('TagInput rendering', () => {
 
   test('the remove control is a real labeled button (reachable by pointer, voice, switch)', () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte'] },
+      props: { value: ['Svelte'] },
     });
 
     const remove = container.querySelector('.cinder-tag-input__remove');
@@ -129,7 +129,7 @@ describe('TagInput rendering', () => {
 
   test('the first chip button is in the tab order; later chip buttons are roving (-1)', () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun'] },
+      props: { value: ['Svelte', 'Bun'] },
     });
     const buttons = container.querySelectorAll<HTMLButtonElement>('.cinder-tag-input__remove');
     expect(buttons[0]?.getAttribute('tabindex')).toBe('0');
@@ -171,7 +171,7 @@ describe('TagInput rendering', () => {
 
   test('readonly hides the remove control entirely and keeps the input read-only', () => {
     const { container } = render(TagInput, {
-      props: { readonly: true, defaultValue: ['Svelte'] },
+      props: { readonly: true, value: ['Svelte'] },
     });
 
     expect(getInput(container).readOnly).toBe(true);
@@ -181,7 +181,7 @@ describe('TagInput rendering', () => {
 
   test('disabled hides the remove control entirely and keeps the input disabled', () => {
     const { container } = render(TagInput, {
-      props: { disabled: true, defaultValue: ['Svelte'] },
+      props: { disabled: true, value: ['Svelte'] },
     });
 
     expect(getInput(container).disabled).toBe(true);
@@ -190,7 +190,7 @@ describe('TagInput rendering', () => {
 
   test('standalone aria-label applies to both the input and the listbox', () => {
     const { container } = render(TagInput, {
-      props: { 'aria-label': 'Tags', defaultValue: ['Svelte'] },
+      props: { 'aria-label': 'Tags', value: ['Svelte'] },
     } as any);
 
     expect(getInput(container).getAttribute('aria-label')).toBe('Tags');
@@ -199,7 +199,7 @@ describe('TagInput rendering', () => {
 
   test('standalone aria-labelledby applies to both the input and the listbox', () => {
     const { container } = render(TagInput, {
-      props: { 'aria-labelledby': 'external-label', defaultValue: ['Svelte'] },
+      props: { 'aria-labelledby': 'external-label', value: ['Svelte'] },
     } as any);
 
     expect(getInput(container).getAttribute('aria-labelledby')).toBe('external-label');
@@ -249,7 +249,7 @@ describe('TagInput commits tags', () => {
 
   test('duplicate prevention blocks repeated tags', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte'] },
+      props: { value: ['Svelte'] },
     });
     const input = getInput(container);
 
@@ -262,7 +262,7 @@ describe('TagInput commits tags', () => {
 
   test('duplicate prevention compares trimmed values, not raw source strings', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte '] },
+      props: { value: ['Svelte '] },
     });
     const input = getInput(container);
 
@@ -275,7 +275,7 @@ describe('TagInput commits tags', () => {
 
   test('max cap blocks extra tags', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun'], max: 2 },
+      props: { value: ['Svelte', 'Bun'], max: 2 },
     });
     const input = getInput(container);
 
@@ -301,7 +301,7 @@ describe('TagInput commits tags', () => {
     expect(container.textContent).toContain('Enter a valid email tag.');
   });
 
-  test('controlled mode emits onchange without mutating the rendered tags itself', async () => {
+  test('bindable value emits onchange and mutates the rendered tags', async () => {
     const onchange = mock((_tags: string[]) => {});
     const { container } = render(TagInput, {
       props: { value: ['Svelte'], onchange },
@@ -312,13 +312,14 @@ describe('TagInput commits tags', () => {
     await fireEvent.keyDown(input, { key: 'Enter' });
 
     expect(onchange).toHaveBeenCalledWith(['Svelte', 'Bun']);
-    expect(getOptions(container)).toHaveLength(1);
+    expect(getOptions(container)).toHaveLength(2);
+    expect(getOptions(container)[1]?.textContent).toContain('Bun');
   });
 
   test('consumer onkeydown only runs for the input, not chip keyboard interaction', async () => {
     const onkeydown = mock((_event: KeyboardEvent) => {});
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte'], onkeydown },
+      props: { value: ['Svelte'], onkeydown },
     });
     const input = getInput(container);
 
@@ -338,7 +339,7 @@ describe('TagInput keyboard removal and navigation', () => {
   // keyboard-removable element), so these assert against getRemoveButtons().
   test('Backspace on an empty input focuses the last chip, then removes it on a second Backspace', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun'] },
+      props: { value: ['Svelte', 'Bun'] },
     });
     const input = getInput(container);
 
@@ -353,7 +354,7 @@ describe('TagInput keyboard removal and navigation', () => {
 
   test('Delete on a focused chip removes it and returns focus to the input when it was the only chip', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte'] },
+      props: { value: ['Svelte'] },
     });
     const input = getInput(container);
 
@@ -368,7 +369,7 @@ describe('TagInput keyboard removal and navigation', () => {
 
   test('Arrow navigation from an empty input moves focus to the last chip when the caret is at position 0', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun'] },
+      props: { value: ['Svelte', 'Bun'] },
     });
     const input = getInput(container);
     input.focus();
@@ -380,7 +381,7 @@ describe('TagInput keyboard removal and navigation', () => {
 
   test('Home, End, and ArrowRight follow the roving focus contract', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun', 'TypeScript'] },
+      props: { value: ['Svelte', 'Bun', 'TypeScript'] },
     });
     const input = getInput(container);
     input.focus();
@@ -404,7 +405,7 @@ describe('TagInput keyboard removal and navigation', () => {
 
   test('clicking the remove button removes the chip and focuses the previous chip', async () => {
     const { container } = render(TagInput, {
-      props: { defaultValue: ['Svelte', 'Bun'] },
+      props: { value: ['Svelte', 'Bun'] },
     });
 
     const removeButtons = getRemoveButtons(container);
@@ -416,7 +417,7 @@ describe('TagInput keyboard removal and navigation', () => {
 
   test('readonly blocks both commits and removals', async () => {
     const { container } = render(TagInput, {
-      props: { readonly: true, defaultValue: ['Svelte', 'Bun'] },
+      props: { readonly: true, value: ['Svelte', 'Bun'] },
     });
     const input = getInput(container);
     input.focus();
@@ -439,7 +440,7 @@ describe('TagInput keyboard removal and navigation', () => {
 describe('TagInput form participation', () => {
   test('hidden input updates after commits and removals', async () => {
     const { container } = render(TagInput, {
-      props: { name: 'tags', defaultValue: ['Svelte'] },
+      props: { name: 'tags', value: ['Svelte'] },
     });
     const input = getInput(container);
 
@@ -463,7 +464,7 @@ describe('TagInput form participation', () => {
   test('commitOnSubmit commits a valid uncontrolled draft before form submit handlers read hidden controls', async () => {
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
       commitOnSubmit: true,
     });
     let submittedValues: string[] = [];
@@ -491,7 +492,7 @@ describe('TagInput form participation', () => {
   test('commitOnSubmit preserves current behavior when it is not enabled', async () => {
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
     });
     let submittedValues: string[] = [];
     mount.form.addEventListener('submit', (event) => {
@@ -540,7 +541,7 @@ describe('TagInput form participation', () => {
   test('commitOnSubmit blocks a duplicate draft and leaves existing form data unchanged', async () => {
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
       commitOnSubmit: true,
     });
 
@@ -563,7 +564,7 @@ describe('TagInput form participation', () => {
   test('commitOnSubmit blocks a draft over max and leaves existing form data unchanged', async () => {
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
       max: 1,
       commitOnSubmit: true,
     });
@@ -587,7 +588,7 @@ describe('TagInput form participation', () => {
   test('commitOnSubmit does not commit or block disabled tag inputs', async () => {
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
       disabled: true,
       commitOnSubmit: true,
     });
@@ -610,7 +611,7 @@ describe('TagInput form participation', () => {
   test('commitOnSubmit does not commit or block readonly tag inputs', async () => {
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
       readonly: true,
       commitOnSubmit: true,
     });
@@ -657,7 +658,7 @@ describe('TagInput form participation', () => {
     const mount = renderTagInputInForm({
       name: 'tags',
       disabled: true,
-      defaultValue: ['Svelte', 'Bun'],
+      value: ['Svelte', 'Bun'],
     });
 
     try {
@@ -674,11 +675,11 @@ describe('TagInput form participation', () => {
     }
   });
 
-  test('uncontrolled reset restores defaultValue, clears draft text, clears inline error, and does not fire onchange', async () => {
+  test('uncontrolled reset restores value, clears draft text, clears inline error, and does not fire onchange', async () => {
     const onchange = mock((_tags: string[]) => {});
     const mount = renderTagInputInForm({
       name: 'tags',
-      defaultValue: ['Svelte'],
+      value: ['Svelte'],
       max: 1,
       onchange,
     });
@@ -710,7 +711,40 @@ describe('TagInput form participation', () => {
     }
   });
 
-  test('controlled reset does not mutate the rendered tags without a parent rerender', async () => {
+  test('canceled reset leaves committed tags and draft text unchanged', async () => {
+    const onchange = mock((_tags: string[]) => {});
+    const mount = renderTagInputInForm({
+      name: 'tags',
+      value: ['Svelte'],
+      onchange,
+    });
+
+    try {
+      const input = getInput(mount.container);
+      await fireEvent.input(input, { target: { value: 'Bun' } });
+      await fireEvent.keyDown(input, { key: 'Enter' });
+      await fireEvent.input(input, { target: { value: 'Draft tag' } });
+
+      mount.form.addEventListener('reset', (event) => event.preventDefault(), { once: true });
+      mount.form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+      await Promise.resolve();
+      await tick();
+
+      expect(getOptions(mount.container)).toHaveLength(2);
+      expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
+      expect(getOptions(mount.container)[1]?.textContent).toContain('Bun');
+      expect(input.value).toBe('Draft tag');
+      const hiddenInputs = Array.from(
+        mount.container.querySelectorAll<HTMLInputElement>('input[type="hidden"][name="tags"]'),
+      );
+      expect(hiddenInputs.map((hiddenInput) => hiddenInput.value)).toEqual(['Svelte', 'Bun']);
+      expect(onchange).toHaveBeenCalledTimes(1);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  test('reset restores the mount-time tag value after local mutation', async () => {
     const onchange = mock((_tags: string[]) => {});
     const mount = renderTagInputInForm({
       name: 'tags',
@@ -724,8 +758,9 @@ describe('TagInput form participation', () => {
       await fireEvent.keyDown(input, { key: 'Enter' });
 
       expect(onchange).toHaveBeenCalledWith(['Svelte', 'Bun']);
-      expect(getOptions(mount.container)).toHaveLength(1);
+      expect(getOptions(mount.container)).toHaveLength(2);
       expect(getOptions(mount.container)[0]?.textContent).toContain('Svelte');
+      expect(getOptions(mount.container)[1]?.textContent).toContain('Bun');
 
       await fireEvent.input(input, { target: { value: 'Draft tag' } });
       expect(input.value).toBe('Draft tag');
@@ -837,7 +872,7 @@ describe('TagInput ARIA live announcements', () => {
   });
 
   test('announces "<tag> removed." after clicking the remove button', async () => {
-    const { container } = render(TagInput, { id: 'live-remove', defaultValue: ['Svelte'] });
+    const { container } = render(TagInput, { id: 'live-remove', value: ['Svelte'] });
 
     const removeButton = container.querySelector('.cinder-tag-input__remove') as HTMLElement;
     expect(removeButton).not.toBeNull();
@@ -855,7 +890,7 @@ describe('TagInput ARIA live announcements', () => {
     // region already contains that exact text from the previous commit. A naive
     // assignment of the same string would be a no-op for the AT; blank-then-set
     // is the only mechanism that guarantees re-announcement.
-    const { container } = render(TagInput, { id: 'live-repeat', allowDuplicates: true });
+    const { container } = render(TagInput, { id: 'live-repeat', duplicateValuesAllowed: true });
     const input = container.querySelector('input') as HTMLInputElement;
 
     // First add — live region should show "Svelte added."
@@ -866,7 +901,7 @@ describe('TagInput ARIA live announcements', () => {
     const liveRegion = container.querySelector('[role="status"]');
     expect(liveRegion?.textContent).toContain('Svelte added.');
 
-    // Second add of the SAME value (allowDuplicates=true, no intervening removal).
+    // Second add of the SAME value (duplicateValuesAllowed=true, no intervening removal).
     // The live region still holds "Svelte added." — the announcementSequence bump
     // re-runs the region's effect, which blanks the text to '' first so the
     // identical string re-triggers the AT.

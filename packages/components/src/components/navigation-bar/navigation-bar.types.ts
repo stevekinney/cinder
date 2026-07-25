@@ -15,7 +15,7 @@ export type NavigationBarToggleAttributes = {
 export type NavigationBarItemsContext = {
   variant: NavigationVariant;
   placement?: NavigationBarPlacement;
-  showLabels?: NavigationBarLabelVisibility;
+  labelsVisible?: NavigationBarLabelVisibility;
 };
 export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Custom class merged onto the root `<nav>` element. */
@@ -33,7 +33,7 @@ export type NavigationBarProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
    *
    * @default "always"
    */
-  showLabels?: NavigationBarLabelVisibility;
+  labelsVisible?: NavigationBarLabelVisibility;
   /**
    * Placement for the collapsible mobile menu toggle in top navigation bars.
    * Ignored for `placement="bottom"`.

@@ -74,10 +74,10 @@ Applied filters are displayed as removable chips. A visually-hidden live region 
   {facets}
   {appliedFilters}
   {searchQuery}
-  onsearchchange={(q) => (searchQuery = q)}
-  onfacetchange={handleFacetChange}
-  onfilterremove={handleFilterRemove}
-  onclearall={handleClearAll}
+  onSearchChange={(q) => (searchQuery = q)}
+  onFacetChange={handleFacetChange}
+  onFilterRemove={handleFilterRemove}
+  onClearAll={handleClearAll}
 />
 ```
 
@@ -120,10 +120,10 @@ Use `type: 'custom'` with a `control` snippet for any facet that cannot be expre
 | `appliedFilters`    | `AppliedFilter[]`                      | `[]`        | Applied filters displayed as removable chips.                                         |
 | `disabled`          | `boolean`                              | `false`     | When true, all filter controls and chips are disabled.                                |
 | `class`             | `string`                               | —           | Additional CSS classes applied to the root element.                                   |
-| `onsearchchange`    | `(query: string) => void`              | —           | Fires when the search query changes.                                                  |
-| `onfacetchange`     | `(key: string, value: string) => void` | —           | Fires when a facet value changes.                                                     |
-| `onfilterremove`    | `(key: string) => void`                | —           | Fires when a specific applied filter chip is removed.                                 |
-| `onclearall`        | `() => void`                           | —           | Fires when the clear-all button is clicked.                                           |
+| `onSearchChange`    | `(query: string) => void`              | —           | Fires when the search query changes.                                                  |
+| `onFacetChange`     | `(key: string, value: string) => void` | —           | Fires when a facet value changes.                                                     |
+| `onFilterRemove`    | `(key: string) => void`                | —           | Fires when a specific applied filter chip is removed.                                 |
+| `onClearAll`        | `() => void`                           | —           | Fires when the clear-all button is clicked.                                           |
 
 ### FacetDefinition
 

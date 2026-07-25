@@ -15,7 +15,7 @@ const defaultAnnouncements: import('./sortable-controller.types.ts').SortableAnn
 /**
  * Pure state machine for sortable list reordering.
  *
- * Does not own onreorder — SortableList inspects the return value of drop() and
+ * Does not own onReorder — SortableList inspects the return value of drop() and
  * invokes the consumer callback itself. Does not import useAnnouncer — it receives
  * an announce callback at construction time.
  */
@@ -67,7 +67,7 @@ export class SortableController<Item> {
   /**
    * Attempt a drop. Returns { nextItems, change } if order changed, null otherwise.
    * Always announces dropped regardless.
-   * Caller (SortableList) is responsible for calling onreorder when non-null is returned.
+   * Caller (SortableList) is responsible for calling onReorder when non-null is returned.
    */
   drop(
     items: Item[],

@@ -11,7 +11,7 @@ const schema = {
     maxlength: {
       type: 'number',
       description:
-        'Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `showCount` counter.',
+        'Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `countVisible` counter.',
     },
     required: {
       type: 'boolean',
@@ -38,7 +38,7 @@ const schema = {
       type: 'string',
       description: 'Validation error message; sets `aria-invalid="true"` and `aria-describedby`.',
     },
-    showCount: {
+    countVisible: {
       type: 'boolean',
       description:
         'When `true` AND `maxlength` is set, renders a live character counter\n(`{value.length}/{maxlength}`) below the textarea. The counter element\nis wired into `aria-describedby` so screen readers announce it as part\nof the field\'s description, and it is also placed inside an\n`aria-live="polite"` region so updates are announced as the user types.',

@@ -33,5 +33,5 @@
   {expiresAt}
   state="pending"
   editableArgs={true}
-  onresolve={() => undefined}
+  onResolve={() => undefined}
 />

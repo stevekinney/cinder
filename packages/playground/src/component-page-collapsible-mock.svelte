@@ -5,12 +5,12 @@
     trigger = '',
     children,
     open = $bindable(false),
-    ontoggle,
+    onToggle,
   }: {
     trigger?: string;
     children?: Snippet;
     open?: boolean;
-    ontoggle?: (open: boolean) => void;
+    onToggle?: (open: boolean) => void;
   } = $props();
 </script>
 
@@ -20,7 +20,7 @@
     aria-expanded={open}
     onclick={() => {
       open = !open;
-      ontoggle?.(open);
+      onToggle?.(open);
     }}>{trigger}</button
   >
   {#if open && children !== undefined}{@render children()}{/if}

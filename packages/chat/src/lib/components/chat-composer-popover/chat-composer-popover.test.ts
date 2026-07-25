@@ -186,7 +186,7 @@ describe('ChatComposerPopover', () => {
     expect(document.activeElement).toBe(composer);
   });
 
-  test('calls ondismiss when typing removes the active trigger token', async () => {
+  test('calls onDismiss when typing removes the active trigger token', async () => {
     const onDismissed = mock(() => {});
     render(ChatComposerPopoverFixture, { onDismissed });
     const composer = await typeComposer('/h');
@@ -203,7 +203,7 @@ describe('ChatComposerPopover', () => {
     expect(composer.getAttribute('aria-activedescendant')).toBeNull();
   });
 
-  test('calls ondismiss and clears state when outside pointer dismissal closes the child menu first', async () => {
+  test('calls onDismiss and clears state when outside pointer dismissal closes the child menu first', async () => {
     const onDismissed = mock(() => {});
     const { getByTestId } = render(ChatComposerPopoverFixture, { onDismissed });
     const composer = await typeComposer('/h');

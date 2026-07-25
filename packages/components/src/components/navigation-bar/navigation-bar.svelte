@@ -35,7 +35,7 @@
   let {
     class: className,
     placement = 'top',
-    showLabels = 'always',
+    labelsVisible = 'always',
     menuTogglePlacement = 'after-brand',
     brand,
     items,
@@ -280,7 +280,7 @@
   class={classNames('cinder-navigation-bar', className)}
   data-collapsible={isCollapsible ? 'true' : 'false'}
   data-cinder-placement={placement}
-  data-cinder-label-visibility={showLabels}
+  data-cinder-label-visibility={labelsVisible}
   data-cinder-menu-toggle-placement={menuTogglePlacement}
   onclick={handleClick}
   onkeydown={handleKeyDown}
@@ -318,7 +318,7 @@
     data-open={mobileMenuOpen ? 'true' : 'false'}
     inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
   >
-    {@render items({ variant, placement, showLabels })}
+    {@render items({ variant, placement, labelsVisible })}
   </div>
 
   {#if actions}

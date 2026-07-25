@@ -163,13 +163,13 @@ describe('Combobox', () => {
     expect(input.value).toBe('Apr');
   });
 
-  test('commits arbitrary text with allowCustomValue and canonicalizes matching labels', async () => {
+  test('commits arbitrary text with customValueAllowed and canonicalizes matching labels', async () => {
     const values: string[] = [];
     const onchange = (value: string) => values.push(value);
     const { container } = render(Combobox, {
       id: 'custom-fruit',
       options: fruits,
-      allowCustomValue: true,
+      customValueAllowed: true,
       onchange,
     });
     const input = container.querySelector<HTMLInputElement>('#custom-fruit')!;
@@ -427,18 +427,18 @@ describe('Combobox structure', () => {
     expect(hidden?.value).toBe('');
   });
 
-  test('allowCustomValue renders an external arbitrary value as committed text', () => {
+  test('customValueAllowed renders an external arbitrary value as committed text', () => {
     const { container } = render(Combobox, {
       id: 'fruit',
       value: 'dragonfruit',
-      allowCustomValue: true,
+      customValueAllowed: true,
       options: fruits,
     });
 
     expect(container.querySelector<HTMLInputElement>('#fruit')?.value).toBe('dragonfruit');
   });
 
-  test('allowCustomValue normalizes an exact option label on blur', async () => {
+  test('customValueAllowed normalizes an exact option label on blur', async () => {
     let value = '';
     const onchange = (nextValue: string) => {
       value = nextValue;
@@ -446,7 +446,7 @@ describe('Combobox structure', () => {
     const { container, rerender } = render(Combobox, {
       id: 'fruit',
       value,
-      allowCustomValue: true,
+      customValueAllowed: true,
       onchange,
       options: fruits,
     });
@@ -455,13 +455,13 @@ describe('Combobox structure', () => {
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'Banana' } });
     await fireEvent.blur(input, { relatedTarget: null });
-    await rerender({ id: 'fruit', value, allowCustomValue: true, onchange, options: fruits });
+    await rerender({ id: 'fruit', value, customValueAllowed: true, onchange, options: fruits });
 
     expect(value).toBe('banana');
     expect(input.value).toBe('Banana');
   });
 
-  test('allowCustomValue keeps the canonical option value when Enter is pressed on a focused selection', async () => {
+  test('customValueAllowed keeps the canonical option value when Enter is pressed on a focused selection', async () => {
     let value = 'banana';
     const changes: string[] = [];
     const onchange = (nextValue: string) => {
@@ -471,7 +471,7 @@ describe('Combobox structure', () => {
     const { container, rerender } = render(Combobox, {
       id: 'fruit',
       value,
-      allowCustomValue: true,
+      customValueAllowed: true,
       onchange,
       options: fruits,
     });
@@ -479,19 +479,19 @@ describe('Combobox structure', () => {
 
     await fireEvent.focus(input);
     await fireEvent.keyDown(input, { key: 'Enter' });
-    await rerender({ id: 'fruit', value, allowCustomValue: true, onchange, options: fruits });
+    await rerender({ id: 'fruit', value, customValueAllowed: true, onchange, options: fruits });
 
     expect(value).toBe('banana');
     expect(changes).toEqual([]);
     expect(input.value).toBe('Banana');
   });
 
-  test('allowCustomValue does not commit disabled option values', async () => {
+  test('customValueAllowed does not commit disabled option values', async () => {
     const changes: string[] = [];
     const { container } = render(Combobox, {
       id: 'fruit',
       options: [{ value: 'secret', label: 'Secret', disabled: true }, ...fruits],
-      allowCustomValue: true,
+      customValueAllowed: true,
       onchange: (nextValue: string) => changes.push(nextValue),
     });
     const input = container.querySelector<HTMLInputElement>('#fruit')!;
@@ -810,7 +810,7 @@ describe('Combobox rich option rows', () => {
     expect(cherryOption?.querySelector('.cinder-combobox__option-description')).toBeNull();
   });
 
-  test('selecting a rich option sets value and inputValue from value/label only', async () => {
+  test('selecting a rich option sets value and textInputValue from value/label only', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
     const input = container.querySelector('#rich') as HTMLInputElement;
     await fireEvent.focus(input);
@@ -850,7 +850,7 @@ describe('Combobox Escape restores committed label', () => {
     { label: 'Cherry', value: 'cherry' },
   ];
 
-  test('Escape restores inputValue to the committed option label when the dropdown is open with partial text', async () => {
+  test('Escape restores textInputValue to the committed option label when the dropdown is open with partial text', async () => {
     const { container } = render(Combobox, { id: 'escape-test', options: escapeFruits });
     const input = container.querySelector('#escape-test') as HTMLInputElement;
 
@@ -875,7 +875,7 @@ describe('Combobox Escape restores committed label', () => {
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 
-  test('Escape clears inputValue when no option has been committed', async () => {
+  test('Escape clears textInputValue when no option has been committed', async () => {
     const { container } = render(Combobox, { id: 'escape-empty', options: escapeFruits });
     const input = container.querySelector('#escape-empty') as HTMLInputElement;
 
@@ -895,13 +895,13 @@ describe('Combobox Escape restores committed label', () => {
 
   test('Escape restores the label of a value committed via the value prop (no desync)', async () => {
     // Regression: the value-sync effect set `committedLabel` only when it ALSO
-    // had to change `inputValue`. With value+inputValue pre-supplied to the same
+    // had to change `textInputValue`. With value+textInputValue pre-supplied to the same
     // label, `committedLabel` stayed '' and Escape wrongly cleared the input.
     const { container } = render(Combobox, {
       id: 'escape-prefilled',
       options: escapeFruits,
       value: 'banana',
-      inputValue: 'Banana',
+      textInputValue: 'Banana',
     });
     const input = container.querySelector('#escape-prefilled') as HTMLInputElement;
     await tick();

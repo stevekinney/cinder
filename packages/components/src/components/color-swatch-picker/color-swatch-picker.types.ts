@@ -18,10 +18,8 @@ export type ColorSwatch = {
 };
 /** Props for ColorSwatchPicker. */
 export type ColorSwatchPickerProps = {
-  /** Controlled selected color. When provided, the parent owns the state. */
+  /** Bindable selected color. */
   value?: string;
-  /** Initial selected color for uncontrolled use. Ignored when `value` is set. */
-  defaultValue?: string;
   /** Palette to render. */
   colors: ColorSwatch[];
   /** Visual shape of each swatch. Default `'circle'`. */

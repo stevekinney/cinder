@@ -9,5 +9,5 @@
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 24rem;">
-  <Slider label="Volume" defaultValue={40} disabled />
+  <Slider label="Volume" value={40} disabled />
 </div>

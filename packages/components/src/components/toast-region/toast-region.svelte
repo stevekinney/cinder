@@ -399,7 +399,7 @@
     });
   }
 
-  function handleActionClick(item: InternalToastItem): void {
+  function handleActionclick(item: InternalToastItem): void {
     if (item.leaving) return;
     if (!item.action) return;
     item.action.onAction();
@@ -663,7 +663,7 @@
           type="button"
           class="cinder-toast__action"
           disabled={toast.leaving}
-          onclick={() => handleActionClick(toast)}
+          onclick={() => handleActionclick(toast)}
         >
           {toast.action.label}
         </button>

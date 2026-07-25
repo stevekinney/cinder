@@ -781,15 +781,23 @@ valid camelCase but still forbidden, because cinder components expose
 `class?: string` as the public prop and destructure it internally as
 `class: className` — the public API is always `class`, never `className`.
 
-| Forbidden name | Correct form   |
-| -------------- | -------------- |
-| `classname`    | `class`        |
-| `className`    | `class`        |
-| `icononly`     | `iconOnly`     |
-| `leadingicon`  | `leadingIcon`  |
-| `trailingicon` | `trailingIcon` |
-| `ondismiss`    | `onDismiss`    |
-| `onchange`     | `onChange`     |
+| Forbidden name | Correct form     |
+| -------------- | ---------------- |
+| `classname`    | `class`          |
+| `className`    | `class`          |
+| `component`    | `as`             |
+| `colSpan`      | `columnSpan`     |
+| `defaultValue` | `value`          |
+| `fieldClass`   | `fieldClassName` |
+| `filterItem`   | `filter`         |
+| `icononly`     | `iconOnly`       |
+| `inputValue`   | `textInputValue` |
+| `leadingicon`  | `leadingIcon`    |
+| `lockScroll`   | `scrollLocked`   |
+| `mono`         | `monochrome`     |
+| `trailingicon` | `trailingIcon`   |
+| `onchange`     | `onChange`       |
+| `onclick`      | `onClick`        |
 
 To add to this list: update `PROP_NAME_DENYLIST` in
 `scripts/component-conventions.ts` and document the entry here in the same PR.

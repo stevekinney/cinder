@@ -14,7 +14,7 @@ const schema = {
         'Visual placement mode. `bottom` renders a mobile tab-bar composition, but\nstill does not fix or stick itself to the viewport.',
       default: 'top',
     },
-    showLabels: {
+    labelsVisible: {
       enum: ['always', 'active', 'never'],
       description:
         'Label visibility for mobile bottom-tab compositions. Hidden labels remain in\nthe accessibility tree when wrapped in `[data-cinder-navigation-label]`.',

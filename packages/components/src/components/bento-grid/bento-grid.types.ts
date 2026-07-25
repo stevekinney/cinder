@@ -1,5 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
+import type { NonVoidHTMLElementTagName } from '../../utilities/html-element-types.ts';
 
 /** Column definition accepted by BentoGrid. */
 export type BentoGridColumns = number | string;
@@ -25,7 +26,7 @@ export type BentoGridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
    */
   collapse?: boolean;
   /** Rendered HTML tag. */
-  as?: string;
+  as?: NonVoidHTMLElementTagName;
   /** Custom class merged with `.cinder-bento-grid`. */
   class?: string;
   /** Bento grid contents. */

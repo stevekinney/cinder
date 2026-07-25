@@ -22,7 +22,7 @@ const schema = {
       type: 'boolean',
       description: 'When true, render a copy button in the header.',
     },
-    showLanguageLabel: {
+    languageLabelVisible: {
       type: 'boolean',
       description:
         'Whether to render the language label in the header. Default `true`.\nPass `false` to keep `language`-driven highlighting without the visible\nheader chip; with `copyable` also unset, no header renders at all.',

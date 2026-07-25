@@ -18,9 +18,9 @@
       "type": "string",
       "description": "Optional id of an element that names the sheet. When supplied, sheet\nwires `aria-labelledby` to this id and renders no internal heading.\nUse this when a custom `header` snippet has its own visible heading —\nsupply `ariaLabelledBy` pointing to that heading's id so the\nvisible and accessible names stay in sync."
     },
-    "showDragHandle": {
+    "dragHandleVisible": {
       "type": "boolean",
-      "description": "When `true`, render a decorative drag handle above the header.\nSwipe-to-close gesture is a stretch goal not implemented in MVP —\nthe handle is purely a visual affordance. Default `false`.\n\nNamed `showDragHandle` (not `draggable`) to avoid colliding with the\nnative HTML `draggable` attribute on the underlying `<dialog>`."
+      "description": "When `true`, render a decorative drag handle above the header.\nSwipe-to-close gesture is a stretch goal not implemented in MVP —\nthe handle is purely a visual affordance. Default `false`.\n\nNamed `dragHandleVisible` (not `draggable`) to avoid colliding with the\nnative HTML `draggable` attribute on the underlying `<dialog>`."
     }
   },
   "additionalProperties": false,

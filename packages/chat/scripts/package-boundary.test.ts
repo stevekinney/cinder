@@ -1,3 +1,5 @@
+import parseChangeset from '@changesets/parse';
+import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
@@ -19,6 +21,49 @@ const cinderManifest = JSON.parse(
 const chatReadme = await Bun.file(join(packageRoot, 'README.md')).text();
 
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
+const changesetDirectory = join(workspaceRoot, '.changeset');
+const changesetBumpRank = {
+  patch: 1,
+  minor: 2,
+  major: 3,
+} as const;
+
+type ChangesetBump = keyof typeof changesetBumpRank;
+
+function isChangesetBump(type: string): type is ChangesetBump {
+  return type === 'patch' || type === 'minor' || type === 'major';
+}
+
+async function pendingChangesetBump(packageName: string): Promise<ChangesetBump | null> {
+  const glob = new Glob('*.md');
+  let strongestBump: ChangesetBump | null = null;
+
+  for await (const entry of glob.scan({ cwd: changesetDirectory })) {
+    if (entry === 'README.md') continue;
+    const source = await Bun.file(join(changesetDirectory, entry)).text();
+    const { releases } = parseChangeset(source);
+    for (const release of releases) {
+      if (release.name !== packageName || !isChangesetBump(release.type)) continue;
+      if (
+        strongestBump === null ||
+        changesetBumpRank[release.type] > changesetBumpRank[strongestBump]
+      ) {
+        strongestBump = release.type;
+      }
+    }
+  }
+
+  return strongestBump;
+}
+
+function nextMinorPeerRange(version: string): string {
+  const [major, minor] = version.split('.').map((part) => Number.parseInt(part, 10));
+  if (major === undefined || minor === undefined || Number.isNaN(major) || Number.isNaN(minor)) {
+    throw new Error(`Unparseable Cinder version: ${JSON.stringify(version)}`);
+  }
+
+  return `^${major}.${minor + 1}.0`;
+}
 
 describe('Chat package ownership boundary', () => {
   test('keeps Chat exports and Conversationalist out of Cinder', () => {
@@ -72,7 +117,7 @@ describe('Chat package ownership boundary', () => {
     ]);
   });
 
-  test('keeps Chat’s Cinder peer range covering the current Cinder version', () => {
+  test('keeps Chat’s Cinder peer range covering the current Cinder version', async () => {
     const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
     expect(
       cinderPeerRange,
@@ -81,9 +126,15 @@ describe('Chat package ownership boundary', () => {
     if (typeof cinderPeerRange !== 'string') return;
 
     expect(cinderPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
+    const peerCoversCurrentCinder = Bun.semver.satisfies(cinderManifest.version, cinderPeerRange);
+    const pendingCoordinatedMinorRelease =
+      (await pendingChangesetBump(cinderManifest.name)) === 'minor' &&
+      (await pendingChangesetBump(chatManifest.name)) === 'minor' &&
+      cinderPeerRange === nextMinorPeerRange(cinderManifest.version);
+
     expect(
-      Bun.semver.satisfies(cinderManifest.version, cinderPeerRange),
-      'Cinder must satisfy Chat’s peer range. Run packages/components/scripts/reconcile-chat-cinder-peer.ts during versioning (issue #879).',
+      peerCoversCurrentCinder || pendingCoordinatedMinorRelease,
+      'Chat’s Cinder peer range must either cover the current Cinder version, or point at the next Cinder minor while a coordinated Cinder+Chat minor changeset is pending.',
     ).toBe(true);
   });
 

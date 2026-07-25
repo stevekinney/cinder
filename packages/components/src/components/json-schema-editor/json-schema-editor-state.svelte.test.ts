@@ -286,12 +286,12 @@ describe('createEditorState — change events', () => {
   });
 });
 
-describe('createEditorState — onrevert callback', () => {
+describe('createEditorState — onRevert callback', () => {
   test('fires with restoredFrom: original-schema when the original parsed', () => {
     const events: { restoredFrom: string }[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
-      onrevert: (event) => events.push(event),
+      onRevert: (event) => events.push(event),
     });
 
     state.commitFromForm({ type: 'number' });
@@ -305,7 +305,7 @@ describe('createEditorState — onrevert callback', () => {
     const events: { restoredFrom: string }[] = [];
     const state = createEditorState({
       schema: '{not-valid',
-      onrevert: (event) => events.push(event),
+      onRevert: (event) => events.push(event),
     });
 
     state.setJsonDraftText('{"type":"string"}');
@@ -360,12 +360,12 @@ describe('createEditorState — readonly guards', () => {
   });
 });
 
-describe('createEditorState — onvalidate callback', () => {
+describe('createEditorState — onValidate callback', () => {
   test('fires on initial mount with the loaded schema status', () => {
     const events: { status: string; valid: boolean }[] = [];
     createEditorState({
       schema: { type: 'string' },
-      onvalidate: (result) => events.push(result),
+      onValidate: (result) => events.push(result),
     });
 
     expect(events.length).toBeGreaterThanOrEqual(1);
@@ -376,7 +376,7 @@ describe('createEditorState — onvalidate callback', () => {
     const events: { status: string }[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
-      onvalidate: (result) => events.push(result),
+      onValidate: (result) => events.push(result),
     });
     const baseline = events.length;
 
@@ -389,7 +389,7 @@ describe('createEditorState — onvalidate callback', () => {
     const events: { status: string; valid: boolean }[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
-      onvalidate: (result) => events.push(result),
+      onValidate: (result) => events.push(result),
     });
 
     withImmediateTimers(() => {
@@ -415,7 +415,7 @@ describe('createEditorState — onvalidate callback', () => {
     const events: { status: string; valid: boolean }[] = [];
     const state = createEditorState({
       schema: { type: 'string' },
-      onvalidate: (result) => events.push(result),
+      onValidate: (result) => events.push(result),
     });
     const baseline = events.length;
 

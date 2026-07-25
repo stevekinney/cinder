@@ -54,7 +54,7 @@ export type UseChatDisclosureStateReturn = {
  * <ReasoningPart
  *   {part}
  *   expanded={reasoningState.isExpanded(message.id)}
- *   ontoggle={() => reasoningState.toggle(message.id)}
+ *   onToggle={() => reasoningState.toggle(message.id)}
  * />
  * ```
  */

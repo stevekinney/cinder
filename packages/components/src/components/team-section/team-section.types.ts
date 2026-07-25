@@ -28,7 +28,7 @@ export type TeamSectionProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'c
   /** Grid column count. @default 3 */
   columns?: 2 | 3 | 4;
   /** Whether to render a compact AvatarGroup summary above the grid. @default false */
-  showAvatarGroup?: boolean;
+  avatarGroupVisible?: boolean;
   /** Label for the AvatarGroup summary. @default "Team members" */
   avatarGroupLabel?: string;
   /** Max width token forwarded to Container. @default "wide" */
@@ -49,7 +49,7 @@ export interface TeamSectionSchemaProps {
   /** Grid column count. @default 3 */
   columns?: 2 | 3 | 4;
   /** Whether to render a compact AvatarGroup summary above the grid. @default false */
-  showAvatarGroup?: boolean;
+  avatarGroupVisible?: boolean;
   /** Label for the AvatarGroup summary. @default "Team members" */
   avatarGroupLabel?: string;
   /** Max width token forwarded to Container. @default "wide" */

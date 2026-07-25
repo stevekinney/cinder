@@ -181,8 +181,8 @@
   id={popoverId}
   open={isOpen}
   {position}
-  onclose={handleClose}
-  oncommentsubmit={addComment}
+  onClose={handleClose}
+  onCommentSubmit={addComment}
 />
 
 {#if submittedComments.length > 0}

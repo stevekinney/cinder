@@ -35,13 +35,13 @@
     role = 'dialog',
     dismissOnBackdropClick = true,
     dismissOnEscape = true,
-    showCloseButton = true,
+    closeButtonVisible = true,
     class: className,
     children,
     footer,
     triggerRef = null,
     describedById,
-    ondismiss,
+    onDismiss,
   }: ModalProps = $props();
 
   let dialogElement: HTMLDialogElement | undefined = $state();
@@ -97,10 +97,12 @@
   $effect(() => {
     if (
       role === 'alertdialog' &&
-      (dismissOnBackdropClick !== false || dismissOnEscape !== false || showCloseButton !== false)
+      (dismissOnBackdropClick !== false ||
+        dismissOnEscape !== false ||
+        closeButtonVisible !== false)
     ) {
       devWarn(
-        '[cinder/Modal] role="alertdialog" requires dismissOnBackdropClick={false}, dismissOnEscape={false}, and showCloseButton={false}. ' +
+        '[cinder/Modal] role="alertdialog" requires dismissOnBackdropClick={false}, dismissOnEscape={false}, and closeButtonVisible={false}. ' +
           'Without these, Escape or backdrop click can bypass the mandatory acknowledgement. ' +
           'Use <AlertDialog> instead, or pass all three companion props explicitly.',
       );
@@ -153,12 +155,12 @@
   // dialog open. Callbacks are not awaited; sync throws propagate to the caller.
   function dismiss() {
     open = false;
-    ondismiss?.();
+    onDismiss?.();
   }
 
   function handleClose() {
     // Fired on the native 'close' event — may be triggered by dismiss() (via dialogElement.close())
-    // or by parent-driven open = false. Only restores focus; does NOT call ondismiss here
+    // or by parent-driven open = false. Only restores focus; does NOT call onDismiss here
     // so parent-driven closes do not fire the callback.
     open = false;
     releaseLock();
@@ -244,7 +246,7 @@
           Rendered last so tabbing forward from the panel leaves it last in
           sequential focus order. CSS positions it visually in the corner.
         -->
-        {#if showCloseButton}
+        {#if closeButtonVisible}
           <button
             type="button"
             class="cinder-modal__close"

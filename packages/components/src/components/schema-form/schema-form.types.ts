@@ -45,5 +45,5 @@ export type SchemaFormProps<Schema extends SchemaFormSchema = SchemaFormSchema> 
    * In-progress numeric editors and temporarily unparseable JSON fields are reported as
    * their current raw text until the value commits or parses successfully.
    */
-  ondraftchange?: SchemaFormDraftChangeHandler;
+  onDraftChange?: SchemaFormDraftChangeHandler;
 };

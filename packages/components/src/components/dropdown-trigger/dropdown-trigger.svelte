@@ -26,7 +26,7 @@
 
   let {
     class: customClassName,
-    showCaret = true,
+    caretVisible = true,
     children,
     onclick,
     ...rest
@@ -72,7 +72,7 @@
   {#if children}
     {@render children()}
   {/if}
-  {#if showCaret}
+  {#if caretVisible}
     <svg
       class="cinder-dropdown-trigger__caret"
       aria-hidden="true"

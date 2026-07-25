@@ -146,9 +146,9 @@ describe('Input rendering', () => {
     expect(input.value).toBe('Alice');
   });
 
-  test('onValueChange can transform the proposed value before it is written', async () => {
+  test('onValueChangeRequest can transform the proposed value before it is written', async () => {
     const { container } = render(Input, {
-      props: { id: 'name', value: '', onValueChange: (next: string) => next.toUpperCase() },
+      props: { id: 'name', value: '', onValueChangeRequest: (next: string) => next.toUpperCase() },
     });
     const input = container.querySelector('#name') as HTMLInputElement;
 
@@ -157,9 +157,9 @@ describe('Input rendering', () => {
     expect(input.value).toBe('ALICE');
   });
 
-  test('onValueChange can veto the native edit and re-sync the input value', async () => {
+  test('onValueChangeRequest can veto the native edit and re-sync the input value', async () => {
     const { container } = render(Input, {
-      props: { id: 'name', value: 'Alice', onValueChange: () => 'Alice' },
+      props: { id: 'name', value: 'Alice', onValueChangeRequest: () => 'Alice' },
     });
     const input = container.querySelector('#name') as HTMLInputElement;
 

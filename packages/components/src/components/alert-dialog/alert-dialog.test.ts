@@ -50,7 +50,7 @@ describe('AlertDialog', () => {
         open: true,
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 
@@ -76,7 +76,7 @@ describe('AlertDialog', () => {
         title: 'Session expired',
         description: 'Sign in again before continuing.',
         acknowledgeLabel: 'Sign in',
-        onacknowledge: () => {
+        onAcknowledge: () => {
           callbackSawOpen = openValue;
         },
       },
@@ -103,7 +103,7 @@ describe('AlertDialog', () => {
         },
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 
@@ -129,10 +129,10 @@ describe('AlertDialog', () => {
         title: 'Delete workspace',
         description: 'This action affects collaborators.',
         cancelLabel: 'Cancel',
-        oncancel: () => {
+        onCancel: () => {
           cancelCount++;
         },
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 
@@ -156,7 +156,7 @@ describe('AlertDialog', () => {
         },
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 
@@ -195,7 +195,7 @@ describe('AlertDialog', () => {
         acknowledgeLabel: 'Delete',
         cancelLabel: 'Cancel',
         destructive: true,
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 
@@ -215,7 +215,7 @@ describe('AlertDialog', () => {
         open: true,
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
     const dialog = container.querySelector('dialog');
@@ -228,7 +228,7 @@ describe('AlertDialog', () => {
         open: true,
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
     expect(container.querySelector('.cinder-modal__close')).toBeNull();
@@ -246,7 +246,7 @@ describe('AlertDialog', () => {
         },
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 
@@ -269,7 +269,7 @@ describe('AlertDialog', () => {
         },
         title: 'Session expired',
         description: 'Sign in again before continuing.',
-        onacknowledge: () => {},
+        onAcknowledge: () => {},
       },
     });
 

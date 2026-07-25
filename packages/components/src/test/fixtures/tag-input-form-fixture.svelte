@@ -5,7 +5,7 @@
     defaultValue?: string[];
     max?: number;
     validate?: (tag: string) => boolean | string;
-    allowDuplicates?: boolean;
+    duplicateValuesAllowed?: boolean;
     disabled?: boolean;
     readonly?: boolean;
     commitOnSubmit?: boolean;
@@ -23,7 +23,7 @@
     defaultValue,
     max,
     validate,
-    allowDuplicates,
+    duplicateValuesAllowed,
     disabled,
     readonly,
     commitOnSubmit,
@@ -37,7 +37,7 @@
     ...(defaultValue !== undefined ? { defaultValue } : {}),
     ...(max !== undefined ? { max } : {}),
     ...(validate !== undefined ? { validate } : {}),
-    ...(allowDuplicates !== undefined ? { allowDuplicates } : {}),
+    ...(duplicateValuesAllowed !== undefined ? { duplicateValuesAllowed } : {}),
     ...(disabled !== undefined ? { disabled } : {}),
     ...(readonly !== undefined ? { readonly } : {}),
     ...(commitOnSubmit !== undefined ? { commitOnSubmit } : {}),

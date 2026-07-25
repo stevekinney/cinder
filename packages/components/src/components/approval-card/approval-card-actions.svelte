@@ -156,7 +156,7 @@
         onValueChange={(value) => (editedArgumentsText = value)}
         {...!editParseResult.ok ? { error: editParseResult.message } : {}}
         rows={8}
-        showValidFeedback={false}
+        validFeedbackVisible={false}
         autofocus
       />
       <div class="cinder-approval-card__editor-actions">

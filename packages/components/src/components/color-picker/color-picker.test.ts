@@ -25,7 +25,7 @@ function q<T extends Element = HTMLElement>(root: ParentNode, selector: string):
 
 describe('ColorPicker structure', () => {
   test('renders a labelled group with gradient, hue slider, and preview', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff0000' });
+    const { container } = render(ColorPicker, { value: '#ff0000' });
     expect(q(container, '[role="group"]').getAttribute('aria-label')).toBe('Color picker');
     expect(q(container, '[role="application"]')).toBeTruthy();
     const sliders = container.querySelectorAll('[role="slider"]');
@@ -34,7 +34,7 @@ describe('ColorPicker structure', () => {
   });
 
   test('renders alpha slider when alpha=true', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff0000', alpha: true });
+    const { container } = render(ColorPicker, { value: '#ff0000', alpha: true });
     const sliders = container.querySelectorAll('[role="slider"]');
     expect(sliders.length).toBe(2);
     const alphaSlider = container.querySelector('[aria-label="Alpha"]');
@@ -43,7 +43,7 @@ describe('ColorPicker structure', () => {
 
   test('renders swatch listbox when swatches are provided', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
     });
     const listbox = q(container, '[role="listbox"]');
@@ -54,7 +54,7 @@ describe('ColorPicker structure', () => {
 
   test('selected swatch renders a check indicator without depending on focus', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#00ff00',
+      value: '#00ff00',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
     });
 
@@ -64,7 +64,7 @@ describe('ColorPicker structure', () => {
   });
 
   test('renders hidden input mirroring the value when name is provided', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff0000', name: 'pick' });
+    const { container } = render(ColorPicker, { value: '#ff0000', name: 'pick' });
     const hidden = q<HTMLInputElement>(container, 'input[name="pick"]');
     expect(hidden.type).toBe('hidden');
     expect(hidden.value).toBe('#ff0000');
@@ -73,20 +73,20 @@ describe('ColorPicker structure', () => {
 
 describe('ColorPicker parser round-trips', () => {
   test('hex round-trips', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#abcdef', name: 'p' });
+    const { container } = render(ColorPicker, { value: '#abcdef', name: 'p' });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('#abcdef');
   });
 
   test('rgb input emits hex', () => {
-    const { container } = render(ColorPicker, { defaultValue: 'rgb(255, 0, 0)', name: 'p' });
+    const { container } = render(ColorPicker, { value: 'rgb(255, 0, 0)', name: 'p' });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('#ff0000');
   });
 
   test('hsl input emits hex', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: 'hsl(120, 100%, 50%)',
+      value: 'hsl(120, 100%, 50%)',
       name: 'p',
     });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
@@ -94,13 +94,13 @@ describe('ColorPicker parser round-trips', () => {
   });
 
   test('short hex expands to long hex', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#f00', name: 'p' });
+    const { container } = render(ColorPicker, { value: '#f00', name: 'p' });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('#ff0000');
   });
 
   test('near-360 parsed hue stays within slider bounds', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff0001' });
+    const { container } = render(ColorPicker, { value: '#ff0001' });
     const hue = q(container, '[aria-label="Hue"]');
     const thumb = q(container, '.cinder-color-picker__hue-thumb');
     expect(hue.getAttribute('aria-valuenow')).toBe('359');
@@ -111,7 +111,7 @@ describe('ColorPicker parser round-trips', () => {
 describe('ColorPicker alpha behavior', () => {
   test('alpha=true emits 8-char hex', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: 'rgba(255, 0, 0, 0.5)',
+      value: 'rgba(255, 0, 0, 0.5)',
       alpha: true,
       name: 'p',
     });
@@ -121,7 +121,7 @@ describe('ColorPicker alpha behavior', () => {
 
   test('alpha=false drops alpha on emit even when input has alpha', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000ff',
+      value: '#ff0000ff',
       alpha: false,
       name: 'p',
     });
@@ -133,7 +133,7 @@ describe('ColorPicker alpha behavior', () => {
 describe('ColorPicker invalid input', () => {
   test('invalid string yields empty hidden value', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: 'not-a-color',
+      value: 'not-a-color',
       name: 'p',
     });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
@@ -184,7 +184,7 @@ describe('ColorPicker invalid input', () => {
 
   test('unparseable swatches do not break selection rendering', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#00ff00',
+      value: '#00ff00',
       swatches: ['not-a-color', '#00ff00'],
     });
 
@@ -197,7 +197,7 @@ describe('ColorPicker invalid input', () => {
   test('clicking an unparseable swatch does not change value or show selected', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#00ff00',
+      value: '#00ff00',
       swatches: ['not-a-color', '#00ff00'],
       name: 'p',
       onchange: (color: string) => {
@@ -244,7 +244,7 @@ describe('ColorPicker swatch controlled-state invariant (regression: conditional
     // fell into uncontrolled mode — letting the click stick visually inside the child.
     let captured = '';
     const { container } = render(ColorPicker, {
-      // No value or defaultValue: ColorPicker starts with internalValue === ''.
+      // No value or value: ColorPicker starts with internalValue === ''.
       swatches: ['not-a-color', '#00ff00'],
       name: 'p',
       onchange: (color: string) => {
@@ -278,7 +278,7 @@ describe('ColorPicker swatch controlled-state invariant (regression: conditional
     const { container } = render(ColorPicker, {
       target: form,
       props: {
-        // No defaultValue: reset brings ColorPicker back to internalValue === ''.
+        // No value: reset brings ColorPicker back to internalValue === ''.
         swatches: ['not-a-color', '#00ff00'],
         name: 'p',
       },
@@ -313,7 +313,7 @@ describe('ColorPicker swatch alpha stripping', () => {
   test('alpha=false: alpha-bearing swatch emits plain #rrggbb (alpha stripped)', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       alpha: false,
       swatches: ['#ff000080'],
       name: 'p',
@@ -336,7 +336,7 @@ describe('ColorPicker swatch alpha stripping', () => {
   test('alpha=true: alpha-bearing swatch emits 8-char #rrggbbaa', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       alpha: true,
       swatches: ['#ff000080'],
       name: 'p',
@@ -359,7 +359,7 @@ describe('ColorPicker hue slider keyboard', () => {
   test('ArrowRight increments hue', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       onchange: (color: string) => {
         captured = color;
       },
@@ -372,14 +372,14 @@ describe('ColorPicker hue slider keyboard', () => {
   });
 
   test('ArrowLeft decrements hue (wraps)', async () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff0000' });
+    const { container } = render(ColorPicker, { value: '#ff0000' });
     const hue = q(container, '[aria-label="Hue"]');
     await fireEvent.keyDown(hue, { key: 'ArrowLeft' });
     expect(hue.getAttribute('aria-valuenow')).toBe('359');
   });
 
   test('Home/End move hue to 0/359', async () => {
-    const { container } = render(ColorPicker, { defaultValue: 'hsl(180, 100%, 50%)' });
+    const { container } = render(ColorPicker, { value: 'hsl(180, 100%, 50%)' });
     const hue = q(container, '[aria-label="Hue"]');
     await fireEvent.keyDown(hue, { key: 'Home' });
     expect(hue.getAttribute('aria-valuenow')).toBe('0');
@@ -388,7 +388,7 @@ describe('ColorPicker hue slider keyboard', () => {
   });
 
   test('Shift+Arrow takes 10-degree steps', async () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff0000' });
+    const { container } = render(ColorPicker, { value: '#ff0000' });
     const hue = q(container, '[aria-label="Hue"]');
     await fireEvent.keyDown(hue, { key: 'ArrowRight', shiftKey: true });
     expect(hue.getAttribute('aria-valuenow')).toBe('10');
@@ -398,7 +398,7 @@ describe('ColorPicker hue slider keyboard', () => {
 describe('ColorPicker alpha slider keyboard', () => {
   test('ArrowRight increases alpha', async () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff000080',
+      value: '#ff000080',
       alpha: true,
     });
     const alphaSlider = q(container, '[aria-label="Alpha"]');
@@ -410,7 +410,7 @@ describe('ColorPicker alpha slider keyboard', () => {
 
   test('Home/End set alpha to 0/100', async () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff000080',
+      value: '#ff000080',
       alpha: true,
     });
     const alphaSlider = q(container, '[aria-label="Alpha"]');
@@ -425,7 +425,7 @@ describe('ColorPicker swatch keyboard nav', () => {
   test('clicking a swatch updates the value', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
       name: 'p',
       onchange: (color: string) => {
@@ -442,7 +442,7 @@ describe('ColorPicker swatch keyboard nav', () => {
   test('Enter on a focused swatch selects it', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
       onchange: (color: string) => {
         captured = color;
@@ -460,7 +460,7 @@ describe('ColorPicker swatch keyboard nav', () => {
 
   test('selected swatch is reflected with aria-selected', async () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#00ff00',
+      value: '#00ff00',
       swatches: ['#ff0000', '#00ff00', '#0000ff'],
     });
     const options = container.querySelectorAll<HTMLElement>('[role="option"]');
@@ -470,7 +470,7 @@ describe('ColorPicker swatch keyboard nav', () => {
 });
 
 describe('ColorPicker form reset', () => {
-  test('form reset reverts to defaultValue', async () => {
+  test('form reset reverts to value', async () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
 
@@ -479,7 +479,7 @@ describe('ColorPicker form reset', () => {
     const { container } = render(ColorPicker, {
       target: form,
       props: {
-        defaultValue: '#ff0000',
+        value: '#ff0000',
         name: 'p',
       },
     });
@@ -500,7 +500,7 @@ describe('ColorPicker form reset', () => {
     document.body.removeChild(form);
   });
 
-  test('form reset with invalid defaultValue resets to empty without callbacks', async () => {
+  test('form reset with invalid value resets to empty without callbacks', async () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
     const inputs: string[] = [];
@@ -509,7 +509,7 @@ describe('ColorPicker form reset', () => {
     const { container } = render(ColorPicker, {
       target: form,
       props: {
-        defaultValue: 'not-a-color',
+        value: 'not-a-color',
         name: 'p',
         oninput: (color: string) => inputs.push(color),
         onchange: (color: string) => changes.push(color),
@@ -542,7 +542,7 @@ describe('ColorPicker callback contract', () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       oninput: (color: string) => inputs.push(color),
       onchange: (color: string) => changes.push(color),
     });
@@ -557,7 +557,7 @@ describe('ColorPicker callback contract', () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       swatches: ['#ff0000', '#00ff00'],
       oninput: (color: string) => inputs.push(color),
       onchange: (color: string) => changes.push(color),
@@ -574,7 +574,7 @@ describe('ColorPicker pointer interaction', () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       oninput: (color: string) => inputs.push(color),
       onchange: (color: string) => changes.push(color),
     });
@@ -613,7 +613,7 @@ describe('ColorPicker pointer interaction', () => {
     const inputs: string[] = [];
     const changes: string[] = [];
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       oninput: (color: string) => inputs.push(color),
       onchange: (color: string) => changes.push(color),
     });
@@ -647,14 +647,14 @@ describe('ColorPicker pointer interaction', () => {
 describe('ColorPicker alpha mode toggle', () => {
   test('toggling alpha=false → alpha=true re-emits 8-char hex', async () => {
     const { container, rerender } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       alpha: false,
       name: 'p',
     });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     expect(hidden.value).toBe('#ff0000');
 
-    await rerender({ defaultValue: '#ff0000', alpha: true, name: 'p' });
+    await rerender({ value: '#ff0000', alpha: true, name: 'p' });
     await tick();
     expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
   });
@@ -663,7 +663,7 @@ describe('ColorPicker alpha mode toggle', () => {
 describe('ColorPicker swatch normalization', () => {
   test('aria-selected matches regardless of swatch input format', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#00ff00',
+      value: '#00ff00',
       swatches: ['#f00', '#0f0', '#00f'],
     });
     const options = container.querySelectorAll<HTMLElement>('[role="option"]');
@@ -675,7 +675,7 @@ describe('ColorPicker swatch normalization', () => {
 describe('ColorPicker disabled', () => {
   test('disabled=true sets data-cinder-disabled and aria-disabled on subcontrols', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       disabled: true,
     });
     const root = q(container, '.cinder-color-picker');
@@ -687,7 +687,7 @@ describe('ColorPicker disabled', () => {
 
   test('disabled blocks hue keyboard updates', async () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff0000',
+      value: '#ff0000',
       disabled: true,
     });
     const hue = q(container, '[aria-label="Hue"]');
@@ -699,7 +699,7 @@ describe('ColorPicker disabled', () => {
 
 describe('ColorPicker layout: alpha-enabled state', () => {
   test('renders all controls when alpha=true: gradient, hue, alpha, footer, no swatches', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#ff000080', alpha: true });
+    const { container } = render(ColorPicker, { value: '#ff000080', alpha: true });
     expect(q(container, '[role="application"]')).toBeTruthy();
     expect(q(container, '.cinder-color-picker__hue')).toBeTruthy();
     expect(q(container, '[aria-label="Alpha"]')).toBeTruthy();
@@ -710,7 +710,7 @@ describe('ColorPicker layout: alpha-enabled state', () => {
 
   test('footer hex value shows the 8-char hex when alpha=true', () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ff000080',
+      value: '#ff000080',
       alpha: true,
       name: 'p',
     });
@@ -723,7 +723,7 @@ describe('ColorPicker layout: alpha-enabled state', () => {
   test('alpha-enabled swatches render and are selectable', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       alpha: true,
       swatches: ['#ff000080', '#00ff0080'],
       onchange: (color: string) => {
@@ -739,7 +739,7 @@ describe('ColorPicker layout: alpha-enabled state', () => {
 
 describe('ColorPicker layout: no-swatches state', () => {
   test('renders without a listbox when no swatches are provided', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#3b82f6' });
+    const { container } = render(ColorPicker, { value: '#3b82f6' });
     expect(container.querySelector('[role="listbox"]')).toBeNull();
     // Controls still present
     expect(q(container, '[role="application"]')).toBeTruthy();
@@ -748,7 +748,7 @@ describe('ColorPicker layout: no-swatches state', () => {
   });
 
   test('footer shows hex value without swatches', () => {
-    const { container } = render(ColorPicker, { defaultValue: '#3b82f6', name: 'p' });
+    const { container } = render(ColorPicker, { value: '#3b82f6', name: 'p' });
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
     const hexText = q(container, '.cinder-color-picker__hex-value');
     expect(hexText.textContent?.trim()).toBe(hidden.value);
@@ -764,7 +764,7 @@ describe('ColorPicker layout: no-swatches state', () => {
 describe('ColorPicker composition: ColorSwatchPicker integration', () => {
   test('swatch selection via ColorSwatchPicker updates the hidden input', async () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       swatches: ['#ef4444', '#22c55e', '#3b82f6'],
       name: 'p',
     });
@@ -777,7 +777,7 @@ describe('ColorPicker composition: ColorSwatchPicker integration', () => {
   test('swatch selection via ColorSwatchPicker fires onchange', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       swatches: ['#ef4444', '#22c55e', '#3b82f6'],
       onchange: (color: string) => {
         captured = color;
@@ -790,7 +790,7 @@ describe('ColorPicker composition: ColorSwatchPicker integration', () => {
 
   test('ColorSwatchPicker reflects selected state from gradient/slider pick', async () => {
     const { container } = render(ColorPicker, {
-      defaultValue: '#ef4444',
+      value: '#ef4444',
       swatches: ['#ef4444', '#22c55e'],
     });
     // The swatch matching the current color should be selected.
@@ -802,7 +802,7 @@ describe('ColorPicker composition: ColorSwatchPicker integration', () => {
   test('swatch keyboard navigation: ArrowRight then Enter selects a swatch', async () => {
     let captured = '';
     const { container } = render(ColorPicker, {
-      defaultValue: '#ffffff',
+      value: '#ffffff',
       swatches: ['#ef4444', '#22c55e', '#3b82f6'],
       onchange: (color: string) => {
         captured = color;

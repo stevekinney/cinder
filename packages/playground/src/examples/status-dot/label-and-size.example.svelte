@@ -9,12 +9,12 @@
 
 <div class="example-preview-column">
   <div class="example-preview-row">
-    <StatusDot status="online" label="Online" showLabel={true} />
-    <StatusDot status="offline" label="Offline" showLabel={true} />
-    <StatusDot status="pending" label="Pending" showLabel={true} />
+    <StatusDot status="online" label="Online" labelVisible={true} />
+    <StatusDot status="offline" label="Offline" labelVisible={true} />
+    <StatusDot status="pending" label="Pending" labelVisible={true} />
   </div>
   <div class="example-preview-row" style="align-items: center;">
-    <StatusDot status="online" label="Small" size="sm" showLabel={true} />
-    <StatusDot status="online" label="Medium" size="md" showLabel={true} />
+    <StatusDot status="online" label="Small" size="sm" labelVisible={true} />
+    <StatusDot status="online" label="Medium" size="md" labelVisible={true} />
   </div>
 </div>

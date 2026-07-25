@@ -7,8 +7,8 @@ import {
   computeScope,
   dependentsClosure,
   extractImports,
-  loadKnownSlugs,
-  loadSourceFiles,
+  loadKnownSlugsSync,
+  loadSourceFilesSync,
   pathForceFullReason,
   resolveImport,
   slugForFile,
@@ -20,6 +20,13 @@ import {
 // parallel CI or multi-worktree local runs, Bun's default 5s test timeout can
 // expire while the scan is still making progress.
 setDefaultTimeout(30_000);
+
+// Load the real-tree fixture at module load instead of in a test hook. Under
+// full Turbo contention, putting the filesystem walk in beforeAll made Bun
+// charge setup time to the first real-tree test and sporadically trip the 30s
+// hook budget. The assertions themselves are cheap once the fixture exists.
+const realTreeSourceFiles = loadSourceFilesSync();
+const realTreeKnownSlugs = loadKnownSlugsSync();
 
 // ---------------------------------------------------------------------------
 // extractImports
@@ -613,14 +620,15 @@ describe('computeScope', () => {
 // ---------------------------------------------------------------------------
 
 describe('no-unmodellable-imports guard (real tree)', () => {
+  const sourceFiles: ReadonlyMap<string, string> = realTreeSourceFiles;
+  const knownSlugs: ReadonlySet<string> = realTreeKnownSlugs;
+
   it('the harness allow-list is exhaustive — no stray computed imports', async () => {
-    const files = await loadSourceFiles();
-    expect(() => assertNoUnmodellableImports(files)).not.toThrow();
+    expect(() => assertNoUnmodellableImports(sourceFiles)).not.toThrow();
   });
 
   it('the real tree has no ambiguous imports that would make scoping permanently full', async () => {
-    const files = await loadSourceFiles();
-    expect(() => assertNoAmbiguousImports(files)).not.toThrow();
+    expect(() => assertNoAmbiguousImports(sourceFiles)).not.toThrow();
   });
 
   it('every allow-list entry is under src/test/ (cannot wave through component source)', () => {
@@ -630,16 +638,13 @@ describe('no-unmodellable-imports guard (real tree)', () => {
   });
 
   it('discovers a sane number of component slugs', async () => {
-    const slugs = await loadKnownSlugs();
     // Sanity floor: the library has well over 100 components.
-    expect(slugs.size).toBeGreaterThan(100);
-    expect(slugs.has('button')).toBe(true);
-    expect(slugs.has('confirm-dialog')).toBe(true);
+    expect(knownSlugs.size).toBeGreaterThan(100);
+    expect(knownSlugs.has('button')).toBe(true);
+    expect(knownSlugs.has('confirm-dialog')).toBe(true);
   });
 
   it('a real button change scopes to button + its real dependents', async () => {
-    const sourceFiles = await loadSourceFiles();
-    const knownSlugs = await loadKnownSlugs();
     const decision = computeScope({
       changedFiles: ['packages/components/src/components/button/button.svelte'],
       sourceFiles,
@@ -658,8 +663,6 @@ describe('no-unmodellable-imports guard (real tree)', () => {
     // class-names.ts is imported across the library; its closure reaches the
     // `experimental/*` deprecation aliases. Those must map to null (not an
     // unknown `experimental` slug that would force full).
-    const sourceFiles = await loadSourceFiles();
-    const knownSlugs = await loadKnownSlugs();
     const decision = computeScope({
       changedFiles: ['packages/components/src/utilities/class-names.ts'],
       sourceFiles,

@@ -79,4 +79,4 @@
   ];
 </script>
 
-<MegaMenu {items} openOnHover showViewport showIndicator />
+<MegaMenu {items} openOnHover viewportVisible indicatorVisible />

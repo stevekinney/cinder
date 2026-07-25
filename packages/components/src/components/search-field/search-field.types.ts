@@ -8,8 +8,7 @@ import type { HTMLInputAttributes } from 'svelte/elements';
  * wired by this component — the consumer is responsible for binding it
  * globally.
  *
- * Supports both controlled (`value` + `oninput`) and uncontrolled
- * (`defaultValue`) usage.
+ * `value` is bindable; use `oninput` to observe edits.
  */
 export type SearchFieldProps = Omit<
   HTMLInputAttributes,
@@ -17,10 +16,8 @@ export type SearchFieldProps = Omit<
 > & {
   /** Stable id for the input element. Required when composing with `FormField`. */
   id?: string;
-  /** Controlled value. When provided, the field is fully controlled by the parent. */
+  /** Bindable search value. */
   value?: string;
-  /** Initial value for uncontrolled usage. Ignored when `value` is provided. */
-  defaultValue?: string;
   /** Placeholder text. */
   placeholder?: string;
   /**
@@ -42,5 +39,5 @@ export type SearchFieldProps = Omit<
   /** Fires when the native `search` event triggers (Enter or programmatic dispatch). */
   onsearch?: (value: string) => void;
   /** Fires when the clear button is clicked. */
-  onclear?: () => void;
+  onClear?: () => void;
 };

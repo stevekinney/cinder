@@ -20,7 +20,7 @@ describe('LocaleProvider', () => {
       props: { locale: 'de-DE' },
     });
 
-    expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('1.234,5');
+    expect(container.querySelector('.cinder-statistic__value')?.textContent).toBe('1.234,5');
     expect(container.querySelector<HTMLInputElement>('#localized-number')?.value).toBe('1.234,5');
     expect(container.querySelector('select')?.textContent).toContain('Vereinigte Staaten +1');
   });
@@ -29,13 +29,13 @@ describe('LocaleProvider', () => {
     const { container } = render(LocaleProviderFixture, {
       props: {
         locale: 'de-DE',
-        explicitStatLocale: 'en-US',
+        explicitStatisticLocale: 'en-US',
         explicitNumberLocale: 'en-US',
         explicitPhoneLocale: 'en-US',
       },
     });
 
-    expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('1,234.5');
+    expect(container.querySelector('.cinder-statistic__value')?.textContent).toBe('1,234.5');
     expect(container.querySelector<HTMLInputElement>('#localized-number')?.value).toBe('1,234.5');
     expect(container.querySelector('select')?.textContent).toContain('United States +1');
   });
@@ -53,7 +53,7 @@ describe('LocaleProvider', () => {
       props: { locale: 'de-DE', nestedDirection: 'rtl' },
     });
 
-    expect(container.querySelector('.cinder-stat__value')?.textContent).toBe('1.234,5');
+    expect(container.querySelector('.cinder-statistic__value')?.textContent).toBe('1.234,5');
     expect(container.querySelector<HTMLInputElement>('#localized-number')?.value).toBe('1.234,5');
     expect(container.querySelector('.cinder-slider')?.getAttribute('dir')).toBe('rtl');
   });

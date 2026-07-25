@@ -647,7 +647,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
       props: {
         schema: schema as never,
         value: { name: 'Initial' },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
       },
@@ -696,7 +696,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
       props: {
         schema,
         value: { title: 'Ready', owner: { name: 'Ada' } },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
       },
@@ -726,7 +726,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
           required: ['raw'],
         },
         value: { raw: { ok: true } },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
       },
@@ -752,7 +752,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
           required: ['count'],
         },
         value: { count: 2 },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
       },
@@ -785,7 +785,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
           required: ['count', 'label'],
         },
         value: { count: 2, label: 'Initial' },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
       },
@@ -819,7 +819,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
           required: ['count'],
         },
         value: { count: 2 },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
       },
@@ -879,7 +879,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
           required: ['count'],
         },
         value: { count: 2 },
-        ondraftchange: (draft: unknown) => {
+        onDraftChange: (draft: unknown) => {
           drafts.push(draft);
         },
         onsubmit: async () => submitPending,

@@ -67,7 +67,7 @@ const schema = {
         description: 'Fires with accepted files after local validation passes.',
       },
       {
-        name: 'onreject',
+        name: 'onReject',
         reason: 'function-or-snippet',
         description: 'Fires with rejected files and reasons after local validation runs.',
       },

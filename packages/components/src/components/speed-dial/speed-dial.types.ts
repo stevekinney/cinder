@@ -27,7 +27,7 @@ export type SpeedDialProps = Omit<
   hidden?: boolean;
   /** Accessible label for the root group and trigger button. */
   'aria-label'?: string;
-  /** Trigger icon or content rendered inside the FloatingActionButton. */
+  /** Trigger icon or content rendered inside the FloatingAction. */
   trigger: Snippet;
   /** `SpeedDial.Action` children. */
   children: Snippet;

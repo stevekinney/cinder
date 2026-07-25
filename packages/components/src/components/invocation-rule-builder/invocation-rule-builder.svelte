@@ -638,7 +638,7 @@
                     id={`${baseId}-rule-${ruleIndex}-condition-${conditionIndex}-field`}
                     value={condition.field}
                     options={fieldOptions}
-                    allowCustomValue
+                    customValueAllowed
                     aria-label={`Field for condition ${conditionIndex + 1} of ${rule.label}`}
                     onchange={(value) =>
                       handleUpdateCondition(rule.id, condition.id, 'field', value)}

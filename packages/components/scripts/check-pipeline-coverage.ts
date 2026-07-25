@@ -152,6 +152,11 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
+  'check:prop-conventions': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'AST guard for public component prop vocabulary. Member of lint:invariants — same layer set.',
+  },
   'check:test-cleanup': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',

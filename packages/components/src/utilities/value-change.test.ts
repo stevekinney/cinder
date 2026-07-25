@@ -37,4 +37,36 @@ describe('commitValue', () => {
 
     expect(value).toBe('next');
   });
+
+  test('notifies after the final value is committed', () => {
+    let value = '';
+    const notifications: string[] = [];
+
+    commitValue(
+      'next',
+      (next) => next.toUpperCase(),
+      (next) => {
+        value = next;
+      },
+      (next) => notifications.push(next),
+    );
+
+    expect(value).toBe('NEXT');
+    expect(notifications).toEqual(['NEXT']);
+  });
+
+  test('commits null returned by a request handler instead of falling back to the proposed value', () => {
+    let value: string | null = 'initial';
+
+    const committed = commitValue<string | null>(
+      'next',
+      () => null,
+      (next) => {
+        value = next;
+      },
+    );
+
+    expect(committed).toBeNull();
+    expect(value).toBeNull();
+  });
 });

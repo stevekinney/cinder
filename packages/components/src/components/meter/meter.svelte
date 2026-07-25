@@ -10,7 +10,7 @@
    * @useWhen Showing a fluctuating value within a known minimum and maximum range.
    * @useWhen Communicating low/optimal/high regions of a bounded measurement.
    * @avoidWhen Reporting task completion over time such as uploads/imports. | progress
-   * @related progress, stat, slider
+   * @related progress, statistic, slider
    * @a11yPattern WAI-ARIA Meter
    */
   export type { MeterProps, MeterSize, MeterState } from './meter.types.ts';

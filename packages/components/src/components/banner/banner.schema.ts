@@ -33,7 +33,7 @@ const schema = {
         description: 'Banner body content.',
       },
       {
-        name: 'ondismiss',
+        name: 'onDismiss',
         reason: 'function-or-snippet',
         description: 'Called after the dismiss button is clicked. Use to persist state.',
       },

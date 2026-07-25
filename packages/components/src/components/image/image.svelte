@@ -30,8 +30,8 @@
     placeholder,
     class: className,
     fallback,
-    onload,
-    onerror,
+    onLoad,
+    onError,
     ...rest
   }: ImageProps = $props();
 
@@ -46,12 +46,12 @@
 
   function handleLoad(event: Event) {
     loadedSource = src;
-    onload?.(event);
+    onLoad?.(event);
   }
 
   function handleError(event: Event) {
     erroredSource = src;
-    onerror?.(event);
+    onError?.(event);
   }
 
   // Cached/SSR-hydrated images may already be complete before the load

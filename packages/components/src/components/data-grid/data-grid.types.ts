@@ -110,11 +110,11 @@ export type DataGridProps<TRow = Record<string, unknown>> = Omit<
   /** Controlled row-selection ids, keyed by `getRowId`. */
   selectionModel?: DataGridSelectionModel | undefined;
   /** Called when row selection changes through cell interaction. */
-  onselectionmodelchange?: (selectionModel: DataGridSelectionModel) => void;
+  onSelectionModelChange?: (selectionModel: DataGridSelectionModel) => void;
   /** Controls the row sort order used to render rows. */
   sortModel?: DataGridSortModel;
   /** Called after the user changes sort order and DataGrid updates `sortModel`. */
-  onsortmodelchange?: (sortModel: DataGridSortModel) => void;
+  onSortModelChange?: (sortModel: DataGridSortModel) => void;
   /** Additional class names merged onto the root grid. */
   class?: string;
   /** Additional class names for body rows. */

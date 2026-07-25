@@ -26,11 +26,7 @@ const schema = {
     },
     value: {
       type: 'string',
-      description: 'Controlled value. When provided, the field is fully controlled by the parent.',
-    },
-    defaultValue: {
-      type: 'string',
-      description: 'Initial value for uncontrolled usage. Ignored when `value` is provided.',
+      description: 'Bindable search value.',
     },
     shortcut: {
       type: 'string',
@@ -47,7 +43,7 @@ const schema = {
         description: 'Additional class merged with `.cinder-search-field`.',
       },
       {
-        name: 'onclear',
+        name: 'onClear',
         reason: 'function-or-snippet',
         description: 'Fires when the clear button is clicked.',
       },

@@ -65,7 +65,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
  * without this, a known-bad draft (unparseable JSON, a bare array) would
  * keep reporting whatever `metaResult.valid` happened to be from the
  * *previous* schema until the async check catches up, which is exactly
- * the stale-state window `onvalidate` consumers shouldn't see.
+ * the stale-state window `onValidate` consumers shouldn't see.
  */
 function cheapMetaShapeCheck(
   schema: unknown,
@@ -136,7 +136,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
   }
 
   function emitValidation(result: JsonSchemaValidationResult) {
-    options.onvalidate?.(result);
+    options.onValidate?.(result);
   }
 
   function buildResult(
@@ -566,7 +566,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
         emitChange();
         const epoch = beginValidationCycle();
         void refreshValidation(epoch);
-        options.onrevert?.({ restoredFrom: 'original-schema' });
+        options.onRevert?.({ restoredFrom: 'original-schema' });
       } else {
         history = null;
         jsonDraftText = originalRawText;
@@ -575,7 +575,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
         compileResult = null;
         recomputeStatus();
         emitValidation(buildResult());
-        options.onrevert?.({ restoredFrom: 'original-text' });
+        options.onRevert?.({ restoredFrom: 'original-text' });
       }
     },
 

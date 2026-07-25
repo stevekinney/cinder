@@ -31,11 +31,10 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   let {
-    value,
-    defaultValue,
     mode = 'single',
     min = 0,
     max = 100,
+    value = $bindable<SliderValue>(mode === 'range' ? [min, max] : min),
     step = 1,
     pageStep,
     label,
@@ -128,23 +127,14 @@
     return clampToBounds(Array.isArray(nextValue) ? nextValue[0] : nextValue);
   }
 
-  // Uncontrolled state: initialized once from defaultValue / mode default.
-  // Normalize at construction so the stored state never carries an
-  // out-of-bounds or inverted-tuple value, even before the first commit.
-  let uncontrolledInternal = $state<SliderValue>(
-    untrack(() => normalizeValueForMode(defaultValue ?? (mode === 'range' ? [min, max] : min))),
+  // Form reset target: initialized once from the mount-time value / mode default.
+  const resetTarget = untrack(() =>
+    normalizeValueForMode(value ?? (mode === 'range' ? [min, max] : min)),
   );
 
-  // Controlled flag and current value. When `value` is provided we read
-  // through to it; otherwise the uncontrolled state is the source of truth.
-  const isControlled = $derived(value !== undefined);
   const currentValue = $derived<SliderValue>(
     normalizeValueForMode(
-      value !== undefined
-        ? Array.isArray(value)
-          ? [value[0], value[1]]
-          : value
-        : uncontrolledInternal,
+      value !== undefined ? (Array.isArray(value) ? [value[0], value[1]] : value) : resetTarget,
     ),
   );
 
@@ -187,16 +177,27 @@
   /** Apply a new value, respecting the controlled prop. */
   function commit(next: SliderValue) {
     const normalized = normalizeValueForMode(next);
-    if (!isControlled) {
-      uncontrolledInternal = Array.isArray(normalized)
-        ? [normalized[0], normalized[1]]
-        : normalized;
-    }
+    value = Array.isArray(normalized) ? [normalized[0], normalized[1]] : normalized;
     // The discriminated SliderProps union ensures the parent's onchange
     // matches the mode it declared; the cast here bridges the runtime
     // (SliderValue) and prop (number | [number, number]) types.
     (onchange as ((value: SliderValue) => void) | undefined)?.(normalized);
   }
+
+  $effect(() => {
+    const form = rootElement?.closest('form');
+    if (!form) return;
+
+    const handleReset = (event: Event) => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        value = Array.isArray(resetTarget) ? [resetTarget[0], resetTarget[1]] : resetTarget;
+      });
+    };
+
+    form.addEventListener('reset', handleReset);
+    return () => form.removeEventListener('reset', handleReset);
+  });
 
   function updateSingle(nextValue: number) {
     commit(snap(nextValue));

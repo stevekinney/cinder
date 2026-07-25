@@ -42,12 +42,12 @@ describe('TimeField', () => {
     expect(getInput(container).step).toBe('60');
   });
 
-  test('does not replace a controlled empty value with defaultValue', () => {
+  test('uses the bindable value as the displayed native value', () => {
     const { container } = render(TimeField, {
-      props: { id: 'reminder', label: 'Reminder time', value: '', defaultValue: '09:30' },
+      props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
     });
 
-    expect(getInput(container).value).toBe('');
+    expect(getInput(container).value).toBe('09:30');
   });
 
   test('emits a canonical minute value when the input changes', async () => {
@@ -106,7 +106,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         granularity: 'second',
-        defaultValue: '09:30',
+        value: '09:30',
         name: 'reminder_time',
       },
     });
@@ -145,7 +145,7 @@ describe('TimeField', () => {
       target: form,
       props: {
         id: 'reminder',
-        defaultValue: '09:30',
+        value: '09:30',
         name: 'reminder_time',
       },
     });
@@ -433,7 +433,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         granularity: 'second',
-        defaultValue: '09:30',
+        value: '09:30',
         timezones: ['UTC', 'Europe/Berlin'],
         onchange: (detail: TimeFieldChange) => changes.push(detail),
       },
@@ -473,7 +473,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         label: 'Reminder time',
-        defaultValue: '09:30',
+        value: '09:30',
         timezones: ['America/Denver', 'UTC'],
         onchange: (detail: TimeFieldChange) => changes.push(detail),
       },
@@ -506,7 +506,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         label: 'Reminder time',
-        defaultValue: '09:30',
+        value: '09:30',
         timezones: ['America/Denver', 'UTC'],
         timezone: 'UTC',
       },
@@ -532,7 +532,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         label: 'Reminder time',
-        defaultValue: '09:30',
+        value: '09:30',
         timezones: ['America/Denver', 'UTC'],
         timezone: 'UTC',
       },
@@ -541,7 +541,7 @@ describe('TimeField', () => {
     await rerender({
       id: 'reminder',
       label: 'Reminder time',
-      defaultValue: '08:00',
+      value: '08:00',
       timezones: ['America/Denver', 'UTC'],
       timezone: 'America/Denver',
     });
@@ -557,7 +557,7 @@ describe('TimeField', () => {
     );
   });
 
-  test('native form reset uses updated default value and timezone options', async () => {
+  test('native form reset uses the mount-time value and current timezone options', async () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
     const { container, rerender } = render(TimeField, {
@@ -565,7 +565,7 @@ describe('TimeField', () => {
       props: {
         id: 'reminder',
         label: 'Reminder time',
-        defaultValue: '09:30',
+        value: '09:30',
         timezones: ['America/Denver', 'UTC'],
       },
     });
@@ -573,7 +573,7 @@ describe('TimeField', () => {
     await rerender({
       id: 'reminder',
       label: 'Reminder time',
-      defaultValue: '08:00',
+      value: '08:00',
       timezones: ['UTC'],
     });
     await fireEvent.change(getInput(container), { target: { value: '10:45' } });
@@ -581,7 +581,7 @@ describe('TimeField', () => {
     form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await tick();
 
-    expect(getInput(container).value).toBe('08:00');
+    expect(getInput(container).value).toBe('09:30');
     expect(container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')?.value).toBe(
       'UTC',
     );

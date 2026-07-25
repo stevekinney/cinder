@@ -29,7 +29,7 @@ const schema = {
       type: 'number',
       description: 'Distance in px between trigger and panel. Default `8`.',
     },
-    showArrow: {
+    arrowVisible: {
       type: 'boolean',
       description: 'Render a directional arrow on the panel. Default `false`.',
     },

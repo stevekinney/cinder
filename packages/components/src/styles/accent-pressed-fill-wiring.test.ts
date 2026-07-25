@@ -1,7 +1,7 @@
 /**
  * Wiring guard for the pressed-fill accent recipe.
  *
- * The primary `Button` and `FloatingActionButton` paint the dark-ink
+ * The primary `Button` and `FloatingAction` paint the dark-ink
  * `--cinder-accent-contrast` label on an accent fill. Their `:active` rules
  * must use `--cinder-accent-active-on-fill` (a gentle −0.11 lightness step),
  * NOT the general `--cinder-accent-active` (−0.15): on the darker L=0.66 light
@@ -63,8 +63,8 @@ const cases = [
     selectorFragments: ["[data-cinder-variant='primary']", ':active'],
   },
   {
-    name: 'primary FloatingActionButton',
-    css: loadCss('../components/floating-action-button/floating-action-button.css'),
+    name: 'primary FloatingAction',
+    css: loadCss('../components/floating-action/floating-action.css'),
     selectorFragments: ["[data-cinder-variant='primary']", ':active'],
   },
 ] as const;

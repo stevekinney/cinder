@@ -32,7 +32,7 @@
     title="Reset all local state?"
     description="This cannot be undone."
     confirmLabel="Reset local state"
-    onconfirm={() => {}}
+    onConfirm={() => {}}
   />
 
   <Card title="Place a food order" headingLevel={2}>

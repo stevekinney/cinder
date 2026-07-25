@@ -35,8 +35,8 @@
     id: providedId,
     items,
     openOnHover = false,
-    showViewport = true,
-    showIndicator = true,
+    viewportVisible = true,
+    indicatorVisible = true,
     label = 'Main navigation',
     class: className,
     ...rest
@@ -102,7 +102,7 @@
   }
 
   function updateIndicator() {
-    if (!showIndicator || !navElement || !openItemId) {
+    if (!indicatorVisible || !navElement || !openItemId) {
       indicatorStyle = '';
       return;
     }
@@ -325,14 +325,14 @@
     {/each}
   </ul>
 
-  {#if showIndicator}
+  {#if indicatorVisible}
     <div class="cinder-mega-menu__indicator-track" aria-hidden="true">
       <div class="cinder-mega-menu__indicator" style={indicatorStyle}></div>
     </div>
   {/if}
 
   {#if openItem}
-    <div class={showViewport ? 'cinder-mega-menu__viewport' : undefined}>
+    <div class={viewportVisible ? 'cinder-mega-menu__viewport' : undefined}>
       <section
         id={contentId(openItem.id)}
         class="cinder-mega-menu__content"

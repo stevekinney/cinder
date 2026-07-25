@@ -18,7 +18,7 @@
   <label for={fieldId} style="font-size: 0.875rem; font-weight: 500;"> Brand color </label>
   <ColorField
     id={fieldId}
-    defaultValue="#3b82f6"
+    value="#3b82f6"
     onchange={(value) => {
       committed = value;
     }}

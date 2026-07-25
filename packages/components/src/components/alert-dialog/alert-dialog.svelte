@@ -30,20 +30,20 @@
     acknowledgeLabel = 'OK',
     cancelLabel,
     destructive = false,
-    onacknowledge,
-    oncancel,
+    onAcknowledge,
+    onCancel,
     triggerRef = null,
     class: className,
   }: AlertDialogProps = $props();
 
   function handleAcknowledge() {
     open = false;
-    onacknowledge();
+    onAcknowledge();
   }
 
   function handleCancel() {
     open = false;
-    oncancel?.();
+    onCancel?.();
   }
 
   const acknowledgeAutofocus = $derived(!(destructive && cancelLabel));
@@ -57,7 +57,7 @@
   role="alertdialog"
   dismissOnBackdropClick={false}
   dismissOnEscape={false}
-  showCloseButton={false}
+  closeButtonVisible={false}
   describedById={descriptionId}
   class={classNames('cinder-alert-dialog', className)}
 >

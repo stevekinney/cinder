@@ -245,12 +245,12 @@ export type { ContextMenuTriggerProps } from './components/context-menu-trigger/
 export { default as CopyButton } from './components/copy-button/index.ts';
 export type { CopyButtonProps } from './components/copy-button/index.ts';
 
-export { default as CtaSection } from './components/cta-section/index.ts';
+export { default as CallToActionSection } from './components/call-to-action-section/index.ts';
 export type {
-  CtaSectionAlign,
-  CtaSectionProps,
-  CtaSectionTone,
-} from './components/cta-section/index.ts';
+  CallToActionSectionAlign,
+  CallToActionSectionProps,
+  CallToActionSectionTone,
+} from './components/call-to-action-section/index.ts';
 
 export { copyToClipboard } from './utilities/clipboard.ts';
 
@@ -387,13 +387,13 @@ export type { FeedEventProps, FeedEventVariant } from './components/feed-event/i
 export { default as Feed } from './components/feed/index.ts';
 export type { FeedProps } from './components/feed/index.ts';
 
-export { default as FloatingActionButton } from './components/floating-action-button/index.ts';
+export { default as FloatingAction } from './components/floating-action/index.ts';
 export type {
-  FloatingActionButtonProps,
-  FloatingActionButtonShape,
-  FloatingActionButtonSize,
-  FloatingActionButtonVariant,
-} from './components/floating-action-button/index.ts';
+  FloatingActionProps,
+  FloatingActionShape,
+  FloatingActionSize,
+  FloatingActionVariant,
+} from './components/floating-action/index.ts';
 
 export { default as FileUpload } from './components/file-upload/index.ts';
 export type {
@@ -856,18 +856,25 @@ export type {
   StepsProps,
 } from './components/steps/index.ts';
 
-export { default as Stat } from './components/stat/index.ts';
-export type { StatChange, StatChangeDirection, StatProps } from './components/stat/index.ts';
-
-export { default as StatGroup } from './components/stat-group/index.ts';
+export { default as Statistic } from './components/statistic/index.ts';
 export type {
-  StatGroupColumns,
-  StatGroupProps,
-  StatGroupVariant,
-} from './components/stat-group/index.ts';
+  StatisticChange,
+  StatisticChangeDirection,
+  StatisticProps,
+} from './components/statistic/index.ts';
 
-export { default as StatsSection } from './components/stats-section/index.ts';
-export type { StatsSectionItem, StatsSectionProps } from './components/stats-section/index.ts';
+export { default as StatisticGroup } from './components/statistic-group/index.ts';
+export type {
+  StatisticGroupColumns,
+  StatisticGroupProps,
+  StatisticGroupVariant,
+} from './components/statistic-group/index.ts';
+
+export { default as StatisticsSection } from './components/statistics-section/index.ts';
+export type {
+  StatisticsSectionItem,
+  StatisticsSectionProps,
+} from './components/statistics-section/index.ts';
 
 export { default as StatusDot } from './components/status-dot/index.ts';
 export type {

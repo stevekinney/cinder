@@ -36,7 +36,7 @@ const schema = {
       type: 'string',
       description: 'External validation error. Takes precedence over JSON parse feedback.',
     },
-    showValidFeedback: {
+    validFeedbackVisible: {
       type: 'boolean',
       description:
         'Whether valid JSON should render an announced success message. Defaults to true.',

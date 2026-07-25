@@ -27,6 +27,7 @@
   let {
     id,
     value = $bindable(''),
+    onValueChangeRequest,
     onValueChange,
     label,
     hideLabel = false,
@@ -109,9 +110,14 @@
 
   function handleInput(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
-    const committed = commitValue(target.value, onValueChange, (next) => {
-      value = next;
-    });
+    const committed = commitValue(
+      target.value,
+      onValueChangeRequest,
+      (next) => {
+        value = next;
+      },
+      onValueChange,
+    );
     target.value = committed;
     consumerOninput?.(event as Parameters<NonNullable<InputProps['oninput']>>[0]);
   }

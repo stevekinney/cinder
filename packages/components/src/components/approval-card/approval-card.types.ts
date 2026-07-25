@@ -121,7 +121,7 @@ export type ApprovalResolution = {
 
 export type ApprovalCardCallbacks = {
   /** Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. */
-  onresolve?: (resolution: ApprovalResolution) => void;
+  onResolve?: (resolution: ApprovalResolution) => void;
 };
 
 /** Props for the ApprovalCard component. */
@@ -183,7 +183,7 @@ export type ApprovalCardSchemaProps = {
   /** Heading level for the card title; section headings render one level deeper. Default `3`. */
   headingLevel?: ApprovalCardHeadingLevel;
   /** Called for approve, approve-with-edits, deny, and dismiss with the complete resolution payload. */
-  onresolve?: (resolution: ApprovalResolution) => void;
+  onResolve?: (resolution: ApprovalResolution) => void;
   /** Additional CSS classes applied to the root element. */
   class?: string;
 };

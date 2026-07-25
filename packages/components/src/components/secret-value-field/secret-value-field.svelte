@@ -28,7 +28,7 @@
     prefix,
     suffix,
     label = 'Secret value',
-    allowReveal = false,
+    revealAllowed = false,
     initiallyRevealed = false,
     confirmDuration = 1500,
     copiedLabel = 'Copied',
@@ -61,7 +61,7 @@
   }
 
   function handleRevealToggle() {
-    if (!allowReveal) return;
+    if (!revealAllowed) return;
     revealed = !revealed;
   }
 
@@ -81,7 +81,7 @@
   - The `value` prop is NEVER placed in title, aria-label, data-*, or any passive attribute.
   - The masked display uses a fixed bullet string; the real value only appears in the
     visible text when `initiallyRevealed` is true or when the user explicitly requests
-    reveal AND `allowReveal` is true.
+    reveal AND `revealAllowed` is true.
   - After a successful copy, no visible text exposes the value — only the live-region
     announcement ("Copied") fires, and that text never contains the secret.
   - The copy button aria-label names the field, not the value.
@@ -118,8 +118,8 @@
 
     <!-- Action buttons -->
     <div class="cinder-secret-value-field__actions">
-      <!-- Reveal/hide toggle — only rendered when allowReveal is true -->
-      {#if allowReveal}
+      <!-- Reveal/hide toggle — only rendered when revealAllowed is true -->
+      {#if revealAllowed}
         <button
           type="button"
           class="cinder-secret-value-field__toggle"

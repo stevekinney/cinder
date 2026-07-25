@@ -42,11 +42,11 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'onrevert',
+        name: 'onRevert',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onvalidate',
+        name: 'onValidate',
         reason: 'function-or-snippet',
       },
       {

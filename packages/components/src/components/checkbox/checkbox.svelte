@@ -26,6 +26,7 @@
   let {
     id,
     checked = $bindable(false),
+    onValueChangeRequest,
     onValueChange,
     indeterminate = $bindable(false),
     label,
@@ -33,7 +34,7 @@
     error,
     disabled,
     required,
-    fieldClass,
+    fieldClassName,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -114,16 +115,21 @@
 
   function handleChange(event: Event): void {
     const target = event.currentTarget as HTMLInputElement;
-    const committed = commitValue(target.checked, onValueChange, (next) => {
-      checked = next;
-    });
+    const committed = commitValue(
+      target.checked,
+      onValueChangeRequest,
+      (next) => {
+        checked = next;
+      },
+      onValueChange,
+    );
     target.checked = committed;
     target.indeterminate = indeterminate && !committed;
     consumerOnchange?.(event as Parameters<NonNullable<CheckboxProps['onchange']>>[0]);
   }
 </script>
 
-<div class={classNames('cinder-checkbox-field', fieldClass)}>
+<div class={classNames('cinder-checkbox-field', fieldClassName)}>
   <div class="cinder-checkbox-row">
     <span class="cinder-checkbox-field__control">
       <input

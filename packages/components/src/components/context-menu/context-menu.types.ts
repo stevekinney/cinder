@@ -11,7 +11,7 @@ export type ContextMenuAnchorPoint = {
 export type ContextMenuProps = {
   /** Controls the open state of the context menu; bindable for controlled usage. */
   open?: boolean;
-  onopenchange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
   /** Explicit pointer coordinates at which to anchor the menu, overriding the position captured from the right-click or long-press event. */
   anchorPoint?: ContextMenuAnchorPoint | undefined;
   /** When true, disables context-menu activation on right-click and long-press within the trigger region. Default `false`. */

@@ -47,14 +47,6 @@ jobs:
           restore-keys: |
             turbo-${{ runner.os }}-
 
-      - name: Cache Bun install
-        uses: actions/cache@v6
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
-
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -218,14 +210,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Cache Bun install
-        uses: actions/cache@v6
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

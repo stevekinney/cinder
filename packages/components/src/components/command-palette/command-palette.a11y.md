@@ -39,7 +39,7 @@ Invariants asserted in tests:
 | `ArrowUp`           | Move active item to previous non-disabled; wrap to last. `preventDefault`.                                       |
 | `Home`              | Move active item to first non-disabled. `preventDefault` (prevents caret jump).                                  |
 | `End`               | Move active item to last non-disabled. `preventDefault`.                                                         |
-| `Enter`             | Invoke the active item's `onselect`. `preventDefault` (prevents form submission).                                |
+| `Enter`             | Invoke the active item's `onSelect`. `preventDefault` (prevents form submission).                                |
 | `Escape`            | Close the palette via the shared escape stack. Single-sourced through `closePalette()`.                          |
 | `Tab` / `Shift+Tab` | Native `<dialog>` focus trap (browser-level). Focus cycles through interactive elements in the panel and footer. |
 | Typing              | Updates `query` (bindable). Items snippet re-renders with the new query.                                         |
@@ -50,7 +50,7 @@ The active descendant is scrolled with `scrollIntoView({ block: 'nearest' })` wh
 
 - `pointerenter` on a non-disabled item moves the active item id (parity with arrow keys).
 - `pointerdown` calls `event.preventDefault()` to keep focus on the input.
-- `click` on a non-disabled item invokes `onselect`. Disabled items: no-op.
+- `click` on a non-disabled item invokes `onSelect`. Disabled items: no-op.
 
 ## Backdrop Click
 

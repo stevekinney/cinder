@@ -44,12 +44,12 @@ export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
   status?: StatusDotStatus;
   /** Realtime connection preset. Sets status, default label, and live-region semantics. */
   connectionState?: StatusDotConnectionState;
-  /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
+  /** Optional human label. Rendered visibly when `labelVisible` is true; used as the accessible name either way. */
   label?: string;
   /** Use role="status" with polite live-region attributes. Defaults true when connectionState is provided. */
   live?: boolean;
   /** Whether to render the visible label. Default `true`. */
-  showLabel?: boolean;
+  labelVisible?: boolean;
   /** Dot size. Default `'md'`. */
   size?: StatusDotSize;
   /** Extra classes appended to the root element. */
@@ -61,10 +61,10 @@ export interface StatusDotSchemaProps {
   status?: StatusDotStatus;
   /** Realtime connection preset. Sets status, default label, and live-region semantics. */
   connectionState?: StatusDotConnectionState;
-  /** Optional human label. Rendered visibly when `showLabel` is true; used as the accessible name either way. */
+  /** Optional human label. Rendered visibly when `labelVisible` is true; used as the accessible name either way. */
   label?: string;
   /** Whether to render the visible label. @default true */
-  showLabel?: boolean;
+  labelVisible?: boolean;
   /** Use role="status" with polite live-region attributes. Defaults true when connectionState is provided. */
   live?: boolean;
   /** Dot size. @default "md" */

@@ -45,8 +45,8 @@
     draggable = false,
     branch = false,
     loadChildren,
-    onloaderror,
-    onrename,
+    onLoadError,
+    onRename,
     selectionScopeIds,
     row,
     children,
@@ -125,7 +125,7 @@
   const checkboxSelectionActive = $derived(context.checkboxSelectionActive());
   const selectionState = $derived(context.selectionStateFor(id));
   const labelSegments = $derived.by(() => splitLabelForHighlight(label, context.filterValue));
-  const canRename = $derived(!disabled && onrename != null);
+  const canRename = $derived(!disabled && onRename != null);
   const editingLabel = $derived(`Editing: ${label}`);
   const dragController = $derived(context.dragController);
   const canDrag = $derived(draggable && !disabled && dragController != null);
@@ -251,8 +251,8 @@
       loaded = false;
       // Collapse the branch on error
       context.setExpanded(id, false);
-      if (onloaderror) {
-        onloaderror(error, id);
+      if (onLoadError) {
+        onLoadError(error, id);
       } else {
         console.error('[cinder-tree] loadChildren failed for item', id, error);
       }
@@ -381,7 +381,7 @@
       return false;
     }
 
-    if (!onrename) {
+    if (!onRename) {
       finishEdit(afterFocus);
       return true;
     }
@@ -389,7 +389,7 @@
     renamePending = true;
     renameError = '';
     try {
-      await onrename(id, editValue);
+      await onRename(id, editValue);
       announceRename(`${editValue}, renamed.`);
       finishEdit(afterFocus);
       return true;
@@ -915,7 +915,7 @@
       {@render children?.()}
     </div>
   {/if}
-  {#if onrename}
+  {#if onRename}
     <VisuallyHiddenLiveRegion
       message={renameAnnouncement}
       announcementSequence={renameAnnouncementSequence}

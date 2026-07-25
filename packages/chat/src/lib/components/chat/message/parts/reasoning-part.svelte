@@ -7,12 +7,12 @@
     /** Whether this reasoning block is expanded. Controlled by the parent (use-chat-disclosure-state). */
     expanded?: boolean;
     /** Called when the disclosure toggle is activated. */
-    ontoggle?: (() => void) | undefined;
+    onToggle?: (() => void) | undefined;
   };
 </script>
 
 <script lang="ts">
-  let { part, expanded = false, ontoggle }: ReasoningPartProps = $props();
+  let { part, expanded = false, onToggle }: ReasoningPartProps = $props();
 
   const labelId = $derived(`reasoning-label-${part.key.replace(/[^a-z0-9-]/gi, '-')}`);
   const contentId = $derived(`reasoning-content-${part.key.replace(/[^a-z0-9-]/gi, '-')}`);
@@ -45,7 +45,7 @@
 
   function handleToggle(): void {
     if (!part.streaming) {
-      ontoggle?.();
+      onToggle?.();
     }
   }
 </script>

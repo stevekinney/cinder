@@ -22,7 +22,7 @@ export type MatrixChartProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Color interpolation scale. Default `sequential`. */
   colorScale?: MatrixColorScale;
   /** Show cell value labels. Default `true`. */
-  showCellLabels?: boolean;
+  cellLabelsVisible?: boolean;
   /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
   /** Whether the chart is in a loading state. */
@@ -55,7 +55,7 @@ export type MatrixChartSchemaProps = {
   /** Color interpolation scale. Default `sequential`. */
   colorScale?: MatrixColorScale;
   /** Show cell value labels. Default `true`. */
-  showCellLabels?: boolean;
+  cellLabelsVisible?: boolean;
   /** Pixel height of the chart viewport. Default `280`. */
   height?: number;
   /** Whether the chart is in a loading state. Default `false`. */

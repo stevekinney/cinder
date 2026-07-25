@@ -52,7 +52,7 @@ export type ImageProps = Omit<
   /** Rendered in place of the `<img>` when it fails to load. */
   fallback?: Snippet;
   /** Forwarded after internal state updates. */
-  onload?: (event: Event) => void;
+  onLoad?: (event: Event) => void;
   /** Forwarded after internal state updates. */
-  onerror?: (event: Event) => void;
+  onError?: (event: Event) => void;
 };

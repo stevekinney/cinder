@@ -21,7 +21,9 @@ export type CheckboxProps = HTMLInputAttributes & {
   /** Bound checked state. */
   checked?: boolean;
   /** Intercept a proposed checked state before the bindable value is written. Return a replacement value to transform it. */
-  onValueChange?: (next: boolean) => boolean | void;
+  onValueChangeRequest?: (next: boolean) => boolean | void;
+  /** Notify after the bindable value has been committed. */
+  onValueChange?: (next: boolean) => void;
   /** Bound indeterminate state. Mutually exclusive with `checked` visually. */
   indeterminate?: boolean;
   /** Visible label rendered in a `<label>` element associated via `for`. */
@@ -33,7 +35,7 @@ export type CheckboxProps = HTMLInputAttributes & {
   /** Disables the checkbox. */
   disabled?: boolean;
   /** Extra class names merged with the outer checkbox field wrapper. */
-  fieldClass?: string;
+  fieldClassName?: string;
   /** Extra class names merged with `.cinder-checkbox`. */
   class?: string;
 };

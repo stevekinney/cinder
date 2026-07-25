@@ -30,11 +30,11 @@ There is no roving-tabindex model; every interactive element is in the natural T
 
 ## Mouse / pointer
 
-- Clicking a chip's remove button (×) fires `onfilterremove` with the chip's key.
-- Clicking "Clear all" fires `onclearall`.
-- Changing a select facet fires `onfacetchange` with the facet key and new value.
-- Typing in the search field fires `onsearchchange` on every keystroke.
-- The search field's clear button (rendered by `SearchField`) clears the query and fires `onsearchchange('')`.
+- Clicking a chip's remove button (×) fires `onFilterRemove` with the chip's key.
+- Clicking "Clear all" fires `onClearAll`.
+- Changing a select facet fires `onFacetChange` with the facet key and new value.
+- Typing in the search field fires `onSearchChange` on every keystroke.
+- The search field's clear button (rendered by `SearchField`) clears the query and fires `onSearchChange('')`.
 
 ## Hard scope caps
 

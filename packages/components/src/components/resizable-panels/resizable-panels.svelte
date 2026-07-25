@@ -63,8 +63,8 @@
     snapThreshold = { value: 8, unit: 'px' },
     collapseOnDoubleClick = false,
     collapseTarget = 'nearest-collapsible',
-    onlayoutchange,
-    onlayoutcommit,
+    onLayoutChange,
+    onLayoutCommit,
     children,
     class: className,
     ...rest
@@ -117,9 +117,9 @@
       orientation,
       sizes: getLayoutSnapshot(layoutState, panes),
     };
-    onlayoutchange?.(detail);
+    onLayoutChange?.(detail);
     if (committed) {
-      onlayoutcommit?.(detail);
+      onLayoutCommit?.(detail);
     }
   }
 

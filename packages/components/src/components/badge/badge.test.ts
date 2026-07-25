@@ -85,22 +85,22 @@ describe('Badge', () => {
   });
 });
 
-describe('Badge — mono affordance', () => {
-  test('mono=true stamps data-cinder-mono on the root span', () => {
+describe('Badge — monochrome affordance', () => {
+  test('monochrome=true stamps data-cinder-monochrome on the root span', () => {
     const { container } = render(Badge, {
       children: textSnippet('v1.0.0'),
-      mono: true,
+      monochrome: true,
     });
     const span = container.querySelector('.cinder-badge');
-    expect(span?.hasAttribute('data-cinder-mono')).toBe(true);
+    expect(span?.hasAttribute('data-cinder-monochrome')).toBe(true);
   });
 
-  test('mono=false (default) does not stamp data-cinder-mono', () => {
+  test('monochrome=false (default) does not stamp data-cinder-monochrome', () => {
     const { container } = render(Badge, {
       children: textSnippet('label'),
     });
     const span = container.querySelector('.cinder-badge');
-    expect(span?.hasAttribute('data-cinder-mono')).toBe(false);
+    expect(span?.hasAttribute('data-cinder-monochrome')).toBe(false);
   });
 });
 

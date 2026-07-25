@@ -89,7 +89,7 @@
   </div>
 
   <Dropdown {id}>
-    <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard" showCaret={false}>
+    <DropdownTrigger class="export-trigger" aria-label="Copy to clipboard" caretVisible={false}>
       <Copy class="cinder-icon-sm" />
       <span class="cinder-sr-only">Copy</span>
     </DropdownTrigger>

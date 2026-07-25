@@ -20,4 +20,4 @@ HeroSection introduces a page with primary messaging, optional actions, and opti
 - Confirm heading text is announced in reading order before actions/media.
 - Tab through action controls and verify visible focus and activation.
 
-Related components: `cta-section`, `feature-section`, `container`, `button`.
+Related components: `call-to-action-section`, `feature-section`, `container`, `button`.

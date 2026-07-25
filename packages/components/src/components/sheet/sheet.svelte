@@ -31,7 +31,7 @@
     class: className,
     triggerRef = null,
     ariaLabelledBy,
-    showDragHandle = false,
+    dragHandleVisible = false,
     header,
     children,
     footer,
@@ -138,7 +138,7 @@
           manageInitialFocus: false,
         })}
       >
-        {#if showDragHandle}
+        {#if dragHandleVisible}
           <div class="cinder-sheet__drag-handle" aria-hidden="true">
             <span class="cinder-sheet__drag-handle-pill"></span>
           </div>

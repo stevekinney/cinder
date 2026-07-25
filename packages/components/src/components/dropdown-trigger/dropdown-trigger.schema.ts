@@ -8,7 +8,7 @@ const schema = {
       type: 'string',
       description: "Additional class names merged with the component's root class.",
     },
-    showCaret: {
+    caretVisible: {
       type: 'boolean',
       description: 'Render the trailing disclosure caret. Defaults to true.',
     },

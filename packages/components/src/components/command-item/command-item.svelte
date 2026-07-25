@@ -32,7 +32,7 @@
 
   let {
     value,
-    onselect = () => {},
+    onSelect = () => {},
     selectionMode = 'item',
     disabled = false,
     description,
@@ -66,7 +66,7 @@
       const registeredItem = commandList.register(
         {
           getValue: () => value,
-          getOnselect: () => onselect,
+          getOnselect: () => onSelect,
           getDisabled: () => disabled,
         },
         node,

@@ -699,7 +699,7 @@
               label={day.short}
               aria-label={day.long}
               pressed={presetWeeklyDays.includes(day.value)}
-              onpressedchange={() => toggleWeeklyDay(day.value)}
+              onPressedChange={() => toggleWeeklyDay(day.value)}
             />
           {/each}
         </div>

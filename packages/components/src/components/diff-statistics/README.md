@@ -10,13 +10,13 @@ Compact inline display of added, modified, and removed line counts for a file di
 
 ## Choosing something else
 
-- General numeric metrics (revenue, users, errors) — use [`Stat`](../stat/README.md) or [`StatGroup`](../stat-group/README.md) for dashboard figures.
+- General numeric metrics (revenue, users, errors) — use [`Statistic`](../statistic/README.md) or [`StatisticGroup`](../statistic-group/README.md) for dashboard figures.
 - Full diff rendering (side-by-side or unified views of the actual line changes) — DiffStatistics only summarises counts; use a diff renderer component for the actual content.
 
 ## Related components
 
-- [`Stat`](../stat/README.md) — general-purpose metric tile for non-diff numeric values.
-- [`StatGroup`](../stat-group/README.md) — grid container for multiple `Stat` tiles.
+- [`Statistic`](../statistic/README.md) — general-purpose metric tile for non-diff numeric values.
+- [`StatisticGroup`](../statistic-group/README.md) — grid container for multiple `Statistic` tiles.
 
 ## Usage
 

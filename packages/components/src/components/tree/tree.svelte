@@ -81,11 +81,11 @@
     style: styleAttribute,
     selectionControls,
     filterValue,
-    onfilterchange,
+    onFilterChange,
     filterPlaceholder = 'Search tree',
-    showSearch = false,
+    searchVisible = false,
     filterPredicate = defaultFilterPredicate,
-    onreorder,
+    onReorder,
     children,
     ...rest
   }: TreeProps = $props();
@@ -192,7 +192,7 @@
     () => new Map(flattenedDataItems.map((item) => [item.id, item])),
   );
   const hasTreeChrome = $derived(
-    selectionControls != null || showSearch || filtering || onreorder != null,
+    selectionControls != null || searchVisible || filtering || onReorder != null,
   );
   const hasRegisteredItems = $derived(
     isVirtualizedTree ? flattenedDataItems.length > 0 : registry.size > 0,
@@ -441,7 +441,7 @@
   }
 
   $effect(() => {
-    if (!onreorder) {
+    if (!onReorder) {
       dragController = null;
       return;
     }
@@ -454,7 +454,7 @@
         isBranch: (id) => registry.getNode(id)?.isBranch() ?? false,
         focus: focusNode,
         announce: announceDrag,
-        commit: (draggedId, target) => onreorder?.(draggedId, target),
+        commit: (draggedId, target) => onReorder?.(draggedId, target),
       })),
     );
   });
@@ -1053,7 +1053,7 @@
 
   function updateFilterValue(next: string): void {
     if (!isFilterControlled) uncontrolledFilterValue = next;
-    onfilterchange?.(next);
+    onFilterChange?.(next);
   }
 
   function handleFilterInput(event: Event): void {
@@ -1335,7 +1335,7 @@
 
 {#if hasTreeChrome}
   <div class="cinder-tree-root">
-    {#if showSearch}
+    {#if searchVisible}
       <div class="cinder-tree__filter">
         <label class="cinder-sr-only" for={filterInputId}>{resolvedFilterPlaceholder}</label>
         <input
@@ -1362,7 +1362,7 @@
       </div>
     {/if}
 
-    {#if onreorder}
+    {#if onReorder}
       <div id={dragInstructionsId} class="cinder-sr-only">
         Press Control Shift Space to lift the focused item, or Space from the reorder handle. Use
         arrow keys to move. Press Space to drop, Escape to cancel.
@@ -1381,7 +1381,7 @@
       priority="polite"
     />
 
-    {#if onreorder}
+    {#if onReorder}
       <VisuallyHiddenLiveRegion
         message={dragAnnouncement}
         announcementSequence={dragAnnouncementSequence}

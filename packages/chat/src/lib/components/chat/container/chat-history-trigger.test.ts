@@ -20,7 +20,7 @@ describe('ChatHistoryTrigger', () => {
     let loadCount = 0;
     const { component, container, unmount } = render(ChatHistoryTrigger, {
       label: 'Show older messages',
-      onload: () => {
+      onLoad: () => {
         loadCount += 1;
       },
     });

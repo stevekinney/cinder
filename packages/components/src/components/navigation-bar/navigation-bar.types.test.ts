@@ -21,7 +21,7 @@ import type {
 const _navigationBarItemsContext: NavigationBarItemsContext = {
   variant: 'horizontal',
   placement: 'top',
-  showLabels: 'always',
+  labelsVisible: 'always',
 };
 const _navigationBarToggleAttributes: NavigationBarToggleAttributes = {
   'aria-expanded': 'false',

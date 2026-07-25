@@ -7,6 +7,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
 import NumberInput from './number-input.svelte';
+import type { NumberInputProps } from './number-input.types.ts';
 
 afterEach(() => {
   // Tear down any standalone <form> elements appended to body by form tests
@@ -51,9 +52,17 @@ async function focus(input: HTMLInputElement) {
 }
 
 describe('NumberInput basics', () => {
-  test('renders with defaultValue formatted in en-US', () => {
+  test('type surface excludes inherited defaultValue', () => {
+    const excludesInheritedDefaultValue: 'defaultValue' extends keyof NumberInputProps
+      ? false
+      : true = true;
+
+    expect(excludesInheritedDefaultValue).toBe(true);
+  });
+
+  test('renders with value formatted in en-US', () => {
     const { container } = render(NumberInput, {
-      props: { id: 'n', defaultValue: 1234.5, locale: 'en-US' },
+      props: { id: 'n', value: 1234.5, locale: 'en-US' },
     });
     expect(getInput(container).value).toBe('1,234.5');
   });
@@ -455,14 +464,14 @@ describe('Stepper buttons and keyboard', () => {
 describe('Locale formatting', () => {
   test('en-US: 1234.5 → "1,234.5"', () => {
     const { container } = render(NumberInput, {
-      props: { id: 'n', defaultValue: 1234.5, locale: 'en-US' },
+      props: { id: 'n', value: 1234.5, locale: 'en-US' },
     });
     expect(getInput(container).value).toBe('1,234.5');
   });
 
   test('de-DE: 1234.5 → "1.234,5"', () => {
     const { container } = render(NumberInput, {
-      props: { id: 'n', defaultValue: 1234.5, locale: 'de-DE' },
+      props: { id: 'n', value: 1234.5, locale: 'de-DE' },
     });
     expect(getInput(container).value).toBe('1.234,5');
   });
@@ -524,7 +533,7 @@ describe('Currency and percent formats', () => {
     const { container } = render(NumberInput, {
       props: {
         id: 'n',
-        defaultValue: 12.5,
+        value: 12.5,
         locale: 'en-US',
         format: { style: 'currency', currency: 'USD' },
       },
@@ -540,7 +549,7 @@ describe('Currency and percent formats', () => {
     const { container } = render(NumberInput, {
       props: {
         id: 'n',
-        defaultValue: 0.5,
+        value: 0.5,
         locale: 'en-US',
         format: { style: 'percent' },
         onchange: (v: number | null) => calls.push(v),
@@ -558,7 +567,7 @@ describe('Currency and percent formats', () => {
 
   test('percent: focus avoids precision artifacts', async () => {
     const { container } = render(NumberInput, {
-      props: { id: 'n', defaultValue: 0.29, locale: 'en-US', format: { style: 'percent' } },
+      props: { id: 'n', value: 0.29, locale: 'en-US', format: { style: 'percent' } },
     });
     const input = getInput(container);
     await focus(input);
@@ -570,7 +579,7 @@ describe('Currency and percent formats', () => {
     const { container } = render(NumberInput, {
       props: {
         id: 'n',
-        defaultValue: 0.5,
+        value: 0.5,
         step: 0.01,
         locale: 'en-US',
         format: { style: 'percent' },
@@ -619,7 +628,7 @@ describe('Form integration', () => {
     expect(hidden?.getAttribute('name')).toBe('q');
   });
 
-  test('form reset (uncontrolled) restores defaultValue and fires onchange', async () => {
+  test('form reset (uncontrolled) restores value and fires onchange', async () => {
     const calls: Array<number | null> = [];
     const form = document.createElement('form');
     document.body.appendChild(form);
@@ -629,7 +638,7 @@ describe('Form integration', () => {
       target: mount,
       props: {
         id: 'n',
-        defaultValue: 5,
+        value: 5,
         locale: 'en-US',
         onchange: (v: number | null) => calls.push(v),
       },
@@ -921,7 +930,7 @@ describe('Form serialization correctness', () => {
     form.appendChild(mount);
     render(NumberInput, {
       target: mount,
-      props: { id: 'n', name: 'q', defaultValue: 0, locale: 'en-US' },
+      props: { id: 'n', name: 'q', value: 0, locale: 'en-US' },
     });
     const input = mount.querySelector('#n') as HTMLInputElement;
     await focus(input);
@@ -952,7 +961,7 @@ describe('Form serialization correctness', () => {
       props: {
         id: 'n',
         name: 'q',
-        defaultValue: 0,
+        value: 0,
         locale: 'en-US',
         onchange: (v: number | null) => calls.push(v),
       },
@@ -975,7 +984,7 @@ describe('Required + reset and other validity edge cases', () => {
     form.appendChild(mount);
     render(NumberInput, {
       target: mount,
-      props: { id: 'n', name: 'q', required: true, defaultValue: null, locale: 'en-US' },
+      props: { id: 'n', name: 'q', required: true, value: null, locale: 'en-US' },
     });
     const input = mount.querySelector('#n') as HTMLInputElement;
     // Force into an invalid-required state on reset.
@@ -1188,18 +1197,18 @@ describe('isInternalValueChange stale-flag regression', () => {
   });
 });
 
-describe('reset source does not snap defaultValue to step precision', () => {
-  test('form reset restores defaultValue verbatim even when step would round it', async () => {
+describe('reset source does not snap value to step precision', () => {
+  test('form reset restores value verbatim even when step would round it', async () => {
     // Regression: commitFromNumber with 'reset' source fell through to the
-    // else-if(snapStep !== null) branch, silently rounding defaultValue.
-    // e.g. defaultValue=0.15, step=0.1 → reset produced 0.2 instead of 0.15.
+    // else-if(snapStep !== null) branch, silently rounding value.
+    // e.g. value=0.15, step=0.1 → reset produced 0.2 instead of 0.15.
     const form = document.createElement('form');
     document.body.appendChild(form);
     const mount = document.createElement('div');
     form.appendChild(mount);
     render(NumberInput, {
       target: mount,
-      props: { id: 'n', name: 'q', defaultValue: 0.15, step: 0.1, locale: 'en-US' },
+      props: { id: 'n', name: 'q', value: 0.15, step: 0.1, locale: 'en-US' },
     });
     const input = mount.querySelector('#n') as HTMLInputElement;
     // Change value away from default.

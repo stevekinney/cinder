@@ -65,54 +65,54 @@ describe('Chip', () => {
     expect(chip?.getAttribute('aria-pressed')).toBe('true');
   });
 
-  test('toggle mode click calls onpressedchange with toggled value', async () => {
-    const onpressedchange = mock((v: boolean) => v);
+  test('toggle mode click calls onPressedChange with toggled value', async () => {
+    const onPressedChange = mock((v: boolean) => v);
     const { container } = render(Chip, {
       mode: 'toggle',
       label: 'Filter',
       pressed: false,
-      onpressedchange,
+      onPressedChange,
     });
     const chip = container.querySelector('button.cinder-chip')!;
     await fireEvent.click(chip);
-    expect(onpressedchange).toHaveBeenCalledWith(true);
+    expect(onPressedChange).toHaveBeenCalledWith(true);
   });
 
-  test('toggle mode consumer onclick fires first; preventDefault suppresses onpressedchange', async () => {
+  test('toggle mode consumer onclick fires first; preventDefault suppresses onPressedChange', async () => {
     const order: string[] = [];
     const onclick = mock((e: MouseEvent) => {
       order.push('onclick');
       e.preventDefault();
     });
-    const onpressedchange = mock(() => {
-      order.push('onpressedchange');
+    const onPressedChange = mock(() => {
+      order.push('onPressedChange');
     });
     const { container } = render(Chip, {
       mode: 'toggle',
       label: 'Filter',
       pressed: false,
       onclick,
-      onpressedchange,
+      onPressedChange,
     });
     await fireEvent.click(container.querySelector('button.cinder-chip')!);
     expect(order).toEqual(['onclick']);
-    expect(onpressedchange).not.toHaveBeenCalled();
+    expect(onPressedChange).not.toHaveBeenCalled();
   });
 
-  test('toggle mode disabled prevents onpressedchange', async () => {
-    const onpressedchange = mock(() => {});
+  test('toggle mode disabled prevents onPressedChange', async () => {
+    const onPressedChange = mock(() => {});
     const { container } = render(Chip, {
       mode: 'toggle',
       label: 'Filter',
       pressed: false,
       disabled: true,
-      onpressedchange,
+      onPressedChange,
     });
     const button = container.querySelector('button.cinder-chip')!;
     expect(button.hasAttribute('disabled')).toBe(true);
     // fireEvent bypasses native disabled suppression; real browsers block the click entirely.
     await fireEvent.click(button);
-    expect(onpressedchange).not.toHaveBeenCalled();
+    expect(onPressedChange).not.toHaveBeenCalled();
   });
 
   test('toggle mode forwards aria-label prop to the button', () => {
@@ -206,11 +206,11 @@ describe('Chip', () => {
     expect(chips.map((chip) => chip.tagName.toLowerCase())).toEqual(['span', 'button', 'span']);
   });
 
-  test('removable mode click calls onremove', async () => {
-    const onremove = mock(() => {});
-    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript', onremove });
+  test('removable mode click calls onRemove', async () => {
+    const onRemove = mock(() => {});
+    const { container } = render(Chip, { mode: 'removable', label: 'JavaScript', onRemove });
     await fireEvent.click(container.querySelector('button.cinder-chip__remove')!);
-    expect(onremove).toHaveBeenCalledTimes(1);
+    expect(onRemove).toHaveBeenCalledTimes(1);
   });
 
   test('removable mode respects removeAriaLabel', () => {
@@ -246,18 +246,18 @@ describe('Chip', () => {
     expect(removeBtn?.getAttribute('aria-label')).toBe('Remove this item');
   });
 
-  test('removable mode disabled prevents onremove', async () => {
-    const onremove = mock(() => {});
+  test('removable mode disabled prevents onRemove', async () => {
+    const onRemove = mock(() => {});
     const { container } = render(Chip, {
       mode: 'removable',
       label: 'JavaScript',
       disabled: true,
-      onremove,
+      onRemove,
     });
     const removeBtn = container.querySelector('button.cinder-chip__remove')!;
     expect(removeBtn.hasAttribute('disabled')).toBe(true);
     await fireEvent.click(removeBtn);
-    expect(onremove).not.toHaveBeenCalled();
+    expect(onRemove).not.toHaveBeenCalled();
   });
 
   test('removable mode disabled sets data-cinder-disabled on the root span', () => {

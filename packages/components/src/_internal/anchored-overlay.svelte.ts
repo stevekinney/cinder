@@ -12,7 +12,7 @@ export type AnchoredOverlayOptions = {
   shiftPadding?: () => number;
   shiftCrossAxis?: () => boolean;
   arrowPadding?: () => number;
-  showArrow?: () => boolean;
+  arrowVisible?: () => boolean;
   widthMode?: () => AnchoredOverlayWidthMode;
 };
 
@@ -113,7 +113,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const shiftCrossAxis = options.shiftCrossAxis?.() ?? false;
     const arrowPadding = options.arrowPadding?.() ?? DEFAULT_ARROW_PADDING;
     const arrow = options.arrow?.();
-    const showArrow = options.showArrow?.() ?? Boolean(arrow);
+    const arrowVisible = options.arrowVisible?.() ?? Boolean(arrow);
     const widthMode = options.widthMode?.() ?? 'content';
     let cancelled = false;
     let generation = 0;
@@ -136,7 +136,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         flip(),
         shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }),
       ];
-      if (showArrow && arrow) {
+      if (arrowVisible && arrow) {
         middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
       }
 
@@ -170,7 +170,9 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           .filter(Boolean)
           .join(' ');
         resolvedPlacement = result.placement;
-        arrowStyle = showArrow ? getArrowStyle(result.placement, result.middlewareData.arrow) : '';
+        arrowStyle = arrowVisible
+          ? getArrowStyle(result.placement, result.middlewareData.arrow)
+          : '';
         positionReady = true;
       });
     })().catch((error) => {

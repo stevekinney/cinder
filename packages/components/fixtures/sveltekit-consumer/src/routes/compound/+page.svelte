@@ -18,7 +18,7 @@
     Feed,
     GridList,
     SideNavigation,
-    StatGroup,
+    StatisticGroup,
     Tabs,
     Tree,
   } from '@lostgradient/cinder';
@@ -149,11 +149,11 @@
     </GridList>
   </section>
 
-  <section aria-label="Namespaced StatGroup">
-    <StatGroup label="Metrics" columns={2}>
-      <StatGroup.Stat label="Open PRs" value={12} />
-      <StatGroup.Stat label="Merged" value={48} />
-    </StatGroup>
+  <section aria-label="Namespaced StatisticGroup">
+    <StatisticGroup label="Metrics" columns={2}>
+      <StatisticGroup.Statistic label="Open PRs" value={12} />
+      <StatisticGroup.Statistic label="Merged" value={48} />
+    </StatisticGroup>
   </section>
 
   <section aria-label="Namespaced SideNavigation">

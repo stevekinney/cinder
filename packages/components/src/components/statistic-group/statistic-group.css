@@ -1,0 +1,81 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../statistic/statistic.css';
+@layer cinder.components {
+  .cinder-statistic-group {
+    --cinder-statistic-group-gap: var(--cinder-space-4, 1rem);
+    --cinder-statistic-group-card-padding: var(--cinder-space-4, 1rem);
+    --cinder-statistic-group-shared-cell-padding: var(--cinder-space-4, 1rem);
+    display: grid;
+    gap: var(--cinder-statistic-group-gap, var(--cinder-space-4, 1rem));
+    /* Query the group's own inline size so fixed column counts can collapse when
+       the group is narrow — even inside a wide viewport (RESPONSIVE-POLICY.md). */
+    container-type: inline-size;
+    container-name: cinder-statistic-group;
+  }
+
+  .cinder-statistic-group[data-cinder-columns='auto'] {
+    grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
+  }
+
+  .cinder-statistic-group[data-cinder-columns='1'] {
+    grid-template-columns: 1fr;
+  }
+
+  .cinder-statistic-group[data-cinder-columns='2'] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cinder-statistic-group[data-cinder-columns='3'] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cinder-statistic-group[data-cinder-columns='4'] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Fixed multi-column layouts would squeeze each stat below readability on a
+     narrow group. Collapse to two columns under 30rem, then a single column
+     under 18rem, so values never crush. The `auto` mode already self-collapses
+     via auto-fit, so it is intentionally excluded. */
+  @container cinder-statistic-group (max-width: 30rem) {
+    .cinder-statistic-group[data-cinder-columns='3'],
+    .cinder-statistic-group[data-cinder-columns='4'] {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @container cinder-statistic-group (max-width: 18rem) {
+    .cinder-statistic-group[data-cinder-columns='2'],
+    .cinder-statistic-group[data-cinder-columns='3'],
+    .cinder-statistic-group[data-cinder-columns='4'] {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* variant: cards — each stat gets a card-style border, background, and shadow */
+  .cinder-statistic-group[data-cinder-variant='cards'] > .cinder-statistic {
+    padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md, 0.5rem);
+    box-shadow: var(--cinder-shadow-sm);
+  }
+
+  /*
+ * variant: shared-borders — outer border on the container; 1px gap filled by the
+ * container background acts as the divider between cells. Children paint over the
+ * gap with the surface color, avoiding nth-child math for any column count.
+ */
+  .cinder-statistic-group[data-cinder-variant='shared-borders'] {
+    --cinder-statistic-group-gap: 1px;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md, 0.5rem);
+    overflow: hidden;
+    background: var(--cinder-border);
+  }
+
+  .cinder-statistic-group[data-cinder-variant='shared-borders'] > .cinder-statistic {
+    padding: var(--cinder-statistic-group-shared-cell-padding, var(--cinder-space-4, 1rem));
+    background: var(--cinder-surface-raised);
+  }
+}

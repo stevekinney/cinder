@@ -14,5 +14,5 @@ export type ChatConversationListProps = Omit<HTMLAttributes<HTMLElement>, 'class
   /** Additional class name merged with `.cinder-chat-conversation-list`. */
   class?: string;
   /** Called when a conversation is selected. */
-  onselectconversation?: (conversationId: string) => void;
+  onSelectConversation?: (conversationId: string) => void;
 };

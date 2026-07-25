@@ -32,7 +32,7 @@
     required,
     class: customClassName,
     maxlength,
-    showCount = false,
+    countVisible = false,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -40,7 +40,7 @@
 
   const context = getFormFieldContext();
   const maximumLength = $derived(resolveMaximumLength(maxlength));
-  const countId = $derived(showCount && maximumLength !== undefined ? `${id}-count` : undefined);
+  const countId = $derived(countVisible && maximumLength !== undefined ? `${id}-count` : undefined);
   const currentCount = $derived(value?.length ?? 0);
   const ownRequired = $derived(required ?? undefined);
   const field = $derived(

@@ -125,8 +125,8 @@ describe('highlightJson — HTML escaping', () => {
   });
 
   test('special characters in non-JSON input are escaped', () => {
-    const html = highlightJson('<img src=x onerror=alert(1)>');
-    expect(html).toBe('<code class="cinder-json">&lt;img src=x onerror=alert(1)&gt;</code>');
+    const html = highlightJson('<img src=x onError=alert(1)>');
+    expect(html).toBe('<code class="cinder-json">&lt;img src=x onError=alert(1)&gt;</code>');
   });
 
   test('ampersand in keys is escaped to &amp;', () => {

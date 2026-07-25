@@ -138,7 +138,7 @@ describe('Textarea', () => {
 });
 
 describe('Textarea — character count', () => {
-  test('no count rendered when showCount is false', () => {
+  test('no count rendered when countVisible is false', () => {
     const { container } = render(Textarea, {
       props: { id: 'chk', maxlength: 100 },
     });
@@ -148,16 +148,16 @@ describe('Textarea — character count', () => {
     ).not.toContain('chk-count');
   });
 
-  test('no count rendered when showCount is true but maxlength is missing', () => {
+  test('no count rendered when countVisible is true but maxlength is missing', () => {
     const { container } = render(Textarea, {
-      props: { id: 'x', showCount: true },
+      props: { id: 'x', countVisible: true },
     });
     expect(container.querySelector('[id$="-count"]')).toBeNull();
   });
 
-  test('count renders as <output> with aria-live and aria-atomic when showCount=true', () => {
+  test('count renders as <output> with aria-live and aria-atomic when countVisible=true', () => {
     const { container } = render(Textarea, {
-      props: { id: 'bio', showCount: true, maxlength: 500, value: 'hello' },
+      props: { id: 'bio', countVisible: true, maxlength: 500, value: 'hello' },
     });
     const countElement = container.querySelector('#bio-count');
     expect(countElement).not.toBeNull();
@@ -167,9 +167,9 @@ describe('Textarea — character count', () => {
     expect(countElement?.textContent?.trim()).toBe('5/500');
   });
 
-  test('aria-describedby includes count id when showCount is enabled', () => {
+  test('aria-describedby includes count id when countVisible is enabled', () => {
     const { container } = render(Textarea, {
-      props: { id: 'bio', showCount: true, maxlength: 500, value: 'hello' },
+      props: { id: 'bio', countVisible: true, maxlength: 500, value: 'hello' },
     });
     const describedBy = container.querySelector('textarea')?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('bio-count');
@@ -177,7 +177,7 @@ describe('Textarea — character count', () => {
 
   test('count updates on input', async () => {
     const { container } = render(Textarea, {
-      props: { id: 'live-count', showCount: true, maxlength: 100, value: '' },
+      props: { id: 'live-count', countVisible: true, maxlength: 100, value: '' },
     });
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
     const countElement = container.querySelector('#live-count-count');
@@ -192,7 +192,7 @@ describe('Textarea — character count', () => {
         id: 'order-test',
         description: 'Helper text',
         error: 'Something went wrong',
-        showCount: true,
+        countVisible: true,
         maxlength: 100,
       },
     });
@@ -202,12 +202,12 @@ describe('Textarea — character count', () => {
 
   test('maxlength attribute is still forwarded to the textarea element', () => {
     const { container } = render(Textarea, {
-      props: { id: 'forward', showCount: true, maxlength: 500 },
+      props: { id: 'forward', countVisible: true, maxlength: 500 },
     });
     expect(container.querySelector('textarea')?.getAttribute('maxlength')).toBe('500');
   });
 
-  test('maxlength is forwarded to textarea when showCount is false', () => {
+  test('maxlength is forwarded to textarea when countVisible is false', () => {
     const { container } = render(Textarea, {
       props: { id: 'fwd-no-count', maxlength: 200 },
     });
@@ -222,7 +222,7 @@ describe('Textarea — character count', () => {
     const id = `inv-${_label.replace(/[^a-z]/g, '-')}`;
     const { container } = render(Textarea, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      props: { id, showCount: true, maxlength: maxlength as any },
+      props: { id, countVisible: true, maxlength: maxlength as any },
     });
     expect(container.querySelector(`#${id}-count`)).toBeNull();
   });
@@ -233,7 +233,7 @@ describe('Textarea — character count', () => {
         id: 'dom-order',
         description: 'Helper',
         error: 'Bad',
-        showCount: true,
+        countVisible: true,
         maxlength: 100,
       },
     });
@@ -248,7 +248,7 @@ describe('Textarea — character count', () => {
   test('string maxlength="500" is accepted as the counter denominator', () => {
     const { container } = render(Textarea, {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      props: { id: 'str-max', showCount: true, maxlength: '500' as any, value: 'hello' },
+      props: { id: 'str-max', countVisible: true, maxlength: '500' as any, value: 'hello' },
     });
     const countElement = container.querySelector('#str-max-count');
     expect(countElement).not.toBeNull();
@@ -257,7 +257,7 @@ describe('Textarea — character count', () => {
 
   test('counter does not update without bind:value (initial value is locked)', async () => {
     const { container } = render(Textarea, {
-      props: { id: 'unbound', showCount: true, maxlength: 100, value: 'hi' },
+      props: { id: 'unbound', countVisible: true, maxlength: 100, value: 'hi' },
     });
     const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
     const countElement = container.querySelector('#unbound-count');

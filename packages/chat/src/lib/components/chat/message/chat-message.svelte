@@ -33,7 +33,7 @@
     /** Override content for streaming (partial token buffer) */
     overrideContent?: string | undefined;
     /** Called when expanded state changes */
-    onexpandedchange?: ((expanded: boolean) => void) | undefined;
+    onExpandedChange?: ((expanded: boolean) => void) | undefined;
     /** Called when retry is requested on a failed message */
     onretry?: ((messageId: string) => void) | undefined;
     /** Called when user edits a message (fires with new content). Only applies to user messages. */
@@ -78,7 +78,7 @@
      */
     suggestions?: ReadonlyArray<string> | undefined;
     /** Called when the user selects a suggestion chip. */
-    onsuggestionselect?: ((label: string) => void) | undefined;
+    onSuggestionSelect?: ((label: string) => void) | undefined;
   };
 </script>
 
@@ -105,7 +105,7 @@
     showDefaultActions = true,
     streaming = false,
     overrideContent,
-    onexpandedchange,
+    onExpandedChange,
     onretry,
     onedit,
     approvedToolCallIds,
@@ -119,7 +119,7 @@
     onreasoning,
     toolCallExpanded = $bindable(false),
     ontoolcalltoggle,
-    onsuggestionselect,
+    onSuggestionSelect,
     tabindex,
     ...rest
   }: ChatMessageProps = $props();
@@ -225,7 +225,7 @@
 
   function toggleExpanded() {
     expanded = !expanded;
-    onexpandedchange?.(expanded);
+    onExpandedChange?.(expanded);
   }
 
   // Local fallback so a standalone <ChatMessage> (used outside <Chat>, with no
@@ -233,14 +233,14 @@
   // toggleExpanded above. When Chat DOES own this message's disclosure, it
   // passes toolCallExpanded down one-way (not bind:) and reads/writes its own
   // state via ontoolcalltoggle; this local flip is then a harmless echo that
-  // gets overwritten by the container's next render. onexpandedchange also
+  // gets overwritten by the container's next render. onExpandedChange also
   // fires here (not just ontoolcalltoggle) to preserve the pre-split contract,
-  // where a single expanded/onexpandedchange pair covered every disclosure on
+  // where a single expanded/onExpandedChange pair covered every disclosure on
   // the message, including tool-call cards.
   function toggleToolCallExpanded() {
     toolCallExpanded = !toolCallExpanded;
     ontoolcalltoggle?.();
-    onexpandedchange?.(toolCallExpanded);
+    onExpandedChange?.(toolCallExpanded);
   }
 </script>
 
@@ -304,12 +304,12 @@
           parts={bodyParts}
           {messagePart}
           expanded={toolCallExpanded}
-          ontoggle={toggleToolCallExpanded}
+          onToggle={toggleToolCallExpanded}
           {onapprove}
           {ondeny}
           {reasoningExpanded}
           {onreasoning}
-          {onsuggestionselect}
+          {onSuggestionSelect}
         />
 
         {#if hasMarkdownBody && textContent.length > TRUNCATE_THRESHOLD}

@@ -70,7 +70,7 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'filterItem',
+        name: 'filter',
         reason: 'function-or-snippet',
         description:
           'Custom option filter callback. Defaults to case-insensitive label/description matching.',

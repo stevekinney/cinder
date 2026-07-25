@@ -60,7 +60,7 @@ describe('PropertyList', () => {
     const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
 
     expect(source).toContain('onDestroy(() =>');
-    expect(source).toContain('onvalidationerrorcount?.(0)');
+    expect(source).toContain('onvalidationErrorcount?.(0)');
     expect(source).toContain('function toggleExpanded');
     expect(source).toContain('if (isOpen) setChildValidationErrorCount(key, 0)');
   });

@@ -70,7 +70,7 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 
 - The top-most open overlay handles ESC; lower overlays ignore the event.
 - Implemented via the module-level escape stack in `overlay.ts`. Each overlay calls `pushEscapeHandler()` on open and the returned `release()` on close.
-- Native `<dialog>` ESC dispatches via `oncancel`/`onclose`, not via the JS stack — Modal handles its own ESC routing while still pushing/popping so non-dialog overlays above it don't accidentally swallow the keystroke.
+- Native `<dialog>` ESC dispatches via `onCancel`/`onClose`, not via the JS stack — Modal handles its own ESC routing while still pushing/popping so non-dialog overlays above it don't accidentally swallow the keystroke.
 
 ## Outside-click
 

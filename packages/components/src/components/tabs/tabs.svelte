@@ -27,6 +27,7 @@
 
   let {
     value = $bindable(''),
+    onValueChangeRequest,
     onValueChange,
     orientation = 'horizontal',
     fill = false,
@@ -127,9 +128,14 @@
       const focusedValue = order[focused];
       if (focusedValue === undefined) return;
       event.preventDefault();
-      commitValue(focusedValue, onValueChange, (next) => {
-        value = next;
-      });
+      commitValue(
+        focusedValue,
+        onValueChangeRequest,
+        (next) => {
+          value = next;
+        },
+        onValueChange,
+      );
       return;
     }
 
@@ -159,9 +165,14 @@
     if (nextValue === undefined) return;
     focusValue(nextValue);
     if (effectiveActivateOnFocus) {
-      commitValue(nextValue, onValueChange, (next) => {
-        value = next;
-      });
+      commitValue(
+        nextValue,
+        onValueChangeRequest,
+        (next) => {
+          value = next;
+        },
+        onValueChange,
+      );
     }
   }
 
@@ -179,9 +190,14 @@
       return baseId;
     },
     select(next) {
-      commitValue(next, onValueChange, (nextValue) => {
-        value = nextValue;
-      });
+      commitValue(
+        next,
+        onValueChangeRequest,
+        (nextValue) => {
+          value = nextValue;
+        },
+        onValueChange,
+      );
     },
     isActive(candidate) {
       return value === candidate;

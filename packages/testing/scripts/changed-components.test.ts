@@ -314,7 +314,7 @@ describe('changed-components explicit component scope', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Integration: run the ACTUAL CLI from the repo root, exactly as CI does.
+// Integration: run the ACTUAL CLI from the repo root.
 // ---------------------------------------------------------------------------
 
 describe('changed-components CLI (integration, real tree)', () => {
@@ -331,7 +331,7 @@ describe('changed-components CLI (integration, real tree)', () => {
   function runCli(changedPaths: string[]): CliOutput {
     const env: NodeJS.ProcessEnv = { ...process.env, GITHUB_OUTPUT: '' };
     delete env['CINDER_TEST_COMPONENTS'];
-    const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
+    const result = spawnSync('bun', ['packages/testing/scripts/changed-components.ts'], {
       cwd: workspaceRoot,
       input: changedPaths.join('\n') + '\n',
       encoding: 'utf-8',
@@ -342,7 +342,7 @@ describe('changed-components CLI (integration, real tree)', () => {
   }
 
   function runCliWithExplicitComponents(componentScope: string): CliOutput {
-    const result = spawnSync('bun', ['run', 'packages/testing/scripts/changed-components.ts'], {
+    const result = spawnSync('bun', ['packages/testing/scripts/changed-components.ts'], {
       cwd: workspaceRoot,
       input: '',
       encoding: 'utf-8',

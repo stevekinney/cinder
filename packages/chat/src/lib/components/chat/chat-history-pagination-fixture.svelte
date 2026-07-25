@@ -31,5 +31,5 @@
   virtualizationEstimatedRowHeight={20}
   virtualizationInitialHeight={100}
   virtualizationOverscan={0}
-  onloadhistory={handleLoadHistory}
+  onLoadHistory={handleLoadHistory}
 />

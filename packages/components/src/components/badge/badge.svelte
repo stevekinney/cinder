@@ -64,7 +64,7 @@
   let {
     variant = 'neutral',
     size = 'md',
-    mono = false,
+    monochrome = false,
     subscriptionState,
     class: customClassName,
     children,
@@ -86,7 +86,7 @@
   class={classNames('cinder-badge', customClassName)}
   data-cinder-variant={resolvedVariant}
   data-cinder-size={size}
-  data-cinder-mono={mono ? '' : undefined}
+  data-cinder-monochrome={monochrome ? '' : undefined}
   data-cinder-subscription-state={subscriptionState}
   {...rest}
 >

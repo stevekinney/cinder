@@ -1,0 +1,30 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-statistics-section {
+    padding-block: var(--cinder-space-10);
+  }
+
+  .cinder-statistics-section__inner {
+    display: grid;
+    gap: var(--cinder-space-6);
+  }
+
+  .cinder-statistics-section__header {
+    display: grid;
+    gap: var(--cinder-space-2);
+    max-inline-size: 60ch;
+  }
+
+  .cinder-statistics-section__title,
+  .cinder-statistics-section__description {
+    margin: 0;
+  }
+
+  .cinder-statistics-section__title {
+    font-size: var(--cinder-text-3xl);
+  }
+
+  .cinder-statistics-section__description {
+    color: var(--cinder-text-muted);
+  }
+}

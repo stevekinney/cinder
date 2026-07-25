@@ -54,7 +54,7 @@ export type CodeBlockProps = {
    * Pass `false` to keep `language`-driven highlighting without the visible
    * header chip; with `copyable` also unset, no header renders at all.
    */
-  showLanguageLabel?: boolean;
+  languageLabelVisible?: boolean;
   /** Additional class names merged with `.cinder-code-block`. */
   class?: string;
 };

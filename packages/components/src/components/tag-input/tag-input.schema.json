@@ -15,16 +15,9 @@
       "items": {
         "type": "string"
       },
-      "description": "Controlled tags. When provided, the parent owns the tag array."
+      "description": "Bindable tags."
     },
-    "defaultValue": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "description": "Initial tags for uncontrolled usage. Ignored after mount."
-    },
-    "allowDuplicates": {
+    "duplicateValuesAllowed": {
       "type": "boolean",
       "description": "Allow the same trimmed tag value to appear more than once."
     },

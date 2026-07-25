@@ -4,7 +4,7 @@
 
 Repeatable approval unit rendered as an `<article>` with native button
 controls. The component is presentational: it never executes the operation and
-only calls `onresolve` when the user activates an explicit action. Nested
+only calls `onResolve` when the user activates an explicit action. Nested
 content uses plain headings instead of labelled sections, so a queue of many
 approval cards adds no landmarks to the page.
 
@@ -15,7 +15,7 @@ approval cards adds no landmarks to the page.
 | Root `<article>`          | `article`             | Heading text, for example `Approval required for deploy-cloud` | `data-cinder-state`, `data-cinder-risk`                                   |
 | Header status             | text + `StatusDot`    | State label such as `Pending` or `Expired`                     | —                                                                         |
 | Risk icon                 | `img`, `tabindex="0"` | Risk label, e.g. `Medium risk` (via `aria-label`)              | Bar count scales with risk; `Tooltip` shows the same label on hover/focus |
-| Action group              | `group`               | `Approval actions`                                             | Rendered only while actionable and `onresolve` is wired                   |
+| Action group              | `group`               | `Approval actions`                                             | Rendered only while actionable and `onResolve` is wired                   |
 | Action buttons            | button                | Visible button text                                            | `Approve with edits` is a disclosure with `aria-expanded`                 |
 | Edited arguments textarea | textbox               | `Edited arguments JSON`                                        | `aria-invalid` and `role="alert"` error text when JSON is invalid         |
 | Details                   | button + panel        | `Details`                                                      | Collapsed by default; holds sandbox, environment, and request metadata    |
@@ -43,7 +43,7 @@ both surface the same `Low risk` / `Medium risk` / `High risk` text for
 anyone who needs it named explicitly.
 
 When `expiresAt` passes, the effective state becomes `expired` and the action
-buttons are removed. Expiration never fires `onresolve`; the host remains the
+buttons are removed. Expiration never fires `onResolve`; the host remains the
 source of truth for persisted state.
 
 ## Security boundary

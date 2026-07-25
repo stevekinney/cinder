@@ -3,13 +3,13 @@
    * @cinder
    * @category action
    * @status beta
-   * @purpose Floating action cluster that reveals secondary quick actions around a primary FloatingActionButton trigger.
+   * @purpose Floating action cluster that reveals secondary quick actions around a primary FloatingAction trigger.
    * @tag action
    * @tag floating
    * @useWhen One primary floating action needs a small set of closely related quick actions.
    * @avoidWhen The actions are equally important and always visible - use toolbar instead. | toolbar
    * @avoidWhen The trigger should open rich contextual content - use popover instead. | popover
-   * @related floating-action-button, toolbar, popover
+   * @related floating-action, toolbar, popover
    */
   export type {
     SpeedDialContext,
@@ -22,7 +22,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
-  import FloatingActionButton from '../floating-action-button/floating-action-button.svelte';
+  import FloatingAction from '../floating-action/floating-action.svelte';
   import { setSpeedDialContext } from './speed-dial.context.ts';
   import type { SpeedDialProps } from './speed-dial.types.ts';
 
@@ -55,7 +55,7 @@
   }
 
   function getTriggerElement(): HTMLElement | null {
-    return triggerWrapperElement?.querySelector<HTMLElement>('.cinder-fab') ?? null;
+    return triggerWrapperElement?.querySelector<HTMLElement>('.cinder-floating-action') ?? null;
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
@@ -190,7 +190,7 @@
   </div>
 
   <div bind:this={triggerWrapperElement} class="cinder-speed-dial__trigger">
-    <FloatingActionButton
+    <FloatingAction
       aria-label={accessibleLabel}
       aria-expanded={open ? 'true' : 'false'}
       aria-controls={actionsId}
@@ -200,6 +200,6 @@
       onkeydown={handleTriggerKeydown}
     >
       {@render trigger?.()}
-    </FloatingActionButton>
+    </FloatingAction>
   </div>
 </div>

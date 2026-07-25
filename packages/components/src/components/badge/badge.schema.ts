@@ -14,7 +14,7 @@ const schema = {
       description: 'Size of the badge.',
       default: 'md',
     },
-    mono: {
+    monochrome: {
       type: 'boolean',
       description:
         'Render the badge label in a monospace font. Useful for version strings, error codes, or other technical labels.',

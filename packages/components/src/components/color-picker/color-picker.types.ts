@@ -6,8 +6,6 @@ export type ColorPickerProps = {
    * `rgba()`, `hsl()`, or `hsla()` input; invalid input is normalized to `''`.
    */
   value?: string;
-  /** Initial color when `value` is not bound. Same input formats as `value`. */
-  defaultValue?: string;
   /** Enable the alpha slider and emit `#rrggbbaa`. Default `false`. */
   alpha?: boolean;
   /** Form field name. When set, a hidden input mirrors the current value for form submission. */

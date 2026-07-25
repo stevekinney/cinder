@@ -65,7 +65,7 @@
   }
 </script>
 
-<ChatComposerPopover id={popoverId} bind:value items={commands} onselect={handleSelect}>
+<ChatComposerPopover id={popoverId} bind:value items={commands} onSelect={handleSelect}>
   {#snippet composer(composerProps)}
     <div style="height: 28rem;">
       <Chat

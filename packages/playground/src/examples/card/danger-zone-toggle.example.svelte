@@ -34,7 +34,7 @@
       id={toggleId}
       bind:checked={paused}
       label="Reviews paused"
-      onValueChange={requestPause}
+      onValueChangeRequest={requestPause}
     />
     <p style="margin: 0; color: var(--cinder-text-subtle); font-size: var(--cinder-text-sm);">
       Current state: <strong>{paused ? 'Paused' : 'Dispatching reviews'}</strong>
@@ -54,6 +54,6 @@
   description="This affects every repository connected to the workspace. New reviews will stop until an administrator resumes dispatch."
   destructive
   confirmLabel="Pause reviews"
-  onconfirm={() => (paused = true)}
-  oncancel={() => (confirmOpen = false)}
+  onConfirm={() => (paused = true)}
+  onCancel={() => (confirmOpen = false)}
 />

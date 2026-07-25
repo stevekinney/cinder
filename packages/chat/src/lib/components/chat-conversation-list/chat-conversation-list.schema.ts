@@ -41,7 +41,7 @@ const schema = {
           'Conversation summaries to render. Sorts by latest message/update time descending.',
       },
       {
-        name: 'onselectconversation',
+        name: 'onSelectConversation',
         reason: 'function-or-snippet',
         description: 'Called when a conversation is selected.',
       },

@@ -13,8 +13,13 @@ import {
   setScrollMeasurements,
 } from '../../test/overflow-fade-test-helpers.ts';
 import { renderToServerHtml } from '../../test/server-render.ts';
+import type { SheetProps } from './sheet.types.ts';
 
 const SHEET_SOURCE = join(import.meta.dir, 'sheet.svelte');
+
+type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
+const excludesLowercaseNativeCloseHandler: HasKey<SheetProps, 'onclose'> = false;
+const excludesLowercaseNativeCancelHandler: HasKey<SheetProps, 'oncancel'> = false;
 
 setupHappyDom();
 
@@ -104,6 +109,11 @@ afterEach(() => {
 });
 
 describe('Sheet', () => {
+  test('omits native dialog handlers owned internally', () => {
+    expect(excludesLowercaseNativeCloseHandler).toBe(false);
+    expect(excludesLowercaseNativeCancelHandler).toBe(false);
+  });
+
   test('renders open <dialog> when open=true after hydration', () => {
     const { container } = render(Sheet, {
       props: { open: true, title: 'Test Sheet', children: emptySnippet },
@@ -500,7 +510,7 @@ describe('Sheet', () => {
     document.body.removeChild(triggerEl);
   });
 
-  test('exactly one onclose event fires per close path (close button)', async () => {
+  test('exactly one onClose event fires per close path (close button)', async () => {
     let closeCount = 0;
     let openValue = true;
     const { container } = render(Sheet, {
@@ -687,16 +697,16 @@ describe('Sheet', () => {
     expect(closeButton?.getAttribute('aria-label')).toBe('Close sheet');
   });
 
-  test('drag handle is absent by default (showDragHandle=false)', () => {
+  test('drag handle is absent by default (dragHandleVisible=false)', () => {
     const { container } = render(Sheet, {
       props: { open: true, title: 'Test', children: emptySnippet },
     });
     expect(container.querySelector('.cinder-sheet__drag-handle')).toBeNull();
   });
 
-  test('drag handle renders when showDragHandle=true with aria-hidden="true"', () => {
+  test('drag handle renders when dragHandleVisible=true with aria-hidden="true"', () => {
     const { container } = render(Sheet, {
-      props: { open: true, title: 'Test', showDragHandle: true, children: emptySnippet },
+      props: { open: true, title: 'Test', dragHandleVisible: true, children: emptySnippet },
     });
     const handle = container.querySelector('.cinder-sheet__drag-handle');
     expect(handle).not.toBeNull();

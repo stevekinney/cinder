@@ -30,8 +30,8 @@ Use `Chip mode="display"` for issue labels and tags; use Badge for attached coun
 | `size`            | `"sm"` \| `"md"`                                                                  | no       | —       | Size of the chip. Default `"md"`.                                                                                          |
 | `variant`         | `"neutral"` \| `"success"` \| `"warning"` \| `"danger"` \| `"info"` \| `"accent"` | no       | —       | Color variant applied to the chip. Default `"neutral"`.                                                                    |
 | `leadingIcon`     | `(opaque)`                                                                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `onpressedchange` | `(opaque)`                                                                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
-| `onremove`        | `(opaque)`                                                                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onPressedChange` | `(opaque)`                                                                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
+| `onRemove`        | `(opaque)`                                                                        | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |
 
 <!-- generated:props:end -->
 

@@ -443,14 +443,17 @@ describe('checkPropNames', () => {
     expect(violations).toHaveLength(0);
   });
 
-  // Regression: case-insensitive denylist — PascalCase variants must be caught.
-  // Without the lowercase comparison, `onDismiss` passes the denylist check
-  // (it is valid camelCase) even though `ondismiss` is in the denylist.
-  test('fails for onDismiss even though ondismiss is the denied form', () => {
+  test('passes for custom onDismiss callback casing', () => {
     const schema = { properties: { onDismiss: {} } };
     const { violations } = checkPropNames(schema);
+    expect(violations).toHaveLength(0);
+  });
+
+  test('fails for onClick even though onclick is the denied native event form', () => {
+    const schema = { properties: { onClick: {} } };
+    const { violations } = checkPropNames(schema);
     expect(violations.length).toBeGreaterThan(0);
-    expect(violations[0]).toMatch(/onDismiss/);
+    expect(violations[0]).toMatch(/onClick/);
   });
 
   test('fails for onChange even though onchange is the denied form', () => {

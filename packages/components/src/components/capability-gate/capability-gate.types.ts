@@ -27,13 +27,13 @@ export type CapabilityGateProps = Omit<
   /** Label for the primary action button (e.g. "Allow access", "Enable notifications"). */
   primaryAction?: string;
   /** Called when the user clicks the primary action button. */
-  onprimaryaction?: () => void;
+  onPrimaryAction?: () => void;
   /** Label for the fallback action (e.g. "Use a different method"). */
   fallbackAction?: string;
   /** Href for a fallback link (renders an anchor instead of a button). */
   fallbackHref?: string;
   /** Called when the user clicks the fallback action (only when no fallbackHref). */
-  onfallbackaction?: () => void;
+  onFallbackAction?: () => void;
   /** Label for the dismiss action. When provided a dismiss button is rendered. */
   dismissAction?: string;
   /**
@@ -42,7 +42,7 @@ export type CapabilityGateProps = Omit<
    * re-opens the gate) — the component blurs the dismiss button first so focus
    * is not stranded, but only the consumer knows the right next focus target.
    */
-  ondismiss?: () => void;
+  onDismiss?: () => void;
   /** Custom content rendered below the status text and before the actions. */
   children?: Snippet;
   /** Additional class names merged with `.cinder-capability-gate`. */
@@ -73,11 +73,11 @@ export interface CapabilityGateSchemaProps {
   /** Additional class names merged with `.cinder-capability-gate`. */
   class?: string;
   /** Called when the primary action button is activated. */
-  onprimaryaction?: () => void;
+  onPrimaryAction?: () => void;
   /** Called when the fallback action button is activated. */
-  onfallbackaction?: () => void;
+  onFallbackAction?: () => void;
   /** Called when the gate is dismissed. */
-  ondismiss?: () => void;
+  onDismiss?: () => void;
   /** Custom content rendered below the status text and before the actions. */
   children?: Snippet;
 }

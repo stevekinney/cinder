@@ -46,7 +46,7 @@
     loadingMessage = 'Loading suggestions',
     class: className,
     oninput,
-    oncomplete,
+    onComplete,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
     ...rest
@@ -334,7 +334,7 @@
     if (inputElement) inputElement.value = suggestion.value;
     closePopup();
     oninput?.(suggestion.value);
-    oncomplete?.(suggestion);
+    onComplete?.(suggestion);
     dispatchCompletionInputEvent();
   }
 

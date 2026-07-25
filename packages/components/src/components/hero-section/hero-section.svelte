@@ -9,9 +9,9 @@
    * @tag layout
    * @useWhen Building the first section of a marketing page where a primary message and call-to-action must stand out.
    * @useWhen Pairing conversion copy with a visual demo, screenshot, or illustration in a split layout.
-   * @avoidWhen Presenting only a compact call-to-action strip between content sections. | cta-section
+   * @avoidWhen Presenting only a compact call-to-action strip between content sections. | call-to-action-section
    * @avoidWhen Listing repeatable product benefits or cards — use a dedicated features grid instead. | feature-section
-   * @related cta-section, feature-section, section-heading, container, button
+   * @related call-to-action-section, feature-section, section-heading, container, button
    */
   export type {
     HeroSectionAlign,

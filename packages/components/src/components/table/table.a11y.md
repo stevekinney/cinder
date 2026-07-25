@@ -8,7 +8,7 @@ Native semantic table per [WAI-ARIA Authoring Practices: Sortable Table](https:/
 
 ```svelte
 <Table bind:sort selectable>
-  <TableHeader {allSelected} {someSelected} onselectall={onSelectAll}>
+  <TableHeader {allSelected} {someSelected} {onSelectAll}>
     <TableRow>
       <TableHeaderCell column="name" sortable>Name</TableHeaderCell>
       <TableHeaderCell column="age" sortable>Age</TableHeaderCell>
@@ -17,7 +17,7 @@ Native semantic table per [WAI-ARIA Authoring Practices: Sortable Table](https:/
   <TableBody>
     <TableRow
       selected={selectedIds.has('1')}
-      onselectedchange={(next) => toggle('1', next)}
+      onSelectedChange={(next) => toggle('1', next)}
       selectionLabel="Select Alice"
     >
       <TableCell>Alice</TableCell>
@@ -98,7 +98,7 @@ Set `selectable={true}` on `<Table>` to enable the leading selection column. Thi
 
 - `allSelected` — boolean; drives the select-all checkbox's checked state.
 - `someSelected` — boolean; when true and `allSelected` is false, the browser renders the checkbox as indeterminate and exposes `aria-checked="mixed"` to assistive tech.
-- `onselectall` — callback receiving the next boolean; the consumer updates `allSelected`/`someSelected` in response.
+- `onSelectAll` — callback receiving the next boolean; the consumer updates `allSelected`/`someSelected` in response.
 - `selectAllLabel` — accessible name for the select-all checkbox. Defaults to `"Select all rows"`. If some rows use `selectionDisabled`, consider passing `"Select all selectable rows"` for accuracy.
 
 ### `TableRow` props (body rows)
@@ -106,7 +106,7 @@ Set `selectable={true}` on `<Table>` to enable the leading selection column. Thi
 Active branch — row participates in selection:
 
 - `selected` — boolean; checked state of the row's checkbox.
-- `onselectedchange` — callback receiving the next boolean.
+- `onSelectedChange` — callback receiving the next boolean.
 - `selectionLabel` — accessible name for the row's checkbox; should uniquely identify the row (e.g., `"Select Alice"`).
 
 Opt-out branch — row is intentionally excluded from selection (renders an empty alignment cell, no checkbox):

@@ -1,6 +1,6 @@
 # SpeedDial Accessibility
 
-SpeedDial renders a named `role="group"` around a `FloatingActionButton` trigger
+SpeedDial renders a named `role="group"` around a `FloatingAction` trigger
 and a `role="toolbar"` action cluster. The trigger exposes `aria-expanded`,
 and `aria-controls`; action buttons use their visible `label` as the
 `aria-label`.

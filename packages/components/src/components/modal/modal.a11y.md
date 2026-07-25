@@ -20,7 +20,7 @@ Modal accepts `role="alertdialog"`. Use this only when the dialog content requir
 
 1. Set `dismissOnBackdropClick={false}` — the `alertdialog` contract requires the user to take an explicit action.
 2. Set `dismissOnEscape={false}` — same reason; the user must not be able to dismiss without acknowledging.
-3. Set `showCloseButton={false}` — a close-X contradicts the blocking intent.
+3. Set `closeButtonVisible={false}` — a close-X contradicts the blocking intent.
 4. Provide `describedById` referencing a description element in the modal body — `aria-describedby` is required on `alertdialog` so assistive technology announces the urgent condition.
 
 If the content fits `AlertDialog`'s plain-text `description` constraint, prefer `AlertDialog` over composing Modal + `role="alertdialog"` manually.
@@ -31,34 +31,34 @@ If the content fits `AlertDialog`'s plain-text `description` constraint, prefer 
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Tab         | Cycles focus forward through all focusable elements inside the open dialog. Focus does not leave the dialog while it is open — the native `showModal()` provides this trap for free.             |
 | Shift + Tab | Cycles focus backward.                                                                                                                                                                           |
-| Escape      | Fires the native `cancel` event on the `<dialog>`. The component prevents the default and calls the internal `dismiss()` helper, which flips `open = false` and fires `ondismiss` (if provided). |
+| Escape      | Fires the native `cancel` event on the `<dialog>`. The component prevents the default and calls the internal `dismiss()` helper, which flips `open = false` and fires `onDismiss` (if provided). |
 
 ## Focus Management
 
 - When the dialog opens, the browser moves focus to the first focusable element with `autofocus`, or to the modal body container (`tabindex="-1"`) if no child carries `autofocus`.
 - When the dialog closes, focus is restored to `triggerRef` if provided, otherwise to the element that held focus when the dialog opened (`capturedFocus`).
 
-## Dismissal Callbacks (`ondismiss`)
+## Dismissal Callbacks (`onDismiss`)
 
-The `ondismiss` callback fires on **user-initiated dismissal** only. The three included paths are:
+The `onDismiss` callback fires on **user-initiated dismissal** only. The three included paths are:
 
 1. **Escape key** — via the native `cancel` event on `<dialog>` (default prevented; routed through `dismiss()`).
 2. **Backdrop click** — a click whose `event.target` is the `<dialog>` element itself.
 3. **Close-X button** — the `×` button in the panel corner.
 
-The following paths do **not** fire `ondismiss`:
+The following paths do **not** fire `onDismiss`:
 
 - Parent-driven `open = false` (a route change, a completion event, or any external state update setting the prop directly).
-- The confirm-button path in `ConfirmDialog` (that fires `onconfirm`, not `ondismiss`).
+- The confirm-button path in `ConfirmDialog` (that fires `onConfirm`, not `onDismiss`).
 
 State flips to `open = false` **before** the callback is invoked. A thrown callback does not leave the dialog stuck open. Callbacks are not awaited — async/rejected-promise errors are the consumer's responsibility.
 
 ## Backdrop
 
-- Clicking the backdrop (`event.target === dialogElement`) calls `dismiss()`, which closes the dialog and fires `ondismiss`. This relies on the CSS background applied to `<dialog>` rather than `::backdrop`, so the click target is always the `<dialog>` element itself, not a separate pseudo-element.
+- Clicking the backdrop (`event.target === dialogElement`) calls `dismiss()`, which closes the dialog and fires `onDismiss`. This relies on the CSS background applied to `<dialog>` rather than `::backdrop`, so the click target is always the `<dialog>` element itself, not a separate pseudo-element.
 
 ## Screen Reader Announcements
 
 - Opening a `<dialog>` with `showModal()` causes supporting screen readers ([NVDA](https://www.nvaccess.org/)+Firefox, [JAWS](https://www.freedomscientific.com/products/software/jaws/)+Chrome, [VoiceOver](https://www.apple.com/accessibility/vision/)+Safari) to announce the dialog role and its accessible name (from `aria-labelledby`) immediately.
 - When `describedById` is set, the referenced description text is announced immediately after the accessible name.
-- The close button carries `aria-label="Close dialog"` so it reads as "Close dialog, button" rather than the SVG icon content. Clicking the close-X fires `ondismiss`.
+- The close button carries `aria-label="Close dialog"` so it reads as "Close dialog, button" rather than the SVG icon content. Clicking the close-X fires `onDismiss`.

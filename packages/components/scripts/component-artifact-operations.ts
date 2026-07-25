@@ -33,7 +33,7 @@ const COMPOSE_ONLY_ACCESSIBILITY_DOCUMENTATION_EXEMPTIONS = new Set([
   'grid-list-item',
   'side-navigation-group',
   'side-navigation-item',
-  'stat',
+  'statistic',
   'tab',
   'tab-list',
   'tab-panel',

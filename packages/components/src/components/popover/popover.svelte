@@ -38,7 +38,7 @@
     open = $bindable(false),
     placement = 'bottom-start',
     offset = 8,
-    showArrow = false,
+    arrowVisible = false,
     label,
     ariaLabelledby,
     triggerRef = null,
@@ -111,7 +111,7 @@
     arrow: () => arrowElement,
     placement: () => placement as Placement,
     offset: () => offset,
-    showArrow: () => showArrow,
+    arrowVisible: () => arrowVisible,
     widthMode: () => widthMode,
   });
 
@@ -296,7 +296,7 @@
     tabindex="-1"
   >
     {@render children()}
-    {#if showArrow}
+    {#if arrowVisible}
       <span
         bind:this={arrowElement}
         class="cinder-popover__arrow"

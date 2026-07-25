@@ -13,5 +13,5 @@
   description="This field is disabled while the record is syncing."
   disabled={true}
 >
-  <TagInput defaultValue={['Synced', 'Locked']} disabled={true} placeholder="Unavailable" />
+  <TagInput value={['Synced', 'Locked']} disabled={true} placeholder="Unavailable" />
 </FormField>

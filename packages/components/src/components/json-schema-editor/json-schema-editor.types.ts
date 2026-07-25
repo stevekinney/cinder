@@ -40,8 +40,8 @@ export type JsonSchemaEditorProps = {
   /** Force a draft override regardless of $schema. */
   draftOverride?: JsonSchemaKnownDraft;
   onchange?: (event: JsonSchemaEditorChangeEvent) => void;
-  onrevert?: (event: JsonSchemaEditorRevertEvent) => void;
-  onvalidate?: (result: JsonSchemaValidationResult) => void;
+  onRevert?: (event: JsonSchemaEditorRevertEvent) => void;
+  onValidate?: (result: JsonSchemaValidationResult) => void;
   /** Additional class merged onto the `.cinder-jse` root element. */
   class?: string;
 };

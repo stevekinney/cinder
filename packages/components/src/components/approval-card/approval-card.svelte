@@ -88,7 +88,7 @@
     state: approvalState,
     editableArgs = false,
     headingLevel = 3,
-    onresolve,
+    onResolve,
     id,
     class: customClassName,
     ...rest
@@ -118,9 +118,9 @@
     isApprovalActionable(approvalState, expirationTimestamp, currentTime),
   );
   // Guards against a non-function truthy value reaching a JS (non-typechecked)
-  // or schema-driven caller — `onresolve?.()` alone would still throw on a
+  // or schema-driven caller — `onResolve?.()` alone would still throw on a
   // truthy non-function.
-  const hasResolutionCallback = $derived(typeof onresolve === 'function');
+  const hasResolutionCallback = $derived(typeof onResolve === 'function');
 
   const riskLabel = $derived(RISK_LABELS[tool.risk]);
   const RiskIcon = $derived(RISK_ICONS[tool.risk]);
@@ -191,7 +191,7 @@
       }
       return;
     }
-    if (typeof onresolve === 'function') onresolve(resolution);
+    if (typeof onResolve === 'function') onResolve(resolution);
   }
 </script>
 
@@ -237,11 +237,11 @@
     <div class="cinder-approval-card__body">
       {#if operation.kind === 'command' && operation.command}
         <div class="cinder-approval-card__section">
-          <CodeBlock code={operation.command} language="shell" showLanguageLabel={false} />
+          <CodeBlock code={operation.command} language="shell" languageLabelVisible={false} />
         </div>
       {:else if operation.kind === 'patch' && operation.diff}
         <div class="cinder-approval-card__section">
-          <CodeBlock code={operation.diff} language="diff" showLanguageLabel={false} />
+          <CodeBlock code={operation.diff} language="diff" languageLabelVisible={false} />
         </div>
       {/if}
 
@@ -311,7 +311,7 @@
               >
                 {#each environmentNames as environmentName (environmentName)}
                   <li>
-                    <Badge size="sm" mono>{environmentName}</Badge>
+                    <Badge size="sm" monochrome>{environmentName}</Badge>
                   </li>
                 {/each}
               </ul>

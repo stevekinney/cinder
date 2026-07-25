@@ -155,7 +155,7 @@ let originalBodyOverflow: string | null = null;
 
 /**
  * Acquire the body scroll lock. Full-viewport overlays that dim the page —
- * Modal, Sheet, and the standalone Backdrop (via its `lockScroll` prop) — call
+ * Modal, Sheet, and the standalone Backdrop (via its `scrollLocked` prop) — call
  * this. Counted: nested overlays each acquire and release; the lock is only
  * released when the count reaches zero, so a Modal opened inside a Sheet (or a
  * Backdrop behind either) doesn't accidentally restore scroll when one of them

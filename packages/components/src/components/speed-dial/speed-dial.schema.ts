@@ -42,7 +42,7 @@ const schema = {
         name: 'trigger',
         reason: 'function-or-snippet',
         required: true,
-        description: 'Trigger icon or content rendered inside the FloatingActionButton.',
+        description: 'Trigger icon or content rendered inside the FloatingAction.',
       },
     ],
   },

@@ -30,7 +30,7 @@ describe('SelectionPopover', () => {
       props: {
         id: 'selection-comment',
         open: true,
-        onclose: () => {
+        onClose: () => {
           closed = true;
         },
       } as never,
@@ -58,7 +58,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        oncommentsubmit: (body: string) => submitted.push(body),
+        onCommentSubmit: (body: string) => submitted.push(body),
       },
     });
 
@@ -81,10 +81,10 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        onclose: () => {
+        onClose: () => {
           closed = true;
         },
-        oncancel: () => {
+        onCancel: () => {
           canceled = true;
         },
       },
@@ -110,7 +110,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        oncommentsubmit: (body: string) => submitted.push(body),
+        onCommentSubmit: (body: string) => submitted.push(body),
       },
     });
 
@@ -133,7 +133,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        oncancel: () => {
+        onCancel: () => {
           canceled = true;
         },
       },
@@ -218,7 +218,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        oncancel: () => {
+        onCancel: () => {
           canceled = true;
         },
       },
@@ -232,7 +232,7 @@ describe('SelectionPopover', () => {
     expect(focusCalls).toBe(1);
     expect(document.activeElement).toBe(trigger);
 
-    // The consumer's onclose handler subsequently flips `open` to false; because
+    // The consumer's onClose handler subsequently flips `open` to false; because
     // the internal cancel already restored (and nulled the ref), the open->false
     // effect's restore is a no-op — focus is not driven a second time.
     await rerender({ open: false, position: { x: 120, y: 80 } });
@@ -262,7 +262,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        oncommentsubmit: (body: string) => submitted.push(body),
+        onCommentSubmit: (body: string) => submitted.push(body),
       },
     });
 
@@ -300,8 +300,8 @@ describe('SelectionPopover', () => {
 
   test('outside pointerdown on an element outside the popover closes it (attachment wiring)', async () => {
     // Verifies the {@attach dismissOnOutsidePointerdown} is correctly wired — a pointerdown
-    // outside the popover element calls closePopover (which calls onclose). If the attachment
-    // is missing or attached to the wrong node, this test will fail because onclose never fires.
+    // outside the popover element calls closePopover (which calls onClose). If the attachment
+    // is missing or attached to the wrong node, this test will fail because onClose never fires.
     let closed = false;
 
     render(SelectionPopover, {
@@ -309,7 +309,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        onclose: () => {
+        onClose: () => {
           closed = true;
         },
       },
@@ -335,7 +335,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        onclose: () => {
+        onClose: () => {
           closed = true;
         },
       },

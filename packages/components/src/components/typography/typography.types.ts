@@ -1,5 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
+import type { NonVoidHTMLElementTagName } from '../../utilities/html-element-types.ts';
 
 /**
  * Named typographic variants, each mapped to a semantically appropriate
@@ -26,26 +27,10 @@ export type TypographyVariant =
   | 'label';
 
 /**
- * Non-void element tags valid for the `component` prop. Void elements are
+ * Non-void element tags valid for the `as` prop. Void elements are
  * excluded because Typography always renders a `children` snippet.
  */
-export type TypographyElement = Exclude<
-  keyof HTMLElementTagNameMap,
-  | 'area'
-  | 'base'
-  | 'br'
-  | 'col'
-  | 'embed'
-  | 'hr'
-  | 'img'
-  | 'input'
-  | 'link'
-  | 'meta'
-  | 'param'
-  | 'source'
-  | 'track'
-  | 'wbr'
->;
+export type TypographyElement = NonVoidHTMLElementTagName;
 
 /**
  * Props for the Typography component.
@@ -62,7 +47,7 @@ export type TypographyProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'child
   variant?: TypographyVariant;
   /**
    * Override the rendered HTML element while keeping the variant's visual style.
-   * Useful for SEO/semantic control, e.g. `variant="h1" component="span"` renders
+   * Useful for SEO/semantic control, e.g. `variant="h1" as="span"` renders
    * a visually h1-styled `<span>`.
    *
    * **Accessibility:** rendering a heading variant (`h1`–`h6`) on a non-heading
@@ -70,11 +55,11 @@ export type TypographyProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'child
    * functions as a heading, add `role="heading"` and `aria-level` yourself.
    *
    * **Typing:** forwarded attributes are typed as the generic `HTMLAttributes`, so
-   * element-specific attributes are not narrowed by `component` — e.g. `component="a"`
+   * element-specific attributes are not narrowed by `as` — e.g. `as="a"`
    * will not accept `href` through Typography's props. For an interactive element with
    * its own attributes (a real link or button), render that element directly instead.
    */
-  component?: TypographyElement;
+  as?: TypographyElement;
   /**
    * When true, adds `margin-block-end` below the element using the space scale.
    * @default false
@@ -101,7 +86,7 @@ export interface TypographySchemaProps {
   /**
    * Override the rendered HTML element while keeping the variant's visual style.
    */
-  component?: TypographyElement;
+  as?: TypographyElement;
   /**
    * When true, adds bottom margin using the space scale.
    * @default false

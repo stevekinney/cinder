@@ -23,7 +23,7 @@ type CommandItemBaseProps = {
 
 type CommandItemOwnsSelectionProps = {
   /** Invoked when the item is activated inside CommandPalette. */
-  onselect: () => void;
+  onSelect: () => void;
   /** The item owns activation. This is the default CommandPalette mode. */
   selectionMode?: 'item';
 };
@@ -31,11 +31,11 @@ type CommandItemOwnsSelectionProps = {
 type CommandItemParentOwnsSelectionProps = {
   /**
    * Lets a parent list own activation, such as CommandMenu's menu-level
-   * onselect callback.
+   * onSelect callback.
    */
   selectionMode: 'parent';
   /** Optional fallback for custom parent integrations. */
-  onselect?: () => void;
+  onSelect?: () => void;
 };
 
 export type CommandItemProps = CommandItemBaseProps &

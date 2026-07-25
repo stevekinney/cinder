@@ -65,10 +65,6 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'defaultValue',
-        reason: 'unknown-shape',
-      },
-      {
         name: 'onchange',
         reason: 'function-or-snippet',
       },

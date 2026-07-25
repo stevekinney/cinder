@@ -189,14 +189,14 @@ describe('DataGrid sort model', () => {
 describe('DataGrid sort rendering', () => {
   test('sorts rows and cycles aria-sort from header clicks', async () => {
     const changes: DataGridSortModel[] = [];
-    const onsortmodelchange = mock((nextSortModel: DataGridSortModel) => {
+    const onSortModelChange = mock((nextSortModel: DataGridSortModel) => {
       changes.push(nextSortModel);
     });
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
       getRowId: getOrderId,
-      onsortmodelchange,
+      onSortModelChange,
       'aria-label': 'Orders',
     });
 

@@ -1770,10 +1770,10 @@
       id="{id}-selection-popover"
       position={selectionPopoverPosition}
       open={showSelectionPopover}
-      oncommentsubmit={handleSelectionComment}
-      onexpand={handleSelectionPopoverExpand}
-      oncancel={handleSelectionPopoverCancel}
-      onclose={handleSelectionPopoverClose}
+      onCommentSubmit={handleSelectionComment}
+      onExpand={handleSelectionPopoverExpand}
+      onCancel={handleSelectionPopoverCancel}
+      onClose={handleSelectionPopoverClose}
     />
   {/if}
 </div>

@@ -19,7 +19,7 @@ Drag-and-drop reorderable list that emits the new order on each change.
   {items}
   getKey={(item) => item.id}
   getItemLabel={(item) => item.label}
-  onreorder={(reordered) => {
+  onReorder={(reordered) => {
     items = reordered;
   }}
 >
@@ -44,7 +44,7 @@ Drag-and-drop reorderable list that emits the new order on each change.
 | `getKey`            | `(opaque)` | yes      | —       | Returns a stable key for each item. Must not change across reorders. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                              |
 | `handle`            | `(opaque)` | no       | —       | Optional snippet rendered inside the drag-handle button. Receives { pressed, label }. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                             |
 | `items`             | `(opaque)` | yes      | —       | The list of items to render. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                      |
-| `onreorder`         | `(opaque)` | yes      | —       | Fires with the full reordered array and change metadata on drop. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                  |
+| `onReorder`         | `(opaque)` | yes      | —       | Fires with the full reordered array and change metadata on drop. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                  |
 
 <!-- generated:props:end -->
 

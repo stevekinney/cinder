@@ -48,7 +48,7 @@ const COMPOSE_ONLY_LEAVES: ReadonlyArray<{ leaf: string; parent: string }> = [
   { leaf: 'tree-item', parent: 'tree' },
   { leaf: 'feed-event', parent: 'feed' },
   { leaf: 'grid-list-item', parent: 'grid-list' },
-  { leaf: 'stat', parent: 'stat-group' },
+  { leaf: 'statistic', parent: 'statistic-group' },
   { leaf: 'side-navigation-group', parent: 'side-navigation' },
   { leaf: 'side-navigation-item', parent: 'side-navigation' },
 ];

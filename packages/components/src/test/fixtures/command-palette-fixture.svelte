@@ -9,7 +9,7 @@
     initialOpen?: boolean;
     initialQuery?: string;
     items?: CommandPaletteFixtureItem[];
-    filterItems?: boolean;
+    filters?: boolean;
     onClosed?: () => void;
     onSelected?: (value: string) => void;
   };
@@ -28,7 +28,7 @@
       { value: 'beta', label: 'Beta', disabled: true },
       { value: 'gamma', label: 'Gamma' },
     ],
-    filterItems = false,
+    filters = false,
     onClosed,
     onSelected,
   }: CommandPaletteFixtureProps = $props();
@@ -42,7 +42,7 @@
   // was about — the examples previously ignored the snippet parameter — so the
   // regression tests must exercise the snippet argument, not an outer binding.
   function matching(snippetQuery: string): CommandPaletteFixtureItem[] {
-    if (!filterItems) return items;
+    if (!filters) return items;
     const needle = snippetQuery.toLowerCase();
     return items.filter((item) => item.label.toLowerCase().includes(needle));
   }
@@ -94,14 +94,14 @@
   bind:query
   label="Fixture palette"
   {triggerRef}
-  {...onClosed !== undefined ? { onclose: onClosed } : {}}
+  {...onClosed !== undefined ? { onClose: onClosed } : {}}
 >
   {#snippet items({ query: snippetQuery })}
     {#each matching(snippetQuery) as item (item.value)}
       <CommandItem
         value={item.value}
         {...item.disabled !== undefined ? { disabled: item.disabled } : {}}
-        onselect={() => {
+        onSelect={() => {
           onSelected?.(item.value);
         }}
       >

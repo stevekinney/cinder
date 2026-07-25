@@ -27,12 +27,12 @@
 
   let {
     open = $bindable(false),
-    onopenchange,
+    onOpenChange,
     openDelay = 300,
     closeDelay = 150,
     placement = 'bottom-start',
     offset = 8,
-    showArrow = false,
+    arrowVisible = false,
     trigger,
     children,
     triggerRef = null,
@@ -80,7 +80,7 @@
     arrow: () => arrowElement,
     placement: () => placement as Placement,
     offset: () => offset,
-    showArrow: () => showArrow,
+    arrowVisible: () => arrowVisible,
     widthMode: () => 'content',
   });
 
@@ -94,7 +94,7 @@
   function setOpen(nextOpen: boolean) {
     if (open === nextOpen) return;
     open = nextOpen;
-    onopenchange?.(nextOpen);
+    onOpenChange?.(nextOpen);
   }
 
   function hasInterest() {
@@ -245,7 +245,7 @@
     {@attach portalAttachment}
   >
     {@render children()}
-    {#if showArrow}
+    {#if arrowVisible}
       <span
         bind:this={arrowElement}
         class="cinder-hover-card__arrow"

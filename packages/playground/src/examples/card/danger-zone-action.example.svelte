@@ -45,6 +45,6 @@
   description="This action is permanent. Project settings, review history, and automation rules cannot be restored."
   destructive
   confirmLabel="Delete project"
-  onconfirm={() => (deleted = true)}
-  oncancel={() => (open = false)}
+  onConfirm={() => (deleted = true)}
+  onCancel={() => (open = false)}
 />

@@ -84,10 +84,10 @@
   }
 
   /* ----------------------------------------
- * Mono affordance
+ * Monochrome affordance
  * ---------------------------------------- */
 
-  .cinder-badge[data-cinder-mono] {
+  .cinder-badge[data-cinder-monochrome] {
     font-family: var(
       --cinder-font-mono,
       ui-monospace,

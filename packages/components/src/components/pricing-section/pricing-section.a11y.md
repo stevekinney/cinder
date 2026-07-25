@@ -19,4 +19,4 @@ PricingSection compares multiple plans by composing PricingCard entries.
 - Navigate all plan CTAs with keyboard and activate each.
 - Confirm selected plan state is announced (via card semantics and visible text).
 
-Related components: `pricing-card`, `stats-section`, `cta-section`.
+Related components: `pricing-card`, `statistics-section`, `call-to-action-section`.

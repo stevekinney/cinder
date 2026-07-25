@@ -6,11 +6,11 @@
       "type": "boolean",
       "description": "Hover opens top-level content instead of click-only mode."
     },
-    "showViewport": {
+    "viewportVisible": {
       "type": "boolean",
       "description": "Render the shared content viewport wrapper."
     },
-    "showIndicator": {
+    "indicatorVisible": {
       "type": "boolean",
       "description": "Render an active trigger indicator bar."
     },

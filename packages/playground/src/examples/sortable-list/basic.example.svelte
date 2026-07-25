@@ -24,15 +24,15 @@
     return item.label;
   }
 
-  // `onreorder` receives the reordered items AND a `change` descriptor (from/to
+  // `onReorder` receives the reordered items AND a `change` descriptor (from/to
   // indices, moved key). This example only needs the new order, but the full
   // signature is shown so the canonical call shape is accurate.
-  const handleReorder: SortableListProps<Task>['onreorder'] = (nextItems, _change) => {
+  const handleReorder: SortableListProps<Task>['onReorder'] = (nextItems, _change) => {
     items = nextItems;
   };
 </script>
 
-<SortableList {items} {getKey} {getItemLabel} onreorder={handleReorder} label="Task priority">
+<SortableList {items} {getKey} {getItemLabel} onReorder={handleReorder} label="Task priority">
   {#snippet children(item, _context)}
     <span style="padding: 0.5rem 0.75rem; display: block;">{item.label}</span>
   {/snippet}

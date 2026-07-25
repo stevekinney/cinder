@@ -448,7 +448,7 @@
         <StatusDot
           status={statusDotStatus(step.status)}
           label={statusLabel(step.status)}
-          showLabel={false}
+          labelVisible={false}
           size="md"
         />
       </span>
@@ -497,10 +497,12 @@
             </Badge>
           {/if}
           {#if step.attemptCount !== undefined && step.attemptCount > 1}
-            <Badge variant="neutral" size="xs" mono>attempt {step.attemptCount}</Badge>
+            <Badge variant="neutral" size="xs" monochrome>attempt {step.attemptCount}</Badge>
           {/if}
           {#if step.actionsCount !== undefined && step.actionsCount > 0}
-            <Badge variant="neutral" size="xs" mono>{actionsCountLabel(step.actionsCount)}</Badge>
+            <Badge variant="neutral" size="xs" monochrome
+              >{actionsCountLabel(step.actionsCount)}</Badge
+            >
           {/if}
         </div>
 
@@ -559,7 +561,7 @@
   >
     <div class="cinder-run-step-timeline__event">
       <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
-        <StatusDot status="neutral" label="Nested steps hidden" showLabel={false} size="md" />
+        <StatusDot status="neutral" label="Nested steps hidden" labelVisible={false} size="md" />
       </span>
 
       <div class="cinder-run-step-timeline__content">
@@ -616,7 +618,7 @@
       >
         <div class="cinder-run-step-timeline__event">
           <span class="cinder-run-step-timeline__marker" aria-hidden="true" inert>
-            <StatusDot status="accent" label="Branch group" showLabel={false} size="md" />
+            <StatusDot status="accent" label="Branch group" labelVisible={false} size="md" />
           </span>
 
           <div class="cinder-run-step-timeline__content cinder-run-step-timeline__branch">

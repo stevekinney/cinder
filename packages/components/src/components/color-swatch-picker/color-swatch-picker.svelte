@@ -16,7 +16,7 @@
 
 <script lang="ts">
   import type { ColorSwatch, ColorSwatchPickerProps } from './color-swatch-picker.types.ts';
-  import { tick, untrack } from 'svelte';
+  import { tick } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
@@ -25,8 +25,7 @@
   import Check from 'lucide-svelte/icons/check';
 
   let {
-    value,
-    defaultValue,
+    value = $bindable(''),
     colors,
     shape = 'circle',
     size = 'md',
@@ -38,10 +37,7 @@
     indicator,
   }: ColorSwatchPickerProps = $props();
 
-  // Seeded once from `defaultValue` for the uncontrolled case; later selection
-  // changes flow through user interaction, not the prop.
-  let internalValue = $state(untrack(() => defaultValue) ?? '');
-  const selected = $derived(value ?? internalValue);
+  const selected = $derived(value);
 
   // Deduplicate swatches by color (first occurrence wins) so the keyed {#each}
   // never receives duplicate keys and Svelte cannot throw each_key_duplicate.
@@ -121,7 +117,7 @@
     if (!isInteractive(index)) return;
     const swatch = renderableColors[index];
     if (!swatch) return;
-    internalValue = swatch.color;
+    value = swatch.color;
     onchange?.(swatch.color);
   }
 

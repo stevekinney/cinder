@@ -197,38 +197,38 @@ describe('ResizablePanels', () => {
   });
 
   test('pointer release does not commit without a size change', async () => {
-    const onlayoutcommit = mock(() => {});
-    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
+    const onLayoutCommit = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onLayoutCommit });
     mockMeasurements(container);
-    onlayoutcommit.mockClear();
+    onLayoutCommit.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     await fireEvent.pointerDown(handle, { pointerId: 1, clientX: 200 });
     await fireEvent.pointerUp(handle, { pointerId: 1, clientX: 200 });
 
-    expect(onlayoutcommit).not.toHaveBeenCalled();
+    expect(onLayoutCommit).not.toHaveBeenCalled();
   });
 
   test('non-primary pointer buttons do not start a resize drag', async () => {
-    const onlayoutchange = mock(() => {});
-    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutchange });
+    const onLayoutChange = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onLayoutChange });
     mockMeasurements(container);
     await tick();
-    onlayoutchange.mockClear();
+    onLayoutChange.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     await fireEvent.pointerDown(handle, { pointerId: 1, button: 2, clientX: 200 });
     document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 260 }));
     await fireEvent.pointerUp(handle, { pointerId: 1, clientX: 260 });
 
-    expect(onlayoutchange).not.toHaveBeenCalled();
+    expect(onLayoutChange).not.toHaveBeenCalled();
   });
 
   test('ignores a second pointer while a drag is already active', async () => {
-    const onlayoutchange = mock(() => {});
-    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutchange });
+    const onLayoutChange = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onLayoutChange });
     mockMeasurements(container);
-    onlayoutchange.mockClear();
+    onLayoutChange.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     await fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientX: 200 });
@@ -237,7 +237,7 @@ describe('ResizablePanels', () => {
     document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 260 }));
     document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 260 }));
 
-    expect(onlayoutchange).toHaveBeenCalled();
+    expect(onLayoutChange).toHaveBeenCalled();
   });
 
   test('releases pointer capture on the handle that started the drag', async () => {
@@ -258,7 +258,7 @@ describe('ResizablePanels', () => {
   });
 
   test('keyboard resize does not commit when constraints keep the layout fixed', async () => {
-    const onlayoutcommit = mock(() => {});
+    const onLayoutCommit = mock(() => {});
     const constrainedPanes = [
       {
         id: 'sidebar',
@@ -277,47 +277,47 @@ describe('ResizablePanels', () => {
     const { container } = render(ResizablePanels, {
       panes: constrainedPanes,
       children: textSnippet,
-      onlayoutcommit,
+      onLayoutCommit,
     });
     mockMeasurements(container, { rootWidth: 612 });
-    onlayoutcommit.mockClear();
+    onLayoutCommit.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     await fireEvent.keyDown(handle, { key: 'ArrowRight' });
 
-    expect(onlayoutcommit).not.toHaveBeenCalled();
+    expect(onLayoutCommit).not.toHaveBeenCalled();
   });
 
   test('measurement from zero width does not commit a rebased default layout', async () => {
-    const onlayoutcommit = mock(() => {});
-    const { container } = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
+    const onLayoutCommit = mock(() => {});
+    const { container } = render(ResizablePanels, { panes, children: textSnippet, onLayoutCommit });
     mockMeasurements(container, { rootWidth: 12 });
     mockMeasurements(container, { rootWidth: 812 });
 
-    expect(onlayoutcommit).not.toHaveBeenCalled();
+    expect(onLayoutCommit).not.toHaveBeenCalled();
   });
 
   test('snap point metadata changes do not commit when pane pixels stay fixed', async () => {
-    const onlayoutcommit = mock(() => {});
-    const rendered = render(ResizablePanels, { panes, children: textSnippet, onlayoutcommit });
+    const onLayoutCommit = mock(() => {});
+    const rendered = render(ResizablePanels, { panes, children: textSnippet, onLayoutCommit });
     mockMeasurements(rendered.container);
     await tick();
-    onlayoutcommit.mockClear();
+    onLayoutCommit.mockClear();
 
     await rendered.rerender({
       panes: panes.map((pane, index) =>
         index === 0 ? { ...pane, snapPoints: [{ value: 25, unit: 'percent' }] } : pane,
       ),
       children: textSnippet,
-      onlayoutcommit,
+      onLayoutCommit,
     });
     await tick();
 
-    expect(onlayoutcommit).not.toHaveBeenCalled();
+    expect(onLayoutCommit).not.toHaveBeenCalled();
   });
 
   test('constrained pointer moves keep the drag anchor current before reversing', async () => {
-    const onlayoutchange = mock(
+    const onLayoutChange = mock(
       (_event: import('./resizable-panels.types.ts').ResizablePanelsResizeEvent) => {},
     );
     const constrainedPanes = [
@@ -338,11 +338,11 @@ describe('ResizablePanels', () => {
     const { container } = render(ResizablePanels, {
       panes: constrainedPanes,
       children: textSnippet,
-      onlayoutchange,
+      onLayoutChange,
     });
     mockMeasurements(container, { rootWidth: 612 });
     await tick();
-    onlayoutchange.mockClear();
+    onLayoutChange.mockClear();
 
     const handle = container.querySelector<HTMLElement>('[role="separator"]')!;
     await fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientX: 200 });
@@ -350,7 +350,7 @@ describe('ResizablePanels', () => {
     document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 300 }));
     document.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 290 }));
 
-    const lastChange = onlayoutchange.mock.calls.at(-1)?.[0];
+    const lastChange = onLayoutChange.mock.calls.at(-1)?.[0];
     expect(lastChange?.sizes[0]?.size.value).toBeCloseTo(210, 3);
   });
 

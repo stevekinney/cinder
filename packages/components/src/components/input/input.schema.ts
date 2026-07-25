@@ -66,6 +66,11 @@ const schema = {
       {
         name: 'onValueChange',
         reason: 'function-or-snippet',
+        description: 'Notify after the bindable value has been committed.',
+      },
+      {
+        name: 'onValueChangeRequest',
+        reason: 'function-or-snippet',
         description:
           'Intercept a proposed value before the bindable value is written. Return a replacement value to transform it.',
       },

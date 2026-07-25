@@ -20,4 +20,4 @@
   };
 </script>
 
-<SchemaForm {schema} ondraftchange={handleDraftChange} onsubmit={handleSubmit} />
+<SchemaForm {schema} onDraftChange={handleDraftChange} onsubmit={handleSubmit} />

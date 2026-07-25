@@ -7,8 +7,8 @@
    * @tag action
    * @tag floating
    * @useWhen Rendering a secondary quick action inside SpeedDial.
-   * @avoidWhen Rendering an action outside SpeedDial - use floating-action-button directly. | floating-action-button
-   * @related speed-dial, floating-action-button
+   * @avoidWhen Rendering an action outside SpeedDial - use floating-action directly. | floating-action
+   * @related speed-dial, floating-action
    */
   export type {
     SpeedDialActionLabelPlacement,
@@ -18,7 +18,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import FloatingActionButton from '../floating-action-button/floating-action-button.svelte';
+  import FloatingAction from '../floating-action/floating-action.svelte';
   import { getSpeedDialContext } from '../speed-dial/speed-dial.context.ts';
   import type { SpeedDialActionProps } from './speed-dial-action.types.ts';
 
@@ -45,7 +45,7 @@
   }
 
   $effect(() => {
-    const button = rootElement?.querySelector<HTMLButtonElement>('button.cinder-fab');
+    const button = rootElement?.querySelector<HTMLButtonElement>('button.cinder-floating-action');
     if (!button) return;
 
     context.register(button);
@@ -60,16 +60,9 @@
   data-cinder-open={context.isOpen ? '' : undefined}
   data-cinder-direction={context.direction}
 >
-  <FloatingActionButton
-    {...rest}
-    {id}
-    size="sm"
-    aria-label={label}
-    {disabled}
-    onclick={handleClick}
-  >
+  <FloatingAction {...rest} {id} size="sm" aria-label={label} {disabled} onclick={handleClick}>
     {@render icon?.()}
-  </FloatingActionButton>
+  </FloatingAction>
 
   {#if labelPlacement !== 'none'}
     <label for={id} class="cinder-speed-dial-action__label" aria-hidden="true">{label}</label>

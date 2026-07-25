@@ -52,7 +52,7 @@ export type AutocompleteSchemaProps = {
   /** Additional class names merged onto the root wrapper element. */
   class?: string;
   oninput?: (value: string) => void;
-  oncomplete?: (suggestion: AutocompleteSuggestion) => void;
+  onComplete?: (suggestion: AutocompleteSuggestion) => void;
 };
 
 export type AutocompleteProps = Omit<

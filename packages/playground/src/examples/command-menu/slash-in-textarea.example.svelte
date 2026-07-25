@@ -105,13 +105,13 @@
   {anchor}
   {caretIndex}
   label="Slash commands"
-  onselect={(selection) => selectCommand(selection.value)}
-  ondismiss={() => {
+  onSelect={(selection) => selectCommand(selection.value)}
+  onDismiss={() => {
     open = false;
     query = '';
     triggerRange = null;
   }}
-  onstatechange={(state) => {
+  onStateChange={(state) => {
     listboxId = state.listboxId;
     activeItemId = state.activeItemId ?? undefined;
   }}

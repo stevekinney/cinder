@@ -10,10 +10,10 @@
 </script>
 
 <BentoGrid as="section" columns={4} gap="var(--cinder-space-4)" aria-label="Product highlights">
-  <BentoGrid.Cell colSpan={2} rowSpan={2}>
+  <BentoGrid.Cell columnSpan={2} rowSpan={2}>
     <Card>Realtime analytics</Card>
   </BentoGrid.Cell>
-  <BentoGrid.Cell colSpan={2}>
+  <BentoGrid.Cell columnSpan={2}>
     <Card>Workflow automation</Card>
   </BentoGrid.Cell>
   <BentoGrid.Cell rowSpan={2}>

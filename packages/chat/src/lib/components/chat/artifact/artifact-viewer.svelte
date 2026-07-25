@@ -44,7 +44,7 @@
       <CodeBlock
         code={content}
         {...language === undefined ? {} : { language }}
-        showLanguageLabel={false}
+        languageLabelVisible={false}
         class="artifact-code-block"
       />
     {/if}

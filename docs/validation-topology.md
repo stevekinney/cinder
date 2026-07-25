@@ -108,7 +108,7 @@ was replaced with the single-workflow, `if:`-gated pattern described above.
 
 ## The guardrails
 
-Six mechanisms exist specifically to keep this topology honest — to stop
+Seven mechanisms exist specifically to keep this topology honest — to stop
 regression back into "the same expensive check running four times, hooks
 taking forever," and to catch the opposite failure, a gate silently missing
 from the layer it needs to run in.
@@ -124,6 +124,14 @@ from the layer it needs to run in.
   parse failure there warns rather than fails). Fails on undeclared
   duplication or a silently dropped gate; this is the direct fix for issue
   #411 (`components:check` shipping in no workflow).
+- **Component prop-convention guard**
+  (`packages/components/scripts/check-prop-conventions.ts`, wired into
+  `lint:invariants`) — parses committed `*.types.ts` files with the TypeScript
+  AST and fails when public props drift from
+  `docs/component-api-conventions.md`: conflicting handler conventions,
+  `show*`/`allow*`/`use*` boolean prefixes, `defaultValue`, banned
+  abbreviations, `component` where `as` is meant, or duplicate vocabulary such
+  as `filterItem`.
 - **Memory canary** (`packages/components/scripts/memory-canary.ts`,
   `test:memory-canary`, wired as a non-blocking step in `main-green.yaml`) —
   runs a fixed representative slice of component suites and reports peak RSS.

@@ -49,7 +49,7 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
     policyVersion: 'policy-2026-06',
     idempotencyKey: 'approval-card-test-key',
     state: 'pending',
-    onresolve: () => undefined,
+    onResolve: () => undefined,
     ...overrides,
   };
 }
@@ -69,7 +69,7 @@ describe('ApprovalCard', () => {
     expect(approvalCardSchema.required).toContain('operation');
     expect(approvalCardSchema.properties).toHaveProperty('operation');
     expect(approvalCardSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
-      'onresolve',
+      'onResolve',
     ]);
   });
 
@@ -270,8 +270,8 @@ describe('ApprovalCard', () => {
     expect(leveled.querySelector('h3.cinder-approval-card__section-title')).not.toBeNull();
   });
 
-  test('renders no action buttons when onresolve is absent', () => {
-    const { onresolve: _onresolve, ...withoutResolve } = approvalCardProps();
+  test('renders no action buttons when onResolve is absent', () => {
+    const { onResolve: _onResolve, ...withoutResolve } = approvalCardProps();
     const { queryByRole } = render(ApprovalCard, withoutResolve);
 
     expect(queryByRole('group', { name: 'Approval actions' })).toBeNull();
@@ -279,9 +279,9 @@ describe('ApprovalCard', () => {
     expect(queryByRole('checkbox')).toBeNull();
   });
 
-  test('renders no action buttons and does not throw when onresolve is a truthy non-function', () => {
+  test('renders no action buttons and does not throw when onResolve is a truthy non-function', () => {
     const { queryByRole } = render(ApprovalCard, {
-      ...approvalCardProps({ onresolve: 'not-a-function' as unknown as () => void }),
+      ...approvalCardProps({ onResolve: 'not-a-function' as unknown as () => void }),
     });
 
     expect(queryByRole('group', { name: 'Approval actions' })).toBeNull();
@@ -310,10 +310,10 @@ describe('ApprovalCard', () => {
   });
 
   test('emits a complete approval resolution when approving as presented', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
 
     const { getByRole } = render(ApprovalCard, {
-      ...approvalCardProps({ editableArgs: false, onresolve }),
+      ...approvalCardProps({ editableArgs: false, onResolve }),
     });
 
     const rememberCheckbox = getByRole('checkbox', {
@@ -323,17 +323,17 @@ describe('ApprovalCard', () => {
     await fireEvent.click(rememberCheckbox);
     await fireEvent.click(getByRole('button', { name: 'Approve' }));
 
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'approve',
       remember: true,
     });
   });
 
   test('emits reason text and remember state when denying', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
 
     const { getByLabelText, getByRole } = render(ApprovalCard, {
-      ...approvalCardProps({ editableArgs: false, onresolve }),
+      ...approvalCardProps({ editableArgs: false, onResolve }),
     });
 
     await fireEvent.input(getByLabelText('Reason'), {
@@ -344,7 +344,7 @@ describe('ApprovalCard', () => {
     );
     await fireEvent.click(getByRole('button', { name: 'Deny' }));
 
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'deny',
       reason: 'Outside the deployment window.',
       remember: true,
@@ -352,10 +352,10 @@ describe('ApprovalCard', () => {
   });
 
   test('emits a cancel decision when dismissing', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
 
     const { getByLabelText, getByRole } = render(ApprovalCard, {
-      ...approvalCardProps({ editableArgs: false, onresolve }),
+      ...approvalCardProps({ editableArgs: false, onResolve }),
     });
 
     await fireEvent.input(getByLabelText('Reason'), {
@@ -363,7 +363,7 @@ describe('ApprovalCard', () => {
     });
     await fireEvent.click(getByRole('button', { name: 'Dismiss' }));
 
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'cancel',
       reason: 'Need more context before deciding.',
       remember: false,
@@ -371,10 +371,10 @@ describe('ApprovalCard', () => {
   });
 
   test('resets resolution reason and remember state when the approval request changes', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const view = render(ApprovalCard, {
       ...approvalCardProps({
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-one',
       }),
     });
@@ -388,7 +388,7 @@ describe('ApprovalCard', () => {
 
     await view.rerender({
       ...approvalCardProps({
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-two',
       }),
     });
@@ -403,16 +403,16 @@ describe('ApprovalCard', () => {
     ).toBe(false);
 
     await fireEvent.click(view.getByRole('button', { name: 'Approve' }));
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'approve',
       remember: false,
     });
   });
 
   test('preserves in-progress reason text and remember state across an unrelated host re-render', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const view = render(ApprovalCard, {
-      ...approvalCardProps({ onresolve, idempotencyKey: 'approval-one' }),
+      ...approvalCardProps({ onResolve, idempotencyKey: 'approval-one' }),
     });
 
     await fireEvent.input(view.getByLabelText('Reason'), {
@@ -426,7 +426,7 @@ describe('ApprovalCard', () => {
     // (e.g. a countdown tick elsewhere on the page), not because a new
     // approval request arrived. The draft must survive this.
     await view.rerender({
-      ...approvalCardProps({ onresolve, idempotencyKey: 'approval-one', snapshotId: 'snap-2' }),
+      ...approvalCardProps({ onResolve, idempotencyKey: 'approval-one', snapshotId: 'snap-2' }),
     });
 
     expect((view.getByLabelText('Reason') as HTMLTextAreaElement).value).toBe(
@@ -442,11 +442,11 @@ describe('ApprovalCard', () => {
   });
 
   test('edits arguments as JSON before approving with edits', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const { getByLabelText, getByRole, queryByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         operation: {
           kind: 'other',
           argsPreview: { force: false },
@@ -474,7 +474,7 @@ describe('ApprovalCard', () => {
     expect(queryByRole('alert')).toBeNull();
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
 
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'approve_with_edits',
       editedArgs: { force: true },
       remember: false,
@@ -493,11 +493,11 @@ describe('ApprovalCard', () => {
   });
 
   test('seeds editable arguments from serialized JSON previews', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const { getByLabelText, getByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         operation: {
           kind: 'other',
           argsPreview: '{"force":false,"files":["src/a.ts"]}',
@@ -512,7 +512,7 @@ describe('ApprovalCard', () => {
     expect(textarea.value).toContain('"files"');
 
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'approve_with_edits',
       editedArgs: { force: false, files: ['src/a.ts'] },
       remember: false,
@@ -520,11 +520,11 @@ describe('ApprovalCard', () => {
   });
 
   test('preserves null arguments when approving with edits without changes', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const { getByLabelText, getByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         operation: {
           kind: 'other',
           argsPreview: null,
@@ -539,7 +539,7 @@ describe('ApprovalCard', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
 
-    expect(onresolve).toHaveBeenCalledWith({
+    expect(onResolve).toHaveBeenCalledWith({
       decision: 'approve_with_edits',
       editedArgs: null,
       remember: false,
@@ -547,11 +547,11 @@ describe('ApprovalCard', () => {
   });
 
   test('hides the edit panel and blocks the resolution when editableArgs is disabled after the editor was opened', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const view = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         operation: {
           kind: 'other',
           argsPreview: { force: false },
@@ -565,7 +565,7 @@ describe('ApprovalCard', () => {
     await view.rerender({
       ...approvalCardProps({
         editableArgs: false,
-        onresolve,
+        onResolve,
         operation: {
           kind: 'other',
           argsPreview: { force: false },
@@ -575,7 +575,7 @@ describe('ApprovalCard', () => {
 
     expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
     expect(view.queryByRole('button', { name: 'Confirm edited approval' })).toBeNull();
-    expect(onresolve).not.toHaveBeenCalled();
+    expect(onResolve).not.toHaveBeenCalled();
   });
 
   test('does not offer edited approval when no preview is provided', () => {
@@ -592,11 +592,11 @@ describe('ApprovalCard', () => {
   });
 
   test('reseeds editable arguments when the approval request changes', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const view = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-one',
         operation: {
           kind: 'other',
@@ -612,7 +612,7 @@ describe('ApprovalCard', () => {
     await view.rerender({
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-two',
         operation: {
           kind: 'other',
@@ -630,11 +630,11 @@ describe('ApprovalCard', () => {
   });
 
   test('closes the edit panel when argsPreview changes for the SAME approval request', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const view = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-one',
         operation: {
           kind: 'other',
@@ -651,7 +651,7 @@ describe('ApprovalCard', () => {
     await view.rerender({
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-one',
         operation: {
           kind: 'other',
@@ -668,11 +668,11 @@ describe('ApprovalCard', () => {
   });
 
   test('closes the edit panel when the request changes even if the new arguments serialize identically', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
     const view = render(ApprovalCard, {
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-one',
         operation: {
           kind: 'other',
@@ -691,7 +691,7 @@ describe('ApprovalCard', () => {
     await view.rerender({
       ...approvalCardProps({
         editableArgs: true,
-        onresolve,
+        onResolve,
         idempotencyKey: 'approval-two',
         operation: {
           kind: 'other',
@@ -921,11 +921,11 @@ describe('ApprovalCard', () => {
     const now = new Date('2026-06-24T12:00:00.000Z');
     jest.useFakeTimers({ now });
 
-    const onresolve = mock();
+    const onResolve = mock();
     const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         expiresAt: new Date(now.getTime() + 1_000).toISOString(),
-        onresolve,
+        onResolve,
       }),
     });
 
@@ -940,18 +940,18 @@ describe('ApprovalCard', () => {
     ).toBeTruthy();
     expect(getByRole('img', { name: 'Expired' })).toBeTruthy();
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
-    expect(onresolve).not.toHaveBeenCalled();
+    expect(onResolve).not.toHaveBeenCalled();
   });
 
   test('blocks resolutions at the exact expiration deadline', async () => {
     const now = new Date('2026-06-24T12:00:00.000Z');
     jest.useFakeTimers({ now });
-    const onresolve = mock();
+    const onResolve = mock();
 
     const { getByRole, queryByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         expiresAt: new Date(now.getTime() + 250).toISOString(),
-        onresolve,
+        onResolve,
       }),
     });
 
@@ -961,7 +961,7 @@ describe('ApprovalCard', () => {
     jest.advanceTimersByTime(250);
     await fireEvent.click(approveButton);
 
-    expect(onresolve).not.toHaveBeenCalled();
+    expect(onResolve).not.toHaveBeenCalled();
 
     await tick();
     expect(queryByRole('button', { name: 'Approve' })).toBeNull();
@@ -970,12 +970,12 @@ describe('ApprovalCard', () => {
   test('syncs the visible expired state when an overdue action is attempted before the timer fires', async () => {
     const now = new Date('2026-06-24T12:00:00.000Z').getTime();
     const dateNow = jest.spyOn(Date, 'now').mockReturnValue(now);
-    const onresolve = mock();
+    const onResolve = mock();
 
     const { getByRole, getByText, queryByRole } = render(ApprovalCard, {
       ...approvalCardProps({
         expiresAt: new Date(now + 60_000).toISOString(),
-        onresolve,
+        onResolve,
       }),
     });
 
@@ -986,7 +986,7 @@ describe('ApprovalCard', () => {
     await fireEvent.click(approveButton);
     await tick();
 
-    expect(onresolve).not.toHaveBeenCalled();
+    expect(onResolve).not.toHaveBeenCalled();
     expect(
       getByText('No approval actions are available because this request is expired.'),
     ).toBeTruthy();
@@ -1013,12 +1013,12 @@ describe('ApprovalCard', () => {
   });
 
   test('treats invalid expiration timestamps as no expiration', async () => {
-    const onresolve = mock();
+    const onResolve = mock();
 
     const { getByRole, queryByText } = render(ApprovalCard, {
       ...approvalCardProps({
         expiresAt: 'not-an-iso-date',
-        onresolve,
+        onResolve,
       }),
     });
 
@@ -1031,7 +1031,7 @@ describe('ApprovalCard', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Approve' }));
 
-    expect(onresolve).toHaveBeenCalledWith({ decision: 'approve', remember: false });
+    expect(onResolve).toHaveBeenCalledWith({ decision: 'approve', remember: false });
   });
 
   test('renders already-expired approvals read-only on the initial render', () => {

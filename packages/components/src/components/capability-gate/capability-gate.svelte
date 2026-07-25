@@ -51,12 +51,12 @@
     state: stateProp,
     variant = 'inline',
     primaryAction,
-    onprimaryaction,
+    onPrimaryAction,
     fallbackAction,
     fallbackHref,
-    onfallbackaction,
+    onFallbackAction,
     dismissAction,
-    ondismiss,
+    onDismiss,
     children,
     class: customClassName,
     ...rest
@@ -104,10 +104,10 @@
     // Blur the dismiss button before it unmounts so focus moves to <body>
     // predictably rather than being stranded on a detached node. The consumer
     // owns where focus should land next (e.g. a trigger to re-open the gate) and
-    // can set it in `ondismiss` — the component cannot know the right target.
+    // can set it in `onDismiss` — the component cannot know the right target.
     dismissButton?.blur();
     visible = false;
-    ondismiss?.();
+    onDismiss?.();
   }
 </script>
 
@@ -143,7 +143,7 @@
           <button
             type="button"
             class="cinder-capability-gate__primary"
-            onclick={onprimaryaction}
+            onclick={onPrimaryAction}
             aria-label="{primaryAction} for {feature}"
           >
             {primaryAction}
@@ -162,7 +162,7 @@
           <button
             type="button"
             class="cinder-capability-gate__fallback"
-            onclick={onfallbackaction}
+            onclick={onFallbackAction}
             aria-label="{fallbackAction} for {feature}"
           >
             {fallbackAction}

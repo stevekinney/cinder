@@ -708,11 +708,13 @@
               {/if}
               <div class="dx-spec__row">
                 <span class="dx-spec__key">Export</span>
-                <span class="dx-spec__val dx-spec__val--mono">{component.exportName}</span>
+                <span class="dx-spec__val dx-spec__val--monochrome">{component.exportName}</span>
               </div>
               <div class="dx-spec__row">
                 <span class="dx-spec__key">Version</span>
-                <span class="dx-spec__val dx-spec__val--mono">v{component.packageVersion}</span>
+                <span class="dx-spec__val dx-spec__val--monochrome"
+                  >v{component.packageVersion}</span
+                >
               </div>
             </aside>
           </div>
@@ -1278,7 +1280,7 @@
             <section class="dx-section dx-raw">
               <Collapsible
                 trigger="Raw artifacts"
-                ontoggle={(open) => {
+                onToggle={(open) => {
                   if (open) hasOpenedRawArtifacts = true;
                 }}
               >
@@ -1539,7 +1541,7 @@
     align-items: center;
     gap: var(--cinder-space-2);
   }
-  .dx-spec__val--mono {
+  .dx-spec__val--monochrome {
     font-family: var(--cinder-font-mono);
     font-weight: var(--cinder-font-normal);
   }
@@ -1994,7 +1996,7 @@
     gap: var(--cinder-space-2);
   }
   /* The controls panel is a fixed 16.5rem column, so a side-by-side label/control
-     row squeezes long mono prop names to one character per line. Stack instead:
+     row squeezes long monochrome prop names to one character per line. Stack instead:
      label + description on their own row, the control full-width below. The boolean
      toggle is tiny, so it stays inline at the end of the label row (see __row). */
   .dx-ctl {

@@ -80,13 +80,13 @@ const schema = {
         description: 'Consumer-owned command or mention definitions.',
       },
       {
-        name: 'ondismiss',
+        name: 'onDismiss',
         reason: 'function-or-snippet',
         description:
           'Invoked when Escape, trigger loss, or outside pointerdown dismisses the popover.',
       },
       {
-        name: 'onselect',
+        name: 'onSelect',
         reason: 'function-or-snippet',
         description: 'Invoked when an enabled item is selected by keyboard or pointer.',
       },

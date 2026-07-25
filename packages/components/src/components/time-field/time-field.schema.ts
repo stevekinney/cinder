@@ -10,9 +10,6 @@ const schema = {
     value: {
       type: 'string',
     },
-    defaultValue: {
-      type: 'string',
-    },
     granularity: {
       enum: ['minute', 'second'],
     },

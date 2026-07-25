@@ -70,7 +70,7 @@ export type FacetedFilterBarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   /** Current text search query. When provided, the search field is controlled. */
   searchQuery?: string;
   /** Whether to render the leading search field. Defaults to `true`. */
-  showSearch?: boolean;
+  searchVisible?: boolean;
   /** Placeholder text shown in the leading search field. */
   searchPlaceholder?: string;
   /** Accessible label for the search input. Defaults to 'Search'. */
@@ -90,11 +90,11 @@ export type FacetedFilterBarProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   /** Additional CSS classes applied to the root element. */
   class?: string;
   /** Fires when the search query changes. */
-  onsearchchange?: (query: string) => void;
+  onSearchChange?: (query: string) => void;
   /** Fires when a facet value changes, with the facet key and new value. */
-  onfacetchange?: (key: string, value: string) => void;
+  onFacetChange?: (key: string, value: string) => void;
   /** Fires when a specific applied filter chip is removed. */
-  onfilterremove?: (key: string) => void;
+  onFilterRemove?: (key: string) => void;
   /** Fires when the clear-all button is clicked. */
-  onclearall?: () => void;
+  onClearAll?: () => void;
 };

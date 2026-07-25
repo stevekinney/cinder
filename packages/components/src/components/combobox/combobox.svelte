@@ -30,7 +30,7 @@
     value = $bindable(''),
     onchange,
     name,
-    inputValue = $bindable(''),
+    textInputValue = $bindable(''),
     options,
     label,
     'aria-label': ariaLabel,
@@ -41,7 +41,7 @@
     disabled,
     required,
     maxVisibleOptions = 200,
-    allowCustomValue = false as AllowCustom,
+    customValueAllowed = false as AllowCustom,
     class: className,
     'aria-describedby': consumerDescribedBy,
   }: ComboboxProps<T, AllowCustom> = $props();
@@ -85,7 +85,7 @@
     const fn = filter ?? defaultFilter;
     const matches: ComboboxOption<T>[] = [];
     for (const option of options) {
-      if (fn(option, inputValue)) {
+      if (fn(option, textInputValue)) {
         matches.push(option);
         if (matches.length >= maxVisibleOptions) break;
       }
@@ -105,14 +105,14 @@
   let hasStoredInitialValue = $state(false);
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   let initialValue = $state(untrack(() => value));
-  const initialInputValue = untrack(() => inputValue);
+  const initialInputValue = untrack(() => textInputValue);
 
   $effect.pre(() => {
     if (!hasUserCommittedValue && !hasStoredInitialValue && value) {
       initialValue = value;
       hasStoredInitialValue = true;
     }
-    if (allowCustomValue && !hasUserCommittedValue && value && !initialCustomValue) {
+    if (customValueAllowed && !hasUserCommittedValue && value && !initialCustomValue) {
       initialCustomValue = value;
     }
   });
@@ -132,24 +132,24 @@
     if (!value) {
       // Clearing the value (deselect/reset) must also clear the visible text;
       // otherwise the input keeps showing the previously selected option's label.
-      if (untrack(() => inputValue)) inputValue = '';
+      if (untrack(() => textInputValue)) textInputValue = '';
       committedLabel = '';
       return;
     }
     const matched = options.find((option) => option.value === value);
     if (matched) {
       // `committedLabel` tracks the committed `value`'s label and must stay in
-      // sync whenever a match exists — even when `inputValue` already shows that
-      // label. Gating it behind the `inputValue !== matched.label` check left
+      // sync whenever a match exists — even when `textInputValue` already shows that
+      // label. Gating it behind the `textInputValue !== matched.label` check left
       // `committedLabel` stale (''), so a later Escape restored to empty text.
       committedLabel = matched.label;
-      if (untrack(() => inputValue) !== matched.label) {
-        inputValue = matched.label;
+      if (untrack(() => textInputValue) !== matched.label) {
+        textInputValue = matched.label;
       }
-    } else if (allowCustomValue) {
+    } else if (customValueAllowed) {
       if (!initialCustomValue) initialCustomValue = value;
       committedLabel = value;
-      if (untrack(() => inputValue) !== value) inputValue = value;
+      if (untrack(() => textInputValue) !== value) textInputValue = value;
     }
   });
 
@@ -172,8 +172,8 @@
     const wasOpen = open;
     open = false;
     // Restore the committed label whenever the live text drifted from it.
-    if (inputValue !== committedLabel) {
-      inputValue = committedLabel;
+    if (textInputValue !== committedLabel) {
+      textInputValue = committedLabel;
       if (inputElement) inputElement.value = committedLabel;
     }
     // Swallow the key if the combobox actually consumed this Escape (it was
@@ -212,7 +212,7 @@
 
   function handleInput(event: Event) {
     const target = event.target as HTMLInputElement;
-    inputValue = target.value;
+    textInputValue = target.value;
     open = true;
     activeIndex = filteredOptions.length > 0 ? 0 : -1;
     hasExplicitNavigation = false;
@@ -228,7 +228,7 @@
     // CSS-special characters (colons, dots, leading digits) don't throw.
     const next = event.relatedTarget as Node | null;
     if (next && listboxElement?.contains(next)) return;
-    if (allowCustomValue && inputValue.trim() && inputValue !== committedLabel) {
+    if (customValueAllowed && textInputValue.trim() && textInputValue !== committedLabel) {
       commitCustomValue();
       return;
     }
@@ -236,8 +236,8 @@
     // Restore the committed label if the live text drifted from it. Leaving the
     // field on a stale edit (without selecting an option) would desync the
     // visible text from the unchanged `value` — the same mismatch Escape fixes.
-    if (inputValue !== committedLabel) {
-      inputValue = committedLabel;
+    if (textInputValue !== committedLabel) {
+      textInputValue = committedLabel;
       if (inputElement) inputElement.value = committedLabel;
     }
   }
@@ -246,21 +246,21 @@
     if (option.disabled) return;
     hasUserCommittedValue = true;
     value = option.value;
-    inputValue = option.label;
+    textInputValue = option.label;
     committedLabel = option.label;
     open = false;
     onchange?.(option.value);
   }
 
   function commitCustomValue(): void {
-    const nextValue = inputValue.trim();
-    if (!allowCustomValue || !nextValue) return;
+    const nextValue = textInputValue.trim();
+    if (!customValueAllowed || !nextValue) return;
     if (
       options.some(
         (option) => option.disabled && (option.value === nextValue || option.label === nextValue),
       )
     ) {
-      inputValue = committedLabel;
+      textInputValue = committedLabel;
       if (inputElement) inputElement.value = committedLabel;
       open = false;
       return;
@@ -272,7 +272,7 @@
     const previousValue = value;
     // This path only runs when arbitrary values are explicitly allowed.
     value = committedValue as T;
-    inputValue = committedText;
+    textInputValue = committedText;
     committedLabel = committedText;
     open = false;
     if (committedValue !== previousValue) onchange?.(committedValue as T);
@@ -287,14 +287,15 @@
       // because Svelte's reactive binding updates the attribute (and thus defaultValue).
       const resetValue = hasStoredInitialValue
         ? initialValue
-        : allowCustomValue
+        : customValueAllowed
           ? initialCustomValue || committedLabel
           : '';
       value = resetValue as T;
       const matched = options.find((option) => option.value === resetValue);
-      const nextInputValue = matched?.label ?? (allowCustomValue ? resetValue : initialInputValue);
-      inputValue = nextInputValue;
-      committedLabel = matched?.label ?? (allowCustomValue ? resetValue : '');
+      const nextInputValue =
+        matched?.label ?? (customValueAllowed ? resetValue : initialInputValue);
+      textInputValue = nextInputValue;
+      committedLabel = matched?.label ?? (customValueAllowed ? resetValue : '');
       open = false;
       activeIndex = -1;
       if (inputElement) inputElement.value = nextInputValue;
@@ -318,7 +319,7 @@
 
   $effect(() => {
     inputElement?.setCustomValidity(
-      (resolvedRequired && !value) || (!allowCustomValue && inputValue !== committedLabel)
+      (resolvedRequired && !value) || (!customValueAllowed && textInputValue !== committedLabel)
         ? 'Please select an option.'
         : '',
     );
@@ -349,7 +350,7 @@
       hasExplicitNavigation = true;
     } else if (event.key === 'Enter' && open) {
       const option = filteredOptions[activeIndex];
-      if (allowCustomValue && !(hasExplicitNavigation && option)) {
+      if (customValueAllowed && !(hasExplicitNavigation && option)) {
         event.preventDefault();
         commitCustomValue();
       } else if (option) {
@@ -392,7 +393,7 @@
       disabled={resolvedDisabled}
       required={resolvedRequired}
       {placeholder}
-      value={inputValue}
+      value={textInputValue}
       aria-autocomplete="list"
       aria-label={ariaLabel?.trim() || undefined}
       aria-expanded={listboxVisible}

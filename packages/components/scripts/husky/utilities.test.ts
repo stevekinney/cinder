@@ -1070,7 +1070,7 @@ describe('withGateLock', () => {
 
       await expect(
         withGateLock(async () => 'should not run', {
-          beforeMalformedLockStat: () => {
+          beforeMalformedLockStatistic: () => {
             malformedChecks++;
             if (malformedChecks > 1) now = 5;
           },
@@ -1103,7 +1103,7 @@ describe('withGateLock', () => {
 
       try {
         const result = await withGateLock(async () => 'acquired after transition', {
-          beforeMalformedLockStat: async () => {
+          beforeMalformedLockStatistic: async () => {
             if (lockCompleted) return;
             lockCompleted = true;
             await writeFile(
@@ -1139,7 +1139,7 @@ describe('withGateLock', () => {
       await writeFile(lockPath, '{');
 
       const result = await withGateLock(async () => 'retried after disappeared lock', {
-        beforeMalformedLockStat: async () => {
+        beforeMalformedLockStatistic: async () => {
           await rm(lockPath, { force: true });
         },
         lockPath,

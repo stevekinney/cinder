@@ -58,5 +58,5 @@ export type FileUploadProps = Omit<
   /** Fires with accepted files after local validation passes. */
   onchange?: (files: File[]) => void;
   /** Fires with rejected files and reasons after local validation runs. */
-  onreject?: (files: RejectedFile[]) => void;
+  onReject?: (files: RejectedFile[]) => void;
 };

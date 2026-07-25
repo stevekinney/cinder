@@ -129,7 +129,7 @@ describe('CodeBlock — SSR two-phase contract', () => {
   test('server render emits the plain <pre><code> fallback with escaped code, no highlight', () => {
     const sourcePath = resolvePath(HERE, 'code-block.svelte');
     const repositoryRoot = resolvePath(HERE, '../../../../../');
-    const malicious = '<img src=x onerror=alert(1)>';
+    const malicious = '<img src=x onError=alert(1)>';
 
     // Compile the component for the server and render it in a child process so
     // we exercise the real SSR path (where `$effect` never runs). Mirrors the
@@ -172,6 +172,6 @@ describe('CodeBlock — SSR two-phase contract', () => {
     // The code is HTML-escaped (no live <img> injected); Svelte interpolation
     // escapes `<` to `&lt;`.
     expect(ssrHtml).toContain('&lt;img');
-    expect(ssrHtml).not.toContain('<img src=x onerror=alert(1)>');
+    expect(ssrHtml).not.toContain('<img src=x onError=alert(1)>');
   }, 30_000);
 });

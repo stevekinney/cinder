@@ -146,7 +146,7 @@
 
     {#if !readonly && visibleThreads.length > 0}
       <Dropdown id="{id}-actions">
-        <DropdownTrigger class="actions-trigger" aria-label="Comment actions" showCaret={false}>
+        <DropdownTrigger class="actions-trigger" aria-label="Comment actions" caretVisible={false}>
           <MoreHorizontal class="cinder-icon-sm" />
         </DropdownTrigger>
         <DropdownMenu>

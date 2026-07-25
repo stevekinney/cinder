@@ -16,5 +16,5 @@
   title="Session requires attention"
   description="Review this message before continuing. Escape and backdrop clicks intentionally keep the dialog open."
   acknowledgeLabel="I understand"
-  onacknowledge={() => {}}
+  onAcknowledge={() => {}}
 />

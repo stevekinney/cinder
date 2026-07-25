@@ -119,9 +119,9 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(container.querySelector('.tool-call-details')).not.toBeNull();
   });
 
-  test('toggling a tool-call card fires onexpandedchange, matching the pre-split contract', async () => {
+  test('toggling a tool-call card fires onExpandedChange, matching the pre-split contract', async () => {
     // Before tool-call disclosure was split out from the unified `expanded`
-    // state, toggling ANY disclosure on the message fired onexpandedchange.
+    // state, toggling ANY disclosure on the message fired onExpandedChange.
     // Regression guard: that contract must hold for tool-call cards too, not
     // just markdown truncation.
     const message = toolCallMessage();
@@ -130,7 +130,7 @@ describe('ChatMessage — tool-call rendering', () => {
       props: {
         message,
         toolCallPairs: [{ call: message.toolCall! }],
-        onexpandedchange: (expanded: boolean) => changes.push(expanded),
+        onExpandedChange: (expanded: boolean) => changes.push(expanded),
       },
     });
     const header = container.querySelector<HTMLButtonElement>('.tool-call-header');

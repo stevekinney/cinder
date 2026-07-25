@@ -59,7 +59,7 @@ const schema = {
         description: 'The list of items to render.',
       },
       {
-        name: 'onreorder',
+        name: 'onReorder',
         reason: 'function-or-snippet',
         required: true,
         description: 'Fires with the full reordered array and change metadata on drop.',

@@ -12,7 +12,7 @@
       description="Add freeform text with formatting options."
       accessibleLabel="   "
       keyboardShortcut="   "
-      onselect={() => {}}
+      onSelect={() => {}}
     >
       Text
     </CommandItem>

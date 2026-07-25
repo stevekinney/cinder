@@ -20,7 +20,7 @@ export type TextareaProps = HTMLTextareaAttributes & {
   // accepted shape — there is no `...rest` escape hatch. textarea.test.ts pins this.
   /** Marks the field as required. Passed through to the native `required` attribute. */
   required?: boolean;
-  /** Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `showCount` counter. */
+  /** Maximum character count. Passed through to the native `maxlength` attribute and shown as the limit in the `countVisible` counter. */
   maxlength?: number;
   /** Disables the textarea. */
   disabled?: boolean;
@@ -33,5 +33,5 @@ export type TextareaProps = HTMLTextareaAttributes & {
    * of the field's description, and it is also placed inside an
    * `aria-live="polite"` region so updates are announced as the user types.
    */
-  showCount?: boolean;
+  countVisible?: boolean;
 };

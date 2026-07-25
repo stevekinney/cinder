@@ -79,9 +79,9 @@ describe('FacetedFilterBar structure', () => {
     expect(searchField).not.toBeNull();
   });
 
-  test('showSearch=false omits the search field while preserving facet controls', () => {
+  test('searchVisible=false omits the search field while preserving facet controls', () => {
     const { container } = render(FacetedFilterBar, {
-      showSearch: false,
+      searchVisible: false,
       searchQuery: 'hidden query',
       facets: [STATUS_FACET],
     });
@@ -149,7 +149,7 @@ describe('FacetedFilterBar structure', () => {
       '[aria-label="Status"].cinder-faceted-filter-bar__select',
     )!;
     // User picks a value — in a real app this commits to appliedFilters via the
-    // onfacetchange callback; here we drive both the local change and the
+    // onFacetChange callback; here we drive both the local change and the
     // resulting controlled prop to model that round-trip.
     statusSelect.value = 'failed';
     await fireEvent.change(statusSelect);
@@ -196,51 +196,51 @@ describe('FacetedFilterBar structure', () => {
 });
 
 describe('FacetedFilterBar behavior', () => {
-  test('calls onsearchchange when search input changes', async () => {
-    const onsearchchange = mock((_query: string) => {});
-    const { container } = render(FacetedFilterBar, { onsearchchange });
+  test('calls onSearchChange when search input changes', async () => {
+    const onSearchChange = mock((_query: string) => {});
+    const { container } = render(FacetedFilterBar, { onSearchChange });
     const input = container.querySelector<HTMLInputElement>('.cinder-search-field__input');
     expect(input).not.toBeNull();
     await fireEvent.input(input!, { target: { value: 'my workflow' } });
-    expect(onsearchchange).toHaveBeenCalledWith('my workflow');
+    expect(onSearchChange).toHaveBeenCalledWith('my workflow');
   });
 
-  test('calls onfacetchange when a select facet changes', async () => {
-    const onfacetchange = mock((_key: string, _value: string) => {});
+  test('calls onFacetChange when a select facet changes', async () => {
+    const onFacetChange = mock((_key: string, _value: string) => {});
     const { container } = render(FacetedFilterBar, {
       facets: [STATUS_FACET],
-      onfacetchange,
+      onFacetChange,
     });
     const select = container.querySelector<HTMLSelectElement>('.cinder-faceted-filter-bar__select');
     expect(select).not.toBeNull();
     await fireEvent.change(select!, { target: { value: 'failed' } });
-    expect(onfacetchange).toHaveBeenCalledWith('status', 'failed');
+    expect(onFacetChange).toHaveBeenCalledWith('status', 'failed');
   });
 
-  test('calls onfilterremove with the chip key when a chip remove button is clicked', async () => {
-    const onfilterremove = mock((_key: string) => {});
+  test('calls onFilterRemove with the chip key when a chip remove button is clicked', async () => {
+    const onFilterRemove = mock((_key: string) => {});
     const { container } = render(FacetedFilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
-      onfilterremove,
+      onFilterRemove,
     });
     const removeButton = container.querySelector<HTMLButtonElement>('.cinder-chip__remove');
     expect(removeButton).not.toBeNull();
     await fireEvent.click(removeButton!);
-    expect(onfilterremove).toHaveBeenCalledWith('status');
+    expect(onFilterRemove).toHaveBeenCalledWith('status');
   });
 
-  test('calls onclearall when clear-all button is clicked', async () => {
-    const onclearall = mock(() => {});
+  test('calls onClearAll when clear-all button is clicked', async () => {
+    const onClearAll = mock(() => {});
     const { container } = render(FacetedFilterBar, {
       appliedFilters: [{ key: 'status', value: 'failed', label: 'Status' }],
-      onclearall,
+      onClearAll,
     });
     const clearAll = container.querySelector<HTMLButtonElement>(
       '.cinder-faceted-filter-bar__clear-all',
     );
     expect(clearAll).not.toBeNull();
     await fireEvent.click(clearAll!);
-    expect(onclearall).toHaveBeenCalled();
+    expect(onClearAll).toHaveBeenCalled();
   });
 
   test('disabled prop disables all select facets', () => {

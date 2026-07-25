@@ -33,7 +33,7 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'ondismiss',
+        name: 'onDismiss',
         reason: 'function-or-snippet',
       },
     ],

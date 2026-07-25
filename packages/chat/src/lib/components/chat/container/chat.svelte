@@ -14,7 +14,7 @@
   type ChatImplementationProps = ChatProps & {
     onatbottombindingchange?: (value: boolean) => void;
     onunreadcountbindingchange?: (value: number) => void;
-    onnewmessageindicatorvisiblebindingchange?: (value: boolean) => void;
+    onNewMessageIndicatorVisibleBindingChange?: (value: boolean) => void;
   };
 
   export type { ChatAnnounceLevel, ChatProps };
@@ -88,7 +88,7 @@
     newMessageIndicatorVisible = $bindable(false),
     onatbottombindingchange,
     onunreadcountbindingchange,
-    onnewmessageindicatorvisiblebindingchange,
+    onNewMessageIndicatorVisibleBindingChange,
     class: className,
     surfaceMode = 'default',
     density = 'comfortable',
@@ -128,13 +128,13 @@
     messageReasoning,
     messageSteps,
     messageSuggestions,
-    onsuggestionselect,
-    onloadhistory,
+    onSuggestionSelect,
+    onLoadHistory,
     onstopgenerating,
     onjumptolatest,
     onscrollstatechange,
     onunreadindicatorchange,
-    onexpandedchange,
+    onExpandedChange,
     onattachmentadd,
     onattachmentremove,
     onattachmentfailure,
@@ -162,7 +162,7 @@
 
   function updateNewMessageIndicatorVisibleBinding(value: boolean): void {
     newMessageIndicatorVisible = value;
-    onnewmessageindicatorvisiblebindingchange?.(value);
+    onNewMessageIndicatorVisibleBindingChange?.(value);
   }
 
   // ==========================================================================
@@ -488,7 +488,7 @@
   const viewportAttach = $derived(viewportAttachment ?? noopAttachment);
   const effectiveHasMoreHistory = $derived(adapterHasMoreHistory ?? moreHistoryAvailable);
   const hasHistoryLoader = $derived(
-    onloadhistory !== undefined || adapter?.loadOlderMessages !== undefined,
+    onLoadHistory !== undefined || adapter?.loadOlderMessages !== undefined,
   );
   const showHistoryTrigger = $derived(hasHistoryLoader && effectiveHasMoreHistory);
   const isRestoringNonVirtualHistory = $derived(
@@ -1404,7 +1404,7 @@
     }
 
     try {
-      await onloadhistory?.();
+      await onLoadHistory?.();
       const currentPending = pendingHistoryScrollForRequest(requestId);
       if (currentPending !== null) {
         await settlePendingHistoryScroll(currentPending);
@@ -1461,7 +1461,7 @@
   // moves focus to the composer so keyboard users are not left stranded on a
   // chip button that gets removed from the DOM when the suggestion set clears.
   function handleSuggestionSelect(label: string): void {
-    onsuggestionselect?.(label);
+    onSuggestionSelect?.(label);
     inputRef?.focus();
   }
 
@@ -2059,7 +2059,7 @@
         onretry={allowRetry && canRetry ? handleRetry : undefined}
         onedit={allowEditing && canEdit ? handleEdit : undefined}
         showDefaultActions={allowCopy}
-        {onexpandedchange}
+        {onExpandedChange}
         streaming={isStreamingMessage}
         overrideContent={isStreamingMessage ? streamingContent : undefined}
         searchMatch={isCurrentSearchMatch}
@@ -2075,7 +2075,7 @@
         onreasoning={() => reasoningState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
-        onsuggestionselect={handleSuggestionSelect}
+        onSuggestionSelect={handleSuggestionSelect}
       >
         {#snippet actions()}
           {#if messageActions}
@@ -2142,7 +2142,7 @@
           loading={isLoadingHistory}
           label={loadEarlierLabel}
           loadingLabel={loadingEarlierLabel}
-          onload={() => void handleLoadHistory()}
+          onLoad={() => void handleLoadHistory()}
         />
       {/if}
 

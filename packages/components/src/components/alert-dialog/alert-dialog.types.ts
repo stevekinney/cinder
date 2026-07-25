@@ -11,8 +11,8 @@ export type AlertDialogProps = {
   cancelLabel?: string;
   /** When true, styles the acknowledgement button as a danger action and, when a cancel button is rendered, gives it initial focus instead of the acknowledgement button. Default `false`. */
   destructive?: boolean;
-  onacknowledge: () => void;
-  oncancel?: () => void;
+  onAcknowledge: () => void;
+  onCancel?: () => void;
   triggerRef?: HTMLElement | null;
   /** Additional class names merged with the component's root class. */
   class?: string;

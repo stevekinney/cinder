@@ -55,7 +55,7 @@
     submitLabel = 'Submit',
     class: customClassName,
     onsubmit,
-    ondraftchange,
+    onDraftChange,
     novalidate,
     ...rest
   }: SchemaFormProps<Schema> = $props();
@@ -171,7 +171,7 @@
   }
 
   function reportDraftChange() {
-    ondraftchange?.(currentDraft());
+    onDraftChange?.(currentDraft());
   }
 
   function updateValue(path: readonly string[], next: unknown, reportChange = true) {

@@ -14,13 +14,13 @@
     label="Production API Key"
     prefix="example_live_"
     suffix="9j0"
-    allowReveal={true}
+    revealAllowed={true}
   />
   <SecretValueField
     value="example_test_x9y8z7w6v5u4t3s2r1q0"
     label="Test API Key"
     prefix="example_test_"
     suffix="1q0"
-    allowReveal={true}
+    revealAllowed={true}
   />
 </div>

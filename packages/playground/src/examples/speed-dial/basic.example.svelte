@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Quick actions';
   export const description =
-    'A FloatingActionButton trigger reveals a directional cluster of labeled quick actions.';
+    'A FloatingAction trigger reveals a directional cluster of labeled quick actions.';
 </script>
 
 <script lang="ts">

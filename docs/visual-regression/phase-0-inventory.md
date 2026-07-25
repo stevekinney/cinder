@@ -38,7 +38,7 @@ We projected baseline snapshot growth by counting the playground's 50 components
 
 Form fields and input components use a caller-provided `id` prop (deterministic): Input, Checkbox, Select, Radio, Textarea, SearchField, NumberInput.
 
-Disclosure and composite components use `useId()` (counter-based, deterministic within a session): Modal, Drawer, Popover, Tooltip, RadioGroup, CheckboxGroup, CommandPalette, ConfirmDialog, ColorPicker, Stat, NavigationBar, SortableList, Dropdown, SideNavigationGroup, TreeItem, Sheet.
+Disclosure and composite components use `useId()` (counter-based, deterministic within a session): Modal, Drawer, Popover, Tooltip, RadioGroup, CheckboxGroup, CommandPalette, ConfirmDialog, ColorPicker, Statistic, NavigationBar, SortableList, Dropdown, SideNavigationGroup, TreeItem, Sheet.
 
 Tabs and Accordion use value-based navigation (no ARIA ID dependencies on randomness).
 

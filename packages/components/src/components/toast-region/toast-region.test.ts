@@ -19,7 +19,7 @@ const TOAST_REGION_SOURCE = join(import.meta.dir, 'toast-region.svelte');
 const REPOSITORY_ROOT = join(import.meta.dir, '../../../../../');
 // Resolve Svelte's server index from this process so the SSR subprocess works
 // regardless of where `node_modules` lives — in a git worktree it is hoisted to
-// the monorepo root, so a `process.cwd()`-relative path would not find it.
+// the monochromerepo root, so a `process.cwd()`-relative path would not find it.
 const SVELTE_SERVER_ENTRY = new URL(
   './src/index-server.js',
   import.meta.resolve('svelte/package.json'),

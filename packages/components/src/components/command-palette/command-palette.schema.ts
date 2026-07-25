@@ -7,7 +7,7 @@ const schema = {
     open: {
       type: 'boolean',
       description:
-        'Bindable open state. The component mutates `open = false` on Escape,\nbackdrop click, or any explicit close path, then fires `onclose`.',
+        'Bindable open state. The component mutates `open = false` on Escape,\nbackdrop click, or any explicit close path, then fires `onClose`.',
     },
     placeholder: {
       type: 'string',
@@ -48,7 +48,7 @@ const schema = {
         description: 'Receives the current query so consumers can filter.',
       },
       {
-        name: 'onclose',
+        name: 'onClose',
         reason: 'function-or-snippet',
         description: 'Fired after any close path routed through the palette close lifecycle.',
       },

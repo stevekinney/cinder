@@ -66,17 +66,17 @@
         "description": "Render command items for the current query."
       },
       {
-        "name": "ondismiss",
+        "name": "onDismiss",
         "reason": "function-or-snippet",
         "description": "Invoked when Escape or outside pointerdown dismisses the menu."
       },
       {
-        "name": "onselect",
+        "name": "onSelect",
         "reason": "function-or-snippet",
         "description": "Invoked when an enabled command is activated."
       },
       {
-        "name": "onstatechange",
+        "name": "onStateChange",
         "reason": "function-or-snippet",
         "description": "One-way state output for host-owned field ARIA."
       }

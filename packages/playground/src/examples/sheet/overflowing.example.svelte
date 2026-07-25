@@ -25,7 +25,7 @@
   }}
 />
 
-<Sheet bind:open title="Workspace actions" {triggerRef} showDragHandle>
+<Sheet bind:open title="Workspace actions" {triggerRef} dragHandleVisible>
   <div style="display: grid; gap: 0.875rem;">
     {#each actions as action (action.id)}
       <section>

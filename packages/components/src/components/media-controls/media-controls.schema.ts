@@ -51,17 +51,17 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'onpause',
+        name: 'onPause',
         reason: 'function-or-snippet',
         description: 'Called when the pause action is triggered.',
       },
       {
-        name: 'onplay',
+        name: 'onPlay',
         reason: 'function-or-snippet',
         description: 'Called when the play action is triggered.',
       },
       {
-        name: 'onreplay',
+        name: 'onReplay',
         reason: 'function-or-snippet',
         description: 'Called when the replay action is triggered.',
       },

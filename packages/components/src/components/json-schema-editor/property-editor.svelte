@@ -13,7 +13,7 @@
     /** Whether the editor is read-only. */
     readonly?: boolean;
     /** Called when nested form-only validation errors change. */
-    onvalidationerrorcount?: ((count: number) => void) | undefined;
+    onvalidationErrorcount?: ((count: number) => void) | undefined;
     /** Called whenever the value changes. */
     onchange: (next: JsonSchemaValue, options?: { coalesceKey?: string; label?: string }) => void;
     class?: string;
@@ -105,7 +105,7 @@
     path,
     depth = 0,
     readonly = false,
-    onvalidationerrorcount,
+    onvalidationErrorcount,
     onchange,
     class: className,
   }: PropertyEditorProps = $props();
@@ -247,11 +247,11 @@
   );
 
   $effect(() => {
-    onvalidationerrorcount?.(validationErrorCount);
+    onvalidationErrorcount?.(validationErrorCount);
   });
 
   onDestroy(() => {
-    onvalidationerrorcount?.(0);
+    onvalidationErrorcount?.(0);
   });
 
   function setChildValidationErrorCount(key: string, count: number): void {
@@ -433,7 +433,7 @@
           path={`${path}/properties`}
           properties={objectValue.properties ?? {}}
           required={objectValue.required ?? []}
-          onvalidationerrorcount={(count) => setChildValidationErrorCount('properties', count)}
+          onvalidationErrorcount={(count) => setChildValidationErrorCount('properties', count)}
           onchange={patchProperties}
         />
       </div>
@@ -449,7 +449,7 @@
           depth={depth + 1}
           {readonly}
           value={objectValue.items ?? {}}
-          onvalidationerrorcount={(count) => setChildValidationErrorCount('items', count)}
+          onvalidationErrorcount={(count) => setChildValidationErrorCount('items', count)}
           onchange={(next) => setItems(next)}
         />
       </div>
@@ -549,7 +549,7 @@
                 depth={depth + 1}
                 {readonly}
                 value={branch}
-                onvalidationerrorcount={(count) =>
+                onvalidationErrorcount={(count) =>
                   setChildValidationErrorCount(`${keyword}:${branchKey}`, count)}
                 onchange={(next) => {
                   const list = [...objectValue[keyword]!];

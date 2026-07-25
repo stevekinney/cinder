@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Live character counter';
   export const description =
-    'Set `showCount` together with `maxlength` to render a live `{used}/{limit}` counter below the field that updates as the user types.';
+    'Set `countVisible` together with `maxlength` to render a live `{used}/{limit}` counter below the field that updates as the user types.';
 </script>
 
 <script lang="ts">
@@ -19,6 +19,6 @@
   bind:value={summary}
   label="Summary"
   description="Keep it under 200 characters."
-  showCount
+  countVisible
   maxlength={200}
 />

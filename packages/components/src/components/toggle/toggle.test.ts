@@ -150,9 +150,14 @@ describe('Toggle — disabled state', () => {
 });
 
 describe('Toggle — value interception', () => {
-  test('onValueChange can veto the proposed checked value', async () => {
+  test('onValueChangeRequest can veto the proposed checked value', async () => {
     render(Toggle, {
-      props: { id: 'veto-toggle', checked: false, label: 'Veto', onValueChange: () => false },
+      props: {
+        id: 'veto-toggle',
+        checked: false,
+        label: 'Veto',
+        onValueChangeRequest: () => false,
+      },
     });
     const toggle = screen.getByRole('switch', { name: 'Veto' });
 

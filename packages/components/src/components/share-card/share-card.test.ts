@@ -177,7 +177,7 @@ describe('ShareCard', () => {
     expect(getByRole('button', { name: /Copy link/i })).not.toBeNull();
   });
 
-  test('calls custom onClick for actions', () => {
+  test('calls custom onclick for actions', () => {
     let clicked = false;
     const { getByRole } = render(ShareCard, {
       value: 'https://example.com',
@@ -185,7 +185,7 @@ describe('ShareCard', () => {
         {
           key: 'custom',
           label: 'Custom action',
-          onClick: () => {
+          onclick: () => {
             clicked = true;
           },
         },
@@ -195,8 +195,8 @@ describe('ShareCard', () => {
     expect(clicked).toBe(true);
   });
 
-  test('onClick does NOT suppress the copy when copyValue is also present', async () => {
-    // onClick is a side-effect callback (analytics), not a copy override — both
+  test('onclick does NOT suppress the copy when copyValue is also present', async () => {
+    // onclick is a side-effect callback (analytics), not a copy override — both
     // must run.
     let clicked = false;
     let copied = '';
@@ -214,7 +214,7 @@ describe('ShareCard', () => {
             key: 'copy-and-track',
             label: 'Copy and track',
             copyValue: 'https://example.com/tracked',
-            onClick: () => {
+            onclick: () => {
               clicked = true;
             },
           },
