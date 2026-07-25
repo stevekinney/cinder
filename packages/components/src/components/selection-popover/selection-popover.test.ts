@@ -359,7 +359,7 @@ describe('SelectionPopover', () => {
         id: 'selection-comment',
         open: true,
         position: { x: 120, y: 80 },
-        onclose: () => {
+        onClose: () => {
           closed = true;
         },
       },
@@ -372,6 +372,31 @@ describe('SelectionPopover', () => {
 
     expect(closed).toBe(false);
     expect((textarea as HTMLTextAreaElement).value).toBe('Draft comment');
+  });
+
+  test('a viewport resize while the composer is focused preserves its draft', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Mobile draft' } });
+    textarea.focus();
+    await fireEvent(window, new Event('resize'));
+
+    expect(closed).toBe(false);
+    expect((textarea as HTMLTextAreaElement).value).toBe('Mobile draft');
+    expect(document.activeElement).toBe(textarea);
   });
 
   test('movement dismissal restores focus without scrolling the prior focus owner', async () => {

@@ -177,7 +177,13 @@
     if (!isPositionedOpen) return;
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
-      onclose?.();
+      if (
+        document.activeElement instanceof Node &&
+        popoverElement?.contains(document.activeElement)
+      ) {
+        return;
+      }
+      onClose?.();
       restoreFocus(true);
     };
     window.addEventListener('scroll', dismiss, true);
