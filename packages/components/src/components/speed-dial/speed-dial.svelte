@@ -48,6 +48,7 @@
   let triggerWrapperElement = $state<HTMLDivElement | null>(null);
   let actionsPortalScopeElement = $state<HTMLDivElement | null>(null);
   let actionsElement = $state<HTMLDivElement | null>(null);
+  let spacingProbeElement = $state<HTMLSpanElement | null>(null);
   let hasFocusedCurrentOpenSession = false;
   const actionButtons: HTMLButtonElement[] = [];
 
@@ -115,20 +116,9 @@
   }
 
   function getSpacingOffset(): number {
-    const trigger = getTriggerElement();
-    if (!trigger || typeof document === 'undefined') return 12;
+    const pixels = spacingProbeElement?.getBoundingClientRect().width;
 
-    const probe = document.createElement('span');
-    probe.style.position = 'absolute';
-    probe.style.visibility = 'hidden';
-    probe.style.pointerEvents = 'none';
-    probe.style.inlineSize = 'var(--cinder-space-3)';
-    probe.style.blockSize = '0';
-    trigger.append(probe);
-    const pixels = probe.getBoundingClientRect().width;
-    probe.remove();
-
-    return Number.isFinite(pixels) && pixels > 0 ? pixels : 12;
+    return pixels !== undefined && Number.isFinite(pixels) && pixels > 0 ? pixels : 12;
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
@@ -289,6 +279,11 @@
     tabindex="-1"
     onkeydown={handleActionsKeydown}
   >
+    <span
+      bind:this={spacingProbeElement}
+      aria-hidden="true"
+      style="position: absolute; visibility: hidden; pointer-events: none; inline-size: var(--cinder-space-3); block-size: 0;"
+    ></span>
     {@render children?.()}
   </div>
 

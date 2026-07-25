@@ -53,6 +53,8 @@ type ResolvedPortalTarget =
   | { kind: 'resolved'; target: HTMLElement }
   | { kind: 'unresolved'; key: string };
 
+const inheritedPortalMediaQueries = ['(prefers-reduced-motion: reduce)'] as const;
+
 export function resolvePortalTarget(target: PortalTargetInput): ResolvedPortalTarget | null {
   if (typeof document === 'undefined') return null;
 
@@ -210,7 +212,20 @@ function observeInheritedPortalAttributes(
   }
   observe(document.documentElement);
 
-  return () => observer.disconnect();
+  const mediaQueryLists =
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      ? []
+      : inheritedPortalMediaQueries.map((query) => window.matchMedia(query));
+  for (const mediaQueryList of mediaQueryLists) {
+    mediaQueryList.addEventListener('change', syncAttributes);
+  }
+
+  return () => {
+    observer.disconnect();
+    for (const mediaQueryList of mediaQueryLists) {
+      mediaQueryList.removeEventListener('change', syncAttributes);
+    }
+  };
 }
 
 export function createPortalAttachment(

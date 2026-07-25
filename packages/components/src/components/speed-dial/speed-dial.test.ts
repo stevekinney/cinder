@@ -87,6 +87,44 @@ describe('SpeedDial', () => {
     });
   });
 
+  test('portaled actions resync copied tokens when media preferences change', async () => {
+    const listeners = new Set<EventListener>();
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = mock(
+      (media: string): MediaQueryList =>
+        ({
+          matches: false,
+          media,
+          onchange: null,
+          addEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+            if (typeof listener === 'function') listeners.add(listener);
+          },
+          removeEventListener: (_type: string, listener: EventListenerOrEventListenerObject) => {
+            if (typeof listener === 'function') listeners.delete(listener);
+          },
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => true,
+        }) as MediaQueryList,
+    );
+
+    try {
+      render(SpeedDialFixture);
+      const trigger = screen.getByRole('button', { name: 'Quick actions' });
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+
+      const computedStyleSpy = spyOn(globalThis, 'getComputedStyle');
+      computedStyleSpy.mockClear();
+      for (const listener of listeners) listener(new Event('change'));
+
+      await waitFor(() => expect(computedStyleSpy).toHaveBeenCalledWith(trigger));
+      computedStyleSpy.mockRestore();
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
   test('changing direction while open preserves the focused action', async () => {
     const view = render(SpeedDialFixture, { props: { direction: 'up' } });
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -195,8 +233,9 @@ describe('SpeedDial', () => {
     );
     expect(speedDialSource).toContain("if (side === 'top') return 'up';");
     expect(speedDialSource).toContain("if (side === 'bottom') return 'down';");
-    expect(speedDialSource).toContain("probe.style.inlineSize = 'var(--cinder-space-3)'");
-    expect(speedDialSource).toContain('probe.getBoundingClientRect().width');
+    expect(speedDialSource).toContain('bind:this={spacingProbeElement}');
+    expect(speedDialSource).toContain('inline-size: var(--cinder-space-3)');
+    expect(speedDialSource).toContain('spacingProbeElement?.getBoundingClientRect().width');
   });
 
   test('Escape closes the dial and restores focus to the trigger', async () => {
