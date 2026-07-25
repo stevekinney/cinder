@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:source-temp": "bun run scripts/check-source-temp.ts",
+    "clean": "bun run scripts/clean.ts",
     "dev": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && bun run --filter='@lostgradient/editor' build && bun run --filter='@lostgradient/chat' build && bun --watch run src/playground-server.ts",
     "examples:audit": "bun run scripts/check-raw-native-controls.ts",
     "lint": "oxlint src/ scripts/",
