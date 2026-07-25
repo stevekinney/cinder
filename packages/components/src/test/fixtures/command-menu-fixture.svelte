@@ -50,6 +50,7 @@
   Empty query
 </button>
 <button type="button" data-testid="close" onclick={() => (open = false)}>Close</button>
+<button type="button" data-testid="reopen" onclick={() => (open = true)}>Reopen</button>
 <button type="button" data-testid="clear-anchor" onclick={() => (textareaElement = null)}>
   Clear anchor
 </button>
