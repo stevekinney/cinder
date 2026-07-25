@@ -349,6 +349,18 @@ describe('/c/:name', () => {
     expect(html).toContain('/shell-bundle/shell.js');
   });
 
+  it('server-renders crawlable documentation and scopes the iframe to the live preview', async () => {
+    const response = await handleRequest(req('/c/button'));
+    const html = await response.text();
+
+    expect(html).toContain('data-canonical-documentation');
+    expect(html).toMatch(/<h1[^>]*>.*Button.*<\/h1>/s);
+    expect(html).toContain('Overview');
+    expect(html).toContain('Props');
+    expect(html).toContain('src="/page/button?preview=1"');
+    expect(html.match(/data-canonical-documentation/g)).toHaveLength(1);
+  });
+
   it('embeds the active component name in the cinder-initial data island', async () => {
     const response = await handleRequest(req('/c/button'));
     const html = await response.text();
@@ -360,6 +372,7 @@ describe('/c/:name', () => {
     expect(payload.component).toBe('button');
     expect(payload.components).toContain('button');
     expect(payload.components).toContain('avatar');
+    expect(payload).toHaveProperty('documentation.component.id', 'button');
   });
 
   it('loads the shell CSS bundle so Cinder shell chrome is styled', async () => {
@@ -812,6 +825,21 @@ describe('/page/:name', () => {
     const html = await response.text();
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('id="app"');
+  });
+
+  it('embeds the validated documentation payload in a JSON data island', async () => {
+    const response = await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
+    const html = await response.text();
+    const match =
+      /<script type="application\/json" id="cinder-documentation">([^<]+)<\/script>/.exec(html);
+
+    expect(match).not.toBeNull();
+    const documentation: unknown = JSON.parse(match![1]!);
+    expect(isComponentDocumentationPayload(documentation)).toBe(true);
+    if (isComponentDocumentationPayload(documentation)) {
+      expect(documentation.component.id).toBe(FIXTURE_COMPONENT);
+      expect(documentation.component.purpose).not.toBe('');
+    }
   });
 
   it('returns 404 for an unknown component', async () => {

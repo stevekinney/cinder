@@ -8,6 +8,7 @@ describe('parseInitialData', () => {
       component: 'button',
       components: ['button', 'card'],
       readmeHtml: '',
+      documentation: null,
     });
   });
 
@@ -18,6 +19,7 @@ describe('parseInitialData', () => {
       component: '',
       components: ['button'],
       readmeHtml: '<h1>cinder</h1>',
+      documentation: null,
     });
   });
 

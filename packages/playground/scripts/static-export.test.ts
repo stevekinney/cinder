@@ -24,6 +24,7 @@ describe('static export', () => {
       expect(indexHtml).toContain('/styles/shell.css');
       expect(indexHtml).not.toContain('http-equiv="refresh"');
       expect(rendered.has('/shell-bundle/shell.js')).toBe(true);
+      expect(indexHtml).not.toContain('data-canonical-documentation');
       expect(rendered.has('/styles/shell.css')).toBe(true);
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
@@ -66,6 +67,13 @@ describe('static export', () => {
 
       expect(pageHtml).toContain('/page-bundle/chat.js');
       expect(pageHtml).toContain('/package-components/chat/chat/chat.css');
+      expect(pageHtml).toContain('id="cinder-documentation"');
+      expect(pageHtml).toContain('\\u003cp');
+
+      const canonicalHtml = await Bun.file(join(outputDirectory, 'c', 'chat', 'index.html')).text();
+      expect(canonicalHtml).toContain('data-canonical-documentation');
+      expect(canonicalHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
+      expect(canonicalHtml).toContain('src="/page/chat?preview=1"');
       expect(chatStyles).toContain('.cinder-chat');
       expect(composerStyles).toContain("@import '/components/command-menu/command-menu.css';");
       expect(headerStyles).toContain("@import '/components/dropdown/dropdown.css';");

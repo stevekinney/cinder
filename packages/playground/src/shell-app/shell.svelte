@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
 
   import Announcer from './announcer.svelte';
@@ -10,7 +10,8 @@
     setAnnouncer,
   } from './announcer.svelte.ts';
   import { createEventSource } from './event-source.svelte.ts';
-  import PreviewFrame, { type PreviewFrameHandle } from './preview-frame.svelte';
+  import type { ComponentDocumentationPayload } from '../component-documentation-types.ts';
+  import ComponentDocumentation from './component-documentation.svelte';
   import {
     applyThemeToDocument,
     PreviewStore,
@@ -27,16 +28,17 @@
     initialComponent: string;
     components: string[];
     readmeHtml: string;
+    documentation: ComponentDocumentationPayload | null;
   };
 
-  let { initialComponent, components, readmeHtml }: Props = $props();
+  let { initialComponent, components, readmeHtml, documentation }: Props = $props();
 
   // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
   let sidebar = $state<SidebarHandle | null>(null);
 
   // Bound to the PreviewFrame so live-reload events reload through it (re-arming
   // the loading overlay) instead of poking the raw iframe.
-  let previewFrame = $state<PreviewFrameHandle | null>(null);
+  let componentDocumentation = $state<ComponentDocumentation | null>(null);
 
   // Seed the toolbar from the URL (shareable, survives reload). When the URL
   // is silent about theme, fall back to the localStorage preference so the
@@ -47,7 +49,8 @@
       : new URL(window.location.href).searchParams;
   const initialUrlState = readToolbarStateFromSearch(initialSearch);
   const initialTheme = initialUrlState.theme ?? readPersistedTheme();
-  const store = new PreviewStore(initialComponent, {
+  const initialComponentName = untrack(() => initialComponent);
+  const store = new PreviewStore(initialComponentName, {
     ...initialUrlState,
     theme: initialTheme,
   });
@@ -143,23 +146,15 @@
     store.applyActiveColorTokenOverridesToDocument(document);
   });
 
-  async function selectComponent(name: string): Promise<void> {
+  function selectComponent(name: string): void {
     // Selecting from the off-canvas drawer (narrow viewports) should always
     // dismiss it so the preview is visible — including when the user taps the
     // already-active component, which short-circuits below. Harmless on wide
     // viewports where the drawer is the static sidebar.
     store.isSidebarOpen = false;
     if (name === store.currentComponent) return;
-    store.currentComponent = name;
-    // Preserve the current query string (e.g. ?focus=1) and hash when
-    // navigating between components.
     const { search, hash } = window.location;
-    history.pushState({}, '', `${buildShellHref(name)}${search}${hash}`);
-
-    // Title (2.4.2) + live-region announcement (4.1.3) + focus move to the
-    // freshly-rendered <main> (2.4.3). Centralized in announceNavigation so the
-    // shell and its tests exercise the same code path.
-    await announceNavigation(announcer, name, () => mainEl);
+    window.location.assign(`${buildShellHref(name)}${search}${hash}`);
   }
 
   async function handlePopState(): Promise<void> {
@@ -267,7 +262,7 @@
     // Reload through the PreviewFrame handle (not the raw iframe) so the loading
     // overlay re-arms during hot reload — a direct contentWindow.reload() keeps
     // the same src, so the overlay would otherwise never show.
-    previewFrame?.reload();
+    componentDocumentation?.reloadPreview();
   }
 
   function handleShellReloadEvent(): void {
@@ -332,8 +327,12 @@
         firstComponent={components[0] ?? ''}
         onBrowseComponent={selectComponent}
       />
-    {:else}
-      <PreviewFrame bind:this={previewFrame} componentName={store.currentComponent} />
+    {:else if documentation !== null}
+      <ComponentDocumentation
+        bind:this={componentDocumentation}
+        componentName={store.currentComponent}
+        {documentation}
+      />
     {/if}
   </main>
   <Announcer />

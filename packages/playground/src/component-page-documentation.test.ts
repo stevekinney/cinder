@@ -16,7 +16,6 @@ const { default: CalloutMock } = await import('./component-page-callout-mock.sve
 const { default: CodeBlockMock } = await import('./component-page-code-block-mock.svelte');
 const { default: CollapsibleMock } = await import('./component-page-collapsible-mock.svelte');
 const { default: KbdMock } = await import('./component-page-kbd-mock.svelte');
-const { default: SkeletonMock } = await import('./component-page-skeleton-mock.svelte');
 const { default: StatusDotMock } = await import('./component-page-status-dot-mock.svelte');
 const { default: ToggleMock } = await import('./component-page-toggle-mock.svelte');
 const { default: TooltipMock } = await import('./component-page-tooltip-mock.svelte');
@@ -56,7 +55,6 @@ mock.module('@lostgradient/cinder/callout', () => ({ Callout: CalloutMock }));
 mock.module('@lostgradient/cinder/code-block', () => ({ CodeBlock: CodeBlockMock }));
 mock.module('@lostgradient/cinder/collapsible', () => ({ Collapsible: CollapsibleMock }));
 mock.module('@lostgradient/cinder/kbd', () => ({ Kbd: KbdMock }));
-mock.module('@lostgradient/cinder/skeleton', () => ({ Skeleton: SkeletonMock }));
 mock.module('@lostgradient/cinder/status-dot', () => ({ StatusDot: StatusDotMock }));
 mock.module('@lostgradient/cinder/table', () => ({ Table: TableMock }));
 mock.module('@lostgradient/cinder/toggle', () => ({ Toggle: ToggleMock }));
@@ -133,19 +131,13 @@ function baseFixture(): ComponentDocumentationPayload {
   };
 }
 
-const originalFetch = globalThis.fetch;
-
-function installDocumentationFetch(fixture: ComponentDocumentationPayload): void {
-  globalThis.fetch = (async (url: string | URL | Request) => {
-    const href = url instanceof Request ? url.url : String(url);
-    if (href === '/api/documentation/button') {
-      return new Response(JSON.stringify(fixture), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    return new Response('not found', { status: 404, statusText: 'Not Found' });
-  }) as typeof fetch;
+function installDocumentationDataIsland(fixture: ComponentDocumentationPayload): void {
+  const existing = document.getElementById('cinder-documentation');
+  const node = (existing ?? document.createElement('script')) as HTMLScriptElement;
+  node.type = 'application/json';
+  node.id = 'cinder-documentation';
+  node.textContent = JSON.stringify(fixture);
+  if (existing === null) document.body.append(node);
 }
 
 beforeEach(() => {
@@ -154,16 +146,32 @@ beforeEach(() => {
   happyWindow.happyDOM.setURL('http://localhost/page/button');
   Reflect.set(window, '__CINDER_EXAMPLES__', []);
   Reflect.set(window, '__CINDER_SCENARIOS__', {});
-  installDocumentationFetch(baseFixture());
+  installDocumentationDataIsland(baseFixture());
 });
 
 afterEach(() => {
   resetLedgers();
-  globalThis.fetch = originalFetch;
   document.body.innerHTML = '';
 });
 
 describe('component-page single-scroll layout', () => {
+  test('reads documentation synchronously without an initial fetch', async () => {
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = mock(async () => new Response('unexpected request', { status: 500 }));
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
+    try {
+      const { unmount } = render(ComponentPage);
+
+      expect(screen.getByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      unmount();
+      await tick();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('renders the hero, spec card, and section anchors from a fixture', async () => {
     const { unmount } = render(ComponentPage);
 
@@ -203,7 +211,7 @@ describe('component-page single-scroll layout', () => {
   test('maps a non-stable status to a non-success badge variant', async () => {
     const beta = baseFixture();
     beta.component.status = 'beta';
-    installDocumentationFetch(beta);
+    installDocumentationDataIsland(beta);
 
     const { unmount } = render(ComponentPage);
     const statusBadge = await screen.findByText('beta');
@@ -263,7 +271,7 @@ describe('component-page single-scroll layout', () => {
       keyboard: [{ keys: 'Enter / Space', action: 'Activates the button.' }],
       notes: ['Uses a native button element.'],
     };
-    installDocumentationFetch(withA11y);
+    installDocumentationDataIsland(withA11y);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -299,7 +307,7 @@ describe('component-page single-scroll layout', () => {
         defaultValue: 'alpha',
       },
     ];
-    installDocumentationFetch(fixture);
+    installDocumentationDataIsland(fixture);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -329,7 +337,7 @@ describe('component-page single-scroll layout', () => {
   test('omits the Related section when there are no related components', async () => {
     const noRelated = baseFixture();
     noRelated.component.related = [];
-    installDocumentationFetch(noRelated);
+    installDocumentationDataIsland(noRelated);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -342,7 +350,7 @@ describe('component-page single-scroll layout', () => {
     const noGuidance = baseFixture();
     noGuidance.component.useWhen = [];
     noGuidance.component.avoidWhen = [];
-    installDocumentationFetch(noGuidance);
+    installDocumentationDataIsland(noGuidance);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -381,7 +389,7 @@ describe('component-page single-scroll layout', () => {
         optional: false,
       },
     ];
-    installDocumentationFetch(required);
+    installDocumentationDataIsland(required);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -428,7 +436,7 @@ describe('component-page single-scroll layout', () => {
         },
       ],
     };
-    installDocumentationFetch(exampleOnly);
+    installDocumentationDataIsland(exampleOnly);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Autocomplete' });
@@ -453,7 +461,7 @@ describe('component-page single-scroll layout', () => {
         optional: false,
       },
     ];
-    installDocumentationFetch(required);
+    installDocumentationDataIsland(required);
 
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });
@@ -471,9 +479,9 @@ describe('component-page single-scroll layout', () => {
   // `window.__CINDER_EXAMPLES__` into a module-level const at import time — before
   // this file's `beforeEach` can set it — so the examples list is empty here.
 
-  test('surfaces a documentation fetch failure', async () => {
-    globalThis.fetch = (async (_url: string | URL | Request) =>
-      new Response('boom', { status: 500, statusText: 'Server Error' })) as typeof fetch;
+  test('surfaces an invalid documentation data island', async () => {
+    const node = document.getElementById('cinder-documentation');
+    if (node !== null) node.textContent = '{not-json';
 
     const { unmount } = render(ComponentPage);
     await waitFor(() => {

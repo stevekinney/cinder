@@ -18,16 +18,19 @@
 
   type Props = {
     componentName: string;
+    previewOnly?: boolean;
   };
 
-  let { componentName }: Props = $props();
+  let { componentName, previewOnly = false }: Props = $props();
 
   const store = getPreviewStore();
 
   let iframeEl = $state<HTMLIFrameElement | null>(null);
   let lastSyncedTheme: ThemeChoice | null = null;
 
-  let src = $derived(buildIframeSrc(componentName));
+  let src = $derived(
+    previewOnly ? `${buildIframeSrc(componentName)}?preview=1` : buildIframeSrc(componentName),
+  );
 
   // The src whose document has finished painting, set in `handleLoad`. Loading
   // is then a pure derivation: we're loading whenever the current `src` hasn't

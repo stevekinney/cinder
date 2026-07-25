@@ -155,21 +155,13 @@ function expectInsetFocusPaint(paint: FocusPaint, label: string): void {
 }
 
 async function openButtonDocumentationPage(page: Page): Promise<Frame> {
-  await page.goto('/c/button', { waitUntil: 'load' });
+  await page.goto('/page/button', { waitUntil: 'load' });
   await page.waitForLoadState('networkidle');
-
-  const previewFrameElement = page.locator('iframe[data-cinder-preview]');
-  await expect(previewFrameElement).toBeVisible();
-  const previewFrameHandle = await previewFrameElement.elementHandle();
-  const previewFrame = await previewFrameHandle?.contentFrame();
-  if (previewFrame === null || previewFrame === undefined) {
-    throw new Error('/c/button did not expose the component documentation preview frame.');
-  }
 
   // The single-scroll page renders every section at once; the hero heading is a
   // stable readiness signal that the documentation payload has hydrated.
-  await expect(previewFrame.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
-  return previewFrame;
+  await expect(page.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
+  return page.mainFrame();
 }
 
 /**

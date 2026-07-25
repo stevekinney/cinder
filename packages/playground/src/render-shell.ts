@@ -1,11 +1,10 @@
 /**
- * Renders the minimal HTML scaffold for the cinder playground shell.
+ * Renders the HTML document around the cinder playground shell.
  *
- * The scaffold is intentionally tiny: it sets up a `#shell-root` mount point,
- * embeds initial data via a `<script type="application/json">` data island,
- * and loads the compiled shell-app bundle. Everything else — sidebar, top
- * control bar, iframe — is rendered by the Svelte 5 SPA that boots from
- * `shell-app/shell-entry.ts`.
+ * Canonical component routes place server-rendered shell and documentation
+ * markup inside `#shell-root`; the client bundle hydrates that exact tree.
+ * Initial props travel through a `<script type="application/json">` data
+ * island so hydration does not repeat any documentation work.
  *
  * The data-island pattern (instead of `window.__GLOBAL__ = JSON.stringify(...)`)
  * eliminates `</script>` injection vectors and is the standard SSR-hydration
@@ -14,6 +13,7 @@
  * terminate a script body in some parsers.
  */
 
+import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
@@ -128,6 +128,14 @@ export type RenderShellOptions = {
    * root shell route, where the Svelte shell renders it as landing-page prose.
    */
   readmeHtml?: string;
+  /**
+   * Validated documentation embedded for the canonical component route.
+   */
+  documentation?: ComponentDocumentationPayload | null;
+  /**
+   * Server-rendered Shell markup. The client hydrates this exact tree.
+   */
+  shellBody?: string;
 };
 
 /**
@@ -191,6 +199,7 @@ export function renderShell(
     component: activeComponent ?? '',
     components,
     readmeHtml: options.readmeHtml ?? '',
+    documentation: options.documentation ?? null,
   };
 
   return `<!DOCTYPE html>
@@ -253,7 +262,7 @@ export function renderShell(
   </head>
   <body>
     <script type="application/json" id="cinder-initial">${jsonForScriptTag(initialData)}</script>
-    <div id="shell-root"></div>
+    <div id="shell-root">${options.shellBody ?? ''}</div>
     <script type="module" src="/shell-bundle/shell.js"></script>
   </body>
 </html>`;
