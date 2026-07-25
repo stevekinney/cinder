@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: MegaMenuLocaleTestHarness } =
   await import('./_mega-menu-locale-test-harness.svelte');
 const { default: MegaMenu } = await import('./mega-menu.svelte');
@@ -301,6 +301,37 @@ describe('MegaMenu', () => {
     expect(document.activeElement).toBe(resources);
   });
 
+  test('resolves an explicit auto direction before an ancestor direction', async () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      if (target instanceof HTMLElement && target.matches('nav[dir="auto"]')) {
+        Object.defineProperty(style, 'direction', { value: 'rtl', configurable: true });
+      }
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const { container } = render(MegaMenuLocaleTestHarness, {
+        items,
+        direction: 'ltr',
+        menuDirection: 'auto',
+      });
+      const products = getTriggerByLabel(container, 'Products');
+      const resources = getTriggerByLabel(container, 'Resources');
+
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(resources);
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('preserves an explicit menu direction over LocaleProvider direction', () => {
     const { container } = render(MegaMenuLocaleTestHarness, {
       items,
@@ -309,6 +340,32 @@ describe('MegaMenu', () => {
     });
 
     expect(container.querySelector('nav')?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('repositions an open indicator after the resolved direction changes', async () => {
+    const { container, rerender } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'ltr',
+    });
+    const nav = container.querySelector<HTMLElement>('nav');
+    const products = getTriggerByLabel(container, 'Products');
+    const indicator = container.querySelector<HTMLElement>('.cinder-mega-menu__indicator');
+    if (!nav || !indicator) throw new Error('Missing MegaMenu indicator fixture.');
+
+    nav.getBoundingClientRect = () => ({ left: 0, width: 300 }) as DOMRect;
+    products.getBoundingClientRect = () =>
+      ({
+        left: nav.getAttribute('dir') === 'rtl' ? 200 : 20,
+        width: 80,
+      }) as DOMRect;
+
+    await fireEvent.click(products);
+    await waitFor(() => expect(indicator.style.transform).toBe('translateX(20px)'));
+
+    await rerender({ items, direction: 'rtl' });
+
+    await waitFor(() => expect(nav.getAttribute('dir')).toBe('rtl'));
+    await waitFor(() => expect(indicator.style.transform).toBe('translateX(200px)'));
   });
 
   test('closes stale open menu state when the current item is removed', async () => {

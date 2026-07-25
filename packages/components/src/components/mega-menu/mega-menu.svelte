@@ -62,6 +62,9 @@
   const resolvedDirection = $derived.by(() => {
     directionRevision;
     if (providedDirection === 'rtl' || providedDirection === 'ltr') return providedDirection;
+    if (providedDirection === 'auto') {
+      return resolveTextDirection(navElement, localeContext?.direction);
+    }
     return navElement
       ? resolveTextDirection(navElement, localeContext?.direction, {
           ignoreElementDirectionAttribute: true,
@@ -399,6 +402,7 @@
   }
 
   $effect(() => {
+    resolvedDirection;
     updateIndicator();
   });
 
