@@ -65,6 +65,7 @@
   .cinder-hero-section__media > .cinder-aspect-ratio > video,
   .cinder-hero-section__media > .cinder-aspect-ratio > canvas,
   .cinder-hero-section__media > .cinder-aspect-ratio > iframe,
+  .cinder-hero-section__media > .cinder-aspect-ratio > svg,
   .cinder-hero-section__media > .cinder-aspect-ratio > .cinder-image {
     position: absolute;
     inset: 0;
