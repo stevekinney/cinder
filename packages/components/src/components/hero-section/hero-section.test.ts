@@ -20,7 +20,6 @@ const runtimePatchSnippet = createRawSnippet(() => ({
 void runtimePatchSnippet;
 
 const HERO_SECTION_CSS = readFileSync(join(import.meta.dir, 'hero-section.css'), 'utf8');
-const HERO_SECTION_SOURCE = readFileSync(join(import.meta.dir, 'hero-section.svelte'), 'utf8');
 
 describe('HeroSection', () => {
   test('renders title and optional description copy', () => {
@@ -93,8 +92,27 @@ describe('HeroSection', () => {
     expect(HERO_SECTION_CSS).toContain('inline-size: 100%;');
     expect(HERO_SECTION_CSS).toContain('position: absolute;');
     expect(HERO_SECTION_CSS).toContain('.cinder-hero-section__media > .cinder-aspect-ratio > svg');
-    expect(HERO_SECTION_SOURCE).toContain("import '@lostgradient/cinder/aspect-ratio/styles';");
+    expect(HERO_SECTION_CSS).toContain(
+      '.cinder-hero-section__media > .cinder-aspect-ratio > picture',
+    );
+    expect(HERO_SECTION_CSS).toContain('.cinder-hero-section__media > .cinder-aspect-ratio');
     expect(HERO_SECTION_CSS).not.toContain('cinder-hero-section__media {\n    border:');
+  });
+
+  test('renders responsive picture media inside the aspect-ratio box', () => {
+    const media = createRawSnippet(() => ({
+      render: () =>
+        '<picture><source media="(min-width: 48rem)" srcset="wide.png" /><img src="narrow.png" alt="Product preview" /></picture>',
+    }));
+    const { container } = render(HeroSection, { props: { title: 'Hero', media } });
+
+    expect(container.querySelector('.cinder-hero-section__media picture')).not.toBeNull();
+    expect(
+      container.querySelector('.cinder-hero-section__media picture img')?.getAttribute('alt'),
+    ).toBe('Product preview');
+    expect(HERO_SECTION_CSS).toContain(
+      '.cinder-hero-section__media > .cinder-aspect-ratio > picture > img',
+    );
   });
 
   test('splits media layouts at the 48rem container threshold', () => {

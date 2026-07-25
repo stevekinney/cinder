@@ -61,12 +61,30 @@
     min-inline-size: 0;
   }
 
+  .cinder-hero-section__media > .cinder-aspect-ratio {
+    display: block;
+    position: relative;
+    inline-size: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+  }
+
   .cinder-hero-section__media > .cinder-aspect-ratio > img,
+  .cinder-hero-section__media > .cinder-aspect-ratio > picture,
   .cinder-hero-section__media > .cinder-aspect-ratio > video,
   .cinder-hero-section__media > .cinder-aspect-ratio > canvas,
   .cinder-hero-section__media > .cinder-aspect-ratio > iframe,
   .cinder-hero-section__media > .cinder-aspect-ratio > svg,
   .cinder-hero-section__media > .cinder-aspect-ratio > .cinder-image {
+    position: absolute;
+    inset: 0;
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  .cinder-hero-section__media > .cinder-aspect-ratio > picture > img {
     position: absolute;
     inset: 0;
     display: block;
