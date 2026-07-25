@@ -392,18 +392,24 @@
 
   {#if hasDataTable}
     <table
-      class={`cinder-table ${dataTableClass(dataTableVisibility)}`}
+      class={classNames('cinder-table', dataTableClass(dataTableVisibility))}
       aria-describedby={guidanceId}
     >
-      <caption>{dataTableCaption ?? label}</caption>
-      <thead
-        ><tr><th scope="col">Series</th><th scope="col">X</th><th scope="col">Value</th></tr></thead
-      >
+      <caption class="cinder-table__caption">{dataTableCaption ?? label}</caption>
+      <thead class="cinder-table__header">
+        <tr class="cinder-table__row"
+          ><th class="cinder-table__header-cell" scope="col">Series</th><th
+            class="cinder-table__header-cell"
+            scope="col">X</th
+          ><th class="cinder-table__header-cell" scope="col">Value</th></tr
+        >
+      </thead>
       <tbody>
         {#each model.tableRows as row (row.id)}
-          <tr
-            ><th scope="row">{row.seriesLabel}</th><td>{row.xLabel}</td><td>{row.valueLabel}</td
-            ></tr
+          <tr class="cinder-table__row"
+            ><th class="cinder-table__header-cell" scope="row">{row.seriesLabel}</th><td
+              class="cinder-table__cell">{row.xLabel}</td
+            ><td class="cinder-table__cell">{row.valueLabel}</td></tr
           >
         {/each}
       </tbody>

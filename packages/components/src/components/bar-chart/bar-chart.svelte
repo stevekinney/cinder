@@ -394,21 +394,21 @@
       primary: each row is one category, with each series as a column value.
     -->
     <table
-      class={`cinder-table ${dataTableClass(dataTableVisibility)}`}
+      class={classNames('cinder-table', dataTableClass(dataTableVisibility))}
       aria-describedby={guidanceId}
     >
-      <caption>{dataTableCaption ?? label}</caption>
-      <thead
+      <caption class="cinder-table__caption">{dataTableCaption ?? label}</caption>
+      <thead class="cinder-table__header"
         ><tr><th scope="col">Category</th><th scope="col">Series</th><th scope="col">Value</th></tr
         ></thead
       >
       <tbody>
         {#each model.tableRows as row (row.categoryKey)}
           {#each row.values as value (value.seriesId)}
-            <tr
-              ><th scope="row">{row.categoryLabel}</th><td>{value.seriesLabel}</td><td
-                >{value.valueLabel}</td
-              ></tr
+            <tr class="cinder-table__row"
+              ><th class="cinder-table__header-cell" scope="row">{row.categoryLabel}</th><td
+                class="cinder-table__cell">{value.seriesLabel}</td
+              ><td class="cinder-table__cell">{value.valueLabel}</td></tr
             >
           {/each}
         {/each}
