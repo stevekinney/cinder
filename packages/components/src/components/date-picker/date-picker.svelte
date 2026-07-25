@@ -107,6 +107,20 @@
   const invalid = $derived(
     error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined,
   );
+  $effect(() => {
+    if (!inputElement) return;
+    const current = inputElement.value;
+    const validFormat =
+      current === '' ||
+      (granularity === 'day'
+        ? /^\d{4}-\d{2}-\d{2}$/.test(current)
+        : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(current));
+    inputElement.setCustomValidity(
+      validFormat && (!current || clampToBounds(current) === current)
+        ? ''
+        : 'Enter a valid date within the allowed range.',
+    );
+  });
   const describedById = $derived(
     [
       ariaDescribedBy,
