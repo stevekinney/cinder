@@ -189,6 +189,27 @@ describe('CommandMenu', () => {
     expect(dismissCount).toBe(1);
   });
 
+  test('Escape keeps the menu closed while the dismissed trigger remains unchanged', async () => {
+    const dismissed = mock(() => {});
+    const { getByTestId } = render(CommandMenuHostFixture, { onDismissed: dismissed });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await fireEvent.input(host, { target: { value: '/a' } });
+    host.setSelectionRange(2, 2);
+    await fireEvent.keyUp(host, { key: 'a' });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    await fireEvent.keyDown(host, { key: 'Escape' });
+    await waitFor(() => expect(queryMenu()).toBeNull());
+    expect(dismissed).toHaveBeenCalledTimes(1);
+
+    // A host can run trigger detection again on the same key event. The
+    // dismissal must remain stable until the user changes the trigger text.
+    await fireEvent.keyUp(host, { key: 'Escape' });
+    await settleCommandMenu();
+    expect(queryMenu()).toBeNull();
+  });
+
   test('outside pointerdown dismisses the menu', async () => {
     let dismissCount = 0;
     const { getByTestId } = render(CommandMenuFixture, {

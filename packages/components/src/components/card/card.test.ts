@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -27,6 +28,16 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('Card', () => {
+  test('keeps header and footer padding when body padding is none', () => {
+    const stylesheet = readFileSync(new URL('./card.css', import.meta.url), 'utf8');
+    expect(stylesheet).not.toContain(
+      ".cinder-card[data-cinder-padding='none'] > .cinder-card__header",
+    );
+    expect(stylesheet).not.toContain(
+      ".cinder-card[data-cinder-padding='none'] > .cinder-card__footer",
+    );
+  });
+
   test('renders a basic card without a generated header', () => {
     const { container } = render(Card, {
       props: {

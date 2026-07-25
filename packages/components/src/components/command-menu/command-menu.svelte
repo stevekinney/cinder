@@ -60,6 +60,11 @@
 
   let mounted = $state(false);
   let listElement: HTMLElement | undefined = $state();
+  let dismissedTrigger: {
+    anchor: HTMLInputElement | HTMLTextAreaElement;
+    value: string;
+    caretIndex: number;
+  } | null = $state(null);
   const commandList = createCommandListState(() => listboxId);
 
   const showEmpty = $derived(
@@ -101,6 +106,28 @@
   });
 
   $effect(() => {
+    const currentAnchor = anchor;
+    const currentValue = currentAnchor?.value;
+    if (
+      dismissedTrigger &&
+      (dismissedTrigger.anchor !== currentAnchor ||
+        dismissedTrigger.value !== currentValue ||
+        dismissedTrigger.caretIndex !== caretIndex)
+    ) {
+      dismissedTrigger = null;
+    }
+    if (
+      open &&
+      dismissedTrigger &&
+      dismissedTrigger.anchor === currentAnchor &&
+      dismissedTrigger.value === currentValue &&
+      dismissedTrigger.caretIndex === caretIndex
+    ) {
+      open = false;
+    }
+  });
+
+  $effect(() => {
     if (!open) {
       commandList.resetActiveItem();
       return;
@@ -135,6 +162,9 @@
 
   function dismiss() {
     if (!open) return;
+    if (anchor) {
+      dismissedTrigger = { anchor, value: anchor.value, caretIndex };
+    }
     open = false;
     onDismiss?.();
   }

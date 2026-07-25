@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -23,6 +24,15 @@ const logos = [
 ];
 
 describe('LogoCloud', () => {
+  test('maps each columns value to its matching grid track count', () => {
+    const stylesheet = readFileSync(new URL('./logo-cloud.css', import.meta.url), 'utf8');
+    for (const columns of [3, 4, 5, 6]) {
+      expect(stylesheet).toContain(
+        `.cinder-logo-cloud[data-cinder-columns='${columns}'] .cinder-logo-cloud__list {\n    grid-template-columns: repeat(${columns}, minmax(0, 1fr));`,
+      );
+    }
+  });
+
   test('renders logo images and optional links', () => {
     const { container } = render(LogoCloud, {
       props: {
