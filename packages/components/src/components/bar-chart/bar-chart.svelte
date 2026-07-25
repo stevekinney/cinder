@@ -406,7 +406,7 @@
           ><th class="cinder-table__header-cell" scope="col">Value</th></tr
         ></thead
       >
-      <tbody>
+      <tbody class="cinder-table__body">
         {#each model.tableRows as row (row.categoryKey)}
           {#each row.values as value (value.seriesId)}
             <tr class="cinder-table__row"
