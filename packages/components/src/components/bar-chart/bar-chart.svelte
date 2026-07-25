@@ -399,14 +399,18 @@
     >
       <caption class="cinder-table__caption">{dataTableCaption ?? label}</caption>
       <thead class="cinder-table__header"
-        ><tr><th scope="col">Category</th><th scope="col">Series</th><th scope="col">Value</th></tr
+        ><tr class="cinder-table__row"
+          ><th class="cinder-table__header-cell" scope="col">Category</th><th
+            class="cinder-table__header-cell"
+            scope="col">Series</th
+          ><th class="cinder-table__header-cell" scope="col">Value</th></tr
         ></thead
       >
       <tbody>
         {#each model.tableRows as row (row.categoryKey)}
           {#each row.values as value (value.seriesId)}
             <tr class="cinder-table__row"
-              ><th class="cinder-table__header-cell" scope="row">{row.categoryLabel}</th><td
+              ><th class="cinder-table__cell" scope="row">{row.categoryLabel}</th><td
                 class="cinder-table__cell">{value.seriesLabel}</td
               ><td class="cinder-table__cell">{value.valueLabel}</td></tr
             >

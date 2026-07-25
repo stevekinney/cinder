@@ -407,7 +407,7 @@
       <tbody>
         {#each model.tableRows as row (row.id)}
           <tr class="cinder-table__row"
-            ><th class="cinder-table__header-cell" scope="row">{row.seriesLabel}</th><td
+            ><th class="cinder-table__cell" scope="row">{row.seriesLabel}</th><td
               class="cinder-table__cell">{row.xLabel}</td
             ><td class="cinder-table__cell">{row.valueLabel}</td></tr
           >
