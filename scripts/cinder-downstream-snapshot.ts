@@ -16,6 +16,13 @@ type Request = {
 };
 
 const usage = 'Usage: bun run scripts/cinder-downstream-snapshot.ts --request FILE [--output FILE]';
+const NPM_METADATA_TIMEOUT_MS = 10_000;
+const SENSITIVE_EVIDENCE_ASSIGNMENT =
+  /((?:["']?[\w.-]*(?:authorization|credential|password|secret|token|api[_-]?key)[\w.-]*["']?)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;#]+)/giu;
+
+function redactEvidenceLine(line: string): string {
+  return line.replace(SENSITIVE_EVIDENCE_ASSIGNMENT, '$1[REDACTED]');
+}
 
 function parseArgs(args: string[]): { request?: string; output?: string; help?: boolean } {
   const result: { request?: string; output?: string; help?: boolean } = {};
@@ -50,6 +57,7 @@ async function main(): Promise<void> {
       if (!version) throw new Error('version or resolution is required');
       const response = await fetch(
         `https://registry.npmjs.org/${encodeURIComponent(packageRequest.name)}/${encodeURIComponent(version)}`,
+        { signal: AbortSignal.timeout(NPM_METADATA_TIMEOUT_MS) },
       );
       if (!response.ok) throw new Error(`npm registry returned ${response.status}`);
       const metadata = (await response.json()) as {
@@ -78,7 +86,10 @@ async function main(): Promise<void> {
     try {
       const root = resolve(repository.path);
       const files = [];
-      const evidence: Record<string, Array<{ path: string; line: number; text: string }>> = {};
+      const evidence: Record<
+        string,
+        Array<{ path: string; line: number; text: string }>
+      > = Object.fromEntries(Object.keys(repository.evidence ?? {}).map((kind) => [kind, []]));
       const patterns = repository.globs?.length ? repository.globs : ['**/*'];
       const paths = new Set<string>();
       for (const pattern of patterns)
@@ -88,8 +99,31 @@ async function main(): Promise<void> {
           dot: true,
         }))
           paths.add(path);
+      const nestedRepositoryRoots = new Set<string>();
+      for (const path of paths) {
+        const segments = path.split('/');
+        const gitMetadataIndex = segments.indexOf('.git');
+        if (gitMetadataIndex > 0) {
+          nestedRepositoryRoots.add(segments.slice(0, gitMetadataIndex).join('/'));
+        }
+      }
+      const gitIndex = Bun.spawnSync(['git', '-C', root, 'ls-files', '--stage', '-z']);
+      if (gitIndex.exitCode === 0) {
+        for (const entry of gitIndex.stdout.toString().split('\0')) {
+          const match = /^160000 ([0-9a-f]+) \d+\t(.+)$/u.exec(entry);
+          if (!match?.[1] || !match[2]) continue;
+          nestedRepositoryRoots.add(match[2]);
+          files.push({ path: match[2], gitlink: match[1] });
+        }
+      }
       for (const path of [...paths].toSorted()) {
         if (path === '.git' || path.startsWith('.git/')) continue;
+        if (
+          [...nestedRepositoryRoots].some(
+            (nestedRoot) => path === nestedRoot || path.startsWith(`${nestedRoot}/`),
+          )
+        )
+          continue;
         const absolutePath = resolve(root, path);
         const relativePath = relative(root, absolutePath);
         if (relativePath === '..' || relativePath.startsWith('../') || isAbsolute(relativePath)) {
@@ -120,10 +154,13 @@ async function main(): Promise<void> {
         if (matchingEvidence.length === 0) continue;
         const text = new TextDecoder().decode(bytes);
         for (const [kind] of matchingEvidence) {
-          evidence[kind] ??= [];
           text.split('\n').forEach((line, index) => {
             if (line.toLowerCase().includes('cinder')) {
-              evidence[kind].push({ path, line: index + 1, text: line.trim() });
+              evidence[kind]?.push({
+                path,
+                line: index + 1,
+                text: redactEvidenceLine(line.trim()),
+              });
             }
           });
         }
