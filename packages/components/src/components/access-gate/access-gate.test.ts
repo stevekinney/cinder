@@ -34,12 +34,18 @@ function markupSnippet(markup: string) {
 }
 
 describe('AccessGate', () => {
-  test('preserves full-width and wrapping layout while aligning denied copy to its text baseline', () => {
+  test('preserves intrinsic, full-width, wrapping, and icon-only inline layout', () => {
     const styles = readFileSync(new URL('./access-gate.css', import.meta.url), 'utf8');
 
     expect(styles).toContain('.cinder-access-gate__passthrough {');
     expect(styles).toContain('flex-wrap: wrap;');
+    expect(styles).toContain('gap: var(--cinder-space-2);');
+    expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-full-width])');
     expect(styles).toContain('inline-size: 100%;');
+    expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-icon-only])');
+    expect(styles).toContain(
+      ".cinder-access-gate[data-cinder-variant='inline']:has(\n      .cinder-access-gate__inline-content > [data-cinder-icon-only]",
+    );
     expect(styles).toContain('.cinder-access-gate__inline-reason {');
     expect(styles).toContain('display: inline-block;');
     expect(styles).toContain('padding-inline-start: calc(0.875rem + var(--cinder-space-1));');

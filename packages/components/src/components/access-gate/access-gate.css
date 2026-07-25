@@ -8,8 +8,17 @@
     display: inline-flex;
     flex-wrap: wrap;
     align-items: baseline;
-    inline-size: 100%;
+    gap: var(--cinder-space-2);
     vertical-align: baseline;
+  }
+
+  .cinder-access-gate__passthrough:has(> [data-cinder-full-width]) {
+    display: flex;
+    inline-size: 100%;
+  }
+
+  .cinder-access-gate__passthrough:has(> [data-cinder-icon-only]) {
+    align-items: center;
   }
 
   .cinder-access-gate__passthrough[data-cinder-variant='section'] {
@@ -28,6 +37,12 @@
   .cinder-access-gate__inline-content {
     display: inline-flex;
     min-inline-size: 0;
+  }
+
+  .cinder-access-gate[data-cinder-variant='inline']:has(
+      .cinder-access-gate__inline-content > [data-cinder-icon-only]
+    ) {
+    align-items: center;
   }
 
   .cinder-access-gate__inline-content [data-cinder-access-gate-control] {
