@@ -680,9 +680,17 @@ describe('Chat history pagination', () => {
 
   test('clears virtualized adapter history loading when exhausted without prepending', async () => {
     const conversation = longConversation(20);
+    let resolveLoad: ((result: { hasMore: boolean }) => void) | undefined;
+    let adapterResolved = false;
     const adapter = {
       sendMessage: async () => {},
-      loadOlderMessages: async () => ({ hasMore: false }),
+      loadOlderMessages: async () => {
+        const result = await new Promise<{ hasMore: boolean }>((resolve) => {
+          resolveLoad = resolve;
+        });
+        adapterResolved = true;
+        return result;
+      },
     };
     const { container } = render(Chat, {
       props: {
@@ -696,12 +704,16 @@ describe('Chat history pagination', () => {
         loadingEarlierLabel: 'Loading earlier',
       },
     });
-    await waitForVirtualizedTimeline(container);
+    const timeline = await waitForVirtualizedTimeline(container);
 
     await fireEvent.click(
       container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
     );
+    timeline.scrollTop = 1;
+    timeline.dispatchEvent(new Event('scroll'));
+    resolveLoad?.({ hasMore: false });
 
+    await waitFor(() => expect(adapterResolved).toBe(true));
     await waitFor(() =>
       expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
     );

@@ -55,6 +55,9 @@
   let autoReply = $state(true);
   let virtualized = $state(false);
   let historyEnabled = $state(false);
+  let delayedHistory = $state(false);
+  let historyGeneration = 0;
+  let pendingHistoryRequest = $state<{ generation: number; resolve: () => void } | undefined>();
   let historyPage = 0;
 
   // --- Reply controls ---
@@ -342,6 +345,7 @@
   // --- Seed / clear ---
   function seedThread(): void {
     cancelPending('discard');
+    cancelPendingHistoryRequest();
     let next = createConversation({ id: 'harness-seeded' });
     // Repeated token "alpha" for deterministic search assertions, plus enough
     // messages to overflow the fixed-height viewport.
@@ -367,7 +371,9 @@
 
   function clearConversation(): void {
     cancelPending('discard');
+    cancelPendingHistoryRequest();
     conversation = createConversation({ id: 'harness-cleared' });
+    delayedHistory = false;
     historyPage = 0;
   }
 
@@ -387,12 +393,40 @@
     conversation = replaceMessageContent(conversation, event.messageId, event.content);
   }
 
+  function cancelPendingHistoryRequest(): void {
+    historyGeneration += 1;
+    const pending = pendingHistoryRequest;
+    pendingHistoryRequest = undefined;
+    pending?.resolve();
+  }
+
+  $effect(() => {
+    if (!delayedHistory && pendingHistoryRequest !== undefined) {
+      cancelPendingHistoryRequest();
+    }
+  });
+
   async function handleLoadHistory(): Promise<void> {
+    const generation = ++historyGeneration;
+    if (delayedHistory) {
+      let request!: { generation: number; resolve: () => void };
+      await new Promise<void>((resolve) => {
+        request = { generation, resolve };
+        pendingHistoryRequest = request;
+      });
+      if (pendingHistoryRequest === request) {
+        pendingHistoryRequest = undefined;
+      }
+    }
+    if (generation !== historyGeneration) return;
     conversation = prependHistoryMessages(conversation);
     record('onloadhistory', historyPage);
   }
 
-  onDestroy(() => cancelPending('destroy'));
+  onDestroy(() => {
+    cancelPending('destroy');
+    cancelPendingHistoryRequest();
+  });
 
   const surfaceMode = $derived<'default' | 'transparent'>(
     transparentSurface ? 'transparent' : 'default',
@@ -519,6 +553,17 @@
         <Toggle id="t-autoreply" label="Auto-reply on submit" bind:checked={autoReply} />
         <Toggle id="t-virtualized" label="Virtualized transcript" bind:checked={virtualized} />
         <Toggle id="t-history" label="History pagination" bind:checked={historyEnabled} />
+        <Toggle id="t-history-delay" label="Delay history response" bind:checked={delayedHistory} />
+        {#if delayedHistory}
+          <Button
+            data-testid="resolve-history"
+            variant="secondary"
+            disabled={!pendingHistoryRequest}
+            onclick={() => pendingHistoryRequest?.resolve()}
+          >
+            Resolve history response
+          </Button>
+        {/if}
       </div>
     </section>
 
