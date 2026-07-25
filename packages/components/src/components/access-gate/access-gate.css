@@ -6,7 +6,9 @@
 
   .cinder-access-gate__passthrough {
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: baseline;
+    inline-size: 100%;
     vertical-align: baseline;
   }
 
@@ -35,18 +37,20 @@
   }
 
   .cinder-access-gate__inline-reason {
-    display: inline-flex;
+    position: relative;
+    display: inline-block;
     flex: 1 1 auto;
-    align-items: center;
-    gap: var(--cinder-space-1);
     min-inline-size: 0;
+    padding-inline-start: calc(0.875rem + var(--cinder-space-1));
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-snug);
   }
 
   .cinder-access-gate__inline-reason > svg {
-    flex: 0 0 auto;
+    position: absolute;
+    inset-block-start: 0.1em;
+    inset-inline-start: 0;
   }
 
   .cinder-access-gate__inline-reason > span {
