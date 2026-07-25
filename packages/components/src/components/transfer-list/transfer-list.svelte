@@ -15,6 +15,10 @@
 </script>
 
 <script lang="ts">
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import ChevronsLeft from 'lucide-svelte/icons/chevrons-left';
+  import ChevronsRight from 'lucide-svelte/icons/chevrons-right';
   import { tick } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
 
@@ -353,39 +357,39 @@
     <div class="cinder-transfer-list__controls" role="group" aria-label="Transfer controls">
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--forward"
         aria-label={`Move selected items to ${rightLabel}`}
         disabled={movableLeftSelectedIds.length === 0}
         onclick={moveSelectedRight}
       >
-        Add
+        <ChevronRight size={18} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--forward"
         aria-label={`Move all items to ${rightLabel}`}
         disabled={movableLeftItemIds.length === 0}
         onclick={moveAllRight}
       >
-        Add all
+        <ChevronsRight size={18} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--backward"
         aria-label={`Move selected items to ${leftLabel}`}
         disabled={movableRightSelectedIds.length === 0}
         onclick={moveSelectedLeft}
       >
-        Remove
+        <ChevronLeft size={18} strokeWidth={2} aria-hidden="true" />
       </button>
       <button
         type="button"
-        class="cinder-transfer-list__control"
+        class="cinder-transfer-list__control cinder-transfer-list__control--backward"
         aria-label={`Move all items to ${leftLabel}`}
         disabled={movableRightItemIds.length === 0}
         onclick={moveAllLeft}
       >
-        Remove all
+        <ChevronsLeft size={18} strokeWidth={2} aria-hidden="true" />
       </button>
     </div>
 
