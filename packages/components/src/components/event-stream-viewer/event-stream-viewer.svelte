@@ -91,8 +91,8 @@
     loading = false,
     label = 'Event stream',
     detectSequenceGaps = false,
-    oncopyvisible,
-    onfilter,
+    onCopyVisible,
+    onFilter,
     filterQuery = '',
     class: className,
     ...rest
@@ -249,8 +249,8 @@
 
   function handleCopyVisible() {
     const text = renderedEntries.map(formatRenderedEntryAsText).join('\n');
-    if (!oncopyvisible) return;
-    oncopyvisible(text);
+    if (!onCopyVisible) return;
+    onCopyVisible(text);
     liveMessage = formatCopyVisibleAnnouncement(renderedEntries.length);
     setTimeout(() => {
       liveMessage = '';
@@ -304,7 +304,7 @@
   data-cinder-paused={!followLatest || undefined}
 >
   <!-- Toolbar -->
-  {#if connectionState || !followLatest || onfilter !== undefined || oncopyvisible !== undefined}
+  {#if connectionState || !followLatest || onFilter !== undefined || onCopyVisible !== undefined}
     <div class="cinder-event-stream-viewer__toolbar" role="group" aria-label="Stream controls">
       <div class="cinder-event-stream-viewer__toolbar-start">
         {#if connectionState}
@@ -321,7 +321,7 @@
         {/if}
       </div>
       <div class="cinder-event-stream-viewer__toolbar-end">
-        {#if onfilter !== undefined}
+        {#if onFilter !== undefined}
           <Input
             id={`${instanceId}-filter`}
             type="search"
@@ -331,10 +331,10 @@
             hideLabel
             aria-label="Filter events"
             value={filterQuery}
-            oninput={(e) => onfilter?.((e.currentTarget as HTMLInputElement).value)}
+            oninput={(e) => onFilter?.((e.currentTarget as HTMLInputElement).value)}
           />
         {/if}
-        {#if oncopyvisible !== undefined}
+        {#if onCopyVisible !== undefined}
           <button
             type="button"
             class="cinder-event-stream-viewer__copy-all-button"
