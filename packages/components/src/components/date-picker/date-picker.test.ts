@@ -39,6 +39,16 @@ describe('DatePicker', () => {
     expect(nextValue).toBe('');
   });
 
+  test('marks controlled out-of-range values invalid', () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      min: '2026-07-01',
+    });
+
+    expect(container.querySelector<HTMLInputElement>('#dp')?.checkValidity()).toBe(false);
+  });
+
   test('opens calendar popover and selects a date', async () => {
     let nextValue = '';
     const { container } = render(DatePicker, {
