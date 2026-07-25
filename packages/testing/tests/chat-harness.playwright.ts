@@ -439,7 +439,7 @@ test.describe('chat harness — scroll, unread, jump', () => {
   test('user input before a prepend retains the non-virtualized history anchor', async ({
     browser,
   }) => {
-    const { page, harness, dispose } = await openHarness(browser);
+    const { harness, dispose } = await openHarness(browser);
     try {
       await harness.locator('#t-history').click();
       await harness.locator('#t-history-delay').click();
@@ -450,8 +450,13 @@ test.describe('chat harness — scroll, unread, jump', () => {
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
       await timeline.getByRole('button', { name: /load earlier messages/i }).click();
-      await timeline.hover();
-      await page.mouse.wheel(0, 120);
+      await timeline.dispatchEvent('pointerdown');
+      await timeline.evaluate(async (element) => {
+        for (const scrollTop of [40, 80, 120]) {
+          element.scrollTop = scrollTop;
+          await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        }
+      });
       await expect
         .poll(async () => timeline.evaluate((element) => element.scrollTop))
         .toBeGreaterThan(0);
@@ -476,6 +481,33 @@ test.describe('chat harness — scroll, unread, jump', () => {
       await expect(
         timeline.locator('.chat-message').filter({ hasText: 'Tell me about alpha.' }).first(),
       ).toBeFocused();
+    } finally {
+      await dispose();
+    }
+  });
+
+  test('jumping to latest invalidates a pending non-virtualized history anchor', async ({
+    browser,
+  }) => {
+    const { harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await harness.locator('[data-testid="scroll-top"]').click();
+      await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      await harness.locator('.chat-jump-button').click();
+
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect
+        .poll(async () =>
+          timeline.evaluate((element) =>
+            Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop),
+          ),
+        )
+        .toBeLessThan(2);
     } finally {
       await dispose();
     }

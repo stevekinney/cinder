@@ -778,18 +778,27 @@
     pendingHistoryAnchorRecaptureRaf = undefined;
   }
 
-  function handleHistoryRestorationUserInput(): void {
-    const pending = pendingHistoryScroll;
-    cancelNonVirtualHistoryAnchorStabilization();
+  function invalidatePendingHistoryRestoration(): void {
+    pendingHistoryScroll = null;
     cancelPendingHistoryAnchorRecapture();
-    if (pending === null) return;
+  }
 
+  function recapturePendingHistoryAnchor(): void {
+    if (pendingHistoryScroll === null) return;
+    captureHistoryScroll();
+  }
+
+  function schedulePendingHistoryAnchorRecapture(): void {
+    if (pendingHistoryScroll === null) return;
+    cancelPendingHistoryAnchorRecapture();
     pendingHistoryAnchorRecaptureRaf = requestAnimationFrame(() => {
       pendingHistoryAnchorRecaptureRaf = undefined;
-      if (pendingHistoryScroll === pending) {
-        captureHistoryScroll();
-      }
+      recapturePendingHistoryAnchor();
     });
+  }
+
+  function handleHistoryRestorationUserInput(): void {
+    cancelNonVirtualHistoryAnchorStabilization();
   }
 
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
@@ -967,16 +976,23 @@
   // ==========================================================================
 
   const scrollAttachment = scrollState.createScrollAttachment();
-  const historyAnchorScrollAttachment = $derived<Attachment<HTMLElement>>(
-    historyAnchorMessageId === null || historyAnchorRestoredScrollTop === null
-      ? noopAttachment
-      : (node) => {
-          const handleScroll = () => clearHistoryAnchorAfterScroll(node.scrollTop);
-          node.addEventListener('scroll', handleScroll, { passive: true });
+  const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
+    const handleScroll = () => {
+      clearHistoryAnchorAfterScroll(node.scrollTop);
+      schedulePendingHistoryAnchorRecapture();
+    };
+    const handleScrollEnd = () => {
+      cancelPendingHistoryAnchorRecapture();
+      recapturePendingHistoryAnchor();
+    };
+    node.addEventListener('scroll', handleScroll, { passive: true });
+    node.addEventListener('scrollend', handleScrollEnd);
 
-          return () => node.removeEventListener('scroll', handleScroll);
-        },
-  );
+    return () => {
+      node.removeEventListener('scroll', handleScroll);
+      node.removeEventListener('scrollend', handleScrollEnd);
+    };
+  };
   // ==========================================================================
   // Actions
   // ==========================================================================
@@ -1031,7 +1047,7 @@
 
   function handleJumpToLatest(): void {
     cancelNonVirtualHistoryAnchorStabilization();
-    cancelPendingHistoryAnchorRecapture();
+    invalidatePendingHistoryRestoration();
     if (isVirtualized) {
       // Supersede any stale guard from an earlier top-scroll (scrollToTop()/
       // Home) that hasn't expired yet. This jump's own target (the bottom)
@@ -1113,7 +1129,7 @@
 
   function handleSubmit(message: MessageInput, attachments: ChatAttachment[]): void {
     cancelNonVirtualHistoryAnchorStabilization();
-    cancelPendingHistoryAnchorRecapture();
+    invalidatePendingHistoryRestoration();
     // Fire-and-forget the command (the dispatcher owns awaiting + error routing);
     // scroll immediately so the round-trip latency never delays the auto-scroll.
     // `Promise.resolve(...)` normalizes a sync-returning method to a promise so
@@ -1619,7 +1635,7 @@
 
   export function scrollToBottom(): void {
     cancelNonVirtualHistoryAnchorStabilization();
-    cancelPendingHistoryAnchorRecapture();
+    invalidatePendingHistoryRestoration();
     // Reaching the bottom — sync both the internal helper and the bindable
     // prop synchronously (matching the submit auto-scroll path) rather than
     // waiting for the real scroll listener's rAF-deferred recompute.
@@ -1639,7 +1655,7 @@
 
   export function scrollToTop(): void {
     cancelNonVirtualHistoryAnchorStabilization();
-    cancelPendingHistoryAnchorRecapture();
+    invalidatePendingHistoryRestoration();
     if (isVirtualized) {
       // Leaving the bottom deliberately — but only if the viewport can
       // actually move. A transcript short enough to fit entirely within the
