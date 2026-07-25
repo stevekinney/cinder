@@ -434,6 +434,53 @@ describe('LoadMore', () => {
     expect(calls).toBe(2);
   });
 
+  test('a retry disarms a recreated sentinel after the old sentinel left view', async () => {
+    let calls = 0;
+    let rejectInitial: ((reason?: unknown) => void) | undefined;
+    let resolveRetry: (() => void) | undefined;
+
+    const rendered = render(LoadMore, {
+      props: {
+        onLoadMore: async () => {
+          calls += 1;
+          if (calls === 1) {
+            await new Promise<void>((_resolve, reject) => (rejectInitial = reject));
+          }
+          if (calls === 2) await new Promise<void>((resolve) => (resolveRetry = resolve));
+        },
+      },
+    });
+
+    const initialSentinel = rendered.container.querySelector(
+      '.cinder-load-more__sentinel',
+    ) as Element;
+    const [record] = FakeIntersectionObserver.records;
+    record?.callback([createEntry(initialSentinel, true)], {} as IntersectionObserver);
+    await waitFor(() => expect(calls).toBe(1));
+    record?.callback([createEntry(initialSentinel, false)], {} as IntersectionObserver);
+    rejectInitial?.(new Error('network'));
+
+    await waitFor(() => {
+      expect(rendered.getByRole('button', { name: 'Retry loading' })).toBeDefined();
+    });
+
+    await fireEvent.click(rendered.getByRole('button', { name: 'Retry loading' }));
+    await waitFor(() => expect(calls).toBe(2));
+
+    const retrySentinel = rendered.container.querySelector(
+      '.cinder-load-more__sentinel',
+    ) as Element;
+    record?.callback([createEntry(retrySentinel, true)], {} as IntersectionObserver);
+    resolveRetry?.();
+
+    await waitFor(() => {
+      expect(rendered.getByRole('button', { name: 'Load more' }).hasAttribute('disabled')).toBe(
+        false,
+      );
+    });
+    expect(calls).toBe(2);
+  });
+
   test('calls onError when onLoadMore rejects', async () => {
     let seen: unknown;
     const { getByRole } = render(LoadMore, {

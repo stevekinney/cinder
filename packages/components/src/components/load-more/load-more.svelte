@@ -102,7 +102,7 @@
 
     if (source === 'sentinel') {
       sentinelRequestCount += 1;
-    } else if (!sentinelReported || sentinelIntersecting) {
+    } else if (!sentinelEnabled || !sentinelReported || sentinelIntersecting) {
       // A manual request is itself the explicit load trigger. Do not let an
       // unreported or already-visible sentinel immediately follow it with
       // another request.
