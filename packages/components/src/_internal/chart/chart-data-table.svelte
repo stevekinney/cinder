@@ -19,8 +19,8 @@
     caption: string;
     headers: string[];
     rows: ChartDataTableRow[];
-    visibilityClass?: string;
-    describedBy?: string;
+    visibilityClass?: string | undefined;
+    describedBy?: string | undefined;
   } = $props();
 </script>
 
