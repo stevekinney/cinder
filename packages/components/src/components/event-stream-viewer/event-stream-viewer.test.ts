@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
 
@@ -12,6 +12,11 @@ import {
 import type { EventStreamEntry, StreamEvent } from './event-stream-viewer.types.ts';
 
 setupHappyDom();
+
+// Source-package tests do not resolve the package's self-reference through Bun's
+// export map. Keep the component on its public subpath while mapping that entry
+// to the source implementation for this focused test process.
+mock.module('@lostgradient/cinder/input', () => import('../input/index.ts'));
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: EventStreamViewer } = await import('./event-stream-viewer.svelte');
