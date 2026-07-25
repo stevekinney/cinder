@@ -60,9 +60,10 @@
 
   let mounted = $state(false);
   let listElement: HTMLElement | undefined = $state();
-  let escapeDismissal: {
+  let dismissedTrigger: {
     anchor: HTMLInputElement | HTMLTextAreaElement;
     value: string;
+    caretIndex: number;
     selectionStart: number | null;
     selectionEnd: number | null;
   } | null = $state(null);
@@ -103,23 +104,63 @@
   });
 
   $effect(() => {
-    if (!open || !escapeDismissal) return;
+    commandList.syncListboxId(listboxId);
+  });
 
-    const isUnchangedTriggerState =
-      anchor === escapeDismissal.anchor &&
-      anchor.value === escapeDismissal.value &&
-      anchor.selectionStart === escapeDismissal.selectionStart &&
-      anchor.selectionEnd === escapeDismissal.selectionEnd;
-
-    if (isUnchangedTriggerState) {
+  $effect(() => {
+    const currentAnchor = anchor;
+    const currentValue = currentAnchor?.value;
+    if (
+      dismissedTrigger &&
+      (dismissedTrigger.anchor !== currentAnchor ||
+        dismissedTrigger.value !== currentValue ||
+        dismissedTrigger.caretIndex !== caretIndex)
+    ) {
+      dismissedTrigger = null;
+    }
+    if (
+      open &&
+      dismissedTrigger &&
+      dismissedTrigger.anchor === currentAnchor &&
+      dismissedTrigger.value === currentValue &&
+      dismissedTrigger.caretIndex === caretIndex
+    ) {
       open = false;
-    } else {
-      escapeDismissal = null;
     }
   });
 
   $effect(() => {
-    commandList.syncListboxId(listboxId);
+    const currentAnchor = anchor;
+    if (!currentAnchor) return;
+
+    function clearDismissalWhenSelectionMoves() {
+      if (
+        dismissedTrigger?.anchor === currentAnchor &&
+        (dismissedTrigger.value !== currentAnchor.value ||
+          dismissedTrigger.selectionStart !== currentAnchor.selectionStart ||
+          dismissedTrigger.selectionEnd !== currentAnchor.selectionEnd)
+      ) {
+        dismissedTrigger = null;
+      }
+    }
+
+    const stopSelectionchange = on(
+      currentAnchor,
+      'selectionchange',
+      clearDismissalWhenSelectionMoves,
+    );
+    const stopSelect = on(currentAnchor, 'select', clearDismissalWhenSelectionMoves);
+    const stopInput = on(currentAnchor, 'input', clearDismissalWhenSelectionMoves);
+    const stopClick = on(currentAnchor, 'click', clearDismissalWhenSelectionMoves);
+    const stopKeyup = on(currentAnchor, 'keyup', clearDismissalWhenSelectionMoves);
+
+    return () => {
+      stopSelectionchange();
+      stopSelect();
+      stopInput();
+      stopClick();
+      stopKeyup();
+    };
   });
 
   $effect(() => {
@@ -155,21 +196,16 @@
 
   setCommandListContext(commandList.createContext(activateItemById));
 
-  function dismiss(reason: 'escape' | 'pointer') {
+  function dismiss({ latch = false }: { latch?: boolean } = {}) {
     if (!open) return;
-    const anchorElement = anchor;
-    if (reason === 'escape' && anchorElement) {
-      // Keep host-owned text intact while suppressing re-evaluation of the exact
-      // trigger state. Input, caret movement, paste, undo/redo, and pointer
-      // interaction clear this guard; modifier keys and refocus alone do not.
-      escapeDismissal = {
-        anchor: anchorElement,
-        value: anchorElement.value,
-        selectionStart: anchorElement.selectionStart,
-        selectionEnd: anchorElement.selectionEnd,
+    if (latch && anchor) {
+      dismissedTrigger = {
+        anchor,
+        value: anchor.value,
+        caretIndex,
+        selectionStart: anchor.selectionStart,
+        selectionEnd: anchor.selectionEnd,
       };
-    } else {
-      escapeDismissal = null;
     }
     open = false;
     onDismiss?.();
@@ -180,7 +216,7 @@
     commandList.handleKeydown({
       event,
       onEnter: activateItemById,
-      onEscape: () => dismiss('escape'),
+      onEscape: () => dismiss({ latch: true }),
       ignoreModifiedNavigation: true,
     });
   }
@@ -190,38 +226,8 @@
     if (!(target instanceof Node)) return;
     if (anchor?.contains(target)) return;
     if (listElement?.contains(target)) return;
-    dismiss('pointer');
+    dismiss();
   }
-
-  $effect(() => {
-    if (!anchor) return;
-
-    const clearEscapeDismissal = () => {
-      escapeDismissal = null;
-    };
-    const clearEscapeDismissalWhenSelectionChanges = () => {
-      if (
-        !escapeDismissal ||
-        escapeDismissal.anchor !== anchor ||
-        (anchor.selectionStart === escapeDismissal.selectionStart &&
-          anchor.selectionEnd === escapeDismissal.selectionEnd)
-      ) {
-        return;
-      }
-      escapeDismissal = null;
-    };
-    const stopInput = on(anchor, 'input', clearEscapeDismissal, { capture: true });
-    const stopPointerdown = on(anchor, 'pointerdown', clearEscapeDismissal, { capture: true });
-    const stopKeyup = on(anchor, 'keyup', clearEscapeDismissalWhenSelectionChanges);
-    const stopSelect = on(anchor, 'select', clearEscapeDismissalWhenSelectionChanges);
-
-    return () => {
-      stopInput();
-      stopPointerdown();
-      stopKeyup();
-      stopSelect();
-    };
-  });
 
   $effect(() => {
     if (!open || !anchor) return;

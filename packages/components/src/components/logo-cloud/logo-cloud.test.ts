@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -23,6 +24,23 @@ const logos = [
 ];
 
 describe('LogoCloud', () => {
+  test('maps each columns value to its matching grid track count', () => {
+    const stylesheet = readFileSync(new URL('./logo-cloud.css', import.meta.url), 'utf8');
+    expect(stylesheet).toContain('@container cinder-logo-cloud (min-width: 48rem)');
+    expect(stylesheet).toContain(
+      ".cinder-logo-cloud[data-cinder-columns='3'] .cinder-logo-cloud__list {\n      grid-template-columns: repeat(3, minmax(0, 1fr));",
+    );
+    expect(stylesheet).toContain(
+      ".cinder-logo-cloud[data-cinder-columns='4'] .cinder-logo-cloud__list,\n    .cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list,\n    .cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {\n      grid-template-columns: repeat(4, minmax(0, 1fr));",
+    );
+    expect(stylesheet).toContain(
+      ".cinder-logo-cloud[data-cinder-columns='5'] .cinder-logo-cloud__list {\n      grid-template-columns: repeat(5, minmax(0, 1fr));",
+    );
+    expect(stylesheet).toContain(
+      ".cinder-logo-cloud[data-cinder-columns='6'] .cinder-logo-cloud__list {\n      grid-template-columns: repeat(6, minmax(0, 1fr));",
+    );
+  });
+
   test('renders logo images and optional links', () => {
     const { container } = render(LogoCloud, {
       props: {

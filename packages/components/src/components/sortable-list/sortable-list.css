@@ -10,7 +10,11 @@
     padding: 0;
   }
 
-  .cinder-sortable-item {
+  [data-cinder-sortable-list] > .cinder-sortable-item,
+  [data-cinder-sortable-list-preview] > .cinder-sortable-item {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
     position: relative;
     cursor: default;
     user-select: none;

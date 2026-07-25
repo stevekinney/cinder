@@ -1,6 +1,7 @@
 // @ts-nocheck — test file; noUncheckedIndexedAccess and bun:test types disabled per project convention
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -64,6 +65,19 @@ function renderList(overrides?: Record<string, unknown>) {
 // ---------------------------------------------------------------------------
 
 describe('SortableController', () => {
+  test('resting items provide an inline handle-and-label layout', () => {
+    const { container } = renderList();
+    const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
+
+    expect(
+      container.querySelector('.cinder-sortable-list')?.hasAttribute('data-cinder-sortable-list'),
+    ).toBe(true);
+    expect(stylesheet).toContain(
+      '[data-cinder-sortable-list] > .cinder-sortable-item,\n  [data-cinder-sortable-list-preview] > .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
+    );
+    expect(stylesheet).not.toContain('.cinder-sortable-list .cinder-sortable-item');
+  });
+
   test('lift sets phase, key, from/to, liftedLabel, and calls announce', () => {
     const announce = mock();
     const controller = new SortableController({ announce });
@@ -604,6 +618,51 @@ describe('SortableList pointer drag preview', () => {
     expect(container.contains(preview)).toBe(false);
 
     // Cleanup.
+    await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('standalone drag previews retain the resting row layout', async () => {
+    const { container } = renderList();
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    await dispatchPointerEvent(handle, 'pointerdown', {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
+
+    expect(preview?.hasAttribute('data-cinder-sortable-list-preview')).toBe(true);
+    expect(stylesheet).toContain('[data-cinder-sortable-list-preview] > .cinder-sortable-item');
+
+    await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
+  });
+
+  test('preview tagging does not cross a nested component boundary', async () => {
+    const { container } = renderList();
+    const list = container.querySelector('.cinder-sortable-list');
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    list?.removeAttribute('data-cinder-sortable-list');
+    container.setAttribute('data-cinder-sortable-list', '');
+
+    await dispatchPointerEvent(handle, 'pointerdown', {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview?.hasAttribute('data-cinder-sortable-list-preview')).toBe(false);
+
     await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
   });
 
