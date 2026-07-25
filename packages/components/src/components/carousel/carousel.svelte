@@ -84,6 +84,7 @@
       !isHovered &&
       !hasFocusWithin &&
       !isInteracting &&
+      !isNativeScrolling &&
       !userPaused,
   );
   const liveAnnouncement = $derived.by(() => {
@@ -257,12 +258,14 @@
   });
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <section
   {...rest}
   class={classNames('cinder-carousel', className)}
   aria-roledescription="carousel"
   aria-label={label}
   aria-describedby={description ? descriptionId : undefined}
+  tabindex="0"
   onkeydown={onKeydown}
   onmouseenter={() => (isHovered = true)}
   onmouseleave={() => (isHovered = false)}

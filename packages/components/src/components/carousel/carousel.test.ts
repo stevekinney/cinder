@@ -228,6 +228,13 @@ describe('Carousel', () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
+  test('keeps a stable focus target for keyboard navigation', () => {
+    const { container } = render(Carousel, {
+      slides: [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)],
+    });
+    expect(container.querySelector('.cinder-carousel')?.getAttribute('tabindex')).toBe('0');
+  });
+
   test('does not clear initial alignment while the viewport is hidden', async () => {
     type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
     let callback: ObserverCallback | undefined;
@@ -343,6 +350,16 @@ describe('Carousel', () => {
     jest.advanceTimersByTime(100);
     await waitFor(() => expectActiveSlide(container, 0));
     expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'auto' });
+  });
+
+  test('pauses autoplay while wheel scrolling settles', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+
+    await fireEvent.scroll(viewport);
+    jest.advanceTimersByTime(50);
+    expectActiveSlide(container, 0);
   });
 
   test('hover and focus pause autoplay until interaction ends', async () => {
