@@ -5366,7 +5366,7 @@
           "reason": "The page has too few headings to justify a secondary navigation rail."
         },
         {
-          "reason": "Rendering expandable hierarchical navigation — use tree instead.",
+          "reason": "Rendering expandable hierarchical data with selection state — use tree instead.",
           "alternative": "tree"
         }
       ],
