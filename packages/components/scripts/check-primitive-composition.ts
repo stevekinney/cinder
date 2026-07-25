@@ -9,11 +9,17 @@
  */
 
 import { Glob } from 'bun';
-import { basename, relative, resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 
-import { parse as parseCss, type Rule } from 'postcss';
+import { parse as parseCss } from 'postcss';
 import { parse as parseSvelte } from 'svelte/compiler';
 
+import { isExcludedComponentSource } from './component-source-filter.ts';
+import {
+  cssPrimitiveCounts,
+  declarationMap,
+  type CssPrimitiveCounts,
+} from './primitive-composition-css.ts';
 import {
   allowedFieldWrapperCounts,
   allowedFloatingCounts,
@@ -129,7 +135,7 @@ function attributeValueWithDynamics(
     .join('');
 }
 
-function hasStaticHiddenAttribute(element: UnknownRecord): boolean {
+function hasStaticHiddenAttribute(element: UnknownRecord, elementName: string): boolean {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
   return attributes.some((attribute) => {
@@ -137,7 +143,9 @@ function hasStaticHiddenAttribute(element: UnknownRecord): boolean {
     if (attribute['name'] === 'hidden')
       return attribute['value'] === true || staticAttributeValue(attribute) !== undefined;
     return (
-      attribute['name'] === 'type' && staticAttributeValue(attribute)?.toLowerCase() === 'hidden'
+      elementName === 'input' &&
+      attribute['name'] === 'type' &&
+      staticAttributeValue(attribute)?.toLowerCase() === 'hidden'
     );
   });
 }
@@ -156,106 +164,11 @@ export function visibleControlCount(source: string): number {
           : undefined;
     if (
       (elementName === 'input' || elementName === 'select' || elementName === 'textarea') &&
-      !hasStaticHiddenAttribute(node)
+      !hasStaticHiddenAttribute(node, elementName)
     )
       count += 1;
   });
   return count;
-}
-
-type CssPrimitiveCounts = {
-  grid: number;
-  floating: number;
-};
-
-function declarationMap(rule: Rule): Map<string, string> {
-  const declarations = new Map<string, string>();
-  rule.each((node) => {
-    if (node.type !== 'decl') return;
-    declarations.set(node.prop.toLowerCase(), node.value.toLowerCase());
-  });
-  return declarations;
-}
-
-function selectorTargetClasses(selector: string): Set<string>[] {
-  return selector.split(',').map((branch) => {
-    const target =
-      branch
-        .trim()
-        .split(/[\s>+~]+/)
-        .at(-1) ?? '';
-    return new Set([...target.matchAll(/\.([a-zA-Z0-9_-]+)/g)].map((match) => match[1] ?? ''));
-  });
-}
-
-function selectorsCanMatchSameElement(left: Rule, right: Rule): boolean {
-  if (left === right) return true;
-  const leftTargets = selectorTargetClasses(left.selector);
-  const rightTargets = selectorTargetClasses(right.selector);
-  return leftTargets.some((leftClasses) =>
-    rightTargets.some((rightClasses) =>
-      [...leftClasses].some((className) => rightClasses.has(className)),
-    ),
-  );
-}
-
-function isInsideKeyframes(rule: Rule): boolean {
-  let parent: unknown = rule.parent;
-  while (isRecord(parent)) {
-    if (parent['type'] === 'atrule' && /keyframes$/i.test(String(parent['name']))) return true;
-    parent = parent['parent'];
-  }
-  return false;
-}
-
-function ruleUsesSharedFloatingSurface(
-  rule: Rule,
-  sharedClassSets: readonly ReadonlySet<string>[],
-): boolean {
-  if (rule.selector.includes('cinder-_floating-surface')) return true;
-  return selectorTargetClasses(rule.selector).some((targetClasses) =>
-    sharedClassSets.some((sharedClasses) =>
-      [...targetClasses].some(
-        (className) => className !== 'cinder-_floating-surface' && sharedClasses.has(className),
-      ),
-    ),
-  );
-}
-
-export function cssPrimitiveCounts(
-  source: string,
-  sharedClassSets: readonly ReadonlySet<string>[] = [],
-): CssPrimitiveCounts {
-  let root = parseCss(source);
-  if (root.nodes.some((node) => node.type === 'decl')) root = parseCss(`:root { ${source} }`);
-  const rules: Array<{ rule: Rule; declarations: Map<string, string> }> = [];
-  root.walkRules((rule) => {
-    if (!isInsideKeyframes(rule)) rules.push({ rule, declarations: declarationMap(rule) });
-  });
-  const templateRules = rules.filter(
-    ({ declarations }) =>
-      declarations.has('grid-template') || declarations.has('grid-template-columns'),
-  );
-  const grid = rules.filter(({ rule, declarations }) => {
-    const display = declarations.get('display');
-    return (
-      (display === 'grid' || display === 'inline-grid') &&
-      templateRules.some(({ rule: templateRule }) =>
-        selectorsCanMatchSameElement(rule, templateRule),
-      )
-    );
-  }).length;
-  let floating = 0;
-  for (const { rule, declarations } of rules) {
-    const position = declarations.get('position');
-    if (
-      (position === 'absolute' || position === 'fixed') &&
-      declarations.has('z-index') &&
-      !ruleUsesSharedFloatingSurface(rule, sharedClassSets)
-    )
-      floating += 1;
-  }
-  return { grid, floating };
 }
 
 function elementClassSet(
@@ -264,11 +177,23 @@ function elementClassSet(
 ): Set<string> {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return new Set();
+  const classes = new Set<string>();
   for (const attribute of attributes) {
-    if (!isRecord(attribute) || attribute['type'] !== 'Attribute' || attribute['name'] !== 'class')
-      continue;
+    if (!isRecord(attribute)) continue;
+    if (
+      attribute['type'] === 'ClassDirective' &&
+      typeof attribute['name'] === 'string' &&
+      isRecord(attribute['expression']) &&
+      attribute['expression']['type'] === 'Literal' &&
+      attribute['expression']['value'] === true
+    )
+      classes.add(attribute['name']);
+    if (attribute['type'] !== 'Attribute' || attribute['name'] !== 'class') continue;
     const staticValue = staticAttributeValue(attribute);
-    if (staticValue !== undefined) return new Set(staticValue.split(/\s+/).filter(Boolean));
+    if (staticValue !== undefined) {
+      for (const className of staticValue.split(/\s+/).filter(Boolean)) classes.add(className);
+      continue;
+    }
 
     const value = attribute['value'];
     const expressionTag =
@@ -277,7 +202,7 @@ function elementClassSet(
         : Array.isArray(value) && value.length === 1 && isRecord(value[0])
           ? value[0]
           : undefined;
-    if (!expressionTag) return new Set();
+    if (!expressionTag) continue;
     const expression = expressionTag['expression'];
     if (
       !isRecord(expression) ||
@@ -287,15 +212,14 @@ function elementClassSet(
       expression['callee']['name'] !== 'classNames' ||
       !Array.isArray(expression['arguments'])
     )
-      return new Set();
+      continue;
 
-    return new Set(
-      expression['arguments']
-        .flatMap((argument) => staticStringFromExpression(argument, bindings)?.split(/\s+/) ?? [])
-        .filter(Boolean),
-    );
+    for (const className of expression['arguments'].flatMap(
+      (argument) => staticStringFromExpression(argument, bindings)?.split(/\s+/) ?? [],
+    ))
+      if (className) classes.add(className);
   }
-  return new Set();
+  return classes;
 }
 
 function collectSharedFloatingClassSets(source: string): Set<string>[] {
@@ -304,7 +228,7 @@ function collectSharedFloatingClassSets(source: string): Set<string>[] {
   const classSets: Set<string>[] = [];
   if (fragment === undefined) return classSets;
   walkAst(fragment, (node) => {
-    if (node['type'] !== 'RegularElement') return;
+    if (node['type'] !== 'RegularElement' && node['type'] !== 'SvelteElement') return;
     const classes = elementClassSet(node, bindings);
     if (classes.has('cinder-_floating-surface')) classSets.push(classes);
   });
@@ -317,35 +241,43 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   const total: CssPrimitiveCounts = { grid: 0, floating: 0 };
   if (fragment === undefined) return total;
   walkAst(fragment, (node) => {
-    if (node['type'] !== 'RegularElement' || !Array.isArray(node['attributes'])) return;
+    if (
+      (node['type'] !== 'RegularElement' && node['type'] !== 'SvelteElement') ||
+      !Array.isArray(node['attributes'])
+    )
+      return;
     const classes = elementClassSet(node, bindings);
-    const directives = new Map<string, string>();
+    const declarations = new Map<string, string>();
     for (const attribute of node['attributes']) {
       if (!isRecord(attribute)) continue;
       if (attribute['type'] === 'Attribute' && attribute['name'] === 'style') {
         const value = attributeValueWithDynamics(attribute, bindings);
         if (value === undefined || !value.includes(':')) continue;
-        const counts = cssPrimitiveCounts(value);
-        total.grid += counts.grid;
-        if (!classes.has('cinder-_floating-surface')) total.floating += counts.floating;
+        const root = parseCss(`:root { ${value} }`);
+        const rule = root.first;
+        if (rule?.type === 'rule')
+          for (const [property, declarationValue] of declarationMap(rule))
+            declarations.set(property, declarationValue);
       }
       if (attribute['type'] === 'StyleDirective' && typeof attribute['name'] === 'string')
-        directives.set(
+        declarations.set(
           attribute['name'].toLowerCase(),
           attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
             'var(--cinder-dynamic-value)',
         );
     }
-    const display = directives.get('display');
+    const display = declarations.get('display');
     if (
       (display === 'grid' || display === 'inline-grid') &&
-      (directives.has('grid-template') || directives.has('grid-template-columns'))
+      (declarations.has('grid-template') || declarations.has('grid-template-columns'))
     )
       total.grid++;
-    const position = directives.get('position');
+    const position = declarations.get('position');
+    const zIndex = declarations.get('z-index')?.trim();
     if (
       (position === 'absolute' || position === 'fixed') &&
-      directives.has('z-index') &&
+      zIndex !== undefined &&
+      !['auto', 'inherit', 'initial', 'revert', 'revert-layer', 'unset'].includes(zIndex) &&
       !classes.has('cinder-_floating-surface')
     )
       total.floating++;
@@ -353,45 +285,75 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   return total;
 }
 
-function renderedMarkupEvidence(source: string): { labelCount: number; terms: string } {
-  const fragment = parseSvelteFragment(source);
-  let labelCount = 0;
+function renderedMarkupEvidence(
+  node: unknown,
+  source: string,
+): { labelCount: number; terms: string } {
+  if (!isRecord(node) || node['type'] === 'Component') return { labelCount: 0, terms: '' };
+  let labelCount = node['type'] === 'RegularElement' && node['name'] === 'label' ? 1 : 0;
   const terms: string[] = [];
-  if (fragment === undefined) return { labelCount, terms: '' };
-  walkAst(fragment, (node) => {
-    if (node['type'] === 'RegularElement' && node['name'] === 'label') labelCount += 1;
-    if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
-    if (
-      (node['type'] === 'ExpressionTag' || node['type'] === 'IfBlock') &&
-      typeof node['start'] === 'number' &&
-      typeof node['end'] === 'number'
-    )
-      terms.push(source.slice(node['start'], node['end']));
-    if (
-      node['type'] === 'Attribute' &&
-      typeof node['start'] === 'number' &&
-      typeof node['end'] === 'number'
-    )
-      terms.push(source.slice(node['start'], node['end']));
-  });
+  if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
+  if (
+    (node['type'] === 'ExpressionTag' || node['type'] === 'IfBlock') &&
+    typeof node['start'] === 'number' &&
+    typeof node['end'] === 'number'
+  )
+    terms.push(source.slice(node['start'], node['end']));
+  if (
+    node['type'] === 'Attribute' &&
+    typeof node['start'] === 'number' &&
+    typeof node['end'] === 'number'
+  )
+    terms.push(source.slice(node['start'], node['end']));
+  for (const value of Object.values(node)) {
+    const children = Array.isArray(value) ? value : [value];
+    for (const child of children) {
+      if (!isRecord(child)) continue;
+      const evidence = renderedMarkupEvidence(child, source);
+      labelCount += evidence.labelCount;
+      terms.push(evidence.terms);
+    }
+  }
   return { labelCount, terms: terms.join(' ') };
 }
 
+function qualifyingFieldLabels(node: unknown, source: string): number {
+  if (!isRecord(node) || node['type'] === 'Component') return 0;
+  let childCount = 0;
+  for (const value of Object.values(node)) {
+    const children = Array.isArray(value) ? value : [value];
+    for (const child of children)
+      if (isRecord(child)) childCount += qualifyingFieldLabels(child, source);
+  }
+  if (childCount > 0) return childCount;
+
+  const evidence = renderedMarkupEvidence(node, source);
+  const qualifies =
+    /(?:description|help(?:text)?|hint|assist)/i.test(evidence.terms) &&
+    /(?:error|validation|invalid|message)/i.test(evidence.terms);
+  return qualifies ? evidence.labelCount : 0;
+}
+
 export function fieldWrapperCount(source: string): number {
-  const markup = renderedMarkupEvidence(source);
-  return /(?:description|help(?:text)?|hint|assist)/i.test(markup.terms) &&
-    /(?:error|validation|invalid|message)/i.test(markup.terms)
-    ? markup.labelCount
-    : 0;
+  const fragment = parseSvelteFragment(source);
+  return fragment === undefined ? 0 : qualifyingFieldLabels(fragment, source);
 }
 
 export function shouldCheckComponentSource(filePath: string): boolean {
-  const fileName = basename(filePath);
-  return (
-    !fileName.endsWith('.fixture.svelte') &&
-    !fileName.endsWith('.type-test.svelte') &&
-    !(fileName.startsWith('_') && fileName.endsWith('-test-harness.svelte'))
-  );
+  return !isExcludedComponentSource(filePath);
+}
+
+const migrationMaps = [
+  allowedRawControlCounts,
+  allowedGridCounts,
+  allowedFloatingCounts,
+  allowedFieldWrapperCounts,
+] as const;
+
+export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>): string[] {
+  return [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
+    .filter((filePath) => !existingPaths.has(filePath))
+    .toSorted();
 }
 
 export function findPrimitiveCompositionViolations(
@@ -467,10 +429,12 @@ export function findPrimitiveCompositionViolations(
 
 async function main(): Promise<void> {
   const violations: PrimitiveCompositionViolation[] = [];
+  const existingPaths = new Set<string>();
   const glob = new Glob('**/*.{svelte,css}');
   for await (const absolutePath of glob.scan({ cwd: componentsRoot, absolute: true })) {
     const relativePath = relative(componentsRoot, absolutePath).replaceAll('\\', '/');
     if (!shouldCheckComponentSource(relativePath)) continue;
+    existingPaths.add(relativePath);
     const companionPath = absolutePath.endsWith('.css')
       ? absolutePath.replace(/\.css$/, '.svelte')
       : '';
@@ -486,6 +450,11 @@ async function main(): Promise<void> {
       ),
     );
   }
+  for (const filePath of missingMigrationRecordPaths(existingPaths))
+    violations.push({
+      filePath,
+      message: 'Remove the stale primitive-composition migration record for this missing file.',
+    });
   if (violations.length === 0) {
     process.stdout.write(
       'check-primitive-composition — OK (known primitive copies are explicitly tracked).\n',

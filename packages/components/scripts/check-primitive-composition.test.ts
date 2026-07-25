@@ -2,8 +2,10 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   findPrimitiveCompositionViolations,
+  missingMigrationRecordPaths,
   shouldCheckComponentSource,
 } from './check-primitive-composition.ts';
+import { cssPrimitiveCounts } from './primitive-composition-css.ts';
 
 describe('primitive composition guard', () => {
   test('rejects a new raw form control', () => {
@@ -25,6 +27,21 @@ describe('primitive composition guard', () => {
         'new-control/new-control.svelte',
       ),
     ).toEqual([]);
+  });
+
+  test('only treats type hidden as hidden on input elements', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<select type="hidden"></select>',
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<textarea type="hidden"></textarea>',
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('ignores native controls hidden with the hidden attribute', () => {
@@ -92,7 +109,7 @@ describe('primitive composition guard', () => {
   test('allows a tracked grid migration offender', () => {
     expect(
       findPrimitiveCompositionViolations(
-        'display: grid; grid-template-columns: 1fr;',
+        '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; }',
         'bento-grid/bento-grid.css',
       ),
     ).toEqual([]);
@@ -101,7 +118,7 @@ describe('primitive composition guard', () => {
   test('rejects a new grid occurrence in a tracked stylesheet', () => {
     expect(
       findPrimitiveCompositionViolations(
-        '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; }',
+        '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; } .third { display: grid; grid-template-columns: 1fr; }',
         'bento-grid/bento-grid.css',
       ),
     ).toHaveLength(1);
@@ -125,6 +142,14 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('counts every compatible grid display and template pairing', () => {
+    expect(
+      cssPrimitiveCounts(
+        '.layout { display: grid; } .layout.compact { grid-template-columns: 1fr; } .layout.wide { grid-template-columns: 1fr 1fr; }',
+      ).grid,
+    ).toBe(2);
+  });
+
   test('rejects a hand-rolled grid in an inline style', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -135,6 +160,18 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<div style:display="grid" style:grid-template-columns={columns}></div>',
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div style="display: grid" style:grid-template-columns={columns}></div>',
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<svelte:element this={\'div\'} style="display: grid" style:grid-template-columns={columns} />',
         'new-grid/new-grid.svelte',
       ),
     ).toHaveLength(1);
@@ -206,6 +243,47 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('combines floating declarations from selectors that can match the same element', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu { position: absolute; } .menu[data-open] { z-index: 1; }',
+        'new-menu/new-menu.css',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu { position: absolute; } .other { z-index: 1; }',
+        'new-menu/new-menu.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('does not exempt similarly prefixed floating classes', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.cinder-_floating-surface-copy { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('ignores non-layering z-index values and pseudo-element targets', () => {
+    for (const value of ['auto', 'inherit', 'initial', 'unset', 'revert', 'revert-layer']) {
+      expect(
+        findPrimitiveCompositionViolations(
+          `.menu { position: absolute; z-index: ${value}; }`,
+          'new-menu/new-menu.css',
+        ),
+      ).toEqual([]);
+    }
+    expect(
+      findPrimitiveCompositionViolations(
+        '.button::before { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('ignores layout declarations inside keyframes', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -228,6 +306,15 @@ describe('primitive composition guard', () => {
         'new-menu/new-menu.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('recognizes a statically enabled shared floating class directive', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div class:cinder-_floating-surface={true} style="position: absolute; z-index: 1"></div>',
+        'new-menu/new-menu.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('detects inline-grid and grid-template shorthand', () => {
@@ -281,12 +368,43 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('does not associate a separate label with canonical FormField evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label>Unrelated</label><FormField helpText="Help" error="Error" />',
+        'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('counts only labels in the field subtree that supplies help and error evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div><label>Unrelated</label></div><div><label>Field</label><p>Help</p><p>Error</p></div>',
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('excludes unpublished Svelte fixtures and type tests', () => {
     expect(shouldCheckComponentSource('input/input.fixture.svelte')).toBe(false);
+    expect(shouldCheckComponentSource('data-grid/data-grid-selection-bind-fixture.svelte')).toBe(
+      false,
+    );
+    expect(shouldCheckComponentSource('data-grid/data-grid-selection-bind-fixtures.svelte')).toBe(
+      false,
+    );
     expect(shouldCheckComponentSource('select/select.type-test.svelte')).toBe(false);
     expect(shouldCheckComponentSource('context-menu/_context-menu-test-harness.svelte')).toBe(
       false,
     );
     expect(shouldCheckComponentSource('input/input.svelte')).toBe(true);
+  });
+
+  test('reports migration records whose source file disappeared', () => {
+    expect(missingMigrationRecordPaths(new Set())).toContain('pin-input/pin-input.svelte');
+    expect(missingMigrationRecordPaths(new Set(['pin-input/pin-input.svelte']))).not.toContain(
+      'pin-input/pin-input.svelte',
+    );
   });
 });

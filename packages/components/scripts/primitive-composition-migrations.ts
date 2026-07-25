@@ -64,25 +64,39 @@ export const allowedGridCounts = new Map<string, number>(
     'transfer-list/transfer-list.css',
   ].map((filePath) => [filePath, 1] as const),
 );
-allowedGridCounts.set('description-list/description-list.css', 2);
-allowedGridCounts.set('feature-section/feature-section.css', 2);
-allowedGridCounts.set('footer/footer.css', 2);
+allowedGridCounts.set('action-row/action-row.css', 4);
+allowedGridCounts.set('bento-grid/bento-grid.css', 2);
+allowedGridCounts.set('blog-section/blog-section.css', 4);
+allowedGridCounts.set('description-list/description-list.css', 4);
+allowedGridCounts.set('feature-section/feature-section.css', 8);
+allowedGridCounts.set('footer/footer.css', 3);
+allowedGridCounts.set('form-section/form-section.css', 4);
 allowedGridCounts.set('kanban-board/kanban-board.css', 2);
+allowedGridCounts.set('logo-cloud/logo-cloud.css', 9);
 allowedGridCounts.set('mega-menu/mega-menu.css', 2);
+allowedGridCounts.set('phone-input/phone-input.css', 2);
+allowedGridCounts.set('pricing-section/pricing-section.css', 5);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
-allowedGridCounts.set('steps/steps.css', 2);
+allowedGridCounts.set('selectable-row/selectable-row.css', 2);
+allowedGridCounts.set('source-diff-viewer/source-diff-viewer.css', 2);
+allowedGridCounts.set('stacked-list-item/stacked-list-item.css', 6);
+allowedGridCounts.set('statistic-group/statistic-group.css', 7);
+allowedGridCounts.set('statistic/statistic.css', 2);
+allowedGridCounts.set('steps/steps.css', 4);
+allowedGridCounts.set('team-section/team-section.css', 5);
+allowedGridCounts.set('testimonial-section/testimonial-section.css', 4);
+allowedGridCounts.set('timeline/timeline.css', 2);
+allowedGridCounts.set('transfer-list/transfer-list.css', 2);
 
 export const allowedFloatingCounts = new Map<string, number>(
   [
     'area-chart/area-chart.css',
     'backdrop/backdrop.css',
     'bar-chart/bar-chart.css',
-    'button-group/button-group.css',
     'checkbox/checkbox.css',
     'combobox/combobox.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
-    'grid-list/grid-list.css',
     'kanban-board/kanban-board.css',
     'line-chart/line-chart.css',
     'marquee/marquee.css',
@@ -103,7 +117,9 @@ export const allowedFloatingCounts = new Map<string, number>(
     'waveform/waveform.css',
   ].map((filePath) => [filePath, 1] as const),
 );
+allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
+allowedFloatingCounts.set('slider/slider.css', 2);
 
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [
