@@ -39,7 +39,7 @@
   import CopyButton from '../copy-button/copy-button.svelte';
   import JsonViewer from '../json-viewer/json-viewer.svelte';
   import StatusDot from '../status-dot/status-dot.svelte';
-  import Input from '@lostgradient/cinder/input';
+  import Input from '../input/input.svelte';
   import {
     detailsIdForKey,
     reconnectedBoundaryKey,

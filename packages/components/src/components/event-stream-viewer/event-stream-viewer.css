@@ -5,6 +5,7 @@
  * mirror between `src/` and generated `dist/`. */
 @import '../copy-button/copy-button.css';
 @import '../json-viewer/json-viewer.css';
+@import '../input/input.css';
 @import '../status-dot/status-dot.css';
 
 @layer cinder.components {
@@ -297,7 +298,7 @@
     display: grid;
     grid-template-columns: 3px 1fr auto;
     gap: 0 var(--cinder-space-2);
-    padding: var(--cinder-space-1) var(--cinder-space-3) var(--cinder-space-1) 0;
+    padding: 0 var(--cinder-space-3) 0 0;
     border-block-end: 1px solid var(--cinder-border-muted);
   }
 

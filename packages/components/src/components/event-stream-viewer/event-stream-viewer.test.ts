@@ -169,6 +169,11 @@ describe('EventStreamViewer', () => {
       expect(toolbar?.getAttribute('aria-label')).toBe('Stream controls');
     });
 
+    test('omits the toolbar when no controls are available', () => {
+      const { container } = render(EventStreamViewer, { props: { events: [] } });
+      expect(container.querySelector('.cinder-event-stream-viewer__toolbar')).toBeNull();
+    });
+
     test('merges class prop with cinder-event-stream-viewer', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [], class: 'custom-class' },
@@ -427,7 +432,7 @@ describe('EventStreamViewer', () => {
         props: {
           detectSequenceGaps: true,
           events: entries,
-          onFilter: () => {},
+          onfilter: () => {},
           filterQuery: 'retry',
         },
       });
@@ -460,7 +465,7 @@ describe('EventStreamViewer', () => {
         props: {
           detectSequenceGaps: true,
           events: entries,
-          onFilter: () => {},
+          onfilter: () => {},
           filterQuery: '',
         },
       });
@@ -831,25 +836,26 @@ describe('EventStreamViewer', () => {
   });
 
   describe('filter input', () => {
-    test('renders filter input when onFilter callback is provided', () => {
+    test('renders filter input when onfilter callback is provided', () => {
       const { container } = render(EventStreamViewer, {
-        props: { events: [], onFilter: () => {} },
+        props: { events: [], onfilter: () => {} },
       });
       const input = container.querySelector<HTMLInputElement>(
         '.cinder-event-stream-viewer__filter-input',
       );
       expect(input).not.toBeNull();
+      expect(input?.classList.contains('cinder-input')).toBe(true);
       expect(input?.getAttribute('aria-label')).toBe('Filter events');
     });
 
-    test('does not render filter input when onFilter is omitted', () => {
+    test('does not render filter input when onfilter is omitted', () => {
       const { container } = render(EventStreamViewer, { props: { events: [] } });
       expect(container.querySelector('.cinder-event-stream-viewer__filter-input')).toBeNull();
     });
 
     test('filter input reflects filterQuery prop', () => {
       const { container } = render(EventStreamViewer, {
-        props: { events: [], onFilter: () => {}, filterQuery: 'error' },
+        props: { events: [], onfilter: () => {}, filterQuery: 'error' },
       });
       const input = container.querySelector<HTMLInputElement>(
         '.cinder-event-stream-viewer__filter-input',
@@ -859,15 +865,15 @@ describe('EventStreamViewer', () => {
   });
 
   describe('copy visible', () => {
-    test('renders copy-visible button when onCopyVisible is provided', () => {
+    test('renders copy-visible button when oncopyvisible is provided', () => {
       const { container } = render(EventStreamViewer, {
-        props: { events: [baseEvent], onCopyVisible: () => {} },
+        props: { events: [baseEvent], oncopyvisible: () => {} },
       });
       const btn = container.querySelector('.cinder-event-stream-viewer__copy-all-button');
       expect(btn).not.toBeNull();
     });
 
-    test('does not render copy-visible button when onCopyVisible is omitted', () => {
+    test('does not render copy-visible button when oncopyvisible is omitted', () => {
       const { container } = render(EventStreamViewer, {
         props: { events: [baseEvent] },
       });
@@ -877,7 +883,7 @@ describe('EventStreamViewer', () => {
 
     test('copy-visible button is disabled when events array is empty', () => {
       const { container } = render(EventStreamViewer, {
-        props: { events: [], onCopyVisible: () => {} },
+        props: { events: [], oncopyvisible: () => {} },
       });
       const btn = container.querySelector<HTMLButtonElement>(
         '.cinder-event-stream-viewer__copy-all-button',
@@ -885,12 +891,12 @@ describe('EventStreamViewer', () => {
       expect(btn?.disabled).toBe(true);
     });
 
-    test('clicking copy-visible calls onCopyVisible with formatted text', async () => {
+    test('clicking copy-visible calls oncopyvisible with formatted text', async () => {
       let received = '';
       const { container } = render(EventStreamViewer, {
         props: {
           events: [baseEvent],
-          onCopyVisible: (text: string) => {
+          oncopyvisible: (text: string) => {
             received = text;
           },
         },
@@ -906,7 +912,7 @@ describe('EventStreamViewer', () => {
       const { container } = render(EventStreamViewer, {
         props: {
           events: [baseEvent],
-          onCopyVisible: () => {},
+          oncopyvisible: () => {},
         },
       });
       const btn = container.querySelector<HTMLButtonElement>(
@@ -935,7 +941,7 @@ describe('EventStreamViewer', () => {
         props: {
           detectSequenceGaps: true,
           events: entries,
-          onCopyVisible: (text: string) => {
+          oncopyvisible: (text: string) => {
             received = text;
           },
         },
@@ -1130,7 +1136,17 @@ describe('EventStreamViewer', () => {
 
       expect(css).toContain("@import '../copy-button/copy-button.css';");
       expect(css).toContain("@import '../json-viewer/json-viewer.css';");
+      expect(css).toContain("@import '../input/input.css';");
       expect(css).toContain("@import '../status-dot/status-dot.css';");
+    });
+
+    test('event rows keep the severity rail flush with the row edges', () => {
+      const { readFileSync } = require('node:fs');
+      const css = readFileSync(
+        new URL('./event-stream-viewer.css', import.meta.url).pathname,
+        'utf8',
+      );
+      expect(css).toContain('padding: 0 var(--cinder-space-3) 0 0;');
     });
   });
 });
