@@ -56,6 +56,13 @@ const items = [
       { id: 'docs', title: 'Docs', links: [{ id: 'guides', label: 'Guides', href: '/guides' }] },
     ],
   },
+  {
+    id: 'company',
+    label: 'Company',
+    sections: [
+      { id: 'about', title: 'About', links: [{ id: 'team', label: 'Team', href: '/team' }] },
+    ],
+  },
 ];
 
 describe('MegaMenu', () => {
@@ -245,6 +252,36 @@ describe('MegaMenu', () => {
     if (!svelteLink) throw new Error('Missing nested submenu link.');
     await fireEvent.keyDown(svelteLink, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(frontend);
+  });
+
+  test('mirrors top-level arrow navigation inherited from LocaleProvider', async () => {
+    const { container } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'rtl',
+    });
+    const products = getTriggerByLabel(container, 'Products');
+    const resources = getTriggerByLabel(container, 'Resources');
+    products.focus();
+
+    await fireEvent.keyDown(products, { key: 'ArrowLeft' });
+
+    expect(document.activeElement).toBe(resources);
+  });
+
+  test('prefers a nearer DOM direction over LocaleProvider direction', async () => {
+    const { container } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'rtl',
+      localDirection: 'ltr',
+    });
+    const nav = container.querySelector('nav');
+    const products = getTriggerByLabel(container, 'Products');
+    const resources = getTriggerByLabel(container, 'Resources');
+
+    expect(nav?.getAttribute('dir')).toBe('ltr');
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(resources);
   });
 
   test('preserves an explicit menu direction over LocaleProvider direction', () => {

@@ -45,6 +45,13 @@ test('nested submenu keyboard navigation enters, traverses, and exits', async ({
   const apis = page.getByRole('link', { name: 'APIs' });
   await expect(apis).toBeFocused();
 
+  await captureScreenshot(page, {
+    slug: 'mega-menu',
+    theme: 'light',
+    viewport: 'desktop',
+    fixture: 'nested-open',
+  });
+
   await apis.press('ArrowLeft');
   await expect(backend).toBeFocused();
 
@@ -67,6 +74,18 @@ test('Accessibility shortcut alternatives wrap without overflowing', async ({ co
   const accessibility = page.locator('#accessibility');
   const keyList = accessibility.locator('.dx-keys__key-list');
   await expect(keyList.locator('.cinder-kbd')).toHaveCount(6);
+  const alternatives = keyList.locator('.dx-keys__alternative');
+  await expect(alternatives).toHaveCount(5);
+  await expect(keyList.locator(':scope > .dx-keys__separator')).toHaveCount(0);
+
+  const ungroupedSeparators = await alternatives.evaluateAll((groups) =>
+    groups.some((group) => {
+      const separator = group.querySelector('.dx-keys__separator');
+      const key = group.querySelector('.cinder-kbd');
+      return !separator || !key || separator.parentElement !== group || key.parentElement !== group;
+    }),
+  );
+  expect(ungroupedSeparators).toBe(false);
 
   const overflows = await keyList.locator('.cinder-kbd').evaluateAll((keys) =>
     keys.some((key) => {

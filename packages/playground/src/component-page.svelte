@@ -1232,10 +1232,14 @@
                         <div class="dx-keys__row">
                           <div class="dx-keys__key-list">
                             {#each shortcut.keys.split(/\s+\/\s+/) as key, keyIndex (keyIndex)}
-                              {#if keyIndex > 0}
-                                <span class="dx-keys__separator">/</span>
+                              {#if keyIndex === 0}
+                                <Kbd label={key} />
+                              {:else}
+                                <span class="dx-keys__alternative">
+                                  <span class="dx-keys__separator">/</span>
+                                  <Kbd label={key} />
+                                </span>
                               {/if}
-                              <Kbd label={key} />
                             {/each}
                           </div>
                           <div class="dx-keys__action">{shortcut.action}</div>
@@ -2332,6 +2336,11 @@
   }
   .dx-keys__separator {
     color: var(--cinder-text-muted);
+  }
+  .dx-keys__alternative {
+    display: inline-flex;
+    gap: var(--cinder-space-1);
+    align-items: center;
   }
   .dx-keys__row + .dx-keys__row {
     border-block-start: 1px solid var(--cinder-border-muted);
