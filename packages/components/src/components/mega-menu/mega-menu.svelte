@@ -197,11 +197,9 @@
     await tick();
     const panel = document.getElementById(contentId(itemId));
     if (!(panel instanceof HTMLElement)) return;
-    const firstFocusable =
-      panel.querySelector<HTMLElement>('.cinder-mega-menu__submenu-trigger') ??
-      panel.querySelector<HTMLElement>(
-        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      );
+    const firstFocusable = panel.querySelector<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
     if (firstFocusable) {
       firstFocusable.focus();
       return;

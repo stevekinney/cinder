@@ -112,6 +112,9 @@ describe('MegaMenu', () => {
 
     await fireEvent.keyDown(products, { key: 'ArrowDown' });
 
+    const uiKit = container.querySelector<HTMLAnchorElement>('a[href="/ui"]');
+    expect(document.activeElement).toBe(uiKit);
+
     const frontend = Array.from(
       container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
     ).find((trigger) => trigger.textContent?.trim() === 'Frontend');
@@ -120,7 +123,7 @@ describe('MegaMenu', () => {
     ).find((trigger) => trigger.textContent?.trim() === 'Backend');
     if (!frontend || !backend) throw new Error('Missing nested submenu triggers.');
 
-    expect(document.activeElement).toBe(frontend);
+    frontend.focus();
     expect(frontend.getAttribute('aria-expanded')).toBe('true');
     expect(frontend.getAttribute('aria-controls')).not.toBeNull();
 
