@@ -355,6 +355,7 @@
         class="cinder-date-range-field__date-picker"
         {granularity}
         value={normalizedValue.start}
+        label={resolvedStartLabel}
         max={normalizedValue.end ?? undefined}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
@@ -378,6 +379,7 @@
         class="cinder-date-range-field__date-picker"
         {granularity}
         value={normalizedValue.end}
+        label={resolvedEndLabel}
         min={normalizedValue.start ?? undefined}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}

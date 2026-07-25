@@ -107,7 +107,17 @@
   const invalid = $derived(
     error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined,
   );
+  const resolvedPlaceholder = $derived(
+    placeholder === 'YYYY-MM-DD' && granularity !== 'day'
+      ? granularity === 'hour'
+        ? 'YYYY-MM-DDTHH:00'
+        : granularity === 'minute'
+          ? 'YYYY-MM-DDTHH:mm'
+          : 'YYYY-MM-DDTHH:mm:ss'
+      : placeholder,
+  );
   $effect(() => {
+    normalizedValue;
     if (!inputElement) return;
     const current = inputElement.value;
     const validFormat =
@@ -202,7 +212,7 @@
       min={normalizedMin}
       max={normalizedMax}
       step={granularity === 'day' ? undefined : step}
-      {placeholder}
+      placeholder={resolvedPlaceholder}
       {disabled}
       aria-invalid={invalid}
       aria-describedby={describedById}

@@ -161,7 +161,7 @@ test.describe('date picker surface ownership', () => {
     await expect(
       datePicker.locator('input[type="date"], input[type="datetime-local"]'),
     ).toHaveCount(0);
-    await expect(datePicker.locator('.cinder-date-picker__trigger')).toHaveAttribute(
+    await expect(datePicker.locator('.cinder-date-picker__trigger').first()).toHaveAttribute(
       'aria-haspopup',
       'dialog',
     );
