@@ -28,6 +28,7 @@
 </script>
 
 <script lang="ts">
+  import Plus from 'lucide-svelte/icons/plus';
   import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Combobox from '../combobox/combobox.svelte';
@@ -771,7 +772,8 @@
             data-irb-add-condition
             onclick={() => handleAddCondition(rule.id)}
           >
-            + {addConditionLabel}
+            <Plus size={14} strokeWidth={2.25} aria-hidden="true" />
+            {addConditionLabel}
           </button>
         {/if}
       </div>
@@ -857,7 +859,8 @@
               data-irb-add-action
               onclick={() => handleAddAction(rule.id)}
             >
-              + {addActionLabel}
+              <Plus size={14} strokeWidth={2.25} aria-hidden="true" />
+              {addActionLabel}
             </button>
           {/if}
         </div>
@@ -872,7 +875,8 @@
       data-irb-add-rule
       onclick={handleAddRule}
     >
-      + {addRuleLabel}
+      <Plus size={14} strokeWidth={2.25} aria-hidden="true" />
+      {addRuleLabel}
     </button>
   {/if}
 

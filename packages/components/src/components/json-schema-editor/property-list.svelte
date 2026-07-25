@@ -14,6 +14,7 @@
 </script>
 
 <script lang="ts">
+  import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { onDestroy } from 'svelte';
   import Alert from '../alert/alert.svelte';
   import Button from '../button/button.svelte';
@@ -232,7 +233,12 @@
           aria-controls={panelId}
           onclick={() => toggleExpanded(key, isOpen)}
         >
-          <span class="cinder-jse-property-row__chevron" aria-hidden="true">▸</span>
+          <ChevronDown
+            class="cinder-jse-property-row__chevron"
+            size={14}
+            strokeWidth={2}
+            aria-hidden="true"
+          />
           <span class="cinder-jse-property-row__name">{key}</span>
           <span class="cinder-jse-property-row__type">{summariseType(properties[key] ?? {})}</span>
         </button>
