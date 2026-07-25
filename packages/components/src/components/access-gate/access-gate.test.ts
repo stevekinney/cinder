@@ -40,9 +40,13 @@ describe('AccessGate', () => {
     expect(styles).toContain('.cinder-access-gate__passthrough {');
     expect(styles).toContain('flex-wrap: wrap;');
     expect(styles).toContain('gap: var(--cinder-space-2);');
+    expect(styles).toContain('.cinder-access-gate__passthrough:has(> :only-child)');
     expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-full-width])');
     expect(styles).toContain('inline-size: 100%;');
     expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-icon-only])');
+    expect(styles).toContain(
+      ".cinder-access-gate__passthrough[data-cinder-variant='section'] {\n    display: contents;",
+    );
     expect(styles).toContain(
       ".cinder-access-gate[data-cinder-variant='inline']:has(\n      .cinder-access-gate__inline-content > [data-cinder-icon-only]",
     );

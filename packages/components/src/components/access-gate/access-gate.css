@@ -12,17 +12,22 @@
     vertical-align: baseline;
   }
 
+  .cinder-access-gate__passthrough:has(> :only-child) {
+    display: contents;
+  }
+
   .cinder-access-gate__passthrough:has(> [data-cinder-full-width]) {
     display: flex;
     inline-size: 100%;
   }
 
   .cinder-access-gate__passthrough:has(> [data-cinder-icon-only]) {
+    display: inline-flex;
     align-items: center;
   }
 
   .cinder-access-gate__passthrough[data-cinder-variant='section'] {
-    display: block;
+    display: contents;
   }
 
   .cinder-access-gate[data-cinder-variant='inline'] {
