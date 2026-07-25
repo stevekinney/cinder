@@ -273,6 +273,11 @@ describe('primitive composition guard', () => {
         '@media (min-width: 800px) { .layout { display: grid; } } @media (orientation: landscape) { .layout { grid-template-columns: 1fr; } }',
       ).grid,
     ).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        '@media (max-width: 48rem) { .layout { display: grid; } } @media (min-width: 64rem) { .layout { grid-template-columns: 1fr; } }',
+      ).grid,
+    ).toBe(0);
   });
 
   test('rejects a hand-rolled grid in an inline style', () => {
@@ -303,6 +308,18 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>const layoutStyle = 'display: grid; grid-template-columns: 1fr 1fr';</script><div style={layoutStyle}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<div style={{ display: 'grid', 'grid-template-columns': '1fr 1fr' }}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const layoutStyle = { display: 'grid', gridTemplateColumns: columns };</script><div style={layoutStyle}></div>",
         'new-grid/new-grid.svelte',
       ),
     ).toHaveLength(1);
@@ -381,6 +398,29 @@ describe('primitive composition guard', () => {
         '<div class="other cinder-_floating-surface"></div><div class="menu"></div>',
       ),
     ).toHaveLength(1);
+  });
+
+  test('requires the complete selector target to match a shared floating element', () => {
+    for (const source of [
+      '.menu[data-local] { position: absolute; z-index: 1; }',
+      '#local.menu { position: absolute; z-index: 1; }',
+      'section.menu { position: absolute; z-index: 1; }',
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          source,
+          'new-menu/new-menu.css',
+          '<div class="menu cinder-_floating-surface"></div>',
+        ),
+      ).toHaveLength(1);
+
+    expect(
+      findPrimitiveCompositionViolations(
+        'div#local.menu[data-local] { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        '<div id="local" class="menu cinder-_floating-surface" data-local></div>',
+      ),
+    ).toEqual([]);
   });
 
   test('does not combine floating declarations from separate CSS rules', () => {

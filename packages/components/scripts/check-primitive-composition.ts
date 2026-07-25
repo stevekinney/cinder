@@ -1,12 +1,4 @@
-/**
- * Primitive-composition guard for component source.
- *
- * Cinder's migration toward one implementation per primitive is intentionally
- * incremental. The explicit allow-lists below are the migration tracker: each
- * entry is a known offender and must disappear as its migration PR lands.
- * New hand-rolled controls, grids, floating surfaces, or field wrappers fail
- * immediately instead of silently creating another copy.
- */
+/** Reject new hand-rolled primitives while migration maps track existing copies. */
 
 import { parse as parseCss } from 'postcss';
 import { parse as parseSvelte } from 'svelte/compiler';
@@ -17,6 +9,7 @@ import {
   declarationMap,
   gridDefinitionProperties,
   type CssPrimitiveCounts,
+  type SharedFloatingTarget,
 } from './primitive-composition-css.ts';
 import { fieldWrapperCount } from './primitive-composition-field.ts';
 import {
@@ -24,8 +17,10 @@ import {
   allowedFloatingCounts,
   allowedGridCounts,
   allowedRawControlCounts,
+  missingMigrationRecordPaths,
 } from './primitive-composition-migrations.ts';
 import { runPrimitiveCompositionCheck } from './primitive-composition-runner.ts';
+import { styleObjectDeclarations } from './primitive-composition-style-object.ts';
 
 export type PrimitiveCompositionViolation = {
   filePath: string;
@@ -303,17 +298,46 @@ function elementClassSet(
   return classes;
 }
 
-function collectSharedFloatingClassSets(source: string): Set<string>[] {
+function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
   const fragment = parseSvelteFragment(source);
   const bindings = staticStringBindings(source);
-  const classSets: Set<string>[] = [];
-  if (fragment === undefined) return classSets;
+  const targets: SharedFloatingTarget[] = [];
+  if (fragment === undefined) return targets;
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement' && node['type'] !== 'SvelteElement') return;
     const classes = elementClassSet(node, bindings);
-    if (classes.has('cinder-_floating-surface')) classSets.push(classes);
+    if (!classes.has('cinder-_floating-surface')) return;
+    const attributes = new Map<string, string | true>();
+    let id: string | undefined;
+    if (Array.isArray(node['attributes']))
+      for (const attribute of node['attributes']) {
+        if (
+          !isRecord(attribute) ||
+          attribute['type'] !== 'Attribute' ||
+          typeof attribute['name'] !== 'string' ||
+          attribute['name'] === 'class'
+        )
+          continue;
+        const value = attribute['value'] === true ? true : staticAttributeValue(attribute);
+        if (value === undefined) continue;
+        attributes.set(attribute['name'].toLowerCase(), value);
+        if (attribute['name'] === 'id' && typeof value === 'string') id = value;
+      }
+    const tags =
+      node['type'] === 'RegularElement' && typeof node['name'] === 'string'
+        ? [node['name'].toLowerCase()]
+        : [...possibleStaticStringsFromExpression(node['tag'], bindings)].map((tag) =>
+            tag.toLowerCase(),
+          );
+    for (const tag of tags.length > 0 ? tags : [undefined])
+      targets.push({
+        ...(tag === undefined ? {} : { tag }),
+        ...(id === undefined ? {} : { id }),
+        classes,
+        attributes,
+      });
   });
-  return classSets;
+  return targets;
 }
 
 function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
@@ -332,6 +356,21 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
     for (const attribute of node['attributes']) {
       if (!isRecord(attribute)) continue;
       if (attribute['type'] === 'Attribute' && attribute['name'] === 'style') {
+        const attributeValue = attribute['value'];
+        const expressionTag =
+          isRecord(attributeValue) && attributeValue['type'] === 'ExpressionTag'
+            ? attributeValue
+            : Array.isArray(attributeValue) &&
+                attributeValue.length === 1 &&
+                isRecord(attributeValue[0]) &&
+                attributeValue[0]['type'] === 'ExpressionTag'
+              ? attributeValue[0]
+              : undefined;
+        for (const [property, declarationValue] of styleObjectDeclarations(
+          expressionTag?.['expression'],
+          source,
+        ))
+          declarations.set(property, declarationValue);
         const value = attributeValueWithDynamics(attribute, bindings);
         if (value === undefined || !value.includes(':')) continue;
         const root = parseCss(`:root { ${value} }`);
@@ -370,18 +409,7 @@ export function shouldCheckComponentSource(filePath: string): boolean {
   return !isExcludedComponentSource(filePath);
 }
 
-const migrationMaps = [
-  allowedRawControlCounts,
-  allowedGridCounts,
-  allowedFloatingCounts,
-  allowedFieldWrapperCounts,
-] as const;
-
-export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>): string[] {
-  return [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
-    .filter((filePath) => !existingPaths.has(filePath))
-    .toSorted();
-}
+export { missingMigrationRecordPaths } from './primitive-composition-migrations.ts';
 
 export function findPrimitiveCompositionViolations(
   source: string,
@@ -412,7 +440,7 @@ export function findPrimitiveCompositionViolations(
   const counts = normalized.endsWith('.css')
     ? cssPrimitiveCounts(
         source,
-        companionSources.flatMap((candidate) => collectSharedFloatingClassSets(candidate)),
+        companionSources.flatMap((candidate) => collectSharedFloatingTargets(candidate)),
       )
     : normalized.endsWith('.svelte')
       ? inlineStylePrimitiveCounts(source)

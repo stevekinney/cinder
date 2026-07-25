@@ -6,6 +6,13 @@ export type CssPrimitiveCounts = {
   floating: number;
 };
 
+export type SharedFloatingTarget = {
+  tag?: string;
+  id?: string;
+  classes: ReadonlySet<string>;
+  attributes: ReadonlyMap<string, string | true>;
+};
+
 export const gridDefinitionProperties = [
   'grid',
   'grid-template',
@@ -24,14 +31,17 @@ export function declarationMap(rule: Rule): Map<string, string> {
   return declarations;
 }
 
+type AttributeConstraint = {
+  operator: string | undefined;
+  value: string | undefined;
+  insensitive: boolean;
+};
+
 type SelectorTarget = {
   tag?: string;
   id?: string;
   classes: Set<string>;
-  attributes: Map<
-    string,
-    { operator: string | undefined; value: string | undefined; insensitive: boolean }
-  >;
+  attributes: Map<string, AttributeConstraint>;
 };
 
 function selectorTargets(selector: string): SelectorTarget[] {
@@ -110,13 +120,22 @@ function conditionalScope(rule: Rule): ConditionalScope[] {
   return scope;
 }
 
-function widthBounds(parameters: string): { minimum?: number; maximum?: number } {
-  const minimumMatch = /\(\s*min-width\s*:\s*(\d+(?:\.\d+)?)px\s*\)/i.exec(parameters);
-  const maximumMatch = /\(\s*max-width\s*:\s*(\d+(?:\.\d+)?)px\s*\)/i.exec(parameters);
-  return {
-    ...(minimumMatch?.[1] === undefined ? {} : { minimum: Number(minimumMatch[1]) }),
-    ...(maximumMatch?.[1] === undefined ? {} : { maximum: Number(maximumMatch[1]) }),
-  };
+type WidthBound = { kind: 'minimum' | 'maximum'; value: number; unit: 'px' | 'root-em' };
+
+function widthBounds(parameters: string): WidthBound[] {
+  const bounds: WidthBound[] = [];
+  for (const match of parameters.matchAll(
+    /\(\s*(min|max)-width\s*:\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*\)/gi,
+  )) {
+    if (match[1] === undefined || match[2] === undefined || match[3] === undefined) continue;
+    bounds.push({
+      kind: match[1].toLowerCase() === 'min' ? 'minimum' : 'maximum',
+      value: Number(match[2]),
+      // Media-query em and rem units both resolve against the initial root font size.
+      unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
+    });
+  }
+  return bounds;
 }
 
 function discreteConditions(parameters: string): Map<string, string> {
@@ -140,11 +159,19 @@ function conditionalScopesConflict(left: ConditionalScope, right: ConditionalSco
     );
   }
   if (left.name !== 'media' && left.name !== 'container') return false;
-  const leftBounds = widthBounds(left.parameters);
-  const rightBounds = widthBounds(right.parameters);
-  const minimum = Math.max(leftBounds.minimum ?? -Infinity, rightBounds.minimum ?? -Infinity);
-  const maximum = Math.min(leftBounds.maximum ?? Infinity, rightBounds.maximum ?? Infinity);
-  if (minimum > maximum) return true;
+  const bounds = [...widthBounds(left.parameters), ...widthBounds(right.parameters)];
+  for (const unit of ['px', 'root-em'] as const) {
+    const comparableBounds = bounds.filter((bound) => bound.unit === unit);
+    const minimum = Math.max(
+      ...comparableBounds.filter((bound) => bound.kind === 'minimum').map((bound) => bound.value),
+      -Infinity,
+    );
+    const maximum = Math.min(
+      ...comparableBounds.filter((bound) => bound.kind === 'maximum').map((bound) => bound.value),
+      Infinity,
+    );
+    if (minimum > maximum) return true;
+  }
   const leftDiscrete = discreteConditions(left.parameters);
   const rightDiscrete = discreteConditions(right.parameters);
   return [...leftDiscrete].some(
@@ -186,22 +213,51 @@ function isInsideKeyframes(rule: Rule): boolean {
   return false;
 }
 
+function attributeConstraintMatches(
+  actualValue: string | true | undefined,
+  constraint: AttributeConstraint,
+): boolean {
+  if (actualValue === undefined) return false;
+  if (constraint.operator === undefined) return true;
+  if (actualValue === true || constraint.value === undefined) return false;
+  const actual = constraint.insensitive ? actualValue.toLowerCase() : actualValue;
+  const expected = constraint.insensitive ? constraint.value.toLowerCase() : constraint.value;
+  if (constraint.operator === '=') return actual === expected;
+  if (constraint.operator === '~=') return actual.split(/\s+/).includes(expected);
+  if (constraint.operator === '|=') return actual === expected || actual.startsWith(`${expected}-`);
+  if (constraint.operator === '^=') return actual.startsWith(expected);
+  if (constraint.operator === '$=') return actual.endsWith(expected);
+  if (constraint.operator === '*=') return actual.includes(expected);
+  return false;
+}
+
+function targetMatchesSharedFloatingElement(
+  target: SelectorTarget,
+  sharedTarget: SharedFloatingTarget,
+): boolean {
+  return (
+    (target.tag === undefined || target.tag === sharedTarget.tag) &&
+    (target.id === undefined || target.id === sharedTarget.id) &&
+    [...target.classes].every((className) => sharedTarget.classes.has(className)) &&
+    [...target.attributes].every(([name, constraint]) =>
+      attributeConstraintMatches(sharedTarget.attributes.get(name), constraint),
+    )
+  );
+}
+
 function targetUsesSharedFloatingSurface(
   target: SelectorTarget,
-  sharedClassSets: readonly ReadonlySet<string>[],
+  sharedTargets: readonly SharedFloatingTarget[],
 ): boolean {
   return (
     target.classes.has('cinder-_floating-surface') ||
-    (target.classes.size > 0 &&
-      sharedClassSets.some((sharedClasses) =>
-        [...target.classes].every((className) => sharedClasses.has(className)),
-      ))
+    sharedTargets.some((sharedTarget) => targetMatchesSharedFloatingElement(target, sharedTarget))
   );
 }
 
 export function cssPrimitiveCounts(
   source: string,
-  sharedClassSets: readonly ReadonlySet<string>[] = [],
+  sharedTargets: readonly SharedFloatingTarget[] = [],
 ): CssPrimitiveCounts {
   let root = parseCss(source);
   if (root.nodes.some((node) => node.type === 'decl')) root = parseCss(`:root { ${source} }`);
@@ -253,8 +309,8 @@ export function cssPrimitiveCounts(
           pairCount +
           compatibleSelectorTargetPairs(rule, zIndexRule).filter(
             ([positionTarget, zIndexTarget]) =>
-              !targetUsesSharedFloatingSurface(positionTarget, sharedClassSets) &&
-              !targetUsesSharedFloatingSurface(zIndexTarget, sharedClassSets),
+              !targetUsesSharedFloatingSurface(positionTarget, sharedTargets) &&
+              !targetUsesSharedFloatingSurface(zIndexTarget, sharedTargets),
           ).length,
         0,
       ),

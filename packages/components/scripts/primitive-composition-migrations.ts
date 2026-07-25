@@ -142,3 +142,16 @@ export const allowedFieldWrapperCounts = new Map<string, number>(
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedFieldWrapperCounts.set('date-range-field/date-range-field.svelte', 2);
+
+const migrationMaps = [
+  allowedRawControlCounts,
+  allowedGridCounts,
+  allowedFloatingCounts,
+  allowedFieldWrapperCounts,
+] as const;
+
+export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>): string[] {
+  return [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
+    .filter((filePath) => !existingPaths.has(filePath))
+    .toSorted();
+}
