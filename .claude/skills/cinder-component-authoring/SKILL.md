@@ -8,13 +8,13 @@ description: Use this skill when creating or substantially changing a Cinder com
 Use this pre-flight before writing a new component. The checklist is deliberately
 short; the machine-readable source is
 `packages/components/scripts/component-conventions.ts`, and `components:create`
-prints the same checklist in the generated README.
+links generated READMEs back to the live package guidance.
 
 <!-- component-authoring-checklist:start -->
 
 - [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
 - [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
-- [ ] Use `_floating-surface.css` for floating surfaces, and compose form controls from `Input` and `FormField`. (#921, #923)
+- [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
 <!-- component-authoring-checklist:end -->

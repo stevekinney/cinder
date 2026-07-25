@@ -16,14 +16,14 @@ checklist:
 
 - [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
 - [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
-- [ ] Use `_floating-surface.css` for floating surfaces, and compose form controls from `Input` and `FormField`. (#921, #923)
+- [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
 <!-- component-authoring-checklist:end -->
 
 The checklist's machine-readable source of truth is
 `packages/components/scripts/component-conventions.ts`; `components:create`
-includes it in every new component README.
+links every new component README to the live package guidance.
 
 ## Essential Commands
 

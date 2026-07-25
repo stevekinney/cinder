@@ -50,8 +50,6 @@ import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { renderComponentAuthoringChecklist } from './component-conventions.ts';
-
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const PACKAGES_ROOT = join(PACKAGE_ROOT, '..');
 const COMPONENTS_DIR = join(PACKAGE_ROOT, 'src', 'components');
@@ -205,6 +203,9 @@ export function renderReadme(context: CreationContext): string {
   const experimentalNote = isExperimental
     ? `> **EXPERIMENTAL** — this component's API may change between minor versions until promoted to stable.\n\n`
     : '';
+  const authoringChecklistPath = isExperimental
+    ? '../../../../AGENTS.md#component-authoring-pre-flight'
+    : '../../../AGENTS.md#component-authoring-pre-flight';
   return `# ${pascalName}
 
 ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
@@ -226,13 +227,8 @@ ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
 
 ## Authoring checklist
 
-Before publishing this component, work through the shared pre-flight checklist:
-
-${renderComponentAuthoringChecklist()}
-
-The canonical checklist lives in scripts/component-conventions.ts; keep the
-repository AGENTS/CLAUDE mirrors and the cinder-component-authoring skill
-synchronized with it.
+Before publishing this component, complete the live
+[component authoring pre-flight](${authoringChecklistPath}).
 
 ## CSS Variables
 

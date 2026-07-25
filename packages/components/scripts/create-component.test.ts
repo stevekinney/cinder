@@ -58,6 +58,7 @@ function extractChecklist(source: string, path: string): string {
 describe('component authoring guidance', () => {
   it('keeps every checklist mirror synchronized with the machine-readable source', async () => {
     const canonicalChecklist = renderComponentAuthoringChecklist();
+    expect(canonicalChecklist).toContain('`cinder-_floating-surface`');
 
     for (const relativePath of CHECKLIST_MIRRORS) {
       const source = await readFile(join(REPOSITORY_ROOT, relativePath), 'utf8');
@@ -209,19 +210,18 @@ describe('renderReadme', () => {
     expect(readme).toContain('EXPERIMENTAL');
   });
 
-  it('includes the shared component-authoring checklist', () => {
+  it('links to the live component-authoring checklist instead of copying it', () => {
     const readme = renderReadme(buildContext('my-widget'));
-    expect(readme).toContain('Search the component inventory');
-    expect(readme).toContain('docs/component-api-conventions.md');
-    expect(readme).toContain('_floating-surface.css');
-    expect(readme).toContain('`Input` and `FormField`');
-    expect(readme).toContain('#919');
-    expect(readme).toContain('#921');
-    expect(readme).toContain('#922');
-    expect(readme).toContain('#923');
-    expect(readme).toContain('#929');
-    expect(readme).toContain('#931');
-    expect(readme).toContain('#957');
+    const experimentalReadme = renderReadme(buildContext('experimental/json-viewer'));
+
+    expect(readme).toContain(
+      '[component authoring pre-flight](../../../AGENTS.md#component-authoring-pre-flight)',
+    );
+    expect(experimentalReadme).toContain(
+      '[component authoring pre-flight](../../../../AGENTS.md#component-authoring-pre-flight)',
+    );
+    expect(readme).not.toContain(renderComponentAuthoringChecklist());
+    expect(experimentalReadme).not.toContain(renderComponentAuthoringChecklist());
   });
 });
 
