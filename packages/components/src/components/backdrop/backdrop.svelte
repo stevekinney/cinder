@@ -30,7 +30,7 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import type { BackdropProps } from './backdrop.types.ts';
-  import { lockBodyScroll } from '../../_internal/overlay.ts';
+  import { lockBodyScroll, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
@@ -62,15 +62,12 @@
   });
 
   $effect(() => {
-    if (!open || !onclick) return;
-    const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !event.defaultPrevented) {
-        event.preventDefault();
-        onclick?.(event as unknown as MouseEvent);
-      }
-    };
-    window.addEventListener('keydown', handleKeydown);
-    return () => window.removeEventListener('keydown', handleKeydown);
+    if (!open || !onclick || !scrimElement) return;
+    return pushEscapeHandler((event) => {
+      if (event.defaultPrevented) return;
+      event.preventDefault();
+      scrimElement?.click();
+    });
   });
 
   // Lock body scroll while the scrim is present — including the fade-out outro, so
