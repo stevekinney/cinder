@@ -1,5 +1,28 @@
 # @lostgradient/chat
 
+## 0.4.1
+
+### Patch Changes
+
+- [#902](https://github.com/stevekinney/cinder/pull/902) [`a9bacbf`](https://github.com/stevekinney/cinder/commit/a9bacbf724c9040d3793f2eb98d5916204a8275c) Thanks [@stevekinney](https://github.com/stevekinney)! - Ignore push callbacks that arrive after a Chat adapter subscription is torn down.
+
+- [#893](https://github.com/stevekinney/cinder/pull/893) [`7ca62f6`](https://github.com/stevekinney/cinder/commit/7ca62f657805c581f1e17c75e9e23ae9744c0637) Thanks [@stevekinney](https://github.com/stevekinney)! - Improve chat artifact and composer accessibility: code artifacts now use Cinder's syntax-highlighted `CodeBlock` by default with an optional `codeRenderer` hook, and the programmatic attachment input is hidden from the accessibility tree.
+
+- [#894](https://github.com/stevekinney/cinder/pull/894) [`1085170`](https://github.com/stevekinney/cinder/commit/1085170117680bda4c7d372bbdef894808f704b7) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep stale bottom-sentinel observations from undoing an in-flight programmatic scroll away from the bottom.
+
+- [#909](https://github.com/stevekinney/cinder/pull/909) [`e495c45`](https://github.com/stevekinney/cinder/commit/e495c456b24e42ec23433428ba89d152cc33d059) Thanks [@stevekinney](https://github.com/stevekinney)! - Re-export Conversationalist's tool-call and tool-result transcript builders from the Chat package.
+
+- [#903](https://github.com/stevekinney/cinder/pull/903) [`8329ec8`](https://github.com/stevekinney/cinder/commit/8329ec8361b28ed622098c1d3bcb61520cebd466) Thanks [@stevekinney](https://github.com/stevekinney)! - Warn when Chat receives a conversation history stamped with a newer schema version.
+
+- [#892](https://github.com/stevekinney/cinder/pull/892) [`5bf73b2`](https://github.com/stevekinney/cinder/commit/5bf73b2e4a08fb3ad8bc82f895d5b756a1c2a65a) Thanks [@stevekinney](https://github.com/stevekinney)! - Document the `chat-message-action-button` class contract for native buttons rendered through `messageActions`.
+
+- [#904](https://github.com/stevekinney/cinder/pull/904) [`a67ffaa`](https://github.com/stevekinney/cinder/commit/a67ffaa7c2d3b9a580bd79c37820bd9fbd5947b3) Thanks [@stevekinney](https://github.com/stevekinney)! - Prevent concurrent retry actions for the same failed message from dispatching duplicate adapter commands.
+
+- [#891](https://github.com/stevekinney/cinder/pull/891) [`a67820a`](https://github.com/stevekinney/cinder/commit/a67820a8bc97f777cc2c0c487c9a1b7e2dc04edf) Thanks [@stevekinney](https://github.com/stevekinney)! - Default `ChatComposerPopover` suggestions to `top-start` so menus open above bottom-anchored composers.
+
+- Updated dependencies [[`8efb8b6`](https://github.com/stevekinney/cinder/commit/8efb8b6b27d3f705dca8b2197df2fb33f80b0339), [`eaa52b6`](https://github.com/stevekinney/cinder/commit/eaa52b6b5d359ca071df8eb5039b261c0ac4b40f), [`79cc14b`](https://github.com/stevekinney/cinder/commit/79cc14b49750cdeae92e3cb16a75bc4ef77d1582)]:
+  - @lostgradient/cinder@0.19.1
+
 ## 0.4.0
 
 ### Minor Changes

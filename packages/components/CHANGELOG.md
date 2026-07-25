@@ -1,5 +1,15 @@
 # @lostgradient/cinder
 
+## 0.19.1
+
+### Patch Changes
+
+- [#914](https://github.com/stevekinney/cinder/pull/914) [`8efb8b6`](https://github.com/stevekinney/cinder/commit/8efb8b6b27d3f705dca8b2197df2fb33f80b0339) Thanks [@stevekinney](https://github.com/stevekinney)! - Prevent FacetedFilterBar select labels from clipping by allowing controls to grow to fit their line box.
+
+- [#916](https://github.com/stevekinney/cinder/pull/916) [`eaa52b6`](https://github.com/stevekinney/cinder/commit/eaa52b6b5d359ca071df8eb5039b261c0ac4b40f) Thanks [@stevekinney](https://github.com/stevekinney)! - Add visually hidden Select labels and warn when a bound value does not match any option.
+
+- [#915](https://github.com/stevekinney/cinder/pull/915) [`79cc14b`](https://github.com/stevekinney/cinder/commit/79cc14b49750cdeae92e3cb16a75bc4ef77d1582) Thanks [@stevekinney](https://github.com/stevekinney)! - Load Stat styles when using the StatGroup compound component API.
+
 ## 0.19.0
 
 ### Minor Changes
