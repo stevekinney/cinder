@@ -3,8 +3,17 @@ import type { TextDirection } from './locale-context.ts';
 export function resolveTextDirection(
   element: HTMLElement | null | undefined,
   fallback?: TextDirection,
+  options?: { ignoreElementDirectionAttribute?: boolean },
 ): TextDirection | undefined {
-  let currentElement: HTMLElement | null = element ?? null;
+  const ignoreElementDirectionAttribute = options?.ignoreElementDirectionAttribute ?? false;
+  if (ignoreElementDirectionAttribute && element) {
+    const styledDirection = readComputedTextDirection(element);
+    if (styledDirection && hasDirectionStylingHint(element, true)) return styledDirection;
+  }
+
+  let currentElement: HTMLElement | null = ignoreElementDirectionAttribute
+    ? (element?.parentElement ?? null)
+    : (element ?? null);
   let documentDirection: TextDirection | undefined;
   let styledDirectionElement: HTMLElement | null = null;
   while (currentElement) {
@@ -63,8 +72,11 @@ function readComputedTextDirection(
   return direction === 'rtl' || direction === 'ltr' ? direction : undefined;
 }
 
-function hasDirectionStylingHint(element: HTMLElement | null | undefined): boolean {
-  let currentElement = element?.parentElement;
+function hasDirectionStylingHint(
+  element: HTMLElement | null | undefined,
+  includeElement = false,
+): boolean {
+  let currentElement = includeElement ? element : element?.parentElement;
   while (currentElement && currentElement !== currentElement.ownerDocument.documentElement) {
     if (currentElement.style.direction) return true;
     if (matchesDirectionStyleRule(currentElement)) return true;

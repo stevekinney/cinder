@@ -103,6 +103,8 @@ describe('MegaMenu', () => {
 
     expect(styles).toContain('.cinder-mega-menu__sections {');
     expect(styles).toContain('.cinder-mega-menu__sub .cinder-mega-menu__sections {');
+    expect(styles).toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\bleft:\s*0;/s);
+    expect(styles).not.toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\binset-inline-start:/s);
   });
 
   test('renders independently titled nested sections below top-level section headings', async () => {
@@ -279,6 +281,21 @@ describe('MegaMenu', () => {
     const resources = getTriggerByLabel(container, 'Resources');
 
     expect(nav?.getAttribute('dir')).toBe('ltr');
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(resources);
+  });
+
+  test("prefers the menu's own CSS direction over LocaleProvider direction", async () => {
+    const { container } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'rtl',
+      menuStyle: 'direction: ltr',
+    });
+    const products = getTriggerByLabel(container, 'Products');
+    const resources = getTriggerByLabel(container, 'Resources');
+
+    expect(container.querySelector('nav')?.getAttribute('dir')).toBe('ltr');
     products.focus();
     await fireEvent.keyDown(products, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(resources);

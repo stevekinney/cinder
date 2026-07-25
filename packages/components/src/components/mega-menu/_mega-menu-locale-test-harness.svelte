@@ -8,15 +8,17 @@
     direction,
     menuDirection,
     localDirection,
+    menuStyle,
   }: Pick<MegaMenuProps, 'items'> & {
     direction: 'ltr' | 'rtl';
     menuDirection?: 'ltr' | 'rtl' | 'auto';
     localDirection?: 'ltr' | 'rtl';
+    menuStyle?: string;
   } = $props();
 </script>
 
 <LocaleProvider {direction}>
   <div dir={localDirection}>
-    <MegaMenu {items} dir={menuDirection} />
+    <MegaMenu {items} dir={menuDirection} style={menuStyle} />
   </div>
 </LocaleProvider>

@@ -55,7 +55,7 @@
   .cinder-mega-menu__indicator {
     position: absolute;
     inset-block: 0;
-    inset-inline-start: 0;
+    left: 0;
     inline-size: 0;
     background: var(--cinder-accent);
     transition:
