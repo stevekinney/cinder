@@ -1,15 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "callout",
     "card",
-    "command-menu",
-    "load-more",
-    "logo-cloud",
-    "selectable-row",
-    "sortable-list"
+    "logo-cloud"
   ],
-  "renderedSourceSha": "7eed6f470e4f3f4dc59df230d756c273249bb93d",
+  "renderedSourceSha": "407db1e151d31a34b6db629bd4d9cc4139a17654",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
