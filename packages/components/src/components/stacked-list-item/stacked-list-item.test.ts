@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -21,6 +22,16 @@ function textSnippet(text: string) {
 }
 
 describe('StackedListItem', () => {
+  test('aligns leading and body to the first line while centering trailing content', () => {
+    const stylesheet = readFileSync(new URL('./stacked-list-item.css', import.meta.url), 'utf8');
+    expect(stylesheet).toContain(
+      '.cinder-stacked-list-item--has-leading .cinder-stacked-list-item__body {\n    align-self: start;',
+    );
+    expect(stylesheet).toContain(
+      '.cinder-stacked-list-item__trailing {\n    grid-area: trailing;\n    display: flex;\n    gap: var(--cinder-space-2);\n    align-self: center;',
+    );
+  });
+
   test('renders all snippets under their respective class names', () => {
     const { container } = render(StackedListItem, {
       props: {
