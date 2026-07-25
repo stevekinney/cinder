@@ -7,6 +7,8 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { default: MegaMenuLocaleTestHarness } =
+  await import('./_mega-menu-locale-test-harness.svelte');
 const { default: MegaMenu } = await import('./mega-menu.svelte');
 
 afterEach(() => cleanup());
@@ -147,6 +149,29 @@ describe('MegaMenu', () => {
 
   test('mirrors nested submenu enter and return arrows in right-to-left direction', async () => {
     const { container } = render(MegaMenu, { items, dir: 'rtl' });
+    const products = getTriggerByLabel(container, 'Products');
+    products.focus();
+
+    await fireEvent.keyDown(products, { key: 'ArrowDown' });
+    const frontend = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    ).find((trigger) => trigger.textContent?.trim() === 'Frontend');
+    if (!frontend) throw new Error('Missing nested submenu trigger.');
+
+    await fireEvent.keyDown(frontend, { key: 'ArrowLeft' });
+    const svelteLink = container.querySelector<HTMLAnchorElement>('a[href="/svelte"]');
+    expect(document.activeElement).toBe(svelteLink);
+
+    if (!svelteLink) throw new Error('Missing nested submenu link.');
+    await fireEvent.keyDown(svelteLink, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(frontend);
+  });
+
+  test('inherits nested submenu direction from LocaleProvider', async () => {
+    const { container } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'rtl',
+    });
     const products = getTriggerByLabel(container, 'Products');
     products.focus();
 
