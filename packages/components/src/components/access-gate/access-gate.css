@@ -21,7 +21,7 @@
     inline-size: 100%;
   }
 
-  .cinder-access-gate__passthrough:has(> [data-cinder-icon-only]) {
+  .cinder-access-gate__passthrough:has(> [data-cinder-icon-only]):has(> :nth-child(2)) {
     display: inline-flex;
     align-items: center;
   }

@@ -31,7 +31,7 @@ function idsIn(container: Element): string[] {
 
 describe('Input rendering', () => {
   test('marks its root as a full-width layout participant', () => {
-    const { container } = render(Input, { id: 'name' });
+    const { container } = render(Input, { id: 'name', value: '' });
 
     expect(
       container.querySelector('.cinder-input-field')?.hasAttribute('data-cinder-full-width'),
