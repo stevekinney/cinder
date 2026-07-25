@@ -145,6 +145,46 @@ test.describe('table scroll recipe', () => {
 
 const allEntries = loadManifest();
 
+test.describe('date picker surface ownership', () => {
+  test('uses one custom calendar surface without native date controls', async ({
+    componentPage,
+  }) => {
+    const entry = allEntries.find((candidate) => candidate.slug === 'date-picker');
+    if (!entry) throw new Error('DatePicker is missing from the component manifest.');
+
+    const page = await componentPage.open({
+      entry,
+      theme: 'light',
+      viewport: { name: 'desktop', width: 1440, height: 1080 },
+    });
+    const datePicker = page.locator('.cinder-date-picker');
+    await expect(
+      datePicker.locator('input[type="date"], input[type="datetime-local"]'),
+    ).toHaveCount(0);
+    await expect(datePicker.locator('.cinder-date-picker__input')).toHaveAttribute(
+      'aria-haspopup',
+      'dialog',
+    );
+
+    await datePicker.getByRole('button', { name: /open .*calendar|open date picker/i }).click();
+    await expect(page.locator('.cinder-date-picker__panel')).toHaveCount(1);
+    await expect(page.locator('.cinder-date-picker__panel')).toBeVisible();
+
+    const rangeEntry = allEntries.find((candidate) => candidate.slug === 'date-range-field');
+    if (!rangeEntry) throw new Error('DateRangeField is missing from the component manifest.');
+    const rangePage = await componentPage.open({
+      entry: rangeEntry,
+      theme: 'light',
+      viewport: { name: 'desktop', width: 1440, height: 1080 },
+    });
+    await expect(
+      rangePage.locator(
+        '.cinder-date-range-field input[type="date"], .cinder-date-range-field input[type="datetime-local"]',
+      ),
+    ).toHaveCount(0);
+  });
+});
+
 // `CINDER_TEST_COMPONENTS` is a comma-separated allow-list set by CI when a
 // pull request only touched specific components. See
 // `scripts/changed-components.ts` for how the value is computed. Empty,

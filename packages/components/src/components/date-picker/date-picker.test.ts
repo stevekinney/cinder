@@ -14,9 +14,11 @@ beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('DatePicker', () => {
-  test('renders date input and trigger button', () => {
+  test('renders one custom text input and trigger button', () => {
     const { container } = render(DatePicker, { id: 'dp', value: '2026-06-29' });
-    expect(container.querySelector<HTMLInputElement>('#dp')?.type).toBe('date');
+    const input = container.querySelector<HTMLInputElement>('#dp');
+    expect(input?.type).toBe('text');
+    expect(input?.getAttribute('aria-haspopup')).toBe('dialog');
     expect(container.querySelector('.cinder-date-picker__trigger')).not.toBeNull();
   });
 

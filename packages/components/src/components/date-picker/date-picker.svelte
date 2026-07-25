@@ -104,7 +104,6 @@
           (granularity === 'second' ? '00:00:00' : granularity === 'minute' ? '00:00' : '00:00')),
   );
   const step = $derived(granularity === 'second' ? 1 : granularity === 'minute' ? 60 : 3600);
-  const inputType = $derived(granularity === 'day' ? 'date' : 'datetime-local');
   const invalid = $derived(
     error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined,
   );
@@ -178,7 +177,8 @@
       bind:this={inputElement}
       class="cinder-date-picker__input"
       {id}
-      type={inputType}
+      type="text"
+      inputmode="numeric"
       value={normalizedValue ?? ''}
       min={normalizedMin}
       max={normalizedMax}
@@ -187,6 +187,7 @@
       {disabled}
       aria-invalid={invalid}
       aria-describedby={describedById}
+      aria-haspopup="dialog"
       onchange={handleInputChange}
     />
     <button

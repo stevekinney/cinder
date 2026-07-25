@@ -2,6 +2,12 @@
 
 Controlled date/date-time picker that combines a text trigger, floating calendar, and optional time controls.
 
+DatePicker owns the picker UI (decision B): it uses a text input and Cinder's
+Calendar as the single calendar surface. This avoids combining a browser-native
+date picker with the custom floating calendar; the input keeps its label,
+description, error, and dialog semantics while DatePicker handles parsing and
+keyboard input.
+
 ## Usage
 
 ```svelte
