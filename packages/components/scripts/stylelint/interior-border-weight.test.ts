@@ -21,6 +21,11 @@ describe(ruleName, () => {
         await lint('.cinder-card__header { border-block-end: 1px solid var(--cinder-border); }'),
       ),
     ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint('.cinder-table__cell { border-bottom: 1px solid var(--cinder-border); }'),
+      ),
+    ).toHaveLength(1);
   });
 
   test('allows muted interior and full-strength outer borders', async () => {
