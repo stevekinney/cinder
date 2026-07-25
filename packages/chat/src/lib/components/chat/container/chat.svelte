@@ -70,6 +70,7 @@
   type ChatMessageRenderRow = Extract<ChatRenderRow, { type: 'message' }>;
   type PendingHistoryScroll = {
     focusHistoryTriggerAfterRestore: boolean;
+    requestId: number;
     previousFirstMessageId: string | null;
     previousFirstTranscriptMessageId: string | null;
     previousFirstMessageViewportOffset: number;
@@ -255,6 +256,9 @@
   let isStabilizingNonVirtualHistoryAnchor = $state(false);
   let nonVirtualHistoryStabilizationGeneration = 0;
   let isHistoryRestorationUserScrolling = false;
+  let historyLoadRequestId = 0;
+  let historyRestorationUserScrollObserved = false;
+  let historyRestorationUserScrollResetRaf: number | undefined;
   let deferredHistoryTriggerFocus = $state<
     { conversationId: string; pending: PendingHistoryScroll } | undefined
   >();
@@ -514,6 +518,7 @@
       currentAdapter !== previousHistoryAdapter
     ) {
       cancelNonVirtualHistoryAnchorStabilization();
+      resetHistoryRestorationUserScrolling();
       cancelPendingHistoryAnchorRecapture();
       adapterHasMoreHistory = undefined;
       pendingHistoryScroll = null;
@@ -759,7 +764,9 @@
   }
 
   async function stabilizeNonVirtualHistoryAnchor(pending: PendingHistoryScroll): Promise<void> {
-    if (isHistoryRestorationUserScrolling) return;
+    const userScrolled = historyRestorationUserScrollObserved;
+    resetHistoryRestorationUserScrolling();
+    if (userScrolled) return;
 
     const generation = ++nonVirtualHistoryStabilizationGeneration;
     const stabilizationConversationId = conversationId;
@@ -805,13 +812,14 @@
   function invalidatePendingHistoryRestoration(): void {
     pendingHistoryScroll = null;
     cancelPendingHistoryAnchorRecapture();
+    resetHistoryRestorationUserScrolling();
   }
 
   function recapturePendingHistoryAnchor(pending: PendingHistoryScroll | null): void {
     if (pending === null || pendingHistoryScroll !== pending || historyTranscriptChanged(pending)) {
       return;
     }
-    captureHistoryScroll();
+    captureHistoryScroll(pending.requestId);
   }
 
   function schedulePendingHistoryAnchorRecapture(): void {
@@ -833,10 +841,39 @@
       return;
     }
     isHistoryRestorationUserScrolling = true;
+    historyRestorationUserScrollObserved = false;
+    scheduleHistoryRestorationUserScrollReset();
     cancelNonVirtualHistoryAnchorStabilization();
     if (pendingHistoryScroll !== null) {
       pendingHistoryScroll.focusHistoryTriggerAfterRestore = false;
     }
+  }
+
+  function resetHistoryRestorationUserScrolling(): void {
+    cancelHistoryRestorationUserScrollReset();
+    isHistoryRestorationUserScrolling = false;
+    historyRestorationUserScrollObserved = false;
+  }
+
+  function cancelHistoryRestorationUserScrollReset(): void {
+    if (historyRestorationUserScrollResetRaf === undefined) return;
+    cancelAnimationFrame(historyRestorationUserScrollResetRaf);
+    historyRestorationUserScrollResetRaf = undefined;
+  }
+
+  function scheduleHistoryRestorationUserScrollReset(): void {
+    cancelHistoryRestorationUserScrollReset();
+    // A pointer or wheel gesture can precede the browser's scroll event by
+    // multiple rendering frames. Keep the gesture active long enough to
+    // observe that event, but expire a no-op gesture that produces no scroll.
+    historyRestorationUserScrollResetRaf = requestAnimationFrame(() => {
+      historyRestorationUserScrollResetRaf = requestAnimationFrame(() => {
+        historyRestorationUserScrollResetRaf = requestAnimationFrame(() => {
+          historyRestorationUserScrollResetRaf = undefined;
+          isHistoryRestorationUserScrolling = false;
+        });
+      });
+    });
   }
 
   function setHistoryAnchor(pending: PendingHistoryScroll): void {
@@ -937,6 +974,7 @@
         streamingScrollRaf = undefined;
       }
       cancelPendingHistoryAnchorRecapture();
+      resetHistoryRestorationUserScrolling();
       clearConsumerAnnouncements();
     };
   });
@@ -1020,6 +1058,10 @@
   const historyAnchorScrollAttachment: Attachment<HTMLElement> = (node) => {
     const handleScroll = () => {
       clearHistoryAnchorAfterScroll(node.scrollTop);
+      if (isHistoryRestorationUserScrolling) {
+        historyRestorationUserScrollObserved = true;
+        cancelHistoryRestorationUserScrollReset();
+      }
       if (isHistoryRestorationUserScrolling && pendingHistoryScroll === null) {
         cancelNonVirtualHistoryAnchorStabilization();
       }
@@ -1205,7 +1247,7 @@
     });
   }
 
-  function captureHistoryScroll(): void {
+  function captureHistoryScroll(requestId: number): void {
     cancelNonVirtualHistoryAnchorStabilization();
     cancelPendingHistoryAnchorRecapture();
     const focusHistoryTriggerAfterRestore =
@@ -1224,6 +1266,7 @@
         : 0);
     pendingHistoryScroll = {
       focusHistoryTriggerAfterRestore,
+      requestId,
       previousFirstMessageId,
       previousFirstTranscriptMessageId,
       previousFirstMessageViewportOffset,
@@ -1261,13 +1304,18 @@
     );
   }
 
+  function pendingHistoryScrollForRequest(requestId: number): PendingHistoryScroll | null {
+    return pendingHistoryScroll?.requestId === requestId ? pendingHistoryScroll : null;
+  }
+
   async function handleLoadHistory(): Promise<void> {
     if (isLoadingHistory || !showHistoryTrigger) return;
 
     isLoadingHistory = true;
-    captureHistoryScroll();
-    const pending = pendingHistoryScroll;
-    if (pending === null) {
+    resetHistoryRestorationUserScrolling();
+    const requestId = ++historyLoadRequestId;
+    captureHistoryScroll(requestId);
+    if (pendingHistoryScroll === null) {
       isLoadingHistory = false;
       return;
     }
@@ -1284,13 +1332,15 @@
         return;
       }
 
-      const transcriptChanged = historyTranscriptChanged(pending);
+      let currentPending = pendingHistoryScrollForRequest(requestId);
+      const transcriptChanged = currentPending !== null && historyTranscriptChanged(currentPending);
       if (isVirtualized && !transcriptChanged) {
         deferredAdapterHasMoreHistory = nextHasMoreHistory ?? null;
         await tick();
-        if (historyTranscriptChanged(pending)) {
-          await settlePendingHistoryScroll(pending);
-        } else if (pendingHistoryScroll === pending) {
+        currentPending = pendingHistoryScrollForRequest(requestId);
+        if (currentPending !== null && historyTranscriptChanged(currentPending)) {
+          await settlePendingHistoryScroll(currentPending);
+        } else if (currentPending !== null) {
           pendingHistoryScroll = null;
           finishDeferredAdapterHistoryLoading();
         } else {
@@ -1299,9 +1349,10 @@
         return;
       }
 
-      if (isVirtualized || transcriptChanged) {
-        await settlePendingHistoryScroll(pending);
-      } else {
+      currentPending = pendingHistoryScrollForRequest(requestId);
+      if (currentPending !== null && (isVirtualized || historyTranscriptChanged(currentPending))) {
+        await settlePendingHistoryScroll(currentPending);
+      } else if (currentPending !== null) {
         pendingHistoryScroll = null;
       }
       adapterHasMoreHistory = nextHasMoreHistory;
@@ -1311,7 +1362,10 @@
 
     try {
       await onloadhistory?.();
-      await settlePendingHistoryScroll(pending);
+      const currentPending = pendingHistoryScrollForRequest(requestId);
+      if (currentPending !== null) {
+        await settlePendingHistoryScroll(currentPending);
+      }
     } catch (error) {
       pendingHistoryScroll = null;
       throw error;

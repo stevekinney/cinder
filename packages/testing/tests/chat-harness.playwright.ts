@@ -527,18 +527,18 @@ test.describe('chat harness — scroll, unread, jump', () => {
       await harness.locator('[data-testid="scroll-top"]').click();
       await timeline.getByRole('button', { name: /load earlier messages/i }).click();
       await expect(harness.locator('[data-testid="resolve-history"]')).toBeEnabled();
+      const previousScrollHeight = await timeline.evaluate((element) => element.scrollHeight);
+      await harness.locator('[data-testid="resolve-history"]').click();
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await expect
+        .poll(async () => timeline.evaluate((element) => element.scrollHeight))
+        .toBeGreaterThan(previousScrollHeight);
       await timeline.dispatchEvent('pointerdown');
       await timeline.evaluate((element) => {
-        document.querySelector<HTMLButtonElement>('[data-testid="resolve-history"]')?.click();
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            element.scrollTop = element.scrollHeight;
-            element.dispatchEvent(new Event('scroll'));
-          });
-        });
+        element.scrollTop = element.scrollHeight;
+        element.dispatchEvent(new Event('scroll'));
       });
 
-      await expectLoggedEvent(harness, 'onloadhistory');
       await timeline.evaluate(
         () =>
           new Promise<void>((resolve) => {
@@ -557,6 +557,73 @@ test.describe('chat harness — scroll, unread, jump', () => {
             Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop),
           ),
         )
+        .toBeLessThan(2);
+    } finally {
+      await dispose();
+    }
+  });
+
+  test('a no-op gesture expires before later history stabilization', async ({ browser }) => {
+    const { harness, dispose } = await openHarness(browser);
+    try {
+      await harness.locator('#t-history').click();
+      await harness.locator('#t-history-delay').click();
+      await harness.locator('[data-testid="seed-thread"]').click();
+
+      const timeline = harness.locator('.chat-timeline');
+      await harness.locator('[data-testid="scroll-top"]').click();
+      const anchor = timeline.getByText('Tell me about alpha.').first();
+      await expect(anchor).toBeVisible();
+      const before = await anchor.boundingBox();
+      const beforeTimeline = await timeline.boundingBox();
+      expect(before).not.toBeNull();
+      expect(beforeTimeline).not.toBeNull();
+      const beforeOffset = (before?.y ?? 0) - (beforeTimeline?.y ?? 0);
+
+      await timeline.getByRole('button', { name: /load earlier messages/i }).click();
+      await expect(harness.locator('[data-testid="resolve-history"]')).toBeEnabled();
+      await timeline.dispatchEvent('pointerdown');
+      await timeline.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  setTimeout(resolve, 0);
+                }),
+              ),
+            );
+          }),
+      );
+      await timeline.evaluate(() => {
+        document.querySelector<HTMLButtonElement>('[data-testid="resolve-history"]')?.click();
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const firstMessage = document.querySelector<HTMLElement>('.chat-message-wrapper');
+            if (firstMessage) firstMessage.style.minHeight = '12rem';
+          });
+        });
+      });
+
+      await expectLoggedEvent(harness, 'onloadhistory');
+      await timeline.evaluate(
+        () =>
+          new Promise<void>((resolve) => {
+            let frames = 0;
+            const wait = () => {
+              frames += 1;
+              if (frames >= 8) resolve();
+              else requestAnimationFrame(wait);
+            };
+            requestAnimationFrame(wait);
+          }),
+      );
+      await expect
+        .poll(async () => {
+          const after = await anchor.boundingBox();
+          const afterTimeline = await timeline.boundingBox();
+          return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - beforeOffset);
+        })
         .toBeLessThan(2);
     } finally {
       await dispose();
