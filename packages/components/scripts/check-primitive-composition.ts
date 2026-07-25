@@ -21,6 +21,7 @@ import {
   gridDefinitionProperties,
   type CssPrimitiveCounts,
 } from './primitive-composition-css.ts';
+import { fieldWrapperCount } from './primitive-composition-field.ts';
 import {
   allowedFieldWrapperCounts,
   allowedFloatingCounts,
@@ -340,121 +341,6 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
       total.floating++;
   });
   return total;
-}
-
-function isCanonicalFieldComponent(node: UnknownRecord): boolean {
-  if (node['type'] !== 'Component' || typeof node['name'] !== 'string') return false;
-  return node['name'] === 'FormField' || node['name'].startsWith('FormField.');
-}
-
-function localMarkupEvidence(
-  node: unknown,
-  source: string,
-  bindings: ReadonlyMap<string, string>,
-): { labelCount: number; terms: string } {
-  if (!isRecord(node) || isCanonicalFieldComponent(node)) return { labelCount: 0, terms: '' };
-  const resolvedElementName =
-    node['type'] === 'RegularElement'
-      ? node['name']
-      : node['type'] === 'SvelteElement'
-        ? staticStringFromExpression(node['tag'], bindings)
-        : undefined;
-  const labelCount =
-    typeof resolvedElementName === 'string' && resolvedElementName.toLowerCase() === 'label'
-      ? 1
-      : 0;
-  const terms: string[] = [];
-  if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
-  if (
-    (node['type'] === 'ExpressionTag' || node['type'] === 'IfBlock') &&
-    typeof node['start'] === 'number' &&
-    typeof node['end'] === 'number'
-  )
-    terms.push(source.slice(node['start'], node['end']));
-  if (
-    node['type'] === 'Attribute' &&
-    typeof node['start'] === 'number' &&
-    typeof node['end'] === 'number'
-  )
-    terms.push(source.slice(node['start'], node['end']));
-  return { labelCount, terms: terms.join(' ') };
-}
-
-type FieldEvidence = {
-  count: number;
-  isolatedMessages: boolean;
-  labelCount: number;
-  rootLabelCount: number;
-  terms: string;
-};
-
-function qualifyingFieldLabels(
-  node: unknown,
-  source: string,
-  bindings: ReadonlyMap<string, string>,
-): FieldEvidence {
-  if (!isRecord(node) || isCanonicalFieldComponent(node))
-    return {
-      count: 0,
-      isolatedMessages: false,
-      labelCount: 0,
-      rootLabelCount: 0,
-      terms: '',
-    };
-  const localEvidence = localMarkupEvidence(node, source, bindings);
-  let count = 0;
-  let labelCount = localEvidence.labelCount;
-  const terms = [localEvidence.terms];
-  const deferredMessageTerms: string[] = [];
-  const childEvidence: FieldEvidence[] = [];
-  for (const value of Object.values(node)) {
-    const children = Array.isArray(value) ? value : [value];
-    for (const child of children) {
-      if (!isRecord(child)) continue;
-      childEvidence.push(qualifyingFieldLabels(child, source, bindings));
-    }
-  }
-  const hasDirectLabel =
-    localEvidence.labelCount > 0 || childEvidence.some((evidence) => evidence.rootLabelCount > 0);
-  for (const evidence of childEvidence) {
-    count += evidence.count;
-    if (evidence.count > 0) continue;
-    if (evidence.isolatedMessages && !hasDirectLabel) {
-      deferredMessageTerms.push(evidence.terms);
-      continue;
-    }
-    labelCount += evidence.labelCount;
-    terms.push(evidence.terms);
-  }
-
-  let combinedTerms = terms.join(' ');
-  if (labelCount === 0 && deferredMessageTerms.length > 0)
-    combinedTerms = `${combinedTerms} ${deferredMessageTerms.join(' ')}`;
-  const qualifies =
-    /(?:description|help(?:text)?|hint|assist)/i.test(combinedTerms) &&
-    /(?:error|validation|invalid|message)/i.test(combinedTerms);
-  if (qualifies && labelCount > 0)
-    return {
-      count: count + labelCount,
-      isolatedMessages: false,
-      labelCount: 0,
-      rootLabelCount: 0,
-      terms: '',
-    };
-  return {
-    count,
-    isolatedMessages: qualifies && labelCount === 0,
-    labelCount,
-    rootLabelCount: localEvidence.labelCount,
-    terms: combinedTerms,
-  };
-}
-
-export function fieldWrapperCount(source: string): number {
-  const fragment = parseSvelteFragment(source);
-  return fragment === undefined
-    ? 0
-    : qualifyingFieldLabels(fragment, source, staticStringBindings(source)).count;
 }
 
 export function shouldCheckComponentSource(filePath: string): boolean {
