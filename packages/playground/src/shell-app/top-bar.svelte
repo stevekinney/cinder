@@ -477,12 +477,12 @@
     border-radius: calc(var(--cinder-radius-sm) - 2px);
   }
 
-  .top-bar :global(.cinder-segmented-control-option[data-cinder-selected]),
-  .top-bar :global(.cinder-segmented-control-option[data-cinder-current]),
-  .top-bar :global(.cinder-segmented-control-option[data-cinder-pressed]) {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 84%);
+  .top-bar :global(.cinder-segmented-control-option[data-cinder-selected]:not(:focus-visible)),
+  .top-bar :global(.cinder-segmented-control-option[data-cinder-current]:not(:focus-visible)),
+  .top-bar :global(.cinder-segmented-control-option[data-cinder-pressed]:not(:focus-visible)) {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 55%);
     color: var(--cinder-text);
-    box-shadow: none;
+    box-shadow: inset 0 -2px 0 var(--cinder-accent);
   }
 
   /*
