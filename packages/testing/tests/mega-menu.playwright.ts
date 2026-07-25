@@ -26,6 +26,10 @@ test('nested submenu keyboard navigation enters, traverses, and exits', async ({
   await products.focus();
   await products.press('ArrowDown');
 
+  const uiKit = page.getByRole('link', { name: 'UI Kit Components and tokens' });
+  await expect(uiKit).toBeFocused();
+  await uiKit.press('Tab');
+
   const frontend = page.getByRole('button', { name: 'Frontend' });
   await expect(frontend).toBeFocused();
 
@@ -69,6 +73,7 @@ test('Accessibility shortcut alternatives wrap without overflowing', async ({ co
   );
   expect(overflows).toBe(false);
 
+  await accessibility.scrollIntoViewIfNeeded();
   await captureScreenshot(page, {
     slug: 'mega-menu',
     theme: 'light',

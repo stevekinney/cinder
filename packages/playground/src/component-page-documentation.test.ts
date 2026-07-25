@@ -304,9 +304,8 @@ describe('component-page single-scroll layout', () => {
     expect(screen.getByText(/Implements the WAI-ARIA Button pattern/)).toBeTruthy();
     // Keyboard table built from Kbd.
     const keyLists = document.querySelectorAll('.dx-keys__key-list');
-    expect(keyLists[0]?.getAttribute('aria-label')).toBe(
-      'ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape',
-    );
+    expect(keyLists[0]?.getAttribute('aria-label')).toBeNull();
+    expect(Array.from(keyLists[0]?.querySelectorAll('.dx-keys__separator') ?? [])).toHaveLength(5);
     expect(
       Array.from(keyLists[0]?.querySelectorAll('kbd') ?? []).map((key) => key.textContent),
     ).toEqual(['ArrowLeft', 'ArrowRight', 'Home', 'End', 'ArrowDown', 'Escape']);
