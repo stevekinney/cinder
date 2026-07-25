@@ -33,7 +33,7 @@
     min-inline-size: 0;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: 'body';
-    align-items: center;
+    align-items: start;
     padding: var(--cinder-selectable-row-padding-block, var(--cinder-space-3))
       var(--cinder-selectable-row-padding-inline, var(--cinder-space-4));
     border: 0;
@@ -53,7 +53,7 @@
   }
 
   @media (hover: hover) {
-    .cinder-selectable-row__primary:hover:not(:disabled) {
+    .cinder-selectable-row:hover {
       background: var(--cinder-surface-hover);
     }
   }
@@ -73,7 +73,7 @@
   .cinder-selectable-row__leading {
     grid-area: leading;
     display: inline-flex;
-    align-items: center;
+    align-items: start;
   }
 
   .cinder-selectable-row__body {
