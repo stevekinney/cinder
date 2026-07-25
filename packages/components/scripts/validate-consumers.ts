@@ -1801,7 +1801,7 @@ async function runSvelteKitHydrationRoutesOnce(
   try {
     context = await browser.newContext();
     for (const routePath of routePaths) {
-      await assertSvelteKitHydrationRoute(context, httpPort, label, routePath);
+      await assertSvelteKitHydrationRoute(browser, context, httpPort, label, routePath);
     }
   } catch (error) {
     bodyError = error;
@@ -1872,6 +1872,7 @@ async function assertSvelteKitClientRoutesHydrate(
 }
 
 async function assertSvelteKitHydrationRoute(
+  browser: Browser,
   context: BrowserContext,
   httpPort: number,
   label: string,
@@ -1910,7 +1911,7 @@ async function assertSvelteKitHydrationRoute(
     ).catch((error: unknown) => {
       throw new HydrationTeardownError(
         new Error(
-          `teardown phase=page.close route=${routePath}: ${error instanceof Error ? error.message : String(error)}`,
+          `teardown phase=page.close route=${routePath} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
           { cause: error },
         ),
       );
