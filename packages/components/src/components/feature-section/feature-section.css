@@ -90,7 +90,7 @@
     overflow: auto;
   }
 
-  @container cinder-feature-section (max-width: 64rem) {
+  @container cinder-feature-section (max-width: 48rem) {
     .cinder-feature-section__list {
       grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
     }
@@ -118,6 +118,13 @@
       .cinder-feature-section__media {
       grid-column: 1;
       grid-row: 1;
+    }
+  }
+
+  @container cinder-feature-section (min-width: 48rem) and (max-width: 64rem) {
+    .cinder-feature-section[data-cinder-layout='split'][data-cinder-has-media]
+      .cinder-feature-section__list {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 }
