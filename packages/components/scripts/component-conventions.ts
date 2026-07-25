@@ -72,7 +72,7 @@ export const COMPONENT_AUTHORING_CHECKLIST = [
   },
   {
     id: 'surface-and-form-composition',
-    text: 'Use _floating-surface.css for floating surfaces, and compose form controls from Input and FormField.',
+    text: 'Use `_floating-surface.css` for floating surfaces, and compose form controls from `Input` and `FormField`.',
     references: ['#921', '#923'],
   },
   {

@@ -13,23 +13,19 @@ sections:
 Before creating a component, load the repository-local
 `cinder-component-authoring` skill and complete this checklist:
 
-- Search the inventory for an existing primitive and compose it before adding a
-  new component ([#919](https://github.com/stevekinney/cinder/issues/919),
-  [#929](https://github.com/stevekinney/cinder/issues/929)).
-- Consult [`docs/component-api-conventions.md`](../../docs/component-api-conventions.md)
-  before adding a prop ([#922](https://github.com/stevekinney/cinder/issues/922)).
-- Floating surfaces consume `_floating-surface.css`; form controls compose
-  `Input`/`FormField` ([#921](https://github.com/stevekinney/cinder/issues/921),
-  [#923](https://github.com/stevekinney/cinder/issues/923)).
-- Disclosure controls use the rotating chevron; icons come from `lucide-svelte`
-  ([#957](https://github.com/stevekinney/cinder/issues/957)).
-- Tests assert resulting state and resting appearance, not only transitions
-  ([#931](https://github.com/stevekinney/cinder/issues/931)).
+<!-- component-authoring-checklist:start -->
+
+- [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
+- [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
+- [ ] Use `_floating-surface.css` for floating surfaces, and compose form controls from `Input` and `FormField`. (#921, #923)
+- [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
+- [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
+<!-- component-authoring-checklist:end -->
 
 `packages/components/scripts/component-conventions.ts` is the machine-readable
-source of truth. `bun run components:create <name>` copies its checklist into
-the scaffold README, so update that module first when the authoring contract
-changes.
+source of truth. `bun run --filter=@lostgradient/cinder components:create
+<name>` copies its checklist into the scaffold README, so update that module
+first when the authoring contract changes.
 
 ---
 

@@ -20,7 +20,7 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'bun:test';
 
-import { hasSubstantiveTest } from './component-conventions.ts';
+import { hasSubstantiveTest, renderComponentAuthoringChecklist } from './component-conventions.ts';
 import {
   buildContext,
   createOne,
@@ -35,6 +35,57 @@ import {
 } from './create-component.ts';
 import { extractExampleFile } from './generate-component-examples.ts';
 import { extractFromSource } from './generate-component-metadata.ts';
+
+const REPOSITORY_ROOT = join(import.meta.dir, '..', '..', '..');
+const CHECKLIST_START = '<!-- component-authoring-checklist:start -->';
+const CHECKLIST_END = '<!-- component-authoring-checklist:end -->';
+const CHECKLIST_MIRRORS = [
+  '.agents/skills/cinder-component-authoring/SKILL.md',
+  '.claude/skills/cinder-component-authoring/SKILL.md',
+  'AGENTS.md',
+  'packages/components/AGENTS.md',
+] as const;
+
+function extractChecklist(source: string, path: string): string {
+  const start = source.indexOf(CHECKLIST_START);
+  const end = source.indexOf(CHECKLIST_END);
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error(`${path} is missing the component authoring checklist markers`);
+  }
+  return source.slice(start + CHECKLIST_START.length, end).trim();
+}
+
+describe('component authoring guidance', () => {
+  it('keeps every checklist mirror synchronized with the machine-readable source', async () => {
+    const canonicalChecklist = renderComponentAuthoringChecklist();
+
+    for (const relativePath of CHECKLIST_MIRRORS) {
+      const source = await readFile(join(REPOSITORY_ROOT, relativePath), 'utf8');
+      expect(extractChecklist(source, relativePath)).toBe(canonicalChecklist);
+    }
+  });
+
+  it('uses runnable root-workspace commands in both skill mirrors', async () => {
+    for (const relativePath of CHECKLIST_MIRRORS.slice(0, 2)) {
+      const source = await readFile(join(REPOSITORY_ROOT, relativePath), 'utf8');
+      const generateComponents = source.indexOf(
+        'bun run --filter=@lostgradient/cinder components:generate',
+      );
+      const generateExports = source.indexOf(
+        'bun run --filter=@lostgradient/cinder exports:generate',
+      );
+      const checkComponents = source.indexOf(
+        'bun run --filter=@lostgradient/cinder components:check',
+      );
+      const checkExports = source.indexOf('bun run --filter=@lostgradient/cinder exports:check');
+
+      expect(generateComponents).toBeGreaterThan(-1);
+      expect(generateExports).toBeGreaterThan(generateComponents);
+      expect(checkComponents).toBeGreaterThan(generateExports);
+      expect(checkExports).toBeGreaterThan(checkComponents);
+    }
+  });
+});
 
 describe('buildContext', () => {
   it('derives the pascal name and stable import path from a kebab id', () => {
@@ -163,7 +214,7 @@ describe('renderReadme', () => {
     expect(readme).toContain('Search the component inventory');
     expect(readme).toContain('docs/component-api-conventions.md');
     expect(readme).toContain('_floating-surface.css');
-    expect(readme).toContain('Input and FormField');
+    expect(readme).toContain('`Input` and `FormField`');
     expect(readme).toContain('#919');
     expect(readme).toContain('#921');
     expect(readme).toContain('#922');

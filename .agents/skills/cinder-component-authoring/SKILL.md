@@ -10,27 +10,26 @@ short; the machine-readable source is
 `packages/components/scripts/component-conventions.ts`, and `components:create`
 prints the same checklist in the generated README.
 
-1. Search the component manifest, CLI/MCP inventory, and nearby source for an
-   existing primitive. Compose it when it already covers the job. Read the
-   rationale in [#919](https://github.com/stevekinney/cinder/issues/919) and
-   [#929](https://github.com/stevekinney/cinder/issues/929) when the new component
-   overlaps an existing family.
-2. Read [`docs/component-api-conventions.md`](../../../docs/component-api-conventions.md)
-   before adding props. Use the shared vocabulary and the denylist enforced by
-   `scripts/component-conventions.ts` ([#922](https://github.com/stevekinney/cinder/issues/922)).
-3. For a floating surface, use the shared `cinder-_floating-surface` class and
-   `_floating-surface.css`; do not invent another positioning/ring recipe. Use
-   `Input` and `FormField` when composing form controls
-   ([#921](https://github.com/stevekinney/cinder/issues/921),
-   [#923](https://github.com/stevekinney/cinder/issues/923)).
-4. Use the established rotating chevron for disclosure affordances and icons
-   from `lucide-svelte` ([#957](https://github.com/stevekinney/cinder/issues/957)).
-5. Add tests that assert the resulting state and resting appearance as well as
-   interaction transitions ([#931](https://github.com/stevekinney/cinder/issues/931)).
-6. Scaffold with `bun run --filter=@lostgradient/cinder components:create <name>`
-   and follow its generated next steps. Run `components:generate`, then
-   `components:check` and `exports:check` after adding the component to the
-   manifest/barrel.
+<!-- component-authoring-checklist:start -->
+
+- [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
+- [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
+- [ ] Use `_floating-surface.css` for floating surfaces, and compose form controls from `Input` and `FormField`. (#921, #923)
+- [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
+- [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
+<!-- component-authoring-checklist:end -->
+
+Scaffold with
+`bun run --filter=@lostgradient/cinder components:create <name>` and follow its
+generated next steps. From the repository root, regenerate and verify artifacts
+with:
+
+```bash
+bun run --filter=@lostgradient/cinder components:generate
+bun run --filter=@lostgradient/cinder exports:generate
+bun run --filter=@lostgradient/cinder components:check
+bun run --filter=@lostgradient/cinder exports:check
+```
 
 Cross-referenced epics: [#919](https://github.com/stevekinney/cinder/issues/919),
 [#921](https://github.com/stevekinney/cinder/issues/921),
