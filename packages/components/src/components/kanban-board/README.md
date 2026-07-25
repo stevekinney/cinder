@@ -51,6 +51,7 @@ Controlled multi-column board for reordering cards within and across workflow co
 - `--cinder-kanban-column-background`
 - `--cinder-kanban-column-gap`
 - `--cinder-kanban-column-width`
+- `--cinder-kanban-scroll-edge`
 <!-- generated:variables:end -->
 
 ## Subcomponents
