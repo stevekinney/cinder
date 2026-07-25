@@ -218,7 +218,7 @@ export function findPrimitiveCompositionViolations(
   const normalized = filePath.replaceAll('\\', '/').replace(/^.*components\//, '');
   const violations: PrimitiveCompositionViolation[] = [];
   if (
-    /\.svelte$/.test(normalized) &&
+    normalized.endsWith('.svelte') &&
     /<(?:input|select|textarea)\b/i.test(source) &&
     !allowedRawControlPaths.has(normalized)
   ) {
@@ -228,7 +228,7 @@ export function findPrimitiveCompositionViolations(
     });
   }
   if (
-    /\.css$/.test(normalized) &&
+    normalized.endsWith('.css') &&
     /display\s*:\s*grid\b/i.test(source) &&
     /grid-template-columns\s*:/i.test(source) &&
     !allowedGridPaths.has(normalized)
@@ -239,7 +239,7 @@ export function findPrimitiveCompositionViolations(
     });
   }
   if (
-    /\.css$/.test(normalized) &&
+    normalized.endsWith('.css') &&
     /position\s*:\s*(?:absolute|fixed)\b/i.test(source) &&
     /z-index\s*:/i.test(source) &&
     !allowedFloatingPaths.has(normalized) &&
@@ -251,7 +251,7 @@ export function findPrimitiveCompositionViolations(
     });
   }
   if (
-    /\.svelte$/.test(normalized) &&
+    normalized.endsWith('.svelte') &&
     /<label\b/i.test(source) &&
     /description/i.test(source) &&
     /error/i.test(source) &&
