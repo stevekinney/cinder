@@ -21,8 +21,8 @@
    * Tab to page content under an open backdrop. When you need that isolation
    * (a full-page loading dimmer, a lightbox), apply `inert` to your page-content
    * container while the backdrop is open and pair it with `@lostgradient/cinder/focus-trap`.
-   * Click-to-close via `onclick` is a pointer convenience — wire an Escape
-   * handler yourself for a keyboard dismiss path (e.g. on a lightbox).
+   * Escape dispatches through the shared overlay stack and invokes the scrim's
+   * click path when an `onclick` callback is provided.
    */
   export type { BackdropProps } from './backdrop.types.ts';
 </script>
@@ -62,7 +62,7 @@
   });
 
   $effect(() => {
-    if (!open || !onclick || !scrimElement) return;
+    if (!open || !scrimElement) return;
     return pushEscapeHandler((event) => {
       if (event.defaultPrevented) return;
       event.preventDefault();
