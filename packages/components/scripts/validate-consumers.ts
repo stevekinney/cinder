@@ -14,7 +14,7 @@ import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import parseChangeset from '@changesets/parse';
-import type { BrowserContext, Page } from '@playwright/test';
+import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
 import { waitForReadyHtml } from './consumer-readiness.ts';
