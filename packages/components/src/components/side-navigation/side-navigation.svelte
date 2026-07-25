@@ -10,7 +10,9 @@
    * @useWhen Pairing with sidebar so the column collapses responsively on narrow viewports.
    * @avoidWhen Anchoring primary navigation across the top of the page — use navigation-bar instead.
    * @avoidWhen Rendering a single flat horizontal nav row — use navigation-bar instead.
-   * @related side-navigation-item, side-navigation-group, navigation-bar, sidebar
+   * @avoidWhen Showing an in-page heading outline — use table-of-contents instead.
+   * @avoidWhen Rendering expandable hierarchical data — use tree instead.
+   * @related side-navigation-item, side-navigation-group, navigation-bar, table-of-contents, tree, sidebar
    */
   export type { SideNavigationProps } from './side-navigation.types.ts';
 </script>

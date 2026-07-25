@@ -4463,9 +4463,22 @@
         },
         {
           "reason": "Rendering a single flat horizontal nav row — use navigation-bar instead."
+        },
+        {
+          "reason": "Showing an in-page heading outline — use table-of-contents instead."
+        },
+        {
+          "reason": "Rendering expandable hierarchical data — use tree instead."
         }
       ],
-      "related": ["side-navigation-item", "side-navigation-group", "navigation-bar", "sidebar"],
+      "related": [
+        "side-navigation-item",
+        "side-navigation-group",
+        "navigation-bar",
+        "table-of-contents",
+        "tree",
+        "sidebar"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5349,9 +5362,12 @@
         },
         {
           "reason": "The page has too few headings to justify a secondary navigation rail."
+        },
+        {
+          "reason": "Rendering expandable hierarchical navigation — use tree instead."
         }
       ],
-      "related": ["side-navigation", "breadcrumbs", "section-heading"],
+      "related": ["side-navigation", "tree", "breadcrumbs", "section-heading"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5769,9 +5785,15 @@
         },
         {
           "reason": "Switching between sibling views of the same region — use tabs instead."
+        },
+        {
+          "reason": "Showing an in-page heading outline — use table-of-contents instead."
+        },
+        {
+          "reason": "Providing route or section navigation — use side-navigation instead."
         }
       ],
-      "related": ["tree-item", "accordion"],
+      "related": ["tree-item", "table-of-contents", "side-navigation", "accordion"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
