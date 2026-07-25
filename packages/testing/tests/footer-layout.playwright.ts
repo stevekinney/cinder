@@ -120,34 +120,36 @@ test.describe('Footer responsive layout', () => {
         legalPadding: '16px',
       });
 
-      if (width === 20) {
+      if (width < 48) {
         expect(groupsBox?.x).toBeCloseTo(brandBox?.x ?? 0, 0);
         expect(groupsBox?.y ?? 0).toBeGreaterThan((brandBox?.y ?? 0) + (brandBox?.height ?? 0));
+      } else {
+        expect(groupsBox?.x ?? 0).toBeGreaterThan((brandBox?.x ?? 0) + (brandBox?.width ?? 0));
+        expect(groupsBox?.y).toBeCloseTo(brandBox?.y ?? 0, 0);
+      }
+
+      if (width === 20) {
         expect(companyBox?.y ?? 0).toBeGreaterThan(
           (productBox?.y ?? 0) + (productBox?.height ?? 0),
         );
       } else {
-        expect(groupsBox?.x ?? 0).toBeGreaterThan((brandBox?.x ?? 0) + (brandBox?.width ?? 0));
-        expect(groupsBox?.y).toBeCloseTo(brandBox?.y ?? 0, 0);
         expect(companyBox?.y).toBeCloseTo(productBox?.y ?? 0, 0);
         expect(productBox?.width ?? 0).toBeLessThanOrEqual(192);
         expect(companyBox?.width ?? 0).toBeLessThanOrEqual(192);
         expect((companyBox?.x ?? 0) - (productBox?.x ?? 0)).toBeLessThanOrEqual(208);
       }
 
-      if (width === 40) {
+      if (width === 48) {
         await groups.evaluate((element) => element.remove());
         await expect(brand).toHaveCSS('grid-column', '1 / -1');
       }
 
       if (width === 43) {
-        await brand.evaluate((element) => element.remove());
         await groups.evaluate((element) => {
           element.insertAdjacentHTML(
             'beforeend',
             `
               <nav aria-label="Support"><h3>Support</h3></nav>
-              <nav aria-label="Resources"><h3>Resources</h3></nav>
             `,
           );
         });
@@ -155,7 +157,7 @@ test.describe('Footer responsive layout', () => {
         const navigationRows = await groups
           .getByRole('navigation')
           .evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().y));
-        expect(navigationRows).toHaveLength(4);
+        expect(navigationRows).toHaveLength(3);
         expect(new Set(navigationRows).size).toBe(1);
       }
     });
