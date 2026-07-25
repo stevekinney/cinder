@@ -460,7 +460,7 @@
       label={countryAccessibleLabel}
       hideLabel
       options={selectOptions}
-      value={isAllowed(country) ? country : selectOptions[0]?.value}
+      value={isAllowed(country) ? country : fallbackCountry()}
       aria-describedby={describedBy}
       aria-invalid={resolvedAriaInvalid}
       disabled={resolvedDisabled}
