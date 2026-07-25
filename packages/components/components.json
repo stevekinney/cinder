@@ -4469,7 +4469,7 @@
           "alternative": "table-of-contents"
         },
         {
-          "reason": "Rendering expandable hierarchical data — use tree instead.",
+          "reason": "Rendering expandable hierarchical non-navigation data — use tree instead.",
           "alternative": "tree"
         }
       ],
