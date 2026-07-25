@@ -112,7 +112,12 @@
 
 <svelte:window onkeydown={handleWindowKeydown} />
 
-<ul class={classNames('cinder-sortable-list', className)} role="list" aria-label={label}>
+<ul
+  class={classNames('cinder-sortable-list', className)}
+  data-cinder-sortable-list
+  role="list"
+  aria-label={label}
+>
   <!--
     Instructions live inside the <ul> as a visually hidden <li> so the element is
     present in the DOM before any handle buttons that reference it via aria-describedby.

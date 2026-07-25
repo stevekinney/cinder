@@ -66,10 +66,16 @@ function renderList(overrides?: Record<string, unknown>) {
 
 describe('SortableController', () => {
   test('resting items provide an inline handle-and-label layout', () => {
+    const { container } = renderList();
     const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
+
+    expect(
+      container.querySelector('.cinder-sortable-list')?.hasAttribute('data-cinder-sortable-list'),
+    ).toBe(true);
     expect(stylesheet).toContain(
-      '.cinder-sortable-list .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
+      '[data-cinder-sortable-list] > .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
     );
+    expect(stylesheet).not.toContain('.cinder-sortable-list .cinder-sortable-item');
   });
 
   test('lift sets phase, key, from/to, liftedLabel, and calls announce', () => {
