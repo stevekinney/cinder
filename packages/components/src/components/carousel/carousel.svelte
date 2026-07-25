@@ -27,6 +27,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
+  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { CarouselProps } from './carousel.types.ts';
 
   const reducedMotion = useReducedMotion();
@@ -140,7 +141,10 @@
     const viewport = viewportElement;
     const slide = viewport?.children[currentIndex];
     if (!(slide instanceof HTMLElement)) return;
-    if (Math.abs(slide.getBoundingClientRect().left - viewport.getBoundingClientRect().left) < 1) {
+    const viewportRect = viewport.getBoundingClientRect();
+    const slideRect = slide.getBoundingClientRect();
+    if (viewportRect.width === 0 || slideRect.width === 0) return;
+    if (Math.abs(slideRect.left - viewportRect.left) < 1) {
       programmaticTarget = null;
       return;
     }
@@ -153,6 +157,15 @@
     } else {
       viewport.scrollLeft = slide.offsetLeft;
     }
+  }
+
+  const observeViewport = useResizeObserver((entries) => {
+    if (entries[0]?.contentRect.width) scrollToActiveSlide('auto');
+  });
+
+  function onPointerDown(): void {
+    programmaticTarget = null;
+    isInteracting = true;
   }
 
   function onViewportScroll(): void {
@@ -210,8 +223,9 @@
     role="group"
     aria-label={`${label} slides`}
     bind:this={viewportElement}
+    {@attach observeViewport}
     onscroll={onViewportScroll}
-    onpointerdown={() => (isInteracting = true)}
+    onpointerdown={onPointerDown}
     onpointerup={() => (isInteracting = false)}
     onpointercancel={() => (isInteracting = false)}
   >

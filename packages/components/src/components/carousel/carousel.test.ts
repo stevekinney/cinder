@@ -38,6 +38,74 @@ const slides = [
 ];
 
 describe('Carousel', () => {
+  test('reconciles the active slide when a pointer takes over a pending scroll', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    await fireEvent.click(container.querySelectorAll('.cinder-carousel__control')[1]!);
+    await fireEvent.pointerDown(viewport);
+    await fireEvent.scroll(viewport);
+
+    expect(slideElements[1]?.getAttribute('aria-hidden')).toBeNull();
+    expect(slideElements[1]?.hasAttribute('inert')).toBe(false);
+  });
+
+  test('does not clear initial alignment while the viewport is hidden', async () => {
+    type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
+    let callback: ObserverCallback | undefined;
+    class TestResizeObserver {
+      constructor(next: ObserverCallback) {
+        callback = next;
+      }
+      observe() {}
+      disconnect() {}
+      trigger(width: number) {
+        callback?.([{ contentRect: { width } } as ResizeObserverEntry]);
+      }
+    }
+    const originalResizeObserver = globalThis.ResizeObserver;
+    Object.defineProperty(globalThis, 'ResizeObserver', {
+      configurable: true,
+      value: TestResizeObserver,
+    });
+    try {
+      const { container } = render(Carousel, { slides, activeIndex: 2 });
+      const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+      const slideElements = [...viewport.children] as HTMLElement[];
+      Object.defineProperty(viewport, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: 0, width: 300 }),
+      });
+      slideElements.forEach((slide, index) => {
+        Object.defineProperty(slide, 'getBoundingClientRect', {
+          configurable: true,
+          value: () => ({ left: index === 2 ? 200 : 0, width: 100 }),
+        });
+        Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+      });
+      callback?.([{ contentRect: { width: 300 } } as ResizeObserverEntry]);
+      await waitFor(() => expect(slideElements[2]?.getAttribute('aria-hidden')).toBeNull());
+      expect(slideElements[2]?.hasAttribute('inert')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'ResizeObserver', {
+        configurable: true,
+        value: originalResizeObserver,
+      });
+    }
+  });
+
   test('renders region semantics and first slide by default', () => {
     const { container } = render(Carousel, { slides, label: 'Highlights' });
     const root = container.querySelector('.cinder-carousel');
