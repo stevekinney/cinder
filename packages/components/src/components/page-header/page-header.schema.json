@@ -4,11 +4,11 @@
   "properties": {
     "title": {
       "type": "string",
-      "description": "Page-level heading text rendered inside `<h1>`."
+      "description": "Page-level heading text rendered inside `<h1>`; the runtime API also accepts a template-only snippet."
     },
     "description": {
       "type": "string",
-      "description": "Optional supporting text rendered below the title."
+      "description": "Optional supporting text rendered below the title; the runtime API also accepts a template-only snippet."
     },
     "class": {
       "type": "string",

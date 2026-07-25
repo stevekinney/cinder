@@ -23,9 +23,9 @@ export type PageHeaderProps = Omit<
  * snippets, while schema-driven consumers use their string variants.
  */
 export interface PageHeaderSchemaProps {
-  /** Page-level heading text rendered inside `<h1>`. */
+  /** Page-level heading text rendered inside `<h1>`; the runtime API also accepts a template-only snippet. */
   title: string;
-  /** Optional supporting text rendered below the title. */
+  /** Optional supporting text rendered below the title; the runtime API also accepts a template-only snippet. */
   description?: string;
   /** Additional class names merged with `.cinder-page-header`. */
   class?: string;
