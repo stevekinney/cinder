@@ -1907,7 +1907,14 @@ async function assertSvelteKitHydrationRoute(
       page.close(),
       5_000,
       `closing SvelteKit hydration page for ${routePath}`,
-    );
+    ).catch((error: unknown) => {
+      throw new HydrationTeardownError(
+        new Error(
+          `teardown phase=page.close route=${routePath}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        ),
+      );
+    });
   }
 }
 
