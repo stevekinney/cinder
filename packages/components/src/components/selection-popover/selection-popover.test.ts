@@ -428,6 +428,7 @@ describe('SelectionPopover', () => {
   test('a focused height-only resize preserves the soft-keyboard draft', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;
+    const originalInnerHeightDescriptor = Object.getOwnPropertyDescriptor(window, 'innerHeight');
     const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
 
     render(SelectionPopover, {
@@ -464,19 +465,21 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: { boundingRect: { height: 0 } },
       });
-      Object.defineProperty(window, 'innerHeight', {
-        configurable: true,
-        value: originalInnerHeight,
-      });
+      if (originalInnerHeightDescriptor) {
+        Object.defineProperty(window, 'innerHeight', originalInnerHeightDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'innerHeight');
+      }
       await fireEvent(window, new Event('resize'));
 
       expect(closed).toBe(false);
       expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
     } finally {
-      Object.defineProperty(window, 'innerHeight', {
-        configurable: true,
-        value: originalInnerHeight,
-      });
+      if (originalInnerHeightDescriptor) {
+        Object.defineProperty(window, 'innerHeight', originalInnerHeightDescriptor);
+      } else {
+        Reflect.deleteProperty(window, 'innerHeight');
+      }
       if (originalVirtualKeyboard) {
         Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
       } else {

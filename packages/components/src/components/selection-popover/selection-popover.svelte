@@ -240,7 +240,9 @@
         if (
           !viewportWidthChanged &&
           composerHasFocus &&
-          (!viewportHeightChanged || virtualKeyboardTransition)
+          (!viewportHeightChanged ||
+            virtualKeyboardTransition ||
+            window.innerHeight < viewportHeight)
         ) {
           return;
         }
