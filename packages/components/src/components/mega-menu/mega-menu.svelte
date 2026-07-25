@@ -386,9 +386,6 @@
               <div class="cinder-mega-menu__sections">
                 {#each sections(openSubmenu) as section (section.id)}
                   <section>
-                    {#if section.title}
-                      <h4 class="cinder-mega-menu__section-title">{section.title}</h4>
-                    {/if}
                     <ul class="cinder-mega-menu__links">
                       {#each section.links as link (link.id)}
                         <li>
