@@ -108,6 +108,15 @@ describe('pipeline contract: commit stays cheap', () => {
   });
 });
 
+describe('pipeline contract: checkout never rewrites the lockfile', () => {
+  it('installs changed dependencies with the checked-out lockfile frozen', async () => {
+    const source = stripComments(await Bun.file(join(huskyDirectory, 'post-checkout.ts')).text());
+
+    expect(source).toContain('$`bun install --frozen-lockfile`');
+    expect(source).not.toContain('$`bun install`');
+  });
+});
+
 describe('pipeline contract: push stays thin and fails open (source-based: entry script, never imported)', () => {
   it('pre-push.ts dispatches no lint/typecheck/test job', async () => {
     const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-push.ts')).text());

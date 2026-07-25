@@ -31,12 +31,14 @@ if (lockChanged) info('bun.lock has changed');
 if (lockChanged) {
   info('Dependencies changed, installing…');
   try {
-    await $`bun install`;
+    await $`bun install --frozen-lockfile`;
     success('Dependencies installed');
     const stat = await $`git diff --stat ${prevHead}..${newHead} -- package.json bun.lock`.text();
     await Bun.write(Bun.stdout, stat);
   } catch {
-    warning('Failed to install dependencies — run bun install manually');
+    warning(
+      'Failed to install dependencies from the checked-out bun.lock — run bun install manually',
+    );
   }
 } else if (packageChanged) {
   warning("package.json changed but bun.lock didn't");
