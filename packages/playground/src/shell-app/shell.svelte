@@ -31,9 +31,7 @@
   // the loading overlay) instead of poking the raw iframe.
   let componentDocumentation = $state<ComponentDocumentation | null>(null);
 
-  // Seed the toolbar from the URL (shareable, survives reload). When the URL
-  // is silent about theme, fall back to the localStorage preference so the
-  // next visit honors the user's last choice.
+  // Seed the hydration tree exclusively from shareable, server-known URL state.
   const initialSearchValue = untrack(() => initialSearch);
   const initialUrlState = readToolbarStateFromSearch(new URLSearchParams(initialSearchValue));
   const initialComponentName = untrack(() => initialComponent);
@@ -46,6 +44,7 @@
   // exclusively from request data, then restore the persisted preference once
   // hydration has completed so the server and client markup stay identical.
   onMount(() => {
+    store.enableBrowserThemeResolution();
     if (initialUrlState.theme === null) store.syncFromUrl();
   });
 

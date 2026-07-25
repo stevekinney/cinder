@@ -181,15 +181,15 @@ const fixtureArtifactByPath = new Map<string, string>();
 const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
 let shellBuildPromise: Promise<string | null> | null = null;
-let shellServerRendererPromise: Promise<
-  (props: {
-    initialComponent: string;
-    components: string[];
-    readmeHtml: string;
-    documentation: ComponentDocumentationPayload | null;
-    initialSearch: string;
-  }) => { body: string; head: string }
-> | null = null;
+type ShellServerRenderer = (props: {
+  initialComponent: string;
+  components: string[];
+  readmeHtml: string;
+  documentation: ComponentDocumentationPayload | null;
+  initialSearch: string;
+}) => { body: string; head: string };
+let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
+let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
@@ -1184,53 +1184,58 @@ async function compileShellBundleArtifacts(): Promise<{
   }
 }
 
-async function loadShellServerRenderer(): Promise<
-  (props: {
-    initialComponent: string;
-    components: string[];
-    readmeHtml: string;
-    documentation: ComponentDocumentationPayload | null;
-    initialSearch: string;
-  }) => { body: string; head: string }
-> {
+/** Return the last-good value after a failed rebuild, or preserve the original failure. */
+export function fallbackToLastGood<T>(lastGood: T | null, error: unknown): T {
+  if (lastGood === null) throw error;
+  return lastGood;
+}
+
+async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
   shellServerRendererPromise = (async () => {
-    const result = await Bun.build({
-      entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
-      plugins: [sveltePlugin({ generate: 'server' })],
-      target: 'bun',
-      format: 'esm',
-      conditions: ['bun', 'svelte'],
-      splitting: false,
-    });
-    if (!result.success || result.outputs[0] === undefined) {
-      throw new Error(`Shell server bundle failed:\n${result.logs.join('\n')}`);
-    }
-
-    const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
-    const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
-    let loaded: unknown;
     try {
-      await Bun.write(serverBundlePath, await result.outputs[0].text());
-      loaded = await import(pathToFileURL(serverBundlePath).href);
-    } finally {
-      rmSync(serverBundleDirectory, { recursive: true, force: true });
+      const generationAtStart = rebuildGeneration;
+      const result = await Bun.build({
+        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
+        plugins: [sveltePlugin({ generate: 'server' })],
+        target: 'bun',
+        format: 'esm',
+        conditions: ['bun', 'svelte'],
+        splitting: false,
+      });
+      if (!result.success || result.outputs[0] === undefined) {
+        throw new Error(`Shell server bundle failed:\n${result.logs.join('\n')}`);
+      }
+
+      const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+      const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
+      let loaded: unknown;
+      try {
+        await Bun.write(serverBundlePath, await result.outputs[0].text());
+        loaded = await import(pathToFileURL(serverBundlePath).href);
+      } finally {
+        rmSync(serverBundleDirectory, { recursive: true, force: true });
+      }
+      if (
+        typeof loaded !== 'object' ||
+        loaded === null ||
+        typeof Reflect.get(loaded, 'renderShellBody') !== 'function'
+      ) {
+        throw new Error('Shell server bundle did not export renderShellBody');
+      }
+      const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
+      if (generationAtStart === rebuildGeneration) {
+        lastGoodShellServerRenderer = renderer;
+      }
+      return renderer;
+    } catch (error) {
+      console.error(
+        '[playground] shell server rebuild failed; serving the last-good renderer:',
+        error,
+      );
+      return fallbackToLastGood(lastGoodShellServerRenderer, error);
     }
-    if (
-      typeof loaded !== 'object' ||
-      loaded === null ||
-      typeof Reflect.get(loaded, 'renderShellBody') !== 'function'
-    ) {
-      throw new Error('Shell server bundle did not export renderShellBody');
-    }
-    return Reflect.get(loaded, 'renderShellBody') as (props: {
-      initialComponent: string;
-      components: string[];
-      readmeHtml: string;
-      documentation: ComponentDocumentationPayload | null;
-      initialSearch: string;
-    }) => { body: string; head: string };
   })();
 
   return shellServerRendererPromise;

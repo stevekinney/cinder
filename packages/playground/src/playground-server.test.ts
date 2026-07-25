@@ -33,6 +33,7 @@ import {
   PORT,
   createHttpServerOnAvailablePort,
   createSharedDisposer,
+  fallbackToLastGood,
   handleRequest,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
@@ -69,6 +70,18 @@ beforeAll(async () => {
 });
 
 const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
+
+describe('last-good rebuild fallback', () => {
+  it('keeps a successful renderer available through a transient rebuild failure', () => {
+    const renderer = () => ({ body: '<main>last good</main>', head: '' });
+    expect(fallbackToLastGood(renderer, new Error('transient compile failure'))).toBe(renderer);
+  });
+
+  it('preserves the original failure when no successful renderer exists yet', () => {
+    const error = new Error('initial compile failure');
+    expect(() => fallbackToLastGood(null, error)).toThrow(error);
+  });
+});
 
 afterEach(async () => {
   const servers = temporaryServers.splice(0);

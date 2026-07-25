@@ -17,9 +17,7 @@ test.describe('playground component documentation', () => {
       if (message.type() === 'error') errors.push(message.text());
     });
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.addInitScript(() => {
-      localStorage.setItem('cinder-playground-theme', 'dark');
-    });
+    await page.emulateMedia({ colorScheme: 'dark' });
 
     await page.goto('/c/button?w=768', { waitUntil: 'load' });
     const documentation = page.locator('[data-canonical-documentation]');
@@ -27,6 +25,16 @@ test.describe('playground component documentation', () => {
     await expect(documentation.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
     await expect(documentation.getByRole('heading', { name: 'Overview' })).toBeVisible();
     await expect(documentation.getByRole('heading', { name: 'Props' })).toBeVisible();
+    const readme = documentation.locator('.cinder-markdown-content');
+    await expect(readme).toBeVisible();
+    expect(
+      await readme
+        .locator('p')
+        .first()
+        .evaluate((paragraph) => {
+          return Number.parseFloat(getComputedStyle(paragraph).marginBlockEnd);
+        }),
+    ).toBeGreaterThan(0);
     await expect(page.locator('iframe[data-cinder-preview]')).toHaveAttribute(
       'src',
       '/page/button?preview=1',
@@ -37,6 +45,24 @@ test.describe('playground component documentation', () => {
       page.getByRole('link', { name: 'Open interactive documentation' }),
     ).toHaveAttribute('href', '/page/button');
     await expect(page.getByTestId('preview-loading-overlay')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test('restores a persisted theme after hydration without changing the server tree', async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('console', (message) => {
+      if (message.type() === 'error') errors.push(message.text());
+    });
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.addInitScript(() => {
+      localStorage.setItem('cinder-playground-theme', 'dark');
+    });
+
+    await page.goto('/c/button', { waitUntil: 'load' });
+
+    await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked();
     expect(errors).toEqual([]);
   });
 

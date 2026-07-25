@@ -41,7 +41,7 @@
 
   <section aria-labelledby="overview-heading">
     <h2 id="overview-heading">Overview</h2>
-    <div class="readme-content">{@html documentation.readme.html}</div>
+    <div class="readme-content cinder-markdown-content">{@html documentation.readme.html}</div>
   </section>
 
   {#if propRows.length > 0}

@@ -151,15 +151,15 @@ export class PreviewStore {
   #isFocusMode = $state<boolean>(false);
   /**
    * The explicit theme override, or `null` when the user has made no choice and
-   * the playground should follow the browser. `#browserPrefersDark` tracks the
-   * live `prefers-color-scheme` so the resolved {@link theme} updates the moment
-   * the OS setting flips while no override is active.
+   * the playground should follow the browser. `#browserThemeQuery` tracks the
+   * live `prefers-color-scheme` after hydration so the resolved {@link theme}
+   * updates the moment the OS setting flips while no override is active.
    */
   #override = $state<ThemeChoice | null>(null);
-  // Fallback `false` keeps the resolved theme deterministic on the server (where
-  // there's no `matchMedia`): with no override the playground resolves to light
-  // until the client hydrates and the real preference takes over.
-  #browserPrefersDark = new MediaQuery('(prefers-color-scheme: dark)', false);
+  // Keep browser media state absent through hydration so both the server and
+  // client begin from the same deterministic light fallback. Shell enables the
+  // live query in `onMount`, after Svelte has reconciled the server tree.
+  #browserThemeQuery = $state<MediaQuery | null>(null);
   #previewWidth = $state<number | null>(null);
 
   colorTokenOverrides = $state<ColorTokenOverrideState>({ light: {}, dark: {} });
@@ -215,9 +215,15 @@ export class PreviewStore {
     return this.#override;
   }
 
+  /** Begin resolving the OS color scheme after hydration has completed. */
+  enableBrowserThemeResolution(): void {
+    if (typeof window === 'undefined' || this.#browserThemeQuery !== null) return;
+    this.#browserThemeQuery = new MediaQuery('(prefers-color-scheme: dark)', false);
+  }
+
   /** Map the live `prefers-color-scheme` media query to a concrete theme. */
   #resolvedBrowserTheme(): ThemeChoice {
-    return this.#browserPrefersDark.current ? 'dark' : 'light';
+    return this.#browserThemeQuery?.current ? 'dark' : 'light';
   }
 
   /** null = full / unconstrained width. Number = pixel width applied to the iframe. */

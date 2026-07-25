@@ -105,12 +105,12 @@ function createMatchMedia(matches = false): Window['matchMedia'] {
   }) as Window['matchMedia'];
 }
 
-function installWindow(href: string): void {
+function installWindow(href: string, prefersDark = false): void {
   Object.defineProperty(globalThis, 'window', {
     configurable: true,
     value: {
       location: { href },
-      matchMedia: createMatchMedia(),
+      matchMedia: createMatchMedia(prefersDark),
     } as unknown as Window,
     writable: true,
   });
@@ -223,6 +223,18 @@ describe('writePersistedTheme', () => {
   it('does not throw when localStorage is undefined', () => {
     installLocalStorage(undefined);
     expect(() => writePersistedTheme('light')).not.toThrow();
+  });
+});
+
+describe('browser theme hydration', () => {
+  it('keeps the server fallback until browser resolution is enabled after hydration', () => {
+    installWindow('https://example.com/c/button', true);
+
+    const store = new PreviewStore('button');
+
+    expect(store.theme).toBe('light');
+    store.enableBrowserThemeResolution();
+    expect(store.theme).toBe('dark');
   });
 });
 
