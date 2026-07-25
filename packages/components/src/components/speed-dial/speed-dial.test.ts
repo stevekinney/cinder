@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -7,6 +8,7 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
+const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
@@ -58,6 +60,20 @@ describe('SpeedDial', () => {
     await fireEvent.click(trigger);
     expect(screen.getByTestId('open-state').textContent).toBe('closed');
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  test('portaled actions preserve scoped tokens and color scheme', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+    trigger.style.setProperty('--cinder-surface-raised', 'hotpink');
+    trigger.style.colorScheme = 'dark';
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+
+    expect(toolbar.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    expect(toolbar.style.colorScheme).toBe('dark');
   });
 
   test('direction controls data attributes and toolbar orientation', () => {
@@ -127,6 +143,16 @@ describe('SpeedDial', () => {
 
     await fireEvent.keyDown(archive, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(create);
+  });
+
+  test('keyboard order follows resolved placement and spacing uses CSS layout', () => {
+    expect(speedDialSource).toMatch(
+      /getKeyboardNavigationButtons[\s\S]*?resolvedDirection === 'up' \|\| resolvedDirection === 'left'/,
+    );
+    expect(speedDialSource).toContain("if (side === 'top') return 'up';");
+    expect(speedDialSource).toContain("if (side === 'bottom') return 'down';");
+    expect(speedDialSource).toContain("probe.style.inlineSize = 'var(--cinder-space-3)'");
+    expect(speedDialSource).toContain('probe.getBoundingClientRect().width');
   });
 
   test('Escape closes the dial and restores focus to the trigger', async () => {

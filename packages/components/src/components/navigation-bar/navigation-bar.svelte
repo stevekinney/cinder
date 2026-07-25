@@ -30,6 +30,7 @@
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
+  import { getInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
   const FALLBACK_ROOT_FONT_SIZE_PX = 16;
@@ -59,6 +60,8 @@
   const navigationItemSelector = '[data-cinder-navigation-item]';
   const toggleFocusSelector =
     '.cinder-navigation-bar__menu-toggle button, .cinder-navigation-bar__menu-toggle [href], .cinder-navigation-bar__menu-toggle input, .cinder-navigation-bar__menu-toggle select, .cinder-navigation-bar__menu-toggle textarea, .cinder-navigation-bar__menu-toggle [tabindex]:not([tabindex="-1"])';
+  const actionFocusSelector =
+    '.cinder-navigation-bar__actions button:not([disabled]), .cinder-navigation-bar__actions [href], .cinder-navigation-bar__actions input:not([disabled]), .cinder-navigation-bar__actions select:not([disabled]), .cinder-navigation-bar__actions textarea:not([disabled]), .cinder-navigation-bar__actions [tabindex]:not([tabindex="-1"])';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
@@ -87,6 +90,9 @@
     offset: () => 0,
     widthMode: () => 'match-anchor',
   });
+  const inheritedPortalStyle = $derived(
+    isMobileLayout && mobileMenuOpen ? getInheritedPortalStyle(navigationBarElement) : '',
+  );
 
   function getCollapsibleMaxWidthPx(): number {
     if (typeof window === 'undefined') {
@@ -164,7 +170,14 @@
   }
 
   function handleToggleKeyDown(event: KeyboardEvent): void {
-    if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
+    if (
+      event.key !== 'Tab' ||
+      event.shiftKey ||
+      !isMobileLayout ||
+      !mobileMenuOpen ||
+      !anchoredItems.positionReady
+    )
+      return;
     const firstItem = itemsRegionElement?.querySelector<HTMLElement>(navigationItemSelector);
     if (!firstItem) return;
     event.preventDefault();
@@ -233,6 +246,29 @@
     focusTarget?.focus();
   }
 
+  function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
+    if (!anchoredItems.positionReady) return false;
+
+    const enabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    if (enabledItems.length === 0) return false;
+
+    if (event.shiftKey && navigationItem === enabledItems[0]) {
+      event.preventDefault();
+      focusMenuToggle();
+      return true;
+    }
+
+    if (!event.shiftKey && navigationItem === enabledItems.at(-1)) {
+      const nextAction = navigationBarElement?.querySelector<HTMLElement>(actionFocusSelector);
+      if (!nextAction) return false;
+      event.preventDefault();
+      nextAction.focus();
+      return true;
+    }
+
+    return false;
+  }
+
   function handleClick(event: MouseEvent): void {
     if (consumerOnClick) {
       const consumerEvent = withNavigationCurrentTarget(event);
@@ -283,6 +319,8 @@
     const navigationItem = getEventNavigationItem(event);
     if (!navigationItem || navigationItem !== event.target) return;
 
+    if (event.key === 'Tab' && bridgePortaledPanelTab(event, navigationItem)) return;
+
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
       focusAdjacentNavigationItem(navigationItem, event.key === 'ArrowRight' ? 1 : -1);
@@ -305,23 +343,11 @@
         const value = Reflect.get(target, property, target);
         return typeof value === 'function' ? value.bind(target) : value;
       },
+      set(target, property, value) {
+        return Reflect.set(target, property, value, target);
+      },
     });
   }
-
-  $effect(() => {
-    if (!isMobileLayout || !mobileMenuOpen || !navigationBarElement || !itemsRegionElement) return;
-    const computed = getComputedStyle(navigationBarElement);
-    const copiedProperties: string[] = [];
-    for (let index = 0; index < computed.length; index += 1) {
-      const property = computed.item(index);
-      if (!property.startsWith('--cinder-')) continue;
-      itemsRegionElement.style.setProperty(property, computed.getPropertyValue(property));
-      copiedProperties.push(property);
-    }
-    return () => {
-      for (const property of copiedProperties) itemsRegionElement?.style.removeProperty(property);
-    };
-  });
 </script>
 
 <nav
@@ -338,11 +364,12 @@
   onkeydown={handleKeyDown}
 >
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'before-brand'}
-    <div class="cinder-navigation-bar__menu-toggle" role="group" onkeydown={handleToggleKeyDown}>
+    <div class="cinder-navigation-bar__menu-toggle" role="group">
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
         onclick: handleToggle,
+        onkeydown: handleToggleKeyDown,
       })}
     </div>
   {/if}
@@ -354,11 +381,12 @@
   {/if}
 
   {#if isCollapsible && menuToggle && menuTogglePlacement === 'after-brand'}
-    <div class="cinder-navigation-bar__menu-toggle" role="group" onkeydown={handleToggleKeyDown}>
+    <div class="cinder-navigation-bar__menu-toggle" role="group">
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
         onclick: handleToggle,
+        onkeydown: handleToggleKeyDown,
       })}
     </div>
   {/if}
@@ -367,13 +395,13 @@
     bind:this={itemsRegionElement}
     {@attach itemsPortal}
     id={regionId}
-    role="region"
+    role={isMobileLayout ? 'region' : undefined}
     class="cinder-navigation-bar__items"
     data-open={mobileMenuOpen ? 'true' : 'false'}
     data-cinder-mobile-panel={isMobileLayout || undefined}
     aria-label={isMobileLayout ? label : undefined}
     data-cinder-position-ready={anchoredItems.positionReady || undefined}
-    style={anchoredItems.positionStyle}
+    style={`${anchoredItems.positionStyle};${inheritedPortalStyle}`}
     inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
     onclick={isMobileLayout ? handleClick : undefined}
     onkeydown={isMobileLayout ? handleKeyDown : undefined}

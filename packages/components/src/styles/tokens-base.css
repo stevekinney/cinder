@@ -389,6 +389,7 @@
   --cinder-z-sheet: 1200;
   --cinder-z-toast: 1300;
   --cinder-z-drag-preview: 1400;
+  --cinder-z-focused-affordance: 1500;
 
   /* ========================================
    * OVERLAY SURFACES

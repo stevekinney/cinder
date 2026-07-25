@@ -101,7 +101,7 @@
   });
 
   const portalAttachment = createPortalAttachment({
-    target: () => document.body,
+    target: () => anchorElement?.closest<HTMLElement>('dialog[open]') ?? document.body,
     inheritAttributes: true,
     source: () => anchorElement ?? null,
   });

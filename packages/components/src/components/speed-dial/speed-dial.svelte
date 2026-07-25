@@ -26,8 +26,9 @@
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
+  import { getInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
   import { setSpeedDialContext } from './speed-dial.context.ts';
-  import type { SpeedDialProps } from './speed-dial.types.ts';
+  import type { SpeedDialDirection, SpeedDialProps } from './speed-dial.types.ts';
 
   const actionsId = $props.id();
   const defaultAriaLabel = 'Quick actions';
@@ -48,9 +49,6 @@
   let actionsElement = $state<HTMLDivElement | null>(null);
   const actionButtons: HTMLButtonElement[] = [];
 
-  const orientation = $derived(
-    direction === 'left' || direction === 'right' ? 'horizontal' : 'vertical',
-  );
   const accessibleLabel = $derived(normalizeAriaLabel(ariaLabel));
   const placement = $derived<Placement>(
     direction === 'up'
@@ -75,6 +73,17 @@
     offset: () => getSpacingOffset(),
     widthMode: () => 'none',
   });
+  const resolvedDirection = $derived(
+    anchoredActions.positionReady
+      ? normalizePlacementDirection(anchoredActions.resolvedPlacement)
+      : direction,
+  );
+  const orientation = $derived(
+    resolvedDirection === 'left' || resolvedDirection === 'right' ? 'horizontal' : 'vertical',
+  );
+  const inheritedPortalStyle = $derived(
+    open && !hidden ? getInheritedPortalStyle(getTriggerElement()) : '',
+  );
 
   function normalizeAriaLabel(label: string | null | undefined): string {
     const trimmed = label?.trim() ?? '';
@@ -89,17 +98,29 @@
     return getTriggerElement()?.closest<HTMLElement>('dialog[open]') ?? null;
   }
 
+  function normalizePlacementDirection(value: string): SpeedDialDirection {
+    const side = value.split('-')[0];
+    if (side === 'top') return 'up';
+    if (side === 'bottom') return 'down';
+    if (side === 'left' || side === 'right') return side;
+    return direction;
+  }
+
   function getSpacingOffset(): number {
     const trigger = getTriggerElement();
-    if (!trigger || typeof window === 'undefined') return 12;
-    const value = getComputedStyle(trigger).getPropertyValue('--cinder-space-3').trim();
-    const parsed = Number.parseFloat(value);
-    if (!Number.isFinite(parsed)) return 12;
-    if (value.endsWith('rem')) {
-      const root = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-      return parsed * (Number.isFinite(root) && root > 0 ? root : 16);
-    }
-    return parsed;
+    if (!trigger || typeof document === 'undefined') return 12;
+
+    const probe = document.createElement('span');
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    probe.style.pointerEvents = 'none';
+    probe.style.inlineSize = 'var(--cinder-space-3)';
+    probe.style.blockSize = '0';
+    trigger.append(probe);
+    const pixels = probe.getBoundingClientRect().width;
+    probe.remove();
+
+    return Number.isFinite(pixels) && pixels > 0 ? pixels : 12;
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
@@ -108,7 +129,7 @@
 
   function getKeyboardNavigationButtons(): HTMLButtonElement[] {
     const enabledButtons = getEnabledActionButtons();
-    return direction === 'up' || direction === 'left'
+    return resolvedDirection === 'up' || resolvedDirection === 'left'
       ? [...enabledButtons].reverse()
       : enabledButtons;
   }
@@ -234,11 +255,9 @@
     aria-orientation={orientation}
     class="cinder-speed-dial__actions"
     data-cinder-open={open ? '' : undefined}
-    data-cinder-direction={anchoredActions.positionReady
-      ? anchoredActions.resolvedPlacement.split('-')[0]
-      : direction}
+    data-cinder-direction={resolvedDirection}
     data-cinder-position-ready={anchoredActions.positionReady || undefined}
-    style={anchoredActions.positionStyle}
+    style={`${anchoredActions.positionStyle};${inheritedPortalStyle}`}
     aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
     inert={!open || hidden ? true : undefined}
     tabindex="-1"

@@ -9,7 +9,8 @@ setupHappyDom();
 
 const { render, cleanup } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
-const { copyInheritedPortalAttributes } = await import('./portal.utilities.svelte.ts');
+const { copyInheritedPortalAttributes, getInheritedPortalStyle } =
+  await import('./portal.utilities.svelte.ts');
 
 const childSnippet = createRawSnippet(() => ({
   render: () => '<button data-testid="portal-child">Portaled child</button>',
@@ -30,6 +31,18 @@ afterEach(() => {
 });
 
 describe('Portal', () => {
+  test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {
+    const source = document.createElement('div');
+    source.style.setProperty('--cinder-surface', 'hotpink');
+    source.style.colorScheme = 'dark';
+    document.body.append(source);
+
+    const inheritedStyle = getInheritedPortalStyle(source);
+
+    expect(inheritedStyle).toContain('--cinder-surface: hotpink');
+    expect(inheritedStyle).toContain('color-scheme: dark');
+  });
+
   test('moves children into a custom target', async () => {
     const host = document.createElement('div');
     host.id = 'portal-host';

@@ -25,12 +25,16 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
 }
 
 describe('cinder/z-index-scale', () => {
-  test.each(['auto', '0', '1', 'var(--cinder-z-popover)', 'var(--cinder-z-drag-preview)'])(
-    'accepts %s',
-    async (value) => {
-      expect(warnings(await lint(`.fixture { z-index: ${value}; }`))).toEqual([]);
-    },
-  );
+  test.each([
+    'auto',
+    '0',
+    '1',
+    'var(--cinder-z-popover)',
+    'var(--cinder-z-drag-preview)',
+    'var(--cinder-z-focused-affordance)',
+  ])('accepts %s', async (value) => {
+    expect(warnings(await lint(`.fixture { z-index: ${value}; }`))).toEqual([]);
+  });
 
   test.each([
     'var(--cinder-z-dropdown, 1100)',

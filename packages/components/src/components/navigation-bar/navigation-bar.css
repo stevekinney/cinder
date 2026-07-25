@@ -137,6 +137,11 @@
       .cinder-navigation-bar__menu-toggle {
       margin-inline-start: auto;
     }
+
+    .cinder-navigation-bar[data-collapsible='true']
+      .cinder-navigation-bar__items:not([data-cinder-mobile-panel]) {
+      display: none;
+    }
   }
 
   .cinder-navigation-bar__items[data-cinder-mobile-panel] {

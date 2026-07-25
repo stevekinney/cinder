@@ -74,6 +74,24 @@ export function resolvePortalTarget(target: PortalTargetInput): ResolvedPortalTa
   }
 }
 
+export function getInheritedPortalStyle(source: HTMLElement | null | undefined): string {
+  if (!source || typeof window === 'undefined') return '';
+
+  const computed = getComputedStyle(source);
+  const inherited = document.createElement('div').style;
+  for (let index = 0; index < computed.length; index += 1) {
+    const property = computed.item(index);
+    if (!property.startsWith('--cinder-')) continue;
+    inherited.setProperty(property, computed.getPropertyValue(property));
+  }
+
+  if (computed.colorScheme && computed.colorScheme !== 'normal') {
+    inherited.setProperty('color-scheme', computed.colorScheme);
+  }
+
+  return inherited.cssText;
+}
+
 export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,

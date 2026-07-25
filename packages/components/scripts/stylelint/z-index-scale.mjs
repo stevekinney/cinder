@@ -26,6 +26,8 @@ const layerTokenReferencePattern = /^var\(\s*--cinder-z-[a-z0-9-]+\s*,/i;
 const declaredLayerTokens = new Set([
   '--cinder-z-backdrop',
   '--cinder-z-dropdown',
+  '--cinder-z-drag-preview',
+  '--cinder-z-focused-affordance',
   '--cinder-z-modal',
   '--cinder-z-popover',
   '--cinder-z-sheet',

@@ -326,6 +326,28 @@ describe('Popover — portal and arrow', () => {
     expect(container.contains(panel)).toBe(false);
   });
 
+  test('keeps a panel inside the nearest open native dialog', async () => {
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    dialog.append(triggerButton);
+    attachScratch(dialog);
+
+    render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerButton,
+        children: textSnippet('dialog content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(dialog.querySelector('.cinder-popover')).not.toBeNull();
+    });
+    expect(dialog.querySelector('.cinder-popover')?.parentElement).toBe(dialog);
+  });
+
   test('copies inherited dir and theme attributes before portaling', async () => {
     const wrapper = document.createElement('div');
     wrapper.setAttribute('dir', 'rtl');

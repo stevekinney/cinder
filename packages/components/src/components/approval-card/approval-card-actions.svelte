@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Button from '../button/button.svelte';
   import JsonEditor from '@lostgradient/cinder/json-editor';
   import { formatEditableArguments, parseJsonText } from './approval-card-state.ts';
@@ -37,7 +38,7 @@
   // Comparing the previous value explicitly, inside the effect, is the
   // one thing that's actually gated on requestKey CHANGING, not merely
   // being re-touched.
-  let previousRequestKey = requestKey;
+  let previousRequestKey = untrack(() => requestKey);
   $effect(() => {
     if (requestKey === previousRequestKey) return;
     previousRequestKey = requestKey;
@@ -58,7 +59,7 @@
   // editor whenever the underlying arguments actually change, so a confirmed
   // edit can never be based on arguments older than what PayloadInspector is
   // currently showing. Re-opening reseeds from the current value.
-  let previousArgumentsSnapshot = formatEditableArguments(argumentsValue);
+  let previousArgumentsSnapshot = untrack(() => formatEditableArguments(argumentsValue));
   $effect(() => {
     const snapshot = formatEditableArguments(argumentsValue);
     if (snapshot === previousArgumentsSnapshot) return;
@@ -156,7 +157,7 @@
         onValueChange={(value) => (editedArgumentsText = value)}
         {...!editParseResult.ok ? { error: editParseResult.message } : {}}
         rows={8}
-        showValidFeedback={false}
+        validFeedbackVisible={false}
         autofocus
       />
       <div class="cinder-approval-card__editor-actions">

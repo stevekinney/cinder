@@ -305,16 +305,17 @@ Component-local stacking may use `0` or `1`. A higher local relationship needs
 an adjacent `cinder-z-index-local:` reason so Stylelint can distinguish it from
 a new global layer.
 
-| Token                     | Default |
-| ------------------------- | ------- |
-| `--cinder-z-tooltip`      | `1000`  |
-| `--cinder-z-dropdown`     | `1100`  |
-| `--cinder-z-popover`      | `1100`  |
-| `--cinder-z-backdrop`     | `1150`  |
-| `--cinder-z-modal`        | `1200`  |
-| `--cinder-z-sheet`        | `1200`  |
-| `--cinder-z-toast`        | `1300`  |
-| `--cinder-z-drag-preview` | `1400`  |
+| Token                           | Default |
+| ------------------------------- | ------- |
+| `--cinder-z-tooltip`            | `1000`  |
+| `--cinder-z-dropdown`           | `1100`  |
+| `--cinder-z-popover`            | `1100`  |
+| `--cinder-z-backdrop`           | `1150`  |
+| `--cinder-z-modal`              | `1200`  |
+| `--cinder-z-sheet`              | `1200`  |
+| `--cinder-z-toast`              | `1300`  |
+| `--cinder-z-drag-preview`       | `1400`  |
+| `--cinder-z-focused-affordance` | `1500`  |
 
 ## Overlay surfaces
 

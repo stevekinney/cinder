@@ -88,6 +88,15 @@ async function openCollapsedMobileMenu(container: HTMLElement): Promise<HTMLElem
   return nav;
 }
 
+async function waitForMobilePanelPosition(container: HTMLElement): Promise<HTMLElement> {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const itemsRegion = getItemsRegion(container);
+    if (itemsRegion.hasAttribute('data-cinder-position-ready')) return itemsRegion;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error('NavigationBar mobile panel did not finish positioning.');
+}
+
 async function setCollapsedMobileLayout(container: HTMLElement): Promise<void> {
   await tick();
   const nav = container.querySelector('nav') as HTMLElement;
@@ -116,6 +125,7 @@ function toggleSnippet(buttonId = 'toggle-btn') {
         'aria-expanded': string;
         'aria-controls': string;
         onclick?: (event: MouseEvent) => void;
+        onkeydown?: (event: KeyboardEvent) => void;
       },
     ]
   >((getAttrs) => ({
@@ -126,6 +136,9 @@ function toggleSnippet(buttonId = 'toggle-btn') {
       element.setAttribute('aria-controls', attrs['aria-controls']);
       if (attrs.onclick) {
         element.addEventListener('click', attrs.onclick as EventListener);
+      }
+      if (attrs.onkeydown) {
+        element.addEventListener('keydown', attrs.onkeydown as EventListener);
       }
     },
   }));
@@ -138,6 +151,7 @@ function glyphToggleSnippet(buttonId = 'toggle-glyph-btn') {
         'aria-expanded': string;
         'aria-controls': string;
         onclick?: (event: MouseEvent) => void;
+        onkeydown?: (event: KeyboardEvent) => void;
       },
     ]
   >((getAttrs) => ({
@@ -150,7 +164,16 @@ function glyphToggleSnippet(buttonId = 'toggle-glyph-btn') {
       if (attrs.onclick) {
         element.addEventListener('click', attrs.onclick as EventListener);
       }
+      if (attrs.onkeydown) {
+        element.addEventListener('keydown', attrs.onkeydown as EventListener);
+      }
     },
+  }));
+}
+
+function actionButtonSnippet() {
+  return createRawSnippet(() => ({
+    render: () => '<button type="button" id="nav-action">Account</button>',
   }));
 }
 
@@ -568,6 +591,59 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('portaled menu preserves scoped tokens and color scheme through positioning updates', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        style: '--cinder-surface: hotpink; color-scheme: dark;',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+
+      expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
+      expect(itemsRegion.style.colorScheme).toBe('dark');
+      expect(itemsRegion.style.position).toBe('fixed');
+    });
+  });
+
+  test('portaled menu bridges both ends of its tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+      const home = itemsRegion.querySelector('[data-key="home"]') as HTMLButtonElement;
+      const settings = itemsRegion.querySelector('[data-key="settings"]') as HTMLButtonElement;
+
+      home.focus();
+      await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(toggle);
+
+      settings.focus();
+      await fireEvent.keyDown(settings, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('desktop items remain an ordinary unnamed group', () => {
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+    });
+
+    expect(container.querySelector('.cinder-navigation-bar__items')?.hasAttribute('role')).toBe(
+      false,
+    );
+  });
+
   test('clicking the toggle a second time closes the menu', async () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
@@ -740,6 +816,12 @@ describe('NavigationBar', () => {
     expect(
       container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
     ).toBe('true');
+  });
+
+  test('writable native Event properties use the original event as their receiver', () => {
+    expect(navigationBarSource).toMatch(
+      /set\(target, property, value\)\s*\{\s*return Reflect\.set\(target, property, value, target\);/,
+    );
   });
 
   test('ArrowRight moves focus to the navigation item on the right', async () => {
@@ -1005,6 +1087,12 @@ describe('NavigationBar responsive CSS', () => {
     expect(navigationBarCss).toContain('@container cinder-navigation-bar (max-width: 47.99rem)');
     expect(navigationBarCss).toMatch(
       /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
+    );
+  });
+
+  test('closed collapsible items are hidden by the container query before hydration', () => {
+    expect(navigationBarCss).toMatch(
+      /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\][\s\S]*?\.cinder-navigation-bar__items:not\(\[data-cinder-mobile-panel\]\)\s*\{[\s\S]*?display:\s*none;/,
     );
   });
 
