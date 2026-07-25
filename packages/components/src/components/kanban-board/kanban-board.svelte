@@ -566,7 +566,7 @@
         class="cinder-kanban-board__column"
         role="listitem"
         aria-label={getColumnLabel(column)}
-        data-cinder-collapsed={column.collapsed ? '' : undefined}
+        data-cinder-expanded={!column.collapsed ? '' : undefined}
       >
         <header class="cinder-kanban-board__column-header">
           {#if reorderColumns}

@@ -118,8 +118,8 @@
     transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .cinder-kanban-board__column[data-cinder-collapsed] .cinder-kanban-board__collapse-chevron {
-    transform: rotate(-90deg);
+  .cinder-kanban-board__column[data-cinder-expanded] .cinder-kanban-board__collapse-chevron {
+    transform: rotate(180deg);
   }
 
   .cinder-kanban-board__column-handle:focus-visible,
