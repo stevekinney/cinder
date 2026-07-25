@@ -1,6 +1,4 @@
 import { $ } from 'bun';
-import chalk from 'chalk';
-import { capitalCase } from 'change-case';
 import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync, rmSync } from 'node:fs';
 import { mkdir, open, readFile, rm, stat } from 'node:fs/promises';
@@ -35,15 +33,23 @@ function errnoCode(caught: unknown): string | undefined {
 
 export const isContinuousIntegration = () => Bun.env['CI'] === 'true' || Bun.env['CI'] === '1';
 
-export function header(title: string) {
-  const text = capitalCase(title);
-  console.log('\n' + chalk.bgBlue.black(` ${text} `));
+function capitalCase(value: string): string {
+  return value
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
+    .replace(/[^a-zA-Z\d]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export const info = (msg: string) => console.log(chalk.cyan(msg));
-export const success = (msg: string) => console.log(chalk.green(msg));
-export const warning = (msg: string) => console.log(chalk.yellow(msg));
-export const error = (msg: string) => console.error(chalk.red(msg));
+export function header(title: string) {
+  const text = capitalCase(title);
+  console.log(`\n ${text} `);
+}
+
+export const info = (msg: string) => console.log(msg);
+export const success = (msg: string) => console.log(msg);
+export const warning = (msg: string) => console.log(msg);
+export const error = (msg: string) => console.error(msg);
 
 /**
  * Outcome of inspecting a checkout's root `node_modules` topology.
