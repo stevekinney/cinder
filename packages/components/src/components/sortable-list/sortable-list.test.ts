@@ -643,6 +643,29 @@ describe('SortableList pointer drag preview', () => {
     await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
   });
 
+  test('preview tagging does not cross a nested component boundary', async () => {
+    const { container } = renderList();
+    const list = container.querySelector('.cinder-sortable-list');
+    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    installPointerCaptureOnHandle(handle);
+
+    list?.removeAttribute('data-cinder-sortable-list');
+    container.setAttribute('data-cinder-sortable-list', '');
+
+    await dispatchPointerEvent(handle, 'pointerdown', {
+      button: 0,
+      clientX: 50,
+      clientY: 100,
+      pointerId: 1,
+      pointerType: 'mouse',
+    });
+
+    const preview = document.querySelector('[data-cinder-drag-preview]');
+    expect(preview?.hasAttribute('data-cinder-sortable-list-preview')).toBe(false);
+
+    await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
+  });
+
   test('preview has aria-hidden=true so it does not duplicate AT content', async () => {
     const { container } = renderList();
     const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;

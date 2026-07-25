@@ -128,7 +128,7 @@
     portal.setAttribute('aria-hidden', 'true');
     portal.setAttribute('inert', '');
     portal.className = 'cinder-sortable-drag-preview';
-    if (rowEl.closest('[data-cinder-sortable-list]')) {
+    if (rowEl.parentElement?.hasAttribute('data-cinder-sortable-list')) {
       portal.setAttribute('data-cinder-sortable-list-preview', '');
     }
 
