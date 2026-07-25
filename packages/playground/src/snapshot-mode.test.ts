@@ -117,6 +117,11 @@ describe('snapshotModeStyleTag', () => {
     expect(tag).toContain('transition-delay: 0s');
   });
 
+  it('forces offscreen content to render for complete accessibility and screenshot capture', () => {
+    const tag = snapshotModeStyleTag(true);
+    expect(tag).toContain('content-visibility: visible !important');
+  });
+
   it('scopes rules to [data-snapshot-mode] so normal pages are unaffected', () => {
     const tag = snapshotModeStyleTag(true);
     expect(tag).toContain('[data-snapshot-mode]');
