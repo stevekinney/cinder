@@ -6,6 +6,7 @@ import {
   shouldCheckComponentSource,
 } from './check-primitive-composition.ts';
 import { cssPrimitiveCounts } from './primitive-composition-css.ts';
+import { primitiveCompositionSourceRoots } from './primitive-composition-runner.ts';
 
 describe('primitive composition guard', () => {
   test('rejects a new raw form control', () => {
@@ -24,6 +25,21 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<!-- <input> --><input type="hidden" name="value" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('ignores expression-backed static hidden input types', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input type={\'hidden\'} name="value" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<script>const proxyType = \'hidden\';</script><input type={proxyType} name="value" />',
         'new-control/new-control.svelte',
       ),
     ).toEqual([]);
@@ -109,6 +125,17 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('counts raw controls in literal polymorphic expression branches', () => {
+    for (const source of [
+      "<svelte:element this={editable ? 'input' : 'div'} />",
+      "<svelte:element this={editable && 'select'} />",
+      "<svelte:element this={editable || 'textarea'} />",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(source, 'new-control/new-control.svelte'),
+      ).toHaveLength(1);
+  });
+
   test('rejects an added raw control in a tracked file', () => {
     expect(
       findPrimitiveCompositionViolations('<input /><input />', 'pin-input/pin-input.svelte'),
@@ -143,6 +170,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '.first { display: grid; grid-template-columns: 1fr; } .second { display: grid; grid-template-columns: 1fr; } .third { display: grid; grid-template-columns: 1fr; }',
+        'bento-grid/bento-grid.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('counts every selector-list branch in a tracked stylesheet', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.first { display: grid; grid-template-columns: 1fr; } .second, .third { display: grid; grid-template-columns: 1fr; }',
         'bento-grid/bento-grid.css',
       ),
     ).toHaveLength(1);
@@ -210,6 +246,12 @@ describe('primitive composition guard', () => {
           'new-grid/new-grid.svelte',
         ),
       ).toHaveLength(1);
+  });
+
+  test('scans published component styles outside the component tree', () => {
+    expect(primitiveCompositionSourceRoots.map(({ relativePrefix }) => relativePrefix)).toContain(
+      'styles/components',
+    );
   });
 
   test('does not combine declarations from conflicting attribute selectors', () => {

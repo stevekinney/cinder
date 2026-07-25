@@ -160,14 +160,18 @@ function conditionalScopesCanOverlap(left: Rule, right: Rule): boolean {
   );
 }
 
-function selectorsCanMatchSameElement(left: Rule, right: Rule): boolean {
-  if (!conditionalScopesCanOverlap(left, right)) return false;
+function compatibleSelectorTargetPairs(
+  left: Rule,
+  right: Rule,
+): Array<readonly [SelectorTarget, SelectorTarget]> {
+  if (!conditionalScopesCanOverlap(left, right)) return [];
   const leftTargets = selectorTargets(left.selector);
   const rightTargets = selectorTargets(right.selector);
-  return leftTargets.some((leftTarget) =>
-    rightTargets.some(
-      (rightTarget) => left === right || targetsCanMatchSameElement(leftTarget, rightTarget),
-    ),
+  if (left === right) return leftTargets.map((target) => [target, target] as const);
+  return leftTargets.flatMap((leftTarget) =>
+    rightTargets
+      .filter((rightTarget) => targetsCanMatchSameElement(leftTarget, rightTarget))
+      .map((rightTarget) => [leftTarget, rightTarget] as const),
   );
 }
 
@@ -182,21 +186,16 @@ function isInsideKeyframes(rule: Rule): boolean {
   return false;
 }
 
-function ruleUsesSharedFloatingSurface(
-  rule: Rule,
+function targetUsesSharedFloatingSurface(
+  target: SelectorTarget,
   sharedClassSets: readonly ReadonlySet<string>[],
 ): boolean {
-  const targets = selectorTargets(rule.selector);
   return (
-    targets.length > 0 &&
-    targets.every(
-      (target) =>
-        target.classes.has('cinder-_floating-surface') ||
-        (target.classes.size > 0 &&
-          sharedClassSets.some((sharedClasses) =>
-            [...target.classes].every((className) => sharedClasses.has(className)),
-          )),
-    )
+    target.classes.has('cinder-_floating-surface') ||
+    (target.classes.size > 0 &&
+      sharedClassSets.some((sharedClasses) =>
+        [...target.classes].every((className) => sharedClasses.has(className)),
+      ))
   );
 }
 
@@ -222,9 +221,11 @@ export function cssPrimitiveCounts(
   const grid = displayRules.reduce(
     (count, { rule }) =>
       count +
-      templateRules.filter(({ rule: templateRule }) =>
-        selectorsCanMatchSameElement(rule, templateRule),
-      ).length,
+      templateRules.reduce(
+        (pairCount, { rule: templateRule }) =>
+          pairCount + compatibleSelectorTargetPairs(rule, templateRule).length,
+        0,
+      ),
     0,
   );
 
@@ -247,12 +248,16 @@ export function cssPrimitiveCounts(
   const floating = positionRules.reduce(
     (count, { rule }) =>
       count +
-      zIndexRules.filter(
-        ({ rule: zIndexRule }) =>
-          selectorsCanMatchSameElement(rule, zIndexRule) &&
-          !ruleUsesSharedFloatingSurface(rule, sharedClassSets) &&
-          !ruleUsesSharedFloatingSurface(zIndexRule, sharedClassSets),
-      ).length,
+      zIndexRules.reduce(
+        (pairCount, { rule: zIndexRule }) =>
+          pairCount +
+          compatibleSelectorTargetPairs(rule, zIndexRule).filter(
+            ([positionTarget, zIndexTarget]) =>
+              !targetUsesSharedFloatingSurface(positionTarget, sharedClassSets) &&
+              !targetUsesSharedFloatingSurface(zIndexTarget, sharedClassSets),
+          ).length,
+        0,
+      ),
     0,
   );
 

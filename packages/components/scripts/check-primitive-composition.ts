@@ -8,9 +8,6 @@
  * immediately instead of silently creating another copy.
  */
 
-import { Glob } from 'bun';
-import { relative, resolve } from 'node:path';
-
 import { parse as parseCss } from 'postcss';
 import { parse as parseSvelte } from 'svelte/compiler';
 
@@ -28,9 +25,7 @@ import {
   allowedGridCounts,
   allowedRawControlCounts,
 } from './primitive-composition-migrations.ts';
-
-const workspaceRoot = resolve(import.meta.dir, '../../..');
-const componentsRoot = resolve(workspaceRoot, 'packages/components/src/components');
+import { runPrimitiveCompositionCheck } from './primitive-composition-runner.ts';
 
 export type PrimitiveCompositionViolation = {
   filePath: string;
@@ -81,6 +76,26 @@ function staticStringFromExpression(
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
     return bindings.get(expression['name']);
   return undefined;
+}
+
+function possibleStaticStringsFromExpression(
+  expression: unknown,
+  bindings: ReadonlyMap<string, string>,
+): Set<string> {
+  const directValue = staticStringFromExpression(expression, bindings);
+  if (directValue !== undefined) return new Set([directValue]);
+  if (!isRecord(expression)) return new Set();
+  if (expression['type'] === 'ConditionalExpression')
+    return new Set([
+      ...possibleStaticStringsFromExpression(expression['consequent'], bindings),
+      ...possibleStaticStringsFromExpression(expression['alternate'], bindings),
+    ]);
+  if (expression['type'] === 'LogicalExpression')
+    return new Set([
+      ...possibleStaticStringsFromExpression(expression['left'], bindings),
+      ...possibleStaticStringsFromExpression(expression['right'], bindings),
+    ]);
+  return new Set();
 }
 
 function staticStringBindings(source: string): Map<string, string> {
@@ -176,7 +191,11 @@ function attributeValueWithDynamics(
     .join('');
 }
 
-function hasStaticHiddenAttribute(element: UnknownRecord, elementName: string): boolean {
+function hasStaticHiddenAttribute(
+  element: UnknownRecord,
+  elementNames: ReadonlySet<string>,
+  bindings: ReadonlyMap<string, string>,
+): boolean {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
   return attributes.some((attribute) => {
@@ -198,9 +217,10 @@ function hasStaticHiddenAttribute(element: UnknownRecord, elementName: string): 
       );
     }
     return (
-      elementName === 'input' &&
+      elementNames.size === 1 &&
+      elementNames.has('input') &&
       attribute['name'] === 'type' &&
-      staticAttributeValue(attribute)?.toLowerCase() === 'hidden'
+      attributeValueWithDynamics(attribute, bindings)?.toLowerCase() === 'hidden'
     );
   });
 }
@@ -211,19 +231,22 @@ export function visibleControlCount(source: string): number {
   if (fragment === undefined) return 0;
   let count = 0;
   walkAst(fragment, (node) => {
-    const resolvedElementName =
-      node['type'] === 'RegularElement'
-        ? node['name']
-        : node['type'] === 'SvelteElement'
-          ? (staticStringFromExpression(node['tag'], bindings) ??
-            possibleMutableControlName(source, node['tag']))
-          : undefined;
-    const elementName =
-      typeof resolvedElementName === 'string' ? resolvedElementName.toLowerCase() : undefined;
-    if (
-      (elementName === 'input' || elementName === 'select' || elementName === 'textarea') &&
-      !hasStaticHiddenAttribute(node, elementName)
-    )
+    const elementNames = new Set<string>();
+    if (node['type'] === 'RegularElement' && typeof node['name'] === 'string')
+      elementNames.add(node['name'].toLowerCase());
+    if (node['type'] === 'SvelteElement') {
+      for (const name of possibleStaticStringsFromExpression(node['tag'], bindings))
+        elementNames.add(name.toLowerCase());
+      const mutableControlName = possibleMutableControlName(source, node['tag']);
+      if (mutableControlName !== undefined) elementNames.add(mutableControlName);
+    }
+    const controlNames = new Set(
+      [...elementNames].filter(
+        (elementName) =>
+          elementName === 'input' || elementName === 'select' || elementName === 'textarea',
+      ),
+    );
+    if (controlNames.size > 0 && !hasStaticHiddenAttribute(node, controlNames, bindings))
       count += 1;
   });
   return count;
@@ -365,7 +388,9 @@ export function findPrimitiveCompositionViolations(
   filePath: string,
   companionSource: string | readonly string[] = '',
 ): PrimitiveCompositionViolation[] {
-  const normalized = filePath.replaceAll('\\', '/').replace(/^.*components\//, '');
+  const normalized = filePath
+    .replaceAll('\\', '/')
+    .replace(/^.*packages\/components\/src\/components\//, '');
   const violations: PrimitiveCompositionViolation[] = [];
   const rawControlCount = normalized.endsWith('.svelte') ? visibleControlCount(source) : 0;
   const expectedRawControlCount = allowedRawControlCounts.get(normalized);
@@ -436,59 +461,9 @@ export function findPrimitiveCompositionViolations(
   return violations;
 }
 
-async function main(): Promise<void> {
-  const violations: PrimitiveCompositionViolation[] = [];
-  const existingPaths = new Set<string>();
-  const glob = new Glob('**/*.{svelte,css}');
-  const componentSources: Array<{
-    absolutePath: string;
-    relativePath: string;
-    source: string;
-  }> = [];
-  for await (const absolutePath of glob.scan({ cwd: componentsRoot, absolute: true })) {
-    const relativePath = relative(componentsRoot, absolutePath).replaceAll('\\', '/');
-    if (!shouldCheckComponentSource(relativePath)) continue;
-    existingPaths.add(relativePath);
-    componentSources.push({
-      absolutePath,
-      relativePath,
-      source: await Bun.file(absolutePath).text(),
-    });
-  }
-  const svelteSources = componentSources.filter(({ relativePath }) =>
-    relativePath.endsWith('.svelte'),
+if (import.meta.main)
+  await runPrimitiveCompositionCheck(
+    shouldCheckComponentSource,
+    findPrimitiveCompositionViolations,
+    missingMigrationRecordPaths,
   );
-  for (const { absolutePath, relativePath, source } of componentSources) {
-    const styledFamily = relativePath.split('/')[0] ?? '';
-    const companionSources = absolutePath.endsWith('.css')
-      ? svelteSources
-          .filter(({ relativePath: candidatePath }) => {
-            const candidateFamily = candidatePath.split('/')[0] ?? '';
-            return (
-              candidateFamily === styledFamily || candidateFamily.startsWith(`${styledFamily}-`)
-            );
-          })
-          .map(({ source: candidateSource }) => candidateSource)
-      : [];
-    violations.push(...findPrimitiveCompositionViolations(source, relativePath, companionSources));
-  }
-  for (const filePath of missingMigrationRecordPaths(existingPaths))
-    violations.push({
-      filePath,
-      message: 'Remove the stale primitive-composition migration record for this missing file.',
-    });
-  if (violations.length === 0) {
-    process.stdout.write(
-      'check-primitive-composition — OK (known primitive copies are explicitly tracked).\n',
-    );
-    return;
-  }
-  process.stderr.write(
-    'check-primitive-composition — untracked hand-rolled primitives detected.\n\n',
-  );
-  for (const violation of violations)
-    process.stderr.write(`  ${violation.filePath}\n    ${violation.message}\n`);
-  process.exitCode = 1;
-}
-
-if (import.meta.main) await main();
