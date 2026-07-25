@@ -138,9 +138,11 @@
         if (matchesCurrentFilter(name)) count += 1;
         continue;
       }
-      if (matchesCurrentFilter(name)) count += 1;
+      const parentMatches = matchesCurrentFilter(name);
+      const matchingChildren = children.filter((child) => matchesCurrentFilter(child));
+      if (parentMatches || matchingChildren.length > 0) count += 1;
       for (const child of children) {
-        if (filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)) {
+        if (filter.trim() === '' || parentMatches || matchesCurrentFilter(child)) {
           count += 1;
         }
       }
