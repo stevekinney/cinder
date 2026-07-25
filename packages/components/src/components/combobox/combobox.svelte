@@ -397,8 +397,8 @@
       value={textInputValue}
       aria-autocomplete="list"
       aria-label={ariaLabel?.trim() || undefined}
-      aria-expanded={listboxVisible}
-      aria-controls={listboxVisible ? listboxId : undefined}
+      aria-expanded={open}
+      aria-controls={open ? listboxId : undefined}
       aria-activedescendant={activeOptionId}
       aria-invalid={field.ariaInvalid}
       aria-required={resolvedRequired || undefined}
@@ -475,8 +475,9 @@
   {#if emptyVisible}
     <Popover
       bind:open
+      id={listboxId}
       triggerRef={inputElement}
-      role="group"
+      role="listbox"
       focusManagement="preserve"
       wireTriggerAria={false}
       closeOnEscape={false}

@@ -26,7 +26,7 @@
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
-  import { getInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
+  import { createInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
   import { setSpeedDialContext } from './speed-dial.context.ts';
   import type { SpeedDialDirection, SpeedDialProps } from './speed-dial.types.ts';
 
@@ -81,8 +81,9 @@
   const orientation = $derived(
     resolvedDirection === 'left' || resolvedDirection === 'right' ? 'horizontal' : 'vertical',
   );
-  const inheritedPortalStyle = $derived(
-    open && !hidden ? getInheritedPortalStyle(getTriggerElement()) : '',
+  const inheritedPortalStyle = createInheritedPortalStyle(
+    () => getTriggerElement(),
+    () => open && !hidden,
   );
 
   function normalizeAriaLabel(label: string | null | undefined): string {
@@ -257,7 +258,7 @@
     data-cinder-open={open ? '' : undefined}
     data-cinder-direction={resolvedDirection}
     data-cinder-position-ready={anchoredActions.positionReady || undefined}
-    style={`${anchoredActions.positionStyle};${inheritedPortalStyle}`}
+    style={`${anchoredActions.positionStyle};${inheritedPortalStyle.style}`}
     aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
     inert={!open || hidden ? true : undefined}
     tabindex="-1"

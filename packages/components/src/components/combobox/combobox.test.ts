@@ -7,7 +7,7 @@ import { tick } from 'svelte';
 import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
-expect.extend(matchers as Parameters<typeof expect.extend>[0]);
+expect.extend(matchers);
 
 setupHappyDom();
 
@@ -238,7 +238,7 @@ describe('Combobox structure', () => {
     expect(container.querySelector('[role="listbox"]')).toBeNull();
   });
 
-  test('wires aria-controls only while the listbox exists', async () => {
+  test('wires aria-controls while either options or the empty listbox are visible', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector<HTMLInputElement>('#fruit')!;
 
@@ -253,6 +253,10 @@ describe('Combobox structure', () => {
       expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull(),
     );
 
+    expect(input.getAttribute('aria-expanded')).toBe('true');
+    expect(input.getAttribute('aria-controls')).toBe('fruit-listbox');
+
+    await fireEvent.keyDown(input, { key: 'Escape' });
     expect(input.getAttribute('aria-expanded')).toBe('false');
     expect(input.hasAttribute('aria-controls')).toBe(false);
   });
@@ -298,11 +302,12 @@ describe('Combobox structure', () => {
     });
     const input = container.querySelector<HTMLInputElement>('#fruit');
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    if (!input) throw new Error('combobox input not found');
     expect(input?.value).toBe('Banana');
     expect(hidden?.value).toBe('banana');
 
-    await fireEvent.focus(input!);
-    await fireEvent.input(input!, { target: { value: 'ap' } });
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'ap' } });
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
     expect(input?.value).toBe('Apple');
@@ -329,11 +334,12 @@ describe('Combobox structure', () => {
     });
     const input = container.querySelector<HTMLInputElement>('#fruit');
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    if (!input) throw new Error('combobox input not found');
     expect(input?.value).toBe('');
     expect(hidden?.value).toBe('');
 
-    await fireEvent.focus(input!);
-    await fireEvent.input(input!, { target: { value: 'ap' } });
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'ap' } });
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
     expect(input?.value).toBe('Apple');
@@ -361,9 +367,10 @@ describe('Combobox structure', () => {
     });
     const input = container.querySelector<HTMLInputElement>('#fruit');
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
+    if (!input) throw new Error('combobox input not found');
 
-    await fireEvent.focus(input!);
-    await fireEvent.input(input!, { target: { value: 'ap' } });
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'ap' } });
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
     form.addEventListener('reset', (event) => event.preventDefault());
@@ -383,12 +390,13 @@ describe('Combobox structure', () => {
       required: true,
     });
     const input = container.querySelector<HTMLInputElement>('#fruit');
+    if (!input) throw new Error('combobox input not found');
     expect(input?.checkValidity()).toBe(false);
 
-    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    await fireEvent.input(input, { target: { value: 'not an option' } });
     expect(input?.checkValidity()).toBe(false);
 
-    await fireEvent.input(input!, { target: { value: 'app' } });
+    await fireEvent.input(input, { target: { value: 'app' } });
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
     expect(input?.checkValidity()).toBe(true);
@@ -402,9 +410,10 @@ describe('Combobox structure', () => {
       options: fruits,
     });
     const input = container.querySelector<HTMLInputElement>('#fruit');
+    if (!input) throw new Error('combobox input not found');
     expect(input?.checkValidity()).toBe(true);
 
-    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    await fireEvent.input(input, { target: { value: 'not an option' } });
     expect(input?.checkValidity()).toBe(false);
 
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
@@ -418,9 +427,10 @@ describe('Combobox structure', () => {
       options: fruits,
     });
     const input = container.querySelector<HTMLInputElement>('#fruit');
+    if (!input) throw new Error('combobox input not found');
     expect(input?.checkValidity()).toBe(true);
 
-    await fireEvent.input(input!, { target: { value: 'not an option' } });
+    await fireEvent.input(input, { target: { value: 'not an option' } });
     expect(input?.checkValidity()).toBe(false);
 
     const hidden = container.querySelector<HTMLInputElement>('input[type="hidden"]');
@@ -541,14 +551,21 @@ describe('Combobox filtering', () => {
   test('typing with no matches renders the empty state', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    input.style.setProperty('--cinder-surface', 'hotpink');
+    input.style.colorScheme = 'dark';
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
       expect(container.querySelector('[role="option"]')).toBeNull();
       const emptyState = container.querySelector('.cinder-combobox__empty');
+      const panel = emptyState?.closest('.cinder-popover') as HTMLElement | null;
       expect(emptyState?.textContent?.trim()).toBe('No results');
-      expect(emptyState?.closest('.cinder-popover')).not.toBeNull();
+      expect(emptyState?.closest('[role="listbox"]')?.id).toBe('fruit-listbox');
       expect(emptyState?.closest('.cinder-combobox')).toBeNull();
+      expect(panel?.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
+      expect(panel?.style.colorScheme).toBe('dark');
+      expect(input.getAttribute('aria-expanded')).toBe('true');
+      expect(input.getAttribute('aria-controls')).toBe('fruit-listbox');
     });
   });
 

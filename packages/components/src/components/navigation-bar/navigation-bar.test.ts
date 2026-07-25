@@ -177,6 +177,23 @@ function actionButtonSnippet() {
   }));
 }
 
+function brandLinkSnippet() {
+  return createRawSnippet(() => ({
+    render: () => '<a href="/home" id="brand-link">Acme</a>',
+  }));
+}
+
+function disabledFirstNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item aria-disabled="true">Disabled</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+      </div>
+    `,
+  }));
+}
+
 function keyboardNavigationSnippet(clicks: Record<string, number>) {
   return createRawSnippet(() => ({
     render: () => `
@@ -380,7 +397,7 @@ describe('NavigationBar', () => {
     let capturedPlacement: string | undefined;
     let capturedShowLabels: string | undefined;
     const captureSnippet = createRawSnippet<
-      [{ variant: string; placement: string; labelsVisible: string }]
+      [{ variant: string; placement?: string; labelsVisible?: string }]
     >((getCtx) => ({
       render: () => `<span></span>`,
       setup() {
@@ -392,7 +409,7 @@ describe('NavigationBar', () => {
     }));
 
     const { container } = render(NavigationBar, {
-      items: captureSnippet as any,
+      items: captureSnippet,
       placement: 'bottom',
       labelsVisible: 'active',
       menuToggle: toggleSnippet(),
@@ -591,6 +608,24 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('keeps an open collapsed menu inside its owning dialog', async () => {
+    await withResizeObserver(async () => {
+      const dialog = document.createElement('dialog');
+      dialog.setAttribute('open', '');
+      document.body.append(dialog);
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+      });
+      dialog.append(container);
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+
+      expect(itemsRegion.parentElement).toBe(dialog);
+    });
+  });
+
   test('portaled menu preserves scoped tokens and color scheme through positioning updates', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -605,6 +640,14 @@ describe('NavigationBar', () => {
       expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
       expect(itemsRegion.style.colorScheme).toBe('dark');
       expect(itemsRegion.style.position).toBe('fixed');
+
+      const navigationBar = container.querySelector('nav') as HTMLElement;
+      navigationBar.style.setProperty('--cinder-surface', 'rebeccapurple');
+      navigationBar.style.colorScheme = 'light';
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('rebeccapurple');
+      expect(itemsRegion.style.colorScheme).toBe('light');
     });
   });
 
@@ -630,6 +673,64 @@ describe('NavigationBar', () => {
       settings.focus();
       await fireEvent.keyDown(settings, { key: 'Tab' });
       expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('toggle Tab skips disabled navigation items', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: disabledFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(enabledItem);
+    });
+  });
+
+  test('toggle Tab preserves a focusable brand before the portaled items', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: brandLinkSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const brandLink = container.querySelector('#brand-link');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(brandLink);
+    });
+  });
+
+  test('last portaled item tabs to the first page control after a bar without actions', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+      });
+      const followingButton = document.createElement('button');
+      followingButton.textContent = 'Following';
+      document.body.append(followingButton);
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const settings = itemsRegion.querySelector('[data-key="settings"]') as HTMLButtonElement;
+
+      settings.focus();
+      await fireEvent.keyDown(settings, { key: 'Tab' });
+      expect(document.activeElement).toBe(followingButton);
     });
   });
 
@@ -719,7 +820,7 @@ describe('NavigationBar', () => {
     }));
 
     render(NavigationBar, {
-      items: captureSnippet as any,
+      items: captureSnippet,
       menuToggle: toggleSnippet(),
     });
 
@@ -742,7 +843,7 @@ describe('NavigationBar', () => {
     }));
 
     const { container } = render(NavigationBar, {
-      items: captureSnippet as any,
+      items: captureSnippet,
       menuToggle: toggleSnippet(),
     });
 
@@ -1093,6 +1194,12 @@ describe('NavigationBar responsive CSS', () => {
   test('closed collapsible items are hidden by the container query before hydration', () => {
     expect(navigationBarCss).toMatch(
       /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\][\s\S]*?\.cinder-navigation-bar__items:not\(\[data-cinder-mobile-panel\]\)\s*\{[\s\S]*?display:\s*none;/,
+    );
+  });
+
+  test('mobile panels are out of body flow before floating positioning completes', () => {
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\s*\{[\s\S]*?position:\s*fixed;/,
     );
   });
 

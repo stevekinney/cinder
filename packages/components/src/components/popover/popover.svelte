@@ -32,6 +32,7 @@
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
+  import { createInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
 
   let {
     id: panelIdProp,
@@ -105,6 +106,10 @@
     inheritAttributes: true,
     source: () => anchorElement ?? null,
   });
+  const inheritedPortalStyle = createInheritedPortalStyle(
+    () => anchorElement,
+    () => mounted && open,
+  );
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => open,
@@ -302,7 +307,7 @@
     class={classNames('cinder-_floating-surface', 'cinder-popover', className)}
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
-    style={anchoredOverlay.positionStyle}
+    style={`${anchoredOverlay.positionStyle};${inheritedPortalStyle.style}`}
     tabindex="-1"
   >
     {@render children()}

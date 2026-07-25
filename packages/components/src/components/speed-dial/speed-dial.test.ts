@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
 
@@ -74,6 +74,13 @@ describe('SpeedDial', () => {
 
     expect(toolbar.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
     expect(toolbar.style.colorScheme).toBe('dark');
+
+    trigger.setAttribute('style', '--cinder-surface-raised: rebeccapurple; color-scheme: light;');
+
+    await waitFor(() => {
+      expect(toolbar.style.getPropertyValue('--cinder-surface-raised')).toBe('rebeccapurple');
+      expect(toolbar.style.colorScheme).toBe('light');
+    });
   });
 
   test('direction controls data attributes and toolbar orientation', () => {

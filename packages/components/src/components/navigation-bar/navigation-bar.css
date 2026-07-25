@@ -145,6 +145,7 @@
   }
 
   .cinder-navigation-bar__items[data-cinder-mobile-panel] {
+    position: fixed;
     flex-direction: column;
     align-items: stretch;
     padding: var(--cinder-space-2);

@@ -92,6 +92,32 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
   return inherited.cssText;
 }
 
+export function createInheritedPortalStyle(
+  source: () => HTMLElement | null | undefined,
+  active: () => boolean,
+): { readonly style: string } {
+  let style = $state('');
+
+  $effect(() => {
+    if (!active()) {
+      style = '';
+      return;
+    }
+    const inheritanceSource = source();
+    const syncStyle = () => {
+      style = getInheritedPortalStyle(inheritanceSource);
+    };
+    syncStyle();
+    return observeInheritedPortalAttributes(inheritanceSource, true, syncStyle) ?? undefined;
+  });
+
+  return {
+    get style() {
+      return style;
+    },
+  };
+}
+
 export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,
@@ -171,7 +197,7 @@ function observeInheritedPortalAttributes(
     observedElements.push(elementToObserve);
     observer.observe(elementToObserve, {
       attributes: true,
-      attributeFilter: ['dir', 'data-theme', 'data-cinder-theme'],
+      attributeFilter: ['class', 'style', 'dir', 'data-theme', 'data-cinder-theme'],
     });
   }
   const observedElements: HTMLElement[] = [];
