@@ -16,18 +16,22 @@ const packageDirectory = dirname(fileURLToPath(import.meta.url));
  * package root, so this resolves correctly whether the caller loaded the
  * built module or (inside this workspace) the source directly.
  */
+function hasStringVersion(value: unknown): value is { version: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'version' in value &&
+    typeof value.version === 'string'
+  );
+}
+
 function readOwnPackageVersion(): string {
   const packageJsonPath = join(packageDirectory, '..', 'package.json');
   const parsed: unknown = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
-  if (
-    typeof parsed !== 'object' ||
-    parsed === null ||
-    !('version' in parsed) ||
-    typeof (parsed as { version: unknown }).version !== 'string'
-  ) {
+  if (!hasStringVersion(parsed)) {
     throw new Error(`${packageJsonPath} is missing a string "version" field.`);
   }
-  return (parsed as { version: string }).version;
+  return parsed.version;
 }
 
 /** Build the Cinder MCP server: load knowledge, register tools/resources/prompts. */

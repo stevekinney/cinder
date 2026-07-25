@@ -48,11 +48,29 @@ async function run(command: string, arguments_: string[], cwd: string, env?: Nod
 async function packCinderTarball(): Promise<string> {
   process.stdout.write('[validate-consumer] building @lostgradient/cinder…\n');
   await run('bun', ['run', '--filter=@lostgradient/cinder', 'build'], workspaceRoot);
-  const { packForPublish: packCinder } = await import(
+  const cinderPacker: unknown = await import(
     join(componentsRoot, 'scripts', 'pack-for-publish.ts')
   );
-  const { tarballPath } = await packCinder();
-  return tarballPath as string;
+  if (
+    typeof cinderPacker !== 'object' ||
+    cinderPacker === null ||
+    !('packForPublish' in cinderPacker) ||
+    typeof cinderPacker.packForPublish !== 'function'
+  ) {
+    fail(
+      `${componentsRoot}/scripts/pack-for-publish.ts does not export a packForPublish function.`,
+    );
+  }
+  const result: unknown = await cinderPacker.packForPublish();
+  if (
+    typeof result !== 'object' ||
+    result === null ||
+    !('tarballPath' in result) ||
+    typeof result.tarballPath !== 'string'
+  ) {
+    fail("@lostgradient/cinder's packForPublish() did not return a string tarballPath.");
+  }
+  return result.tarballPath;
 }
 
 /** Build + pack this package's own tarball. */
@@ -127,6 +145,10 @@ function bunFreeEnv(nodeExecutable: string): Record<string, string> {
   return env;
 }
 
+function isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
+}
+
 function assertBunUnresolvable(env: Record<string, string>, cwd: string): void {
   try {
     const probe = Bun.spawnSync(['bun', '--version'], { cwd, env, stdout: 'pipe', stderr: 'pipe' });
@@ -135,8 +157,7 @@ function assertBunUnresolvable(env: Record<string, string>, cwd: string): void {
     // returning — see the catch below for that (expected) path.
     if (probe.exitCode === 0) fail('expected `bun` to be unresolvable in the consumer environment');
   } catch (error: unknown) {
-    const code = (error as NodeJS.ErrnoException | undefined)?.code;
-    if (code !== 'ENOENT') throw error;
+    if (!isErrnoException(error) || error.code !== 'ENOENT') throw error;
   }
 }
 
@@ -280,16 +301,15 @@ async function runMcpHandshake(fixtureRoot: string, env: Record<string, string>)
     const text = firstComponent && 'text' in firstComponent ? firstComponent.text : '';
     if (!text.includes('"id": "button"')) fail('cinder://component/button did not resolve');
 
+    const invalidParamsCode: number = ErrorCode.InvalidParams;
     const missingComponent = await readResourceError(client, 'cinder://component/buton');
-    if (missingComponent.code !== ErrorCode.InvalidParams)
-      fail('missing-component error code mismatch');
+    if (missingComponent.code !== invalidParamsCode) fail('missing-component error code mismatch');
 
     const missingArtifact = await readResourceError(
       client,
       'cinder://component/access-gate/constraints',
     );
-    if (missingArtifact.code !== ErrorCode.InvalidParams)
-      fail('missing-artifact error code mismatch');
+    if (missingArtifact.code !== invalidParamsCode) fail('missing-artifact error code mismatch');
   } finally {
     await client.close();
   }

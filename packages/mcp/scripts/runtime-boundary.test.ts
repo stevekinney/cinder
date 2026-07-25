@@ -20,7 +20,7 @@ async function nonTestSourceFiles(): Promise<string[]> {
     if (relative.endsWith('.test.ts') || relative.endsWith('.spec.ts')) continue;
     files.push(relative);
   }
-  return files.sort();
+  return files.toSorted();
 }
 
 describe('runtime boundary', () => {

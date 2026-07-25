@@ -97,7 +97,7 @@ function tarballFileName(manifest: Pick<PackageManifest, 'name' | 'version'>): s
  * `workspace:*` entry; this only asserts nothing ELSE leaked the protocol in.
  */
 export function assertSourceManifest(manifest: PackageManifest): void {
-  const otherDependencies = { ...(manifest.dependencies ?? {}) };
+  const otherDependencies = { ...manifest.dependencies };
   delete otherDependencies['@lostgradient/cinder'];
   if (JSON.stringify(otherDependencies).includes('workspace:')) {
     throw new Error(
