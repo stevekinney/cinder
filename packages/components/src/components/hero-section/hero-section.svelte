@@ -22,6 +22,7 @@
 
 <script lang="ts">
   import Container from '../container/container.svelte';
+  import '@lostgradient/cinder/aspect-ratio/styles';
   import AspectRatio from '../aspect-ratio/index.ts';
   import { classNames } from '../../utilities/class-names.ts';
 

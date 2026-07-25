@@ -20,6 +20,7 @@ const runtimePatchSnippet = createRawSnippet(() => ({
 void runtimePatchSnippet;
 
 const HERO_SECTION_CSS = readFileSync(join(import.meta.dir, 'hero-section.css'), 'utf8');
+const HERO_SECTION_SOURCE = readFileSync(join(import.meta.dir, 'hero-section.svelte'), 'utf8');
 
 describe('HeroSection', () => {
   test('renders title and optional description copy', () => {
@@ -92,6 +93,7 @@ describe('HeroSection', () => {
     expect(HERO_SECTION_CSS).toContain('inline-size: 100%;');
     expect(HERO_SECTION_CSS).toContain('position: absolute;');
     expect(HERO_SECTION_CSS).toContain('.cinder-hero-section__media > .cinder-aspect-ratio > svg');
+    expect(HERO_SECTION_SOURCE).toContain("import '@lostgradient/cinder/aspect-ratio/styles';");
     expect(HERO_SECTION_CSS).not.toContain('cinder-hero-section__media {\n    border:');
   });
 
