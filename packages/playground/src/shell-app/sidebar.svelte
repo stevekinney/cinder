@@ -20,7 +20,7 @@
   import { humanizeComponentName } from './humanize.ts';
   import { buildShellHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
-  import { COMPOUND_COMPONENT_FAMILIES } from '../discover.ts';
+  import { COMPOUND_COMPONENT_FAMILIES } from './compound-families.ts';
 
   type Props = {
     components: string[];
@@ -89,22 +89,21 @@
     });
   });
 
-  const groupedComponents = $derived.by(() => {
-    const visible = visibleComponents;
-    const consumed: string[] = [];
-    const groups: Array<{ parent: string; children: string[] }> = [];
+  function matchesCurrentFilter(name: string): boolean {
+    const needle = filter.trim().toLowerCase();
+    return (
+      needle === '' ||
+      name.toLowerCase().includes(needle) ||
+      humanizeComponentName(name).toLowerCase().includes(needle)
+    );
+  }
+
+  function familyParent(name: string): string | undefined {
     for (const [parent, children] of Object.entries(COMPOUND_COMPONENT_FAMILIES)) {
-      if (!visible.includes(parent)) continue;
-      const family = children.filter((child) => visible.includes(child));
-      if (family.length === 0) continue;
-      groups.push({ parent, children: family });
-      consumed.push(parent, ...family);
+      if (children.includes(name)) return parent;
     }
-    return {
-      groups,
-      standalone: visibleComponents.filter((name) => !consumed.includes(name)),
-    };
-  });
+    return undefined;
+  }
 
   // Announced to assistive technology whenever the filtered count changes.
   const resultSummary = $derived(
@@ -204,25 +203,9 @@
     </button>
   </div>
   <SideNavigation ariaLabel="Components" {@attach interceptNavClicks}>
-    {#each groupedComponents.standalone as name (name)}
-      <SideNavigationItem
-        href={buildShellHref(name)}
-        active={name === currentComponent}
-        onclick={(event) => handleClick(event, name)}
-      >
-        {humanizeComponentName(name)}
-      </SideNavigationItem>
-    {/each}
-    {#each groupedComponents.groups as group (group.parent)}
-      <SideNavigationGroup label={humanizeComponentName(group.parent)}>
-        <SideNavigationItem
-          href={buildShellHref(group.parent)}
-          active={group.parent === currentComponent}
-          onclick={(event) => handleClick(event, group.parent)}
-        >
-          {humanizeComponentName(group.parent)}
-        </SideNavigationItem>
-        {#each group.children as name (name)}
+    {#each components as name (name)}
+      {#if familyParent(name) === undefined}
+        {#if matchesCurrentFilter(name) && (COMPOUND_COMPONENT_FAMILIES[name] ?? []).length === 0}
           <SideNavigationItem
             href={buildShellHref(name)}
             active={name === currentComponent}
@@ -230,8 +213,30 @@
           >
             {humanizeComponentName(name)}
           </SideNavigationItem>
-        {/each}
-      </SideNavigationGroup>
+        {:else if matchesCurrentFilter(name)}
+          {#key filter.trim()}
+            <SideNavigationGroup label={humanizeComponentName(name)}>
+              <SideNavigationItem
+                href={buildShellHref(name)}
+                active={name === currentComponent}
+                onclick={(event) => handleClick(event, name)}
+              >
+                {humanizeComponentName(name)}
+              </SideNavigationItem>
+              {#each COMPOUND_COMPONENT_FAMILIES[name] ?? [] as child (child)}
+                {#if filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)}
+                  <SideNavigationItem
+                    href={buildShellHref(child)}
+                    active={child === currentComponent}
+                  >
+                    {humanizeComponentName(child)}
+                  </SideNavigationItem>
+                {/if}
+              {/each}
+            </SideNavigationGroup>
+          {/key}
+        {/if}
+      {/if}
     {/each}
   </SideNavigation>
   {#if visibleComponents.length === 0}

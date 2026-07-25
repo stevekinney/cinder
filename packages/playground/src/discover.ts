@@ -9,6 +9,7 @@
 import { basename, dirname, join } from 'node:path';
 
 import { COMPONENT_SOURCES, type ComponentSource } from './component-sources.ts';
+export { COMPOUND_COMPONENT_FAMILIES } from './shell-app/compound-families.ts';
 
 // import.meta.dirname is packages/playground/src/
 const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
@@ -67,14 +68,6 @@ export const COMPOSE_ONLY_COMPONENTS: ReadonlySet<string> = new Set([
  * metadata instead of relying on a naming-prefix heuristic. Leaves remain
  * independently routable; the sidebar simply presents them under their root.
  */
-export const COMPOUND_COMPONENT_FAMILIES: Readonly<Record<string, readonly string[]>> = {
-  accordion: ['accordion-item'],
-  'bento-grid': ['bento-cell'],
-  card: [],
-  table: ['table-body', 'table-cell', 'table-header', 'table-header-cell', 'table-row'],
-  chat: ['chat-composer-popover', 'chat-conversation-header', 'chat-conversation-list'],
-};
-
 /**
  * Scans a component-source root for the absolute paths of every public
  * component `.svelte` file. Covers both the legacy flat layout

@@ -146,6 +146,37 @@ describe('Sidebar', () => {
     expect(container.querySelector('a[href="/c/button"]')).not.toBeNull();
   });
 
+  test('keeps compose-only leaves under their parent family', () => {
+    const { container } = render(Sidebar, {
+      props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
+    });
+    expect(container.querySelector('a[href="/c/accordion"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/c/accordion-item"]')).not.toBeNull();
+  });
+
+  test('reopens a collapsed family when filtering its children', async () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    const groupToggle = container.querySelector<HTMLButtonElement>(
+      '.cinder-side-navigation-group__trigger',
+    );
+    if (groupToggle === null) throw new Error('Expected Chat group toggle');
+    await fireEvent.click(groupToggle);
+    expect(groupToggle.getAttribute('aria-expanded')).toBe('false');
+    await fireEvent.input(getFilterInput(container), { target: { value: 'chat' } });
+    await tick();
+    const refreshedToggle = container.querySelector<HTMLButtonElement>(
+      '.cinder-side-navigation-group__trigger',
+    );
+    expect(refreshedToggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(linkFor(container, 'chat-composer-popover')).not.toBeNull();
+  });
+
   test('filter narrows the list by humanized name (case-insensitive)', async () => {
     const { container } = render(Sidebar, {
       props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },
