@@ -63,6 +63,7 @@
     if (clampedLength < 1) return 0;
     return Math.max(0, Math.min(clampedLength - 1, activeIndex));
   });
+  const slideIdentity = $derived(slides.map((slide) => slide.id).join('\u0000'));
 
   $effect(() => {
     if (clampedLength < 1) {
@@ -97,19 +98,28 @@
     return () => clearInterval(timer);
   });
 
-  function goTo(index: number) {
+  function goTo(index: number, immediate = false) {
     if (clampedLength < 1) return;
+    const nextIndex = ((index % clampedLength) + clampedLength) % clampedLength;
     const wrapped = index < 0 || index >= clampedLength;
-    activeIndex = ((index % clampedLength) + clampedLength) % clampedLength;
-    scrollToActiveSlide(wrapped ? 'auto' : undefined);
+    activeIndex = nextIndex;
+    scrollToActiveSlide(immediate || wrapped ? 'auto' : undefined);
   }
 
   function goPrevious() {
-    goTo(currentIndex - 1);
+    const nextIndex = (currentIndex - 1 + clampedLength) % clampedLength;
+    const physicalDistance = Math.abs(
+      initialSlideOrder(nextIndex) - initialSlideOrder(currentIndex),
+    );
+    goTo(currentIndex - 1, clampedLength > 2 && physicalDistance > 1);
   }
 
   function goNext() {
-    goTo(currentIndex + 1);
+    const nextIndex = (currentIndex + 1) % clampedLength;
+    const physicalDistance = Math.abs(
+      initialSlideOrder(nextIndex) - initialSlideOrder(currentIndex),
+    );
+    goTo(currentIndex + 1, clampedLength > 2 && physicalDistance > 1);
   }
 
   function onKeydown(event: KeyboardEvent) {
@@ -160,7 +170,7 @@
     const viewportRect = viewport.getBoundingClientRect();
     const slideRect = slide.getBoundingClientRect();
     if (viewportRect.width === 0 || slideRect.width === 0) return;
-    if (Math.abs(slideRect.left - viewportRect.left) < 1) {
+    if (Math.abs(slideRect.left - viewportRect.left) <= 1) {
       programmaticTarget = null;
       return;
     }
@@ -226,6 +236,7 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
+    slideIdentity;
     scrollToActiveSlide();
   });
 </script>

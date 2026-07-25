@@ -108,6 +108,45 @@ describe('Carousel', () => {
     expect(articles[0]?.style.order).toBe('1');
   });
 
+  test('treats a one-pixel viewport border as aligned', async () => {
+    const { container, rerender: rerenderCarousel } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slide = viewport.children[0] as HTMLElement;
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    Object.defineProperty(slide, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 1, width: 100 }),
+    });
+    await fireEvent.scroll(viewport);
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  test('realigns after the ordered slide identities change', async () => {
+    const { container, rerender: rerenderCarousel } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+    scrollTo.mockClear();
+    await rerenderCarousel({ slides: [slides[1]!, slides[0]!, slides[2]!] });
+    await waitFor(() => expect(scrollTo).toHaveBeenCalled());
+  });
+
   test('reconciles the active slide when a pointer takes over a pending scroll', async () => {
     const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
