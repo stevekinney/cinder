@@ -10,22 +10,21 @@
     padding: 0;
   }
 
-  [data-cinder-sortable-list] > .cinder-sortable-item,
-  [data-cinder-sortable-list-preview] > .cinder-sortable-item {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    position: relative;
+  .cinder-sortable-list__item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     column-gap: var(--cinder-space-2);
-    cursor: default;
-    user-select: none;
   }
 
-  .cinder-sortable-item__content {
+  .cinder-sortable-list__item-content {
     min-inline-size: 0;
+  }
+
+  .cinder-sortable-item {
+    position: relative;
+    cursor: default;
+    user-select: none;
   }
 
   .cinder-sortable-item--lifted {

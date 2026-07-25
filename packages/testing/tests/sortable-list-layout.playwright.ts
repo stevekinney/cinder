@@ -22,4 +22,16 @@ test.describe('SortableList resting layout', () => {
     expect(Math.abs(labelCenterY - handleCenterY)).toBeLessThanOrEqual(0.5);
     expect(handleBox!.x).toBeGreaterThanOrEqual(labelBox!.x + labelBox!.width);
   });
+
+  test('does not override Kanban card alignment through the shared sortable item', async ({
+    page,
+  }) => {
+    await page.goto('/page/kanban-board?snapshot=1', { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+
+    const card = page.locator('.cinder-kanban-board__card').first();
+
+    await expect(card).toHaveCSS('align-items', 'start');
+    await expect(card.locator('.cinder-sortable-list__item-content')).toHaveCount(0);
+  });
 });
