@@ -90,7 +90,8 @@
   $effect(() => {
     if (!restoredExpansion) return;
     try {
-      sessionStorage.setItem(EXPANSION_SESSION_KEY, JSON.stringify(expandedFamilies));
+      const expansionToPersist = filterWasActive ? savedExpansion : expandedFamilies;
+      sessionStorage.setItem(EXPANSION_SESSION_KEY, JSON.stringify(expansionToPersist));
     } catch {
       /* ignore — degraded but functional */
     }
