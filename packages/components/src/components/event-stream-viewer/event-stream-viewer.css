@@ -148,7 +148,7 @@
   .cinder-event-stream-viewer__truncation-notice {
     padding: var(--cinder-space-1) var(--cinder-space-3);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
     font-size: var(--cinder-text-xs);
     font-family: var(--cinder-font-sans);
     border-block-end: 1px solid var(--cinder-border-muted);
@@ -279,7 +279,7 @@
   }
 
   .cinder-event-stream-viewer__sequence-gap-marker .cinder-event-stream-viewer__marker-content {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-event-stream-viewer__marker-time {
