@@ -47,6 +47,7 @@
     role = 'dialog',
     focusManagement = 'panel',
     initialFocus,
+    outsideClickIgnoreRefs = [],
     wireTriggerAria = true,
     closeOnEscape = true,
     widthMode = 'content',
@@ -130,7 +131,7 @@
       capture: true,
       // Use the open-time snapshot so a swapped/removed trigger does not cause
       // unexpected close when the user mouses down on the original opener.
-      ignoreRefs: [() => resolvedAnchorAtOpen ?? null],
+      ignoreRefs: [() => resolvedAnchorAtOpen ?? null, ...outsideClickIgnoreRefs],
     }),
   );
 

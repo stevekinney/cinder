@@ -231,23 +231,15 @@
 
   function focusCalendarDay(panel: HTMLElement, date = selectedDate): HTMLElement | null {
     return (
-      (date && panel.querySelector(`.cinder-calendar__day[id$="-day-${date}"]`)) ||
+      (date &&
+        panel.querySelector<HTMLElement>(
+          `.cinder-calendar__day[id$="-day-${date}"]:not([disabled])`,
+        )) ||
       panel.querySelector(
         '.cinder-calendar__day[data-focused], .cinder-calendar__day[tabindex="0"]',
       )
     );
   }
-
-  $effect(() => {
-    if (!open) return;
-    const dateAtOpen = selectedDate;
-    void tick().then(() => {
-      window.setTimeout(() => {
-        const panel = document.querySelector<HTMLElement>('[role="dialog"].cinder-popover');
-        if (panel) focusCalendarDay(panel, dateAtOpen)?.focus();
-      }, 0);
-    });
-  });
 
   const timeMin = $derived.by(() => {
     if (granularity === 'day' || !selectedDate || !normalizedMin) return undefined;
@@ -304,6 +296,7 @@
     label={label ? `${label} calendar` : 'Date picker calendar'}
     focusManagement="panel"
     initialFocus={focusCalendarDay}
+    outsideClickIgnoreRefs={[() => inputElement]}
     widthMode="content"
     class="cinder-date-picker__panel"
   >

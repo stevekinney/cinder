@@ -47,6 +47,8 @@ export type PopoverProps = {
   focusManagement?: PopoverFocusManagement;
   /** Optional callback for choosing the element that receives initial panel focus. */
   initialFocus?: (panel: HTMLElement) => HTMLElement | null;
+  /** Additional elements treated as inside for outside dismissal. */
+  outsideClickIgnoreRefs?: Array<() => Element | null>;
   /** Whether Popover owns trigger ARIA wiring. Default `true`. */
   wireTriggerAria?: boolean;
   /**
