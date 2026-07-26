@@ -41,6 +41,16 @@ describe(ruleName, () => {
     );
   });
 
+  test('resolves local aliases and fallbacks', async () => {
+    expect(
+      warnings(
+        await lint(
+          ':root { --control-bg: var(--cinder-surface); } .cinder-input { background: var(--control-bg); }',
+        ),
+      ),
+    ).toHaveLength(1);
+  });
+
   test('checks the shared input frame recipe in the component styles directory', async () => {
     expect(
       warnings(
