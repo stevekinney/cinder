@@ -26,14 +26,15 @@ Primary navigation with wide multi-column content panels, optional hover activat
 
 <!-- generated:props:start -->
 
-| Prop               | Type       | Required | Default | Description                                                                                                   |
-| ------------------ | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------- |
-| `class`            | `string`   | no       | —       | Additional classes merged onto the root element.                                                              |
-| `indicatorVisible` | `boolean`  | no       | —       | Render an active trigger indicator bar.                                                                       |
-| `label`            | `string`   | no       | —       | Accessible name for the navigation landmark.                                                                  |
-| `openOnHover`      | `boolean`  | no       | —       | Hover opens top-level content instead of click-only mode.                                                     |
-| `viewportVisible`  | `boolean`  | no       | —       | Render the shared content viewport wrapper.                                                                   |
-| `items`            | `(opaque)` | yes      | —       | Top-level trigger/content entries. Not expressible in JSON Schema; see the component types for the signature. |
+| Prop               | Type                           | Required | Default | Description                                                                                                   |
+| ------------------ | ------------------------------ | -------- | ------- | ------------------------------------------------------------------------------------------------------------- |
+| `class`            | `string`                       | no       | —       | Additional classes merged onto the root element.                                                              |
+| `dir`              | `"ltr"` \| `"rtl"` \| `"auto"` | no       | —       | Text direction used for layout and keyboard navigation.                                                       |
+| `indicatorVisible` | `boolean`                      | no       | —       | Render an active trigger indicator bar.                                                                       |
+| `label`            | `string`                       | no       | —       | Accessible name for the navigation landmark.                                                                  |
+| `openOnHover`      | `boolean`                      | no       | —       | Hover opens top-level content instead of click-only mode.                                                     |
+| `viewportVisible`  | `boolean`                      | no       | —       | Render the shared content viewport wrapper.                                                                   |
+| `items`            | `(opaque)`                     | yes      | —       | Top-level trigger/content entries. Not expressible in JSON Schema; see the component types for the signature. |
 
 <!-- generated:props:end -->
 

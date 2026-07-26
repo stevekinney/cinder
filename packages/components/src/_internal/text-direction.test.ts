@@ -175,6 +175,17 @@ describe('resolveTextDirection', () => {
     expect(resolveTextDirection(element, 'rtl')).toBe('rtl');
   });
 
+  test('prefers provider fallback over root CSS direction', () => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = 'html { direction: ltr; }';
+    document.head.append(styleElement);
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+
+    expect(resolveTextDirection(element, 'rtl')).toBe('rtl');
+    styleElement.remove();
+  });
+
   test('uses document root direction when no local or provider direction exists', () => {
     document.documentElement.dir = 'rtl';
     const element = document.createElement('div');

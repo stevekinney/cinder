@@ -122,6 +122,23 @@ describe('MegaMenu', () => {
     expect(new Set(ids).size).toBe(2);
   });
 
+  test('keeps submenu IDs unique for normalized hash collisions', () => {
+    const collisionItems = [
+      {
+        ...items[0]!,
+        submenu: [
+          { id: '!', label: 'First', sections: [] },
+          { id: ']', label: 'Second', sections: [] },
+        ],
+      },
+    ];
+    const { container } = render(MegaMenu, { items: collisionItems });
+    const triggers = [...container.querySelectorAll('[id*="submenu-trigger"]')];
+    const panels = [...container.querySelectorAll('[id*="submenu-panel"]')];
+    expect(new Set(triggers.map((element) => element.id)).size).toBe(triggers.length);
+    expect(new Set(panels.map((element) => element.id)).size).toBe(panels.length);
+  });
+
   test('renders independently titled nested sections below top-level section headings', async () => {
     const nestedTitleItems = structuredClone(items);
     nestedTitleItems[0]!.submenu![0]!.sections[0]!.title = 'Frameworks';

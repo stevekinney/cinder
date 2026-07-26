@@ -120,11 +120,9 @@
   }
 
   function stableHash(value: string): string {
-    let hash = 0;
-    for (const character of value) {
-      hash = (hash * 31 + (character.codePointAt(0) ?? 0)) | 0;
-    }
-    return Math.abs(hash).toString(36);
+    return Array.from(value)
+      .map((character) => (character.codePointAt(0) ?? 0).toString(16).padStart(5, '0'))
+      .join('');
   }
 
   const instanceId = $derived(

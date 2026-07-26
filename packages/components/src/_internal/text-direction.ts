@@ -19,6 +19,7 @@ export function resolveTextDirection(
   while (currentElement) {
     if (
       !styledDirectionElement &&
+      currentElement !== currentElement.ownerDocument.documentElement &&
       (currentElement.style.direction === 'rtl' ||
         currentElement.style.direction === 'ltr' ||
         matchesDirectionStyleRule(currentElement))
