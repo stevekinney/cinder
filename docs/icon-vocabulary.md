@@ -102,7 +102,7 @@ rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&lt;|&#60
 # Search only text-node candidates for a literal greater-than affordance. The
 # surrounding non-markup text boundary avoids matching Svelte/HTML delimiters,
 # CSS combinators, or embedded script expressions.
-rg -n -P '(?<=\s)>(?=\s|$)' packages/components/src/components --glob '*.svelte' --glob '*.css' --glob '*.examples.json'
+rg -n -P '(?:^|>)[^<>\n]*\K>' packages/components/src/components --glob '*.svelte' --glob '*.css' --glob '*.examples.json'
 rg -n -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n -e "icon:[[:space:]]*['\"][+−-]['\"]" packages/components/src/components --glob '*.examples.json'
 rg -n -e "icon:[[:space:]]*['\"][^'\"]+['\"]" packages/components/src/components --glob '*.examples.json'
