@@ -37,6 +37,20 @@ function isNode(value: unknown): value is SvelteNode {
   return typeof value === 'object' && value !== null;
 }
 
+function isStaticValue(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0 && value.every((part) => part.type === 'Text');
+  if (!isNode(value)) return false;
+  if (value.type !== 'ExpressionTag') return false;
+  const expression = value.expression;
+  if (!isNode(expression)) return false;
+  return (
+    (expression.type === 'Literal' && typeof expression.value === 'string') ||
+    (expression.type === 'TemplateLiteral' &&
+      Array.isArray(expression.expressions) &&
+      expression.expressions.length === 0)
+  );
+}
+
 export function findStaticStyleAttributes(source: string): StaticStyleAttributeViolation[] {
   const violations: StaticStyleAttributeViolation[] = [];
   const ast = parse(source, { modern: true }) as unknown as SvelteNode;
@@ -50,10 +64,8 @@ export function findStaticStyleAttributes(source: string): StaticStyleAttributeV
     if (!isNode(value)) return;
 
     if (
-      value.type === 'Attribute' &&
-      value.name === 'style' &&
-      Array.isArray(value.value) &&
-      value.value.every((part) => part.type === 'Text')
+      ((value.type === 'Attribute' && value.name === 'style') || value.type === 'StyleDirective') &&
+      isStaticValue(value.value)
     ) {
       violations.push({
         line: value.name_loc?.start.line ?? 1,

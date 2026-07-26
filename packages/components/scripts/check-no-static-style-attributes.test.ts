@@ -18,6 +18,18 @@ describe('findStaticStyleAttributes', () => {
     ).toEqual([]);
   });
 
+  test('flags constant expressions and style directives', () => {
+    const source =
+      '<div style={"color: red"}></div><div style={' +
+      '`display: block`' +
+      '}></div><div style:color="red"></div>';
+    expect(findStaticStyleAttributes(source)).toEqual([
+      { line: 1, column: 6 },
+      { line: 1, column: 38 },
+      { line: 1, column: 74 },
+    ]);
+  });
+
   test('finds nested static attributes without matching script strings', () => {
     expect(
       findStaticStyleAttributes(`
