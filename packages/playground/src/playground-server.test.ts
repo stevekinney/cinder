@@ -438,7 +438,8 @@ describe('canonical page navigation', () => {
   }, 60_000);
 
   it('points every navigation link at the canonical route', async () => {
-    const html = await (await handleRequest(req('/page/button'))).text();
+    const response = await handleRequest(req('/page/button'));
+    const html = await response.text();
 
     expect(html).toMatch(/href="\/page\/[a-z]/);
     // No link should still aim at the redirecting legacy route.
@@ -447,7 +448,8 @@ describe('canonical page navigation', () => {
 
   it('omits the sidebar from the snapshot and preview surfaces', async () => {
     for (const query of ['?snapshot=1', '?preview=1']) {
-      const html = await (await handleRequest(req(`/page/button${query}`))).text();
+      const response = await handleRequest(req(`/page/button${query}`));
+      const html = await response.text();
       expect(html).not.toContain('cinder-side-navigation');
       expect(html).toContain('<div id="app"></div>');
     }
@@ -1508,7 +1510,8 @@ describe('/styles/shell.css flattening', () => {
   }, 30_000);
 
   it('inlines the chrome rules that used to arrive a round trip late', async () => {
-    const css = await (await handleRequest(req('/styles/shell.css'))).text();
+    const response = await handleRequest(req('/styles/shell.css'));
+    const css = await response.text();
 
     // The exact rule whose absence produced the visible defect.
     expect(css).toContain('.cinder-sr-only');
@@ -1519,7 +1522,8 @@ describe('/styles/shell.css flattening', () => {
   }, 30_000);
 
   it('preserves layer assignments and their order', async () => {
-    const css = await (await handleRequest(req('/styles/shell.css'))).text();
+    const response = await handleRequest(req('/styles/shell.css'));
+    const css = await response.text();
     const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
     expect(withoutComments).toContain('@layer cinder.tokens');

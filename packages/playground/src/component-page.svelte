@@ -1556,9 +1556,19 @@
     font-weight: var(--cinder-font-medium);
   }
 
+  /* Focus-ring policy: transparent outline + the shared ring shadow, so forced-
+     colors mode can still paint a real outline. See docs/focus-ring-policy.md. */
   .dx-nav__link:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .dx-nav__link:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+      box-shadow: none;
+    }
   }
 
   /*
