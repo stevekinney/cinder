@@ -64,6 +64,40 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
   const accessibilityHeading = lines.findIndex((line) =>
     /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
   );
+  const accessibilityHeadings = lines.filter((line) =>
+    /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
+  );
+  const hasAccessibilityTemplate =
+    accessibilityHeadings.length > 0 || /^-?\s*Applies:/im.test(content);
+  if (hasAccessibilityTemplate && accessibilityHeadings.length !== 1) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      line: 'Expected exactly one accessibility review heading.',
+      phrase: 'accessibility heading',
+    });
+  }
+  const appliesMatches = lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => /^-?\s*Applies:/i.test(line.trim()));
+  if (hasAccessibilityTemplate && appliesMatches.length !== 1) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      line: 'Expected exactly one Applies yes/no decision.',
+      phrase: 'Applies contract',
+    });
+  } else if (
+    appliesMatches[0] &&
+    !/^-?\s*Applies:\s*(yes|no)\b.+/i.test(appliesMatches[0].line.trim())
+  ) {
+    violations.push({
+      filePath,
+      lineNumber: appliesMatches[0]!.index + 1,
+      line: appliesMatches[0]!.line.trim(),
+      phrase: 'Applies contract',
+    });
+  }
   if (accessibilityHeading === -1) {
     scan(
       lines,
