@@ -5796,7 +5796,7 @@
           "alternative": "table-of-contents"
         },
         {
-          "reason": "Providing route or section navigation.",
+          "reason": "Providing vertical sidebar route navigation.",
           "alternative": "side-navigation"
         }
       ],
