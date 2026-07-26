@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic page header",
       "description": "Page-level heading with named title, description, breadcrumb, and action regions.",
-      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { PageHeader } from '@lostgradient/cinder/page-header';\n</script>\n\n<div>\n  <PageHeader title=\"Approvals\" description=\"3 pending · 12 resolved\" />\n</div>\n\n<div style=\"margin-top: var(--cinder-space-4);\">\n  <PageHeader>\n    {#snippet breadcrumbs()}\n      <nav aria-label=\"Breadcrumb\"><a href=\"/\">Home</a> / Schedules</nav>\n    {/snippet}\n    {#snippet title()}Schedules{/snippet}\n    {#snippet description()}Create and manage recurring automation schedules.{/snippet}\n    {#snippet actions()}\n      <Button variant=\"primary\" size=\"sm\" label=\"+ New schedule\" />\n    {/snippet}\n  </PageHeader>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Breadcrumbs } from '@lostgradient/cinder/breadcrumbs';\n  import { PageHeader } from '@lostgradient/cinder/page-header';\n</script>\n\n<div>\n  <PageHeader title=\"Approvals\" description=\"3 pending · 12 resolved\" />\n</div>\n\n<div style=\"margin-top: var(--cinder-space-4);\">\n  <PageHeader>\n    {#snippet breadcrumbs()}\n      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Schedules' }]} />\n    {/snippet}\n    {#snippet title()}Schedules{/snippet}\n    {#snippet description()}Create and manage recurring automation schedules.{/snippet}\n    {#snippet actions()}\n      <Button variant=\"primary\" size=\"sm\" label=\"+ New schedule\" />\n    {/snippet}\n  </PageHeader>\n</div>\n"
     }
   ]
 }
