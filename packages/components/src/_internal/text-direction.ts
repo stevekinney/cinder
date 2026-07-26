@@ -274,7 +274,7 @@ function isContainerQueryActive(
   }
   if (!container) return false;
   const computedContainerStyle = getComputedStyle(container);
-  const readInlineSize = (property: string, fallbackProperty: string): number => {
+  const readInset = (property: string, fallbackProperty: string): number => {
     const value =
       computedContainerStyle.getPropertyValue(property).trim() ||
       container.style.getPropertyValue(property).trim() ||
@@ -283,13 +283,26 @@ function isContainerQueryActive(
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   };
-  const borderBoxWidth = container.getBoundingClientRect().width;
-  const inlineInsets =
-    readInlineSize('padding-inline-start', 'padding-left') +
-    readInlineSize('padding-inline-end', 'padding-right') +
-    readInlineSize('border-inline-start-width', 'border-left-width') +
-    readInlineSize('border-inline-end-width', 'border-right-width');
-  const width = Math.max(0, borderBoxWidth - inlineInsets);
+  const writingMode =
+    computedContainerStyle.writingMode ||
+    computedContainerStyle.getPropertyValue('writing-mode') ||
+    container.style.writingMode ||
+    container.style.getPropertyValue('writing-mode');
+  const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(conditionText);
+  const verticalInlineAxis = usesInlineSize && /^(?:vertical|sideways)-/i.test(writingMode);
+  const box = container.getBoundingClientRect();
+  const borderBoxSize = verticalInlineAxis ? box.height : box.width;
+  const firstInset = verticalInlineAxis
+    ? readInset('padding-block-start', 'padding-top') +
+      readInset('border-block-start-width', 'border-top-width')
+    : readInset('padding-inline-start', 'padding-left') +
+      readInset('border-inline-start-width', 'border-left-width');
+  const secondInset = verticalInlineAxis
+    ? readInset('padding-block-end', 'padding-bottom') +
+      readInset('border-block-end-width', 'border-bottom-width')
+    : readInset('padding-inline-end', 'padding-right') +
+      readInset('border-inline-end-width', 'border-right-width');
+  const width = Math.max(0, borderBoxSize - firstInset - secondInset);
   const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const rootFontSize = Number.parseFloat(

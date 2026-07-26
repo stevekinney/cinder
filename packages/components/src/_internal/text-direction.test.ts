@@ -642,6 +642,41 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('measures inline-size along the logical vertical axis', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.setProperty('writing-mode', 'vertical-rl');
+    container.style.paddingBlockStart = '20px';
+    container.style.paddingBlockEnd = '20px';
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({ width: 100, height: 500 }),
+    });
+    const element = document.createElement('div');
+    element.className = 'vertical-inline-size-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.vertical-inline-size-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (inline-size >= 20rem) { .vertical-inline-size-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(inline-size >= 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('resolves rem thresholds from the document root font size', () => {
     const root = document.documentElement;
     const previousFontSize = root.style.fontSize;
