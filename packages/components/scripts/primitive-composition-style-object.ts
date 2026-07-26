@@ -45,6 +45,22 @@ function collectObjectDeclarations(
     collectObjectDeclarations(bindings.get(expression['name']), bindings, declarations);
     return;
   }
+  if (
+    expression['type'] === 'ConditionalExpression' ||
+    expression['type'] === 'LogicalExpression'
+  ) {
+    collectObjectDeclarations(
+      expression['consequent'] ?? expression['left'],
+      bindings,
+      declarations,
+    );
+    collectObjectDeclarations(
+      expression['alternate'] ?? expression['right'],
+      bindings,
+      declarations,
+    );
+    return;
+  }
   if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties'])) return;
   for (const property of expression['properties']) {
     if (!isRecord(property)) continue;

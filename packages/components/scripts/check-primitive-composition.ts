@@ -119,6 +119,12 @@ function staticStringBindings(source: string): Map<string, string> {
         continue;
       const value = staticStringFromExpression(declaration['init'], bindings);
       if (value !== undefined) bindings.set(declaration['id']['name'], value);
+      else if (
+        isRecord(declaration['init']) &&
+        declaration['init']['type'] === 'Literal' &&
+        typeof declaration['init']['value'] === 'boolean'
+      )
+        bindings.set(declaration['id']['name'], String(declaration['init']['value']));
     }
   }
   return bindings;
@@ -268,8 +274,10 @@ function elementClassSet(
       attribute['type'] === 'ClassDirective' &&
       typeof attribute['name'] === 'string' &&
       isRecord(attribute['expression']) &&
-      attribute['expression']['type'] === 'Literal' &&
-      attribute['expression']['value'] === true
+      ((attribute['expression']['type'] === 'Literal' &&
+        attribute['expression']['value'] === true) ||
+        (attribute['expression']['type'] === 'Identifier' &&
+          bindings.get(attribute['expression']['name']) === 'true'))
     )
       classes.add(attribute['name']);
     if (attribute['type'] !== 'Attribute' || attribute['name'] !== 'class') continue;
@@ -352,6 +360,14 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   const fragment = parseSvelteFragment(source);
   const bindings = staticStringBindings(source);
   const total: CssPrimitiveCounts = { grid: 0, floating: 0 };
+  for (const match of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)) {
+    const styleSource = match[1];
+    if (styleSource !== undefined) {
+      const styleCounts = cssPrimitiveCounts(styleSource);
+      total.grid += styleCounts.grid;
+      total.floating += styleCounts.floating;
+    }
+  }
   if (fragment === undefined) return total;
   walkAst(fragment, (node) => {
     if (

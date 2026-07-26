@@ -499,6 +499,33 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('keeps strict range endpoints disjoint', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media (width < 40rem) { .layout { display: grid; } } @media (width >= 40rem) { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('does not combine bounds from differently named containers', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@container sidebar (max-width: 40rem) { .layout { display: grid; } } @container main (min-width: 64rem) { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('recognizes conditional style-object grid branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        `<script>let dense = true;</script><div style={dense ? { display: 'grid', gridTemplateColumns: '1fr' } : {}}></div>`,
+        'new-layout/new-layout.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('keeps static classes from mixed class attributes', () => {
     expect(
       findPrimitiveCompositionViolations(

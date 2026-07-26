@@ -48,6 +48,16 @@ type SelectorTarget = {
   }>;
 };
 
+function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
+  return {
+    tag: outer.tag ?? inner.tag,
+    id: outer.id ?? inner.id,
+    classes: new Set([...outer.classes, ...inner.classes]),
+    attributes: new Map([...outer.attributes, ...inner.attributes]),
+    functionalConstraints: [...outer.functionalConstraints, ...inner.functionalConstraints],
+  };
+}
+
 function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): SelectorTarget {
   const target: SelectorTarget = {
     classes: new Set(),
@@ -71,7 +81,9 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
     )
       target.functionalConstraints.push({
         kind: node.value === ':not' ? 'not' : 'any',
-        alternatives: node.nodes.map((selectorNode) => selectorTargetFromNodes(selectorNode.nodes)),
+        alternatives: node.nodes.map((selectorNode) =>
+          mergeSelectorTargets(target, selectorTargetFromNodes(selectorNode.nodes)),
+        ),
       });
   }
   return target;
@@ -188,7 +200,7 @@ function widthBounds(parameters: string): WidthBound[] {
     const operator = match[1];
     bounds.push({
       kind: operator.startsWith('>') ? 'minimum' : 'maximum',
-      value: Number(match[2]) + (operator === '>' || operator === '<' ? 0.000001 : 0),
+      value: Number(match[2]) + (operator === '>' ? 0.000001 : operator === '<' ? -0.000001 : 0),
       unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
@@ -253,6 +265,11 @@ function conditionalScopesConflict(left: ConditionalScope, right: ConditionalSco
     );
   }
   if (left.name !== 'media' && left.name !== 'container') return false;
+  if (left.name === 'container') {
+    const leftName = left.parameters.match(/^([\w-]+)\s+/)?.[1] ?? '';
+    const rightName = right.parameters.match(/^([\w-]+)\s+/)?.[1] ?? '';
+    if (leftName !== rightName) return true;
+  }
   const leftBranches = conditionalQueryBranches(left.parameters);
   const rightBranches = conditionalQueryBranches(right.parameters);
   return leftBranches.every((leftBranch) =>
