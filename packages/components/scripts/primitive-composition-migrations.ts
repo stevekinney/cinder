@@ -54,6 +54,7 @@ export const allowedGridCounts = new Map<string, number>(
     'radio-group/radio-group.css',
     'schedule-builder/schedule-builder.css',
     'selectable-row/selectable-row.css',
+    'sortable-list/sortable-list.css',
     'source-diff-viewer/source-diff-viewer.css',
     'stacked-list-item/stacked-list-item.css',
     'statistic-group/statistic-group.css',

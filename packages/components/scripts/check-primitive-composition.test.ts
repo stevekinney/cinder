@@ -185,6 +185,18 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('tracks the existing sortable-list row grid', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        [
+          '.item { display: grid; grid-template-columns: minmax(0, 1fr) auto; }',
+          '.preview { position: fixed; z-index: 1; }',
+        ].join(' '),
+        'sortable-list/sortable-list.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('tracks the source-diff-viewer line grid without counting its grid container', () => {
     expect(
       findPrimitiveCompositionViolations(
