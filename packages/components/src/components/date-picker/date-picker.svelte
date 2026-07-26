@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import type { DatePickerGranularity, DatePickerProps } from './date-picker.types.ts';
+  import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Calendar from '../calendar/calendar.svelte';
   import Popover from '../popover/popover.svelte';
@@ -209,6 +210,23 @@
     updateInputValidity(event.currentTarget as HTMLInputElement);
   }
 
+  function focusCalendarDay(date = selectedDate): HTMLElement | null {
+    return (
+      (date && document.querySelector(`.cinder-calendar__day[id$="-day-${date}"]`)) ||
+      document.querySelector(
+        '.cinder-calendar__day[data-focused], .cinder-calendar__day[tabindex="0"]',
+      )
+    );
+  }
+
+  $effect(() => {
+    if (!open) return;
+    const dateAtOpen = selectedDate;
+    void tick().then(() => {
+      window.setTimeout(() => focusCalendarDay(dateAtOpen)?.focus(), 0);
+    });
+  });
+
   const timeMin = $derived.by(() => {
     if (granularity === 'day' || !selectedDate || !normalizedMin) return undefined;
     if (!normalizedMin.startsWith(`${selectedDate}T`)) return undefined;
@@ -263,6 +281,7 @@
     role="dialog"
     label={label ? `${label} calendar` : 'Date picker calendar'}
     focusManagement="panel"
+    initialFocus={focusCalendarDay}
     widthMode="content"
     class="cinder-date-picker__panel"
   >

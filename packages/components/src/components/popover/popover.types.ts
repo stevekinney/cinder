@@ -45,6 +45,8 @@ export type PopoverProps = {
   role?: PopoverRole;
   /** Focus behavior for each open session. Default `'panel'`. */
   focusManagement?: PopoverFocusManagement;
+  /** Optional callback for choosing the element that receives initial panel focus. */
+  initialFocus?: () => HTMLElement | null;
   /** Whether Popover owns trigger ARIA wiring. Default `true`. */
   wireTriggerAria?: boolean;
   /**

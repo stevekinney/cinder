@@ -159,6 +159,8 @@ describe('DatePicker', () => {
       const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
       expect(dialog).not.toBeNull();
       expect(dialog?.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.classList.contains('cinder-calendar__day')).toBe(true);
+      expect(document.activeElement?.getAttribute('aria-label')).toContain('June 10, 2026');
     });
   });
 

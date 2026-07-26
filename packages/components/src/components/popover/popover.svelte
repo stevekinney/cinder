@@ -46,6 +46,7 @@
     children,
     role = 'dialog',
     focusManagement = 'panel',
+    initialFocus,
     wireTriggerAria = true,
     closeOnEscape = true,
     widthMode = 'content',
@@ -135,7 +136,7 @@
 
   function moveFocusIntoPanel() {
     if (isDestroyed || !panelElement) return;
-    const focusable = findFirstFocusable(panelElement);
+    const focusable = initialFocus?.() ?? findFirstFocusable(panelElement);
     (focusable ?? panelElement).focus();
   }
 
