@@ -42,6 +42,7 @@
   let sentinelIntersecting = $state(false);
   let sentinelReported = $state(false);
   let manualObserverSuspended = $state(false);
+  let manualObserverDisarmPending = false;
   let previousSentinelEnabled = false;
   let previousMaxRetries: number | undefined;
   // Tracks the last `hasMore` value the component reconciled against so a
@@ -91,8 +92,20 @@
         previousMaxRetries !== undefined &&
         maxRetries > previousMaxRetries
       ) {
-        sentinelArmed = true;
+        if (manualObserverDisarmPending) {
+          manualObserverDisarmPending = false;
+        } else {
+          sentinelArmed = true;
+        }
       }
+    }
+    if (
+      manualObserverDisarmPending &&
+      !requestInFlight &&
+      previousMaxRetries !== undefined &&
+      maxRetries === previousMaxRetries
+    ) {
+      manualObserverDisarmPending = false;
     }
     previousSentinelEnabled = sentinelEnabled;
     previousMaxRetries = maxRetries;
@@ -121,6 +134,7 @@
       sentinelReported = false;
       sentinelIntersecting = false;
       manualObserverSuspended = true;
+      manualObserverDisarmPending = true;
     }
 
     requestInFlight = true;
