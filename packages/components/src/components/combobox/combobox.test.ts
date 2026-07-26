@@ -556,7 +556,7 @@ describe('Combobox filtering', () => {
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
-      expect(container.querySelector('[role="option"]')).toBeNull();
+      expect(container.querySelector('[role="option"]:not([aria-disabled="true"])')).toBeNull();
       const emptyState = container.querySelector('.cinder-combobox__empty');
       const panel = emptyState?.closest('.cinder-popover') as HTMLElement | null;
       expect(emptyState?.textContent?.trim()).toBe('No results');

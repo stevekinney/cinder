@@ -6,6 +6,7 @@ function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(focusCandidateSelector)).filter(
     (candidate) =>
       !hasNegativeTabIndex(candidate) &&
+      !candidate.matches(':disabled') &&
       !(candidate instanceof HTMLInputElement && candidate.type === 'hidden') &&
       !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
       isRendered(candidate),

@@ -133,7 +133,7 @@
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
-    return actionButtons.filter((button) => !button.disabled);
+    return actionButtons.filter((button) => !button.disabled && isRenderedCandidate(button));
   }
 
   function getKeyboardNavigationButtons(): HTMLButtonElement[] {
@@ -233,9 +233,8 @@
     const tabOrderButtons = getEnabledActionButtons();
     if (event.key === 'Tab' && event.shiftKey && target === tabOrderButtons[0]) {
       const previousTarget = getFocusTargetBeforeSpeedDial();
-      if (!previousTarget) return;
       event.preventDefault();
-      previousTarget.focus();
+      (previousTarget ?? getTriggerElement())?.focus();
       return;
     }
     if (event.key === 'Tab' && !event.shiftKey && target === tabOrderButtons.at(-1)) {
@@ -258,7 +257,7 @@
     enabledButtons[nextIndex]?.focus();
   }
 
-  function bridgePortaledEvent(event: MouseEvent | KeyboardEvent): void {
+  function bridgePortaledEvent(event: Event): void {
     if (isRedispatchedPortaledEvent(event)) return;
     redispatchPortaledEvent(event, rootElement);
   }
@@ -268,6 +267,11 @@
     if (!event.defaultPrevented) {
       handleActionsKeydown(event);
     }
+    bridgePortaledEvent(event);
+  }
+
+  function bridgePortaledInteraction(event: Event): void {
+    if (isRedispatchedPortaledEvent(event)) return;
     bridgePortaledEvent(event);
   }
 
@@ -355,6 +359,12 @@
     tabindex="-1"
     onclick={bridgePortaledEvent}
     onkeydown={handlePortaledActionsKeydown}
+    onfocusin={bridgePortaledInteraction}
+    onfocusout={bridgePortaledInteraction}
+    onpointerdown={bridgePortaledInteraction}
+    onpointerup={bridgePortaledInteraction}
+    oninput={bridgePortaledInteraction}
+    onchange={bridgePortaledInteraction}
   >
     <span
       bind:this={spacingProbeElement}
