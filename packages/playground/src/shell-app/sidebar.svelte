@@ -50,7 +50,7 @@
     table: true,
     chat: true,
   });
-  let savedExpansion: Record<string, boolean> = {};
+  let savedExpansion = $state<Record<string, boolean>>({});
   let filterWasActive = false;
   let restoredSessionFilter = $state(false);
   let restoredExpansion = $state(false);
