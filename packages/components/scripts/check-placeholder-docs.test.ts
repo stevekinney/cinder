@@ -69,6 +69,25 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
   });
+  it('rejects accessibility scaffold instructions after the marker is removed', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\n_Initial focus, focus movement, dismissal, restoration, and behavior\nwhen the trigger or focused target disappears._\n\n### Keyboard matrix\n| Tab | dialog | Moves focus |\n\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(
+      violations.some(
+        ({ phrase }) =>
+          phrase === 'initial focus, focus movement, dismissal, restoration, and behavior',
+      ),
+    ).toBe(true);
+  });
+  it('does not accept a renamed generated keyboard header without a data row', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Keyboard input | Context | Expected behavior |\n| --- | --- | --- |\n\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
+  });
   it('rejects an empty accessibility record', () => {
     expect(findPlaceholderViolations('', 'component.a11y.md')).toEqual([
       expect.objectContaining({ phrase: 'accessibility record' }),

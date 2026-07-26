@@ -27,6 +27,10 @@ const ACCESSIBILITY_REVIEW_PHRASES: string[] = [
   '_Pending when this review applies.',
   '_Record',
 ];
+const ACCESSIBILITY_SCAFFOLD_PHRASES: string[] = [
+  'initial focus, focus movement, dismissal, restoration, and behavior',
+  'the accessible name, role, state, live-region announcements, and the',
+];
 const PLACEHOLDER_TOKEN = /_(?:Pending|Record)(?:\s|_|$)/i;
 
 type Violation = {
@@ -92,7 +96,11 @@ export function findPlaceholderViolations(
         )
           continue;
         const matchesPhrase =
-          phrase === '_Record' ? /_Record(?:\s|_|$)/.test(line) : line.includes(phrase);
+          phrase === '_Record'
+            ? /_Record(?:\s|_|$)/.test(line)
+            : ACCESSIBILITY_SCAFFOLD_PHRASES.includes(phrase)
+              ? line.toLowerCase().includes(phrase.toLowerCase())
+              : line.includes(phrase);
         if (matchesPhrase) {
           const lineNumber = offset + index + 1;
           if (
@@ -230,7 +238,7 @@ export function findPlaceholderViolations(
   if (accessibilityHeading !== -1 && accessibilityApplies) {
     scan(
       lines.slice(accessibilityHeading + 1, accessibilityEnd),
-      ACCESSIBILITY_REVIEW_PHRASES,
+      [...ACCESSIBILITY_REVIEW_PHRASES, ...ACCESSIBILITY_SCAFFOLD_PHRASES],
       accessibilityHeading + 1,
       true,
     );
@@ -269,7 +277,12 @@ export function findPlaceholderViolations(
         const cells = parseMarkdownTableCells(line);
         if (cells.length !== 3 || cells.some((cell) => cell === '')) return false;
         if (cells.every((cell) => /^:?-{3,}:?$/.test(cell))) return false;
-        return !/^key(?:\s+or\s+gesture)?$/i.test(cells[0]!);
+        const [key = '', context = '', behavior = ''] = cells.map((cell) => cell.toLowerCase());
+        const isKeyboardHeader =
+          /^(?:key|keyboard input|key or gesture)$/.test(key) &&
+          context === 'context' &&
+          behavior === 'expected behavior';
+        return !isKeyboardHeader;
       });
       if (
         start === -1 ||
