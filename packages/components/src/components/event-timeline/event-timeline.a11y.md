@@ -23,7 +23,7 @@ EventTimeline is non-interactive and does not enter the tab order by default. Ti
 
 ## Names, roles, and state
 
-EventTimeline renders a named `role="list"` and one `role="listitem"` per valid event. Event labels are rendered with `time` elements; the visual now marker is hidden from assistive technologies because it is decorative unless the surrounding content explains current time.
+EventTimeline renders a named `role="list"` containing one `role="listitem"` for each visible event and aggregate cluster item. Dense regions replace hidden events with a cluster list item, so the list count is the visible event count plus any cluster summaries. Event labels are rendered with `time` elements; the visual now marker is hidden from assistive technologies because it is decorative unless the surrounding content explains current time.
 
 State color is supplemental. Keep labels and sublabels descriptive enough that users do not need color to understand the event.
 

@@ -299,7 +299,8 @@ describe('EventTimeline', () => {
       const style = original(element);
       if (element !== dialog) return style;
       const transformedStyle = Object.create(style) as CSSStyleDeclaration;
-      Object.defineProperty(transformedStyle, 'transform', { value: 'scale(0.98)' });
+      Object.defineProperty(transformedStyle, 'transform', { value: 'none' });
+      Object.defineProperty(transformedStyle, 'scale', { value: '0.98' });
       return transformedStyle;
     }) as typeof getComputedStyle;
     try {

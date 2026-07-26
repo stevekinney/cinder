@@ -1,5 +1,11 @@
 <script lang="ts" module>
-  let modalPredicate: (element: HTMLElement) => boolean = (element) => element.matches(':modal');
+  let modalPredicate: (element: HTMLElement) => boolean = (element) => {
+    try {
+      return element.matches(':modal');
+    } catch {
+      return false;
+    }
+  };
   export function __setEventTimelineModalPredicate(predicate: (element: HTMLElement) => boolean) {
     modalPredicate = predicate;
   }
@@ -129,7 +135,14 @@
       const owner = portalOwner();
       if (!owner) return 'fixed';
       const style = getComputedStyle(owner);
-      return style.transform !== 'none' || style.translate !== 'none' ? 'absolute' : 'fixed';
+      return style.transform !== 'none' ||
+        style.translate !== 'none' ||
+        style.scale !== 'none' ||
+        style.rotate !== 'none' ||
+        style.filter !== 'none' ||
+        style.contain !== 'none'
+        ? 'absolute'
+        : 'fixed';
     },
   });
 
