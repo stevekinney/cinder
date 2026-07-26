@@ -9,7 +9,8 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, render, waitFor } = await import('@testing-library/svelte');
-const { default: EventTimeline } = await import('./event-timeline.svelte');
+const { default: EventTimeline, __setEventTimelineModalPredicate } =
+  await import('./event-timeline.svelte');
 const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 
@@ -292,6 +293,7 @@ describe('EventTimeline', () => {
     const dialog = document.createElement('dialog');
     dialog.open = true;
     document.body.append(dialog);
+    __setEventTimelineModalPredicate((element) => element === dialog);
     const original = globalThis.getComputedStyle;
     globalThis.getComputedStyle = ((element: Element) => {
       const style = original(element);
@@ -320,6 +322,7 @@ describe('EventTimeline', () => {
         expect(document.activeElement).toBe(dialog.querySelector('[role="dialog"]')),
       );
     } finally {
+      __setEventTimelineModalPredicate((element) => element.matches(':modal'));
       globalThis.getComputedStyle = original;
       dialog.remove();
     }

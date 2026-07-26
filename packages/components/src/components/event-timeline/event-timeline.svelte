@@ -1,4 +1,8 @@
 <script lang="ts" module>
+  let modalPredicate: (element: HTMLElement) => boolean = (element) => element.matches(':modal');
+  export function __setEventTimelineModalPredicate(predicate: (element: HTMLElement) => boolean) {
+    modalPredicate = predicate;
+  }
   /**
    * @cinder
    * @category data-display
@@ -92,9 +96,10 @@
     const trigger = clusterTrigger;
     if (!trigger) return null;
     try {
+      const dialog = trigger.closest<HTMLElement>('dialog');
       return (
-        trigger.closest<HTMLElement>('dialog:modal') ??
-        (CSS.supports('selector(:popover-open)')
+        (dialog && modalPredicate(dialog) ? dialog : null) ??
+        (typeof CSS !== 'undefined' && CSS.supports?.('selector(:popover-open)')
           ? trigger.closest<HTMLElement>('[popover]:popover-open')
           : null)
       );
