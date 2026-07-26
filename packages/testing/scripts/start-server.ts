@@ -589,7 +589,7 @@ function startPlaygroundBundleDependencyWatchers(
       void waitForExit(currentBuild).then((buildCode) => {
         if (buildCode !== 0 && failure === null) {
           failure = new Error(`${packageName} watched build exited with code ${buildCode}`);
-          state.pending = false;
+          for (const pendingState of states) pendingState.pending = false;
         }
         if (state.buildProcess === currentBuild) state.buildProcess = null;
         if (state.pending && failure === null) runBuild();
