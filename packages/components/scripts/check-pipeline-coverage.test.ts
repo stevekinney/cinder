@@ -78,6 +78,30 @@ describe('checkPipelineCoverage', () => {
     'components:check': 'bun run scripts/generate-component-artifacts.ts --check',
   };
 
+  it('resolves check-placeholder-docs through components:check in both CI layers', () => {
+    const result = checkPipelineCoverage(
+      {
+        'check:placeholder-docs': { layers: ['unit-tests', 'main-green'], reason: 'test fixture' },
+      },
+      {
+        packageScripts: {
+          'components:check': 'bun run check:placeholder-docs',
+          'check:placeholder-docs': 'bun run scripts/check-placeholder-docs.ts',
+        },
+        rootScripts: {},
+        workflowText: {
+          'unit-tests': 'bun run --filter=@lostgradient/cinder components:check',
+          'browser-tests': '',
+          'main-green': 'bun run --filter=@lostgradient/cinder check:placeholder-docs',
+          release: '',
+          'changeset-guard': '',
+        },
+        hookText: {},
+      },
+    );
+    expect(result.violations).toEqual([]);
+  });
+
   it('detects an undeclared duplicate: a command runs in a layer the table does not declare', () => {
     const table: Record<string, DeclarationRow> = {
       lint: { layers: [], reason: 'test fixture — declares no layers' },

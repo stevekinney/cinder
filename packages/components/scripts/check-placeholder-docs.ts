@@ -17,10 +17,12 @@ const componentsRoot = resolve(scriptDirectory, '..', 'src', 'components');
  * Phrases whose presence in a README indicates placeholder or stale documentation.
  * Each entry is a literal string (case-sensitive).
  */
-const STALE_PHRASES: string[] = [
+const DESIGN_REVIEW_PHRASES: string[] = [
   'Replace this sentence',
   'This migration scaffold is incomplete',
   'opt-in highlighting',
+];
+const ACCESSIBILITY_REVIEW_PHRASES: string[] = [
   '_Pending',
   'Pending when this review applies.',
   '_Record',
@@ -33,6 +35,23 @@ type Violation = {
   phrase: string;
 };
 
+export function findPlaceholderViolations(content: string, filePath: string): Violation[] {
+  const isAccessibilityRecord = filePath.endsWith('.a11y.md');
+  const accessibilityApplies = /^Applies:\s*yes\b/im.test(content);
+  const phrases =
+    isAccessibilityRecord && !accessibilityApplies
+      ? DESIGN_REVIEW_PHRASES
+      : [...DESIGN_REVIEW_PHRASES, ...ACCESSIBILITY_REVIEW_PHRASES];
+  const violations: Violation[] = [];
+  for (const [index, line] of content.split('\n').entries()) {
+    for (const phrase of phrases) {
+      if (line.includes(phrase))
+        violations.push({ filePath, lineNumber: index + 1, line: line.trim(), phrase });
+    }
+  }
+  return violations;
+}
+
 async function main(): Promise<void> {
   const violations: Violation[] = [];
   const globs = [new Glob('**/README.md'), new Glob('**/*.a11y.md')];
@@ -40,15 +59,7 @@ async function main(): Promise<void> {
     for await (const relative of glob.scan({ cwd: componentsRoot })) {
       const filePath = join(componentsRoot, relative);
       const content = await Bun.file(filePath).text();
-      const lines = content.split('\n');
-
-      for (const [index, line] of lines.entries()) {
-        for (const phrase of STALE_PHRASES) {
-          if (line.includes(phrase)) {
-            violations.push({ filePath, lineNumber: index + 1, line: line.trim(), phrase });
-          }
-        }
-      }
+      violations.push(...findPlaceholderViolations(content, filePath));
     }
 
   if (violations.length === 0) {
@@ -70,4 +81,4 @@ async function main(): Promise<void> {
   process.exit(1);
 }
 
-await main();
+if (import.meta.main) await main();
