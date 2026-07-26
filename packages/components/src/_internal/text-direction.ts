@@ -205,7 +205,7 @@ function isConditionalRuleActive(rule: CSSRule, element: HTMLElement): boolean {
   const conditionText = Reflect.get(rule, 'conditionText');
   if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
 
-  if (isContainerRule(rule)) return isContainerQueryActive(conditionText, element);
+  if (isContainerRule(rule)) return isContainerQueryActive(conditionText, element, rule);
 
   if (isMediaRule(rule) && typeof matchMedia === 'function') {
     return matchMedia(conditionText).matches;
@@ -217,7 +217,11 @@ function isConditionalRuleActive(rule: CSSRule, element: HTMLElement): boolean {
   return true;
 }
 
-function isContainerQueryActive(conditionText: string, element: HTMLElement): boolean {
+function isContainerQueryActive(
+  conditionText: string,
+  element: HTMLElement,
+  rule: CSSRule,
+): boolean {
   const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^)]+)\)/i.exec(conditionText);
   if (styleQuery) {
     let ancestor = element.parentElement;
@@ -230,13 +234,40 @@ function isContainerQueryActive(conditionText: string, element: HTMLElement): bo
     }
     return false;
   }
-  const container = element.parentElement;
+  const containerName = Reflect.get(rule, 'name');
+  let container = element.parentElement;
+  while (container) {
+    const computedStyle = getComputedStyle(container);
+    const type =
+      computedStyle.containerType ||
+      computedStyle.getPropertyValue('container-type') ||
+      container.style.containerType ||
+      container.style.getPropertyValue('container-type');
+    const name =
+      computedStyle.containerName ||
+      computedStyle.getPropertyValue('container-name') ||
+      container.style.containerName ||
+      container.style.getPropertyValue('container-name');
+    if (
+      (typeof containerName !== 'string' ||
+        !containerName ||
+        name.split(/\s+/).includes(containerName)) &&
+      type &&
+      type !== 'normal'
+    ) {
+      break;
+    }
+    container = container.parentElement;
+  }
+  if (!container) container = element.parentElement;
   if (!container) return false;
   const width = container.getBoundingClientRect().width;
-  const minimum = /min-width\s*:\s*([\d.]+)px/i.exec(conditionText);
-  const maximum = /max-width\s*:\s*([\d.]+)px/i.exec(conditionText);
-  if (minimum && width < Number(minimum[1])) return false;
-  if (maximum && width > Number(maximum[1])) return false;
+  const minimum = /min-width\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const maximum = /max-width\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const toPixels = (value: RegExpExecArray) =>
+    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? 16 : 1);
+  if (minimum && width < toPixels(minimum)) return false;
+  if (maximum && width > toPixels(maximum)) return false;
   return minimum !== null || maximum !== null;
 }
 

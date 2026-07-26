@@ -445,6 +445,50 @@ describe('resolveTextDirection', () => {
     ).toBe('ltr');
   });
 
+  test('evaluates size queries against the nearest eligible query container', () => {
+    const originalGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({ width: 400 }),
+    });
+    const wrapper = document.createElement('div');
+    Object.defineProperty(wrapper, 'getBoundingClientRect', {
+      value: () => ({ width: 100 }),
+    });
+    const element = document.createElement('div');
+    element.className = 'container-ltr-reset';
+    wrapper.appendChild(element);
+    container.appendChild(wrapper);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({ selectorText: '.container-ltr-reset', direction: 'ltr' });
+    const outerRule = {
+      cssText: '@container (min-width: 20rem) { .container-ltr-reset { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalGetComputedStyle(target);
+      if (target === container)
+        Object.defineProperty(style, 'containerType', { value: 'inline-size' });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('ignores inaccessible and invalid CSS direction rules', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
