@@ -30,6 +30,12 @@ describe('findStaticStyleAttributes', () => {
     ]);
   });
 
+  test('flags numeric style directive literals', () => {
+    expect(findStaticStyleAttributes('<div style:opacity={0.5}></div>')).toEqual([
+      { line: 1, column: 6 },
+    ]);
+  });
+
   test('finds nested static attributes without matching script strings', () => {
     expect(
       findStaticStyleAttributes(`

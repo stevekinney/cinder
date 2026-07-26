@@ -44,7 +44,8 @@ function isStaticValue(value: unknown): boolean {
   const expression = value['expression'];
   if (!isNode(expression)) return false;
   return (
-    (expression.type === 'Literal' && typeof expression['value'] === 'string') ||
+    (expression.type === 'Literal' &&
+      (typeof expression['value'] === 'string' || typeof expression['value'] === 'number')) ||
     (expression.type === 'TemplateLiteral' &&
       Array.isArray(expression['expressions']) &&
       expression['expressions'].length === 0)
@@ -53,7 +54,7 @@ function isStaticValue(value: unknown): boolean {
 
 export function findStaticStyleAttributes(source: string): StaticStyleAttributeViolation[] {
   const violations: StaticStyleAttributeViolation[] = [];
-  const ast = parse(source, { modern: true }) as unknown as SvelteNode;
+  const ast = parse(source, { modern: true });
 
   function visit(value: unknown): void {
     if (Array.isArray(value)) {
