@@ -153,7 +153,7 @@
 
   .cinder-event-timeline__cluster {
     position: absolute;
-    inset-block-start: calc(var(--_cinder-event-timeline-lane, 0) * 1.45rem);
+    inset-block-start: calc(var(--_cinder-event-timeline-lane, 0) * 2rem);
     display: grid;
     justify-items: center;
     transform: translateX(-50%);
@@ -274,7 +274,7 @@
   .cinder-event-timeline[data-cinder-size='sm'] .cinder-event-timeline__items {
     block-size: max(
       5.25rem,
-      calc(min(var(--_cinder-event-timeline-lane-count, 3), 5) * 1.45rem + 1.25rem)
+      calc(min(var(--_cinder-event-timeline-lane-count, 3), 5) * 2rem + 1.25rem)
     );
   }
 

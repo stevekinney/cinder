@@ -8,7 +8,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
 const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
@@ -262,7 +262,7 @@ describe('EventTimeline', () => {
     await fireEvent.click(cluster!);
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
-    expect(document.activeElement).toBe(dialog);
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog?.textContent).toContain('Upcoming');
     await fireEvent.keyDown(window, { key: 'Escape' });
     expect(document.querySelector('[role="dialog"]')).toBeNull();

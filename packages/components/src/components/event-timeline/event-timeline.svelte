@@ -398,6 +398,12 @@
       closeCluster();
     });
   });
+
+  $effect(() => {
+    if (openClusterKey !== null && anchoredClusterSurface.positionReady) {
+      clusterSurface?.focus();
+    }
+  });
 </script>
 
 <div {...rest} class={classNames('cinder-event-timeline', customClassName)} data-cinder-size={size}>
@@ -464,10 +470,6 @@
             onclick={(event) => {
               clusterTrigger = event.currentTarget as HTMLButtonElement;
               openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
-              if (openClusterKey !== null)
-                void tick().then(() => {
-                  clusterSurface?.focus();
-                });
             }}>+{cluster.count}</button
           >
           {#if openClusterKey === cluster.key}
