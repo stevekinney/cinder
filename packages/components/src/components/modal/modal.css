@@ -138,6 +138,7 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--cinder-space-6);
+    background: var(--cinder-surface);
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     /* The body container is focused on open (tabindex=-1) when the dialog has

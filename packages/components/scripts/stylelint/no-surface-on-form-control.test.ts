@@ -41,6 +41,25 @@ describe(ruleName, () => {
     );
   });
 
+  test('checks the published Chat composer source', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.chat-input { background: var(--cinder-surface); }',
+          '/workspace/packages/chat/src/lib/components/chat/input/chat-input.svelte',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.chat-input { background: var(--cinder-surface-raised); }',
+          '/workspace/packages/chat/src/lib/components/chat/input/chat-input.svelte',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves local aliases and fallbacks', async () => {
     expect(
       warnings(

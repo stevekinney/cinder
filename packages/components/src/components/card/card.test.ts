@@ -316,6 +316,11 @@ describe('Card', () => {
 });
 
 describe('Card CSS contract', () => {
+  test('default body uses the panel surface', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-card__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s);
+  });
+
   test('padding="none" targets only the body', async () => {
     const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
 

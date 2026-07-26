@@ -44,12 +44,14 @@ function isCinderComponentSource(root) {
   return (
     file === undefined ||
     file.startsWith('<') ||
-    /packages[\\/]components[\\/]src[\\/](?:components|styles[\\/]components)[\\/]/.test(file)
+    /packages[\\/](?:components[\\/]src[\\/](?:components|styles[\\/]components)|chat[\\/]src[\\/])/.test(
+      file,
+    )
   );
 }
 
 function isFormControl(selector) {
-  return /(?:^|[\s,>+~])(?:input|textarea|select|\.cinder-(?:input|textarea|select|checkbox|radio)|\.cinder-_input-frame|\.cinder-(?:pin-input__segment|phone-input__(?:country|national)|invocation-rule-builder__(?:rule-label-input|condition-(?:select|value)|action-select)))(?=[.#:[\s]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
+  return /(?:^|[\s,>+~])(?:input|textarea|select|\.chat-input|\.cinder-(?:input|textarea|select|checkbox|radio)|\.cinder-_input-frame|\.cinder-(?:pin-input__segment|phone-input__(?:country|national)|invocation-rule-builder__(?:rule-label-input|condition-(?:select|value)|action-select)))(?=[.#:[\s]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
     selector,
   );
 }

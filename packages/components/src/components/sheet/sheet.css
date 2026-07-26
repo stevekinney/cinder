@@ -148,6 +148,7 @@
     min-block-size: 0;
     overflow-y: auto;
     padding: var(--cinder-space-6);
+    background: var(--cinder-surface);
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
   }

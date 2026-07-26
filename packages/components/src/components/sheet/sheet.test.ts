@@ -109,6 +109,11 @@ afterEach(() => {
 });
 
 describe('Sheet', () => {
+  test('body uses the panel surface beneath header and footer', async () => {
+    const css = await Bun.file(new URL('./sheet.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-sheet__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s);
+  });
+
   test('omits native dialog handlers owned internally', () => {
     expect(excludesLowercaseNativeCloseHandler).toBe(false);
     expect(excludesLowercaseNativeCancelHandler).toBe(false);

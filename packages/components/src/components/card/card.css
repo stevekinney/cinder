@@ -92,7 +92,7 @@
 
   .cinder-card__body {
     padding: var(--cinder-space-4);
-    background: transparent;
+    background: var(--cinder-surface);
   }
 
   .cinder-card__body[data-cinder-tone='muted'] {
