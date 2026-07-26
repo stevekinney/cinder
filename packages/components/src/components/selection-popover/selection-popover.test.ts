@@ -552,6 +552,55 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('paired window and visual viewport keyboard resizes preserve the draft', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = originalInnerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Paired keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      visualViewport.height = originalInnerHeight - 100;
+      await fireEvent(window, new Event('resize'));
+      visualViewport.dispatchEvent(new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Paired keyboard draft');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    }
+  });
+
   test('a closing window keyboard resize preserves a draft after blur', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;

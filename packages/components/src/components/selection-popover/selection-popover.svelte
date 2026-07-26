@@ -202,6 +202,16 @@
     const virtualKeyboardTransitionFrames: Partial<Record<'window' | 'visual-viewport', number>> =
       {};
     let layoutKeyboardVisible = false;
+    let layoutKeyboardResizeActive = false;
+    let layoutKeyboardResizeResetTimer: ReturnType<typeof setTimeout> | null = null;
+    const markLayoutKeyboardResize = () => {
+      layoutKeyboardResizeActive = true;
+      if (layoutKeyboardResizeResetTimer !== null) clearTimeout(layoutKeyboardResizeResetTimer);
+      layoutKeyboardResizeResetTimer = setTimeout(() => {
+        layoutKeyboardResizeActive = false;
+        layoutKeyboardResizeResetTimer = null;
+      }, 0);
+    };
     const readVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
       const isVisible = isVirtualKeyboardResize(source);
       if (isVisible) {
@@ -245,13 +255,19 @@
           window.innerHeight < previousViewportHeight &&
           visualViewport != null &&
           visualViewport.height < previousViewportHeight;
-        if (layoutKeyboardResize) layoutKeyboardVisible = true;
+        if (layoutKeyboardResize) {
+          layoutKeyboardVisible = true;
+          markLayoutKeyboardResize();
+        }
         const closingLayoutKeyboard =
           composerHasFocus &&
           viewportHeightChanged &&
           window.innerHeight > previousViewportHeight &&
           layoutKeyboardVisible;
-        if (closingLayoutKeyboard) layoutKeyboardVisible = false;
+        if (closingLayoutKeyboard) {
+          layoutKeyboardVisible = false;
+          markLayoutKeyboardResize();
+        }
         if (
           !viewportWidthChanged &&
           (!viewportHeightChanged ||
@@ -273,6 +289,7 @@
         visualViewport?.scale === 1
           ? readVirtualKeyboardTransition('visual-viewport')
           : { active: false, isVisible: false };
+      if (event.type === 'resize' && layoutKeyboardResizeActive) return;
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
         virtualKeyboardTransition.active &&
@@ -290,6 +307,7 @@
       for (const frame of Object.values(virtualKeyboardTransitionFrames)) {
         window.cancelAnimationFrame(frame);
       }
+      if (layoutKeyboardResizeResetTimer !== null) clearTimeout(layoutKeyboardResizeResetTimer);
       window.removeEventListener('scroll', dismiss, true);
       window.removeEventListener('resize', dismiss);
       visualViewport?.removeEventListener('scroll', dismissVisualViewport);
