@@ -245,6 +245,7 @@ describe('renderAccessibilityReview', () => {
     const review = renderAccessibilityReview(buildContext('my-widget'));
 
     expect(review).toContain('## Novel interaction accessibility review');
+    expect(review).toContain('- Applies: _Pending');
     expect(review).toContain('Focus management');
     expect(review).toContain('Keyboard matrix');
     expect(review).toContain('Assistive-technology announcements');

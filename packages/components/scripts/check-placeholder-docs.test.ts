@@ -18,6 +18,23 @@ describe('findPlaceholderViolations', () => {
       ),
     ).toEqual([]);
   });
+  it('parses bulleted applicability and scopes accessibility placeholders to its section', () => {
+    const appliesNo = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: _Pending\n\n## Novel interaction accessibility review\n- Applies: no — static component\n- Reviewer: _Pending when this review applies.\n- Focus: _Record',
+      'component.a11y.md',
+    );
+    expect(appliesNo.map(({ phrase }) => phrase)).toEqual(['_Pending']);
+
+    const appliesYes = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: _Pending\n\n## Novel interaction accessibility review\n- Applies: yes\n- Reviewer: _Pending when this review applies.\n- Focus: _Record',
+      'component.a11y.md',
+    );
+    expect(appliesYes.map(({ phrase }) => phrase)).toEqual([
+      '_Pending',
+      '_Pending when this review applies.',
+      '_Record',
+    ]);
+  });
   it('rejects design placeholders regardless of accessibility applicability', () => {
     const violations = findPlaceholderViolations(
       'Applies: no — this component is non-interactive.\nDesign: Replace this sentence',

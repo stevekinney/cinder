@@ -24,7 +24,7 @@ const DESIGN_REVIEW_PHRASES: string[] = [
 ];
 const ACCESSIBILITY_REVIEW_PHRASES: string[] = [
   '_Pending',
-  'Pending when this review applies.',
+  '_Pending when this review applies.',
   '_Record',
 ];
 
@@ -37,18 +37,62 @@ type Violation = {
 
 export function findPlaceholderViolations(content: string, filePath: string): Violation[] {
   const isAccessibilityRecord = filePath.endsWith('.a11y.md');
-  const accessibilityApplies = /^Applies:\s*yes\b/im.test(content);
-  const phrases =
-    isAccessibilityRecord && !accessibilityApplies
-      ? DESIGN_REVIEW_PHRASES
-      : [...DESIGN_REVIEW_PHRASES, ...ACCESSIBILITY_REVIEW_PHRASES];
+  const accessibilityApplies = /^-?\s*Applies:\s*yes\b/im.test(content);
+  const lines = content.split('\n');
   const violations: Violation[] = [];
-  for (const [index, line] of content.split('\n').entries()) {
-    for (const phrase of phrases) {
-      if (line.includes(phrase))
-        violations.push({ filePath, lineNumber: index + 1, line: line.trim(), phrase });
+  const scan = (sectionLines: string[], phrases: string[], offset: number) => {
+    for (const [index, line] of sectionLines.entries()) {
+      for (const phrase of phrases) {
+        if (phrase === '_Pending' && line.includes('Pending when this review applies.')) continue;
+        if (line.includes(phrase)) {
+          const lineNumber = offset + index + 1;
+          if (
+            !violations.some(
+              (violation) => violation.lineNumber === lineNumber && violation.phrase === phrase,
+            )
+          )
+            violations.push({ filePath, lineNumber, line: line.trim(), phrase });
+        }
+      }
     }
+  };
+  if (!isAccessibilityRecord) {
+    scan(lines, [...DESIGN_REVIEW_PHRASES, ...ACCESSIBILITY_REVIEW_PHRASES], 0);
+    return violations;
   }
+
+  const accessibilityHeading = lines.findIndex((line) =>
+    /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
+  );
+  if (accessibilityHeading === -1) {
+    scan(
+      lines,
+      accessibilityApplies
+        ? [...DESIGN_REVIEW_PHRASES, '_Pending', ...ACCESSIBILITY_REVIEW_PHRASES]
+        : DESIGN_REVIEW_PHRASES,
+      0,
+    );
+    return violations;
+  }
+  const designEnd = accessibilityHeading === -1 ? lines.length : accessibilityHeading;
+  scan(lines.slice(0, designEnd), [...DESIGN_REVIEW_PHRASES, '_Pending'], 0);
+  if (accessibilityHeading !== -1 && accessibilityApplies) {
+    scan(
+      lines.slice(accessibilityHeading + 1),
+      ACCESSIBILITY_REVIEW_PHRASES,
+      accessibilityHeading + 1,
+    );
+  }
+  // The applicability decision itself is required before section-specific
+  // accessibility placeholders can be conditionally ignored.
+  const appliesLine = lines.findIndex((line) => /^-?\s*Applies:\s*_Pending\b/i.test(line.trim()));
+  if (appliesLine !== -1)
+    violations.push({
+      filePath,
+      lineNumber: appliesLine + 1,
+      line: lines[appliesLine]!.trim(),
+      phrase: '_Pending',
+    });
   return violations;
 }
 
