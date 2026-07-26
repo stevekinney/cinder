@@ -91,9 +91,11 @@ describe('HeroSection', () => {
     );
     expect(HERO_SECTION_CSS).toContain('inline-size: 100%;');
     expect(HERO_SECTION_CSS).toContain('position: absolute;');
-    expect(HERO_SECTION_CSS).toContain('.cinder-hero-section__media > .cinder-aspect-ratio > *');
     expect(HERO_SECTION_CSS).toContain(
-      '.cinder-hero-section__media > .cinder-aspect-ratio > picture',
+      '.cinder-hero-section__media > .cinder-aspect-ratio > *:only-child',
+    );
+    expect(HERO_SECTION_CSS).toContain(
+      '.cinder-hero-section__media > .cinder-aspect-ratio > picture:only-child',
     );
     expect(HERO_SECTION_CSS).toContain('.cinder-hero-section__media > .cinder-aspect-ratio');
     expect(HERO_SECTION_CSS).not.toContain('cinder-hero-section__media {\n    border:');
@@ -111,12 +113,19 @@ describe('HeroSection', () => {
       container.querySelector('.cinder-hero-section__media picture img')?.getAttribute('alt'),
     ).toBe('Product preview');
     expect(HERO_SECTION_CSS).toContain(
-      '.cinder-hero-section__media > .cinder-aspect-ratio > picture > img',
+      '.cinder-hero-section__media > .cinder-aspect-ratio > picture:only-child > img',
     );
   });
 
   test('splits media layouts at the 48rem container threshold', () => {
     expect(HERO_SECTION_CSS).toContain('@container cinder-hero-section (min-width: 48rem)');
     expect(HERO_SECTION_CSS).not.toContain('@container cinder-hero-section (min-width: 64rem)');
+  });
+
+  test('preserves multi-root media flow and keeps focused media visible', () => {
+    expect(HERO_SECTION_CSS).toContain('> *:only-child');
+    expect(HERO_SECTION_CSS).toContain(':only-child:focus-visible');
+    expect(HERO_SECTION_CSS).toContain('box-shadow: inset 0 0 0 var(--cinder-ring-width)');
+    expect(HERO_SECTION_CSS).toContain('outline-offset: -2px');
   });
 });
