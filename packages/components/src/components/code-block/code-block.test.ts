@@ -83,6 +83,11 @@ describe('CodeBlock — static structure', () => {
     expect(pre?.hasAttribute('tabindex')).toBe(false);
   });
 
+  test('preserves two-space tab sizing on plain and highlighted code', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+    expect(css).toContain('tab-size: 2;');
+  });
+
   test('public source-excerpt variables control the shared viewport and both render paths', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
     expect(css).toContain('--cinder-code-block-height: auto');
