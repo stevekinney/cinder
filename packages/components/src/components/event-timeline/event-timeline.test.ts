@@ -153,7 +153,7 @@ describe('EventTimeline', () => {
       [...container.querySelectorAll('[role="listitem"]')].map((item) =>
         item.getAttribute('data-cinder-lane'),
       ),
-    ).toEqual(['0', '1']);
+    ).toEqual(['0', '0']);
   });
 
   test('accounts for transformed labels when reusing lanes across edge boundaries', async () => {
@@ -326,6 +326,34 @@ describe('EventTimeline', () => {
     } finally {
       __setEventTimelineModalPredicate((element) => element.matches(':modal'));
       globalThis.getComputedStyle = original;
+      dialog.remove();
+    }
+  });
+
+  test('keeps cluster surfaces inside a modal focus-trap panel', async () => {
+    const dialog = document.createElement('dialog');
+    const panel = document.createElement('div');
+    panel.className = 'cinder-modal__panel';
+    dialog.append(panel);
+    dialog.open = true;
+    document.body.append(dialog);
+    __setEventTimelineModalPredicate((element) => element === dialog);
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      panel.append(container.firstElementChild!);
+      await fireEvent.click(panel.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      await waitFor(() =>
+        expect(panel.querySelector('[role="dialog"]')?.parentElement).toBe(panel),
+      );
+    } finally {
+      __setEventTimelineModalPredicate((element) => element.matches(':modal'));
       dialog.remove();
     }
   });

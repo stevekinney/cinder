@@ -102,6 +102,10 @@
     const trigger = clusterTrigger;
     if (!trigger) return null;
     try {
+      const focusTrapRoot = trigger.closest<HTMLElement>(
+        '.cinder-modal__panel, .cinder-sheet__panel, .cinder-drawer__panel',
+      );
+      if (focusTrapRoot) return focusTrapRoot;
       const dialog = trigger.closest<HTMLElement>('dialog');
       return (
         (dialog && modalPredicate(dialog) ? dialog : null) ??
@@ -185,13 +189,15 @@
     edge: PositionedEventTimelineItem['edge'],
     labelWidthPercent: number,
     offsetPercent: number,
+    lane = 0,
   ): { start: number; end: number } {
     if (edge === 'start') return { start: position, end: position + labelWidthPercent };
     if (edge === 'end') return { start: position - labelWidthPercent, end: position };
 
+    const directionalOffset = lane % 2 === 0 ? -offsetPercent : offsetPercent;
     return {
-      start: position - offsetPercent - labelWidthPercent / 2,
-      end: position + offsetPercent + labelWidthPercent / 2,
+      start: position + directionalOffset - labelWidthPercent / 2,
+      end: position + directionalOffset + labelWidthPercent / 2,
     };
   }
 
@@ -303,12 +309,13 @@
           centeredBounds.start >= 0 &&
           centeredBounds.end <= 100;
         if (centered) edge = 'middle';
-        const availableLane = laneBounds.findIndex((bounds) => {
+        const availableLane = laneBounds.findIndex((bounds, lane) => {
           const candidate = transformedLabelBounds(
             position,
             edge,
             collisionThresholdPercent,
             offsetPercent,
+            lane,
           );
           return candidate.start >= bounds.end + 1;
         });
@@ -321,6 +328,7 @@
             edge,
             collisionThresholdPercent,
             offsetPercent,
+            lane,
           );
           laneBounds[lane] = { end: bounds.end };
         }
