@@ -172,11 +172,10 @@
 
   function isInteractionLayoutSlide(index: number): boolean {
     if (index === currentIndex || index === settledIndex) return true;
-    if (!(isInteracting || isNativeScrolling)) return false;
-    const order = initialSlideOrder(index);
-    return [currentIndex, settledIndex].some(
-      (anchor) => Math.abs(order - initialSlideOrder(anchor)) <= 1,
-    );
+    if (!(isInteracting || isNativeScrolling || programmaticTarget !== null)) return false;
+    const lowerBound = Math.max(0, Math.min(currentIndex, settledIndex) - 1);
+    const upperBound = Math.min(clampedLength - 1, Math.max(currentIndex, settledIndex) + 1);
+    return index >= lowerBound && index <= upperBound;
   }
 
   function scrollToActiveSlide(behavior?: ScrollBehavior): void {

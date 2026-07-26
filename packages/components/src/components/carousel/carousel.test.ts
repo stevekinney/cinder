@@ -101,6 +101,35 @@ describe('Carousel', () => {
     expect(scrollTo).toHaveBeenCalledWith({ left: 200, behavior: 'smooth' });
   });
 
+  test('keeps every intermediate slide laid out during distant navigation', async () => {
+    const distantSlides = [
+      ...slides,
+      { id: 'four', label: 'Four', description: 'Fourth' },
+      { id: 'five', label: 'Five', description: 'Fifth' },
+    ];
+    const { container } = render(Carousel, { slides: distantSlides });
+    const root = container.querySelector('.cinder-carousel') as HTMLElement;
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+    await fireEvent.keyDown(root, { key: 'End' });
+
+    expect(
+      [...viewport.children]
+        .slice(1, 4)
+        .every((slide) => !slide.hasAttribute('data-cinder-collapsed')),
+    ).toBe(true);
+  });
+
   test('server-renders a nonzero active slide at the initial scroll position', async () => {
     const html = await renderToServerHtml(CAROUSEL_SOURCE, { slides, activeIndex: 2 });
     const document = new DOMParser().parseFromString(html, 'text/html');
