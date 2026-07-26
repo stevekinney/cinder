@@ -240,7 +240,11 @@
           popoverElement?.contains(document.activeElement);
         const virtualKeyboardTransition = readVirtualKeyboardTransition('window');
         const layoutKeyboardResize =
-          composerHasFocus && viewportHeightChanged && window.innerHeight < previousViewportHeight;
+          composerHasFocus &&
+          viewportHeightChanged &&
+          window.innerHeight < previousViewportHeight &&
+          visualViewport != null &&
+          visualViewport.height < previousViewportHeight;
         if (layoutKeyboardResize) layoutKeyboardVisible = true;
         const closingLayoutKeyboard =
           composerHasFocus &&

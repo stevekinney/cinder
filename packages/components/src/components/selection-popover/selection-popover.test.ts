@@ -428,6 +428,11 @@ describe('SelectionPopover', () => {
   test('a focused height-only resize preserves the soft-keyboard draft', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = originalInnerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
     const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
 
     render(SelectionPopover, {
@@ -455,6 +460,7 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: originalInnerHeight - 100,
       });
+      visualViewport.height = originalInnerHeight - 100;
       await fireEvent(window, new Event('resize'));
 
       expect(closed).toBe(false);
@@ -468,6 +474,7 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: originalInnerHeight,
       });
+      visualViewport.height = originalInnerHeight;
       await fireEvent(window, new Event('resize'));
 
       expect(closed).toBe(false);
@@ -477,6 +484,9 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: originalInnerHeight,
       });
+      if (originalVisualViewport)
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
       if (originalVirtualKeyboard) {
         Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
       } else {
@@ -488,6 +498,11 @@ describe('SelectionPopover', () => {
   test('a layout-keyboard height resize preserves the draft without the virtual keyboard API', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = originalInnerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
     const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
 
     render(SelectionPopover, {
@@ -512,6 +527,7 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: originalInnerHeight - 100,
       });
+      visualViewport.height = originalInnerHeight - 100;
       await fireEvent(window, new Event('resize'));
       expect(closed).toBe(false);
       expect((textarea as HTMLTextAreaElement).value).toBe('Layout keyboard draft');
@@ -520,6 +536,7 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: originalInnerHeight,
       });
+      visualViewport.height = originalInnerHeight;
       await fireEvent(window, new Event('resize'));
       expect(closed).toBe(false);
     } finally {
@@ -527,6 +544,9 @@ describe('SelectionPopover', () => {
         configurable: true,
         value: originalInnerHeight,
       });
+      if (originalVisualViewport)
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
       if (originalVirtualKeyboard)
         Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
     }
