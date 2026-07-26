@@ -4,14 +4,68 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { assetUrlsFromHtml, runStaticExport } from './static-export.ts';
+import {
+  assertDocumentationPagesArePreRendered,
+  assetUrlsFromHtml,
+  runStaticExport,
+} from './static-export.ts';
 
 test('HTML asset discovery normalizes query-configured routes to one static path', () => {
+  expect(assetUrlsFromHtml('<iframe src="/page/button?preview=1"></iframe>')).toEqual([
+    '/page/button',
+  ]);
+});
+
+test('HTML asset discovery ignores navigation anchors', () => {
+  /*
+   * Anchors are navigation, not subresources. Since the documentation pages
+   * became server-rendered, their markup carries example content with
+   * illustrative links — `examples/side-navigation/basic.example.svelte` renders
+   * `href="/projects/atlas"`. `render()` throws on any non-2xx, so crawling
+   * anchors failed the entire export with `/projects/atlas → HTTP 404`.
+   *
+   * Real routes are enumerated explicitly by runStaticExport, so dropping
+   * anchors costs no coverage.
+   */
   expect(
     assetUrlsFromHtml(
-      '<iframe src="/page/button?preview=1"></iframe><a href="/page/button">Button</a>',
+      '<a href="/projects/atlas">Atlas</a><a href="/c/button">Button</a><nav><a href="/page/badge">Badge</a></nav>',
     ),
-  ).toEqual(['/page/button']);
+  ).toEqual([]);
+});
+
+test('HTML asset discovery collects stylesheets, scripts, and media', () => {
+  const urls = assetUrlsFromHtml(
+    [
+      '<link rel="stylesheet" href="/styles/shell.css" />',
+      '<link href="/styles/all.css" rel="stylesheet" />',
+      '<script type="module" src="/shell-bundle/shell.js"></script>',
+      '<img src="/social.png" alt="" />',
+      '<iframe src="/page/button?preview=1"></iframe>',
+      '<a href="/should-be-ignored">nope</a>',
+    ].join(''),
+  );
+
+  expect(urls).toEqual([
+    '/styles/shell.css',
+    '/styles/all.css',
+    '/shell-bundle/shell.js',
+    '/social.png',
+    '/page/button',
+  ]);
+});
+
+test('HTML asset discovery skips the SSE stream, which has no static form', () => {
+  expect(assetUrlsFromHtml('<script src="/events"></script>')).toEqual([]);
+});
+
+test('HTML asset discovery does not carry regex state between calls', () => {
+  // A shared `/g` regex would resume from the previous call's lastIndex and miss
+  // the first match on the second invocation.
+  const html = '<link rel="stylesheet" href="/styles/shell.css" />';
+
+  expect(assetUrlsFromHtml(html)).toEqual(['/styles/shell.css']);
+  expect(assetUrlsFromHtml(html)).toEqual(['/styles/shell.css']);
 });
 
 describe('static export', () => {
@@ -95,4 +149,69 @@ describe('static export', () => {
       await rm(outputDirectory, { recursive: true, force: true });
     }
   }, 120_000);
+});
+
+describe('assertDocumentationPagesArePreRendered', () => {
+  /*
+   * The guardrail for the original defect: `/page/<name>` shipped an empty
+   * `<div id="app">` plus a bundle, so the deployed site rendered nothing until
+   * JavaScript executed — and nothing failed, because the export only checked
+   * for a 2xx response.
+   */
+  const goodPage =
+    '<html><body><div id="app"><div data-component-page><h1>Button</h1></div></div></body></html>';
+
+  test('accepts pages that carry server-rendered documentation', () => {
+    expect(() =>
+      assertDocumentationPagesArePreRendered([{ name: 'button', html: goodPage }]),
+    ).not.toThrow();
+  });
+
+  test('accepts an empty page list', () => {
+    expect(() => assertDocumentationPagesArePreRendered([])).not.toThrow();
+  });
+
+  test('rejects an empty mount root — the original regression', () => {
+    expect(() =>
+      assertDocumentationPagesArePreRendered([
+        { name: 'button', html: '<html><body><div id="app"></div></body></html>' },
+      ]),
+    ).toThrow(/#app is empty/);
+  });
+
+  test('rejects a page missing the documentation root attribute', () => {
+    expect(() =>
+      assertDocumentationPagesArePreRendered([
+        { name: 'badge', html: '<div id="app"><h1>Badge</h1></div>' },
+      ]),
+    ).toThrow(/data-component-page/);
+  });
+
+  test('rejects a page missing its hero heading', () => {
+    expect(() =>
+      assertDocumentationPagesArePreRendered([
+        { name: 'badge', html: '<div id="app"><div data-component-page></div></div>' },
+      ]),
+    ).toThrow(/<h1/);
+  });
+
+  test('reports every offender and the total, not just the first', () => {
+    const error = (() => {
+      try {
+        assertDocumentationPagesArePreRendered([
+          { name: 'button', html: goodPage },
+          { name: 'badge', html: '<div id="app"></div>' },
+          { name: 'card', html: '<div id="app"></div>' },
+        ]);
+        return null;
+      } catch (thrown) {
+        return thrown as Error;
+      }
+    })();
+
+    expect(error).not.toBeNull();
+    expect(error?.message).toContain('2 of 3');
+    expect(error?.message).toContain('badge');
+    expect(error?.message).toContain('card');
+  });
 });

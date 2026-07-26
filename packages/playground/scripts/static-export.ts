@@ -108,17 +108,49 @@ async function writeFile(path: string, contents: string): Promise<void> {
 }
 
 /**
- * Pull every same-origin asset URL the given HTML references — the `<script
- * src>` bundles and `<link href>` stylesheets — as root-relative paths.
+ * Elements whose `href`/`src` names a subresource the browser must fetch for the
+ * page to render correctly, and which therefore has to exist as a static file.
+ *
+ * `<a>` is deliberately absent. An anchor is navigation, not a subresource, and
+ * since the documentation pages became server-rendered their markup contains
+ * example content with illustrative links — `SideNavigation.Item
+ * href="/projects/atlas"` in `examples/side-navigation/basic.example.svelte`, for
+ * instance. Those routes do not exist, and because `render()` throws on any
+ * non-2xx response, crawling them failed the whole export with
+ * `/projects/atlas → HTTP 404`.
+ *
+ * Every real route is enumerated explicitly by `runStaticExport` (`/page/<name>`
+ * for all components, `/c/<name>` for the sidebar, the API and example-source
+ * routes), so scraping anchors added no coverage — only the risk of treating
+ * demo content as a build requirement.
+ */
+const ASSET_ELEMENTS = ['link', 'script', 'img', 'iframe', 'source'] as const;
+
+/**
+ * Source for a regex matching an asset-bearing start tag, capturing its
+ * root-relative `href`/`src`. Attribute order varies (`<link rel="stylesheet"
+ * href="…">` vs `<link href="…" rel="…">`), so the URL is captured from anywhere
+ * inside the tag.
+ *
+ * Held as a string and compiled per call: a shared `/g` regex carries `lastIndex`
+ * between invocations, so a second call would silently resume mid-document.
+ */
+const ASSET_REFERENCE_SOURCE = `<(?:${ASSET_ELEMENTS.join('|')})\\b[^>]*?\\b(?:href|src)="(/[^"]*)"`;
+
+/**
+ * Pull every same-origin subresource URL the given HTML references — `<script
+ * src>` bundles, `<link href>` stylesheets, and `<img>`/`<iframe>`/`<source>`
+ * media — as root-relative paths. Navigation links are ignored; see
+ * {@link ASSET_ELEMENTS}.
  */
 export function assetUrlsFromHtml(html: string): string[] {
   const urls = new Set<string>();
-  const attribute = /\b(?:src|href)="(\/[^"]+)"/g;
+  const assetReference = new RegExp(ASSET_REFERENCE_SOURCE, 'gi');
   let match: RegExpExecArray | null;
-  while ((match = attribute.exec(html)) !== null) {
+  while ((match = assetReference.exec(html)) !== null) {
     const url = match[1]!;
-    // Only crawlable GET routes — skip in-page anchors and the SSE stream.
-    if (url === '/events' || url.startsWith('#')) continue;
+    // Only crawlable GET routes — skip the SSE stream, which has no static form.
+    if (url === '/events') continue;
     // Queries configure browser behavior but do not identify a second static
     // file. Materialize `/page/button?preview=1` at the already-exported
     // `/page/button` path instead of creating a literal `?preview=1` directory.
@@ -245,9 +277,13 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   // a directory `api/manifest/` cannot coexist).
 
   // Per-component: shell page, iframe page, page-bundle graph, manifest, sources.
+  const documentationPages: { name: string; html: string }[] = [];
   for (const name of allComponents) {
     const pageHtml = await render(`/page/${name}`, context);
-    if (pageHtml !== null) collect(pageHtml);
+    if (pageHtml !== null) {
+      collect(pageHtml);
+      documentationPages.push({ name, html: pageHtml });
+    }
     await renderJsBundleGraph(`/page-bundle/${name}.js`, context);
     await render(`/api/manifest/${name}`, context);
     await render(`/api/documentation/${name}`, context);
@@ -271,11 +307,64 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     else await render(url, context);
   }
 
+  assertDocumentationPagesArePreRendered(documentationPages);
+
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
   process.stdout.write(
     `[static-export] rendered ${context.rendered.size} files for ${sidebarComponents.length} components in ${seconds}s\n`,
   );
   return context.rendered;
+}
+
+/**
+ * Markers every server-rendered documentation page must carry.
+ *
+ * `data-component-page` is the page root's own attribute, and a `<h1>` proves the
+ * hero rendered rather than an empty frame.
+ */
+const PRE_RENDER_MARKERS = ['data-component-page', '<h1'] as const;
+
+/** An `#app` with no children is the exact shape of the regression guarded here. */
+const EMPTY_MOUNT_ROOT = '<div id="app"></div>';
+
+/**
+ * Fail the build when a documentation page exported without server-rendered
+ * content.
+ *
+ * This is the guardrail for the original defect: `/page/<name>` shipped an empty
+ * `<div id="app">` plus a bundle, so the deployed site rendered nothing until
+ * JavaScript executed. That shipped silently because nothing asserted the
+ * exported bytes actually contained the documentation — the export only checked
+ * for a 2xx response.
+ *
+ * Throwing here is deliberate: `vercel-build` runs this script, so a page that
+ * loses its pre-rendering fails the deploy instead of reaching production blank.
+ *
+ * @throws When any page lacks a pre-render marker or still has an empty `#app`.
+ */
+export function assertDocumentationPagesArePreRendered(
+  pages: readonly { name: string; html: string }[],
+): void {
+  const failures: string[] = [];
+
+  for (const { name, html } of pages) {
+    if (html.includes(EMPTY_MOUNT_ROOT)) {
+      failures.push(`${name}: #app is empty — the page was not server-rendered`);
+      continue;
+    }
+    const missing = PRE_RENDER_MARKERS.filter((marker) => !html.includes(marker));
+    if (missing.length > 0) {
+      failures.push(`${name}: missing ${missing.join(', ')}`);
+    }
+  }
+
+  if (failures.length === 0) return;
+
+  throw new Error(
+    `[static-export] ${failures.length} of ${pages.length} documentation pages are not ` +
+      `server-rendered. A blank page must never deploy.\n` +
+      failures.map((failure) => `  - ${failure}`).join('\n'),
+  );
 }
 
 // Fire-and-forget: surface any failure as a non-zero exit so the build fails.
