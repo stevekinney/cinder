@@ -107,14 +107,15 @@
     const timer = setInterval(() => {
       if (clampedLength < 2) return;
       isAutoplayTransitioning = true;
-      goNext();
+      goNext(true);
       if (programmaticTarget === null) isAutoplayTransitioning = false;
     }, autoplayInterval);
     return () => clearInterval(timer);
   });
 
-  function goTo(index: number, immediate = false) {
+  function goTo(index: number, immediate = false, fromAutoplay = false) {
     if (clampedLength < 1) return;
+    if (!fromAutoplay) isAutoplayTransitioning = false;
     const nextIndex = ((index % clampedLength) + clampedLength) % clampedLength;
     if (programmaticTarget !== null && viewportElement !== null) {
       settledIndex = nearestVisibleSlideIndex(viewportElement);
@@ -131,12 +132,12 @@
     goTo(currentIndex - 1, clampedLength > 2 && physicalDistance > 1);
   }
 
-  function goNext() {
+  function goNext(fromAutoplay = false) {
     const nextIndex = (currentIndex + 1) % clampedLength;
     const physicalDistance = Math.abs(
       initialSlideOrder(nextIndex) - initialSlideOrder(currentIndex),
     );
-    goTo(currentIndex + 1, clampedLength > 2 && physicalDistance > 1);
+    goTo(currentIndex + 1, clampedLength > 2 && physicalDistance > 1, fromAutoplay);
   }
 
   function onKeydown(event: KeyboardEvent) {
