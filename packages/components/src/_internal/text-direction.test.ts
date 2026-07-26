@@ -135,6 +135,38 @@ describe('resolveTextDirection', () => {
     styleElement.remove();
   });
 
+  test('prefers an ancestor inline style over a generated element direction', () => {
+    const wrapper = document.createElement('div');
+    wrapper.dir = 'rtl';
+    wrapper.style.direction = 'ltr';
+    const element = document.createElement('div');
+    element.dir = 'rtl';
+    wrapper.append(element);
+    document.body.append(wrapper);
+
+    expect(resolveTextDirection(element, 'rtl', { ignoreElementDirectionAttribute: true })).toBe(
+      'ltr',
+    );
+  });
+
+  test('prefers an ancestor class style over a generated element direction', () => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = '.ancestor-ltr { direction: ltr; }';
+    document.head.append(styleElement);
+    const wrapper = document.createElement('div');
+    wrapper.dir = 'rtl';
+    wrapper.className = 'ancestor-ltr';
+    const element = document.createElement('div');
+    element.dir = 'rtl';
+    wrapper.append(element);
+    document.body.append(wrapper);
+
+    expect(resolveTextDirection(element, 'rtl', { ignoreElementDirectionAttribute: true })).toBe(
+      'ltr',
+    );
+    styleElement.remove();
+  });
+
   test('prefers provider fallback over document root direction', () => {
     document.documentElement.dir = 'ltr';
     const element = document.createElement('div');

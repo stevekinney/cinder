@@ -8,7 +8,7 @@ export function resolveTextDirection(
   const ignoreElementDirectionAttribute = options?.ignoreElementDirectionAttribute ?? false;
   if (ignoreElementDirectionAttribute && element) {
     const styledDirection = readComputedTextDirection(element);
-    if (styledDirection && hasDirectionStylingHint(element, true)) return styledDirection;
+    if (styledDirection && hasElementDirectionStylingHint(element)) return styledDirection;
   }
 
   let currentElement: HTMLElement | null = ignoreElementDirectionAttribute
@@ -17,6 +17,14 @@ export function resolveTextDirection(
   let documentDirection: TextDirection | undefined;
   let styledDirectionElement: HTMLElement | null = null;
   while (currentElement) {
+    if (
+      !styledDirectionElement &&
+      (currentElement.style.direction === 'rtl' ||
+        currentElement.style.direction === 'ltr' ||
+        matchesDirectionStyleRule(currentElement))
+    ) {
+      styledDirectionElement = currentElement;
+    }
     const direction = currentElement.getAttribute('dir')?.toLowerCase();
     if (direction === 'rtl' || direction === 'ltr') {
       if (typeof getComputedStyle === 'function' && styledDirectionElement) {
@@ -67,6 +75,10 @@ export function resolveTextDirection(
   if (documentDirection) return documentDirection;
 
   return undefined;
+}
+
+function hasElementDirectionStylingHint(element: HTMLElement): boolean {
+  return Boolean(element.style.direction) || matchesDirectionStyleRule(element);
 }
 
 function readComputedTextDirection(
