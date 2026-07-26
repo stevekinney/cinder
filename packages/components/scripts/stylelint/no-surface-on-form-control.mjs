@@ -49,7 +49,7 @@ function isCinderComponentSource(root) {
 }
 
 function isFormControl(selector) {
-  return /(?:^|[\s,>+~])(?:input|textarea|select|\.cinder-(?:input|textarea|select)|\.cinder-_input-frame)(?=[.#:[\s]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
+  return /(?:^|[\s,>+~])(?:input|textarea|select|\.cinder-(?:input|textarea|select)|\.cinder-_input-frame|\.cinder-pin-input__segment)(?=[.#:[\s]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
     selector,
   );
 }

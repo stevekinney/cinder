@@ -68,4 +68,15 @@ describe(ruleName, () => {
       ),
     ).toHaveLength(1);
   });
+
+  test('recognizes PinInput segment controls', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.cinder-pin-input__segment { background: var(--cinder-surface); }',
+          '/workspace/packages/components/src/components/pin-input/pin-input.css',
+        ),
+      ),
+    ).toHaveLength(1);
+  });
 });
