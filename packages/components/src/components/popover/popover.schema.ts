@@ -77,6 +77,12 @@ const schema = {
         description: 'Panel content. Required.',
       },
       {
+        name: 'initialFocus',
+        reason: 'function-or-snippet',
+        description:
+          'Optional callback for choosing the element that receives initial panel focus.',
+      },
+      {
         name: 'trigger',
         reason: 'function-or-snippet',
         description: 'Optional trigger snippet rendered inside a wrapper.',
