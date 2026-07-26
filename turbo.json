@@ -32,7 +32,11 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
     // `RUNNER_OS` + `TURBO_PLATFORM` are OS discriminators for the REMOTE cache. Turbo's hash covers
     // declared files, env vars, and engines — there is no platform component (confirmed absent from
@@ -55,19 +59,31 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
     // `^build`, not `[]`: oxlint runs with `--type-aware`, which reads dependency `.d.ts` files, so
     // a package's lint genuinely needs its dependencies built. Builds hash-skip, so the added edge
@@ -75,15 +91,49 @@
     "lint": {
       "dependsOn": ["^build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
-    // The one surviving override. Cinder's lint reaches editor types, which is an edge `^build`
+    // `@cinder/testing` reaches the other way across the boundary: `scripts/changed-components.ts`
+    // imports `packages/playground/src/component-sources.ts`, and testing does not depend on
+    // playground, so `^build` cannot fold that hash in. Scoped to testing's own tasks rather than
+    // added to the base inputs — playground/src is the most-edited tree in the repo, and hashing it
+    // into every package's tasks would gut the cache for changes that cannot possibly affect them.
+    "@cinder/testing#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/packages/playground/src/**"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS"]
+    },
+    "@cinder/testing#typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/packages/playground/src/**"
+      ]
+    },
+    // Cinder's lint reaches editor types, which is an edge `^build`
     // cannot supply (editor depends on cinder, not the reverse). Appended to `^build` rather than
     // replacing it, so the `@cinder/testing#build` and markdown edges survive.
     "@lostgradient/cinder#lint": {
       "dependsOn": ["^build", "@lostgradient/editor#build"],
       "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
     "validate": {
       "dependsOn": ["^build", "build"],

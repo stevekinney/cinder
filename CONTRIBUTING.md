@@ -115,8 +115,12 @@ In CI the same variables come from `secrets.TURBO_TOKEN` and `vars.TURBO_TEAM` i
 > (`svelte-plugin.ts`, `check-coverage-ratchet.ts`, the artifact generators),
 > and those files never land in cinder's `dist/**`, so the `^build` edge does
 > not cover them. `turbo.json` declares that directory as an explicit input on
-> the affected tasks. If you add a new cross-package import from a cached task,
-> add its directory to that task's `inputs` too.
+> the affected tasks, and does the same for `packages/testing/scripts/**` (which
+> the playground imports) and `packages/playground/src/**` (which the testing
+> package imports back). If you add a new cross-package import from a cached
+> task, add its directory to that task's `inputs` too — a relative `../../`
+> import into a package you do not declare a dependency on is invisible to the
+> task graph.
 
 > [!IMPORTANT] A package-task override replaces the base task — it does not merge
 > Writing `"@scope/pkg#build": { "dependsOn": ["@scope/other#build"] }` discards

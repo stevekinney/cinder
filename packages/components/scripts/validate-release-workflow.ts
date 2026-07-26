@@ -807,17 +807,45 @@ function runValidation(): void {
  * in a workflow-level `env:`); the rest share the same failure mode because
  * they are all scoped to a job or a step.
  */
-const contextsUnavailableAtWorkflowLevel = [
-  'runner',
-  'steps',
-  'job',
-  'matrix',
-  'needs',
-  'strategy',
-];
+const CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL = new Set(['github', 'secrets', 'inputs', 'vars']);
 
 /**
- * Reject job/step-scoped contexts inside a top-level `env:` block.
+ * Extract the root identifier of every context reference inside a `${{ … }}`
+ * expression — the part before the first `.` or `[`, so both `runner.os` and
+ * `runner['os']` yield `runner`.
+ *
+ * Single-quoted strings are stripped first so a literal like `format('a.b', …)`
+ * cannot be mistaken for a context reference. Function calls are naturally
+ * excluded: `fromJSON(…)` is followed by `(`, never `.` or `[`.
+ *
+ * The leading `(?<![.\w-])` is what keeps this to the ROOT: without it,
+ * `github.event.pull_request.number` reports `event` and `pull_request` as
+ * roots too and the allowlist rejects a perfectly valid expression.
+ */
+export function workflowExpressionContextRoots(line: string): string[] {
+  const roots: string[] = [];
+
+  for (const expression of line.matchAll(/\$\{\{(?<body>.*?)\}\}/g)) {
+    const body = (expression.groups?.['body'] ?? '').replace(/'(?:[^']|'')*'/g, "''");
+
+    for (const reference of body.matchAll(
+      /(?<![.\w-])(?<root>[A-Za-z_][A-Za-z0-9_-]*)\s*(?:\.|\[)/g,
+    )) {
+      const root = reference.groups?.['root'];
+      if (root !== undefined) roots.push(root);
+    }
+  }
+
+  return roots;
+}
+
+/**
+ * Reject contexts that do not exist in a top-level `env:` block.
+ *
+ * Uses GitHub's allowlist rather than a denylist of known-bad roots: the set of
+ * *available* contexts is short, closed, and documented, whereas a denylist
+ * silently passes anything it forgot (`env`, `jobs`, and bracket access all
+ * slipped through the first version of this check).
  *
  * Scans raw lines rather than the parsed tree: we need the workflow-level block
  * specifically, and a parsed mapping loses the column information that
@@ -845,24 +873,26 @@ function validateWorkflowLevelEnvironmentContexts(): void {
 
       if (!insideWorkflowEnvironmentBlock || isComment(line)) continue;
 
-      for (const context of contextsUnavailableAtWorkflowLevel) {
-        if (!new RegExp(String.raw`\$\{\{\s*${context}\.`).test(line)) continue;
+      for (const root of workflowExpressionContextRoots(line)) {
+        if (CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL.has(root)) continue;
 
         fail(
-          `${fileName} uses the \`${context}\` context in its workflow-level \`env:\` block:\n` +
+          `${fileName} uses the \`${root}\` context in its workflow-level \`env:\` block:\n` +
             `  ${line.trim()}\n\n` +
-            `\`${context}\` is scoped to a job or a step and does not exist when a\n` +
-            'workflow-level `env:` is evaluated. GitHub rejects the whole workflow file,\n' +
-            'so every job fails before it starts with no useful annotation. Move the value\n' +
-            'to the step that needs it, or use a context available at workflow level\n' +
-            '(`github`, `vars`, `secrets`, `inputs`). For the runner OS specifically,\n' +
-            'GitHub already exports `RUNNER_OS` as a plain variable inside every job.',
+            'A workflow-level `env:` is evaluated before any job is assigned to a runner,\n' +
+            'so only `github`, `secrets`, `inputs`, and `vars` exist there. Anything else\n' +
+            '(`runner`, `steps`, `job`, `matrix`, `needs`, `strategy`, `env`, `jobs`, …)\n' +
+            'makes GitHub reject the ENTIRE workflow file: every job fails before it starts,\n' +
+            'reporting only a generic "workflow file issue" with no annotation.\n\n' +
+            'Move the value to the job or step that needs it. For the runner OS\n' +
+            'specifically, GitHub already exports `RUNNER_OS` as a plain variable inside\n' +
+            'every job — no expression required.',
         );
       }
     }
   }
 
-  pass('No job/step-scoped contexts in any workflow-level `env:` block');
+  pass('Workflow-level `env:` blocks only use contexts available at workflow level');
 }
 
 if (import.meta.main) {
