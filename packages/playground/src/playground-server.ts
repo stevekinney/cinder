@@ -615,6 +615,7 @@ function startWatcher(): FSWatcher[] {
         if (
           filename &&
           !filename.startsWith('examples/') &&
+          !filename.startsWith('.tmp-') &&
           !filename.endsWith('.test.ts') &&
           !filename.startsWith('.')
         ) {
