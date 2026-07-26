@@ -28,6 +28,11 @@
  *     allowed (they document the OIDC rationale).
  *   - release-manual.yaml is NOT checked — that file intentionally uses a token
  *     as a documented break-glass fallback.
+ *   - No workflow (not just release.yaml) references a job- or step-scoped
+ *     context (`runner`, `steps`, `job`, `matrix`, `needs`, `strategy`) inside a
+ *     workflow-level `env:` block. GitHub rejects the entire file in that case,
+ *     failing every job before it starts with only a generic "workflow file
+ *     issue" message. The YAML itself parses fine, so nothing else catches it.
  *   - Pending changeset files do NOT target packages listed in
  *     `.changeset/config.json` `ignore`. Ignored-package changesets are never
  *     consumed by `changeset version`, but `changesets/action` still treats them
@@ -787,6 +792,77 @@ function runValidation(): void {
 
   pass('No pending changesets target ignored packages');
   pass('release.yaml is correctly configured for npm Trusted Publishing');
+
+  validateWorkflowLevelEnvironmentContexts();
+}
+
+/**
+ * Contexts that do not exist when a workflow-level `env:` block is evaluated.
+ * GitHub rejects the ENTIRE workflow file if one appears there — the run fails
+ * before any job starts, reporting only "This run likely failed because of a
+ * workflow file issue" with no annotation pointing at the line. A YAML parse
+ * check cannot catch it: the file is perfectly valid YAML.
+ *
+ * `runner` is the one that actually bit us (`TURBO_PLATFORM: ${{ runner.os }}`
+ * in a workflow-level `env:`); the rest share the same failure mode because
+ * they are all scoped to a job or a step.
+ */
+const contextsUnavailableAtWorkflowLevel = [
+  'runner',
+  'steps',
+  'job',
+  'matrix',
+  'needs',
+  'strategy',
+];
+
+/**
+ * Reject job/step-scoped contexts inside a top-level `env:` block.
+ *
+ * Scans raw lines rather than the parsed tree: we need the workflow-level block
+ * specifically, and a parsed mapping loses the column information that
+ * distinguishes it from `jobs.<id>.env`. A top-level key sits at column 0, so
+ * the block runs from a line matching `env:` at column 0 until the next
+ * column-0 key.
+ */
+function validateWorkflowLevelEnvironmentContexts(): void {
+  const workflowFileNames = readdirSync(workflowsDirectoryPath).filter(
+    (fileName) => fileName.endsWith('.yaml') || fileName.endsWith('.yml'),
+  );
+
+  for (const fileName of workflowFileNames) {
+    const lines = readFileSync(join(workflowsDirectoryPath, fileName), 'utf8').split('\n');
+
+    let insideWorkflowEnvironmentBlock = false;
+
+    for (const line of lines) {
+      const startsAtColumnZero = /^\S/.test(line);
+
+      if (startsAtColumnZero) {
+        insideWorkflowEnvironmentBlock = /^env:/.test(line);
+        continue;
+      }
+
+      if (!insideWorkflowEnvironmentBlock || isComment(line)) continue;
+
+      for (const context of contextsUnavailableAtWorkflowLevel) {
+        if (!new RegExp(String.raw`\$\{\{\s*${context}\.`).test(line)) continue;
+
+        fail(
+          `${fileName} uses the \`${context}\` context in its workflow-level \`env:\` block:\n` +
+            `  ${line.trim()}\n\n` +
+            `\`${context}\` is scoped to a job or a step and does not exist when a\n` +
+            'workflow-level `env:` is evaluated. GitHub rejects the whole workflow file,\n' +
+            'so every job fails before it starts with no useful annotation. Move the value\n' +
+            'to the step that needs it, or use a context available at workflow level\n' +
+            '(`github`, `vars`, `secrets`, `inputs`). For the runner OS specifically,\n' +
+            'GitHub already exports `RUNNER_OS` as a plain variable inside every job.',
+        );
+      }
+    }
+  }
+
+  pass('No job/step-scoped contexts in any workflow-level `env:` block');
 }
 
 if (import.meta.main) {

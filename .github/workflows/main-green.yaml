@@ -39,8 +39,6 @@ env:
   TURBO_FORCE: 'true'
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-  # OS discriminator for the remote cache — see the `test` task in turbo.json.
-  TURBO_PLATFORM: ${{ runner.os }}
 
 jobs:
   workspace-gates:

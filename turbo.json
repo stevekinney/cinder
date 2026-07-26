@@ -34,29 +34,35 @@
       "outputs": ["dist/**"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
-    // `TURBO_PLATFORM` is an OS discriminator for the REMOTE cache. Turbo's hash covers declared
-    // files, env vars, and engines — there is no platform component (confirmed in `--dry=json`'s
-    // `globalCacheInputs`). Once macOS laptops and Linux CI share one remote namespace, a
-    // platform-conditioned test can have its success replayed on the OS that never executed that
-    // branch; `packages/testing/scripts/start-server.test.ts` and
+    // `RUNNER_OS` + `TURBO_PLATFORM` are OS discriminators for the REMOTE cache. Turbo's hash covers
+    // declared files, env vars, and engines — there is no platform component (confirmed absent from
+    // `--dry=json`'s `globalCacheInputs`). Once macOS laptops and Linux CI share one remote
+    // namespace, a platform-conditioned test can have its success replayed on the OS that never
+    // executed that branch; `packages/testing/scripts/start-server.test.ts` and
     // `packages/components/scripts/husky/utilities.test.ts` both derive assertions from
-    // `process.platform`. CI sets this to `runner.os`; developers export `$(uname -s)` (see
-    // CONTRIBUTING.md). It fails SAFE when unset — an unset value simply hashes differently from
-    // `Linux`, so a laptop can never read a CI test entry by accident.
+    // `process.platform`.
     //
-    // Only `test`/`test:coverage` carry it. `build`, `typecheck`, and `lint` are deterministic
+    // Two variables because no single one covers both environments. GitHub defines `RUNNER_OS` in
+    // every job automatically, so CI needs no workflow wiring (and `${{ runner.os }}` could not be
+    // used in a workflow-level `env:` block anyway — the `runner` context only exists at step
+    // level). Developers export `TURBO_PLATFORM="$(uname -s)"` per CONTRIBUTING.md. Every
+    // combination hashes distinctly: Linux CI sets only RUNNER_OS, a macOS laptop sets only
+    // TURBO_PLATFORM=Darwin, a Linux laptop sets only TURBO_PLATFORM=Linux. Unset fails SAFE — it
+    // hashes differently from any set value, so a laptop cannot read a CI test entry by accident.
+    //
+    // Only `test`/`test:coverage` carry these. `build`, `typecheck`, and `lint` are deterministic
     // across platforms, so they keep full CI-to-laptop cache sharing.
     "test": {
       "dependsOn": ["^build"],
       "outputs": [],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"],
-      "env": ["TURBO_PLATFORM"]
+      "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"],
-      "env": ["TURBO_PLATFORM"]
+      "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
     "typecheck": {
       "dependsOn": ["^build"],

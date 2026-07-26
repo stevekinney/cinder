@@ -91,11 +91,11 @@ env:
   # can reach. Do not "clean it up".
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-  # OS discriminator for the remote cache — see the `test` task in turbo.json.
-  # Turbo's hash has no platform component, so without this a macOS laptop and
-  # this Linux runner would share `test` entries despite platform-conditioned
-  # assertions in the suite.
-  TURBO_PLATFORM: ${{ runner.os }}
+  # No OS discriminator is set here on purpose. The `test` tasks in turbo.json
+  # declare `RUNNER_OS`, which GitHub already defines in every job — nothing to
+  # wire up. (`${{ runner.os }}` cannot be used in a workflow-level `env:` block
+  # at all: the `runner` context only exists at step level, and referencing it
+  # here makes GitHub reject the whole workflow file.)
 
 jobs:
   scope:

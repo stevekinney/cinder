@@ -90,7 +90,10 @@ remote namespace between macOS laptops and Linux CI would let a success be
 replayed on the OS that never ran that branch. `turbo.json` declares it on
 `test`/`test:coverage` only, so `build`, `typecheck`, and `lint` keep full
 CI-to-laptop sharing. It fails safe when unset: an unset value hashes differently
-from `Linux`, so a laptop cannot read a CI test entry by accident.
+from any set value, so a laptop cannot read a CI test entry by accident.
+
+CI needs no equivalent setting — the same task declaration also lists
+`RUNNER_OS`, which GitHub defines in every job automatically.
 
 In CI the same variables come from `secrets.TURBO_TOKEN` and `vars.TURBO_TEAM` in
 `unit-tests.yaml` and `main-green.yaml`. Two deliberate asymmetries:
