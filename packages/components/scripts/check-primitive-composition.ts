@@ -180,6 +180,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     )
       candidate = node['init'];
     if (
+      !currentShadowed &&
       node['type'] === 'AssignmentExpression' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&

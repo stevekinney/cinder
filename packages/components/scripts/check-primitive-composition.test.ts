@@ -568,6 +568,51 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('resolves conditional style bindings', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const layout = dense ? { display: 'grid', gridTemplateColumns: '1fr' } : {};</script><div style={layout} />",
+        'new-layout/new-layout.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('matches pseudo-only selectors', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        ':where(.layout) { display: grid; } .layout { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('treats media all as overlapping screen', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media all { .layout { display: grid; } } @media screen { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('ignores shadowed polymorphic assignments', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function helper() { let tag = 'div'; tag = 'input'; }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('counts literal HtmlTag field composition', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "{@html '<label>Name</label><p>Help</p><p>Error</p>'}",
+        'html-field/html-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('matches completed compound pseudo alternatives', () => {
     expect(
       findPrimitiveCompositionViolations(

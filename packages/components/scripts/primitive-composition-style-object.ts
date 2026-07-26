@@ -113,7 +113,12 @@ function staticBindings(instance: unknown): Map<string, unknown> {
           continue;
         }
         const initializer = declaration['init'];
-        if (isRecord(initializer) && initializer['type'] === 'ObjectExpression')
+        if (
+          isRecord(initializer) &&
+          ['ObjectExpression', 'ConditionalExpression', 'LogicalExpression'].includes(
+            String(initializer['type']),
+          )
+        )
           bindings.set(declaration['id']['name'], initializer);
         else if (isRecord(initializer) && initializer['type'] === 'Literal')
           bindings.set(declaration['id']['name'], initializer['value']);

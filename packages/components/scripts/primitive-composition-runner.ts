@@ -62,9 +62,7 @@ export async function runPrimitiveCompositionCheck(
       ? svelteSources
           .filter(({ relativePath: candidatePath }) => {
             const candidateFamily = candidatePath.split('/')[0] ?? '';
-            return (
-              candidateFamily === styledFamily || candidateFamily.startsWith(`${styledFamily}-`)
-            );
+            return candidateFamily === styledFamily;
           })
           .map(({ source: candidateSource }) => candidateSource)
       : [];

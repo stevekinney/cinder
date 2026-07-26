@@ -169,8 +169,13 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
     (left.tag !== undefined && left.tag === right.tag) ||
     [...left.classes].some((className) => right.classes.has(className)) ||
     [...left.attributes.keys()].some((attribute) => right.attributes.has(attribute));
+  const functionalAnchor = left.functionalConstraints.some(
+    ({ kind, alternatives }) =>
+      kind === 'any' &&
+      alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right)),
+  );
   return (
-    shareAnchor &&
+    (shareAnchor || functionalAnchor) &&
     !hasConflictingAttribute &&
     (left.id === undefined || right.id === undefined || left.id === right.id) &&
     (left.tag === undefined || right.tag === undefined || left.tag === right.tag)
@@ -287,7 +292,8 @@ function conditionalQueryBranchesConflict(left: string, right: string): boolean 
   if (
     leftType !== undefined &&
     rightType !== undefined &&
-    (leftType.name !== rightType.name || leftType.negated !== rightType.negated)
+    ((leftType.name !== 'all' && rightType.name !== 'all' && leftType.name !== rightType.name) ||
+      leftType.negated !== rightType.negated)
   )
     return true;
   const bounds = [...widthBounds(left), ...widthBounds(right)];

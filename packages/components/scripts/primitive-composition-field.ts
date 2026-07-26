@@ -130,6 +130,21 @@ function qualifyingFieldLabels(
       rootLabelCount: 0,
       terms: '',
     };
+  if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
+    const html = staticStringFromExpression(node['expression'], bindings);
+    if (html !== undefined) {
+      const nested = parseSvelteFragment(html);
+      return nested === undefined
+        ? {
+            count: 0,
+            isolatedMessages: false,
+            labelCount: 0,
+            rootLabelCount: 0,
+            terms: '',
+          }
+        : qualifyingFieldLabels(nested, html, bindings);
+    }
+  }
   const localEvidence = localMarkupEvidence(node, source, bindings);
   let count = 0;
   let labelCount = localEvidence.labelCount;
