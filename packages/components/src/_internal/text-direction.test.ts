@@ -491,6 +491,40 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('uses effective computed direction when stylesheet rules are inaccessible', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', {
+        value:
+          target instanceof HTMLElement && target.classList.contains('cross-origin-rtl')
+            ? 'rtl'
+            : 'ltr',
+        configurable: true,
+      });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const element = document.createElement('div');
+      element.className = 'cross-origin-rtl';
+      element.dir = 'ltr';
+      document.body.appendChild(element);
+
+      const direction = withDocumentStyleSheets([createStyleSheetWithThrowingRules()], () =>
+        resolveTextDirection(element, 'ltr', { ignoreElementDirectionAttribute: true }),
+      );
+
+      expect(direction).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('uses grouped CSS direction rules inside active media conditions', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

@@ -244,6 +244,34 @@ describe('MegaMenu', () => {
     }
   });
 
+  test('does not consume modified Home and End shortcuts in nested submenus', async () => {
+    const { container } = render(MegaMenu, { items });
+    const products = getTriggerByLabel(container, 'Products');
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowDown' });
+
+    const triggers = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    );
+    const backend = triggers.find((trigger) => trigger.textContent?.trim() === 'Backend');
+    if (!backend) throw new Error('Missing nested submenu trigger.');
+    backend.focus();
+
+    for (const key of ['Home', 'End'] as const) {
+      for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+        const event = new KeyboardEvent('keydown', {
+          key,
+          [modifier]: true,
+          bubbles: true,
+          cancelable: true,
+        });
+        backend.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(false);
+        expect(document.activeElement).toBe(backend);
+      }
+    }
+  });
+
   test('mirrors nested submenu enter and return arrows in right-to-left direction', async () => {
     const { container } = render(MegaMenu, { items, dir: 'rtl' });
     const products = getTriggerByLabel(container, 'Products');

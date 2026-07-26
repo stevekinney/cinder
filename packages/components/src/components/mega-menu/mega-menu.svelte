@@ -324,6 +324,11 @@
 
   function onSubmenuTriggerKeydown(event: KeyboardEvent, index: number) {
     if (isModifiedHorizontalArrow(event)) return;
+    if (
+      (event.key === 'Home' || event.key === 'End') &&
+      (event.altKey || event.ctrlKey || event.metaKey)
+    )
+      return;
     const horizontalKeys = submenuHorizontalKeys(event);
     if (event.key === horizontalKeys.enter) {
       event.preventDefault();

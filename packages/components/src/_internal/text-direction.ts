@@ -8,7 +8,12 @@ export function resolveTextDirection(
   const ignoreElementDirectionAttribute = options?.ignoreElementDirectionAttribute ?? false;
   if (ignoreElementDirectionAttribute && element) {
     const styledDirection = readComputedTextDirection(element);
-    if (styledDirection && hasElementDirectionStylingHint(element)) return styledDirection;
+    const rootComputedDirection = readComputedTextDirection(element.ownerDocument.documentElement);
+    if (
+      styledDirection &&
+      (hasElementDirectionStylingHint(element) || styledDirection !== rootComputedDirection)
+    )
+      return styledDirection;
   }
 
   let currentElement: HTMLElement | null = ignoreElementDirectionAttribute

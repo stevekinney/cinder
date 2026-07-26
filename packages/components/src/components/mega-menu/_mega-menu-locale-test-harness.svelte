@@ -19,6 +19,10 @@
 
 <LocaleProvider {direction}>
   <div dir={localDirection}>
-    <MegaMenu {items} dir={menuDirection} style={menuStyle} />
+    <MegaMenu
+      {items}
+      {...menuDirection === undefined ? {} : { dir: menuDirection }}
+      {...menuStyle === undefined ? {} : { style: menuStyle }}
+    />
   </div>
 </LocaleProvider>
