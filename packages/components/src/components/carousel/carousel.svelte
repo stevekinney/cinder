@@ -287,7 +287,7 @@
     nativeScrollEndTimer = setTimeout(() => {
       nativeScrollEndTimer = null;
       isNativeScrolling = false;
-      settledIndex = currentIndex;
+      settledIndex = viewportElement ? nearestVisibleSlideIndex(viewportElement) : currentIndex;
       if (programmaticTarget === null) isAutoplayTransitioning = false;
     }, 100);
   }
@@ -303,7 +303,22 @@
 
   function onWheel(): void {
     programmaticTarget = null;
+    isAutoplayTransitioning = false;
   }
+
+  function onWindowBlur(): void {
+    activePointerIds.clear();
+    isInteracting = false;
+    programmaticTarget = null;
+    isAutoplayTransitioning = false;
+    removePointerEndListeners();
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('blur', onWindowBlur);
+    return () => window.removeEventListener('blur', onWindowBlur);
+  });
 
   onDestroy(() => {
     removePointerEndListeners();
