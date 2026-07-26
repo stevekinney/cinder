@@ -19,6 +19,7 @@
  * refactors of `top-bar.svelte` don't break them.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 
 import { setupHappyDom } from '../../../components/src/test/happy-dom.ts';
 
@@ -114,6 +115,24 @@ function tooltipTextFor(control: HTMLElement): string | null {
   if (tooltip?.getAttribute('role') !== 'tooltip') return null;
   return tooltip.textContent?.trim() ?? null;
 }
+
+describe('top-bar selected-state contrast', () => {
+  test('keeps the selected segment visible in forced-colors mode', async () => {
+    const source = await readFile(new URL('./top-bar.svelte', import.meta.url), 'utf8');
+    const mediaQueryStart = source.indexOf('@media (forced-colors: active)');
+    const mediaQueryEnd = source.indexOf('\n  }', mediaQueryStart);
+
+    expect(mediaQueryStart).toBeGreaterThan(-1);
+    expect(mediaQueryEnd).toBeGreaterThan(mediaQueryStart);
+
+    const forcedColorsRule = source.slice(mediaQueryStart, mediaQueryEnd);
+    expect(forcedColorsRule).toContain('[data-cinder-selected]');
+    expect(forcedColorsRule).toContain('[data-cinder-current]');
+    expect(forcedColorsRule).toContain('[data-cinder-pressed]');
+    expect(forcedColorsRule).toContain('border-block-end: 2px solid Highlight');
+    expect(forcedColorsRule).toContain('forced-color-adjust: none');
+  });
+});
 
 describe('top-bar open-in-new-tab button', () => {
   test('renders the public toolbar controls', async () => {
@@ -300,6 +319,30 @@ describe('top-bar theme selection', () => {
 
     expect(store.isFocusMode).toBe(false);
     expect(store.isSidebarOpen).toBe(false);
+  });
+});
+
+describe('top-bar viewport selection', () => {
+  test('uses compact preset labels and preserves every viewport width', async () => {
+    const store = new PreviewStore('button');
+    const { container } = render(TopBarFixture, { store });
+    await tick();
+
+    for (const [label, width] of [
+      ['375px', 375],
+      ['768px', 768],
+      ['1280px', 1280],
+    ] as const) {
+      const button = buttonByText(container, label);
+      expect(button).not.toBeNull();
+      button.click();
+      await tick();
+      expect(store.previewWidth).toBe(width);
+    }
+
+    buttonByText(container, 'Full').click();
+    await tick();
+    expect(store.previewWidth).toBeNull();
   });
 });
 

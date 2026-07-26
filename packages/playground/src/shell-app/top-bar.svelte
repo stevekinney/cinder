@@ -53,7 +53,7 @@
 
   const VIEWPORT_SEGMENTED_OPTIONS = VIEWPORT_PRESETS.map((preset) => ({
     value: preset.key,
-    label: preset.value !== null ? `${preset.label} (${preset.value} pixels)` : preset.label,
+    label: preset.value !== null ? `${preset.value}px` : preset.label,
   }));
 
   // Derive the SegmentedControl value from store.previewWidth. When no preset
@@ -221,7 +221,7 @@
       </Toolbar.Group>
     {/if}
 
-    <Toolbar.Group>
+    <Toolbar.Group class="theme-controls">
       <SegmentedControl
         id="theme-preset"
         label="Preview theme"
@@ -455,12 +455,51 @@
     min-width: 0;
   }
 
+  /* Keep viewport sizing and theme selection legible as two related but
+   * distinct groups instead of one continuous block of controls. */
+  .top-bar :global(.viewport-size-controls) {
+    gap: var(--cinder-space-2);
+    padding-inline-end: var(--cinder-space-3);
+    margin-inline-end: var(--cinder-space-3);
+    border-inline-end: 1px solid var(--cinder-border-muted);
+  }
+
+  /* Toolbar controls use a compact, quiet treatment so the preview remains
+   * the visual focus. Keep the shared control contract while reducing the
+   * saturated selected-state chrome locally to this shell toolbar. */
+  .top-bar :global(.cinder-segmented-control) {
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+  }
+
+  .top-bar :global(.cinder-segmented-control-option) {
+    min-block-size: 1.875rem;
+    border-radius: calc(var(--cinder-radius-sm) - 2px);
+  }
+
+  .top-bar :global(.cinder-segmented-control-option[data-cinder-selected]:not(:focus-visible)),
+  .top-bar :global(.cinder-segmented-control-option[data-cinder-current]:not(:focus-visible)),
+  .top-bar :global(.cinder-segmented-control-option[data-cinder-pressed]:not(:focus-visible)) {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 55%);
+    color: var(--cinder-text);
+    box-shadow: inset 0 -2px 0 var(--cinder-accent);
+  }
+
+  @media (forced-colors: active) {
+    .top-bar :global(.cinder-segmented-control-option[data-cinder-selected]),
+    .top-bar :global(.cinder-segmented-control-option[data-cinder-current]),
+    .top-bar :global(.cinder-segmented-control-option[data-cinder-pressed]) {
+      background: Canvas;
+      color: CanvasText;
+      border-block-end: 2px solid Highlight;
+      forced-color-adjust: none;
+    }
+  }
+
   /*
-   * Keep segmented-control labels on a single line. Cinder's toolbar-density
-   * segments have no `white-space: nowrap`, so a long label ("Mobile (375
-   * pixels)") wraps to two/three cramped lines the moment the row tightens —
-   * which is exactly what mangled the toolbar when a viewport preset was
-   * selected. Force single-line segments.
+   * Keep compact segmented-control labels on a single line. Cinder's
+   * toolbar-density segments have no `white-space: nowrap`, so a tightened
+   * toolbar can otherwise wrap even short viewport labels.
    */
   .top-bar :global(.cinder-segmented-control-option) {
     white-space: nowrap;

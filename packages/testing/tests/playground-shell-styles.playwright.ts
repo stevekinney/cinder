@@ -86,8 +86,8 @@ test.describe('playground shell styles', () => {
     await expect(page.locator('[data-canonical-documentation]')).toBeVisible();
     await expect(page.locator('iframe[data-cinder-preview]')).toBeVisible();
 
-    await page.getByRole('radio', { name: 'Tablet (768 pixels)' }).click();
-    await expect(viewportControl.locator('[data-cinder-selected]')).toContainText('Tablet');
+    await page.getByRole('radio', { name: '768px' }).click();
+    await expect(viewportControl.locator('[data-cinder-selected]')).toContainText('768px');
 
     // The custom-width field is cinder's Input with type="number" (a native
     // number input), so it renders as `.cinder-input`, not `.cinder-number-input`.
