@@ -10,8 +10,8 @@
    * @useWhen Coordinating single- or multi-select state across all descendant tree-items via the selectionMode prop.
    * @avoidWhen Disclosing flat sibling sections — use accordion instead.
    * @avoidWhen Switching between sibling views of the same region — use tabs instead.
-   * @avoidWhen Showing an in-page heading outline — use table-of-contents instead. | table-of-contents
-   * @avoidWhen Providing route or section navigation — use side-navigation instead. | side-navigation
+   * @avoidWhen Showing an in-page heading outline. | table-of-contents
+   * @avoidWhen Providing route or section navigation. | side-navigation
    * @related tree-item, table-of-contents, side-navigation, accordion
    */
   export type {

@@ -4459,17 +4459,19 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Anchoring primary navigation across the top of the page — use navigation-bar instead."
+          "reason": "Anchoring primary navigation across the top of the page.",
+          "alternative": "navigation-bar"
         },
         {
-          "reason": "Rendering a single flat horizontal nav row — use navigation-bar instead."
+          "reason": "Rendering a single flat horizontal nav row.",
+          "alternative": "navigation-bar"
         },
         {
-          "reason": "Showing an in-page heading outline — use table-of-contents instead.",
+          "reason": "Showing an in-page heading outline.",
           "alternative": "table-of-contents"
         },
         {
-          "reason": "Rendering expandable hierarchical non-navigation data — use tree instead.",
+          "reason": "Rendering expandable hierarchical non-navigation data.",
           "alternative": "tree"
         }
       ],
@@ -5366,7 +5368,7 @@
           "reason": "The page has too few headings to justify a secondary navigation rail."
         },
         {
-          "reason": "Rendering expandable hierarchical data with selection state — use tree instead.",
+          "reason": "Rendering expandable hierarchical data with selection state.",
           "alternative": "tree"
         }
       ],
@@ -5790,11 +5792,11 @@
           "reason": "Switching between sibling views of the same region — use tabs instead."
         },
         {
-          "reason": "Showing an in-page heading outline — use table-of-contents instead.",
+          "reason": "Showing an in-page heading outline.",
           "alternative": "table-of-contents"
         },
         {
-          "reason": "Providing route or section navigation — use side-navigation instead.",
+          "reason": "Providing route or section navigation.",
           "alternative": "side-navigation"
         }
       ],
