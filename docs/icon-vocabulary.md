@@ -96,7 +96,7 @@ document and search both templates and generated CSS declarations for the glyphs
 listed in the audit procedure. For example:
 
 ```sh
-rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#8595;|&#x2191;|&#x2193;' packages/components/src/components
+rg -n -e '[×−‹›✓▾▸↑↓]' -e '>' -e '&times;|&#215;|&#xD7;|&gt;|&lt;|&#60;|&#x3C;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#8595;|&#x2191;|&#x2193;' packages/components/src/components
 rg -n -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n -e "icon:[[:space:]]*['\"][+−-]['\"]" packages/components/src/components --glob '*.examples.json'
 rg -n -e "icon:[[:space:]]*['\"][^'\"]+['\"]" packages/components/src/components --glob '*.examples.json'
