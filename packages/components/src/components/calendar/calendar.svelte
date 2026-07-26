@@ -233,8 +233,10 @@
     if (!parsed) return;
     if (min && iso < min) iso = min;
     if (max && iso > max) iso = max;
+    const clamped = parseISODate(iso);
+    if (!clamped) return;
     focusedIso = iso;
-    visibleMonthDate = startOfMonth(parsed);
+    visibleMonthDate = startOfMonth(clamped);
     if (!moveDomFocus) return;
     await tick();
     const target = document.getElementById(focusedDayId) as HTMLButtonElement | null;
