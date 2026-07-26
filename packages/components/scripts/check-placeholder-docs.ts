@@ -1,7 +1,7 @@
 /**
  * Guards against placeholder or stale text creeping back into component README files.
  *
- * Scans every README.md under `src/components/` for known staleness markers and
+ * Scans every README.md and accessibility review record under `src/components/` for known staleness markers and
  * exits non-zero if any are found. Run as part of `bun run check:placeholder-docs`
  * (and CI) so regressions fail loudly on the branch that introduced them.
  */
@@ -21,6 +21,8 @@ const STALE_PHRASES: string[] = [
   'Replace this sentence',
   'This migration scaffold is incomplete',
   'opt-in highlighting',
+  '_Pending',
+  'Pending when this review applies.',
 ];
 
 type Violation = {
@@ -32,21 +34,21 @@ type Violation = {
 
 async function main(): Promise<void> {
   const violations: Violation[] = [];
-  const glob = new Glob('**/README.md');
+  const globs = [new Glob('**/README.md'), new Glob('**/*.a11y.md')];
+  for (const glob of globs)
+    for await (const relative of glob.scan({ cwd: componentsRoot })) {
+      const filePath = join(componentsRoot, relative);
+      const content = await Bun.file(filePath).text();
+      const lines = content.split('\n');
 
-  for await (const relative of glob.scan({ cwd: componentsRoot })) {
-    const filePath = join(componentsRoot, relative);
-    const content = await Bun.file(filePath).text();
-    const lines = content.split('\n');
-
-    for (const [index, line] of lines.entries()) {
-      for (const phrase of STALE_PHRASES) {
-        if (line.includes(phrase)) {
-          violations.push({ filePath, lineNumber: index + 1, line: line.trim(), phrase });
+      for (const [index, line] of lines.entries()) {
+        for (const phrase of STALE_PHRASES) {
+          if (line.includes(phrase)) {
+            violations.push({ filePath, lineNumber: index + 1, line: line.trim(), phrase });
+          }
         }
       }
     }
-  }
 
   if (violations.length === 0) {
     process.stdout.write('✓ No placeholder or stale phrases found in component READMEs.\n');
