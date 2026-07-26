@@ -199,26 +199,28 @@
     const pattern =
       granularity === 'day' ? /^\d{4}-\d{2}-\d{2}$/ : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
     updateInputValidity(target);
-    emit(
-      pattern.test(target.value)
-        ? clampToBounds(normalizeValue(target.value, granularity))
-        : undefined,
-    );
+    const nextValue = pattern.test(target.value)
+      ? clampToBounds(normalizeValue(target.value, granularity))
+      : undefined;
+    if (nextValue !== value) emit(nextValue);
   }
 
   function handleInput(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
     updateInputValidity(target);
     const normalizedDraft = normalizeValue(target.value || undefined, granularity);
-    if (normalizedDraft === target.value && clampToBounds(normalizedDraft) === normalizedDraft) {
+    if (
+      (normalizedDraft === target.value || target.value === '') &&
+      clampToBounds(normalizedDraft) === normalizedDraft
+    ) {
       emit(normalizedDraft);
     }
   }
 
-  function focusCalendarDay(date = selectedDate): HTMLElement | null {
+  function focusCalendarDay(panel: HTMLElement, date = selectedDate): HTMLElement | null {
     return (
-      (date && document.querySelector(`.cinder-calendar__day[id$="-day-${date}"]`)) ||
-      document.querySelector(
+      (date && panel.querySelector(`.cinder-calendar__day[id$="-day-${date}"]`)) ||
+      panel.querySelector(
         '.cinder-calendar__day[data-focused], .cinder-calendar__day[tabindex="0"]',
       )
     );
@@ -228,7 +230,10 @@
     if (!open) return;
     const dateAtOpen = selectedDate;
     void tick().then(() => {
-      window.setTimeout(() => focusCalendarDay(dateAtOpen)?.focus(), 0);
+      window.setTimeout(() => {
+        const panel = document.querySelector<HTMLElement>('[role="dialog"].cinder-popover');
+        if (panel) focusCalendarDay(panel, dateAtOpen)?.focus();
+      }, 0);
     });
   });
 
