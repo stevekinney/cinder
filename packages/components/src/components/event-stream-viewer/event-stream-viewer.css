@@ -308,7 +308,7 @@
 
   @media (hover: hover) {
     .cinder-event-stream-viewer__event:hover {
-      background: var(--cinder-surface-hover);
+      background: var(--cinder-surface-raised-hover);
     }
   }
 

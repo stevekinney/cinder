@@ -37,6 +37,7 @@ describe('PropertyList', () => {
     expect(css).toMatch(
       /\.cinder-jse-property-row__trigger\[aria-expanded='true'\]\s*>\s*\.cinder-jse-property-row__chevron\s*\{[^}]*transform:\s*rotate\(180deg\)/,
     );
+    expect(css).toContain('background: var(--cinder-surface-raised-hover);');
   });
 
   test('can add the first required-only property name', async () => {
