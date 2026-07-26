@@ -85,6 +85,21 @@ describe('DatePicker', () => {
     expect(nextValue).toBe('2026-07-01');
   });
 
+  test('does not emit when a valid draft restores the committed value', async () => {
+    const values: Array<string | undefined> = [];
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => values.push(value),
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+    await fireEvent.input(input, { target: { value: '2026-06-2' } });
+    await fireEvent.input(input, { target: { value: '2026-06-29' } });
+
+    expect(values).toEqual([]);
+  });
+
   test('commits clearing the field during input and does not duplicate on blur', async () => {
     const values: Array<string | undefined> = [];
     const { container } = render(DatePicker, {

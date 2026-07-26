@@ -17,7 +17,6 @@
 
 <script lang="ts">
   import type { DatePickerGranularity, DatePickerProps } from './date-picker.types.ts';
-  import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Calendar from '../calendar/calendar.svelte';
   import Popover from '../popover/popover.svelte';
@@ -223,7 +222,8 @@
     const normalizedDraft = normalizeValue(target.value || undefined, granularity);
     if (
       (normalizedDraft === target.value || target.value === '') &&
-      clampToBounds(normalizedDraft) === normalizedDraft
+      clampToBounds(normalizedDraft) === normalizedDraft &&
+      normalizedDraft !== value
     ) {
       emit(normalizedDraft);
     }
