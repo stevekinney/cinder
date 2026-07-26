@@ -228,6 +228,13 @@ describe('EventTimeline', () => {
     );
   });
 
+  test('keeps event dots at proportional timestamps while offsetting labels', () => {
+    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(-50%);');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      'transform: translateX(var(--_cinder-event-timeline-label-offset, 0px));',
+    );
+  });
+
   test('keeps centered fallback bounds out of parity-offset lanes', async () => {
     const { container } = render(EventTimeline, {
       start,
@@ -336,6 +343,9 @@ describe('EventTimeline', () => {
 
     cluster?.focus();
     await fireEvent.click(cluster!);
+    expect(EVENT_TIMELINE_CSS).toContain(
+      ".cinder-event-timeline__cluster-surface[data-cinder-position-ready='false']",
+    );
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
     expect(cluster?.getAttribute('aria-controls')).toBe(dialog?.id);

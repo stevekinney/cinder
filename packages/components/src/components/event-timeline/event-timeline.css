@@ -57,7 +57,7 @@
     gap: 0.25rem;
     inline-size: max-content;
     max-inline-size: 9rem;
-    transform: translateX(calc(-50% + var(--_cinder-event-timeline-label-offset, 0px)));
+    transform: translateX(-50%);
     text-align: center;
   }
 
@@ -238,6 +238,11 @@
     padding-inline-start: 1.25rem;
   }
 
+  .cinder-event-timeline__cluster-surface[data-cinder-position-ready='false'] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .cinder-event-timeline__cluster-item-details {
     display: block;
     color: var(--cinder-text-muted);
@@ -258,6 +263,7 @@
     display: grid;
     gap: 0.0625rem;
     min-inline-size: 0;
+    transform: translateX(var(--_cinder-event-timeline-label-offset, 0px));
   }
 
   .cinder-event-timeline__item-label,
