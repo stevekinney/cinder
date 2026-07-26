@@ -130,6 +130,18 @@ describe('Carousel', () => {
     ).toBe(true);
   });
 
+  test('keeps physical neighbors laid out when the initial slide is rotated', async () => {
+    const { container } = render(Carousel, { slides, activeIndex: 2 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+
+    await fireEvent.pointerDown(viewport, { pointerId: 21 });
+    await fireEvent.scroll(viewport);
+
+    expect(viewport.children[0]?.hasAttribute('data-cinder-collapsed')).toBe(false);
+    expect(viewport.children[1]?.hasAttribute('data-cinder-collapsed')).toBe(true);
+    await fireEvent.pointerUp(window, { pointerId: 21 });
+  });
+
   test('realigns the active slide when an ancestor direction changes', async () => {
     const { container } = render(Carousel, { slides, activeIndex: 1 });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
@@ -367,6 +379,54 @@ describe('Carousel', () => {
       Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
       callback?.([{ contentRect: { width: 300, height: 600 } } as ResizeObserverEntry]);
       expect(scrollTo).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis, 'ResizeObserver', {
+        configurable: true,
+        value: originalResizeObserver,
+      });
+    }
+  });
+
+  test('reconciles after a hidden viewport returns to its cached width', async () => {
+    type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
+    let callback: ObserverCallback | undefined;
+    class TestResizeObserver {
+      constructor(next: ObserverCallback) {
+        callback = next;
+      }
+      observe() {}
+      disconnect() {}
+    }
+    const originalResizeObserver = globalThis.ResizeObserver;
+    Object.defineProperty(globalThis, 'ResizeObserver', {
+      configurable: true,
+      value: TestResizeObserver,
+    });
+    try {
+      const { container, rerender } = render(Carousel, { slides });
+      const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+      const slideElements = [...viewport.children] as HTMLElement[];
+      const scrollTo = jest.fn();
+      Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+      Object.defineProperty(viewport, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: 0, width: 300 }),
+      });
+      slideElements.forEach((slide, index) => {
+        Object.defineProperty(slide, 'getBoundingClientRect', {
+          configurable: true,
+          value: () => ({ left: index * 100, width: 100 }),
+        });
+        Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+      });
+
+      callback?.([{ contentRect: { width: 300 } } as ResizeObserverEntry]);
+      scrollTo.mockClear();
+      callback?.([{ contentRect: { width: 0 } } as ResizeObserverEntry]);
+      await rerender({ slides, activeIndex: 1 });
+      callback?.([{ contentRect: { width: 300 } } as ResizeObserverEntry]);
+
+      expect(scrollTo).toHaveBeenCalledWith({ left: 100, behavior: 'auto' });
     } finally {
       Object.defineProperty(globalThis, 'ResizeObserver', {
         configurable: true,

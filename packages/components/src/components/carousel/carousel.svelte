@@ -173,9 +173,12 @@
   function isInteractionLayoutSlide(index: number): boolean {
     if (index === currentIndex || index === settledIndex) return true;
     if (!(isInteracting || isNativeScrolling || programmaticTarget !== null)) return false;
-    const lowerBound = Math.max(0, Math.min(currentIndex, settledIndex) - 1);
-    const upperBound = Math.min(clampedLength - 1, Math.max(currentIndex, settledIndex) + 1);
-    return index >= lowerBound && index <= upperBound;
+    const currentOrder = initialSlideOrder(currentIndex);
+    const settledOrder = initialSlideOrder(settledIndex);
+    const lowerBound = Math.max(0, Math.min(currentOrder, settledOrder) - 1);
+    const upperBound = Math.min(clampedLength - 1, Math.max(currentOrder, settledOrder) + 1);
+    const slideOrder = initialSlideOrder(index);
+    return slideOrder >= lowerBound && slideOrder <= upperBound;
   }
 
   function scrollToActiveSlide(behavior?: ScrollBehavior): void {
@@ -215,7 +218,11 @@
       ? entry.borderBoxSize[0]
       : entry.borderBoxSize;
     const inlineSize = borderBoxSize?.inlineSize ?? entry.contentRect.width;
-    if (inlineSize <= 0 || inlineSize === cachedViewportInlineSize) return;
+    if (inlineSize <= 0) {
+      cachedViewportInlineSize = inlineSize;
+      return;
+    }
+    if (inlineSize === cachedViewportInlineSize) return;
     cachedViewportInlineSize = inlineSize;
     if (!isInteracting && !isNativeScrolling) {
       scrollToActiveSlide('auto');
