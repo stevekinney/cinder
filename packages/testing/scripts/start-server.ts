@@ -22,6 +22,12 @@ const playgroundBundleDependencyPackages = [
   '@lostgradient/cinder',
   '@lostgradient/chat',
 ] as const;
+const playgroundBundleDependencyDirectories: Record<string, string> = {
+  '@lostgradient/markdown': 'markdown',
+  '@lostgradient/editor': 'editor',
+  '@lostgradient/cinder': 'components',
+  '@lostgradient/chat': 'chat',
+};
 // Probe the cheap liveness endpoint first. `/api/manifest` does real work and
 // can lag behind initial server readiness, which makes local startup look hung
 // even though the playground is already accepting requests.
@@ -433,7 +439,9 @@ export function playgroundBundleDependencyWatchProcess(
 }
 
 export function playgroundBundleDependencySourceDirectories(packageName: string): string[] {
-  const packageDirectory = packageName.slice(packageName.lastIndexOf('/') + 1);
+  const packageDirectory = playgroundBundleDependencyDirectories[packageName];
+  if (packageDirectory === undefined)
+    throw new Error(`Unknown playground dependency: ${packageName}`);
   return [
     resolvePath(repoRoot, 'packages', packageDirectory, 'src'),
     resolvePath(repoRoot, 'packages', packageDirectory, 'scripts'),
@@ -467,7 +475,9 @@ export function playgroundWarmReadinessMissingEndpointMessage(playgroundUrl: str
   );
 }
 
-async function waitForWarmPlayground(): Promise<void> {
+async function waitForWarmPlayground(
+  dependencyWatchController: DependencyWatchController | null = null,
+): Promise<void> {
   const startedAt = Date.now();
   const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
   let stableReadinessReads = 0;
@@ -475,9 +485,16 @@ async function waitForWarmPlayground(): Promise<void> {
 
   while (Date.now() < deadline) {
     const readiness = await probePlaygroundPath(warmReadinessPath);
+    const dependencyFailure = dependencyWatchController?.getFailure();
+    if (dependencyFailure !== null && dependencyFailure !== undefined) throw dependencyFailure;
     if (readiness.ok) {
       stableReadinessReads += 1;
-      if (stableReadinessReads >= PLAYGROUND_WARM_READINESS_STABLE_READS) return;
+      if (stableReadinessReads >= PLAYGROUND_WARM_READINESS_STABLE_READS) {
+        await dependencyWatchController?.waitForIdle();
+        const finalFailure = dependencyWatchController?.getFailure();
+        if (finalFailure !== null && finalFailure !== undefined) throw finalFailure;
+        return;
+      }
     } else {
       if (readiness.status === 404) {
         throw new Error(playgroundWarmReadinessMissingEndpointMessage(targetPlaygroundUrl));
@@ -524,44 +541,67 @@ async function buildPlaygroundBundleDependencies(
   }
 }
 
+type DependencyWatchController = {
+  dispose: () => void;
+  waitForIdle: () => Promise<void>;
+  getFailure: () => Error | null;
+};
+
 function startPlaygroundBundleDependencyWatchers(
   registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
   shouldContinueStartingChildProcesses: () => boolean,
-): FSWatcher[] {
+): DependencyWatchController {
   const watchers: FSWatcher[] = [];
+  const timers = new Set<ReturnType<typeof setTimeout>>();
+  const states: Array<{ buildProcess: ChildProcess | null; pending: boolean }> = [];
+  const idleWaiters: Array<() => void> = [];
+  let disposed = false;
+  let failure: Error | null = null;
+  const resolveIdle = (): void => {
+    if (states.some((state) => state.pending || state.buildProcess !== null)) return;
+    for (const resolve of idleWaiters.splice(0)) resolve();
+  };
   for (const packageName of playgroundBundleDependencyPackages) {
     if (!shouldContinueStartingChildProcesses()) return watchers;
-    let buildProcess: ChildProcess | null = null;
-    let rebuildPending = false;
+    const state = { buildProcess: null as ChildProcess | null, pending: false };
+    states.push(state);
     let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
     const runBuild = (): void => {
-      if (!shouldContinueStartingChildProcesses()) return;
-      if (buildProcess !== null && !childProcessHasFinished(buildProcess)) {
-        rebuildPending = true;
+      if (disposed || !shouldContinueStartingChildProcesses()) return;
+      if (state.buildProcess !== null && !childProcessHasFinished(state.buildProcess)) {
+        state.pending = true;
         return;
       }
-      rebuildPending = false;
-      buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
+      state.pending = false;
+      state.buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
         cwd: repoRoot,
         detached: process.platform !== 'win32',
         stdio: 'inherit',
         env: process.env,
       });
-      const currentBuild = buildProcess;
+      const currentBuild = state.buildProcess;
+      if (currentBuild === null) return;
       registerChildProcess(playgroundBundleDependencyBuildProcess(currentBuild, packageName));
-      void waitForExit(currentBuild).then(() => {
-        if (buildProcess === currentBuild) buildProcess = null;
-        if (rebuildPending) runBuild();
+      void waitForExit(currentBuild).then((buildCode) => {
+        if (buildCode !== 0 && failure === null) {
+          failure = new Error(`${packageName} watched build exited with code ${buildCode}`);
+        }
+        if (state.buildProcess === currentBuild) state.buildProcess = null;
+        if (state.pending && failure === null) runBuild();
+        resolveIdle();
         return undefined;
       });
     };
     const scheduleBuild = (): void => {
-      rebuildPending = true;
+      if (disposed) return;
+      state.pending = true;
       if (rebuildTimer !== null) clearTimeout(rebuildTimer);
       rebuildTimer = setTimeout(() => {
+        timers.delete(rebuildTimer!);
         rebuildTimer = null;
         runBuild();
       }, 100);
+      timers.add(rebuildTimer);
     };
     for (const directory of playgroundBundleDependencySourceDirectories(packageName)) {
       try {
@@ -571,7 +611,22 @@ function startPlaygroundBundleDependencyWatchers(
       }
     }
   }
-  return watchers;
+  return {
+    dispose: () => {
+      disposed = true;
+      for (const timer of timers) clearTimeout(timer);
+      timers.clear();
+      for (const watcher of watchers) watcher.close();
+      watchers.length = 0;
+      for (const state of states) state.pending = false;
+      resolveIdle();
+    },
+    waitForIdle: () =>
+      states.every((state) => !state.pending && state.buildProcess === null)
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => idleWaiters.push(resolve)),
+    getFailure: () => failure,
+  };
 }
 
 const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
@@ -582,13 +637,13 @@ async function main(): Promise<void> {
   let serverProcess: ReturnType<typeof spawn> | null = null;
   let playgroundPortFile: string | null = null;
   const children: ManagedChildProcess[] = [];
-  let dependencyWatchers: FSWatcher[] = [];
+  let dependencyWatchController: DependencyWatchController | null = null;
   let cleanupPromise: Promise<void> | null = null;
   let shutdownExitCode: number | null = null;
 
   const cleanupOnce = async (): Promise<void> => {
-    for (const watcher of dependencyWatchers) watcher.close();
-    dependencyWatchers = [];
+    dependencyWatchController?.dispose();
+    dependencyWatchController = null;
     cleanupPromise ??= cleanup(children, playgroundPortFile);
     await cleanupPromise;
   };
@@ -655,6 +710,10 @@ async function main(): Promise<void> {
       () => shouldStartManagedChildProcess(shutdownExitCode),
     );
     await exitIfShuttingDown();
+    dependencyWatchController = startPlaygroundBundleDependencyWatchers(
+      (childProcess) => children.push(childProcess),
+      () => shouldStartManagedChildProcess(shutdownExitCode),
+    );
     playgroundPortFile = resolvePath(repoRoot, 'tmp', `playground-port-${process.pid}.txt`);
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
@@ -722,17 +781,13 @@ async function main(): Promise<void> {
   }
 
   try {
-    await waitForWarmPlayground();
+    await waitForWarmPlayground(dependencyWatchController);
   } catch (error) {
     await exitIfShuttingDown();
     await cleanupOnce();
     throw error;
   }
   await exitIfShuttingDown();
-  dependencyWatchers = startPlaygroundBundleDependencyWatchers(
-    (childProcess) => children.push(childProcess),
-    () => shouldStartManagedChildProcess(shutdownExitCode),
-  );
 
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
@@ -757,6 +812,11 @@ async function main(): Promise<void> {
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
   const playwrightCode = await waitForExit(playwright);
   await exitIfShuttingDown();
+  const dependencyFailure = dependencyWatchController?.getFailure();
+  if (dependencyFailure !== null && dependencyFailure !== undefined) {
+    console.error(`Watched dependency rebuild failed: ${dependencyFailure.message}`);
+    await exitAfterCleanup(1);
+  }
 
   const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,

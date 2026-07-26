@@ -142,6 +142,10 @@ describe('playground bundle dependency build preflight', () => {
       expect.stringMatching(/packages\/markdown\/src$/),
       expect.stringMatching(/packages\/markdown\/scripts$/),
     ]);
+    expect(playgroundBundleDependencySourceDirectories('@lostgradient/cinder')).toEqual([
+      expect.stringMatching(/packages\/components\/src$/),
+      expect.stringMatching(/packages\/components\/scripts$/),
+    ]);
   });
 });
 
