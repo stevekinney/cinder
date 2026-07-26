@@ -130,6 +130,28 @@ describe('Carousel', () => {
     ).toBe(true);
   });
 
+  test('realigns the active slide when an ancestor direction changes', async () => {
+    const { container } = render(Carousel, { slides, activeIndex: 1 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+    const root = container.querySelector('.cinder-carousel') as HTMLElement;
+    root.setAttribute('dir', 'rtl');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(scrollTo).toHaveBeenCalledWith({ left: 100, behavior: 'auto' });
+  });
+
   test('server-renders a nonzero active slide at the initial scroll position', async () => {
     const html = await renderToServerHtml(CAROUSEL_SOURCE, { slides, activeIndex: 2 });
     const document = new DOMParser().parseFromString(html, 'text/html');

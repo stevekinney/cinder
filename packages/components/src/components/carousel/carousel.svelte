@@ -299,6 +299,21 @@
     slideIdentity;
     scrollToActiveSlide();
   });
+
+  $effect(() => {
+    const viewport = viewportElement;
+    if (viewport === null || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      if (isInteracting || isNativeScrolling) return;
+      scrollToActiveSlide('auto');
+    });
+    let ancestor: HTMLElement | null = viewport;
+    while (ancestor !== null) {
+      observer.observe(ancestor, { attributes: true, attributeFilter: ['dir'] });
+      ancestor = ancestor.parentElement;
+    }
+    return () => observer.disconnect();
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
