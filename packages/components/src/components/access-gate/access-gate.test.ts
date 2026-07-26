@@ -38,12 +38,8 @@ describe('AccessGate', () => {
     const styles = readFileSync(new URL('./access-gate.css', import.meta.url), 'utf8');
 
     expect(styles).toContain('.cinder-access-gate__passthrough {');
-    expect(styles).toContain(
-      '.cinder-access-gate__passthrough {\n    display: flex;\n    flex-wrap: wrap;',
-    );
-    expect(styles).toContain('flex-wrap: wrap;');
-    expect(styles).toContain('gap: var(--cinder-space-2);');
-    expect(styles).toContain('.cinder-access-gate__passthrough:has(> :only-child)');
+    expect(styles).toContain('.cinder-access-gate__passthrough {\n    display: contents;');
+    expect(styles).not.toContain('.cinder-access-gate__passthrough:has(> :only-child)');
     expect(styles).toContain('inline-size: 100%;');
     expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-full-width])');
     expect(styles).toContain(

@@ -5,19 +5,12 @@
   }
 
   .cinder-access-gate__passthrough {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: var(--cinder-space-2);
+    display: contents;
     vertical-align: baseline;
   }
 
   .cinder-access-gate__passthrough:has(> [data-cinder-full-width]) {
     inline-size: 100%;
-  }
-
-  .cinder-access-gate__passthrough:has(> :only-child) {
-    display: contents;
   }
 
   .cinder-access-gate__passthrough:where(
