@@ -483,30 +483,32 @@ describe('/c/:name', () => {
     expect(html).not.toContain('href="/styles/index.css"');
   });
 
-  it('makes component CSS for shell primitives reachable from the shell stylesheet', async () => {
+  it('inlines the component CSS for every shell primitive into the shell stylesheet', async () => {
     const shellResponse = await handleRequest(req('/c/button'));
     const shellHtml = await shellResponse.text();
     const stylesheetUrl = shellStylesheetUrl(shellHtml);
     const { css, urls } = await reachableCssFrom(stylesheetUrl);
 
+    /*
+     * The shell entry is served FLATTENED, so the chrome's CSS arrives in the
+     * one render-blocking request instead of behind two more round trips of
+     * `@import`. This test therefore asserts the rules are PRESENT rather than
+     * that separate files are reachable — a stronger guarantee, since reachable
+     * files could still land after first paint (which is exactly the defect that
+     * made every visually-hidden top-bar label render as raw text).
+     */
     expect(urls.has('/styles/shell.css')).toBe(true);
-    expect(urls.has('/styles/index.css')).toBe(true);
-    expect(urls.has('/styles/components.css')).toBe(false);
-    expect(urls.has('/components/toolbar/toolbar.css')).toBe(true);
-    expect(urls.has('/components/segmented-control/segmented-control.css')).toBe(true);
-    expect(urls.has('/components/button/button.css')).toBe(true);
-    expect(urls.has('/components/color-picker/color-picker.css')).toBe(true);
-    expect(urls.has('/components/color-swatch-picker/color-swatch-picker.css')).toBe(true);
-    expect(urls.has('/components/input/input.css')).toBe(true);
-    expect(urls.has('/components/number-input/number-input.css')).toBe(true);
-    expect(urls.has('/components/popover/popover.css')).toBe(true);
-    expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
-    // Regression: side-navigation.css carries no per-item styling, so the shell
-    // MUST also load navigation-item.css or the sidebar links fall back to bare
-    // underlined anchors (no padding, no active indicator, wrong focus ring).
-    expect(urls.has('/components/navigation-item/navigation-item.css')).toBe(true);
+    expect([...urls]).toEqual(['/styles/shell.css']);
+
+    // The shell must NOT drag in the full component aggregator — it styles only
+    // its own chrome primitives. A grid/table component is a good canary.
+    expect(css).not.toContain('.cinder-data-grid');
 
     for (const selector of [
+      // Present because `utilities.css` is now inlined. Its absence at first
+      // paint is what leaked "Viewport width", "Preview theme", "Color token
+      // panel", "Open preview in new tab", and "Focus mode" as visible text.
+      '.cinder-sr-only',
       '.cinder-toolbar',
       '.cinder-segmented-control',
       '.cinder-button',
@@ -1567,4 +1569,65 @@ describe('/page/:name server-rendering surfaces', () => {
     // page's.
     expect(preview.length).toBeLessThan(canonical.length / 2);
   }, 60_000);
+});
+
+describe('/styles/shell.css flattening', () => {
+  /*
+   * A `<link rel="stylesheet">` blocks first paint only on the linked file;
+   * sheets it pulls in with `@import` are fetched asynchronously afterwards. The
+   * shell entry was ~1 KB of almost nothing but `@import` statements, so the
+   * page painted before the component CSS arrived — `.cinder-sr-only` was still
+   * inert, and every visually-hidden top-bar label ("Viewport width", "Preview
+   * theme", "Color token panel", "Open preview in new tab", "Focus mode")
+   * rendered as raw text beside an unstyled toolbar.
+   *
+   * Measured in a browser with imports delayed: `.cinder-sr-only` computed
+   * `position: static` at 400 ms with the document already painted. After
+   * flattening it computes `absolute` even with every other sheet delayed 3 s.
+   */
+
+  it('serves the shell entry with no @import statements left to resolve', async () => {
+    const response = await handleRequest(req('/styles/shell.css'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Content-Type')).toBe('text/css');
+
+    const css = await response.text();
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    expect(withoutComments.match(/@import\s+[^;]*;/g)).toBeNull();
+  }, 30_000);
+
+  it('inlines the chrome rules that used to arrive a round trip late', async () => {
+    const css = await (await handleRequest(req('/styles/shell.css'))).text();
+
+    // The exact rule whose absence produced the visible defect.
+    expect(css).toContain('.cinder-sr-only');
+    expect(css).toContain('.cinder-toolbar');
+    expect(css).toContain('.cinder-segmented-control');
+    // Tokens the chrome's own scoped styles reference.
+    expect(css).toContain('--cinder-accent');
+  }, 30_000);
+
+  it('preserves layer assignments and their order', async () => {
+    const css = await (await handleRequest(req('/styles/shell.css'))).text();
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+    expect(withoutComments).toContain('@layer cinder.tokens');
+    expect(withoutComments).toContain('@layer cinder.foundation');
+    expect(withoutComments).toContain('@layer cinder.utilities');
+    // Registered order is tokens → foundation → … → utilities; inlining must not
+    // reorder them, or utilities stops winning over foundation.
+    expect(withoutComments.indexOf('@layer cinder.tokens')).toBeLessThan(
+      withoutComments.indexOf('@layer cinder.utilities'),
+    );
+  }, 30_000);
+
+  it('still serves the individual sheets the export crawls', async () => {
+    const utilities = await handleRequest(req('/styles/utilities.css'));
+    expect(utilities.status).toBe(200);
+    expect(await utilities.text()).toContain('.cinder-sr-only');
+
+    const index = await handleRequest(req('/styles/index.css'));
+    expect(index.status).toBe(200);
+  }, 30_000);
 });
