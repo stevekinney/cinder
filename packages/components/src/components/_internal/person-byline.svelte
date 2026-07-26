@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Avatar from '../avatar/avatar.svelte';
+  import Avatar from '@lostgradient/cinder/avatar';
 
   let {
     name,
