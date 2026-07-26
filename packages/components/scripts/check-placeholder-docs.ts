@@ -142,8 +142,8 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
   ) {
     violations.push({
       filePath,
-      lineNumber: appliesMatches[0]!.index + 1,
-      line: appliesMatches[0]!.line.trim(),
+      lineNumber: appliesMatches[0].index + 1,
+      line: appliesMatches[0].line.trim(),
       phrase: 'Applies contract',
     });
   }
