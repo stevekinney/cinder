@@ -185,6 +185,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('tracks the source-diff-viewer line grid without counting its grid container', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.lines { display: grid; } .line { display: grid; grid-template-columns: 1fr 1fr; }',
+        'source-diff-viewer/source-diff-viewer.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('rejects a new grid occurrence in a tracked stylesheet', () => {
     expect(
       findPrimitiveCompositionViolations(
