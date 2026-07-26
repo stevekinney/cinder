@@ -418,7 +418,9 @@ export function playgroundBundleDependencyBuildProcess(
 }
 
 export function playgroundServerArguments(): string[] {
-  return ['run', 'src/playground-server.ts'];
+  // Keep server/runtime modules hot-reloaded in the managed test process. A
+  // warmup cache invalidation cannot re-evaluate already imported modules.
+  return ['--watch', 'run', 'src/playground-server.ts'];
 }
 
 export function playgroundServerWorkingDirectory(): string {

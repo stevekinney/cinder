@@ -121,12 +121,12 @@ describe('playground bundle dependency build preflight', () => {
 });
 
 describe('playground server process', () => {
-  test('starts the plain server entrypoint instead of the watch-mode dev script', () => {
+  test('starts the server entrypoint in watch mode for runtime edits', () => {
     const argumentsList = playgroundServerArguments();
 
-    expect(argumentsList).toEqual(['run', 'src/playground-server.ts']);
+    expect(argumentsList).toEqual(['--watch', 'run', 'src/playground-server.ts']);
     expect(argumentsList).not.toContain('dev');
-    expect(argumentsList).not.toContain('--watch');
+    expect(argumentsList).toContain('--watch');
     expect(playgroundServerWorkingDirectory().endsWith(join('packages', 'playground'))).toBe(true);
   });
 });
