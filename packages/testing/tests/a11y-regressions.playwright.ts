@@ -143,17 +143,16 @@ test.describe('a11y regressions', () => {
       const reasonRect = reason.getBoundingClientRect();
       return {
         display: getComputedStyle(element).display,
-        root,
-        controlRect,
-        reasonRect,
+        rootWidth: root.width,
+        rootHeight: root.height,
+        controlBottom: controlRect.bottom,
+        reasonBottom: reasonRect.bottom,
       };
     });
     expect(deniedGeometry.display).not.toBe('none');
-    expect(deniedGeometry.root.width).toBeGreaterThan(0);
-    expect(deniedGeometry.root.height).toBeGreaterThan(0);
-    expect(
-      Math.abs(deniedGeometry.controlRect.bottom - deniedGeometry.reasonRect.bottom),
-    ).toBeLessThan(12);
+    expect(deniedGeometry.rootWidth).toBeGreaterThan(0);
+    expect(deniedGeometry.rootHeight).toBeGreaterThan(0);
+    expect(Math.abs(deniedGeometry.controlBottom - deniedGeometry.reasonBottom)).toBeLessThan(12);
 
     const grantedPage = await componentPage.open({
       entry,
@@ -168,13 +167,18 @@ test.describe('a11y regressions', () => {
         const sibling = baseline.nextElementSibling!.querySelector('button')!;
         const baselineRect = baseline.querySelector('button')!.getBoundingClientRect();
         const siblingRect = sibling.getBoundingClientRect();
-        return { baselineRect, siblingRect };
+        return {
+          baselineTop: baselineRect.top,
+          baselineWidth: baselineRect.width,
+          baselineHeight: baselineRect.height,
+          siblingTop: siblingRect.top,
+          siblingWidth: siblingRect.width,
+          siblingHeight: siblingRect.height,
+        };
       });
-    expect(
-      Math.abs(grantedGeometry.baselineRect.top - grantedGeometry.siblingRect.top),
-    ).toBeLessThan(1);
-    expect(grantedGeometry.siblingRect.width).toBe(grantedGeometry.baselineRect.width);
-    expect(grantedGeometry.siblingRect.height).toBe(grantedGeometry.baselineRect.height);
+    expect(Math.abs(grantedGeometry.baselineTop - grantedGeometry.siblingTop)).toBeLessThan(1);
+    expect(grantedGeometry.siblingWidth).toBe(grantedGeometry.baselineWidth);
+    expect(grantedGeometry.siblingHeight).toBe(grantedGeometry.baselineHeight);
   });
 
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {
