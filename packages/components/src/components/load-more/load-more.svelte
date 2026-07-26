@@ -15,6 +15,7 @@
 
 <script lang="ts">
   import type { LoadMoreProps } from './load-more.types.ts';
+  import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useIntersection } from '../../utilities/use-intersection.svelte.ts';
@@ -36,25 +37,31 @@
 
   let requestInFlight = $state(false);
   let errorState = $state(false);
-  let autoLoadCount = $state(0);
+  let sentinelRequestCount = $state(0);
+  let sentinelArmed = $state(true);
+  let sentinelIntersecting = $state(false);
+  let sentinelReported = $state(false);
+  let manualObserverSuspended = $state(false);
+  let manualObserverDisarmPending = false;
+  let previousSentinelEnabled = false;
+  let previousMaxRetries: number | undefined;
   // Tracks the last `hasMore` value the component reconciled against so a
-  // parent-driven false -> true flip (new page of data arrived) can clear both
-  // sentinel and error budgets exactly once per transition.
+  // parent-driven false -> true flip (new page of data arrived) can clear the
+  // sentinel request cap and error latch exactly once per transition.
   let previousHasMore = hasMore;
 
   const mergedClassName = $derived(classNames('cinder-load-more', customClassName));
   const busy = $derived(loading || requestInFlight);
-  const sentinelEnabled = $derived(
-    hasMore && !loading && !errorState && !requestInFlight && autoLoadCount < maxRetries,
-  );
+  const sentinelEnabled = $derived(hasMore && !errorState && sentinelRequestCount < maxRetries);
+  const sentinelObserverEnabled = $derived(sentinelEnabled && !manualObserverSuspended);
   // `enabled` is a getter, so `useIntersection`'s own `$effect` re-evaluates
   // `sentinelEnabled` reactively and toggles the observer in place. Constructing
   // the attachment once (rather than inside `$derived`) avoids tearing down and
   // recreating the IntersectionObserver every time `sentinelEnabled` flips.
   const sentinelIntersection = useIntersection(handleIntersect, {
-    root,
-    rootMargin,
-    enabled: () => sentinelEnabled,
+    root: untrack(() => root),
+    rootMargin: untrack(() => rootMargin),
+    enabled: () => sentinelObserverEnabled,
   });
   const buttonText = $derived(errorState ? retryLabel : buttonLabel);
   const buttonDisabled = $derived(busy && !errorState);
@@ -68,10 +75,44 @@
   // cleared in `requestNextPage`'s `finally`, so neither needs an effect.
   $effect(() => {
     if (!previousHasMore && hasMore) {
-      autoLoadCount = 0;
+      sentinelRequestCount = 0;
+      sentinelArmed = true;
+      sentinelIntersecting = false;
       errorState = false;
     }
     previousHasMore = hasMore;
+  });
+
+  $effect(() => {
+    if (!previousSentinelEnabled && sentinelEnabled) {
+      sentinelReported = false;
+      sentinelIntersecting = false;
+      if (
+        !manualObserverSuspended &&
+        previousMaxRetries !== undefined &&
+        maxRetries > previousMaxRetries
+      ) {
+        if (manualObserverDisarmPending) {
+          manualObserverDisarmPending = false;
+        } else {
+          sentinelArmed = true;
+        }
+      }
+    }
+    if (
+      manualObserverDisarmPending &&
+      !requestInFlight &&
+      previousMaxRetries !== undefined &&
+      maxRetries === previousMaxRetries
+    ) {
+      manualObserverDisarmPending = false;
+    }
+    previousSentinelEnabled = sentinelEnabled;
+    previousMaxRetries = maxRetries;
+  });
+
+  $effect(() => {
+    requestFromSentinelIfReady();
   });
 
   async function requestNextPage(source: 'button' | 'sentinel'): Promise<void> {
@@ -79,12 +120,21 @@
       return;
     }
 
-    if (source === 'sentinel' && (errorState || autoLoadCount >= maxRetries)) {
+    if (source === 'sentinel' && (errorState || sentinelRequestCount >= maxRetries)) {
       return;
     }
 
     if (source === 'sentinel') {
-      autoLoadCount += 1;
+      sentinelRequestCount += 1;
+    } else {
+      // A manual request supersedes every entry queued by the current observer.
+      // Suspending the observer makes its callback stale immediately; the
+      // replacement must report off-screen before it can re-arm.
+      sentinelArmed = false;
+      sentinelReported = false;
+      sentinelIntersecting = false;
+      manualObserverSuspended = true;
+      manualObserverDisarmPending = true;
     }
 
     requestInFlight = true;
@@ -93,7 +143,7 @@
     try {
       await onLoadMore();
       if (source === 'button') {
-        autoLoadCount = 0;
+        sentinelRequestCount = 0;
       }
     } catch (error) {
       errorState = true;
@@ -102,12 +152,31 @@
       // Always clear the in-flight guard once the request settles, regardless of
       // whether the parent has flipped its own `loading` prop yet.
       requestInFlight = false;
+      if (source === 'button') {
+        manualObserverSuspended = false;
+      }
     }
   }
 
-  function handleIntersect(entry: IntersectionObserverEntry): void {
-    if (!entry.isIntersecting) return;
+  function requestFromSentinelIfReady(): void {
+    if (!sentinelReported || !sentinelIntersecting || !sentinelArmed || !sentinelEnabled || busy) {
+      return;
+    }
+
+    sentinelArmed = false;
     void requestNextPage('sentinel');
+  }
+
+  function handleIntersect(entry: IntersectionObserverEntry): void {
+    sentinelReported = true;
+    sentinelIntersecting = entry.isIntersecting;
+
+    if (!entry.isIntersecting) {
+      sentinelArmed = true;
+      return;
+    }
+
+    requestFromSentinelIfReady();
   }
 </script>
 

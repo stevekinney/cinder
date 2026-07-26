@@ -204,6 +204,40 @@ describe('useIntersection', () => {
     expect(FakeIntersectionObserver.records).toHaveLength(2);
   });
 
+  test('ignores queued entries from an observer that was replaced after reconnecting', async () => {
+    let enabled = true;
+    const seen: boolean[] = [];
+
+    const rendered = render(UseIntersectionAttachFixture, {
+      props: {
+        onIntersect: (entry: IntersectionObserverEntry) => seen.push(entry.isIntersecting),
+        options: { enabled: () => enabled },
+      },
+    });
+
+    const sentinel = rendered.getByTestId('sentinel');
+    const firstRecord = FakeIntersectionObserver.records[0];
+
+    enabled = false;
+    await rendered.rerender({
+      onIntersect: (entry: IntersectionObserverEntry) => seen.push(entry.isIntersecting),
+      options: { enabled: () => enabled },
+    });
+    enabled = true;
+    await rendered.rerender({
+      onIntersect: (entry: IntersectionObserverEntry) => seen.push(entry.isIntersecting),
+      options: { enabled: () => enabled },
+    });
+
+    firstRecord?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
+    FakeIntersectionObserver.records[1]?.callback(
+      [createEntry(sentinel, true)],
+      {} as IntersectionObserver,
+    );
+
+    expect(seen).toEqual([true]);
+  });
+
   test('observes immediately when enabled is omitted', () => {
     render(UseIntersectionAttachFixture, {
       props: {
