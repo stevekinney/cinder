@@ -88,7 +88,11 @@
     ) {
       return providedDirection;
     }
-    return localeContext?.direction ?? null;
+    return navElement
+      ? (resolveTextDirection(navElement, localeContext?.direction, {
+          ignoreElementDirectionAttribute: true,
+        }) ?? null)
+      : (localeContext?.direction ?? null);
   });
 
   $effect(() => {
@@ -427,6 +431,20 @@
     };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
+  });
+
+  $effect(() => {
+    if (!navElement || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      directionRevision += 1;
+      updateIndicator();
+    });
+    let current: HTMLElement | null = navElement;
+    while (current) {
+      observer.observe(current);
+      current = current.parentElement;
+    }
+    return () => observer.disconnect();
   });
 
   $effect(() => {

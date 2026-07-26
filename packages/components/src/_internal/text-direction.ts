@@ -224,8 +224,21 @@ function isContainerQueryActive(
 ): boolean {
   const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^)]+)\)/i.exec(conditionText);
   if (styleQuery) {
+    const containerName = Reflect.get(rule, 'containerName');
     let ancestor = element.parentElement;
     while (ancestor) {
+      if (typeof containerName === 'string' && containerName) {
+        const computedStyle = getComputedStyle(ancestor);
+        const name =
+          computedStyle.containerName ||
+          computedStyle.getPropertyValue('container-name') ||
+          ancestor.style.containerName ||
+          ancestor.style.getPropertyValue('container-name');
+        if (!name.split(/\s+/).includes(containerName)) {
+          ancestor = ancestor.parentElement;
+          continue;
+        }
+      }
       const value =
         getComputedStyle(ancestor).getPropertyValue(styleQuery[1]!).trim() ||
         ancestor.style.getPropertyValue(styleQuery[1]!).trim();

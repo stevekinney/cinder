@@ -521,6 +521,36 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('uses CSSContainerRule.containerName for named style queries', () => {
+    const namedContainer = document.createElement('section');
+    namedContainer.style.setProperty('container-name', 'sidebar');
+    namedContainer.style.setProperty('--theme', 'dark');
+    const nearerContainer = document.createElement('div');
+    nearerContainer.style.setProperty('--theme', 'light');
+    const element = document.createElement('div');
+    element.className = 'named-style-ltr';
+    nearerContainer.appendChild(element);
+    namedContainer.appendChild(nearerContainer);
+    document.body.appendChild(namedContainer);
+    const nestedRule = createStyleRule({ selectorText: '.named-style-ltr', direction: 'ltr' });
+    const outerRule = {
+      cssText: '@container sidebar style(--theme: dark) { .named-style-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'style(--theme: dark)',
+      containerName: 'sidebar',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      namedContainer.remove();
+    }
+  });
+
   test('evaluates range-syntax size queries', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
