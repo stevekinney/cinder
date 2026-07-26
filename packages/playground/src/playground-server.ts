@@ -93,6 +93,7 @@ import {
   snapshotModeHtmlAttribute,
   snapshotModeStyleTag,
 } from './snapshot-mode.ts';
+import { stripInlineSourcemaps } from './strip-inline-sourcemaps.ts';
 import type { ComponentManifest } from './types.ts';
 
 const DEFAULT_PORT = 5555;
@@ -190,6 +191,18 @@ type ShellServerRenderer = (props: {
 }) => { body: string; head: string };
 let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
+
+/**
+ * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
+ * Same shape and caching discipline as {@link ShellServerRenderer}.
+ */
+type PageServerRenderer = (props: {
+  componentName: string;
+  documentation: ComponentDocumentationPayload;
+  examples: { scenario: string; title: string; description?: string; featured?: boolean }[];
+}) => { body: string; head: string };
+let pageServerRendererPromise: Promise<PageServerRenderer> | null = null;
+let lastGoodPageServerRenderer: PageServerRenderer | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
@@ -464,6 +477,9 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   shellStale = true;
   shellBuildPromise = null;
   shellServerRendererPromise = null;
+  // The documentation page's server bundle shares the component graph the shell
+  // rebuild invalidates, so drop its dedup slot on the same signal.
+  pageServerRendererPromise = null;
 
   triggerReload('shell-reload');
 }
@@ -875,7 +891,7 @@ async function compilePageBundleArtifacts(
     .map((scenario, index) => `  ${JSON.stringify(scenario)}: Scenario_${index},`)
     .join('\n');
 
-  const entrySource = `import { mount } from 'svelte';
+  const entrySource = `import { hydrate, mount } from 'svelte';
 
 import ComponentPage from '../component-page.svelte';
 import * as BareComponentModule from ${JSON.stringify(componentDefinition.importPath)};
@@ -897,10 +913,30 @@ if (target === null) {
 // resolve. Threaded as a prop (not a \`window\` global) so the live preview is
 // wired explicitly to the bundle that mounted the page.
 const previewOnly = new URLSearchParams(window.location.search).get('preview') === '1';
-mount(ComponentPage, {
-  target,
-  props: { bareComponentModule: BareComponentModule, previewOnly },
-});
+
+// The server pre-renders the documentation tree into #app for the canonical
+// route, so take over that markup with hydrate() instead of mount() — mount()
+// would discard the server output and re-create every node, throwing away the
+// pre-rendered paint and double-mounting the examples.
+//
+// The props MUST match what page-server-entry.ts passed, or the client's first
+// render disagrees with the server's and hydration mismatches. snapshotMode is
+// therefore read from the URL exactly as the server read it, and the same
+// documentation/examples data islands feed both sides.
+const snapshotMode = new URLSearchParams(window.location.search).get('snapshot') === '1';
+const hasServerRenderedContent = target.firstElementChild !== null;
+
+const props = {
+  bareComponentModule: BareComponentModule,
+  previewOnly,
+  snapshotMode,
+};
+
+if (hasServerRenderedContent && !snapshotMode && !previewOnly) {
+  hydrate(ComponentPage, { target, props });
+} else {
+  mount(ComponentPage, { target, props });
+}
 `;
 
   try {
@@ -1242,6 +1278,66 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
 }
 
 /**
+ * Compile and load the documentation page's server renderer.
+ *
+ * Deliberately mirrors {@link loadShellServerRenderer}: same `generate: 'server'`
+ * plugin, same `target: 'bun'` + `['bun','svelte']` conditions, same
+ * write-to-temp-then-dynamic-import dance, and the same last-good fallback so a
+ * transient compile error during development serves the previous good renderer
+ * instead of a 500.
+ */
+async function loadPageServerRenderer(): Promise<PageServerRenderer> {
+  if (pageServerRendererPromise !== null) return pageServerRendererPromise;
+
+  pageServerRendererPromise = (async () => {
+    try {
+      const generationAtStart = rebuildGeneration;
+      const result = await Bun.build({
+        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'page-server-entry.ts')],
+        plugins: [sveltePlugin({ generate: 'server' })],
+        target: 'bun',
+        format: 'esm',
+        conditions: ['bun', 'svelte'],
+        splitting: false,
+      });
+      if (!result.success || result.outputs[0] === undefined) {
+        throw new Error(`Page server bundle failed:\n${result.logs.join('\n')}`);
+      }
+
+      const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+      const serverBundlePath = join(serverBundleDirectory, 'page-server.js');
+      let loaded: unknown;
+      try {
+        await Bun.write(serverBundlePath, await result.outputs[0].text());
+        loaded = await import(pathToFileURL(serverBundlePath).href);
+      } finally {
+        rmSync(serverBundleDirectory, { recursive: true, force: true });
+      }
+      if (
+        typeof loaded !== 'object' ||
+        loaded === null ||
+        typeof Reflect.get(loaded, 'renderComponentPageBody') !== 'function'
+      ) {
+        throw new Error('Page server bundle did not export renderComponentPageBody');
+      }
+      const renderer = Reflect.get(loaded, 'renderComponentPageBody') as PageServerRenderer;
+      if (generationAtStart === rebuildGeneration) {
+        lastGoodPageServerRenderer = renderer;
+      }
+      return renderer;
+    } catch (error) {
+      console.error(
+        '[playground] page server rebuild failed; serving the last-good renderer:',
+        error,
+      );
+      return fallbackToLastGood(lastGoodPageServerRenderer, error);
+    }
+  })();
+
+  return pageServerRendererPromise;
+}
+
+/**
  * Lazy-build wrapper: compile the shell bundle and publish into shared
  * caches. Used by `/shell-bundle/shell.js` as a fallback when the shell
  * bundle isn't already cached, or when `shellStale` is set. Same
@@ -1533,6 +1629,35 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
   const humanName = escapeHtml(humanizeComponentName(componentName));
   const pageDescription = `Live ${humanName} examples from the cinder Svelte 5 component library.`;
 
+  /*
+   * Server-render the documentation tree so the page has real content in the
+   * HTML — no blank `#app` and no loading state before the bundle executes.
+   *
+   * `?snapshot=1` deliberately opts OUT and keeps the historical client-only
+   * mount: the visual-regression and axe suites wait for `#app > *` to become
+   * visible and assert single-instance counts of `example-mount-*` on a bare
+   * surface (see packages/testing/src/fixtures/component-page.ts). Rendering the
+   * full documentation chrome into that surface would break ~93 suites, so the
+   * two surfaces stay separate on purpose.
+   *
+   * A render failure degrades to the client-only path rather than 500ing — the
+   * page still works, it just loses the pre-rendered content.
+   */
+  let ssrBody = '';
+  let ssrHead = '';
+  if (!snapshotMode) {
+    try {
+      const renderComponentPageBody = await loadPageServerRenderer();
+      const rendered = renderComponentPageBody({ componentName, documentation, examples });
+      ssrBody = rendered.body;
+      // Inline sourcemaps in the SSR'd <style> output are ~80% of its bytes and
+      // sit on the critical rendering path. See strip-inline-sourcemaps.ts.
+      ssrHead = stripInlineSourcemaps(rendered.head);
+    } catch (error) {
+      console.error(`[playground] page SSR failed for ${componentName}:`, error);
+    }
+  }
+
   return `<!DOCTYPE html>
 <html lang="en"${htmlAttribute}>
   <head>
@@ -1542,6 +1667,7 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
     <meta name="description" content="${pageDescription}" />
     <link rel="icon" href="${FAVICON_HREF}" />
     <link rel="stylesheet" href="/styles/all.css" />${componentStylesheetLink}
+    ${ssrHead}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       /* Iframe scaffold: scope the reset narrowly. Unlike the shell, the
@@ -1575,7 +1701,7 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
   <body>
     <script type="application/json" id="cinder-documentation">${documentationJson}</script>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
-    <div id="app"></div>
+    <div id="app">${ssrBody}</div>
     <script type="module" src="/page-bundle/${componentName}.js"></script>
   </body>
 </html>`;
