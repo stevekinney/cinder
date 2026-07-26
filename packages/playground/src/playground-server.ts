@@ -192,6 +192,7 @@ type ShellServerRenderer = (props: {
 }) => { body: string; head: string };
 let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
+let preparedShellServerRenderer: ShellServerRenderer | null = null;
 
 /**
  * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
@@ -478,6 +479,7 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   shellStale = true;
   shellBuildPromise = null;
   shellServerRendererPromise = null;
+  preparedShellServerRenderer = null;
   // The documentation page's server bundle shares the component graph the shell
   // rebuild invalidates, so drop its dedup slot on the same signal.
   pageServerRendererPromise = null;
@@ -1295,6 +1297,11 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
   })();
 
   return shellServerRendererPromise;
+}
+
+/** Inject the renderer prepared by server startup (or a deterministic test renderer). */
+export function setPreparedShellServerRenderer(renderer: ShellServerRenderer | null): void {
+  preparedShellServerRenderer = renderer;
 }
 
 /**
@@ -2362,7 +2369,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (documentation === null) {
       return notFound(`Documentation for "${componentName}" not found`);
     }
-    const renderShellBody = await loadShellServerRenderer();
+    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
     const renderedShell = renderShellBody({
       initialComponent: componentName,
       components: sidebarComponents,
@@ -2385,7 +2392,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       discoverSidebarComponents(),
       renderLandingReadmeHtml(),
     ]);
-    const renderShellBody = await loadShellServerRenderer();
+    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
     const renderedShell = renderShellBody({
       initialComponent: '',
       components: sidebarComponents,
@@ -2663,7 +2670,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   // Prepare the SSR shell renderer before advertising readiness. Requests must
   // never pay the cold Svelte server compilation cost on the first navigation.
   try {
-    await loadShellServerRenderer();
+    preparedShellServerRenderer = await loadShellServerRenderer();
   } catch (error) {
     await dispose();
     throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
