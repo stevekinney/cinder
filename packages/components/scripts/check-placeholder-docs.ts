@@ -68,12 +68,14 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
   );
   const hasAccessibilityTemplate =
-    accessibilityHeadings.length > 0 || /^-?\s*Applies:/im.test(content);
+    designHeadings.length > 0 ||
+    accessibilityHeadings.length > 0 ||
+    /^-?\s*Applies:/im.test(content);
   const requiredDesignFields = [
-    /^-\s*Reviewer:/i,
-    /^-\s*Review outcome:/i,
-    /^-\s*Nearest neighbours:/i,
-    /^-\s*Why this component exists:/i,
+    /^-\s*Reviewer:\s*\S/i,
+    /^-\s*Review outcome:\s*\S/i,
+    /^-\s*Nearest neighbours:\s*\S/i,
+    /^-\s*Why this component exists:\s*\S/i,
   ];
   if (hasAccessibilityTemplate && designHeadings.length !== 1) {
     violations.push({
@@ -125,7 +127,7 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     });
   } else if (
     appliesMatches[0] &&
-    !/^-?\s*Applies:\s*(yes|no)\b.+/i.test(appliesMatches[0].line.trim())
+    !/^-?\s*Applies:\s*(yes|no)\b\s*\S.*/i.test(appliesMatches[0].line.trim())
   ) {
     violations.push({
       filePath,
@@ -152,6 +154,28 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
       ACCESSIBILITY_REVIEW_PHRASES,
       accessibilityHeading + 1,
     );
+    const requiredAccessibilitySections = [
+      /^###\s+Focus management\s*$/i,
+      /^###\s+Keyboard matrix\s*$/i,
+      /^###\s+Assistive-technology announcements\s*$/i,
+    ];
+    for (const heading of requiredAccessibilitySections) {
+      const start = lines.findIndex(
+        (line, index) => index > accessibilityHeading && heading.test(line.trim()),
+      );
+      const nextHeading = lines.findIndex(
+        (line, index) => index > start && /^###\s+/i.test(line.trim()),
+      );
+      const section =
+        start === -1 ? [] : lines.slice(start + 1, nextHeading === -1 ? lines.length : nextHeading);
+      if (start === -1 || !section.some((line) => line.trim() !== ''))
+        violations.push({
+          filePath,
+          lineNumber: start === -1 ? accessibilityHeading + 1 : start + 1,
+          line: start === -1 ? 'Missing required accessibility section.' : lines[start]!.trim(),
+          phrase: 'accessibility section',
+        });
+    }
   }
   // The applicability decision itself is required before section-specific
   // accessibility placeholders can be conditionally ignored.

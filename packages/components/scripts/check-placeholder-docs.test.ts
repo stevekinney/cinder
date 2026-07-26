@@ -8,7 +8,14 @@ describe('findPlaceholderViolations', () => {
       '## Design review (required)\n- Reviewer: _Pending\n- Review outcome: done\n- Nearest neighbours: known\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — reason\nDesign: _Pending\nKeyboard: _Record',
       'component.a11y.md',
     );
-    expect(violations.map(({ phrase }) => phrase)).toEqual(['_Pending', '_Pending', '_Record']);
+    expect(violations.map(({ phrase }) => phrase)).toEqual([
+      '_Pending',
+      '_Pending',
+      '_Record',
+      'accessibility section',
+      'accessibility section',
+      'accessibility section',
+    ]);
   });
   it('allows accessibility-only placeholders when review does not apply', () => {
     expect(
@@ -33,6 +40,9 @@ describe('findPlaceholderViolations', () => {
       '_Pending',
       '_Pending when this review applies.',
       '_Record',
+      'accessibility section',
+      'accessibility section',
+      'accessibility section',
     ]);
   });
   it('rejects design placeholders regardless of accessibility applicability', () => {
@@ -69,5 +79,25 @@ describe('findPlaceholderViolations', () => {
       'component.a11y.md',
     );
     expect(deleted.some(({ phrase }) => phrase === 'design review heading')).toBe(true);
+  });
+  it('requires non-whitespace design field values in design-only records', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer:   \n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase === 'design review field')).toHaveLength(1);
+  });
+  it('requires complete accessibility sections when Applies is yes', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n\n### Focus management\nDocumented\n\n### Keyboard matrix\nDocumented\n\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations).toEqual([]);
+    expect(
+      findPlaceholderViolations(
+        '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n\n### Focus management\n\n### Keyboard matrix\nDocumented',
+        'component.a11y.md',
+      ).filter(({ phrase }) => phrase === 'accessibility section'),
+    ).toHaveLength(2);
   });
 });
