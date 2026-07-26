@@ -2682,11 +2682,35 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   );
   // Prepare the SSR shell renderer before advertising readiness. Requests must
   // never pay the cold Svelte server compilation cost on the first navigation.
-  try {
-    preparedShellServerRenderer = await loadShellServerRenderer();
-  } catch (error) {
+  let rendererPrepared = false;
+  for (let attempt = 0; attempt < 5 && !rendererPrepared; attempt += 1) {
+    const generationAtStart = rebuildGeneration;
+    const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
+    try {
+      preparedShellServerRenderer = await loadShellServerRenderer();
+    } catch (error) {
+      await dispose();
+      throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
+    }
+    const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
+    if (
+      isWarmupStable(
+        generationAtStart,
+        rebuildGeneration,
+        sourceMtimeAtStart,
+        sourceMtimeAtEnd,
+        rebuildDebounceTimer !== null,
+      )
+    ) {
+      rendererPrepared = true;
+    } else {
+      preparedShellServerRenderer = null;
+      invalidateCachesForChange({ kind: 'components' });
+    }
+  }
+  if (!rendererPrepared) {
     await dispose();
-    throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
+    throw new Error('[playground] shell renderer invalidated repeatedly; refusing readiness');
   }
   startupReady = true;
   return {
