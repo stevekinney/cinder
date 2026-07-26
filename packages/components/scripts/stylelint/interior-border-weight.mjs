@@ -25,6 +25,33 @@ function isInteriorDivider(selector, property) {
   );
 }
 
+function resolvesToRaisedSurface(value, customProperties, seen = new Set()) {
+  if (value.includes('var(--cinder-surface-raised)')) return true;
+  for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
+    const token = match[1];
+    if (seen.has(token)) continue;
+    const replacement = customProperties.get(token);
+    if (
+      replacement &&
+      resolvesToRaisedSurface(replacement, customProperties, new Set([...seen, token]))
+    )
+      return true;
+  }
+  return false;
+}
+
+function resolvesToBorder(value, token, customProperties, seen = new Set()) {
+  if (value.includes(`var(${token})`)) return true;
+  return [...value.matchAll(/var\(\s*(--[\w-]+)/g)].some(([, name]) => {
+    if (seen.has(name)) return false;
+    const replacement = customProperties.get(name);
+    return (
+      replacement !== undefined &&
+      resolvesToBorder(replacement, token, customProperties, new Set([...seen, name]))
+    );
+  });
+}
+
 const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
   if (!stylelint.utils.validateOptions(result, ruleName, { actual: primary, possible: [true] }))
     return;
@@ -33,27 +60,6 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
   root.walkDecls((decl) => {
     if (decl.prop.startsWith('--')) customProperties.set(decl.prop, decl.value);
   });
-  const resolvesToRaisedSurface = (value, seen = new Set()) => {
-    if (value.includes('var(--cinder-surface-raised)')) return true;
-    for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
-      const token = match[1];
-      if (seen.has(token)) continue;
-      const replacement = customProperties.get(token);
-      if (replacement && resolvesToRaisedSurface(replacement, new Set([...seen, token])))
-        return true;
-    }
-    return false;
-  };
-  const resolvesToBorder = (value, token, seen = new Set()) => {
-    if (value.includes(`var(${token})`)) return true;
-    return [...value.matchAll(/var\(\s*(--[\w-]+)/g)].some(([, name]) => {
-      if (seen.has(name)) return false;
-      const replacement = customProperties.get(name);
-      return (
-        replacement !== undefined && resolvesToBorder(replacement, token, new Set([...seen, name]))
-      );
-    });
-  };
   root.walkRules((rule) => {
     rule.walkDecls((decl) => {
       if (
@@ -63,7 +69,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
           (candidate) =>
             candidate.type === 'decl' &&
             (candidate.prop === 'background' || candidate.prop === 'background-color') &&
-            resolvesToRaisedSurface(candidate.value),
+            resolvesToRaisedSurface(candidate.value, customProperties),
         )
       ) {
         stylelint.utils.report({
@@ -76,7 +82,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
       }
       if (!/^border(?:-(?:block|inline)-(?:start|end)|-(?:top|bottom))?$/.test(decl.prop)) return;
       if (!isInteriorDivider(rule.selector, decl.prop)) return;
-      if (resolvesToBorder(decl.value, '--cinder-border')) {
+      if (resolvesToBorder(decl.value, '--cinder-border', customProperties)) {
         stylelint.utils.report({ ruleName, result, node: decl, message: messages.border() });
       }
     });
