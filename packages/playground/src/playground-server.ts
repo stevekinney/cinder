@@ -27,7 +27,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { existsSync, rmSync, watch, type FSWatcher } from 'node:fs';
-import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
+import { isAbsolute, join, relative as relativePath, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { initializeHighlighter, renderMarkdown } from '@lostgradient/markdown/rendering';
@@ -88,6 +88,7 @@ import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import { stripExampleHarness } from '../../components/scripts/lib/strip-example-harness.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
+import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 import {
   isSnapshotMode,
   snapshotModeHtmlAttribute,
@@ -115,9 +116,6 @@ export function resolvePreferredPort(): number {
 
 export const PORT = resolvePreferredPort();
 const MAX_PORT_SCAN_ATTEMPTS = 100;
-// import.meta.dirname is packages/playground/src/
-const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
-const PLAYGROUND_TEMP_ROOT = join(PLAYGROUND_ROOT, '.tmp');
 const COMPONENTS_ROOT = CINDER_COMPONENT_SOURCE.packageRoot; // packages/components/
 const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
 

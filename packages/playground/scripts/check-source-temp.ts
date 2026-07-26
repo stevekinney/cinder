@@ -1,7 +1,19 @@
 import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative, sep } from 'node:path';
+import { PLAYGROUND_TEMP_ROOT } from '../src/playground-paths.ts';
 
 const sourceDirectory = join(import.meta.dir, '..', 'src');
+const tempRootRelativeToSource = relative(sourceDirectory, PLAYGROUND_TEMP_ROOT);
+if (
+  tempRootRelativeToSource !== '..' &&
+  !tempRootRelativeToSource.startsWith(`..${sep}`)
+) {
+  console.error(
+    `Playground build temporary root must stay outside packages/playground/src: ${PLAYGROUND_TEMP_ROOT}`,
+  );
+  process.exit(1);
+}
+
 const entries = await readdir(sourceDirectory, { withFileTypes: true });
 const stragglers = entries.filter((entry) => entry.isDirectory() && entry.name.startsWith('.tmp-'));
 
