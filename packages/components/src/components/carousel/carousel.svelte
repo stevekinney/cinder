@@ -134,22 +134,37 @@
     if (clampedLength < 2) return;
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goPrevious();
       return;
     }
     if (event.key === 'ArrowRight') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goNext();
       return;
     }
     if (event.key === 'Home') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goTo(0);
       return;
     }
     if (event.key === 'End') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goTo(clampedLength - 1);
+    }
+  }
+
+  function focusCarouselRoot(event: KeyboardEvent): void {
+    const root = event.currentTarget;
+    if (
+      root instanceof HTMLElement &&
+      event.target !== root &&
+      root.contains(document.activeElement)
+    ) {
+      root.focus();
     }
   }
 

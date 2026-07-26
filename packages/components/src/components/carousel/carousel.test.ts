@@ -339,6 +339,20 @@ describe('Carousel', () => {
     expect(container.querySelector('.cinder-carousel')?.getAttribute('tabindex')).toBe('0');
   });
 
+  test('moves focus to the stable root before making the active slide inert', async () => {
+    const { container } = render(Carousel, {
+      slides: [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)],
+    });
+    const root = container.querySelector('.cinder-carousel') as HTMLElement;
+    const link = container.querySelector('.cinder-carousel__link') as HTMLAnchorElement;
+    link.focus();
+
+    await fireEvent.keyDown(link, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(root);
+    expectActiveSlide(container, 1);
+  });
+
   test('does not clear initial alignment while the viewport is hidden', async () => {
     type ObserverCallback = (entries: ResizeObserverEntry[]) => void;
     let callback: ObserverCallback | undefined;
