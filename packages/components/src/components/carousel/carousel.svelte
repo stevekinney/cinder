@@ -223,6 +223,10 @@
     window.addEventListener('pointercancel', finishPointerInteraction);
   }
 
+  function onWheel(): void {
+    programmaticTarget = null;
+  }
+
   onDestroy(() => {
     removePointerEndListeners();
     if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
@@ -291,6 +295,7 @@
     {@attach observeViewport}
     onscroll={onViewportScroll}
     onpointerdown={onPointerDown}
+    onwheel={onWheel}
   >
     {#if slides.length > 0}
       {#each slides as slide, index (slide.id)}
