@@ -125,7 +125,7 @@ describe('HeroSection', () => {
   test('preserves multi-root media flow and keeps focused media visible', () => {
     expect(HERO_SECTION_CSS).toContain('> *:only-child');
     expect(HERO_SECTION_CSS).toContain('> *:only-child > img:only-child');
-    expect(HERO_SECTION_CSS).toContain(':has(> *:only-child:focus-visible)::after');
+    expect(HERO_SECTION_CSS).toContain(':has(*:focus-visible)::after');
     expect(HERO_SECTION_CSS).toContain('z-index: 2;');
     expect(HERO_SECTION_CSS).toContain('pointer-events: none;');
     expect(HERO_SECTION_CSS).toContain(':only-child:focus-visible');
