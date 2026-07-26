@@ -49,7 +49,11 @@ test.describe('floating surfaces escape component containment', () => {
     await clipComponent(page, '.cinder-navigation-bar');
 
     await page.getByRole('button', { name: 'Open menu' }).first().click();
-    const panel = page.locator('body > .cinder-navigation-bar__items[data-open="true"]').first();
+    const panel = page
+      .locator(
+        'body > .cinder-navigation-bar__portal-scope > .cinder-navigation-bar__items[data-open="true"]',
+      )
+      .first();
     await expect(panel).toBeVisible();
     await expect(panel).toContainText('Docs');
   });

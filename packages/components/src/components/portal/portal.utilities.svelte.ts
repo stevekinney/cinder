@@ -107,7 +107,13 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
   if (!source || typeof window === 'undefined') return '';
 
   const computed = getComputedStyle(source);
-  const typographySource = source.parentElement ?? source;
+  const hasDirectTypography =
+    source.tagName === 'NAV' ||
+    (source.parentElement === null &&
+      ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing'].some(
+        (property) => source.style.getPropertyValue(property) !== '',
+      ));
+  const typographySource = hasDirectTypography ? source : (source.parentElement ?? source);
   const typography = getComputedStyle(typographySource);
   const inherited = document.createElement('div').style;
   for (let index = 0; index < computed.length; index += 1) {
@@ -325,7 +331,13 @@ export function observePortalSourceAvailability(
   }
   syncAvailability();
 
-  return () => observer.disconnect();
+  const onResize = () => syncAvailability();
+  window.addEventListener('resize', onResize);
+
+  return () => {
+    observer.disconnect();
+    window.removeEventListener('resize', onResize);
+  };
 }
 
 function observeInheritedPortalAttributes(
@@ -355,8 +367,16 @@ function observeInheritedPortalAttributes(
   }
   observe(document.documentElement);
 
+  const mediaQueries = ['(prefers-color-scheme: dark)', '(forced-colors: active)'];
+  const mediaLists =
+    typeof window !== 'undefined' ? mediaQueries.map((query) => window.matchMedia(query)) : [];
+  for (const media of mediaLists) media.addEventListener('change', syncAttributes);
+  if (typeof window !== 'undefined') window.addEventListener('resize', syncAttributes);
+
   return () => {
     observer.disconnect();
+    for (const media of mediaLists) media.removeEventListener('change', syncAttributes);
+    if (typeof window !== 'undefined') window.removeEventListener('resize', syncAttributes);
   };
 }
 
