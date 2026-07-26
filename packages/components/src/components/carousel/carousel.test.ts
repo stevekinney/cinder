@@ -51,6 +51,10 @@ function expectActiveSlide(container: HTMLElement, index: number): void {
   });
 }
 
+function flushAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 describe('Carousel', () => {
   test('does not capture pointerdown from a slide link', async () => {
     const linkedSlides = [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)];
@@ -209,6 +213,7 @@ describe('Carousel', () => {
     });
     await fireEvent.pointerDown(viewport);
     await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
 
     expect(slideElements[0]?.getAttribute('aria-hidden')).toBeNull();
     expect(slideElements[0]?.hasAttribute('inert')).toBe(false);
@@ -234,6 +239,7 @@ describe('Carousel', () => {
 
     await fireEvent.pointerDown(viewport, { pointerId: 12 });
     await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
 
     expectActiveSlide(container, 1);
     expect(scrollTo).not.toHaveBeenCalled();
@@ -258,6 +264,7 @@ describe('Carousel', () => {
     });
 
     await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
     expectActiveSlide(container, 1);
     expect(scrollTo).not.toHaveBeenCalled();
   });
@@ -278,8 +285,8 @@ describe('Carousel', () => {
       }
       observe() {}
       disconnect() {}
-      trigger(width: number) {
-        callback?.([{ contentRect: { width } } as ResizeObserverEntry]);
+      trigger(width: number, height = 0) {
+        callback?.([{ contentRect: { width, height } } as ResizeObserverEntry]);
       }
     }
     const originalResizeObserver = globalThis.ResizeObserver;
@@ -305,12 +312,41 @@ describe('Carousel', () => {
       callback?.([{ contentRect: { width: 300 } } as ResizeObserverEntry]);
       await waitFor(() => expect(slideElements[2]?.getAttribute('aria-hidden')).toBeNull());
       expect(slideElements[2]?.hasAttribute('inert')).toBe(false);
+      const scrollTo = jest.fn();
+      Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+      callback?.([{ contentRect: { width: 300, height: 600 } } as ResizeObserverEntry]);
+      expect(scrollTo).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(globalThis, 'ResizeObserver', {
         configurable: true,
         value: originalResizeObserver,
       });
     }
+  });
+
+  test('coalesces scroll geometry reads to one animation frame', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const readCount = jest.fn();
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 300 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => {
+          readCount();
+          return { left: index * 100, width: 100 };
+        },
+      });
+    });
+    await flushAnimationFrame();
+    readCount.mockClear();
+    await Promise.all(Array.from({ length: 5 }, () => fireEvent.scroll(viewport)));
+    expect(readCount).not.toHaveBeenCalled();
+    await flushAnimationFrame();
+    expect(readCount).toHaveBeenCalledTimes(6);
   });
 
   test('renders region semantics and first slide by default', () => {

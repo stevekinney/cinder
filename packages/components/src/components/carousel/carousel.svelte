@@ -60,6 +60,8 @@
   let programmaticTarget: number | null = null;
   const activePointerIds = new SvelteSet<number>();
   let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+  let scrollFrame: number | null = null;
+  let cachedViewportInlineSize = 0;
 
   const clampedLength = $derived(slides.length);
   const initialSlideId = untrack(
@@ -199,7 +201,15 @@
   }
 
   const observeViewport = useResizeObserver((entries) => {
-    if (entries[0]?.contentRect.width && !isInteracting && !isNativeScrolling) {
+    const entry = entries[0];
+    if (!entry) return;
+    const borderBoxSize = Array.isArray(entry.borderBoxSize)
+      ? entry.borderBoxSize[0]
+      : entry.borderBoxSize;
+    const inlineSize = borderBoxSize?.inlineSize ?? entry.contentRect.width;
+    if (inlineSize <= 0 || inlineSize === cachedViewportInlineSize) return;
+    cachedViewportInlineSize = inlineSize;
+    if (!isInteracting && !isNativeScrolling) {
       scrollToActiveSlide('auto');
     }
   });
@@ -243,31 +253,36 @@
   onDestroy(() => {
     removePointerEndListeners();
     if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
+    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
   });
 
   function onViewportScroll(): void {
     const viewport = viewportElement;
     if (clampedLength < 2 || viewport === null) return;
     scheduleNativeScrollEnd();
-    const viewportLeft = viewport.getBoundingClientRect().left;
-    const nextIndex = [...viewport.children].reduce((nearestIndex, slide, index) => {
-      const nearest = viewport.children[nearestIndex];
-      if (!nearest) return index;
-      return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
-        Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
-        ? index
-        : nearestIndex;
-    }, 0);
-    if (programmaticTarget !== null) {
-      if (nextIndex === programmaticTarget) {
-        programmaticTarget = null;
-        settledIndex = nextIndex;
+    if (scrollFrame !== null) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = null;
+      const viewportLeft = viewport.getBoundingClientRect().left;
+      const nextIndex = [...viewport.children].reduce((nearestIndex, slide, index) => {
+        const nearest = viewport.children[nearestIndex];
+        if (!nearest) return index;
+        return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
+          Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
+          ? index
+          : nearestIndex;
+      }, 0);
+      if (programmaticTarget !== null) {
+        if (nextIndex === programmaticTarget) {
+          programmaticTarget = null;
+          settledIndex = nextIndex;
+        }
+        return;
       }
-      return;
-    }
-    if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
-      activeIndex = nextIndex;
-    }
+      if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
+        activeIndex = nextIndex;
+      }
+    });
   }
 
   $effect(() => {
