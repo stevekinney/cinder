@@ -289,7 +289,8 @@
         visualViewport?.scale === 1
           ? readVirtualKeyboardTransition('visual-viewport')
           : { active: false, isVisible: false };
-      if (event.type === 'resize' && layoutKeyboardResizeActive) return;
+      if ((event.type === 'resize' || event.type === 'scroll') && layoutKeyboardResizeActive)
+        return;
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
         virtualKeyboardTransition.active &&
