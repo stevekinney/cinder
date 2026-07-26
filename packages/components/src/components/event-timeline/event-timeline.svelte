@@ -94,10 +94,7 @@
     // become a competing fixed-position containing block.
     target: () => {
       const owner = clusterTrigger?.closest<HTMLElement>('dialog[open], [popover]:popover-open');
-      // A transformed dialog becomes a fixed-position containing block; keep
-      // viewport-relative Floating UI coordinates rooted at body in that case.
-      if (owner && getComputedStyle(owner).transform === 'none') return owner;
-      return document.body;
+      return owner ?? document.body;
     },
     inheritAttributes: true,
     source: () => clusterTrigger,
@@ -110,6 +107,10 @@
     placement: () => 'bottom-start',
     offset: () => 8,
     shiftPadding: () => 8,
+    strategy: () => {
+      const owner = clusterTrigger?.closest<HTMLElement>('dialog[open], [popover]:popover-open');
+      return owner && getComputedStyle(owner).transform !== 'none' ? 'absolute' : 'fixed';
+    },
   });
 
   function toTimestamp(value: EventTimelineDate | undefined): number | undefined {

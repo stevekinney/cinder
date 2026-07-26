@@ -288,10 +288,41 @@ describe('EventTimeline', () => {
     expect(document.activeElement).toBe(cluster);
   });
 
-  test('keeps cluster surfaces in the viewport top layer for native dialogs', () => {
-    expect(EVENT_TIMELINE_SOURCE).toContain('return owner ?? document.body');
-    expect(EVENT_TIMELINE_SOURCE).toContain("? 'absolute' : 'fixed'");
-    expect(EVENT_TIMELINE_SOURCE).toContain('closest<HTMLElement>(');
+  test('positions cluster surfaces inside transformed native dialogs', async () => {
+    const dialog = document.createElement('dialog');
+    dialog.open = true;
+    document.body.append(dialog);
+    const original = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = ((element: Element) => {
+      const style = original(element);
+      return element === dialog
+        ? ({ ...style, transform: 'scale(0.98)' } as CSSStyleDeclaration)
+        : style;
+    }) as typeof getComputedStyle;
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      dialog.append(container.firstElementChild!);
+      await fireEvent.click(dialog.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      await waitFor(() => {
+        const surface = dialog.querySelector<HTMLElement>('[role="dialog"]');
+        expect(surface).not.toBeNull();
+        expect(surface?.parentElement).toBe(dialog);
+        expect(surface?.style.position).toBe('absolute');
+      });
+      await waitFor(() =>
+        expect(document.activeElement).toBe(dialog.querySelector('[role="dialog"]')),
+      );
+    } finally {
+      globalThis.getComputedStyle = original;
+      dialog.remove();
+    }
   });
 
   test('outside pointer dismissal does not refocus the cluster trigger', async () => {
