@@ -114,6 +114,13 @@
       return null;
     }
   }
+
+  function clusterSurfaceMaxInlineSize(): string {
+    const owner = portalOwner();
+    if (!owner) return '28rem';
+    const width = owner.getBoundingClientRect().width;
+    return width > 0 ? `min(28rem, ${width}px)` : '28rem';
+  }
   const clusterPortalAttachment = createPortalAttachment({
     // Anchored overlay coordinates are viewport-relative (fixed strategy). Keep the
     // surface in the document top layer so transformed dialog containers cannot
@@ -553,6 +560,7 @@
               data-cinder-position-ready={anchoredClusterSurface.positionReady}
               aria-hidden={anchoredClusterSurface.positionReady ? undefined : 'true'}
               style={anchoredClusterSurface.positionStyle}
+              style:max-inline-size={clusterSurfaceMaxInlineSize()}
               {@attach dismissOnOutsidePointerdown}
             >
               <strong>{cluster.accessibleLabel}</strong>
