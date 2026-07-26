@@ -485,6 +485,63 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('a closing window keyboard resize preserves a draft after blur', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Blurred keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      textarea.blur();
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Blurred keyboard draft');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+    }
+  });
+
   test.each([
     { focusState: 'focused', blurBeforeClose: false },
     { focusState: 'just blurred', blurBeforeClose: true },

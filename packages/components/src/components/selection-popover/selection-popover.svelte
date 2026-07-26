@@ -236,11 +236,12 @@
         const composerHasFocus =
           document.activeElement instanceof Node &&
           popoverElement?.contains(document.activeElement);
-        const virtualKeyboardTransition = readVirtualKeyboardTransition('window').active;
+        const virtualKeyboardTransition = readVirtualKeyboardTransition('window');
         if (
           !viewportWidthChanged &&
-          composerHasFocus &&
-          (!viewportHeightChanged || virtualKeyboardTransition)
+          (!viewportHeightChanged || virtualKeyboardTransition.active) &&
+          (composerHasFocus ||
+            (virtualKeyboardTransition.active && !virtualKeyboardTransition.isVisible))
         ) {
           return;
         }
