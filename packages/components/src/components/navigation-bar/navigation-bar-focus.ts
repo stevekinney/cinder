@@ -60,7 +60,7 @@ export function findFocusTargetAfterNavigationItems(
       Boolean(navigationBar.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING),
   );
   if (followingCandidates.length > 0) return followingCandidates[0] ?? null;
-  const pageCandidates = getSequentialFocusTargets(document).filter(
+  const pageCandidates = getSequentialFocusTargets(document.body).filter(
     (candidate) => !navigationBar.contains(candidate) && !itemsRegion?.contains(candidate),
   );
   return pageCandidates.at(-1) ?? null;
