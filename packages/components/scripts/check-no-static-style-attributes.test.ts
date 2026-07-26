@@ -30,6 +30,12 @@ describe('findStaticStyleAttributes', () => {
     ]);
   });
 
+  test('flags constant interpolations in style attributes', () => {
+    expect(findStaticStyleAttributes(`<div style="color: {'red'}"></div>`)).toEqual([
+      { line: 1, column: 6 },
+    ]);
+  });
+
   test('flags numeric style directive literals', () => {
     expect(findStaticStyleAttributes('<div style:opacity={0.5}></div>')).toEqual([
       { line: 1, column: 6 },
@@ -46,6 +52,11 @@ describe('findStaticStyleAttributes', () => {
     expect(findStaticStyleAttributes('<div style={{ color: "red", opacity: 0.5 }}></div>')).toEqual(
       [{ line: 1, column: 6 }],
     );
+  });
+  test('allows object styles with dynamic computed keys', () => {
+    expect(
+      findStaticStyleAttributes(`<div {...{ style: { [propertyName]: 'red' } }}></div>`),
+    ).toEqual([]);
   });
   test('flags folded constant expressions and object spreads', () => {
     expect(

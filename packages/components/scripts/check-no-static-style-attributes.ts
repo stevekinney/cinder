@@ -38,7 +38,16 @@ function isNode(value: unknown): value is SvelteNode {
 }
 
 function isStaticValue(value: unknown): boolean {
-  if (Array.isArray(value)) return value.length > 0 && value.every((part) => part.type === 'Text');
+  if (Array.isArray(value))
+    return (
+      value.length > 0 &&
+      value.every(
+        (part) =>
+          isNode(part) &&
+          (part.type === 'Text' ||
+            (part.type === 'ExpressionTag' && isStaticExpression(part['expression']))),
+      )
+    );
   if (!isNode(value)) return false;
   if (value.type !== 'ExpressionTag') return false;
   const expression = value['expression'];
@@ -81,7 +90,10 @@ function isStaticExpression(expression: unknown): boolean {
       Array.isArray(properties) &&
       properties.every(
         (property) =>
-          isNode(property) && property.type === 'Property' && isStaticExpression(property['value']),
+          isNode(property) &&
+          property.type === 'Property' &&
+          (!property['computed'] || isStaticExpression(property['key'])) &&
+          isStaticExpression(property['value']),
       )
     );
   }
