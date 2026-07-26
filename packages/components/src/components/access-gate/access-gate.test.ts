@@ -58,6 +58,7 @@ describe('AccessGate', () => {
     );
     expect(styles).toContain('.cinder-access-gate__inline-reason {');
     expect(styles).toContain('display: inline-block;');
+    expect(styles).toContain('align-self: flex-start;');
     expect(styles).toContain('padding-inline-start: calc(0.875rem + var(--cinder-space-1));');
     expect(styles).toContain('.cinder-access-gate__inline-reason > svg {');
     expect(styles).toContain('position: absolute;');

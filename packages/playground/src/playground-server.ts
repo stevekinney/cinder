@@ -2553,10 +2553,9 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const generationAtStart = rebuildGeneration;
     const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
-    prebuild = await eagerPrebuildAll();
-    await getManifests().catch((error: unknown) => {
-      console.error('[playground] manifest pre-warm failed:', error);
-    });
+    // Register before the eager build so deletions and edits during warmup
+    // advance the generation even when the removed file is no longer present
+    // in the end-of-build mtime scan.
     if (watchers.length === 0) {
       try {
         watchers = startWatcher();
@@ -2565,6 +2564,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
+    prebuild = await eagerPrebuildAll();
+    await getManifests().catch((error: unknown) => {
+      console.error('[playground] manifest pre-warm failed:', error);
+    });
     const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
     if (
       isWarmupStable(
