@@ -23,6 +23,7 @@ const STALE_PHRASES: string[] = [
   'opt-in highlighting',
   '_Pending',
   'Pending when this review applies.',
+  '_Record',
 ];
 
 type Violation = {
