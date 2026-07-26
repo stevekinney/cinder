@@ -2511,14 +2511,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
   const { port: actualPort, server } = playgroundHttpServer;
 
-  let watchers: FSWatcher[];
-  try {
-    watchers = startWatcher();
-  } catch (error) {
-    // startWatcher() failed — stop the already-listening server before rethrowing.
-    await server.stop(true);
-    throw error;
-  }
+  let watchers: FSWatcher[] = [];
 
   const dispose = createSharedDisposer(async () => {
     for (const watcher of watchers) {
@@ -2568,6 +2561,12 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     console.error('[playground] manifest pre-warm failed:', error);
   });
   startupReady = true;
+  try {
+    watchers = startWatcher();
+  } catch (error) {
+    await dispose();
+    throw error;
+  }
   return {
     port: actualPort,
     dispose: async () => {
