@@ -203,6 +203,10 @@
       ? clampToBounds(normalizeValue(target.value, granularity))
       : undefined;
     if (nextValue !== value) emit(nextValue);
+    else if (nextValue !== undefined && target.value !== nextValue) {
+      target.value = nextValue;
+      updateInputValidity(target);
+    }
   }
 
   function handleInput(event: Event) {

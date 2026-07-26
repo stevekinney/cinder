@@ -231,6 +231,8 @@
   async function focusDate(iso: string, moveDomFocus = false) {
     const parsed = parseISODate(iso);
     if (!parsed) return;
+    if (min && iso < min) iso = min;
+    if (max && iso > max) iso = max;
     focusedIso = iso;
     visibleMonthDate = startOfMonth(parsed);
     if (!moveDomFocus) return;
