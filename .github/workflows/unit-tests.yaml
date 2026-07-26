@@ -323,6 +323,9 @@ jobs:
             bunx turbo run test --filter=@cinder/playground
           fi
 
+      - name: Check Playground source temporary directories
+        run: bun run --filter=@cinder/playground check:source-temp
+
       - name: Run component unit tests (scoped)
         # Scopes the `@lostgradient/cinder` (components) package to the changed components and
         # their dependents. `@lostgradient/markdown`/`@lostgradient/editor`

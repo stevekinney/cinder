@@ -27,7 +27,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { existsSync, rmSync, watch, type FSWatcher } from 'node:fs';
-import { dirname, isAbsolute, join, relative as relativePath, sep } from 'node:path';
+import { isAbsolute, join, relative as relativePath, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { initializeHighlighter, renderMarkdown } from '@lostgradient/markdown/rendering';
@@ -88,6 +88,7 @@ import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import { stripExampleHarness } from '../../components/scripts/lib/strip-example-harness.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
+import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 import {
   isSnapshotMode,
   snapshotModeHtmlAttribute,
@@ -115,8 +116,6 @@ export function resolvePreferredPort(): number {
 
 export const PORT = resolvePreferredPort();
 const MAX_PORT_SCAN_ATTEMPTS = 100;
-// import.meta.dirname is packages/playground/src/
-const PLAYGROUND_ROOT = dirname(import.meta.dirname); // packages/playground/
 const COMPONENTS_ROOT = CINDER_COMPONENT_SOURCE.packageRoot; // packages/components/
 const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
 
@@ -777,9 +776,9 @@ async function buildBundleUncached(
   // other on disk; the basename itself stays stable so Bun's `[name]`
   // resolves predictably.
   const entryBasename = `bundle-${componentName}-${scenario}`;
-  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
-  const shim = `export { default } from '../examples/${componentName}/${scenario}.example.svelte';\n`;
+  const shim = `export { default } from '../../src/examples/${componentName}/${scenario}.example.svelte';\n`;
 
   try {
     // Bun.write auto-creates parent directories. We keep the write inside
@@ -878,13 +877,13 @@ async function compilePageBundleArtifacts(
   // which renders a "No examples found" fallback.
 
   const entryBasename = `page-${componentName}`;
-  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
 
   const scenarioImports = scenarios
     .map(
       (scenario, index) =>
-        `import Scenario_${index} from '../examples/${componentName}/${scenario}.example.svelte';`,
+        `import Scenario_${index} from '../../src/examples/${componentName}/${scenario}.example.svelte';`,
     )
     .join('\n');
   const scenarioRegistrations = scenarios
@@ -893,7 +892,7 @@ async function compilePageBundleArtifacts(
 
   const entrySource = `import { hydrate, mount } from 'svelte';
 
-import ComponentPage from '../component-page.svelte';
+import ComponentPage from '../../src/component-page.svelte';
 import * as BareComponentModule from ${JSON.stringify(componentDefinition.importPath)};
 ${scenarioImports}
 const scenarios: Record<string, unknown> = {
@@ -1072,7 +1071,7 @@ async function compileFixtureBundleArtifacts(
   componentOrHostPath: string,
 ): Promise<{ entryPath: string; entryCode: string; artifacts: Map<string, string> } | null> {
   const entryBasename = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
-  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
   const propsTempPath = join(entryTempDir, `${entryBasename}-props.ts`);
   const componentImport = relativeImportSpecifier(entryTempDir, componentOrHostPath);
@@ -1201,13 +1200,13 @@ async function compileShellBundleArtifacts(): Promise<{
   artifacts: Map<string, string>;
 } | null> {
   const entryBasename = 'shell-shell';
-  const entryTempDir = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+  const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
   // Side-effect import: `shell-entry.ts` calls `mount(Shell, ...)` at module
   // top level and exports nothing. `export {} from` is a re-export of named
   // bindings and is eligible for tree-shaking when the source exports no
   // names; a bare side-effect import preserves the module's evaluation.
-  const shim = `import '../shell-app/shell-entry.ts';\n`;
+  const shim = `import '../../src/shell-app/shell-entry.ts';\n`;
 
   try {
     await Bun.write(entryTempPath, shim);
@@ -1259,7 +1258,7 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
         throw new Error(`Shell server bundle failed:\n${result.logs.join('\n')}`);
       }
 
-      const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+      const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
       const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
       let loaded: unknown;
       try {
@@ -1319,7 +1318,7 @@ async function loadPageServerRenderer(): Promise<PageServerRenderer> {
         throw new Error(`Page server bundle failed:\n${result.logs.join('\n')}`);
       }
 
-      const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+      const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
       const serverBundlePath = join(serverBundleDirectory, 'page-server.js');
       let loaded: unknown;
       try {

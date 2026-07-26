@@ -120,6 +120,7 @@ packages/playground/public/
 scripts/playground/.controls-*.svelte
 # Per-build UUID temp dirs created by buildBundle/buildPageBundle.
 **/.tmp-*/
+packages/playground/.tmp/
 # Import-graph leanness test scratch dirs.
 **/.import-graph-*/
 
