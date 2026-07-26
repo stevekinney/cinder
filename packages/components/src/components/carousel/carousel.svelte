@@ -490,7 +490,7 @@
       <button
         type="button"
         class="cinder-carousel__control"
-        onclick={goNext}
+        onclick={() => goNext()}
         disabled={slides.length < 2}
       >
         {controlLabels?.next ?? 'Next'}
