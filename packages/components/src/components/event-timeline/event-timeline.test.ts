@@ -297,9 +297,10 @@ describe('EventTimeline', () => {
     const original = globalThis.getComputedStyle;
     globalThis.getComputedStyle = ((element: Element) => {
       const style = original(element);
-      return element === dialog
-        ? ({ ...style, transform: 'scale(0.98)' } as CSSStyleDeclaration)
-        : style;
+      if (element !== dialog) return style;
+      const transformedStyle = Object.create(style) as CSSStyleDeclaration;
+      Object.defineProperty(transformedStyle, 'transform', { value: 'scale(0.98)' });
+      return transformedStyle;
     }) as typeof getComputedStyle;
     try {
       const { container } = render(EventTimeline, {
