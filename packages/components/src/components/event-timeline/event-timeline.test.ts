@@ -288,6 +288,11 @@ describe('EventTimeline', () => {
     expect(document.activeElement).toBe(cluster);
   });
 
+  test('keeps cluster surfaces in the viewport top layer for native dialogs', () => {
+    expect(EVENT_TIMELINE_SOURCE).toContain('return document.body');
+    expect(EVENT_TIMELINE_SOURCE).toContain('closest<HTMLElement>(');
+  });
+
   test('outside pointer dismissal does not refocus the cluster trigger', async () => {
     const { container } = render(EventTimeline, {
       start,

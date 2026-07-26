@@ -92,7 +92,13 @@
     // Anchored overlay coordinates are viewport-relative (fixed strategy). Keep the
     // surface in the document top layer so transformed dialog containers cannot
     // become a competing fixed-position containing block.
-    target: () => document.body,
+    target: () => {
+      const owner = clusterTrigger?.closest<HTMLElement>('dialog[open], [popover]:popover-open');
+      // A transformed dialog becomes a fixed-position containing block; keep
+      // viewport-relative Floating UI coordinates rooted at body in that case.
+      if (owner && getComputedStyle(owner).transform === 'none') return owner;
+      return document.body;
+    },
     inheritAttributes: true,
     source: () => clusterTrigger,
   });
