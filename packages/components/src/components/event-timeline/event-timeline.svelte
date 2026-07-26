@@ -88,7 +88,7 @@
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
   const clusterPortalAttachment = createPortalAttachment({
-    target: () => clusterTrigger?.closest('dialog[open]') ?? document.body,
+    target: () => clusterTrigger?.closest<HTMLElement>('dialog[open]') ?? document.body,
     inheritAttributes: true,
     source: () => clusterTrigger,
   });
