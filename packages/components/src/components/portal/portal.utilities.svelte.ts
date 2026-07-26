@@ -263,8 +263,7 @@ export function redispatchPortaledEvent(
   if (!sourceTarget) return false;
 
   const originalTarget = event.target;
-  const EventConstructor = event.constructor as new (type: string, init?: EventInit) => Event;
-  const eventInit: EventInit & Record<string, unknown> = {
+  const eventInit: EventInit & { [property: string]: unknown } = {
     bubbles: true,
     cancelable: true,
   };
@@ -285,10 +284,9 @@ export function redispatchPortaledEvent(
     'altKey',
     'metaKey',
   ]) {
-    if (property in event)
-      eventInit[property] = (event as unknown as Record<string, unknown>)[property];
+    if (property in event) eventInit[property] = Reflect.get(event, property);
   }
-  const bridgedEvent = new EventConstructor(event.type, eventInit);
+  const bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
   redispatchedPortalEvents.add(bridgedEvent);
   Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
   if (event.defaultPrevented) bridgedEvent.preventDefault();

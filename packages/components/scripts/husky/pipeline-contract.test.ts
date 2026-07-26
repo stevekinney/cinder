@@ -235,6 +235,12 @@ describe('pipeline contract: package script composition (source-based: reads pac
     // into it would make ordinary explicit lint runs pay for checks that belong
     // in the slower `lint:invariants` chain.
     expect(lint).toContain('oxlint');
+    // Oxlint's directory operand can silently discover zero files under the
+    // package tsconfig. Keep an explicit source list so CI cannot report a
+    // green no-op and miss unsafe assertions in the component package.
+    expect(lint).toContain('$(find src scripts -type f');
+    expect(lint).toContain("-name '*.ts'");
+    expect(lint).toContain("-name '*.svelte'");
     const checkScriptNames = Object.keys(scripts).filter((name) => name.startsWith('check:'));
     for (const checkName of checkScriptNames) {
       expect(chainIncludesScript(lint ?? '', checkName)).toBe(false);
