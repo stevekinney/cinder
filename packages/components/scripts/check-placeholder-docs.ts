@@ -27,6 +27,7 @@ const ACCESSIBILITY_REVIEW_PHRASES: string[] = [
   '_Pending when this review applies.',
   '_Record',
 ];
+const PLACEHOLDER_TOKEN = /_(?:Pending|Record)(?:\s|_|$)/i;
 
 type Violation = {
   filePath: string;
@@ -53,10 +54,20 @@ export function findPlaceholderViolations(
       },
     ];
   }
-  const scan = (sectionLines: string[], phrases: string[], offset: number) => {
+  const scan = (
+    sectionLines: string[],
+    phrases: string[],
+    offset: number,
+    allowConditionalPendingTemplate = false,
+  ) => {
     for (const [index, line] of sectionLines.entries()) {
       for (const phrase of phrases) {
-        if (phrase === '_Pending' && line.includes('Pending when this review applies.')) continue;
+        if (
+          allowConditionalPendingTemplate &&
+          phrase === '_Pending' &&
+          line.includes('Pending when this review applies.')
+        )
+          continue;
         const matchesPhrase =
           phrase === '_Record' ? /_Record(?:\s|_|$)/.test(line) : line.includes(phrase);
         if (matchesPhrase) {
@@ -196,13 +207,14 @@ export function findPlaceholderViolations(
       lines.slice(accessibilityHeading + 1, accessibilityEnd),
       ACCESSIBILITY_REVIEW_PHRASES,
       accessibilityHeading + 1,
+      true,
     );
     const accessibilitySection = lines.slice(accessibilityHeading + 1, accessibilityEnd);
     for (const fieldName of ['Reviewer', 'Review outcome']) {
       const field = accessibilitySection.find((line) =>
         new RegExp(`^-\\s*${fieldName}:\\s*\\S`, 'i').test(line.trim()),
       );
-      if (!field || /_Pending|_Record/i.test(field))
+      if (!field || PLACEHOLDER_TOKEN.test(field))
         violations.push({
           filePath,
           lineNumber: accessibilityHeading + 1,
@@ -227,18 +239,18 @@ export function findPlaceholderViolations(
         start === -1
           ? []
           : lines.slice(start + 1, nextHeading === -1 ? accessibilityEnd : nextHeading);
-      const substantiveKeyboardRow = section.some(
-        (line) =>
-          heading.source.includes('Keyboard') &&
-          /^\s*\|/.test(line) &&
-          !/^\s*\|?\s*:?-{3,}/.test(line) &&
-          !/^\s*\|?\s*key(?:\s+or\s+gesture)?\s*\|/i.test(line) &&
-          line.split('|').slice(1, -1).length === 3 &&
-          line
-            .split('|')
-            .slice(1, -1)
-            .every((cell) => cell.trim() !== ''),
-      );
+      const substantiveKeyboardRow = section.some((line) => {
+        if (!heading.source.includes('Keyboard') || !/^\s*\|/.test(line)) return false;
+        const cells = line
+          .trim()
+          .replace(/^\|/, '')
+          .replace(/\|$/, '')
+          .split('|')
+          .map((cell) => cell.trim());
+        if (cells.length !== 3 || cells.some((cell) => cell === '')) return false;
+        if (cells.every((cell) => /^:?-{3,}:?$/.test(cell))) return false;
+        return !/^key(?:\s+or\s+gesture)?$/i.test(cells[0]!);
+      });
       if (
         start === -1 ||
         !section.some((line) => line.trim() !== '') ||
@@ -271,10 +283,20 @@ export function hasRequiredAccessibilityRecord(content: string): boolean {
 
 async function main(): Promise<void> {
   const violations: Violation[] = [];
+  const inventory = await Bun.file(resolve(scriptDirectory, '..', 'components.json')).json();
+  const inventoryComponents = Array.isArray(inventory?.components)
+    ? inventory.components.filter(
+        (component): component is { id: string; a11y?: unknown } =>
+          typeof component === 'object' && component !== null && typeof component.id === 'string',
+      )
+    : [];
   const globs = [new Glob('**/README.md'), new Glob('**/*.a11y.md')];
+  const readmes = new Map<string, string>();
   for (const glob of globs)
     for await (const relative of glob.scan({ cwd: componentsRoot })) {
       const filePath = join(componentsRoot, relative);
+      if (relative.endsWith('/README.md') || relative === 'README.md')
+        readmes.set(relative.split('/').at(-2) ?? '', filePath);
       const content = await Bun.file(filePath).text();
       const readmeContent = await Bun.file(join(dirname(filePath), 'README.md')).text();
       const requiresRecord =
@@ -294,6 +316,22 @@ async function main(): Promise<void> {
         }
       }
     }
+
+  for (const component of inventoryComponents) {
+    if (!component.id || !component.a11y) continue;
+    const readmePath = readmes.get(component.id);
+    if (!readmePath) continue;
+    const directory = dirname(readmePath);
+    const adjacent = join(directory, `${component.id}.a11y.md`);
+    const flat = join(componentsRoot, `${component.id}.a11y.md`);
+    if (!(await Bun.file(adjacent).exists()) && !(await Bun.file(flat).exists()))
+      violations.push({
+        filePath: adjacent,
+        lineNumber: 1,
+        line: 'Inventory component is missing its accessibility review record.',
+        phrase: 'accessibility record',
+      });
+  }
 
   if (violations.length === 0) {
     process.stdout.write('✓ No placeholder or stale phrases found in component READMEs.\n');

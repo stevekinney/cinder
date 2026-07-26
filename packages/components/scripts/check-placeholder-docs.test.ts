@@ -112,6 +112,27 @@ describe('findPlaceholderViolations', () => {
       'accessibility section',
     ]);
   });
+  it('does not exempt pending design fields that use the conditional accessibility wording', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: _Pending when this review applies.\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static',
+      'component.a11y.md',
+    );
+    expect(violations.map(({ phrase }) => phrase)).toContain('_Pending');
+  });
+  it('accepts keyboard rows without a trailing outer pipe', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Key or gesture | Context | Expected behavior |\n| --- | --- | --- |\n| Tab | dialog | Moves focus\n\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations).toEqual([]);
+  });
+  it('does not treat recorded accessibility outcomes as placeholders', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: _Recorded as approved after changes._\n\n### Focus management\nDocumented\n### Keyboard matrix\n| Tab | dialog | Moves focus\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.some(({ phrase }) => phrase === 'accessibility review field')).toBe(false);
+  });
   it('rejects design placeholders regardless of accessibility applicability', () => {
     const violations = findPlaceholderViolations(
       'Applies: no — this component is non-interactive.\nDesign: Replace this sentence',
