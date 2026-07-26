@@ -36,6 +36,29 @@ type Violation = {
   phrase: string;
 };
 
+function parseMarkdownTableCells(line: string): string[] {
+  const body = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  const cells: string[] = [];
+  let cell = '';
+  let escaped = false;
+  for (const character of body) {
+    if (character === '|' && !escaped) {
+      cells.push(cell.trim());
+      cell = '';
+      continue;
+    }
+    if (character === '|' && escaped) {
+      cell = cell.slice(0, -1) + '|';
+      escaped = false;
+      continue;
+    }
+    cell += character;
+    escaped = character === '\\';
+  }
+  cells.push(cell.trim());
+  return cells;
+}
+
 export function findPlaceholderViolations(
   content: string,
   filePath: string,
@@ -241,12 +264,7 @@ export function findPlaceholderViolations(
           : lines.slice(start + 1, nextHeading === -1 ? accessibilityEnd : nextHeading);
       const substantiveKeyboardRow = section.some((line) => {
         if (!heading.source.includes('Keyboard') || !/^\s*\|/.test(line)) return false;
-        const cells = line
-          .trim()
-          .replace(/^\|/, '')
-          .replace(/\|$/, '')
-          .split('|')
-          .map((cell) => cell.trim());
+        const cells = parseMarkdownTableCells(line);
         if (cells.length !== 3 || cells.some((cell) => cell === '')) return false;
         if (cells.every((cell) => /^:?-{3,}:?$/.test(cell))) return false;
         return !/^key(?:\s+or\s+gesture)?$/i.test(cells[0]!);
@@ -286,8 +304,11 @@ async function main(): Promise<void> {
   const inventory = await Bun.file(resolve(scriptDirectory, '..', 'components.json')).json();
   const inventoryComponents = Array.isArray(inventory?.components)
     ? inventory.components.filter(
-        (component): component is { id: string; a11y?: unknown } =>
-          typeof component === 'object' && component !== null && typeof component.id === 'string',
+        (component: unknown): component is { id: string; a11y?: unknown } =>
+          typeof component === 'object' &&
+          component !== null &&
+          'id' in component &&
+          typeof component.id === 'string',
       )
     : [];
   const globs = [new Glob('**/README.md'), new Glob('**/*.a11y.md')];
@@ -298,7 +319,8 @@ async function main(): Promise<void> {
       if (relative.endsWith('/README.md') || relative === 'README.md')
         readmes.set(relative.split('/').at(-2) ?? '', filePath);
       const content = await Bun.file(filePath).text();
-      const readmeContent = await Bun.file(join(dirname(filePath), 'README.md')).text();
+      const siblingReadme = Bun.file(join(dirname(filePath), 'README.md'));
+      const readmeContent = (await siblingReadme.exists()) ? await siblingReadme.text() : '';
       const requiresRecord =
         relative.endsWith('.a11y.md') && readmeContent.includes('generated:a11y-record:required');
       violations.push(...findPlaceholderViolations(content, filePath, requiresRecord));

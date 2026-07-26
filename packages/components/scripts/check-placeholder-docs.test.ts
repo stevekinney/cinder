@@ -126,6 +126,13 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations).toEqual([]);
   });
+  it('accepts escaped pipes inside keyboard table cells', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Key or gesture | Context | Expected behavior |\n| --- | --- | --- |\n| ArrowUp \\| ArrowDown | listbox | Moves focus |\n\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations).toEqual([]);
+  });
   it('does not treat recorded accessibility outcomes as placeholders', () => {
     const violations = findPlaceholderViolations(
       '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: _Recorded as approved after changes._\n\n### Focus management\nDocumented\n### Keyboard matrix\n| Tab | dialog | Moves focus\n### Assistive-technology announcements\nDocumented',
