@@ -98,5 +98,5 @@ rg -n -e "icon:[[:space:]]*['\"][^'\"]+['\"]" packages/components/src/components
 rg -n "content:\\s*['\"]" packages/components/src/components --glob '*.css'
 rg -n '<svg\\b' packages/components/src/components --glob '*.svelte'
 rg -n 'mask(-image)?|data:image/svg\\+xml' packages/components/src/components --glob '*.css'
-rg -n '<svg\\b|data:image/svg\\+xml|icon:[[:space:]]*['\"][^'\"]+['\"]' packages/components/src/components --glob '*.examples.json'
+rg -n '<svg\\b|data:image/svg\\+xml|icon:[[:space:]]*[^[:space:]]+' packages/components/src/components --glob '*.examples.json'
 ```
