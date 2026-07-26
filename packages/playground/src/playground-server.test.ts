@@ -18,7 +18,7 @@
  * by the "playground bundle dependency build preflight" test.
  */
 
-import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
@@ -39,6 +39,7 @@ import {
   isWarmupStable,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
+  setPreparedShellServerRenderer,
   shellBuildSucceeded,
   triggerReload,
 } from './playground-server.ts';
@@ -73,6 +74,36 @@ beforeAll(async () => {
 });
 
 const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
+const testShellServerRenderer: NonNullable<
+  Parameters<typeof setPreparedShellServerRenderer>[0]
+> = ({ initialComponent, documentation, initialSearch }) => {
+  const search = new URLSearchParams(initialSearch);
+  const focusClass = search.get('focus') === '1' ? 'shell focus-mode' : 'shell';
+  const viewportWidth = search.get('w') ?? '';
+  const documentationBody =
+    documentation === null
+      ? ''
+      : `<article class="documentation" data-canonical-documentation>
+          <h1>${documentation.component.name}</h1>
+          <h2>Overview</h2>
+          ${documentation.readme.html}
+          <h2>Props</h2>
+          <iframe src="/page/${initialComponent}?preview=1"></iframe>
+          <a href="/page/${initialComponent}">Open documentation</a>
+        </article>`;
+
+  return {
+    body: `<div id="shell-root"><div class="${focusClass}">
+      <input id="viewport-width-input" value="${viewportWidth}" />
+      ${documentationBody}
+    </div></div>`,
+    head: '<style>.documentation { display: block; }</style>',
+  };
+};
+
+beforeEach(() => {
+  setPreparedShellServerRenderer(testShellServerRenderer);
+});
 
 describe('last-good rebuild fallback', () => {
   it('does not treat a last-good shell fallback as a successful fresh build', () => {
@@ -93,6 +124,7 @@ describe('last-good rebuild fallback', () => {
 });
 
 afterEach(async () => {
+  setPreparedShellServerRenderer(null);
   const servers = temporaryServers.splice(0);
   await Promise.all(servers.map((server) => server.stop(true)));
 });
