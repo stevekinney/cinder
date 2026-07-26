@@ -98,12 +98,13 @@
   let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
+  let isRtl = $state(false);
   function portalOwner(): HTMLElement | null {
     const trigger = clusterTrigger;
     if (!trigger) return null;
     try {
       const focusTrapRoot = trigger.closest<HTMLElement>(
-        '.cinder-modal__panel, .cinder-sheet__panel, .cinder-drawer__panel',
+        '.cinder-modal__panel, .cinder-sheet__panel, .cinder-drawer__panel, .cinder-popover',
       );
       if (focusTrapRoot) return focusTrapRoot;
       const dialog = trigger.closest<HTMLElement>('dialog');
@@ -194,7 +195,7 @@
     if (edge === 'start') return { start: position, end: position + labelWidthPercent };
     if (edge === 'end') return { start: position - labelWidthPercent, end: position };
 
-    const directionalOffset = lane % 2 === 0 ? -offsetPercent : offsetPercent;
+    const directionalOffset = (lane % 2 === 0 ? -offsetPercent : offsetPercent) * (isRtl ? -1 : 1);
     return {
       start: position + directionalOffset - labelWidthPercent / 2,
       end: position + directionalOffset + labelWidthPercent / 2,
@@ -223,6 +224,7 @@
 
   const observeItems = (node: HTMLElement) => {
     updateMeasuredWidth(node.getBoundingClientRect().width);
+    isRtl = getComputedStyle(node).direction === 'rtl';
     return observeResize(node);
   };
 
@@ -521,6 +523,7 @@
         </div>
       {:else}
         {@const cluster = renderItem.cluster}
+        {@const clusterId = `cinder-event-timeline-cluster-${cluster.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`}
         <div
           class="cinder-event-timeline__cluster"
           role="listitem"
@@ -535,6 +538,8 @@
             type="button"
             tabindex="0"
             aria-expanded={openClusterKey === cluster.key}
+            aria-haspopup="dialog"
+            aria-controls={clusterId}
             aria-label={cluster.accessibleLabel}
             onclick={(event) => {
               clusterTrigger = event.currentTarget as HTMLButtonElement;
@@ -544,6 +549,7 @@
           {#if openClusterKey === cluster.key}
             <div
               class="cinder-_floating-surface cinder-event-timeline__cluster-surface"
+              id={clusterId}
               role="dialog"
               aria-label={cluster.accessibleLabel}
               bind:this={clusterSurface}

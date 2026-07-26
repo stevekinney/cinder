@@ -277,16 +277,41 @@ describe('EventTimeline', () => {
       '1 event between 2026-07-03T06:04:00.000Z and 2026-07-03T06:04:00.000Z',
     );
     expect(cluster?.tabIndex).toBe(0);
+    expect(cluster?.getAttribute('aria-haspopup')).toBe('dialog');
 
     cluster?.focus();
     await fireEvent.click(cluster!);
     const dialog = document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
+    expect(cluster?.getAttribute('aria-controls')).toBe(dialog?.id);
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog?.textContent).toContain('Upcoming');
     await fireEvent.keyDown(window, { key: 'Escape' });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(cluster);
+  });
+
+  test('keeps cluster surfaces inside a Cinder popover panel', async () => {
+    const popover = document.createElement('div');
+    popover.className = 'cinder-popover';
+    document.body.append(popover);
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      popover.append(container.firstElementChild!);
+      await fireEvent.click(popover.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      await waitFor(() =>
+        expect(popover.querySelector('[role="dialog"]')?.parentElement).toBe(popover),
+      );
+    } finally {
+      popover.remove();
+    }
   });
 
   test('positions cluster surfaces inside transformed native dialogs', async () => {
