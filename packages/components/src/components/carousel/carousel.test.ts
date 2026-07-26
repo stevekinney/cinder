@@ -106,6 +106,40 @@ describe('Carousel', () => {
     expect(articles[2]?.getAttribute('aria-hidden')).toBeNull();
     expect(articles[2]?.hasAttribute('inert')).toBe(false);
     expect(articles[0]?.style.order).toBe('1');
+    expect(articles[0]?.hasAttribute('data-cinder-collapsed')).toBe(true);
+  });
+
+  test('animates numeric wraps that are adjacent in physical order', async () => {
+    const { container } = render(Carousel, { slides, activeIndex: 2 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 2 ? 0 : index === 0 ? 100 : 200, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+    scrollTo.mockClear();
+    await fireEvent.click(container.querySelectorAll('.cinder-carousel__control')[1]!);
+    expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'smooth' });
+  });
+
+  test('keeps interaction active until every pointer ends', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    await fireEvent.pointerDown(viewport, { pointerId: 1 });
+    await fireEvent.pointerDown(viewport, { pointerId: 2 });
+    await fireEvent.pointerUp(window, { pointerId: 2 });
+    jest.advanceTimersByTime(50);
+    expectActiveSlide(container, 0);
+    await fireEvent.pointerUp(window, { pointerId: 1 });
   });
 
   test('treats a one-pixel viewport border as aligned', async () => {
@@ -349,7 +383,7 @@ describe('Carousel', () => {
 
     jest.advanceTimersByTime(100);
     await waitFor(() => expectActiveSlide(container, 0));
-    expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'auto' });
+    expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'smooth' });
   });
 
   test('pauses autoplay while wheel scrolling settles', async () => {

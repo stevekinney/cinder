@@ -26,6 +26,7 @@
 
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -52,11 +53,12 @@
   let userPaused = $state(false);
   let isInteracting = $state(false);
   let isNativeScrolling = $state(false);
-  let settledIndex = $state(0);
-  let hasInitializedSettled = false;
+  let settledIndex = $state(
+    untrack(() => (slides.length < 1 ? 0 : Math.max(0, Math.min(slides.length - 1, activeIndex)))),
+  );
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
-  let activePointerId: number | null = null;
+  const activePointerIds = new SvelteSet<number>();
   let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
 
   const clampedLength = $derived(slides.length);
@@ -106,9 +108,8 @@
   function goTo(index: number, immediate = false) {
     if (clampedLength < 1) return;
     const nextIndex = ((index % clampedLength) + clampedLength) % clampedLength;
-    const wrapped = index < 0 || index >= clampedLength;
     activeIndex = nextIndex;
-    scrollToActiveSlide(immediate || wrapped ? 'auto' : undefined);
+    scrollToActiveSlide(immediate ? 'auto' : undefined);
   }
 
   function goPrevious() {
@@ -210,8 +211,8 @@
   }
 
   function finishPointerInteraction(event: PointerEvent): void {
-    if (activePointerId !== null && event.pointerId !== activePointerId) return;
-    activePointerId = null;
+    activePointerIds.delete(event.pointerId);
+    if (activePointerIds.size > 0) return;
     isInteracting = false;
     removePointerEndListeners();
   }
@@ -229,7 +230,7 @@
   function onPointerDown(event: PointerEvent): void {
     programmaticTarget = null;
     isInteracting = true;
-    activePointerId = event.pointerId;
+    activePointerIds.add(event.pointerId);
     removePointerEndListeners();
     window.addEventListener('pointerup', finishPointerInteraction);
     window.addEventListener('pointercancel', finishPointerInteraction);
@@ -271,10 +272,6 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
-    if (!hasInitializedSettled) {
-      settledIndex = currentIndex;
-      hasInitializedSettled = true;
-    }
     if (isInteracting || isNativeScrolling) return;
     slideIdentity;
     scrollToActiveSlide();
