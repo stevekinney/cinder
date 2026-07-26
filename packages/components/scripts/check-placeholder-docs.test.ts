@@ -100,4 +100,11 @@ describe('findPlaceholderViolations', () => {
       ).filter(({ phrase }) => phrase === 'accessibility section'),
     ).toHaveLength(2);
   });
+  it('does not accept an Applies decision outside the accessibility section', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n- Applies: no — unrelated\n\n## Novel interaction accessibility review\n### Focus management\nDocumented\n### Keyboard matrix\nDocumented\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.some(({ phrase }) => phrase === 'Applies contract')).toBe(true);
+  });
 });

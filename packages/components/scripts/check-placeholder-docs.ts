@@ -115,9 +115,20 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
       phrase: 'accessibility heading',
     });
   }
+  const accessibilitySectionEnd =
+    accessibilityHeading === -1
+      ? lines.length
+      : lines.findIndex(
+          (line, index) => index > accessibilityHeading && /^##\s+/i.test(line.trim()),
+        );
   const appliesMatches = lines
     .map((line, index) => ({ line, index }))
-    .filter(({ line }) => /^-?\s*Applies:/i.test(line.trim()));
+    .filter(
+      ({ line, index }) =>
+        index > accessibilityHeading &&
+        (accessibilitySectionEnd === -1 || index < accessibilitySectionEnd) &&
+        /^-?\s*Applies:/i.test(line.trim()),
+    );
   if (hasAccessibilityTemplate && appliesMatches.length !== 1) {
     violations.push({
       filePath,
