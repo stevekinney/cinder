@@ -17,7 +17,7 @@
 </script>
 
 <script lang="ts">
-  import Avatar from '../avatar/avatar.svelte';
+  import PersonByline from '../_internal/person-byline.svelte';
   import AvatarGroup from '../avatar-group/avatar-group.svelte';
   import Card from '../card/card.svelte';
   import Container from '../container/container.svelte';
@@ -43,10 +43,6 @@
       member.avatarSrc ? { name: member.name, src: member.avatarSrc } : { name: member.name },
     ),
   );
-
-  function avatarProps(name: string, src: string | undefined): { name: string; src?: string } {
-    return src ? { name, src } : { name };
-  }
 </script>
 
 <svelte:element
@@ -77,11 +73,12 @@
           <li class="cinder-team-section__item">
             <Card>
               <div class="cinder-team-section__person">
-                <Avatar {...avatarProps(member.name, member.avatarSrc)} size="lg" />
-                <div class="cinder-team-section__meta">
-                  <p class="cinder-team-section__name">{member.name}</p>
-                  <p class="cinder-team-section__role">{member.role}</p>
-                </div>
+                <PersonByline
+                  name={member.name}
+                  role={member.role}
+                  avatarSrc={member.avatarSrc}
+                  avatarSize="lg"
+                />
               </div>
               {#if member.bio}
                 <p class="cinder-team-section__bio">{member.bio}</p>

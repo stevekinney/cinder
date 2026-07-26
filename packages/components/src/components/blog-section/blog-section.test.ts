@@ -61,7 +61,7 @@ describe('BlogSection', () => {
         columns: 2,
       },
     });
-    expect(container.querySelector('.cinder-blog-section__author-name')?.textContent).toContain(
+    expect(container.querySelector('.cinder-person-byline__name')?.textContent).toContain(
       'Morgan Yu',
     );
     expect(

@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts">
-  import Avatar from '../avatar/avatar.svelte';
+  import PersonByline from '../_internal/person-byline.svelte';
   import Card from '../card/card.svelte';
   import Container from '../container/container.svelte';
   import { classNames } from '../../utilities/class-names.ts';
@@ -39,10 +39,6 @@
     class: className,
     ...rest
   }: TestimonialSectionProps = $props();
-
-  function avatarProps(name: string, src: string | undefined): { name: string; src?: string } {
-    return src ? { name, src } : { name };
-  }
 </script>
 
 <svelte:element
@@ -69,15 +65,11 @@
             <Card>
               <blockquote class="cinder-testimonial-section__quote">“{item.quote}”</blockquote>
               <div class="cinder-testimonial-section__person">
-                <Avatar {...avatarProps(item.name, item.avatarSrc)} size="sm" />
-                <div class="cinder-testimonial-section__person-meta">
-                  <p class="cinder-testimonial-section__name">{item.name}</p>
-                  {#if item.role || item.company}
-                    <p class="cinder-testimonial-section__role">
-                      {[item.role, item.company].filter(Boolean).join(' · ')}
-                    </p>
-                  {/if}
-                </div>
+                <PersonByline
+                  name={item.name}
+                  role={[item.role, item.company].filter(Boolean).join(' · ')}
+                  avatarSrc={item.avatarSrc}
+                />
               </div>
             </Card>
           </li>

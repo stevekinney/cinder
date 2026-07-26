@@ -8,6 +8,7 @@
 @import './components/_field-label.css';
 @import './components/_floating-surface.css';
 @import './components/_input-frame.css';
+@import '../components/_internal/person-byline.css';
 
 @import '../components/access-gate/access-gate.css';
 @import '../components/accordion-item/accordion-item.css';
