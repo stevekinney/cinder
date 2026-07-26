@@ -17,6 +17,9 @@ setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: KanbanBoard } = await import('./kanban-board.svelte');
 const kanbanBoardCss = await Bun.file(new URL('./kanban-board.css', import.meta.url)).text();
+const sortableListCss = await Bun.file(
+  new URL('../sortable-list/sortable-list.css', import.meta.url),
+).text();
 
 afterEach(() => {
   cleanup();
@@ -198,6 +201,22 @@ describe('kanban board styles', () => {
   test('column reorder handle icon inherits the button text color', () => {
     expect(kanbanBoardCss).toMatch(
       /\.cinder-kanban-board__column-handle\s+svg\s*\{[^}]*fill:\s*currentcolor;/,
+    );
+  });
+
+  test('shared drag preview uses the same medium elevation in both style entries', () => {
+    const dragPreviewShadow =
+      /\.cinder-sortable-drag-preview\s*\{[^}]*box-shadow:\s*var\(--cinder-shadow-md\);/;
+
+    expect(kanbanBoardCss).toMatch(dragPreviewShadow);
+    expect(sortableListCss).toMatch(dragPreviewShadow);
+  });
+
+  test('scroll edges use a translucent theme-aware foreground mix', () => {
+    expect(kanbanBoardCss).toContain('--cinder-kanban-board-scroll-edge: color-mix(');
+    expect(kanbanBoardCss).toContain('var(--cinder-kanban-board-scroll-edge)');
+    expect(kanbanBoardCss).not.toMatch(
+      /linear-gradient\([^)]*var\(--cinder-surface-raised\), transparent\)/,
     );
   });
 });
