@@ -37,7 +37,6 @@ type Violation = {
 
 export function findPlaceholderViolations(content: string, filePath: string): Violation[] {
   const isAccessibilityRecord = filePath.endsWith('.a11y.md');
-  const accessibilityApplies = /^-?\s*Applies:\s*yes\b/im.test(content);
   const lines = content.split('\n');
   const violations: Violation[] = [];
   const scan = (sectionLines: string[], phrases: string[], offset: number) => {
@@ -121,6 +120,7 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
       : lines.findIndex(
           (line, index) => index > accessibilityHeading && /^##\s+/i.test(line.trim()),
         );
+  const accessibilityEnd = accessibilitySectionEnd === -1 ? lines.length : accessibilitySectionEnd;
   const appliesMatches = lines
     .map((line, index) => ({ line, index }))
     .filter(
@@ -136,17 +136,21 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
       line: 'Expected exactly one Applies yes/no decision.',
       phrase: 'Applies contract',
     });
-  } else if (
-    appliesMatches[0] &&
-    !/^-?\s*Applies:\s*(yes|no)\b\s*\S.*/i.test(appliesMatches[0].line.trim())
-  ) {
-    violations.push({
-      filePath,
-      lineNumber: appliesMatches[0].index + 1,
-      line: appliesMatches[0].line.trim(),
-      phrase: 'Applies contract',
-    });
+  } else if (appliesMatches[0]) {
+    const appliesMatch = appliesMatches[0].line.trim().match(/^-?\s*Applies:\s*(yes|no)\b(.*)$/i);
+    const explanation = appliesMatch?.[2]?.replace(/[\s—–-]/g, '') ?? '';
+    if (!appliesMatch || explanation.length === 0) {
+      violations.push({
+        filePath,
+        lineNumber: appliesMatches[0].index + 1,
+        line: appliesMatches[0].line.trim(),
+        phrase: 'Applies contract',
+      });
+    }
   }
+  const accessibilityApplies = /^yes$/i.test(
+    appliesMatches[0]?.line.trim().match(/^-?\s*Applies:\s*(yes|no)\b/i)?.[1] ?? '',
+  );
   if (accessibilityHeading === -1) {
     scan(
       lines,
@@ -161,10 +165,23 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
   scan(lines.slice(0, designEnd), [...DESIGN_REVIEW_PHRASES, '_Pending'], 0);
   if (accessibilityHeading !== -1 && accessibilityApplies) {
     scan(
-      lines.slice(accessibilityHeading + 1),
+      lines.slice(accessibilityHeading + 1, accessibilityEnd),
       ACCESSIBILITY_REVIEW_PHRASES,
       accessibilityHeading + 1,
     );
+    const accessibilitySection = lines.slice(accessibilityHeading + 1, accessibilityEnd);
+    for (const fieldName of ['Reviewer', 'Review outcome']) {
+      const field = accessibilitySection.find((line) =>
+        new RegExp(`^-\\s*${fieldName}:\\s*\\S`, 'i').test(line.trim()),
+      );
+      if (!field || /_Pending|_Record/i.test(field))
+        violations.push({
+          filePath,
+          lineNumber: accessibilityHeading + 1,
+          line: `Missing required accessibility ${fieldName.toLowerCase()} field.`,
+          phrase: 'accessibility review field',
+        });
+    }
     const requiredAccessibilitySections = [
       /^###\s+Focus management\s*$/i,
       /^###\s+Keyboard matrix\s*$/i,
@@ -172,14 +189,28 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     ];
     for (const heading of requiredAccessibilitySections) {
       const start = lines.findIndex(
-        (line, index) => index > accessibilityHeading && heading.test(line.trim()),
+        (line, index) =>
+          index > accessibilityHeading && index < accessibilityEnd && heading.test(line.trim()),
       );
       const nextHeading = lines.findIndex(
-        (line, index) => index > start && /^###\s+/i.test(line.trim()),
+        (line, index) => index > start && index < accessibilityEnd && /^###\s+/i.test(line.trim()),
       );
       const section =
-        start === -1 ? [] : lines.slice(start + 1, nextHeading === -1 ? lines.length : nextHeading);
-      if (start === -1 || !section.some((line) => line.trim() !== ''))
+        start === -1
+          ? []
+          : lines.slice(start + 1, nextHeading === -1 ? accessibilityEnd : nextHeading);
+      const substantiveKeyboardRow = section.some(
+        (line) =>
+          heading.source.includes('Keyboard') &&
+          /^\s*\|/.test(line) &&
+          !/^\s*\|?\s*:?-{3,}/.test(line) &&
+          !/^\s*\|?\s*key\s*\|/i.test(line),
+      );
+      if (
+        start === -1 ||
+        !section.some((line) => line.trim() !== '') ||
+        (heading.source.includes('Keyboard') && !substantiveKeyboardRow)
+      )
         violations.push({
           filePath,
           lineNumber: start === -1 ? accessibilityHeading + 1 : start + 1,

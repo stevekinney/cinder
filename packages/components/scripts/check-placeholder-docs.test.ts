@@ -12,6 +12,8 @@ describe('findPlaceholderViolations', () => {
       '_Pending',
       '_Pending',
       '_Record',
+      'accessibility review field',
+      'accessibility review field',
       'accessibility section',
       'accessibility section',
       'accessibility section',
@@ -40,6 +42,8 @@ describe('findPlaceholderViolations', () => {
       '_Pending',
       '_Pending when this review applies.',
       '_Record',
+      'accessibility review field',
+      'accessibility review field',
       'accessibility section',
       'accessibility section',
       'accessibility section',
@@ -89,16 +93,16 @@ describe('findPlaceholderViolations', () => {
   });
   it('requires complete accessibility sections when Applies is yes', () => {
     const violations = findPlaceholderViolations(
-      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n\n### Focus management\nDocumented\n\n### Keyboard matrix\nDocumented\n\n### Assistive-technology announcements\nDocumented',
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Key | Behavior |\n| --- | --- |\n| Tab | Moves focus |\n\n### Assistive-technology announcements\nDocumented',
       'component.a11y.md',
     );
     expect(violations).toEqual([]);
     expect(
       findPlaceholderViolations(
-        '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n\n### Focus management\n\n### Keyboard matrix\nDocumented',
+        '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\n\n### Keyboard matrix\nDocumented',
         'component.a11y.md',
       ).filter(({ phrase }) => phrase === 'accessibility section'),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
   });
   it('does not accept an Applies decision outside the accessibility section', () => {
     const violations = findPlaceholderViolations(
