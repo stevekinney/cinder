@@ -489,6 +489,64 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('uses CSSContainerRule.containerName for named size queries', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.setProperty('container-name', 'sidebar');
+    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 400 }) });
+    const wrapper = document.createElement('div');
+    wrapper.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(wrapper, 'getBoundingClientRect', { value: () => ({ width: 100 }) });
+    const element = document.createElement('div');
+    element.className = 'named-container-ltr';
+    wrapper.appendChild(element);
+    container.appendChild(wrapper);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({ selectorText: '.named-container-ltr', direction: 'ltr' });
+    const outerRule = {
+      cssText: '@container sidebar (min-width: 20rem) { .named-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem)',
+      containerName: 'sidebar',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('evaluates range-syntax size queries', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 400 }) });
+    const element = document.createElement('div');
+    element.className = 'range-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({ selectorText: '.range-container-ltr', direction: 'ltr' });
+    const outerRule = {
+      cssText: '@container (width >= 20rem) { .range-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(width >= 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('ignores inaccessible and invalid CSS direction rules', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

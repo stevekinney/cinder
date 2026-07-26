@@ -234,7 +234,7 @@ function isContainerQueryActive(
     }
     return false;
   }
-  const containerName = Reflect.get(rule, 'name');
+  const containerName = Reflect.get(rule, 'containerName');
   let container = element.parentElement;
   while (container) {
     const computedStyle = getComputedStyle(container);
@@ -268,6 +268,15 @@ function isContainerQueryActive(
     Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? 16 : 1);
   if (minimum && width < toPixels(minimum)) return false;
   if (maximum && width > toPixels(maximum)) return false;
+  const range = /width\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  if (range) {
+    const threshold = Number(range[2]) * (range[3]!.toLowerCase() === 'rem' ? 16 : 1);
+    if (range[1] === '>=' && width < threshold) return false;
+    if (range[1] === '>' && width <= threshold) return false;
+    if (range[1] === '<=' && width > threshold) return false;
+    if (range[1] === '<' && width >= threshold) return false;
+    return true;
+  }
   return minimum !== null || maximum !== null;
 }
 
