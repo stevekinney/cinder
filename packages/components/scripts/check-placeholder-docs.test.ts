@@ -41,6 +41,13 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
   });
+  it('scans design placeholders when accessibility appears first', () => {
+    const violations = findPlaceholderViolations(
+      '## Novel interaction accessibility review\n- Applies: no — static component\n\n## Design review (required)\n- Reviewer: _Pending\n- Review outcome: _Pending\n- Nearest neighbours: _Pending\n- Why this component exists: _Pending',
+      'component.a11y.md',
+    );
+    expect(violations.some(({ phrase }) => phrase === '_Pending')).toBe(true);
+  });
   it('parses bulleted applicability and scopes accessibility placeholders to its section', () => {
     const appliesNo = findPlaceholderViolations(
       '## Design review (required)\n- Reviewer: _Pending\n- Review outcome: done\n- Nearest neighbours: known\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static component\n- Reviewer: _Pending when this review applies.\n- Focus: _Record',

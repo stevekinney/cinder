@@ -161,8 +161,19 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     );
     return violations;
   }
-  const designEnd = accessibilityHeading === -1 ? lines.length : accessibilityHeading;
-  scan(lines.slice(0, designEnd), [...DESIGN_REVIEW_PHRASES, '_Pending'], 0);
+  const designHeading = lines.findIndex((line) =>
+    /^##\s+Design review \(required\)\s*$/i.test(line.trim()),
+  );
+  const designSectionEnd =
+    designHeading === -1
+      ? lines.length
+      : lines.findIndex((line, index) => index > designHeading && /^##\s+/i.test(line.trim()));
+  const designEnd = designSectionEnd === -1 ? lines.length : designSectionEnd;
+  scan(
+    lines.slice(designHeading === -1 ? 0 : designHeading, designEnd),
+    [...DESIGN_REVIEW_PHRASES, '_Pending'],
+    designHeading === -1 ? 0 : designHeading,
+  );
   if (accessibilityHeading !== -1 && accessibilityApplies) {
     scan(
       lines.slice(accessibilityHeading + 1, accessibilityEnd),
