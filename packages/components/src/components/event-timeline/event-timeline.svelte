@@ -25,7 +25,11 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
-  import { isEventTimelineModal } from './event-timeline-modal.ts';
+  import {
+    hasFixedPositionContainingBlock,
+    isEventTimelineModal,
+    observeEventTimelineDirection,
+  } from './event-timeline-modal.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
@@ -131,15 +135,7 @@
     strategy: () => {
       const owner = portalOwner();
       if (!owner) return 'fixed';
-      const style = getComputedStyle(owner);
-      return style.transform !== 'none' ||
-        style.translate !== 'none' ||
-        style.scale !== 'none' ||
-        style.rotate !== 'none' ||
-        style.filter !== 'none' ||
-        style.contain !== 'none'
-        ? 'absolute'
-        : 'fixed';
+      return hasFixedPositionContainingBlock(owner) ? 'absolute' : 'fixed';
     },
   });
 
@@ -220,15 +216,10 @@
     };
     updateMeasuredWidth(node.getBoundingClientRect().width);
     updateDirection();
-    const directionObserver = new MutationObserver(updateDirection);
-    directionObserver.observe(node.ownerDocument.documentElement, {
-      attributes: true,
-      attributeFilter: ['class', 'dir', 'style'],
-      subtree: true,
-    });
+    const stopDirectionObserver = observeEventTimelineDirection(node, updateDirection);
     const stopResizeObserver = observeResize(node);
     return () => {
-      directionObserver.disconnect();
+      stopDirectionObserver();
       stopResizeObserver?.();
     };
   };

@@ -17,6 +17,10 @@ const { tick } = await import('svelte');
 
 const EVENT_TIMELINE_CSS = readFileSync(join(import.meta.dir, 'event-timeline.css'), 'utf8');
 const EVENT_TIMELINE_SOURCE = readFileSync(join(import.meta.dir, 'event-timeline.svelte'), 'utf8');
+const EVENT_TIMELINE_MODAL_SOURCE = readFileSync(
+  join(import.meta.dir, 'event-timeline-modal.ts'),
+  'utf8',
+);
 
 class TestResizeObserver implements ResizeObserver {
   static instances: TestResizeObserver[] = [];
@@ -239,6 +243,12 @@ describe('EventTimeline', () => {
     expect(EVENT_TIMELINE_SOURCE).toContain('createPortalAttachment');
   });
 
+  test('inspects containing-block ancestors and only observes direction ancestors', () => {
+    expect(EVENT_TIMELINE_MODAL_SOURCE).toContain('current = current.parentElement');
+    expect(EVENT_TIMELINE_MODAL_SOURCE).toContain("attributeFilter: ['class', 'dir', 'style']");
+    expect(EVENT_TIMELINE_MODAL_SOURCE).not.toContain('subtree: true');
+  });
+
   test('offsets colliding lanes and renders hidden leader lines', () => {
     const { container } = render(EventTimeline, {
       start,
@@ -317,6 +327,9 @@ describe('EventTimeline', () => {
 
   test('positions cluster surfaces inside transformed native dialogs', async () => {
     const dialog = document.createElement('dialog');
+    const panel = document.createElement('div');
+    panel.className = 'cinder-modal__panel';
+    dialog.append(panel);
     dialog.open = true;
     document.body.append(dialog);
     __setEventTimelineModalPredicate((element) => element === dialog);
@@ -338,16 +351,16 @@ describe('EventTimeline', () => {
           label: `Event ${index + 1}`,
         })),
       });
-      dialog.append(container.firstElementChild!);
-      await fireEvent.click(dialog.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      panel.append(container.firstElementChild!);
+      await fireEvent.click(panel.querySelector('.cinder-event-timeline__cluster-trigger')!);
       await waitFor(() => {
-        const surface = dialog.querySelector<HTMLElement>('[role="dialog"]');
+        const surface = panel.querySelector<HTMLElement>('[role="dialog"]');
         expect(surface).not.toBeNull();
-        expect(surface?.parentElement).toBe(dialog);
+        expect(surface?.parentElement).toBe(panel);
         expect(surface?.style.position).toBe('absolute');
       });
       await waitFor(() =>
-        expect(document.activeElement).toBe(dialog.querySelector('[role="dialog"]')),
+        expect(document.activeElement).toBe(panel.querySelector('[role="dialog"]')),
       );
     } finally {
       __setEventTimelineModalPredicate((element) => element.matches(':modal'));
