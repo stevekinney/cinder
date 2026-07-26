@@ -68,6 +68,16 @@ describe(ruleName, () => {
     ).toHaveLength(1);
   });
 
+  test('resolves local aliases to raised surfaces', async () => {
+    expect(
+      warnings(
+        await lint(
+          ':root { --local-raised: var(--cinder-surface-raised); } .cinder-card { background: var(--local-raised); border: 1px solid var(--cinder-border-muted); }',
+        ),
+      ),
+    ).toHaveLength(1);
+  });
+
   test('matches interior BEM elements at a name boundary', async () => {
     expect(
       warnings(

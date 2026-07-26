@@ -29,6 +29,21 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
   if (!stylelint.utils.validateOptions(result, ruleName, { actual: primary, possible: [true] }))
     return;
   if (!isCinderComponentSource(root)) return;
+  const customProperties = new Map();
+  root.walkDecls((decl) => {
+    if (decl.prop.startsWith('--')) customProperties.set(decl.prop, decl.value);
+  });
+  const resolvesToRaisedSurface = (value, seen = new Set()) => {
+    if (value.includes('var(--cinder-surface-raised)')) return true;
+    for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
+      const token = match[1];
+      if (seen.has(token)) continue;
+      const replacement = customProperties.get(token);
+      if (replacement && resolvesToRaisedSurface(replacement, new Set([...seen, token])))
+        return true;
+    }
+    return false;
+  };
   root.walkRules((rule) => {
     rule.walkDecls((decl) => {
       if (
@@ -38,7 +53,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
           (candidate) =>
             candidate.type === 'decl' &&
             (candidate.prop === 'background' || candidate.prop === 'background-color') &&
-            candidate.value.includes('var(--cinder-surface-raised)'),
+            resolvesToRaisedSurface(candidate.value),
         )
       ) {
         stylelint.utils.report({
