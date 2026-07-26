@@ -551,6 +551,19 @@ function startWatcher(): FSWatcher[] {
       }
     }
 
+    // Markdown is a transitive dependency of the shell and page bundles, but
+    // it is not one of the published component sources. Watch its source tree
+    // explicitly so a successful dependency rebuild invalidates cached
+    // artifacts instead of leaving stale renderer bytes in memory.
+    const markdownSourcePath = join(REPO_ROOT, 'packages', 'markdown', 'src');
+    if (existsSync(markdownSourcePath)) {
+      created.push(
+        watch(markdownSourcePath, { recursive: true }, (_event, filename) => {
+          if (filename) scheduleRebuild({ kind: 'components' });
+        }),
+      );
+    }
+
     // Examples directory: an edit to `<name>/<scenario>.example.svelte` can
     // only ever affect that one component's page bundle, so the scope is
     // precisely the touched component name (the first path segment). Other
