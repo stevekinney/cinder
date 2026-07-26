@@ -239,6 +239,7 @@
     };
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
+      if (event.type === 'scroll' && layoutKeyboardResizeActive) return;
       if (event.type === 'resize') {
         const viewportWidthChanged = window.innerWidth !== viewportWidth;
         const viewportHeightChanged = window.innerHeight !== viewportHeight;

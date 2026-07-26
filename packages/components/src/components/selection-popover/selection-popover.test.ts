@@ -584,6 +584,7 @@ describe('SelectionPopover', () => {
       });
       visualViewport.height = originalInnerHeight - 100;
       await fireEvent(window, new Event('resize'));
+      await fireEvent.scroll(window);
       visualViewport.dispatchEvent(new Event('resize'));
       visualViewport.dispatchEvent(new Event('scroll'));
 
@@ -591,7 +592,7 @@ describe('SelectionPopover', () => {
       expect((textarea as HTMLTextAreaElement).value).toBe('Paired keyboard draft');
 
       await new Promise((resolve) => setTimeout(resolve, 0));
-      visualViewport.dispatchEvent(new Event('scroll'));
+      await fireEvent.scroll(window);
       expect(closed).toBe(true);
     } finally {
       Object.defineProperty(window, 'innerHeight', {
