@@ -28,6 +28,7 @@
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     createInheritedPortalStyle,
+    findNearestOpenPopover,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -114,13 +115,7 @@
   function getPortalTarget(): HTMLElement | null {
     const trigger = getTriggerElement();
     if (!trigger) return null;
-    return (
-      trigger.closest<HTMLElement>('dialog[open]') ??
-      Array.from(document.querySelectorAll<HTMLElement>('[popover]')).find(
-        (element) => element.matches(':popover-open') && element.contains(trigger),
-      ) ??
-      null
-    );
+    return trigger.closest<HTMLElement>('dialog[open]') ?? findNearestOpenPopover(trigger) ?? null;
   }
 
   function normalizePlacementDirection(value: string): SpeedDialDirection {

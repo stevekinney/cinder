@@ -7,8 +7,20 @@ function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
     (candidate) =>
       !hasNegativeTabIndex(candidate) &&
       !(candidate instanceof HTMLInputElement && candidate.type === 'hidden') &&
-      !candidate.closest('[hidden], [inert], [aria-hidden="true"]'),
+      !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+      isRendered(candidate),
   );
+}
+
+function isRendered(element: HTMLElement): boolean {
+  if (typeof getComputedStyle !== 'function') return true;
+  let candidate: HTMLElement | null = element;
+  while (candidate) {
+    const style = getComputedStyle(candidate);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    candidate = candidate.parentElement;
+  }
+  return true;
 }
 
 function hasNegativeTabIndex(element: HTMLElement): boolean {

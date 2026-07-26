@@ -184,6 +184,13 @@ function hiddenThenActionButtonSnippet() {
   }));
 }
 
+function cssHiddenThenActionButtonSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<div><button type="button" style="display: none">Hidden</button><button type="button" id="nav-action">Account</button></div>',
+  }));
+}
+
 function negativeThenActionButtonSnippet() {
   return createRawSnippet(() => ({
     render: () =>
@@ -782,6 +789,25 @@ describe('NavigationBar', () => {
         items: keyboardNavigationSnippet({}),
         menuToggle: toggleSnippet(),
         actions: hiddenThenActionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+      const settings = itemsRegion.querySelector('[data-key="settings"]') as HTMLButtonElement;
+
+      settings.focus();
+      await fireEvent.keyDown(settings, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('portaled menu skips CSS-hidden action controls at the end of its tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        actions: cssHiddenThenActionButtonSnippet(),
       });
 
       await openCollapsedMobileMenu(container);

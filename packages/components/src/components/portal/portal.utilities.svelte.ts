@@ -78,6 +78,15 @@ export function resolvePortalTarget(target: PortalTargetInput): ResolvedPortalTa
   }
 }
 
+export function findNearestOpenPopover(source: HTMLElement): HTMLElement | null {
+  let candidate = source.closest<HTMLElement>('[popover]');
+  while (candidate) {
+    if (candidate.matches(':popover-open')) return candidate;
+    candidate = candidate.parentElement?.closest<HTMLElement>('[popover]') ?? null;
+  }
+  return null;
+}
+
 export function getInheritedPortalStyle(source: HTMLElement | null | undefined): string {
   if (!source || typeof window === 'undefined') return '';
 

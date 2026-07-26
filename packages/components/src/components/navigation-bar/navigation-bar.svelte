@@ -32,6 +32,7 @@
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     createInheritedPortalStyle,
+    findNearestOpenPopover,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -91,13 +92,7 @@
     target: () => {
       const source = navigationBarElement;
       if (!source) return null;
-      return (
-        source.closest<HTMLElement>('dialog[open]') ??
-        Array.from(document.querySelectorAll<HTMLElement>('[popover]')).find(
-          (element) => element.matches(':popover-open') && element.contains(source),
-        ) ??
-        null
-      );
+      return source.closest<HTMLElement>('dialog[open]') ?? findNearestOpenPopover(source) ?? null;
     },
   });
   const anchoredItems = createAnchoredOverlay({

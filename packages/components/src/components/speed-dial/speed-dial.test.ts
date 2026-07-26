@@ -139,6 +139,37 @@ describe('SpeedDial', () => {
     expect(toolbar.parentElement?.getAttribute('lang')).toBe('fr');
   });
 
+  test('keeps portaled actions inside the nearest open native popover', async () => {
+    const outerPopover = document.createElement('div');
+    outerPopover.setAttribute('popover', 'manual');
+    outerPopover.dataset['testOpenPopover'] = 'true';
+    const innerPopover = document.createElement('div');
+    innerPopover.setAttribute('popover', 'manual');
+    innerPopover.dataset['testOpenPopover'] = 'true';
+    outerPopover.append(innerPopover);
+    document.body.append(outerPopover);
+    const nativeMatches = HTMLElement.prototype.matches;
+    const matchesSpy = spyOn(HTMLElement.prototype, 'matches').mockImplementation(function (
+      this: HTMLElement,
+      selector: string,
+    ) {
+      return selector === ':popover-open'
+        ? this.dataset['testOpenPopover'] === 'true'
+        : nativeMatches.call(this, selector);
+    });
+
+    try {
+      render(SpeedDialFixture, { target: innerPopover });
+      await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+      await flushQueuedFocus();
+
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+      expect(toolbar.parentElement?.parentElement).toBe(innerPopover);
+    } finally {
+      matchesSpy.mockRestore();
+    }
+  });
+
   test('portaled action events bubble through the original component ancestry', async () => {
     const { container } = render(SpeedDialFixture);
     const bubbledEventTypes: string[] = [];
