@@ -610,6 +610,38 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('evaluates inline-size range queries against the content box', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.paddingInlineStart = '20px';
+    container.style.paddingInlineEnd = '20px';
+    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 340 }) });
+    const element = document.createElement('div');
+    element.className = 'inline-size-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.inline-size-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (inline-size >= 20rem) { .inline-size-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(inline-size >= 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('resolves rem thresholds from the document root font size', () => {
     const root = document.documentElement;
     const previousFontSize = root.style.fontSize;
