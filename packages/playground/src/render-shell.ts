@@ -15,6 +15,7 @@
 
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
+import { stripInlineSourcemaps } from './strip-inline-sourcemaps.ts';
 
 const LINE_SEPARATOR = String.fromCharCode(0x2028);
 const PARAGRAPH_SEPARATOR = String.fromCharCode(0x2029);
@@ -214,7 +215,7 @@ export function renderShell(
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${title}</title>
     ${meta}
-    ${options.shellHead ?? ''}
+    ${stripInlineSourcemaps(options.shellHead ?? '')}
     <script>${PRE_PAINT_THEME_SCRIPT}</script>
     <style>
       /* Register cinder.reset as the FIRST layer (least priority) so the universal

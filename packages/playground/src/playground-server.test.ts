@@ -1385,3 +1385,72 @@ describe('/bundle/:name/controls.js (route retired)', () => {
     expect(response.status).toBe(404);
   }, 30_000);
 });
+
+describe('/page/:name server-rendering surfaces', () => {
+  /*
+   * `/page/<name>` has three rendering surfaces and they must not blur together.
+   *
+   * The canonical page is server-rendered so the deployed site shows real
+   * content before JavaScript runs. The other two are client-only because each
+   * mounts a DIFFERENT tree than the canonical page, and the client bundle
+   * `mount()`s them rather than hydrating — `mount()` does not clear existing
+   * children, so any pre-rendered markup would stack underneath.
+   *
+   * These assertions exist because pre-rendering `?preview=1` regressed exactly
+   * that way: the shell's 360px preview iframe received a full 134 KB
+   * documentation page with a small preview mounted on top of it.
+   */
+
+  it('server-renders the canonical page into #app', async () => {
+    const response = await handleRequest(req('/page/button'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+
+    expect(html).not.toContain('<div id="app"></div>');
+    expect(html).toContain('data-component-page');
+    // Real documentation content, not just a shell.
+    expect(html).toMatch(/<h1[^>]*>Button/);
+  }, 60_000);
+
+  it('omits inline sourcemaps from the server-rendered head', async () => {
+    const response = await handleRequest(req('/page/button'));
+    const html = await response.text();
+
+    // Inline base64 sourcemaps measured 50.3% of the deployed document and sit
+    // on the critical rendering path. See strip-inline-sourcemaps.ts.
+    expect(html).not.toContain('sourceMappingURL=data:');
+  }, 60_000);
+
+  it('leaves #app empty for ?snapshot=1 so the visual harness contract holds', async () => {
+    const response = await handleRequest(req('/page/button?snapshot=1'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+
+    // packages/testing/src/fixtures/component-page.ts waits for `#app > *` and
+    // asserts single-instance `example-mount-*` counts on a bare surface.
+    expect(html).toContain('<div id="app"></div>');
+    expect(html).not.toContain('data-component-page');
+    expect(html).toContain('data-snapshot-mode');
+  }, 60_000);
+
+  it('leaves #app empty for ?preview=1 so the preview frame shows only the example', async () => {
+    const response = await handleRequest(req('/page/button?preview=1'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+
+    expect(html).toContain('<div id="app"></div>');
+    expect(html).not.toContain('data-component-page');
+  }, 60_000);
+
+  it('renders a substantially smaller document for the client-only surfaces', async () => {
+    const [canonical, preview] = await Promise.all([
+      handleRequest(req('/page/button')).then((response) => response.text()),
+      handleRequest(req('/page/button?preview=1')).then((response) => response.text()),
+    ]);
+
+    // Guards against the regression direction: if `?preview=1` ever starts
+    // carrying the documentation tree again its size converges on the canonical
+    // page's.
+    expect(preview.length).toBeLessThan(canonical.length / 2);
+  }, 60_000);
+});

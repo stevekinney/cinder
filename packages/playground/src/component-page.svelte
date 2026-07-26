@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { mount, unmount } from 'svelte';
+  import { mount, onMount, unmount } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -71,10 +71,32 @@
   // from a `window` global so the live preview (#405) is wired explicitly to the
   // bundle that mounted it — no out-of-band global to go stale against the page.
   // Defaults to `undefined` for the no-prop mount paths (tests, SSR render).
+  type Props = {
+    bareComponentModule?: unknown;
+    previewOnly?: boolean;
+    /**
+     * Request-known page inputs. The server passes these explicitly so the SSR
+     * tree can be built without touching `window`; the client bundle passes the
+     * same values it reads from the URL and data islands. When omitted, each
+     * falls back to reading the browser environment (guarded for SSR), which is
+     * what the unit tests rely on.
+     */
+    componentName?: string;
+    examples?: CinderExampleDescriptor[];
+    snapshotMode?: boolean;
+    documentation?: ComponentDocumentationPayload | null;
+    documentationError?: string | null;
+  };
+
   let {
     bareComponentModule,
     previewOnly = false,
-  }: { bareComponentModule?: unknown; previewOnly?: boolean } = $props();
+    componentName: componentNameProp,
+    examples: examplesProp,
+    snapshotMode: snapshotModeProp,
+    documentation: documentationProp,
+    documentationError: documentationErrorProp,
+  }: Props = $props();
 
   // Height of the sticky top bar, in pixels — used for scroll-spy activation
   // and smooth-scroll offset so anchored sections clear the bar.
@@ -86,7 +108,7 @@
     return Array.isArray(raw) ? raw : [];
   }
 
-  const examples: CinderExampleDescriptor[] = readExamples();
+  const examples: CinderExampleDescriptor[] = examplesProp ?? readExamples();
   const explicitlyFeatured = examples.filter((example) => example.featured === true);
 
   // Snapshot mode (`?snapshot=1`) is how the visual-regression and a11y test
@@ -95,8 +117,9 @@
   // featured example twice. The Overview live preview is therefore suppressed in
   // snapshot mode — the Examples section still mounts each scenario exactly once.
   const snapshotMode =
-    typeof window !== 'undefined' &&
-    new URLSearchParams(window.location.search).get('snapshot') === '1';
+    snapshotModeProp ??
+    (typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).get('snapshot') === '1');
 
   // The Overview live preview uses the first featured example, or the first
   // example overall. Undefined when there are no examples at all, and suppressed
@@ -106,9 +129,14 @@
     ? undefined
     : (explicitlyFeatured[0] ?? examples[0]);
 
-  // Extract the component name from the current URL path: /page/<name>
-  const componentName: string =
-    window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
+  // The component this page documents. Supplied as a prop by both render paths;
+  // falls back to parsing the current URL path (`/page/<name>`) when absent.
+  function readComponentNameFromLocation(): string {
+    if (typeof window === 'undefined') return '';
+    return window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
+  }
+
+  const componentName: string = componentNameProp ?? readComponentNameFromLocation();
 
   // --- Theme toggle -----------------------------------------------------
   // Cinder tokens switch on `color-scheme` (via `light-dark()`); the playground
@@ -116,12 +144,36 @@
   // read the active scheme on mount and, on toggle, write BOTH `color-scheme`
   // (the real switch) and `data-cinder-theme` so we stay consistent with the
   // bridge, plus persist to localStorage under the pre-paint key.
+  // Server rendering has no `document`, so the SSR tree seeds `light` — matching
+  // the base `color-scheme: light dark` first argument — and the real preference
+  // is adopted in `onMount`. Seeding from the document during init would make the
+  // server and client first render disagree (a hydration mismatch); deferring the
+  // read is the same discipline `shell.svelte` uses for its persisted theme.
   function readInitialTheme(): 'light' | 'dark' {
+    if (typeof document === 'undefined') return 'light';
     const scheme = document.documentElement.style.colorScheme;
     if (scheme === 'dark' || scheme === 'light') return scheme;
     return document.documentElement.dataset['cinderTheme'] === 'dark' ? 'dark' : 'light';
   }
-  let theme: 'light' | 'dark' = $state(readInitialTheme());
+
+  // Seeded to `light` on BOTH sides — never from the document — so the server's
+  // markup and the client's hydration render agree on the toggle's icon and
+  // label. The real preference (set by the pre-paint script from the URL or
+  // localStorage) is adopted immediately after mount. Reading it during init
+  // would render a Sun on the server and a Moon on the client for dark-mode
+  // users: a hydration mismatch.
+  let theme = $state<'light' | 'dark'>('light');
+
+  // False during SSR and during the client's hydration render; true from mount
+  // onward. Gates anything that cannot exist server-side (the live component
+  // mount, which needs a module namespace the server never has) so both sides
+  // render the same tree on first pass.
+  let isHydrated = $state(false);
+
+  onMount(() => {
+    theme = readInitialTheme();
+    isHydrated = true;
+  });
   let themeToggleLabel = $derived(
     theme === 'dark' ? 'Preview theme: switch to light' : 'Preview theme: switch to dark',
   );
@@ -288,11 +340,17 @@
   // in the page HTML and the client reads it synchronously before first render.
   let documentation: ComponentDocumentationPayload | null = $state(null);
   let documentationError: string | null = $state(null);
-  try {
-    documentation = readComponentDocumentationDataIsland();
-  } catch (error) {
-    documentationError =
-      error instanceof Error ? error.message : 'Failed to read component documentation.';
+  if (documentationProp !== undefined || documentationErrorProp !== undefined) {
+    // Supplied by the render path (server SSR or the client bundle entry).
+    documentation = documentationProp ?? null;
+    documentationError = documentationErrorProp ?? null;
+  } else if (typeof document !== 'undefined') {
+    try {
+      documentation = readComponentDocumentationDataIsland();
+    } catch (error) {
+      documentationError =
+        error instanceof Error ? error.message : 'Failed to read component documentation.';
+    }
   }
 
   const propRows = $derived(
@@ -886,7 +944,13 @@
                          rather than show an error callout over what would otherwise be
                          a working preview. With no featured fallback, the live branch
                          stays and surfaces the error — better than a blank section. -->
-                    {#if bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
+                    <!-- `isHydrated` keeps the live mount off the server's tree: it
+                         needs `bareComponentModule`, which only the client bundle
+                         supplies. Without the gate the server would render the
+                         featured-example branch and the client the live branch on
+                         its hydration pass — a mismatch. The live preview swaps in
+                         immediately after mount. -->
+                    {#if isHydrated && bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
                       <div class="dx-stage">
                         <div class="dx-stage__bar">
                           <span class="dx-stage__dot" aria-hidden="true"></span>
@@ -942,6 +1006,30 @@
                         </div>
                         <p class="dx-stage__note">
                           Shows the featured example. Adjust the controls to update the snippet.
+                        </p>
+                      </div>
+                    {:else if !snapshotMode && !documentation.propsManifest.isCompound}
+                      <!-- Reserve the stage for components with NO examples (label,
+                           statistic, accordion-item, …). Without this branch the
+                           server renders nothing here, and hydration then INSERTS
+                           the whole live stage into an already-painted page — a
+                           layout shift, and the opposite of the reservation the
+                           server entry promises.
+
+                           A non-compound component is one whose bare mount the
+                           client can resolve, so a live stage is what will appear.
+                           Compound components keep `bareComponent` undefined on
+                           purpose, so reserving a box they never fill would leave
+                           an empty frame. `isCompound` comes from the manifest, so
+                           the server can make this call. -->
+                      <div class="dx-stage" data-stage-reserved>
+                        <div class="dx-stage__bar">
+                          <span class="dx-stage__dot" aria-hidden="true"></span>
+                          <span class="dx-stage__label">Live preview</span>
+                        </div>
+                        <div class="dx-stage__canvas"></div>
+                        <p class="dx-stage__note">
+                          Renders with the props below. Adjust the controls to update it live.
                         </p>
                       </div>
                     {/if}
