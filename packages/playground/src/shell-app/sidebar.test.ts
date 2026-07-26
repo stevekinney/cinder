@@ -139,8 +139,11 @@ describe('Sidebar', () => {
       },
     });
 
-    const group = container.querySelector('.cinder-side-navigation-group');
-    expect(group?.querySelector('button[aria-expanded]')?.textContent).toContain('Chat');
+    const groupToggle = container.querySelector<HTMLButtonElement>(
+      'nav[aria-label="Components"] button[aria-expanded]',
+    );
+    expect(groupToggle?.textContent).toContain('Chat');
+    const group = groupToggle?.parentElement?.parentElement;
     expect(group?.querySelector('a[href="/c/chat"]')).not.toBeNull();
     expect(group?.querySelector('a[href="/c/chat-composer-popover"]')).not.toBeNull();
     expect(container.querySelector('a[href="/c/button"]')).not.toBeNull();
@@ -176,7 +179,7 @@ describe('Sidebar', () => {
       },
     });
     const groupToggle = container.querySelector<HTMLButtonElement>(
-      '.cinder-side-navigation-group__trigger',
+      'nav[aria-label="Components"] button[aria-expanded]',
     );
     if (groupToggle === null) throw new Error('Expected Chat group toggle');
     await fireEvent.click(groupToggle);
@@ -184,7 +187,7 @@ describe('Sidebar', () => {
     await fireEvent.input(getFilterInput(container), { target: { value: 'chat' } });
     await tick();
     const refreshedToggle = container.querySelector<HTMLButtonElement>(
-      '.cinder-side-navigation-group__trigger',
+      'nav[aria-label="Components"] button[aria-expanded]',
     );
     expect(refreshedToggle?.getAttribute('aria-expanded')).toBe('true');
     expect(linkFor(container, 'chat-composer-popover')).not.toBeNull();
@@ -199,7 +202,7 @@ describe('Sidebar', () => {
       },
     });
     const toggle = container.querySelector<HTMLButtonElement>(
-      '.cinder-side-navigation-group__trigger',
+      'nav[aria-label="Components"] button[aria-expanded]',
     );
     if (toggle === null) throw new Error('Expected Chat group toggle');
     await fireEvent.click(toggle);
@@ -210,7 +213,7 @@ describe('Sidebar', () => {
     await tick();
     expect(
       container
-        .querySelector<HTMLButtonElement>('.cinder-side-navigation-group__trigger')
+        .querySelector<HTMLButtonElement>('nav[aria-label="Components"] button[aria-expanded]')
         ?.getAttribute('aria-expanded'),
     ).toBe('false');
   });
