@@ -70,6 +70,21 @@ describe('DatePicker', () => {
     expect(input.checkValidity()).toBe(false);
   });
 
+  test('commits a complete valid draft during input', async () => {
+    let nextValue = '';
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => {
+        nextValue = value ?? '';
+      },
+    });
+    await fireEvent.input(container.querySelector<HTMLInputElement>('#dp')!, {
+      target: { value: '2026-07-01' },
+    });
+    expect(nextValue).toBe('2026-07-01');
+  });
+
   test('clears custom validity after a native form reset', async () => {
     const form = document.createElement('form');
     document.body.append(form);

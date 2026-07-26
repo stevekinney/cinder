@@ -207,7 +207,12 @@
   }
 
   function handleInput(event: Event) {
-    updateInputValidity(event.currentTarget as HTMLInputElement);
+    const target = event.currentTarget as HTMLInputElement;
+    updateInputValidity(target);
+    const normalizedDraft = normalizeValue(target.value || undefined, granularity);
+    if (normalizedDraft === target.value && clampToBounds(normalizedDraft) === normalizedDraft) {
+      emit(normalizedDraft);
+    }
   }
 
   function focusCalendarDay(date = selectedDate): HTMLElement | null {

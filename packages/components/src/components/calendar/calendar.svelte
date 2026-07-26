@@ -133,13 +133,11 @@
     monthProp: string | undefined,
     fallbackIso: string,
   ): string {
-    if (
-      valueProp &&
-      parseISODate(valueProp) &&
-      (!min || valueProp >= min) &&
-      (!max || valueProp <= max)
-    )
+    if (valueProp && parseISODate(valueProp)) {
+      if (min && valueProp < min) return min;
+      if (max && valueProp > max) return max;
       return valueProp;
+    }
     if (monthProp && parseISODate(monthProp)) return monthProp;
     if (min && parseISODate(min) && fallbackIso < min) return min;
     if (max && parseISODate(max) && fallbackIso > max) return max;

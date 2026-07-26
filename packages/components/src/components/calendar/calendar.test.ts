@@ -20,6 +20,16 @@ describe('Calendar', () => {
     expect(container.querySelectorAll('.cinder-calendar__weekday').length).toBe(7);
   });
 
+  test('anchors an out-of-range value at the violated bound', () => {
+    const { container } = render(Calendar, {
+      value: '2091-01-01',
+      max: '2090-12-31',
+    });
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain(
+      'December 2090',
+    );
+  });
+
   test('selects a day and calls onchange', async () => {
     let selected: string | undefined;
     const { container } = render(Calendar, {
