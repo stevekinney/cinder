@@ -205,7 +205,7 @@
     let layoutKeyboardResizeActive = false;
     let layoutKeyboardScrollsSeen = 0;
     let layoutKeyboardSettleFrames: number[] = [];
-    layoutKeyboardVisible = window.innerHeight < document.documentElement.clientHeight;
+    layoutKeyboardVisible = window.innerHeight < window.screen.availHeight;
     const markLayoutKeyboardResize = () => {
       layoutKeyboardResizeActive = true;
       layoutKeyboardScrollsSeen = 0;
