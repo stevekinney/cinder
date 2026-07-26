@@ -264,13 +264,17 @@ function isContainerQueryActive(
   const width = container.getBoundingClientRect().width;
   const minimum = /min-width\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-width\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const rootFontSize = Number.parseFloat(
+    getComputedStyle(element.ownerDocument.documentElement).fontSize,
+  );
+  const remSize = Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
   const toPixels = (value: RegExpExecArray) =>
-    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? 16 : 1);
+    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
   if (minimum && width < toPixels(minimum)) return false;
   if (maximum && width > toPixels(maximum)) return false;
   const range = /width\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/i.exec(conditionText);
   if (range) {
-    const threshold = Number(range[2]) * (range[3]!.toLowerCase() === 'rem' ? 16 : 1);
+    const threshold = Number(range[2]) * (range[3]!.toLowerCase() === 'rem' ? remSize : 1);
     if (range[1] === '>=' && width < threshold) return false;
     if (range[1] === '>' && width <= threshold) return false;
     if (range[1] === '<=' && width > threshold) return false;

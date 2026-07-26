@@ -547,6 +547,36 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('resolves rem thresholds from the document root font size', () => {
+    const root = document.documentElement;
+    const previousFontSize = root.style.fontSize;
+    root.style.fontSize = '20px';
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 350 }) });
+    const element = document.createElement('div');
+    element.className = 'rem-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({ selectorText: '.rem-container-ltr', direction: 'ltr' });
+    const outerRule = {
+      cssText: '@container (min-width: 20rem) { .rem-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      root.style.fontSize = previousFontSize;
+      container.remove();
+    }
+  });
+
   test('ignores inaccessible and invalid CSS direction rules', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
