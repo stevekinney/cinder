@@ -74,6 +74,22 @@ describe('findPlaceholderViolations', () => {
       expect.objectContaining({ phrase: 'accessibility record' }),
     ]);
   });
+  it('requires structure for marker-associated records', () => {
+    expect(findPlaceholderViolations('# Review completed', 'component.a11y.md', true)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ phrase: 'design review heading' }),
+        expect.objectContaining({ phrase: 'accessibility heading' }),
+      ]),
+    );
+  });
+  it('allows completed prose beginning with Record', () => {
+    expect(
+      findPlaceholderViolations(
+        '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static\n- Reviewer: Sam\n- Review outcome: n/a\n\n### Focus management\n_Recorded focus restoration with Safari and VoiceOver._',
+        'component.a11y.md',
+      ).some(({ phrase }) => phrase === '_Record'),
+    ).toBe(false);
+  });
   it('parses bulleted applicability and scopes accessibility placeholders to its section', () => {
     const appliesNo = findPlaceholderViolations(
       '## Design review (required)\n- Reviewer: _Pending\n- Review outcome: done\n- Nearest neighbours: known\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static component\n- Reviewer: _Pending when this review applies.\n- Focus: _Record',

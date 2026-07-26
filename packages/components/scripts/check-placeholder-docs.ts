@@ -35,7 +35,11 @@ type Violation = {
   phrase: string;
 };
 
-export function findPlaceholderViolations(content: string, filePath: string): Violation[] {
+export function findPlaceholderViolations(
+  content: string,
+  filePath: string,
+  requiredAccessibilityRecord = false,
+): Violation[] {
   const isAccessibilityRecord = filePath.endsWith('.a11y.md');
   const lines = content.split('\n');
   const violations: Violation[] = [];
@@ -53,7 +57,9 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     for (const [index, line] of sectionLines.entries()) {
       for (const phrase of phrases) {
         if (phrase === '_Pending' && line.includes('Pending when this review applies.')) continue;
-        if (line.includes(phrase)) {
+        const matchesPhrase =
+          phrase === '_Record' ? /_Record(?:\s|_|$)/.test(line) : line.includes(phrase);
+        if (matchesPhrase) {
           const lineNumber = offset + index + 1;
           if (
             !violations.some(
@@ -77,6 +83,7 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
   );
   const hasAccessibilityTemplate =
+    requiredAccessibilityRecord ||
     designHeadings.length > 0 ||
     accessibilityHeadings.length > 0 ||
     /^-?\s*Applies:/im.test(content);
@@ -269,7 +276,10 @@ async function main(): Promise<void> {
     for await (const relative of glob.scan({ cwd: componentsRoot })) {
       const filePath = join(componentsRoot, relative);
       const content = await Bun.file(filePath).text();
-      violations.push(...findPlaceholderViolations(content, filePath));
+      const readmeContent = await Bun.file(join(dirname(filePath), 'README.md')).text();
+      const requiresRecord =
+        relative.endsWith('.a11y.md') && readmeContent.includes('generated:a11y-record:required');
+      violations.push(...findPlaceholderViolations(content, filePath, requiresRecord));
       if (hasRequiredAccessibilityRecord(content)) {
         const directory = dirname(filePath);
         const name = relative.split('/').at(-2) ?? '';
