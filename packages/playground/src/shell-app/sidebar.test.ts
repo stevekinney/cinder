@@ -130,6 +130,111 @@ describe('Sidebar', () => {
     expect(hrefs).toContain('/c/tag-input');
   });
 
+  test('groups visible compound families under a collapsible parent', () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+
+    const groupToggle = container.querySelector<HTMLButtonElement>(
+      'nav[aria-label="Components"] button[aria-expanded]',
+    );
+    expect(groupToggle?.textContent).toContain('Chat');
+    const group = groupToggle?.parentElement?.parentElement;
+    expect(group?.querySelector('a[href="/c/chat"]')).not.toBeNull();
+    expect(group?.querySelector('a[href="/c/chat-composer-popover"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/c/button"]')).not.toBeNull();
+  });
+
+  test('keeps compose-only leaves out of sidebar navigation', () => {
+    const { container } = render(Sidebar, {
+      props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
+    });
+    expect(container.querySelector('a[href="/c/accordion"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/c/accordion-item"]')).toBeNull();
+  });
+
+  test('renders a family when only a child matches the filter', async () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    await fireEvent.input(getFilterInput(container), { target: { value: 'composer' } });
+    await tick();
+    expect(linkFor(container, 'chat-composer-popover')).not.toBeNull();
+  });
+
+  test('reopens a collapsed family when filtering its children', async () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    const groupToggle = container.querySelector<HTMLButtonElement>(
+      'nav[aria-label="Components"] button[aria-expanded]',
+    );
+    if (groupToggle === null) throw new Error('Expected Chat group toggle');
+    await fireEvent.click(groupToggle);
+    expect(groupToggle.getAttribute('aria-expanded')).toBe('false');
+    await fireEvent.input(getFilterInput(container), { target: { value: 'chat' } });
+    await tick();
+    const refreshedToggle = container.querySelector<HTMLButtonElement>(
+      'nav[aria-label="Components"] button[aria-expanded]',
+    );
+    expect(refreshedToggle?.getAttribute('aria-expanded')).toBe('true');
+    expect(linkFor(container, 'chat-composer-popover')).not.toBeNull();
+  });
+
+  test('restores a collapsed family after clearing a filter', async () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    const toggle = container.querySelector<HTMLButtonElement>(
+      'nav[aria-label="Components"] button[aria-expanded]',
+    );
+    if (toggle === null) throw new Error('Expected Chat group toggle');
+    await fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    await fireEvent.input(getFilterInput(container), { target: { value: 'composer' } });
+    await tick();
+    await fireEvent.input(getFilterInput(container), { target: { value: '' } });
+    await tick();
+    expect(
+      container
+        .querySelector<HTMLButtonElement>('nav[aria-label="Components"] button[aria-expanded]')
+        ?.getAttribute('aria-expanded'),
+    ).toBe('false');
+  });
+
+  test('preserves persisted collapsed families when restoring an active filter', async () => {
+    sessionStorage.setItem('cinder-playground-sidebar-filter', 'composer');
+    sessionStorage.setItem('cinder-playground-sidebar-expansion', JSON.stringify({ chat: false }));
+    render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    await tick();
+    await tick();
+    expect(JSON.parse(sessionStorage.getItem('cinder-playground-sidebar-expansion')!).chat).toBe(
+      false,
+    );
+  });
+
   test('filter narrows the list by humanized name (case-insensitive)', async () => {
     const { container } = render(Sidebar, {
       props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },
@@ -226,6 +331,17 @@ describe('Sidebar', () => {
     await fireEvent.input(getFilterInput(container), { target: { value: 'zzz-no-match' } });
     await tick();
     expect((getLiveRegion(container).textContent ?? '').trim()).toBe('0 components shown');
+  });
+
+  test('counts rendered compound children in the live region', () => {
+    const { container } = render(Sidebar, {
+      props: {
+        components: ['chat'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    expect((getLiveRegion(container).textContent ?? '').trim()).toBe('4 components shown');
   });
 });
 

@@ -13,12 +13,14 @@
   import {
     Input,
     SideNavigation,
+    SideNavigationGroup,
     SideNavigationItem,
     VisuallyHidden,
   } from '../../../components/src/index.ts';
   import { humanizeComponentName } from './humanize.ts';
   import { buildShellHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
+  import { COMPOUND_COMPONENT_FAMILIES, COMPOUND_COMPONENT_PARENTS } from './compound-families.ts';
 
   type Props = {
     components: string[];
@@ -41,8 +43,20 @@
   let { components, currentComponent, onSelect, isOpen = false, onClose }: Props = $props();
 
   let filter = $state('');
+  let expandedFamilies = $state<Record<string, boolean>>({
+    accordion: true,
+    'bento-grid': true,
+    card: true,
+    table: true,
+    chat: true,
+  });
+  let savedExpansion = $state<Record<string, boolean>>({});
+  let filterWasActive = false;
   let restoredSessionFilter = $state(false);
+  let restoredExpansion = $state(false);
   const FILTER_SESSION_KEY = 'cinder-playground-sidebar-filter';
+  const EXPANSION_SESSION_KEY = 'cinder-playground-sidebar-expansion';
+  const filterIsActive = $derived(filter.trim() !== '');
 
   onMount(() => {
     try {
@@ -50,13 +64,38 @@
     } catch {
       filter = '';
     }
+    try {
+      const stored = sessionStorage.getItem(EXPANSION_SESSION_KEY);
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (parsed !== null && typeof parsed === 'object') {
+          expandedFamilies = { ...expandedFamilies, ...parsed };
+        }
+      }
+    } catch {
+      /* ignore — degraded but functional */
+    }
+    if (filter.trim() !== '') {
+      savedExpansion = { ...expandedFamilies };
+    }
     restoredSessionFilter = true;
+    restoredExpansion = true;
   });
 
   $effect(() => {
     if (!restoredSessionFilter) return;
     try {
       sessionStorage.setItem(FILTER_SESSION_KEY, filter);
+    } catch {
+      /* ignore — degraded but functional */
+    }
+  });
+
+  $effect(() => {
+    if (!restoredExpansion) return;
+    try {
+      const expansionToPersist = filterIsActive ? savedExpansion : expandedFamilies;
+      sessionStorage.setItem(EXPANSION_SESSION_KEY, JSON.stringify(expansionToPersist));
     } catch {
       /* ignore — degraded but functional */
     }
@@ -76,20 +115,74 @@
     }
   }
 
-  // Case-insensitive substring match against both the humanized label and the
-  // raw kebab name, so "side nav" and "side-nav" both find side-navigation.
-  const visibleComponents = $derived.by(() => {
+  function matchesCurrentFilter(name: string): boolean {
     const needle = filter.trim().toLowerCase();
-    if (needle === '') return components;
-    return components.filter((name) => {
-      if (name.toLowerCase().includes(needle)) return true;
-      return humanizeComponentName(name).toLowerCase().includes(needle);
-    });
+    return (
+      needle === '' ||
+      name.toLowerCase().includes(needle) ||
+      humanizeComponentName(name).toLowerCase().includes(needle)
+    );
+  }
+
+  function familyParent(name: string): string | undefined {
+    return COMPOUND_COMPONENT_PARENTS[name];
+  }
+
+  $effect(() => {
+    if (filterIsActive && !filterWasActive) {
+      savedExpansion = { ...expandedFamilies };
+    }
+    if (filterIsActive) {
+      for (const name of navigationComponents) {
+        if ((COMPOUND_COMPONENT_FAMILIES[name] ?? []).length > 0) {
+          expandedFamilies[name] = true;
+        }
+      }
+    } else if (!filterIsActive && filterWasActive) {
+      expandedFamilies = savedExpansion;
+      savedExpansion = {};
+    }
+    filterWasActive = filterIsActive;
+  });
+
+  // Include a family root whenever a caller supplies one of its children. The
+  // production discovery list intentionally omits compose-only leaves, but
+  // filtered or fixture-driven callers may provide a child directly.
+  const navigationComponents = $derived.by(() => {
+    const result: string[] = [];
+    for (const name of components) {
+      const root = familyParent(name) ?? name;
+      if (!result.includes(root)) {
+        result.push(root);
+      }
+    }
+    return result;
+  });
+
+  const renderedComponentCount = $derived.by(() => {
+    let count = 0;
+    for (const name of navigationComponents) {
+      const children = COMPOUND_COMPONENT_FAMILIES[name] ?? [];
+      if (children.length === 0) {
+        if (matchesCurrentFilter(name)) count += 1;
+        continue;
+      }
+      const parentMatches = matchesCurrentFilter(name);
+      const matchingChildren = children.filter((child) => matchesCurrentFilter(child));
+      if (filter.trim() === '' && !expandedFamilies[name]) continue;
+      if (parentMatches || matchingChildren.length > 0) count += 1;
+      for (const child of children) {
+        if (filter.trim() === '' || parentMatches || matchesCurrentFilter(child)) {
+          count += 1;
+        }
+      }
+    }
+    return count;
   });
 
   // Announced to assistive technology whenever the filtered count changes.
   const resultSummary = $derived(
-    `${visibleComponents.length} component${visibleComponents.length === 1 ? '' : 's'} shown`,
+    `${renderedComponentCount} component${renderedComponentCount === 1 ? '' : 's'} shown`,
   );
 
   // A "plain" left-click is the only gesture we handle through `onSelect`.
@@ -185,17 +278,44 @@
     </button>
   </div>
   <SideNavigation ariaLabel="Components" {@attach interceptNavClicks}>
-    {#each visibleComponents as name (name)}
-      <SideNavigationItem
-        href={buildShellHref(name)}
-        active={name === currentComponent}
-        onclick={(event) => handleClick(event, name)}
-      >
-        {humanizeComponentName(name)}
-      </SideNavigationItem>
+    {#each navigationComponents as name (name)}
+      {#if familyParent(name) === undefined}
+        {#if matchesCurrentFilter(name) && (COMPOUND_COMPONENT_FAMILIES[name] ?? []).length === 0}
+          <SideNavigationItem
+            href={buildShellHref(name)}
+            active={name === currentComponent}
+            onclick={(event) => handleClick(event, name)}
+          >
+            {humanizeComponentName(name)}
+          </SideNavigationItem>
+        {:else if matchesCurrentFilter(name) || (COMPOUND_COMPONENT_FAMILIES[name] ?? []).some(matchesCurrentFilter)}
+          <SideNavigationGroup
+            label={humanizeComponentName(name)}
+            bind:expanded={expandedFamilies[name]!}
+          >
+            <SideNavigationItem
+              href={buildShellHref(name)}
+              active={name === currentComponent}
+              onclick={(event) => handleClick(event, name)}
+            >
+              {humanizeComponentName(name)}
+            </SideNavigationItem>
+            {#each COMPOUND_COMPONENT_FAMILIES[name] ?? [] as child (child)}
+              {#if filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)}
+                <SideNavigationItem
+                  href={buildShellHref(child)}
+                  active={child === currentComponent}
+                >
+                  {humanizeComponentName(child)}
+                </SideNavigationItem>
+              {/if}
+            {/each}
+          </SideNavigationGroup>
+        {/if}
+      {/if}
     {/each}
   </SideNavigation>
-  {#if visibleComponents.length === 0}
+  {#if renderedComponentCount === 0}
     <!-- Visible text only — NOT a live region. The persistent aria-live region
          below ("N components shown") is the single announcement source; marking
          this paragraph role="status" too would double-announce on zero results. -->

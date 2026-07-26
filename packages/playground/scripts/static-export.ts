@@ -36,6 +36,7 @@ import {
   discoverSidebarComponents,
 } from '../src/discover.ts';
 import { handleRequest } from '../src/playground-server.ts';
+import { COMPOUND_COMPONENT_FAMILIES } from '../src/shell-app/compound-families.ts';
 
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
 const OUTPUT_DIRECTORY = join(PLAYGROUND_ROOT, 'public');
@@ -224,6 +225,12 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
 
   const sidebarComponents = options.sidebarComponents ?? (await discoverSidebarComponents());
   const allComponents = options.allComponents ?? (await discoverComponents());
+  const sidebarRoutes = [
+    ...new Set([
+      ...sidebarComponents,
+      ...sidebarComponents.flatMap((name) => COMPOUND_COMPONENT_FAMILIES[name] ?? []),
+    ]),
+  ];
   if (sidebarComponents.length === 0) {
     throw new Error('[static-export] no sidebar components discovered — nothing to render');
   }
@@ -255,7 +262,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
       await render(`/example-src/${name}/${scenario}`, context);
     }
   }
-  for (const name of sidebarComponents) {
+  for (const name of sidebarRoutes) {
     const shellHtml = await render(`/c/${name}`, context);
     if (shellHtml !== null) collect(shellHtml);
   }
