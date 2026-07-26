@@ -1008,6 +1008,30 @@
                           Shows the featured example. Adjust the controls to update the snippet.
                         </p>
                       </div>
+                    {:else if !snapshotMode && !documentation.propsManifest.isCompound}
+                      <!-- Reserve the stage for components with NO examples (label,
+                           statistic, accordion-item, …). Without this branch the
+                           server renders nothing here, and hydration then INSERTS
+                           the whole live stage into an already-painted page — a
+                           layout shift, and the opposite of the reservation the
+                           server entry promises.
+
+                           A non-compound component is one whose bare mount the
+                           client can resolve, so a live stage is what will appear.
+                           Compound components keep `bareComponent` undefined on
+                           purpose, so reserving a box they never fill would leave
+                           an empty frame. `isCompound` comes from the manifest, so
+                           the server can make this call. -->
+                      <div class="dx-stage" data-stage-reserved>
+                        <div class="dx-stage__bar">
+                          <span class="dx-stage__dot" aria-hidden="true"></span>
+                          <span class="dx-stage__label">Live preview</span>
+                        </div>
+                        <div class="dx-stage__canvas"></div>
+                        <p class="dx-stage__note">
+                          Renders with the props below. Adjust the controls to update it live.
+                        </p>
+                      </div>
                     {/if}
                     <CodeBlock code={playgroundSnippet} language="svelte" copyable />
                     {#if playgroundModel.skipped.length > 0}

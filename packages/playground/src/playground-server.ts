@@ -925,6 +925,7 @@ const previewOnly = new URLSearchParams(window.location.search).get('preview') =
 // documentation/examples data islands feed both sides.
 const snapshotMode = new URLSearchParams(window.location.search).get('snapshot') === '1';
 const hasServerRenderedContent = target.firstElementChild !== null;
+const shouldHydrate = hasServerRenderedContent && !snapshotMode && !previewOnly;
 
 const props = {
   bareComponentModule: BareComponentModule,
@@ -932,9 +933,23 @@ const props = {
   snapshotMode,
 };
 
-if (hasServerRenderedContent && !snapshotMode && !previewOnly) {
+if (shouldHydrate) {
   hydrate(ComponentPage, { target, props });
 } else {
+  // mount() APPENDS; it does not clear the target. So whenever we are mounting a
+  // tree that differs from whatever the document already contains, we must own
+  // the container explicitly.
+  //
+  // This is load-bearing on the STATIC export, not just in development. The
+  // exporter strips query strings when crawling, so \`/page/<name>?preview=1\`
+  // resolves to the one exported \`/page/<name>/index.html\` — the full
+  // documentation page. The server-side preview gate cannot help there, because
+  // a static host runs no server. Without this clear, the shell's preview iframe
+  // renders the entire documentation page with a small preview stacked on top.
+  //
+  // Clearing is safe in every mount case: snapshot and preview surfaces are
+  // served with an empty \`#app\` anyway, so there is nothing to discard.
+  target.replaceChildren();
   mount(ComponentPage, { target, props });
 }
 `;
