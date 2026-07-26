@@ -561,6 +561,8 @@ function startPlaygroundBundleDependencyWatchers(
   const idleWaiters: Array<(rebuilt: boolean) => void> = [];
   let disposed = false;
   let failure: Error | null = null;
+  let activeBuild = false;
+  const queuedBuilds: Array<() => void> = [];
   const resolveIdle = (): void => {
     if (states.some((state) => state.pending || state.buildProcess !== null)) return;
     for (const resolve of idleWaiters.splice(0)) resolve(true);
@@ -577,6 +579,12 @@ function startPlaygroundBundleDependencyWatchers(
         return;
       }
       state.pending = false;
+      if (activeBuild) {
+        state.pending = true;
+        queuedBuilds.push(runBuild);
+        return;
+      }
+      activeBuild = true;
       state.buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
         cwd: repoRoot,
         detached: process.platform !== 'win32',
@@ -592,6 +600,8 @@ function startPlaygroundBundleDependencyWatchers(
           for (const pendingState of states) pendingState.pending = false;
         }
         if (state.buildProcess === currentBuild) state.buildProcess = null;
+        activeBuild = false;
+        queuedBuilds.shift()?.();
         if (state.pending && failure === null) runBuild();
         resolveIdle();
         return undefined;
