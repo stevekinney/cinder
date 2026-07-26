@@ -6,6 +6,7 @@
 
 <script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
+  import { Breadcrumbs } from '@lostgradient/cinder/breadcrumbs';
   import { PageHeader } from '@lostgradient/cinder/page-header';
 </script>
 
@@ -16,7 +17,7 @@
 <div style="margin-top: var(--cinder-space-4);">
   <PageHeader>
     {#snippet breadcrumbs()}
-      <nav aria-label="Breadcrumb"><a href="/">Home</a> / Schedules</nav>
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Schedules' }]} />
     {/snippet}
     {#snippet title()}Schedules{/snippet}
     {#snippet description()}Create and manage recurring automation schedules.{/snippet}
