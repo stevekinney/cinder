@@ -118,14 +118,21 @@
   }
 
   .cinder-hero-section__media > .cinder-aspect-ratio > :is(img, video, iframe):focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline: var(--cinder-ring-width) solid transparent;
     outline-offset: calc(-1 * var(--cinder-ring-width));
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   @media (forced-colors: active) {
     .cinder-hero-section__media > .cinder-aspect-ratio > *:only-child:focus-visible {
       outline: 2px solid ButtonText;
       outline-offset: -2px;
+    }
+
+    .cinder-hero-section__media > .cinder-aspect-ratio > :is(img, video, iframe):focus-visible {
+      outline: 2px solid ButtonText;
+      outline-offset: -2px;
+      box-shadow: none;
     }
 
     .cinder-hero-section__media > .cinder-aspect-ratio > *:only-child:focus-visible::after {
