@@ -115,6 +115,7 @@ export function resolvePreferredPort(): number {
 }
 
 export const PORT = resolvePreferredPort();
+let startupReady = true;
 const MAX_PORT_SCAN_ATTEMPTS = 100;
 const COMPONENTS_ROOT = CINDER_COMPONENT_SOURCE.packageRoot; // packages/components/
 const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
@@ -1963,7 +1964,8 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   // GET /ready
   if (pathname === '/ready') {
-    return new Response('ready', {
+    return new Response(startupReady ? 'ready' : 'warming', {
+      status: startupReady ? 200 : 503,
       headers: {
         'Content-Type': 'text/plain',
         'X-Cinder-Playground-Fingerprint': JSON.stringify(STARTUP_FINGERPRINT),
@@ -2505,6 +2507,7 @@ export function createSharedDisposer(disposeWork: () => Promise<void>): () => Pr
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
+  startupReady = false;
   const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
   const { port: actualPort, server } = playgroundHttpServer;
 
@@ -2551,7 +2554,14 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   await getManifests().catch((error: unknown) => {
     console.error('[playground] manifest pre-warm failed:', error);
   });
-  return { port: actualPort, dispose };
+  startupReady = true;
+  return {
+    port: actualPort,
+    dispose: async () => {
+      startupReady = false;
+      await dispose();
+    },
+  };
 }
 
 if (import.meta.main) {
