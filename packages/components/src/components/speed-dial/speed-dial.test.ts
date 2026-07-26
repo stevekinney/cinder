@@ -9,6 +9,39 @@ setupHappyDom();
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
+const nativeMutationObserver = globalThis.MutationObserver;
+
+class DeterministicMutationObserver {
+  static callbacks: MutationCallback[] = [];
+
+  constructor(callback: MutationCallback) {
+    DeterministicMutationObserver.callbacks.push(callback);
+  }
+
+  observe(): void {}
+
+  disconnect(): void {}
+
+  takeRecords(): MutationRecord[] {
+    return [];
+  }
+
+  static trigger(): void {
+    for (const callback of DeterministicMutationObserver.callbacks) {
+      callback([], {} as MutationObserver);
+    }
+  }
+}
+
+async function withDeterministicMutationObserver(run: () => Promise<void>): Promise<void> {
+  DeterministicMutationObserver.callbacks = [];
+  globalThis.MutationObserver = DeterministicMutationObserver as unknown as typeof MutationObserver;
+  try {
+    await run();
+  } finally {
+    globalThis.MutationObserver = nativeMutationObserver;
+  }
+}
 
 afterEach(() => {
   cleanup();
@@ -142,33 +175,65 @@ describe('SpeedDial', () => {
   test('portaled action events bubble through the original component ancestry', async () => {
     const { container } = render(SpeedDialFixture);
     const bubbledEventTypes: string[] = [];
-    container.addEventListener('click', () => bubbledEventTypes.push('click'));
-    container.addEventListener('keydown', () => bubbledEventTypes.push('keydown'));
+    const bubbledTargets: EventTarget[] = [];
+    const recordEvent = (event: Event) => {
+      bubbledEventTypes.push(event.type);
+      if (event.target) bubbledTargets.push(event.target);
+    };
+    container.addEventListener('click', recordEvent);
+    container.addEventListener('keydown', recordEvent);
 
     await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
     await flushQueuedFocus();
     bubbledEventTypes.length = 0;
+    bubbledTargets.length = 0;
 
     const action = screen.getByRole('button', { name: 'Create' });
     await fireEvent.keyDown(action, { key: 'a' });
     await fireEvent.click(action);
 
     expect(bubbledEventTypes).toEqual(['keydown', 'click']);
+    expect(bubbledTargets).toHaveLength(2);
+    expect(bubbledTargets[0]).toBe(action);
+    expect(bubbledTargets[1]).toBe(action);
   });
 
   test('an unavailable source ancestor closes and disables portaled actions', async () => {
-    const { container } = render(SpeedDialFixture);
-    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
-    await flushQueuedFocus();
+    await withDeterministicMutationObserver(async () => {
+      const { container } = render(SpeedDialFixture);
+      await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+      await flushQueuedFocus();
 
-    container.setAttribute('inert', '');
+      container.setAttribute('inert', '');
+      DeterministicMutationObserver.trigger();
 
-    await waitFor(() => {
-      expect(screen.getByTestId('open-state').textContent).toBe('closed');
+      await waitFor(() => {
+        expect(screen.getByTestId('open-state').textContent).toBe('closed');
+      });
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+      expect(toolbar.hasAttribute('inert')).toBe(true);
+      expect(container.contains(toolbar)).toBe(true);
     });
-    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
-    expect(toolbar.hasAttribute('inert')).toBe(true);
-    expect(container.contains(toolbar)).toBe(true);
+  });
+
+  test('a disabled owning fieldset closes and disables portaled actions', async () => {
+    await withDeterministicMutationObserver(async () => {
+      const fieldset = document.createElement('fieldset');
+      document.body.append(fieldset);
+      const { container } = render(SpeedDialFixture, { target: fieldset });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+      await flushQueuedFocus();
+      fieldset.setAttribute('disabled', '');
+      DeterministicMutationObserver.trigger();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('open-state').textContent).toBe('closed');
+      });
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+      expect(toolbar.hasAttribute('inert')).toBe(true);
+      expect(container.contains(toolbar)).toBe(true);
+    });
   });
 
   test('changing direction while open preserves the focused action', async () => {

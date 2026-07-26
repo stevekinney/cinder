@@ -364,6 +364,24 @@ describe('Portal', () => {
     expect(wrapper?.hasAttribute('dir')).toBe(false);
   });
 
+  test('preserves an explicitly empty inherited language', () => {
+    const scopedAncestor = document.createElement('section');
+    scopedAncestor.setAttribute('lang', '');
+    const source = document.createElement('span');
+    scopedAncestor.appendChild(source);
+    const element = document.createElement('div');
+
+    copyInheritedPortalAttributes(element, source, true, {
+      dir: null,
+      lang: null,
+      dataTheme: null,
+      theme: null,
+    });
+
+    expect(element.hasAttribute('lang')).toBe(true);
+    expect(element.getAttribute('lang')).toBe('');
+  });
+
   test('follows scoped theme additions on source ancestors while mounted', async () => {
     const scopedAncestor = document.createElement('section');
     const mountPoint = document.createElement('div');

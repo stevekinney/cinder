@@ -184,9 +184,23 @@ function hiddenThenActionButtonSnippet() {
   }));
 }
 
+function negativeThenActionButtonSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<div><button type="button" id="skipped-action" tabindex="-1">Skipped</button><button type="button" id="nav-action">Account</button></div>',
+  }));
+}
+
 function brandLinkSnippet() {
   return createRawSnippet(() => ({
     render: () => '<a href="/home" id="brand-link">Acme</a>',
+  }));
+}
+
+function negativeFinalBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () =>
+      '<div><a href="/home" id="brand-home">Home</a><button type="button" id="brand-skipped" tabindex="-1">Skipped</button></div>',
   }));
 }
 
@@ -622,6 +636,54 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('portaled item events bubble through the original navigation ancestry', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+      });
+      const bubbledEvents: Array<{
+        type: string;
+        target: EventTarget | null;
+      }> = [];
+      const recordEvent = (event: Event) => {
+        bubbledEvents.push({
+          type: event.type,
+          target: event.target,
+        });
+      };
+      container.addEventListener('click', recordEvent);
+      container.addEventListener('keydown', recordEvent);
+
+      await openCollapsedMobileMenu(container);
+      const home = getItemsRegion(container).querySelector('[data-key="home"]') as HTMLElement;
+      await fireEvent.keyDown(home, { key: 'a' });
+      await fireEvent.click(home);
+
+      expect(bubbledEvents.map(({ type }) => type)).toEqual(['keydown', 'click']);
+      expect(bubbledEvents.map(({ target }) => target)).toEqual([home, home]);
+    });
+  });
+
+  test('an unavailable source ancestor closes the portaled mobile menu', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      container.setAttribute('aria-hidden', 'true');
+
+      await waitFor(() => {
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+      });
+      const itemsRegion = getItemsRegion(container);
+      expect(container.contains(itemsRegion)).toBe(true);
+      expect(itemsRegion.hasAttribute('inert')).toBe(true);
+    });
+  });
+
   test('keeps an open collapsed menu inside its owning dialog', async () => {
     await withResizeObserver(async () => {
       const dialog = document.createElement('dialog');
@@ -697,6 +759,25 @@ describe('NavigationBar', () => {
         items: keyboardNavigationSnippet({}),
         menuToggle: toggleSnippet(),
         actions: hiddenThenActionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+      const settings = itemsRegion.querySelector('[data-key="settings"]') as HTMLButtonElement;
+
+      settings.focus();
+      await fireEvent.keyDown(settings, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('portaled menu skips actions removed from sequential tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        actions: negativeThenActionButtonSnippet(),
       });
 
       await openCollapsedMobileMenu(container);
@@ -788,6 +869,26 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('reverse Tab skips brand controls removed from sequential tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: negativeFinalBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const home = itemsRegion.querySelector('[data-key="home"]') as HTMLButtonElement;
+      const brandHome = container.querySelector('#brand-home');
+
+      home.focus();
+      await fireEvent.keyDown(home, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(brandHome);
+    });
+  });
+
   test('last portaled item tabs to the first page control after a bar without actions', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -797,6 +898,33 @@ describe('NavigationBar', () => {
       const followingButton = document.createElement('button');
       followingButton.textContent = 'Following';
       document.body.append(followingButton);
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const settings = itemsRegion.querySelector('[data-key="settings"]') as HTMLButtonElement;
+
+      settings.focus();
+      await fireEvent.keyDown(settings, { key: 'Tab' });
+      expect(document.activeElement).toBe(followingButton);
+    });
+  });
+
+  test('last portaled item skips page controls removed from sequential tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+      });
+      const skippedButton = document.createElement('button');
+      // `tabIndex` is a reflected property in browsers, so assigning -1
+      // creates the same `tabindex="-1"` content attribute. happy-dom does not
+      // implement that reflection and reports -1 for every attribute-less
+      // button, so express the browser result directly in this DOM harness.
+      skippedButton.setAttribute('tabindex', '-1');
+      skippedButton.textContent = 'Skipped';
+      const followingButton = document.createElement('button');
+      followingButton.textContent = 'Following';
+      document.body.append(skippedButton, followingButton);
 
       await openCollapsedMobileMenu(container);
       const itemsRegion = await waitForMobilePanelPosition(container);
