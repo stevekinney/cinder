@@ -70,6 +70,12 @@ function staticStringFromExpression(
   }
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
     return bindings.get(expression['name']);
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return staticStringFromExpression(expression['expression'], bindings);
   return undefined;
 }
 
@@ -143,18 +149,30 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
-  const walkTopLevel = (current: unknown): void => {
+  const walkTopLevel = (current: unknown, shadowed = false): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
+    let currentShadowed = shadowed;
     if (
       type === 'FunctionDeclaration' ||
       type === 'FunctionExpression' ||
       type === 'ArrowFunctionExpression'
-    )
-      return;
+    ) {
+      let declaresBinding = false;
+      walkAst(current['body'], (node) => {
+        if (
+          node['type'] === 'VariableDeclarator' &&
+          isRecord(node['id']) &&
+          node['id']['name'] === bindingName
+        )
+          declaresBinding = true;
+      });
+      currentShadowed ||= declaresBinding;
+    }
     const node = current;
     let candidate: unknown;
     if (
+      !currentShadowed &&
       node['type'] === 'VariableDeclarator' &&
       isRecord(node['id']) &&
       node['id']['type'] === 'Identifier' &&
@@ -178,8 +196,8 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
         possibleControls.add(normalizedValue);
     }
     for (const child of Object.values(current)) {
-      if (Array.isArray(child)) child.forEach(walkTopLevel);
-      else if (isRecord(child)) walkTopLevel(child);
+      if (Array.isArray(child)) child.forEach((item) => walkTopLevel(item, currentShadowed));
+      else if (isRecord(child)) walkTopLevel(child, currentShadowed);
     }
   };
   walkTopLevel(root['instance']['content']);
@@ -256,6 +274,11 @@ export function visibleControlCount(source: string): number {
   if (fragment === undefined) return 0;
   let count = 0;
   walkAst(fragment, (node) => {
+    if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
+      const html = staticStringFromExpression(node['expression'], bindings);
+      if (html !== undefined) count += visibleControlCount(html);
+      return;
+    }
     const elementNames = new Set<string>();
     if (node['type'] === 'RegularElement' && typeof node['name'] === 'string')
       elementNames.add(node['name'].toLowerCase());
@@ -314,6 +337,39 @@ function elementClassSet(
       }
       if (part['type'] !== 'ExpressionTag' || !isRecord(part['expression'])) continue;
       const expression = part['expression'];
+      if (expression['type'] === 'ArrayExpression' && Array.isArray(expression['elements'])) {
+        for (const arrayElement of expression['elements']) {
+          const className = isRecord(arrayElement)
+            ? staticStringFromExpression(arrayElement, bindings)
+            : undefined;
+          if (className) className.split(/\s+/).forEach((name) => classes.add(name));
+        }
+      }
+      if (expression['type'] === 'ObjectExpression' && Array.isArray(expression['properties'])) {
+        for (const property of expression['properties']) {
+          if (
+            !isRecord(property) ||
+            property['type'] !== 'Property' ||
+            property['computed'] === true
+          )
+            continue;
+          const key = property['key'];
+          const enabled = property['value'];
+          const className = isRecord(key)
+            ? (staticStringFromExpression(key, bindings) ??
+              (key['type'] === 'Identifier' && typeof key['name'] === 'string'
+                ? key['name']
+                : undefined))
+            : undefined;
+          if (
+            className &&
+            isRecord(enabled) &&
+            enabled['type'] === 'Literal' &&
+            enabled['value'] === true
+          )
+            classes.add(className);
+        }
+      }
       if (
         expression['type'] !== 'CallExpression' ||
         !isRecord(expression['callee']) ||
@@ -383,7 +439,7 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
     const styleSource =
       isRecord(content) && typeof content['styles'] === 'string' ? content['styles'] : undefined;
     if (styleSource !== undefined) {
-      const styleCounts = cssPrimitiveCounts(styleSource);
+      const styleCounts = cssPrimitiveCounts(styleSource, collectSharedFloatingTargets(source));
       total.grid += styleCounts.grid;
       total.floating += styleCounts.floating;
     }

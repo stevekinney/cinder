@@ -541,6 +541,88 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('allows local floating targets in Svelte style blocks', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div class="menu cinder-_floating-surface" /><style>.menu { position: absolute; z-index: 1 }</style>',
+        'menu/menu.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('tracks captured outer polymorphic assignments', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function edit() { tag = 'input'; }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps grid style branches independent', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let dense = true;</script><div style={dense ? { display: 'grid', gridTemplateColumns: '1fr' } : { display: 'block' }} />",
+        'new-layout/new-layout.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('matches completed compound pseudo alternatives', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:is(.wide).layout { display: grid; } .layout { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps negated media types disjoint', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media not screen { .layout { display: grid; } } @media screen { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('resolves TypeScript native tag assertions', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        `<script lang="ts">const tag = 'input' as const;</script><svelte:element this={tag} />`,
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('recognizes static class objects', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<div class={{ menu: true, 'cinder-_floating-surface': true }} /><style>.menu { position: absolute; z-index: 1 }</style>",
+        'menu/menu.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('requires the same shared target for both floating selectors', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu { position: absolute; } .menu.copy { z-index: 1; }',
+        'menu/menu.css',
+        '<div class="menu cinder-_floating-surface" /><div class="menu copy" />',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('counts literal HtmlTag controls', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '{@html \'<input aria-label="Name">\'}',
+        'html-control/html-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('keeps mutable polymorphic binding lookup lexical', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -735,6 +817,15 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         '<script>const docs = `<label> description error`;</script><!-- <label> description error -->',
         'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('ignores event handler names in field evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label onclick={showHelp}>Sort</label><button onclick={clearError}>Clear</button>',
+        'events/events.svelte',
       ),
     ).toEqual([]);
   });

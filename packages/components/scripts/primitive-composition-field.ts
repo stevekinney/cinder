@@ -100,10 +100,16 @@ function localMarkupEvidence(
     node['type'] === 'ExpressionTag' &&
     typeof node['start'] === 'number' &&
     typeof node['end'] === 'number'
-  )
-    terms.push(source.slice(node['start'], node['end']));
+  ) {
+    const before = source.slice(Math.max(0, node['start'] - 24), node['start']);
+    if (!/\bon(?:click|keydown|keyup|input|change|focus|blur)\s*=|\bon:/i.test(before))
+      terms.push(source.slice(node['start'], node['end']));
+  }
   if (
     node['type'] === 'Attribute' &&
+    typeof node['name'] === 'string' &&
+    !node['name'].startsWith('on') &&
+    !node['name'].startsWith('on:') &&
     typeof node['start'] === 'number' &&
     typeof node['end'] === 'number'
   )

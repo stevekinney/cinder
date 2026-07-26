@@ -49,16 +49,28 @@ function collectObjectDeclarations(
     expression['type'] === 'ConditionalExpression' ||
     expression['type'] === 'LogicalExpression'
   ) {
+    const consequentDeclarations = new Map<string, string>();
+    const alternateDeclarations = new Map<string, string>();
     collectObjectDeclarations(
       expression['consequent'] ?? expression['left'],
       bindings,
-      declarations,
+      consequentDeclarations,
     );
     collectObjectDeclarations(
       expression['alternate'] ?? expression['right'],
       bindings,
-      declarations,
+      alternateDeclarations,
     );
+    for (const [property, value] of [...consequentDeclarations, ...alternateDeclarations]) {
+      const existing = declarations.get(property);
+      if (
+        property !== 'display' ||
+        existing === undefined ||
+        value === 'grid' ||
+        value === 'inline-grid'
+      )
+        declarations.set(property, value);
+    }
     return;
   }
   if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties'])) return;

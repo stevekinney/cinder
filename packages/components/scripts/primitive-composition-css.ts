@@ -83,9 +83,10 @@ function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTar
   );
 }
 
-function mediaType(query: string): string | undefined {
+function mediaType(query: string): { name: string; negated: boolean } | undefined {
   const match = query.match(/^\s*(not\s+|only\s+)?([a-z][\w-]*)\b/i);
-  return match?.[2]?.toLowerCase();
+  if (match?.[2] === undefined) return undefined;
+  return { name: match[2].toLowerCase(), negated: match[1]?.trim() === 'not' };
 }
 
 function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
@@ -114,6 +115,8 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
         value: node.value,
         insensitive: node.insensitive === true,
       });
+  }
+  for (const node of nodes) {
     if (
       node.type === 'pseudo' &&
       (node.value === ':not' || node.value === ':is' || node.value === ':where') &&
@@ -281,7 +284,12 @@ function conditionalQueryBranches(parameters: string): string[] {
 function conditionalQueryBranchesConflict(left: string, right: string): boolean {
   const leftType = mediaType(left);
   const rightType = mediaType(right);
-  if (leftType !== undefined && rightType !== undefined && leftType !== rightType) return true;
+  if (
+    leftType !== undefined &&
+    rightType !== undefined &&
+    (leftType.name !== rightType.name || leftType.negated !== rightType.negated)
+  )
+    return true;
   const bounds = [...widthBounds(left), ...widthBounds(right)];
   for (const unit of ['px', 'root-em'] as const) {
     const comparableBounds = bounds.filter((bound) => bound.unit === unit);
@@ -404,16 +412,6 @@ function targetMatchesSharedFloatingElement(
   );
 }
 
-function targetUsesSharedFloatingSurface(
-  target: SelectorTarget,
-  sharedTargets: readonly SharedFloatingTarget[],
-): boolean {
-  return (
-    target.classes.has('cinder-_floating-surface') ||
-    sharedTargets.some((sharedTarget) => targetMatchesSharedFloatingElement(target, sharedTarget))
-  );
-}
-
 export function cssPrimitiveCounts(
   source: string,
   sharedTargets: readonly SharedFloatingTarget[] = [],
@@ -467,9 +465,17 @@ export function cssPrimitiveCounts(
         (pairCount, { rule: zIndexRule }) =>
           pairCount +
           compatibleSelectorTargetPairs(rule, zIndexRule).filter(
-            ([positionTarget, zIndexTarget]) =>
-              !targetUsesSharedFloatingSurface(positionTarget, sharedTargets) &&
-              !targetUsesSharedFloatingSurface(zIndexTarget, sharedTargets),
+            ([positionTarget, zIndexTarget]) => {
+              const sharedPair = sharedTargets.some(
+                (sharedTarget) =>
+                  targetMatchesSharedFloatingElement(positionTarget, sharedTarget) &&
+                  targetMatchesSharedFloatingElement(zIndexTarget, sharedTarget),
+              );
+              const bothExplicitlyShared =
+                positionTarget.classes.has('cinder-_floating-surface') &&
+                zIndexTarget.classes.has('cinder-_floating-surface');
+              return !sharedPair && !bothExplicitlyShared;
+            },
           ).length,
         0,
       ),
