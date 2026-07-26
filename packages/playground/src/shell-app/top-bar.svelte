@@ -485,6 +485,17 @@
     box-shadow: inset 0 -2px 0 var(--cinder-accent);
   }
 
+  @media (forced-colors: active) {
+    .top-bar :global(.cinder-segmented-control-option[data-cinder-selected]),
+    .top-bar :global(.cinder-segmented-control-option[data-cinder-current]),
+    .top-bar :global(.cinder-segmented-control-option[data-cinder-pressed]) {
+      background: Canvas;
+      color: CanvasText;
+      border-block-end: 2px solid Highlight;
+      forced-color-adjust: none;
+    }
+  }
+
   /*
    * Keep compact segmented-control labels on a single line. Cinder's
    * toolbar-density segments have no `white-space: nowrap`, so a tightened
