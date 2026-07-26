@@ -67,6 +67,9 @@
     }
     return navElement
       ? resolveTextDirection(navElement, localeContext?.direction, {
+          // The rendered provider fallback is written as `dir` on the nav.
+          // Ignore that generated attribute so an explicit CSS direction on
+          // the menu itself still controls keyboard traversal.
           ignoreElementDirectionAttribute: true,
         })
       : resolveTextDirection(directionElement, localeContext?.direction);
