@@ -214,6 +214,16 @@ describe('MenuBar', () => {
     expect(queryByRole('menuitem', { name: 'Cinder workspace' })).not.toBe(document.activeElement);
   });
 
+  test('renders a directional chevron instead of a text submenu glyph', async () => {
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    await fireEvent.click(getByRole('menuitem', { name: 'File' }));
+    await tick();
+    const indicator = document.querySelector('.cinder-menu-bar__submenu-indicator');
+    expect(indicator).not.toBeNull();
+    expect(indicator?.querySelector('svg')).not.toBeNull();
+    expect(indicator?.textContent?.trim() ?? '').toBe('');
+  });
+
   test('right-to-left submenus fall back to the inline-start side', async () => {
     const { getByRole } = render(MenuBar, { props: { menus: fileEditViewMenus(), dir: 'rtl' } });
     const file = getByRole('menuitem', { name: 'File' });

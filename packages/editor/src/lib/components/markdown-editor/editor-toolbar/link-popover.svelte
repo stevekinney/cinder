@@ -68,7 +68,9 @@
   // the incoming props here captures the correct values for this open session.
   // A prop-sync $effect would be redundant and would clobber the user's
   // in-progress edits if `initialUrl` / `initialText` recomputed mid-open.
+  // svelte-ignore state_referenced_locally -- capture initial values for this open session.
   let url = $state(initialUrl);
+  // svelte-ignore state_referenced_locally -- capture initial values for this open session.
   let text = $state(initialText);
   let initialFocusApplied = false;
 

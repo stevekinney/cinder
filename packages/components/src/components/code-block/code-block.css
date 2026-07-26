@@ -64,6 +64,7 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-code-block-font-size);
     line-height: var(--cinder-code-block-line-height);
+    tab-size: 2;
     color: var(--cinder-text);
     /* Use near-white in light mode so github-light token colors (e.g. #d73a49
      * keyword red) clear 4.5:1 WCAG AA. In dark mode keep the deep inset so

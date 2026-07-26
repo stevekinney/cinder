@@ -89,36 +89,39 @@
   // destructured. TypeScript can't narrow a destructured remainder per branch, so each
   // template arm casts `rest` to the attribute shape its element actually accepts. The cast
   // is safe because the `#if href !== undefined` discriminant has already chosen the branch.
-  // These are plain `const` casts — `rest` from `$props()` is already reactive, so the
-  // template spread re-reads consumer prop changes without an intermediate `$derived` node.
-  const anchorAttributes = rest as Omit<
-    HTMLAnchorAttributes,
-    | 'class'
-    | 'href'
-    | 'tabindex'
-    | 'onclick'
-    | 'aria-disabled'
-    | 'aria-busy'
-    | 'aria-label'
-    | 'aria-labelledby'
-    | 'aria-expanded'
-    | 'aria-controls'
-    | 'aria-haspopup'
-  >;
-  const buttonAttributes = rest as Omit<
-    HTMLButtonAttributes,
-    | 'class'
-    | 'type'
-    | 'disabled'
-    | 'onclick'
-    | 'aria-disabled'
-    | 'aria-busy'
-    | 'aria-label'
-    | 'aria-labelledby'
-    | 'aria-expanded'
-    | 'aria-controls'
-    | 'aria-haspopup'
-  >;
+  // Keep the casts derived so the template spreads follow consumer prop changes.
+  const anchorAttributes = $derived(
+    rest as Omit<
+      HTMLAnchorAttributes,
+      | 'class'
+      | 'href'
+      | 'tabindex'
+      | 'onclick'
+      | 'aria-disabled'
+      | 'aria-busy'
+      | 'aria-label'
+      | 'aria-labelledby'
+      | 'aria-expanded'
+      | 'aria-controls'
+      | 'aria-haspopup'
+    >,
+  );
+  const buttonAttributes = $derived(
+    rest as Omit<
+      HTMLButtonAttributes,
+      | 'class'
+      | 'type'
+      | 'disabled'
+      | 'onclick'
+      | 'aria-disabled'
+      | 'aria-busy'
+      | 'aria-label'
+      | 'aria-labelledby'
+      | 'aria-expanded'
+      | 'aria-controls'
+      | 'aria-haspopup'
+    >,
+  );
 
   // Branch-specific prop reads stay `$derived` because they extract a *value* off `rest`
   // (a property access snapshots, unlike the spread of `rest` itself which re-reads the
