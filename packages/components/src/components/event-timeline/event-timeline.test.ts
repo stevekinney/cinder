@@ -190,6 +190,21 @@ describe('EventTimeline', () => {
     );
   });
 
+  test('keeps centered labels centered when narrow timelines overlap edge zones', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T12:00:00.000Z', label: 'Centered event' }],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(200);
+    await tick();
+    expect(container.querySelector('[role="listitem"]')?.getAttribute('data-cinder-edge')).toBe(
+      'middle',
+    );
+  });
+
   test('reserves lanes for physical RTL bounds', async () => {
     const { container } = render(EventTimeline, {
       start,

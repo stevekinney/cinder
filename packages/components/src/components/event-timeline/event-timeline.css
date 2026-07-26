@@ -83,6 +83,10 @@
     text-align: end;
   }
 
+  .cinder-event-timeline__item[data-cinder-centered] {
+    --_cinder-event-timeline-label-offset: 0px;
+  }
+
   .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-edge='start'] {
     justify-items: end;
     text-align: end;
@@ -196,6 +200,13 @@
 
   .cinder-event-timeline__cluster-trigger:focus-visible {
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-event-timeline__cluster-trigger:focus-visible {
+      outline: 2px solid CanvasText;
+      outline-offset: 2px;
+    }
   }
 
   .cinder-event-timeline__cluster-surface {

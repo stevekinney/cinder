@@ -38,6 +38,7 @@
 
   type PositionedEventTimelineItem = Omit<EventTimelineItem, 'sublabel'> & {
     accessibleLabel: string;
+    centered: boolean;
     edge: 'end' | 'middle' | 'start';
     key: string;
     lane: number;
@@ -88,7 +89,10 @@
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
   const clusterPortalAttachment = createPortalAttachment({
-    target: () => clusterTrigger?.closest<HTMLElement>('dialog[open]') ?? document.body,
+    // Anchored overlay coordinates are viewport-relative (fixed strategy). Keep the
+    // surface in the document top layer so transformed dialog containers cannot
+    // become a competing fixed-position containing block.
+    target: () => document.body,
     inheritAttributes: true,
     source: () => clusterTrigger,
   });
@@ -243,7 +247,22 @@
           measuredWidth > 0
             ? ((6 * rootFontSize) / measuredWidth) * 100
             : (6 / LABEL_MAX_WIDTH_REM[size]) * collisionThresholdPercent;
-        const edge = edgeForPosition(position, collisionThresholdPercent, offsetPercent);
+        const preferredEdge = edgeForPosition(position, collisionThresholdPercent, offsetPercent);
+        let edge = preferredEdge;
+        // On very narrow timelines the edge safety zones can overlap. Prefer an
+        // undisplaced centered label whenever its measured bounds still fit.
+        const centeredBounds = transformedLabelBounds(
+          position,
+          'middle',
+          collisionThresholdPercent,
+          0,
+        );
+        const centered =
+          collisionThresholdPercent > 50 &&
+          preferredEdge !== 'middle' &&
+          centeredBounds.start >= 0 &&
+          centeredBounds.end <= 100;
+        if (centered) edge = 'middle';
         const availableLane = laneBounds.findIndex((bounds) => {
           const candidate = transformedLabelBounds(
             position,
@@ -275,6 +294,7 @@
         const positionedItem = {
           ...item,
           accessibleLabel: `${item.label}, ${timeLabel}, ${stateLabel}`,
+          centered,
           edge,
           key: keyForItem(item, index, timestamp),
           lane,
@@ -432,6 +452,7 @@
           data-cinder-lane={item.lane}
           data-cinder-lane-parity={item.lane % 2 === 0 ? 'even' : 'odd'}
           data-cinder-edge={item.edge}
+          data-cinder-centered={item.centered ? '' : undefined}
           aria-label={item.accessibleLabel}
           style:left="{item.position}%"
           style:--_cinder-event-timeline-lane={item.lane}
