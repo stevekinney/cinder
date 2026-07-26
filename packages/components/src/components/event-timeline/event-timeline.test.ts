@@ -306,6 +306,11 @@ describe('EventTimeline', () => {
     expect(container.querySelectorAll('.cinder-event-timeline__cluster-trigger')).toHaveLength(2);
   });
 
+  test('derives stable cluster identity from its items, not array order', () => {
+    expect(EVENT_TIMELINE_SOURCE).not.toContain('cluster-${groupIndex}-');
+    expect(EVENT_TIMELINE_SOURCE).toContain('cluster-${startTime}-${endTime}-');
+  });
+
   test('allocates additional lanes for dense clusters without reusing the final lane', () => {
     const { container } = render(EventTimeline, {
       start,

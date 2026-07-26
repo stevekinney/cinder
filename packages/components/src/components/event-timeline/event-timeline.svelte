@@ -327,7 +327,7 @@
       }
     }
 
-    const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup, groupIndex) => {
+    const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup) => {
       const chronologicalItems = overflowGroup.slice().sort((a, b) => a.timestamp - b.timestamp);
       const first = chronologicalItems[0]!;
       const last = chronologicalItems.at(-1)!;
@@ -339,7 +339,7 @@
         count: overflowGroup.length,
         edge: edgeForPosition(first.position, collisionThresholdPercent),
         endTime,
-        key: `cluster-${groupIndex}-${startTime}-${endTime}-${JSON.stringify(chronologicalItems.map((item) => item.id ?? item.key))}`,
+        key: `cluster-${startTime}-${endTime}-${JSON.stringify(chronologicalItems.map((item) => item.id ?? item.key))}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,
