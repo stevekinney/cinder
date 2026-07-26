@@ -160,7 +160,7 @@ function matchesDirectionStyleRuleList(
     const nestedRules = readNestedCssRules(rule);
     if (
       nestedRules &&
-      isConditionalRuleActive(rule) &&
+      isConditionalRuleActive(rule, element) &&
       matchesDirectionStyleRuleList(element, nestedRules)
     ) {
       return true;
@@ -201,11 +201,11 @@ function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
   );
 }
 
-function isConditionalRuleActive(rule: CSSRule): boolean {
+function isConditionalRuleActive(rule: CSSRule, element: HTMLElement): boolean {
   const conditionText = Reflect.get(rule, 'conditionText');
   if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
 
-  if (isContainerRule(rule)) return false;
+  if (isContainerRule(rule)) return isContainerQueryActive(conditionText, element);
 
   if (isMediaRule(rule) && typeof matchMedia === 'function') {
     return matchMedia(conditionText).matches;
@@ -215,6 +215,29 @@ function isConditionalRuleActive(rule: CSSRule): boolean {
     return CSS.supports(conditionText);
 
   return true;
+}
+
+function isContainerQueryActive(conditionText: string, element: HTMLElement): boolean {
+  const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^\)]+)\)/i.exec(conditionText);
+  if (styleQuery) {
+    let ancestor = element.parentElement;
+    while (ancestor) {
+      const value =
+        getComputedStyle(ancestor).getPropertyValue(styleQuery[1]!).trim() ||
+        ancestor.style.getPropertyValue(styleQuery[1]!).trim();
+      if (value) return value === styleQuery[2]!.trim();
+      ancestor = ancestor.parentElement;
+    }
+    return false;
+  }
+  const container = element.parentElement;
+  if (!container) return false;
+  const width = container.getBoundingClientRect().width;
+  const minimum = /min-width\s*:\s*([\d.]+)px/i.exec(conditionText);
+  const maximum = /max-width\s*:\s*([\d.]+)px/i.exec(conditionText);
+  if (minimum && width < Number(minimum[1])) return false;
+  if (maximum && width > Number(maximum[1])) return false;
+  return minimum !== null || maximum !== null;
 }
 
 function isContainerRule(rule: CSSRule): boolean {

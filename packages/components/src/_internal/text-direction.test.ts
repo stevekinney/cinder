@@ -424,6 +424,27 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('uses an active style container query direction rule', () => {
+    const wrapper = document.createElement('section');
+    wrapper.style.setProperty('--example', 'true');
+    const element = document.createElement('div');
+    wrapper.appendChild(element);
+    document.body.appendChild(wrapper);
+    const nestedRule = createStyleRule({ selectorText: '.container-ltr-reset', direction: 'ltr' });
+    element.className = 'container-ltr-reset';
+    const outerRule = {
+      cssText: '@container style(--example: true) { .container-ltr-reset { direction: ltr; } }',
+      type: 0,
+      conditionText: 'style(--example: true)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
   test('ignores inaccessible and invalid CSS direction rules', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
