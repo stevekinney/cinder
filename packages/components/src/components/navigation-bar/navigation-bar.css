@@ -53,6 +53,12 @@
     min-width: 0;
   }
 
+  .cinder-navigation-bar__items-owner {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
+  }
+
   .cinder-navigation-bar[data-cinder-placement='bottom'] .cinder-navigation-bar__items {
     align-self: stretch;
     justify-content: space-around;

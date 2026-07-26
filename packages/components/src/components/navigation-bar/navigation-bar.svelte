@@ -438,7 +438,6 @@
   {...rest}
   bind:this={navigationBarElement}
   aria-label={label}
-  aria-owns={isMobileLayout && mobileMenuOpen ? regionId : undefined}
   class={classNames('cinder-navigation-bar', className)}
   data-collapsible={isCollapsible ? 'true' : 'false'}
   data-cinder-placement={placement}
@@ -473,6 +472,10 @@
         onkeydown: handleToggleKeyDown,
       })}
     </div>
+  {/if}
+
+  {#if isMobileLayout && mobileMenuOpen}
+    <div class="cinder-navigation-bar__items-owner" aria-owns={regionId}></div>
   {/if}
 
   <div

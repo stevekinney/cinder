@@ -382,6 +382,29 @@ describe('Portal', () => {
     expect(element.getAttribute('lang')).toBe('');
   });
 
+  test('updates explicit language without remounting focused content', async () => {
+    const view = render(Portal, {
+      props: {
+        lang: 'en',
+        children: childSnippet,
+      },
+    });
+    await tick();
+    const button = document.body.querySelector<HTMLButtonElement>('[data-testid="portal-child"]')!;
+    const wrapper = button.parentElement;
+    button.focus();
+
+    await view.rerender({
+      lang: 'fr',
+      children: childSnippet,
+    });
+    await tick();
+
+    expect(button.parentElement?.getAttribute('lang')).toBe('fr');
+    expect(button.parentElement).toBe(wrapper);
+    expect(document.activeElement).toBe(button);
+  });
+
   test('follows scoped theme additions on source ancestors while mounted', async () => {
     const scopedAncestor = document.createElement('section');
     const mountPoint = document.createElement('div');

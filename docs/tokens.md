@@ -314,8 +314,8 @@ a new global layer.
 | `--cinder-z-modal`              | `1200`  |
 | `--cinder-z-sheet`              | `1200`  |
 | `--cinder-z-toast`              | `1300`  |
+| `--cinder-z-focused-affordance` | `1350`  |
 | `--cinder-z-drag-preview`       | `1400`  |
-| `--cinder-z-focused-affordance` | `1500`  |
 
 ## Overlay surfaces
 

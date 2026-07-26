@@ -139,6 +139,63 @@ function stubWebAnimationsApi(happyWindow: Window): void {
   proto['animate'] = stubbedAnimate;
 }
 
+/**
+ * happy-dom 15.11.7 stores each internal MutationObserver listener callback only
+ * through a WeakRef. Under memory pressure the callback can be collected while
+ * the observer is still active, silently dropping later mutations and making
+ * observer-driven component tests order-dependent.
+ *
+ * Keep only those internal callback WeakRefs strong while `observe()` registers
+ * them. Consumer-created WeakRefs retain their native behavior.
+ */
+function retainMutationObserverCallbacks(happyWindow: Window, target: Global): void {
+  const NativeMutationObserver = happyWindow.MutationObserver;
+
+  class StableMutationObserver extends NativeMutationObserver {
+    override observe(
+      ...arguments_: Parameters<InstanceType<typeof NativeMutationObserver>['observe']>
+    ): void {
+      const NativeWeakRef = globalThis.WeakRef;
+
+      class StrongWeakRef<T extends object> {
+        readonly #target: T;
+
+        constructor(strongTarget: T) {
+          this.#target = strongTarget;
+        }
+
+        deref(): T {
+          return this.#target;
+        }
+      }
+
+      Object.defineProperty(globalThis, 'WeakRef', {
+        value: StrongWeakRef as unknown as typeof WeakRef,
+        configurable: true,
+        writable: true,
+      });
+      try {
+        super.observe(...arguments_);
+      } finally {
+        Object.defineProperty(globalThis, 'WeakRef', {
+          value: NativeWeakRef,
+          configurable: true,
+          writable: true,
+        });
+      }
+    }
+  }
+
+  Object.defineProperty(happyWindow, 'MutationObserver', {
+    value: StableMutationObserver,
+    configurable: true,
+  });
+  Object.defineProperty(target, 'MutationObserver', {
+    value: StableMutationObserver,
+    configurable: true,
+  });
+}
+
 export function setupHappyDom(): void {
   if (installed) return;
   const happyWindow = new Window();
@@ -160,6 +217,7 @@ export function setupHappyDom(): void {
 
   alignElementRemoveWithChildNodeSpec(happyWindow);
   stubWebAnimationsApi(happyWindow);
+  retainMutationObserverCallbacks(happyWindow, target);
 
   installed = true;
 }

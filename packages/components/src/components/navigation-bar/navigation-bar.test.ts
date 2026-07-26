@@ -636,6 +636,29 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('owns portaled items before trailing navigation actions', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+        actions: textSnippet('actions'),
+      });
+
+      const nav = await openCollapsedMobileMenu(container);
+      const itemsRegion = getItemsRegion(container);
+      const owner = container.querySelector('.cinder-navigation-bar__items-owner');
+      const actions = container.querySelector('.cinder-navigation-bar__actions');
+
+      expect(nav.hasAttribute('aria-owns')).toBe(false);
+      expect(owner?.getAttribute('aria-owns')).toBe(itemsRegion.id);
+      expect(
+        owner && actions
+          ? Boolean(owner.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING)
+          : false,
+      ).toBe(true);
+    });
+  });
+
   test('portaled item events bubble through the original navigation ancestry', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {

@@ -48,15 +48,16 @@ Consumers needing server-rendered overlay content for first paint must compose t
 
 ## Z-index layering
 
-| Layer        | CSS variable              | JS constant            | Numeric |
-| ------------ | ------------------------- | ---------------------- | ------- |
-| Tooltip      | `--cinder-z-tooltip`      | `Z_LAYERS.tooltip`     | 1000    |
-| Dropdown     | `--cinder-z-dropdown`     | `Z_LAYERS.dropdown`    | 1100    |
-| Popover      | `--cinder-z-popover`      | `Z_LAYERS.popover`     | 1100    |
-| Modal        | `--cinder-z-modal`        | `Z_LAYERS.modal`       | 1200    |
-| Sheet        | `--cinder-z-sheet`        | `Z_LAYERS.sheet`       | 1200    |
-| Toast        | `--cinder-z-toast`        | `Z_LAYERS.toast`       | 1300    |
-| Drag preview | `--cinder-z-drag-preview` | `Z_LAYERS.dragPreview` | 1400    |
+| Layer              | CSS variable                    | JS constant            | Numeric |
+| ------------------ | ------------------------------- | ---------------------- | ------- |
+| Tooltip            | `--cinder-z-tooltip`            | `Z_LAYERS.tooltip`     | 1000    |
+| Dropdown           | `--cinder-z-dropdown`           | `Z_LAYERS.dropdown`    | 1100    |
+| Popover            | `--cinder-z-popover`            | `Z_LAYERS.popover`     | 1100    |
+| Modal              | `--cinder-z-modal`              | `Z_LAYERS.modal`       | 1200    |
+| Sheet              | `--cinder-z-sheet`              | `Z_LAYERS.sheet`       | 1200    |
+| Toast              | `--cinder-z-toast`              | `Z_LAYERS.toast`       | 1300    |
+| Focused affordance | `--cinder-z-focused-affordance` | —                      | 1350    |
+| Drag preview       | `--cinder-z-drag-preview`       | `Z_LAYERS.dragPreview` | 1400    |
 
 Toast sits **above** Modal so confirmation and error toasts reach users even when a modal is open. An actively dragged preview is the top visual layer so it remains attached to the pointer across every surface. Stylesheets reference the CSS variables; tests use the JS constants.
 

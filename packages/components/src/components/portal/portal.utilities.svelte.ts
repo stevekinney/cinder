@@ -1,3 +1,4 @@
+import { untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 
 import { devWarn } from '../../utilities/dev-warn.ts';
@@ -419,6 +420,17 @@ export function createPortalAttachment(
       anchor.parentNode.insertBefore(element, anchor.nextSibling);
     }
 
+    let activeAttributeSource: HTMLElement | null = null;
+    let activeInheritAttributes = false;
+
+    // Attribute props can update without changing where the portal is mounted. Keep those updates
+    // in a child effect so changing language or theme never runs the mount effect's teardown and
+    // detaches focused content.
+    $effect(() => {
+      readOption(options.explicitAttributes ?? {});
+      untrack(() => syncInheritedAttributes(activeAttributeSource, activeInheritAttributes));
+    });
+
     // Nest the reads inside `$effect` so getter-based options are tracked reactively. Each rerun
     // detaches the previous mount before re-resolving — this guards against the wrapper being
     // stranded in the old target when `target` changes or `disabled` flips true.
@@ -431,19 +443,25 @@ export function createPortalAttachment(
       const resolved = disabled ? null : resolvePortalTarget(targetValue);
 
       if (!disabled && resolved?.kind === 'resolved') {
-        syncInheritedAttributes(attributeSource, inheritAttributes);
+        activeAttributeSource = attributeSource;
+        activeInheritAttributes = inheritAttributes;
+        untrack(() => syncInheritedAttributes(attributeSource, inheritAttributes));
         stopObservingInheritedAttributes = observeInheritedPortalAttributes(
           attributeSource,
           inheritAttributes,
           () => syncInheritedAttributes(attributeSource, inheritAttributes),
         );
-        resolved.target.appendChild(element);
+        if (element.parentElement !== resolved.target) {
+          resolved.target.appendChild(element);
+        }
         lastWarnedUnresolvedKey = null;
       } else if (!disabled && resolved?.kind === 'unresolved') {
         // Target unresolved: keep the wrapper inline at the anchor so children remain rendered
         // (with a dev warning) instead of vanishing from the DOM entirely.
         restoreInline();
-        syncInheritedAttributes(null, false);
+        activeAttributeSource = null;
+        activeInheritAttributes = false;
+        untrack(() => syncInheritedAttributes(null, false));
         if (lastWarnedUnresolvedKey !== resolved.key) {
           devWarn(
             `[cinder/portal] could not resolve portal target ${JSON.stringify(resolved.key)}.`,
@@ -454,17 +472,17 @@ export function createPortalAttachment(
         // Disabled path: wrapper must stay in (or return to) its original position, not be left
         // detached. The Portal component's template still renders children in this mode.
         restoreInline();
-        syncInheritedAttributes(null, false);
+        activeAttributeSource = null;
+        activeInheritAttributes = false;
+        untrack(() => syncInheritedAttributes(null, false));
         lastWarnedUnresolvedKey = null;
       }
 
       return () => {
         stopObservingInheritedAttributes?.();
-        // Idempotent: only remove if still connected somewhere. Tolerates external removal of the
-        // wrapper between mount and cleanup. The anchor stays put so the next re-run can reinsert.
-        if (element.isConnected) {
-          element.remove();
-        }
+        // The next effect run moves the existing wrapper directly between its old and new
+        // locations. Removing it here would blur focused descendants even when the resolved target
+        // did not change.
       };
     });
 
