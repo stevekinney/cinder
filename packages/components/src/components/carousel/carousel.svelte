@@ -170,6 +170,15 @@
     return (index - initialSlideIndex + slides.length) % slides.length;
   }
 
+  function isInteractionLayoutSlide(index: number): boolean {
+    if (index === currentIndex || index === settledIndex) return true;
+    if (!(isInteracting || isNativeScrolling)) return false;
+    const order = initialSlideOrder(index);
+    return [currentIndex, settledIndex].some(
+      (anchor) => Math.abs(order - initialSlideOrder(anchor)) <= 1,
+    );
+  }
+
   function scrollToActiveSlide(behavior?: ScrollBehavior): void {
     const viewport = viewportElement;
     if (viewport === null) return;
@@ -337,11 +346,7 @@
           aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
           aria-hidden={index === currentIndex ? undefined : 'true'}
           inert={index !== currentIndex}
-          data-cinder-collapsed={index !== currentIndex &&
-          index !== settledIndex &&
-          !(isInteracting || isNativeScrolling)
-            ? ''
-            : undefined}
+          data-cinder-collapsed={!isInteractionLayoutSlide(index) ? '' : undefined}
           style:order={initialSlideOrder(index)}
         >
           {#if slide.href}

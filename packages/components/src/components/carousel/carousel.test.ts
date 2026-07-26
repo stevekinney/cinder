@@ -360,6 +360,30 @@ describe('Carousel', () => {
     expect(incoming.hasAttribute('inert')).toBe(true);
   });
 
+  test('keeps distant tall slides collapsed during pointer scrolling', async () => {
+    const distantTallSlides = [
+      slides[0]!,
+      slides[1]!,
+      slides[2]!,
+      { id: 'four', label: 'Slide four', description: 'Fourth' },
+      {
+        id: 'five',
+        label: 'Slide five',
+        description: Array.from({ length: 40 }, () => 'Distant tall content').join(' '),
+      },
+    ];
+    const { container } = render(Carousel, { slides: distantTallSlides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const distantTall = viewport.children[4] as HTMLElement;
+
+    expect(distantTall.hasAttribute('data-cinder-collapsed')).toBe(true);
+    await fireEvent.pointerDown(viewport, { pointerId: 8 });
+    await fireEvent.scroll(viewport);
+
+    expect(distantTall.hasAttribute('data-cinder-collapsed')).toBe(true);
+    await fireEvent.pointerUp(window, { pointerId: 8 });
+  });
+
   test('collapses a tall adjacent slide when a short active slide is settled', () => {
     const tallSlides = [
       { ...slides[0]!, description: 'Short active slide' },
