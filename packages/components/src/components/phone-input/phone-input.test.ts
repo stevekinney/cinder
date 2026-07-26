@@ -470,6 +470,24 @@ describe('PhoneInput form reset', () => {
     form.remove();
   });
 
+  test('resynchronizes an untouched non-first initial country on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], country: 'GB' },
+    });
+    expect(countrySelect(rendered.container).value).toBe('GB');
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(countrySelect(rendered.container).value).toBe('GB');
+    expect(
+      rendered.container.querySelector('.cinder-phone-input__country-summary')?.textContent,
+    ).toContain('GB');
+    rendered.unmount();
+    form.remove();
+  });
+
   test('does not reset when the reset event is canceled', async () => {
     const form = document.createElement('form');
     document.body.append(form);

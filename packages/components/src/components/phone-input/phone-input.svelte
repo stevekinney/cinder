@@ -372,6 +372,9 @@
         knownCountry = resetCountry;
         value = initialValue;
         knownValue = initialValue;
+        const countrySelect = fieldRoot?.querySelector<HTMLSelectElement>('select');
+        if (countrySelect && countrySelect.value !== resetCountry)
+          countrySelect.value = resetCountry;
         nationalDisplay = initialParsedCountryAllowed
           ? initialParsed.formatted
           : initialParsed
