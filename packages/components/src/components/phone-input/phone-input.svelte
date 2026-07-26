@@ -350,9 +350,12 @@
   }
 
   function handleFormReset(event: Event): void {
+    const valueAtReset = value;
+    const countryAtReset = country;
     queueMicrotask(() =>
       queueMicrotask(() => {
         if (event.defaultPrevented) return;
+        if (value !== valueAtReset || country !== countryAtReset) return;
         const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
         if (!rawCountry || !isCountryCode(rawCountry)) return;
         const initialParsed = parseE164Value(initialValue);

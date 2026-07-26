@@ -421,6 +421,28 @@ describe('PhoneInput allow-list expansion', () => {
 });
 
 describe('PhoneInput form reset', () => {
+  test('preserves newer external value and country updates after reset dispatch', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', name: 'phone', value: '+14155552671', country: 'US' },
+      target: form,
+    });
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await rendered.rerender({
+      id: 'p',
+      label: 'Phone',
+      name: 'phone',
+      value: '+442079460958',
+      country: 'GB',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(countrySelect(rendered.container).value).toBe('GB');
+    expect(rendered.container.querySelector('input[type="hidden"]')?.getAttribute('value')).toBe(
+      '+442079460958',
+    );
+  });
   test('restores the initial national formatting on reset', async () => {
     const form = document.createElement('form');
     document.body.append(form);
