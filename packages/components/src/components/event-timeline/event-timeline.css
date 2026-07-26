@@ -45,13 +45,13 @@
   .cinder-event-timeline__items {
     block-size: max(
       6rem,
-      calc(min(var(--_cinder-event-timeline-lane-count, 3), 5) * 2rem + 1.5rem)
+      calc(min(var(--_cinder-event-timeline-lane-count, 3), 5) * 2.5rem + 1.5rem)
     );
   }
 
   .cinder-event-timeline__item {
     position: absolute;
-    inset-block-start: calc(var(--_cinder-event-timeline-lane, 0) * 2rem);
+    inset-block-start: calc(var(--_cinder-event-timeline-lane, 0) * 2.5rem);
     display: grid;
     justify-items: center;
     gap: 0.25rem;
