@@ -122,7 +122,7 @@
   }
 
   .cinder-json-viewer__value[data-cinder-type='number'] {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-json-viewer__value[data-cinder-type='boolean'] {
