@@ -41,6 +41,12 @@ describe('findStaticStyleAttributes', () => {
       { line: 1, column: 6 },
     ]);
   });
+
+  test('flags static object-valued style attributes', () => {
+    expect(findStaticStyleAttributes('<div style={{ color: "red", opacity: 0.5 }}></div>')).toEqual(
+      [{ line: 1, column: 6 }],
+    );
+  });
   test('flags folded constant expressions and object spreads', () => {
     expect(
       findStaticStyleAttributes(

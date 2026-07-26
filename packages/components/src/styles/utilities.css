@@ -1,3 +1,8 @@
+/* Virtualizer fixture scroll containers need a real overflow context. */
+.cinder-virtualizer-scroll {
+  overflow: auto;
+}
+
 /* Screen-reader only — visually hidden but announced by assistive technology. */
 .cinder-sr-only {
   position: absolute;

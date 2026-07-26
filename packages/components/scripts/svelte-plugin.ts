@@ -1,7 +1,7 @@
 import type { BunPlugin } from 'bun';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { compile, compileModule } from 'svelte/compiler';
+import { compile, compileModule, parse } from 'svelte/compiler';
 import ts from 'typescript';
 
 type GenerationTarget = 'client' | 'server';
@@ -81,7 +81,14 @@ function allowsStyleBlock(path: string): boolean {
 }
 
 export function hasAuthoredStyleBlock(source: string): boolean {
-  return /<style(?:\s[^>]*)?>[\s\S]*<\/style>/i.test(source);
+  const ast = parse(source, { modern: true }) as unknown as Record<string, unknown>;
+  return isNodeStyleSheet(ast.css);
+}
+
+function isNodeStyleSheet(value: unknown): boolean {
+  return Boolean(
+    value && typeof value === 'object' && (value as { type?: unknown }).type === 'StyleSheet',
+  );
 }
 
 function hasModifier(

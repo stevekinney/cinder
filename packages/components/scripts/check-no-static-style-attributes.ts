@@ -57,6 +57,7 @@ function isStaticValue(value: unknown): boolean {
     (expression.type === 'TemplateLiteral' &&
       Array.isArray(expression['expressions']) &&
       expression['expressions'].length === 0) ||
+    (expression.type === 'ObjectExpression' && isStaticExpression(expression)) ||
     (expression.type === 'BinaryExpression' &&
       isStaticExpression(expression['left']) &&
       isStaticExpression(expression['right']))
@@ -74,6 +75,16 @@ function isStaticExpression(expression: unknown): boolean {
       (expression['operator'] === '-' || expression['operator'] === '+') &&
       isStaticExpression(expression['argument'])
     );
+  if (expression.type === 'ObjectExpression') {
+    const properties = expression['properties'];
+    return (
+      Array.isArray(properties) &&
+      properties.every(
+        (property) =>
+          isNode(property) && property.type === 'Property' && isStaticExpression(property['value']),
+      )
+    );
+  }
   return (
     expression.type === 'BinaryExpression' &&
     isStaticExpression(expression['left']) &&

@@ -147,7 +147,7 @@
 <div
   data-testid="tree-scroll"
   style:height={`${treeHeight}px`}
-  class="virtualizer-scroll"
+  class="cinder-virtualizer-scroll"
   {@attach attachTreeScrollElement}
 >
   <div data-testid="tree-total" style:height={`${treeTotalSize}px`}>
@@ -178,7 +178,7 @@
   data-testid="grid-scroll"
   style:height={`${gridHeight}px`}
   style:width={`${gridWidth}px`}
-  class="virtualizer-scroll"
+  class="cinder-virtualizer-scroll"
   {@attach attachGridScrollElement}
 >
   <div

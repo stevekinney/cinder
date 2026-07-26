@@ -47,6 +47,14 @@ describe('hasAuthoredStyleBlock', () => {
     expect(hasAuthoredStyleBlock('<div style:height={height}></div>')).toBe(false);
     expect(hasAuthoredStyleBlock('<style>.card { color: red; }</style>')).toBe(true);
   });
+
+  it('ignores style markup inside scripts and comments', () => {
+    expect(
+      hasAuthoredStyleBlock(
+        `<!-- <style>.fake { color: red; }</style> --><script>const example = '<style>.fake {}</style>';</script><div style:height={height}></div>`,
+      ),
+    ).toBe(false);
+  });
 });
 
 describe('preserveServerComponentIdentity', () => {
