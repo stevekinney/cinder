@@ -204,9 +204,21 @@
     let layoutKeyboardVisible = false;
     let layoutKeyboardResizeActive = false;
     let layoutKeyboardScrollsSeen = 0;
+    let layoutKeyboardSettleFrames: number[] = [];
+    layoutKeyboardVisible = window.innerHeight < document.documentElement.clientHeight;
     const markLayoutKeyboardResize = () => {
       layoutKeyboardResizeActive = true;
       layoutKeyboardScrollsSeen = 0;
+      for (const frame of layoutKeyboardSettleFrames) window.cancelAnimationFrame(frame);
+      layoutKeyboardSettleFrames = [];
+      const settle = (remaining: number) => {
+        if (remaining === 0) {
+          layoutKeyboardResizeActive = false;
+          return;
+        }
+        layoutKeyboardSettleFrames.push(window.requestAnimationFrame(() => settle(remaining - 1)));
+      };
+      settle(2);
     };
     const readVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
       const isVisible = isVirtualKeyboardResize(source);
@@ -317,6 +329,7 @@
       for (const frame of Object.values(virtualKeyboardTransitionFrames)) {
         window.cancelAnimationFrame(frame);
       }
+      for (const frame of layoutKeyboardSettleFrames) window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', dismiss, true);
       window.removeEventListener('resize', dismiss);
       visualViewport?.removeEventListener('scroll', dismissVisualViewport);
