@@ -289,7 +289,8 @@ describe('EventTimeline', () => {
   });
 
   test('keeps cluster surfaces in the viewport top layer for native dialogs', () => {
-    expect(EVENT_TIMELINE_SOURCE).toContain('return document.body');
+    expect(EVENT_TIMELINE_SOURCE).toContain('return owner ?? document.body');
+    expect(EVENT_TIMELINE_SOURCE).toContain("? 'absolute' : 'fixed'");
     expect(EVENT_TIMELINE_SOURCE).toContain('closest<HTMLElement>(');
   });
 
