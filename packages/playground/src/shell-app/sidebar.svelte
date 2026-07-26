@@ -56,6 +56,7 @@
   let restoredExpansion = $state(false);
   const FILTER_SESSION_KEY = 'cinder-playground-sidebar-filter';
   const EXPANSION_SESSION_KEY = 'cinder-playground-sidebar-expansion';
+  const filterIsActive = $derived(filter.trim() !== '');
 
   onMount(() => {
     try {
@@ -90,7 +91,7 @@
   $effect(() => {
     if (!restoredExpansion) return;
     try {
-      const expansionToPersist = filterWasActive ? savedExpansion : expandedFamilies;
+      const expansionToPersist = filterIsActive ? savedExpansion : expandedFamilies;
       sessionStorage.setItem(EXPANSION_SESSION_KEY, JSON.stringify(expansionToPersist));
     } catch {
       /* ignore — degraded but functional */
@@ -125,9 +126,10 @@
   }
 
   $effect(() => {
-    const filterIsActive = filter.trim() !== '';
     if (filterIsActive && !filterWasActive) {
       savedExpansion = { ...expandedFamilies };
+    }
+    if (filterIsActive) {
       for (const name of navigationComponents) {
         if ((COMPOUND_COMPONENT_FAMILIES[name] ?? []).length > 0) {
           expandedFamilies[name] = true;
