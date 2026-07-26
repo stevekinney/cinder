@@ -417,6 +417,21 @@ export function playgroundBundleDependencyBuildProcess(
   };
 }
 
+export function playgroundBundleDependencyWatchArguments(packageName: string): string[] {
+  return ['--watch', 'run', `--filter=${packageName}`, 'build'];
+}
+
+export function playgroundBundleDependencyWatchProcess(
+  childProcess: ChildProcess,
+  packageName: string,
+): ManagedChildProcess {
+  return {
+    childProcess,
+    name: `${packageName} watch`,
+    killProcessGroup: process.platform !== 'win32',
+  };
+}
+
 export function playgroundServerArguments(): string[] {
   // Keep server/runtime modules hot-reloaded in the managed test process. A
   // warmup cache invalidation cannot re-evaluate already imported modules.
@@ -498,6 +513,22 @@ async function buildPlaygroundBundleDependencies(
     if (buildCode !== 0) {
       throw new Error(`${packageName} build exited with code ${buildCode}`);
     }
+  }
+}
+
+function startPlaygroundBundleDependencyWatchers(
+  registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
+  shouldContinueStartingChildProcesses: () => boolean,
+): void {
+  for (const packageName of playgroundBundleDependencyPackages) {
+    if (!shouldContinueStartingChildProcesses()) return;
+    const watchProcess = spawn('bun', playgroundBundleDependencyWatchArguments(packageName), {
+      cwd: repoRoot,
+      detached: process.platform !== 'win32',
+      stdio: 'inherit',
+      env: process.env,
+    });
+    registerChildProcess(playgroundBundleDependencyWatchProcess(watchProcess, packageName));
   }
 }
 
@@ -653,6 +684,10 @@ async function main(): Promise<void> {
     throw error;
   }
   await exitIfShuttingDown();
+  startPlaygroundBundleDependencyWatchers(
+    (childProcess) => children.push(childProcess),
+    () => shouldStartManagedChildProcess(shutdownExitCode),
+  );
 
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,

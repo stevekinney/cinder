@@ -39,6 +39,7 @@ import {
   isWarmupStable,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
+  shellBuildSucceeded,
   triggerReload,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
@@ -74,6 +75,12 @@ beforeAll(async () => {
 const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
 
 describe('last-good rebuild fallback', () => {
+  it('does not treat a last-good shell fallback as a successful fresh build', () => {
+    expect(shellBuildSucceeded('last-good-shell', true)).toBe(false);
+    expect(shellBuildSucceeded('fresh-shell', false)).toBe(true);
+    expect(shellBuildSucceeded(null, false)).toBe(false);
+  });
+
   it('keeps a successful renderer available through a transient rebuild failure', () => {
     const renderer = () => ({ body: '<main>last good</main>', head: '' });
     expect(fallbackToLastGood(renderer, new Error('transient compile failure'))).toBe(renderer);

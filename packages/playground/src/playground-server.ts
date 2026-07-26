@@ -182,6 +182,7 @@ const fixtureArtifactByPath = new Map<string, string>();
 const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
 let shellBuildPromise: Promise<string | null> | null = null;
+let shellBuildUsedFallback = false;
 type ShellServerRenderer = (props: {
   initialComponent: string;
   components: string[];
@@ -1241,6 +1242,10 @@ export function fallbackToLastGood<T>(lastGood: T | null, error: unknown): T {
   return lastGood;
 }
 
+export function shellBuildSucceeded(code: string | null, usedFallback: boolean): boolean {
+  return code !== null && !usedFallback;
+}
+
 async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
@@ -1369,12 +1374,16 @@ async function buildShellBundle(): Promise<string | null> {
   const cachedEntryPath = shellEntryByName.get('shell');
   const cachedCode =
     cachedEntryPath !== undefined ? shellArtifactByPath.get(cachedEntryPath) : undefined;
-  if (cachedCode !== undefined && !shellStale) return cachedCode;
+  if (cachedCode !== undefined && !shellStale) {
+    shellBuildUsedFallback = false;
+    return cachedCode;
+  }
 
   if (shellBuildPromise !== null) return shellBuildPromise;
 
   const buildPromise: Promise<string | null> = (async () => {
     const generationAtStart = rebuildGeneration;
+    shellBuildUsedFallback = false;
     // A Svelte syntax error makes the underlying `Bun.build()` call THROW
     // rather than resolve with `{ success: false }` — `.catch()` converts
     // that into the same graceful-failure path as a build that resolves
@@ -1385,6 +1394,7 @@ async function buildShellBundle(): Promise<string | null> {
       return null;
     });
     if (entry === null) {
+      shellBuildUsedFallback = true;
       console.error(
         '[playground] shell rebuild failed — serving last-good shell (if cached); will retry on next request',
       );
@@ -2494,7 +2504,11 @@ async function eagerPrebuildAll(): Promise<{
     }
   }
 
-  return { shellSucceeded: shellCode !== null, succeeded, failed };
+  return {
+    shellSucceeded: shellBuildSucceeded(shellCode, shellBuildUsedFallback),
+    succeeded,
+    failed,
+  };
 }
 
 export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {

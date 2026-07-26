@@ -39,7 +39,6 @@
 
   .cinder-access-gate__inline-content {
     display: inline-flex;
-    align-self: flex-start;
     min-inline-size: 0;
   }
 
@@ -58,7 +57,7 @@
   .cinder-access-gate__inline-reason {
     position: relative;
     display: inline-block;
-    align-self: flex-start;
+    align-self: first baseline;
     flex: 1 1 auto;
     min-inline-size: 0;
     padding-inline-start: calc(0.875rem + var(--cinder-space-1));
