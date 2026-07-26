@@ -33,10 +33,21 @@
     line-height: 1.5;
   }
 
+  .cinder-footer__brand-title,
+  .cinder-footer__brand-description,
+  .cinder-footer__group-title {
+    overflow-wrap: anywhere;
+  }
+
   .cinder-footer__groups {
-    display: grid;
-    gap: var(--cinder-space-5);
-    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-4);
+  }
+
+  .cinder-footer__groups > nav {
+    flex: 1 1 10rem;
+    max-inline-size: 12rem;
   }
 
   .cinder-footer__group-title {
@@ -55,6 +66,7 @@
   .cinder-footer__link {
     color: var(--cinder-text-muted);
     text-decoration: none;
+    overflow-wrap: anywhere;
   }
 
   @media (hover: hover) {
@@ -81,7 +93,7 @@
 
   .cinder-footer__legal {
     display: flex;
-    gap: var(--cinder-space-3);
+    gap: var(--cinder-space-4);
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
@@ -106,7 +118,7 @@
       align-items: start;
     }
 
-    .cinder-footer__main > .cinder-footer__groups:first-child {
+    .cinder-footer__main > :only-child {
       grid-column: 1 / -1;
     }
   }
