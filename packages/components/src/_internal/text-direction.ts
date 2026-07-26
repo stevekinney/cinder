@@ -6,12 +6,14 @@ export function resolveTextDirection(
   options?: { ignoreElementDirectionAttribute?: boolean },
 ): TextDirection | undefined {
   const ignoreElementDirectionAttribute = options?.ignoreElementDirectionAttribute ?? false;
+  const directionStyleRuleCache = new WeakMap<HTMLElement, boolean>();
   if (ignoreElementDirectionAttribute && element) {
     const styledDirection = readComputedTextDirection(element);
     const rootComputedDirection = readComputedTextDirection(element.ownerDocument.documentElement);
     if (
       styledDirection &&
-      (hasElementDirectionStylingHint(element) || styledDirection !== rootComputedDirection)
+      (hasElementDirectionStylingHint(element, directionStyleRuleCache) ||
+        styledDirection !== rootComputedDirection)
     )
       return styledDirection;
   }
@@ -27,7 +29,7 @@ export function resolveTextDirection(
       currentElement !== currentElement.ownerDocument.documentElement &&
       (currentElement.style.direction === 'rtl' ||
         currentElement.style.direction === 'ltr' ||
-        matchesDirectionStyleRule(currentElement))
+        matchesDirectionStyleRuleCached(currentElement, directionStyleRuleCache))
     ) {
       styledDirectionElement = currentElement;
     }
@@ -71,7 +73,7 @@ export function resolveTextDirection(
     computedDirection &&
     fallback &&
     computedDirection !== fallback &&
-    hasDirectionStylingHint(element)
+    hasDirectionStylingHint(element, false, directionStyleRuleCache)
   ) {
     return computedDirection;
   }
@@ -83,8 +85,11 @@ export function resolveTextDirection(
   return undefined;
 }
 
-function hasElementDirectionStylingHint(element: HTMLElement): boolean {
-  return Boolean(element.style.direction) || matchesDirectionStyleRule(element);
+function hasElementDirectionStylingHint(
+  element: HTMLElement,
+  cache: WeakMap<HTMLElement, boolean>,
+): boolean {
+  return Boolean(element.style.direction) || matchesDirectionStyleRuleCached(element, cache);
 }
 
 function readComputedTextDirection(
@@ -98,11 +103,12 @@ function readComputedTextDirection(
 function hasDirectionStylingHint(
   element: HTMLElement | null | undefined,
   includeElement = false,
+  cache?: WeakMap<HTMLElement, boolean>,
 ): boolean {
   let currentElement = includeElement ? element : element?.parentElement;
   while (currentElement && currentElement !== currentElement.ownerDocument.documentElement) {
     if (currentElement.style.direction) return true;
-    if (matchesDirectionStyleRule(currentElement)) return true;
+    if (matchesDirectionStyleRuleCached(currentElement, cache)) return true;
     currentElement = currentElement.parentElement;
   }
   return false;
@@ -119,6 +125,18 @@ function matchesDirectionStyleRule(element: HTMLElement): boolean {
     if (matchesDirectionStyleRuleList(element, rules)) return true;
   }
   return false;
+}
+
+function matchesDirectionStyleRuleCached(
+  element: HTMLElement,
+  cache?: WeakMap<HTMLElement, boolean>,
+): boolean {
+  if (!cache) return matchesDirectionStyleRule(element);
+  const cached = cache.get(element);
+  if (cached !== undefined) return cached;
+  const matched = matchesDirectionStyleRule(element);
+  cache.set(element, matched);
+  return matched;
 }
 
 function matchesDirectionStyleRuleList(

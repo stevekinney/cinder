@@ -330,6 +330,21 @@ describe('MegaMenu', () => {
     expect(document.activeElement).toBe(resources);
   });
 
+  test('mirrors panel motion direction for right-to-left provider navigation', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'rtl' });
+    const triggers = container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__trigger');
+    const first = triggers[0];
+    const second = triggers[1];
+    if (!first || !second) throw new Error('Missing top-level triggers.');
+    first.click();
+    await Promise.resolve();
+    second.click();
+    await Promise.resolve();
+    expect(container.querySelector('.cinder-mega-menu__content')?.getAttribute('data-motion')).toBe(
+      'from-start',
+    );
+  });
+
   test('prefers a nearer DOM direction over LocaleProvider direction', async () => {
     const { container } = render(MegaMenuLocaleTestHarness, {
       items,

@@ -97,7 +97,9 @@
   const motionDirection = $derived.by(() => {
     if (openIndex < 0 || previousOpenIndex === null || previousOpenIndex === openIndex)
       return 'none';
-    return openIndex > previousOpenIndex ? 'from-end' : 'from-start';
+    const movingTowardEnd =
+      resolvedDirection === 'rtl' ? openIndex < previousOpenIndex : openIndex > previousOpenIndex;
+    return movingTowardEnd ? 'from-end' : 'from-start';
   });
   const openSubmenu = $derived.by(() => {
     if (!openItem?.submenu?.length || !openSubmenuId) return openItem?.submenu?.[0] ?? null;
