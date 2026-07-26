@@ -2505,6 +2505,15 @@ export function createSharedDisposer(disposeWork: () => Promise<void>): () => Pr
   };
 }
 
+export function isWarmupStable(
+  generationAtStart: number,
+  generationAtEnd: number,
+  sourceMtimeAtStart: number | null,
+  sourceMtimeAtEnd: number | null,
+): boolean {
+  return generationAtStart === generationAtEnd && sourceMtimeAtStart === sourceMtimeAtEnd;
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   startupReady = false;
@@ -2538,11 +2547,27 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   let stable = false;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const generationAtStart = rebuildGeneration;
+    const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
     prebuild = await eagerPrebuildAll();
-    if (generationAtStart === rebuildGeneration) {
+    await getManifests().catch((error: unknown) => {
+      console.error('[playground] manifest pre-warm failed:', error);
+    });
+    if (watchers.length === 0) {
+      try {
+        watchers = startWatcher();
+      } catch (error) {
+        await dispose();
+        throw error;
+      }
+    }
+    const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
+    if (
+      isWarmupStable(generationAtStart, rebuildGeneration, sourceMtimeAtStart, sourceMtimeAtEnd)
+    ) {
       stable = true;
       break;
     }
+    invalidateCachesForChange({ kind: 'components' });
   }
   if (!stable || !prebuild) {
     await dispose();
@@ -2557,16 +2582,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   process.stdout.write(
     `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
   );
-  await getManifests().catch((error: unknown) => {
-    console.error('[playground] manifest pre-warm failed:', error);
-  });
   startupReady = true;
-  try {
-    watchers = startWatcher();
-  } catch (error) {
-    await dispose();
-    throw error;
-  }
   return {
     port: actualPort,
     dispose: async () => {

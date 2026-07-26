@@ -36,6 +36,7 @@ import {
   createSharedDisposer,
   fallbackToLastGood,
   handleRequest,
+  isWarmupStable,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
   triggerReload,
@@ -282,6 +283,14 @@ describe('shared disposer', () => {
 
     expect(dispose()).toBe(firstDispose);
     expect(disposeCalls).toBe(1);
+  });
+});
+
+describe('startup warmup stability', () => {
+  it('rejects a warmup when source changes before watcher validation', () => {
+    expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
+    expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
+    expect(isWarmupStable(4, 4, 100, 100)).toBe(true);
   });
 });
 
