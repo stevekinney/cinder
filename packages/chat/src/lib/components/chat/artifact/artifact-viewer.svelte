@@ -103,20 +103,11 @@
     tab-size: 2;
   }
 
-  .artifact-code-block {
-    tab-size: 2;
-  }
-
   .artifact-source-block code {
     font-family: inherit;
     font-size: inherit;
     background: none;
     padding: 0;
-  }
-
-  .artifact-code-block :global(.cinder-code-block__pre),
-  .artifact-code-block :global(.shiki) {
-    tab-size: 2;
   }
 
   .artifact-mermaid-note {

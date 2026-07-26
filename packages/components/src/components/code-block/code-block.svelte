@@ -114,7 +114,8 @@
   <!-- One stable, focusable scroll viewport is shared by plain, highlighted,
        and fallback states. Keep tabindex unconditional so overflowing snippets
        are keyboard-scrollable before measurement. -->
-  <div class="cinder-code-block__viewport" tabindex="0">
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -- keyboard scrolling is intentional for overflow content. -->
+  <div class="cinder-code-block__viewport" role="region" aria-label="Code" tabindex="0">
     <!-- The svelte:boundary catches errors thrown during render of {@html highlighted}
          (e.g. a malformed HTML string that breaks Svelte's reconciliation). Sync/async
          errors from the highlighter ITSELF are caught above; this is the secondary net. -->

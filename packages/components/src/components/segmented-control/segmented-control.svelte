@@ -159,7 +159,6 @@
     <nav
       {...rest}
       {id}
-      role="navigation"
       aria-labelledby={`${id}-label`}
       data-cinder-orientation={orientation}
       data-cinder-size={effectiveSize}

@@ -215,7 +215,7 @@ describe('MenuBar', () => {
   });
 
   test('renders a directional chevron instead of a text submenu glyph', async () => {
-    const { container, getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
+    const { getByRole } = render(MenuBar, { menus: fileEditViewMenus() });
     await fireEvent.click(getByRole('menuitem', { name: 'File' }));
     await tick();
     const indicator = document.querySelector('.cinder-menu-bar__submenu-indicator');

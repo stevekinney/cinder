@@ -194,7 +194,6 @@
   for aria-label/aria-labelledby. The cast is safe: we control the actual
   values passed at the callsite through EditorToolbarProps.
 -->
-<!-- svelte-ignore ts_invalid_generic_position -->
 <Toolbar
   {id}
   aria-label="Formatting toolbar"
