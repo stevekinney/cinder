@@ -27,13 +27,20 @@ env:
   # TURBO_FORCE is load-bearing in a way it was not before remote caching: it is
   # the only thing stopping this workflow from reading the shared remote cache
   # and degrading into a no-op verifier that replays entries instead of proving
-  # the code still executes. Never remove it. Writes still happen under force,
-  # which is the point — main-green is the from-scratch cache PRODUCER.
+  # the code still executes. Never remove it.
+  #
+  # There is deliberately no `actions/cache` step for `.turbo` in this workflow.
+  # A restore could never be read under force, and a save would collide with
+  # unit-tests.yaml's unsuffixed primary key: `actions/cache` selects an exact
+  # key match before consulting `restore-keys`, so once unit-tests has saved
+  # `turbo-<os>-<lock>-<config>`, entries saved here under any other key are
+  # never consumed. Remote caching is the cross-run sharing mechanism now, and
+  # this workflow always has secrets (push to main + schedule, never a fork).
   TURBO_FORCE: 'true'
-  # main-green only ever runs on `push` to main and on `schedule`, never from a
-  # fork, so these are always populated.
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  # OS discriminator for the remote cache — see the `test` task in turbo.json.
+  TURBO_PLATFORM: ${{ runner.os }}
 
 jobs:
   workspace-gates:
@@ -195,25 +202,6 @@ jobs:
               process.exit(0);
             });
           "
-
-      # Save-only, and deliberately the LAST step. `TURBO_FORCE` (see the `env`
-      # block) makes every task above re-execute, so restoring a .turbo cache
-      # here would download an archive whose entries can never be read — pure
-      # dead time. The entries turbo *writes* during those forced executions are
-      # still worth keeping: they were produced by a from-scratch run of the
-      # full suite, which makes main-green the trusted cache producer that
-      # unit-tests.yaml's `turbo-${{ runner.os }}-` restore-key prefix then
-      # consumes. Hence `cache/save` rather than `cache` (restore + save).
-      #
-      # The key carries `github.sha` so each merge uploads a fresh entry —
-      # bun.lock and turbo.json alone are too coarse and would let the first
-      # run for a given lockfile pin the cache forever.
-      - name: Save Turbo cache
-        if: always()
-        uses: actions/cache/save@v6
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}-${{ github.sha }}
 
   component-tests:
     name: component-tests (${{ matrix.chunk }}/4)

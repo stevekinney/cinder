@@ -91,6 +91,11 @@ env:
   # can reach. Do not "clean it up".
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  # OS discriminator for the remote cache — see the `test` task in turbo.json.
+  # Turbo's hash has no platform component, so without this a macOS laptop and
+  # this Linux runner would share `test` entries despite platform-conditioned
+  # assertions in the suite.
+  TURBO_PLATFORM: ${{ runner.os }}
 
 jobs:
   scope:
