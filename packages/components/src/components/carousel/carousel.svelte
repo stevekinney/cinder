@@ -53,6 +53,7 @@
   let userPaused = $state(false);
   let isInteracting = $state(false);
   let isNativeScrolling = $state(false);
+  let isAutoplayTransitioning = $state(false);
   let settledIndex = $state(
     untrack(() => (slides.length < 1 ? 0 : Math.max(0, Math.min(slides.length - 1, activeIndex)))),
   );
@@ -102,7 +103,9 @@
     if (!shouldAutoplay) return;
     const timer = setInterval(() => {
       if (clampedLength < 2) return;
+      isAutoplayTransitioning = true;
       goNext();
+      if (programmaticTarget === null) isAutoplayTransitioning = false;
     }, autoplayInterval);
     return () => clearInterval(timer);
   });
@@ -110,6 +113,9 @@
   function goTo(index: number, immediate = false) {
     if (clampedLength < 1) return;
     const nextIndex = ((index % clampedLength) + clampedLength) % clampedLength;
+    if (programmaticTarget !== null && viewportElement !== null) {
+      settledIndex = nearestVisibleSlideIndex(viewportElement);
+    }
     activeIndex = nextIndex;
     scrollToActiveSlide(immediate ? 'auto' : undefined);
   }
@@ -207,6 +213,7 @@
     if (Math.abs(slideRect.left - viewportRect.left) <= 1) {
       programmaticTarget = null;
       settledIndex = currentIndex;
+      isAutoplayTransitioning = false;
       return;
     }
     programmaticTarget = currentIndex;
@@ -224,6 +231,18 @@
     } else {
       viewport.scrollLeft = destination;
     }
+  }
+
+  function nearestVisibleSlideIndex(viewport: HTMLElement): number {
+    const viewportLeft = viewport.getBoundingClientRect().left;
+    return [...viewport.children].reduce((nearestIndex, slide, index) => {
+      const nearest = viewport.children[nearestIndex];
+      if (!nearest) return index;
+      return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
+        Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
+        ? index
+        : nearestIndex;
+    }, 0);
   }
 
   const observeViewport = useResizeObserver((entries) => {
@@ -264,6 +283,7 @@
       nativeScrollEndTimer = null;
       isNativeScrolling = false;
       settledIndex = currentIndex;
+      if (programmaticTarget === null) isAutoplayTransitioning = false;
     }, 100);
   }
 
@@ -293,19 +313,12 @@
     if (scrollFrame !== null) return;
     scrollFrame = requestAnimationFrame(() => {
       scrollFrame = null;
-      const viewportLeft = viewport.getBoundingClientRect().left;
-      const nextIndex = [...viewport.children].reduce((nearestIndex, slide, index) => {
-        const nearest = viewport.children[nearestIndex];
-        if (!nearest) return index;
-        return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
-          Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
-          ? index
-          : nearestIndex;
-      }, 0);
+      const nextIndex = nearestVisibleSlideIndex(viewport);
       if (programmaticTarget !== null) {
         if (nextIndex === programmaticTarget) {
           programmaticTarget = null;
           settledIndex = nextIndex;
+          isAutoplayTransitioning = false;
         }
         return;
       }
@@ -357,7 +370,7 @@
   {/if}
   <p
     class="cinder-carousel__sr-only"
-    aria-live={shouldAutoplay ? 'off' : 'polite'}
+    aria-live={shouldAutoplay || isAutoplayTransitioning ? 'off' : 'polite'}
     aria-atomic="true"
   >
     {liveAnnouncement}

@@ -142,6 +142,34 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 21 });
   });
 
+  test('keeps the visible slide laid out when smooth navigation is retargeted', async () => {
+    const retargetSlides = [
+      ...slides,
+      { id: 'four', label: 'Four', description: 'Fourth' },
+      { id: 'five', label: 'Five', description: 'Fifth' },
+    ];
+    const { container } = render(Carousel, { slides: retargetSlides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    let visibleIndex = 3;
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: (index - visibleIndex) * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    const dots = container.querySelectorAll('.cinder-carousel__dot');
+    await fireEvent.click(dots[4]!);
+    await fireEvent.click(dots[1]!);
+
+    expect(viewport.children[3]?.hasAttribute('data-cinder-collapsed')).toBe(false);
+  });
+
   test('realigns the active slide when an ancestor direction changes', async () => {
     const { container } = render(Carousel, { slides, activeIndex: 1 });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
@@ -568,6 +596,28 @@ describe('Carousel', () => {
     await waitFor(() => {
       expectActiveSlide(container, 1);
     });
+  });
+
+  test('keeps autoplay transitions out of the live region', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 100 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    const liveRegion = container.querySelector('[aria-live]');
+    expect(liveRegion?.getAttribute('aria-live')).toBe('off');
+    jest.advanceTimersByTime(100);
+    expect(liveRegion?.getAttribute('aria-live')).toBe('off');
   });
 
   test('autoplay jumps immediately across the physical wrap boundary', async () => {
