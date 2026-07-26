@@ -117,7 +117,7 @@
 
   function clusterSurfaceMaxInlineSize(): string {
     const owner = portalOwner();
-    if (!owner) return '28rem';
+    if (!owner) return 'min(28rem, calc(100vw - var(--cinder-space-4)))';
     const width = owner.getBoundingClientRect().width;
     return width > 0 ? `min(28rem, ${width}px)` : '28rem';
   }
@@ -392,7 +392,9 @@
         count: overflowGroup.length,
         edge: edgeForPosition(first.position, collisionThresholdPercent),
         endTime,
-        key: `cluster-${startTime}-${endTime}-${JSON.stringify(chronologicalItems.map((item) => item.id ?? item.key))}`,
+        key: `cluster-${startTime}-${endTime}-${JSON.stringify(
+          chronologicalItems.map((item) => item.id ?? item.key).sort(),
+        )}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,
