@@ -360,6 +360,22 @@ describe('Carousel', () => {
     expect(incoming.hasAttribute('inert')).toBe(true);
   });
 
+  test('collapses a tall adjacent slide when a short active slide is settled', () => {
+    const tallSlides = [
+      { ...slides[0]!, description: 'Short active slide' },
+      {
+        ...slides[1]!,
+        description: Array.from({ length: 20 }, () => 'Tall adjacent content').join(' '),
+      },
+      slides[2]!,
+    ];
+    const { container } = render(Carousel, { slides: tallSlides });
+    const articles = [...container.querySelectorAll<HTMLElement>('article.cinder-carousel__slide')];
+
+    expect(articles[0]?.hasAttribute('data-cinder-collapsed')).toBe(false);
+    expect(articles[1]?.hasAttribute('data-cinder-collapsed')).toBe(true);
+  });
+
   test('renders region semantics and first slide by default', () => {
     const { container } = render(Carousel, { slides, label: 'Highlights' });
     const root = container.querySelector('.cinder-carousel');

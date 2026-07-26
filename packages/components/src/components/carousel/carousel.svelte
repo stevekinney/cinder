@@ -170,11 +170,6 @@
     return (index - initialSlideIndex + slides.length) % slides.length;
   }
 
-  function isAdjacentToCurrent(index: number): boolean {
-    if (clampedLength < 3) return true;
-    return Math.abs(index - currentIndex) === 1;
-  }
-
   function scrollToActiveSlide(behavior?: ScrollBehavior): void {
     const viewport = viewportElement;
     if (viewport === null) return;
@@ -344,8 +339,7 @@
           inert={index !== currentIndex}
           data-cinder-collapsed={index !== currentIndex &&
           index !== settledIndex &&
-          !(isInteracting || isNativeScrolling) &&
-          !isAdjacentToCurrent(index)
+          !(isInteracting || isNativeScrolling)
             ? ''
             : undefined}
           style:order={initialSlideOrder(index)}
