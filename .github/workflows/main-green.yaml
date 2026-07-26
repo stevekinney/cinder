@@ -23,7 +23,17 @@ env:
   # hits instead of re-executing — exactly the case this workflow exists to
   # catch — so force real execution here. unit-tests.yaml deliberately keeps
   # cache hits; do not add this there.
+  #
+  # TURBO_FORCE is load-bearing in a way it was not before remote caching: it is
+  # the only thing stopping this workflow from reading the shared remote cache
+  # and degrading into a no-op verifier that replays entries instead of proving
+  # the code still executes. Never remove it. Writes still happen under force,
+  # which is the point — main-green is the from-scratch cache PRODUCER.
   TURBO_FORCE: 'true'
+  # main-green only ever runs on `push` to main and on `schedule`, never from a
+  # fork, so these are always populated.
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   workspace-gates:
@@ -38,14 +48,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Restore Turbo cache
-        uses: actions/cache@v6
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -193,6 +195,25 @@ jobs:
               process.exit(0);
             });
           "
+
+      # Save-only, and deliberately the LAST step. `TURBO_FORCE` (see the `env`
+      # block) makes every task above re-execute, so restoring a .turbo cache
+      # here would download an archive whose entries can never be read — pure
+      # dead time. The entries turbo *writes* during those forced executions are
+      # still worth keeping: they were produced by a from-scratch run of the
+      # full suite, which makes main-green the trusted cache producer that
+      # unit-tests.yaml's `turbo-${{ runner.os }}-` restore-key prefix then
+      # consumes. Hence `cache/save` rather than `cache` (restore + save).
+      #
+      # The key carries `github.sha` so each merge uploads a fresh entry —
+      # bun.lock and turbo.json alone are too coarse and would let the first
+      # run for a given lockfile pin the cache forever.
+      - name: Save Turbo cache
+        if: always()
+        uses: actions/cache/save@v6
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}-${{ github.sha }}
 
   component-tests:
     name: component-tests (${{ matrix.chunk }}/4)

@@ -57,6 +57,51 @@ root `bun run validate`, full test/coverage/browser suites, or consumer
 validation as an ordinary local pull request gate; required CI and release own
 those broad checks.
 
+## Turborepo remote cache
+
+`build`, `test`, `test:coverage`, `typecheck`, and `lint` run through Turborepo
+and are content-hashed, so an unchanged package replays its previous result
+instead of re-executing. Locally that cache lives in `.turbo/cache/` at the main
+checkout. Worktrees under `.claude/worktrees/` symlink their `node_modules` back
+to that checkout and turbo follows it, so worktrees already share one local cache
+even though each reads its own `turbo.json` — verified by watching entry counts
+while running a task from a worktree.
+
+What the local cache can't do is span machines. The remote cache is what makes a
+CI-produced build a hit on your laptop, and what gives a fresh clone or a
+brand-new worktree a warm start instead of a cold one. Export the credentials
+from your shell profile rather than running `turbo link`, which writes
+`.turbo/config.json` into whichever root it was run from:
+
+```bash
+# ~/.zshrc
+export TURBO_TOKEN='<your Vercel access token>'
+export TURBO_TEAM='<vercel team slug>'
+```
+
+Mint the token at Vercel → Account Settings → Tokens. Nothing here is required —
+without it turbo silently falls back to the local `.turbo/` cache.
+
+In CI the same pair is read from `secrets.TURBO_TOKEN` and `vars.TURBO_TEAM` by
+`unit-tests.yaml` and `main-green.yaml`. Two deliberate asymmetries:
+
+- `main-green.yaml` sets `TURBO_FORCE=true` so it never _reads_ the cache. It is
+  the full-execution safety net; replaying cache entries would defeat its entire
+  purpose. It still writes, which makes it the trusted from-scratch producer.
+- `unit-tests.yaml` keeps its `actions/cache` step for `.turbo`. It triggers on
+  `pull_request` (not `pull_request_target`), so fork PRs get empty secrets and
+  no remote cache — the local archive is the only cache they can reach.
+
+> [!WARNING] Cache correctness is a shared concern now
+> Because entries are shared across machines, an under-declared task input
+> becomes a wrong result everywhere rather than one stale local hit. Several
+> packages import across the boundary from `packages/components/scripts/**`
+> (`svelte-plugin.ts`, `check-coverage-ratchet.ts`, the artifact generators),
+> and those files never land in cinder's `dist/**`, so the `^build` edge does
+> not cover them. `turbo.json` declares that directory as an explicit input on
+> the affected tasks. If you add a new cross-package import from a cached task,
+> add its directory to that task's `inputs` too.
+
 ## Tests
 
 - Unit tests use `bun:test` and live alongside the source as `*.test.ts`.

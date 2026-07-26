@@ -4,26 +4,44 @@
     "tsconfig.json",
     "tsconfig.base.json",
     ".oxlintrc.json",
-    "packages/components/scripts/check-coverage-ratchet.ts",
-    "tsconfig.build.json",
-    "packages/components/scripts/svelte-plugin.ts"
+    "tsconfig.build.json"
   ],
+  // `NODE_ENV` is a real hash input, not boilerplate: `packages/components/scripts/svelte-plugin.ts`
+  // branches on it to pick Svelte's `dev` compilation mode, and the editor's runtime guards read it
+  // too. The `build` scripts pin it to `production` internally, but `test` inherits whatever the
+  // caller had, so a local run and a CI run must not be allowed to share a cache entry.
+  "globalEnv": ["NODE_ENV"],
   "tasks": {
+    // `packages/components/scripts/**` is an input to tasks in EVERY package, not just cinder's:
+    // chat, editor, and playground import `svelte-plugin.ts`, `check-coverage-ratchet.ts`, the
+    // component-artifact generators, and `lib/visual-fixtures/**` across the package boundary. Those
+    // files never land in cinder's `dist/**`, so the `^build` edge does not cover them. They used to
+    // be listed one-by-one in `globalDependencies`, which was both incomplete (only two of them were
+    // listed) and too blunt (a global dependency invalidates every cached task in the repo). Scoping
+    // the whole directory to the four tasks that actually execute it is stricter AND cheaper.
+    //
+    // `packages/components/src/**` deliberately is NOT listed: a change there rehashes cinder's
+    // `build`, and turbo folds a dependency task's hash into its dependents, so `^build` already
+    // covers it.
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "test": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@cinder/playground#typecheck": {
       "dependsOn": [
@@ -35,48 +53,70 @@
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/components/src/**",
         "$TURBO_ROOT$/packages/chat/src/**",
         "$TURBO_ROOT$/packages/editor/src/**",
         "$TURBO_ROOT$/packages/markdown/src/**"
       ]
     },
+    // Exists only to widen `inputs`; `^build` already expands to exactly the
+    // four builds this needs, so keep the wildcard rather than freezing today's
+    // expansion — a future workspace dependency must not silently go unbuilt.
+    "@cinder/playground#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
+    },
     "@lostgradient/chat#typecheck": {
       "dependsOn": ["@lostgradient/markdown#build"],
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/components/src/**",
         "$TURBO_ROOT$/packages/markdown/src/**"
       ]
     },
+    // `lint` needs the same cross-package inputs as the rest: oxlint runs with
+    // `--type-aware`, and chat/editor lint scripts that import `svelte-plugin.ts`
+    // from the components package. Type-aware linting reads that file for type
+    // information, so a type change there can shift diagnostics — without this
+    // input the cached `lint` would not notice.
     "lint": {
       "dependsOn": [],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@lostgradient/editor#lint": {
       "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@lostgradient/cinder#lint": {
       "dependsOn": ["@lostgradient/markdown#build", "@lostgradient/editor#build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@lostgradient/editor#build": {
       "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@lostgradient/editor#typecheck": {
       "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@lostgradient/editor#test": {
       "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "@lostgradient/editor#test:coverage": {
       "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/components/scripts/**"]
     },
     "validate": {
       "dependsOn": ["^build", "build"],
