@@ -438,6 +438,15 @@ describe('MegaMenu', () => {
     expect(container.querySelector('nav')?.getAttribute('dir')).toBe('ltr');
   });
 
+  test('uses effective CSS direction when an explicit dir prop is overridden', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'rtl', style: 'direction: ltr' });
+    const first = getTriggerByLabel(container, 'Products');
+    const second = getTriggerByLabel(container, 'Resources');
+    first.focus();
+    await fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(second);
+  });
+
   test('repositions an open indicator after the resolved direction changes', async () => {
     const { container, rerender } = render(MegaMenuLocaleTestHarness, {
       items,

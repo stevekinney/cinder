@@ -61,7 +61,13 @@
   );
   const resolvedDirection = $derived.by(() => {
     directionRevision;
-    if (providedDirection === 'rtl' || providedDirection === 'ltr') return providedDirection;
+    if (providedDirection === 'rtl' || providedDirection === 'ltr') {
+      return navElement
+        ? (resolveTextDirection(navElement, providedDirection, {
+            ignoreElementDirectionAttribute: true,
+          }) ?? providedDirection)
+        : providedDirection;
+    }
     if (providedDirection === 'auto') {
       return resolveTextDirection(navElement, localeContext?.direction);
     }
