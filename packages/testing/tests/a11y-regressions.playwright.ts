@@ -123,6 +123,26 @@ test.describe('a11y regressions', () => {
     expectNoViolations('access-gate', sectionFixture.name, sectionBuckets);
   });
 
+  test('access-gate denied resting geometry remains measurable', async ({ componentPage }) => {
+    const entry = getEntry('access-gate');
+    const fixture = getFixture(entry, 'inline-denied');
+    const page = await componentPage.open({
+      entry,
+      theme: lightTheme,
+      viewport: desktopViewport,
+      fixtureName: fixture.name,
+      fixtureContentHash: fixture.fixtureContentHash,
+    });
+    const geometry = await page.locator('.cinder-access-gate').evaluate((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return { display: style.display, width: rect.width, height: rect.height };
+    });
+    expect(geometry.display).not.toBe('none');
+    expect(geometry.width).toBeGreaterThan(0);
+    expect(geometry.height).toBeGreaterThan(0);
+  });
+
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {
     const page = await componentPage.open({
       entry: getEntry('section-heading'),
