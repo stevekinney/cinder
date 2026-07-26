@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   findOneArgumentServerComponentBoundaries,
+  hasAuthoredStyleBlock,
   preserveServerComponentIdentity,
   publishedSvelteCompileFilename,
 } from './svelte-plugin.ts';
@@ -38,6 +39,13 @@ describe('publishedSvelteCompileFilename', () => {
   it('leaves components outside the published package unchanged', () => {
     const playgroundPath = '/checkout/packages/playground/src/app.svelte';
     expect(publishedSvelteCompileFilename(playgroundPath)).toBe(playgroundPath);
+  });
+});
+
+describe('hasAuthoredStyleBlock', () => {
+  it('distinguishes authored style blocks from style directives', () => {
+    expect(hasAuthoredStyleBlock('<div style:height={height}></div>')).toBe(false);
+    expect(hasAuthoredStyleBlock('<style>.card { color: red; }</style>')).toBe(true);
   });
 });
 

@@ -80,6 +80,10 @@ function allowsStyleBlock(path: string): boolean {
   return componentName !== undefined && DOMAIN_SUITE_STYLE_COMPONENTS.has(componentName);
 }
 
+export function hasAuthoredStyleBlock(source: string): boolean {
+  return /<style(?:\s[^>]*)?>[\s\S]*<\/style>/i.test(source);
+}
+
 function hasModifier(
   node: ts.Node & { modifiers?: ts.NodeArray<ts.ModifierLike> },
   kind: ts.SyntaxKind,
@@ -245,7 +249,12 @@ export function sveltePlugin(
           // runs so production builds and test/dev loads stay in sync.
           dev,
         });
-        if (!isPlaygroundFile && compileResult.css?.code?.trim() && !allowsStyleBlock(path)) {
+        if (
+          !isPlaygroundFile &&
+          hasAuthoredStyleBlock(source) &&
+          compileResult.css?.code?.trim() &&
+          !allowsStyleBlock(path)
+        ) {
           throw new Error(
             `[svelte-plugin] <style> block in ${path} — not allowed. Put styles in src/styles/.`,
           );

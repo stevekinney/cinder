@@ -218,9 +218,3 @@
 <output data-testid="grid-column-indices"
   >{gridColumns.map((column) => column.index).join(',')}</output
 >
-
-<style>
-  .virtualizer-scroll {
-    overflow: auto;
-  }
-</style>
