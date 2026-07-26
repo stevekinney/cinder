@@ -87,4 +87,12 @@ describe(ruleName, () => {
       ).toHaveLength(1);
     }
   });
+
+  test('recognizes PhoneInput native country and national controls', async () => {
+    for (const selector of ['.cinder-phone-input__country', '.cinder-phone-input__national']) {
+      expect(
+        warnings(await lint(`${selector} { background: var(--cinder-surface); }`)),
+      ).toHaveLength(1);
+    }
+  });
 });
