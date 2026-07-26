@@ -72,7 +72,7 @@ allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
 allowedGridCounts.set('description-list/description-list.css', 4);
 allowedGridCounts.set('feature-section/feature-section.css', 8);
-allowedGridCounts.set('footer/footer.css', 3);
+allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 allowedGridCounts.set('logo-cloud/logo-cloud.css', 11);

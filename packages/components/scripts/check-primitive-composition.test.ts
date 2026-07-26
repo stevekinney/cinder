@@ -6,6 +6,7 @@ import {
   shouldCheckComponentSource,
 } from './check-primitive-composition.ts';
 import { cssPrimitiveCounts } from './primitive-composition-css.ts';
+import { allowedGridCounts } from './primitive-composition-migrations.ts';
 import { primitiveCompositionSourceRoots } from './primitive-composition-runner.ts';
 
 describe('primitive composition guard', () => {
@@ -19,6 +20,10 @@ describe('primitive composition guard', () => {
     expect(findPrimitiveCompositionViolations('<input />', 'pin-input/pin-input.svelte')).toEqual(
       [],
     );
+  });
+
+  test('keeps the footer grid migration baseline at two tracked definitions', () => {
+    expect(allowedGridCounts.get('footer/footer.css')).toBe(2);
   });
 
   test('ignores hidden submission inputs and controls mentioned in comments', () => {
