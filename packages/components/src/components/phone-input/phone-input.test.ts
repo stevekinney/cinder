@@ -478,7 +478,7 @@ describe('PhoneInput form reset', () => {
       props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], country: 'GB' },
     });
     expect(countrySelect(rendered.container).value).toBe('GB');
-    form.reset();
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(countrySelect(rendered.container).value).toBe('GB');
     expect(
