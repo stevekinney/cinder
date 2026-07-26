@@ -11,7 +11,8 @@
    * @useWhen Letting users jump between headings while keeping context via active-section highlighting.
    * @avoidWhen Navigating between routes or top-level app areas — use navigation-bar or side-navigation.
    * @avoidWhen The page has too few headings to justify a secondary navigation rail.
-   * @related side-navigation, breadcrumbs, section-heading
+   * @avoidWhen Rendering expandable hierarchical data with selection state. | tree
+   * @related side-navigation, tree, breadcrumbs, section-heading
    * @a11yPattern WAI-ARIA Navigation Landmark
    */
   export type { TableOfContentsItem, TableOfContentsProps } from './table-of-contents.types.ts';

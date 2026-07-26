@@ -8,9 +8,11 @@
    * @tag sidebar
    * @useWhen Building a tall, dense application sidebar with many sections and nested groups.
    * @useWhen Pairing with sidebar so the column collapses responsively on narrow viewports.
-   * @avoidWhen Anchoring primary navigation across the top of the page — use navigation-bar instead.
-   * @avoidWhen Rendering a single flat horizontal nav row — use navigation-bar instead.
-   * @related side-navigation-item, side-navigation-group, navigation-bar, sidebar
+   * @avoidWhen Anchoring primary navigation across the top of the page. | navigation-bar
+   * @avoidWhen Rendering a single flat horizontal nav row. | navigation-bar
+   * @avoidWhen Showing an in-page heading outline. | table-of-contents
+   * @avoidWhen Rendering expandable hierarchical non-navigation data. | tree
+   * @related side-navigation-item, side-navigation-group, navigation-bar, table-of-contents, tree, sidebar
    */
   export type { SideNavigationProps } from './side-navigation.types.ts';
 </script>
