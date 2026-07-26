@@ -134,10 +134,19 @@
     }),
   );
 
-  function moveFocusIntoPanel() {
-    if (isDestroyed || !panelElement) return;
+  function moveFocusIntoPanel(): boolean {
+    if (isDestroyed || !panelElement) return false;
     const focusable = initialFocus?.(panelElement) ?? findFirstFocusable(panelElement);
-    (focusable ?? panelElement).focus();
+    const target = focusable ?? panelElement;
+    target.focus();
+    if (document.activeElement === target) return true;
+    const fallback = focusable ? findFirstFocusable(panelElement) : null;
+    if (fallback && fallback !== target) {
+      fallback.focus();
+      if (document.activeElement === fallback) return true;
+    }
+    panelElement.focus();
+    return document.activeElement === panelElement;
   }
 
   // Effect: open lifecycle (captures focus, registers Escape + outside-mousedown).
@@ -213,8 +222,7 @@
     ) {
       return;
     }
-    moveFocusIntoPanel();
-    pendingInitialFocus = false;
+    if (moveFocusIntoPanel()) pendingInitialFocus = false;
   });
 
   // Effect: dev-only guidance warnings. Single effect, fires on each open
