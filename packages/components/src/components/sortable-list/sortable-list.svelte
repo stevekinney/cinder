@@ -141,9 +141,12 @@
       {...handle !== undefined ? { handle } : {}}
       {instructionsId}
       total={visualItems.length}
+      class="cinder-sortable-list__item"
     >
       {#snippet children(ctx)}
-        {@render renderRow(rowItem, ctx)}
+        <div class="cinder-sortable-list__item-content">
+          {@render renderRow(rowItem, ctx)}
+        </div>
       {/snippet}
     </SortableItem>
   {/each}

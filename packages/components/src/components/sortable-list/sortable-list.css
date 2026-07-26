@@ -10,12 +10,19 @@
     padding: 0;
   }
 
-  [data-cinder-sortable-list] > .cinder-sortable-item,
-  [data-cinder-sortable-list-preview] > .cinder-sortable-item {
-    display: flex;
+  .cinder-sortable-list__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: var(--cinder-space-2);
+    column-gap: var(--cinder-space-2);
     position: relative;
+  }
+
+  .cinder-sortable-list__item-content {
+    min-inline-size: 0;
+  }
+
+  .cinder-sortable-list__item.cinder-sortable-item {
     cursor: default;
     user-select: none;
   }

@@ -73,9 +73,11 @@ describe('SortableController', () => {
       container.querySelector('.cinder-sortable-list')?.hasAttribute('data-cinder-sortable-list'),
     ).toBe(true);
     expect(stylesheet).toContain(
-      '[data-cinder-sortable-list] > .cinder-sortable-item,\n  [data-cinder-sortable-list-preview] > .cinder-sortable-item {\n    display: flex;\n    align-items: center;\n    gap: var(--cinder-space-2);',
+      '.cinder-sortable-list__item {\n    display: grid;\n    grid-template-columns: minmax(0, 1fr) auto;\n    align-items: center;',
     );
-    expect(stylesheet).not.toContain('.cinder-sortable-list .cinder-sortable-item');
+    expect(stylesheet).toContain('column-gap: var(--cinder-space-2);\n    position: relative;');
+    expect(stylesheet).toContain('.cinder-sortable-list__item.cinder-sortable-item');
+    expect(stylesheet).not.toMatch(/(^|\n)\s*\.cinder-sortable-item\s*\{/);
   });
 
   test('lift sets phase, key, from/to, liftedLabel, and calls announce', () => {
@@ -638,7 +640,7 @@ describe('SortableList pointer drag preview', () => {
     const stylesheet = readFileSync(new URL('./sortable-list.css', import.meta.url), 'utf8');
 
     expect(preview?.hasAttribute('data-cinder-sortable-list-preview')).toBe(true);
-    expect(stylesheet).toContain('[data-cinder-sortable-list-preview] > .cinder-sortable-item');
+    expect(stylesheet).toContain('.cinder-sortable-list__item {');
 
     await dispatchPointerEvent(handle, 'pointerup', { pointerId: 1, pointerType: 'mouse' });
   });
