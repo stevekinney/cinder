@@ -26,14 +26,19 @@
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
-  import { createInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
+  import {
+    createInheritedPortalStyle,
+    isRedispatchedPortaledEvent,
+    observePortalSourceAvailability,
+    redispatchPortaledEvent,
+  } from '../portal/portal.utilities.svelte.ts';
   import { setSpeedDialContext } from './speed-dial.context.ts';
   import type { SpeedDialDirection, SpeedDialProps } from './speed-dial.types.ts';
 
   const actionsId = $props.id();
   const defaultAriaLabel = 'Quick actions';
   const documentFocusSelector =
-    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
 
   let {
     open = $bindable(false),
@@ -107,7 +112,15 @@
   }
 
   function getPortalTarget(): HTMLElement | null {
-    return getTriggerElement()?.closest<HTMLElement>('dialog[open]') ?? null;
+    const trigger = getTriggerElement();
+    if (!trigger) return null;
+    return (
+      trigger.closest<HTMLElement>('dialog[open]') ??
+      Array.from(document.querySelectorAll<HTMLElement>('[popover]')).find(
+        (element) => element.matches(':popover-open') && element.contains(trigger),
+      ) ??
+      null
+    );
   }
 
   function normalizePlacementDirection(value: string): SpeedDialDirection {
@@ -143,6 +156,7 @@
       Array.from(document.querySelectorAll<HTMLElement>(documentFocusSelector))
         .filter(
           (candidate) =>
+            !hasNegativeTabIndex(candidate) &&
             !speedDialRoot.contains(candidate) &&
             !actionsElement?.contains(candidate) &&
             !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
@@ -152,6 +166,11 @@
         )
         .at(-1) ?? null
     );
+  }
+
+  function hasNegativeTabIndex(element: HTMLElement): boolean {
+    const tabIndex = element.getAttribute('tabindex');
+    return tabIndex !== null && Number(tabIndex) < 0;
   }
 
   function focusTrigger(): void {
@@ -235,24 +254,16 @@
   }
 
   function bridgePortaledEvent(event: MouseEvent | KeyboardEvent): void {
-    const bridgeTarget = rootElement;
-    if (!bridgeTarget) return;
-
-    event.stopPropagation();
-    const bridgedEvent =
-      event instanceof KeyboardEvent
-        ? new KeyboardEvent(event.type, event)
-        : new MouseEvent(event.type, event);
-    if (!bridgeTarget.dispatchEvent(bridgedEvent)) {
-      event.preventDefault();
-    }
+    if (isRedispatchedPortaledEvent(event)) return;
+    redispatchPortaledEvent(event, rootElement);
   }
 
   function handlePortaledActionsKeydown(event: KeyboardEvent): void {
-    bridgePortaledEvent(event);
+    if (isRedispatchedPortaledEvent(event)) return;
     if (!event.defaultPrevented) {
       handleActionsKeydown(event);
     }
+    bridgePortaledEvent(event);
   }
 
   function handleDocumentClick(event: MouseEvent): void {
@@ -277,32 +288,13 @@
   });
 
   $effect(() => {
-    const source = rootElement;
-    if (!source || typeof MutationObserver === 'undefined') return;
-
-    const syncSourceAvailability = () => {
-      sourceSubtreeUnavailable = Boolean(
-        source.closest<HTMLElement>('[hidden], [inert], [aria-hidden="true"]'),
-      );
-      if (sourceSubtreeUnavailable && open) {
+    const source = getTriggerElement() ?? rootElement;
+    return observePortalSourceAvailability(source, (unavailable) => {
+      sourceSubtreeUnavailable = unavailable;
+      if (unavailable && open) {
         close();
       }
-    };
-    const observer = new MutationObserver(syncSourceAvailability);
-
-    let ancestor: HTMLElement | null = source;
-    while (ancestor) {
-      observer.observe(ancestor, {
-        attributes: true,
-        attributeFilter: ['hidden', 'inert', 'aria-hidden'],
-      });
-      ancestor = ancestor.parentElement;
-    }
-    syncSourceAvailability();
-
-    return () => {
-      observer.disconnect();
-    };
+    });
   });
 
   setSpeedDialContext({

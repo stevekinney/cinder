@@ -92,6 +92,12 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
   if (colorScheme) {
     inherited.setProperty('color-scheme', colorScheme);
   }
+  if (computed.direction) inherited.setProperty('direction', computed.direction);
+  for (const property of Array.from(source.style)) {
+    if (property.startsWith('--cinder-'))
+      inherited.setProperty(property, source.style.getPropertyValue(property));
+  }
+  if (source.style.colorScheme) inherited.setProperty('color-scheme', source.style.colorScheme);
 
   return inherited.cssText;
 }
@@ -163,7 +169,7 @@ export function copyInheritedPortalAttributes(
       ? source.closest<HTMLElement>('[lang]')?.getAttribute('lang')
       : null;
   const nextLanguage = inheritedLanguage ?? fallbackAttributes.lang;
-  if (nextLanguage) {
+  if (nextLanguage !== null && nextLanguage !== undefined) {
     element.setAttribute('lang', nextLanguage);
   } else {
     element.removeAttribute('lang');
@@ -202,6 +208,84 @@ export function copyInheritedPortalAttributes(
     dataTheme: inheritedDataTheme ?? null,
     theme: inheritedTheme ?? null,
   };
+}
+
+export function redispatchPortaledEvent(
+  event: MouseEvent | KeyboardEvent,
+  sourceTarget: HTMLElement | null | undefined,
+): boolean {
+  if (!sourceTarget) return false;
+
+  const originalTarget = event.target;
+  const bridgedEvent =
+    event instanceof KeyboardEvent
+      ? new KeyboardEvent(event.type, event)
+      : new MouseEvent(event.type, event);
+  redispatchedPortalEvents.add(bridgedEvent);
+  Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
+  if (event.defaultPrevented) bridgedEvent.preventDefault();
+
+  event.stopPropagation();
+  if (!sourceTarget.dispatchEvent(bridgedEvent)) {
+    event.preventDefault();
+  }
+  return true;
+}
+
+const redispatchedPortalEvents = new WeakSet<Event>();
+
+export function isRedispatchedPortaledEvent(event: Event): boolean {
+  return redispatchedPortalEvents.has(event);
+}
+
+function isEffectivelyDisabled(source: HTMLElement): boolean {
+  if (source.matches(':disabled')) return true;
+
+  const disabledFieldset = source.closest<HTMLFieldSetElement>('fieldset[disabled]');
+  if (!disabledFieldset) return false;
+  const firstLegend = disabledFieldset.querySelector(':scope > legend');
+  return !firstLegend?.contains(source);
+}
+
+function isEffectivelyUnavailable(source: HTMLElement): boolean {
+  if (isEffectivelyDisabled(source)) return true;
+  if (source.closest<HTMLElement>('[hidden], [inert], [aria-hidden="true"]')) return true;
+  if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return false;
+  let ancestor: HTMLElement | null = source;
+  while (ancestor) {
+    const computed = getComputedStyle(ancestor);
+    if (computed.display === 'none' || computed.visibility === 'hidden') return true;
+    ancestor = ancestor.parentElement;
+  }
+  return false;
+}
+
+export function observePortalSourceAvailability(
+  source: HTMLElement | null | undefined,
+  onChange: (unavailable: boolean) => void,
+): () => void {
+  if (!source) return () => {};
+
+  const syncAvailability = () => {
+    onChange(isEffectivelyUnavailable(source));
+  };
+  if (typeof MutationObserver === 'undefined') {
+    syncAvailability();
+    return () => {};
+  }
+
+  const observer = new MutationObserver(syncAvailability);
+  let ancestor: HTMLElement | null = source;
+  while (ancestor) {
+    observer.observe(ancestor, {
+      attributes: true,
+      attributeFilter: ['hidden', 'inert', 'aria-hidden', 'disabled', 'class', 'style'],
+    });
+    ancestor = ancestor.parentElement;
+  }
+  syncAvailability();
+
+  return () => observer.disconnect();
 }
 
 function observeInheritedPortalAttributes(

@@ -30,7 +30,17 @@
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
-  import { createInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
+  import {
+    createInheritedPortalStyle,
+    isRedispatchedPortaledEvent,
+    observePortalSourceAvailability,
+    redispatchPortaledEvent,
+  } from '../portal/portal.utilities.svelte.ts';
+  import {
+    findFocusTargetAfterNavigationItems,
+    findFocusTargetBeforeNavigationItems,
+    getNavigationBarBrandFocusTargets,
+  } from './navigation-bar-focus.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
   const FALLBACK_ROOT_FONT_SIZE_PX = 16;
@@ -58,14 +68,6 @@
     ...rest
   }: NavigationBarProps = $props();
   const navigationItemSelector = '[data-cinder-navigation-item]';
-  const toggleFocusSelector =
-    '.cinder-navigation-bar__menu-toggle button, .cinder-navigation-bar__menu-toggle [href], .cinder-navigation-bar__menu-toggle input, .cinder-navigation-bar__menu-toggle select, .cinder-navigation-bar__menu-toggle textarea, .cinder-navigation-bar__menu-toggle [tabindex]:not([tabindex="-1"])';
-  const brandFocusSelector =
-    '.cinder-navigation-bar__brand button:not([disabled]), .cinder-navigation-bar__brand [href], .cinder-navigation-bar__brand input:not([disabled]), .cinder-navigation-bar__brand select:not([disabled]), .cinder-navigation-bar__brand textarea:not([disabled]), .cinder-navigation-bar__brand [tabindex]:not([tabindex="-1"])';
-  const actionFocusSelector =
-    '.cinder-navigation-bar__actions button:not([disabled]), .cinder-navigation-bar__actions [href], .cinder-navigation-bar__actions input:not([disabled]):not([type="hidden"]), .cinder-navigation-bar__actions select:not([disabled]), .cinder-navigation-bar__actions textarea:not([disabled]), .cinder-navigation-bar__actions [tabindex]:not([tabindex="-1"])';
-  const documentFocusSelector =
-    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
@@ -82,13 +84,24 @@
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
   let itemsRegionElement: HTMLDivElement | null = null;
+  let sourceSubtreeUnavailable = $state(false);
   const itemsPortal = createPortalAttachment({
-    disabled: () => !isMobileLayout || !mobileMenuOpen,
+    disabled: () => !isMobileLayout || !mobileMenuOpen || sourceSubtreeUnavailable,
     source: () => navigationBarElement,
-    target: () => navigationBarElement?.closest<HTMLElement>('dialog[open]') ?? null,
+    target: () => {
+      const source = navigationBarElement;
+      if (!source) return null;
+      return (
+        source.closest<HTMLElement>('dialog[open]') ??
+        Array.from(document.querySelectorAll<HTMLElement>('[popover]')).find(
+          (element) => element.matches(':popover-open') && element.contains(source),
+        ) ??
+        null
+      );
+    },
   });
   const anchoredItems = createAnchoredOverlay({
-    open: () => isMobileLayout && mobileMenuOpen,
+    open: () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,
@@ -97,7 +110,14 @@
   });
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => navigationBarElement,
-    () => isMobileLayout && mobileMenuOpen,
+    () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+  );
+
+  $effect(() =>
+    observePortalSourceAvailability(navigationBarElement, (unavailable) => {
+      sourceSubtreeUnavailable = unavailable;
+      if (unavailable) mobileMenuOpen = false;
+    }),
   );
 
   function getCollapsibleMaxWidthPx(): number {
@@ -171,6 +191,7 @@
   });
 
   function handleToggle(event: MouseEvent): void {
+    event.stopPropagation();
     mobileMenuOpen = !mobileMenuOpen;
     toggleElement = event.currentTarget as HTMLElement | null;
   }
@@ -186,7 +207,7 @@
       return;
     const brandTarget =
       menuTogglePlacement === 'before-brand'
-        ? navigationBarElement?.querySelector<HTMLElement>(brandFocusSelector)
+        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
         : null;
     if (brandTarget) {
       event.preventDefault();
@@ -218,9 +239,7 @@
       return false;
     }
 
-    const brandTargets = Array.from(
-      navigationBarElement?.querySelectorAll<HTMLElement>(brandFocusSelector) ?? [],
-    );
+    const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
     if (event.target !== brandTargets.at(-1)) return false;
 
     const firstItem = getNavigationItems().find(isEnabledNavigationItem);
@@ -282,48 +301,24 @@
   }
 
   function focusMenuToggle(): void {
-    const focusTarget =
-      toggleElement ?? navigationBarElement?.querySelector<HTMLElement>(toggleFocusSelector);
+    const focusTarget = findFocusTargetBeforeNavigationItems(
+      navigationBarElement,
+      toggleElement,
+      false,
+    );
     focusTarget?.focus();
   }
 
   function getFocusTargetBeforeItems(): HTMLElement | null {
-    if (menuTogglePlacement === 'before-brand') {
-      const brandTarget = Array.from(
-        navigationBarElement?.querySelectorAll<HTMLElement>(brandFocusSelector) ?? [],
-      ).at(-1);
-      if (brandTarget) return brandTarget;
-    }
-    return (
-      toggleElement ?? navigationBarElement?.querySelector<HTMLElement>(toggleFocusSelector) ?? null
-    );
-  }
-
-  function isRenderedFocusTarget(candidate: HTMLElement): boolean {
-    return (
-      !(candidate instanceof HTMLInputElement && candidate.type === 'hidden') &&
-      !candidate.closest('[hidden], [inert], [aria-hidden="true"]')
+    return findFocusTargetBeforeNavigationItems(
+      navigationBarElement,
+      toggleElement,
+      menuTogglePlacement === 'before-brand',
     );
   }
 
   function getFocusTargetAfterItems(): HTMLElement | null {
-    const actionTarget = Array.from(
-      navigationBarElement?.querySelectorAll<HTMLElement>(actionFocusSelector) ?? [],
-    ).find(isRenderedFocusTarget);
-    if (actionTarget) return actionTarget;
-    const navigationBar = navigationBarElement;
-    if (!navigationBar || typeof document === 'undefined') return null;
-    return (
-      Array.from(document.querySelectorAll<HTMLElement>(documentFocusSelector)).find(
-        (candidate) =>
-          !navigationBar.contains(candidate) &&
-          !itemsRegionElement?.contains(candidate) &&
-          isRenderedFocusTarget(candidate) &&
-          Boolean(
-            navigationBar.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING,
-          ),
-      ) ?? null
-    );
+    return findFocusTargetAfterNavigationItems(navigationBarElement, itemsRegionElement);
   }
 
   function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
@@ -366,6 +361,11 @@
 
     moveFocusBeforeClosingItemsRegion();
     mobileMenuOpen = false;
+  }
+
+  function bridgePortaledEvent(event: MouseEvent | KeyboardEvent): void {
+    if (isRedispatchedPortaledEvent(event)) return;
+    redispatchPortaledEvent(event, navigationBarElement);
   }
 
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
@@ -487,8 +487,8 @@
     data-cinder-position-ready={anchoredItems.positionReady || undefined}
     style={`${anchoredItems.positionStyle};${inheritedPortalStyle.style}`}
     inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
-    onclick={isMobileLayout ? handleClick : undefined}
-    onkeydown={isMobileLayout ? handleKeyDown : undefined}
+    onclick={isMobileLayout ? bridgePortaledEvent : undefined}
+    onkeydown={isMobileLayout ? bridgePortaledEvent : undefined}
   >
     {@render items({ variant, placement, labelsVisible })}
   </div>
