@@ -1470,6 +1470,59 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
 
   const definition = await discoverComponentDefinition(componentName);
   if (definition === undefined) return null;
+  const generatedSchemaPath = join(
+    definition.source.componentsRoot,
+    componentName,
+    `${componentName}.schema.json`,
+  );
+  const generatedSchemaFile = Bun.file(generatedSchemaPath);
+  if (await generatedSchemaFile.exists()) {
+    const schema = (await generatedSchemaFile.json()) as {
+      properties?: Record<string, { type?: string; enum?: unknown[]; description?: string }>;
+      required?: string[];
+    };
+    if (schema.properties !== undefined) {
+      const manifest: ComponentManifest = {
+        name: componentName,
+        kebabName: componentName,
+        file: definition.filePath,
+        importPath: definition.importPath,
+        props: Object.entries(schema.properties).map(([name, property]) => {
+          const defaultText = property.description?.match(/Default `([^`]+)`/)?.[1];
+          const defaultValue =
+            defaultText === undefined
+              ? undefined
+              : defaultText === 'true'
+                ? true
+                : defaultText === 'false'
+                  ? false
+                  : Number.isNaN(Number(defaultText))
+                    ? defaultText
+                    : Number(defaultText);
+          const control =
+            property.enum !== undefined
+              ? { kind: 'select' as const, options: property.enum.map(String) }
+              : property.type === 'boolean'
+                ? { kind: 'boolean' as const }
+                : property.type === 'number' || property.type === 'integer'
+                  ? { kind: 'number' as const }
+                  : property.type === 'string'
+                    ? { kind: 'text' as const }
+                    : { kind: 'unknown' as const, rawType: property.type ?? 'unknown' };
+          return {
+            name,
+            control,
+            bindable: property.description?.includes('Bindable') ?? false,
+            optional: !(schema.required ?? []).includes(name),
+            ...(defaultValue === undefined ? {} : { defaultValue }),
+            ...(property.description === undefined ? {} : { description: property.description }),
+          };
+        }),
+      };
+      componentManifestCache.set(componentName, manifest);
+      return manifest;
+    }
+  }
   const generationAtStart = rebuildGeneration;
   const manifest = await analyzeComponent(definition.filePath, {
     importPath: definition.importPath,
@@ -2607,6 +2660,14 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   process.stdout.write(
     `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
   );
+  // Prepare the SSR shell renderer before advertising readiness. Requests must
+  // never pay the cold Svelte server compilation cost on the first navigation.
+  try {
+    await loadShellServerRenderer();
+  } catch (error) {
+    await dispose();
+    throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
+  }
   startupReady = true;
   return {
     port: actualPort,
