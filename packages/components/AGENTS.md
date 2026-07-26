@@ -8,6 +8,25 @@ sections:
   component for the job).
 - **Contributing to cinder** — start here if you are editing this package.
 
+## Component authoring pre-flight
+
+Before creating a component, load the repository-local
+`cinder-component-authoring` skill and complete this checklist:
+
+<!-- component-authoring-checklist:start -->
+
+- [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
+- [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
+- [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
+- [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
+- [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
+<!-- component-authoring-checklist:end -->
+
+`packages/components/scripts/component-conventions.ts` is the machine-readable
+source of truth. `bun run --filter=@lostgradient/cinder components:create
+<name>` links the scaffold README back to this live checklist, so update that
+module first when the authoring contract changes.
+
 ---
 
 ## Using cinder in your app
@@ -343,7 +362,7 @@ the matching entry in `@lostgradient/cinder/manifest`.
 | --------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `banner`  | Page-level dismissible region landmark that surfaces a persistent informational, success, warning, or danger… | Communicating a persistent page-level status the user can dismiss, such as a maintenance window or trial… |
 | `alert`   | Inline status message with assertive role for surfacing time-sensitive feedback about a nearby action or…     | Surfacing the result of a just-completed action such as a save failure or success.                        |
-| `callout` | Inline aside that highlights supporting commentary alongside body content without claiming live-region…       | Drawing attention to tangential information nested inside prose, documentation, or article content.       |
+| `callout` | Inline static note or aside that highlights supporting commentary alongside body content without claiming…    | Drawing attention to tangential information nested inside prose, documentation, or article content.       |
 
 ### overlay (5 components)
 
@@ -357,18 +376,18 @@ the matching entry in `@lostgradient/cinder/manifest`.
 
 ### selection (3 components)
 
-| id                  | purpose                                                                                                      | use when                                                                                      |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `toggle`            | Sliding switch implementing the WAI-ARIA switch pattern for a single on or off setting that applies…         | Flipping a single setting on or off with immediate effect such as notifications or dark mode. |
-| `checkbox`          | Binary or tri-state selection control with bindable checked and indeterminate state for forms and lists.     | Selecting zero or more independent options from a list.                                       |
-| `segmented-control` | Compact radio-style selector that surfaces a small fixed set of options as a single connected bar and binds… | Choosing one of two to five mutually exclusive options that all fit on screen at once.        |
+| id                  | purpose                                                                                                       | use when                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `toggle`            | Sliding switch implementing the WAI-ARIA switch pattern for a single on or off setting that applies…          | Flipping a single setting on or off with immediate effect such as notifications or dark mode. |
+| `checkbox`          | Binary or tri-state selection control with bindable checked and indeterminate state for forms and lists.      | Selecting zero or more independent options from a list.                                       |
+| `segmented-control` | Compact segmented selector that surfaces a small fixed set of options as a connected bar, including bindable… | Choosing one of two to five mutually exclusive options that all fit on screen at once.        |
 
 ### tabs (2 components)
 
-| id                  | purpose                                                                                                      | use when                                                                               |
-| ------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `tabs`              | Root tabs composite that owns the active value and orientation and coordinates tab, tab-list, and tab-panel… | Switching between several panels of related content under one heading area.            |
-| `segmented-control` | Compact radio-style selector that surfaces a small fixed set of options as a single connected bar and binds… | Choosing one of two to five mutually exclusive options that all fit on screen at once. |
+| id                  | purpose                                                                                                       | use when                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `tabs`              | Root tabs composite that owns the active value and orientation and coordinates tab, tab-list, and tab-panel…  | Switching between several panels of related content under one heading area.            |
+| `segmented-control` | Compact segmented selector that surfaces a small fixed set of options as a connected bar, including bindable… | Choosing one of two to five mutually exclusive options that all fit on screen at once. |
 
 <!-- generated:overlap-families:end -->
 

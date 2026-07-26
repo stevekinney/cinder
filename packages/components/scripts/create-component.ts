@@ -203,6 +203,9 @@ export function renderReadme(context: CreationContext): string {
   const experimentalNote = isExperimental
     ? `> **EXPERIMENTAL** — this component's API may change between minor versions until promoted to stable.\n\n`
     : '';
+  const authoringChecklistPath = isExperimental
+    ? '../../../../AGENTS.md#component-authoring-pre-flight'
+    : '../../../AGENTS.md#component-authoring-pre-flight';
   return `# ${pascalName}
 
 ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
@@ -221,6 +224,13 @@ ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
 
 <!-- generated:props:start -->
 <!-- generated:props:end -->
+
+## Authoring checklist
+
+<!-- generated:authoring:start -->
+Before publishing this component, complete the live
+[component authoring pre-flight](${authoringChecklistPath}).
+<!-- generated:authoring:end -->
 
 ## CSS Variables
 
