@@ -87,11 +87,14 @@ export function findNearestOpenPopover(source: HTMLElement): HTMLElement | null 
   return null;
 }
 
-export function findNearestOpenTopLayer(source: HTMLElement): HTMLElement | null {
+export function findNearestOpenTopLayer(
+  source: HTMLElement,
+  isModalDialog: (element: HTMLElement) => boolean = (element) => element.matches(':modal'),
+): HTMLElement | null {
   let candidate: HTMLElement | null = source;
   while (candidate) {
     if (
-      candidate.matches('dialog[open]') ||
+      (candidate.matches('dialog') && isModalDialog(candidate)) ||
       (candidate.matches('[popover]') && candidate.matches(':popover-open'))
     )
       return candidate;

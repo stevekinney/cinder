@@ -103,7 +103,7 @@
   });
 
   const portalScopeAttachment = createPortalAttachment({
-    target: () => anchorElement?.closest<HTMLElement>('dialog[open]') ?? document.body,
+    target: () => anchorElement?.closest<HTMLElement>('dialog:modal') ?? document.body,
     inheritAttributes: true,
     source: () => anchorElement ?? null,
   });

@@ -40,8 +40,16 @@ describe('Portal', () => {
     outerDialog.append(innerDialog);
     innerDialog.append(source);
     document.body.append(outerDialog);
+    expect(findNearestOpenTopLayer(source, (element) => element === innerDialog)).toBe(innerDialog);
+  });
 
-    expect(findNearestOpenTopLayer(source)).toBe(innerDialog);
+  test('does not treat a non-modal open dialog as a top-layer owner', () => {
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    const source = document.createElement('button');
+    dialog.append(source);
+    document.body.append(dialog);
+    expect(findNearestOpenTopLayer(source)).toBeNull();
   });
 
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {

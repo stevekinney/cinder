@@ -166,8 +166,11 @@
 
   function isRenderedCandidate(candidate: HTMLElement): boolean {
     if (typeof window === 'undefined') return true;
-    const styles = getComputedStyle(candidate);
-    return styles.display !== 'none' && styles.visibility !== 'hidden';
+    for (let current: HTMLElement | null = candidate; current; current = current.parentElement) {
+      const styles = getComputedStyle(current);
+      if (styles.display === 'none' || styles.visibility === 'hidden') return false;
+    }
+    return true;
   }
 
   function hasNegativeTabIndex(element: HTMLElement): boolean {

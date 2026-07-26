@@ -98,6 +98,13 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       // The adjacent reason is the explicit, refactor-safe allow-list for
       // component-local relationships above the universal 0/1 threshold.
       // Never allow the historical magic escape hatch back, even with a note.
+      const referencedTokens = [...value.matchAll(/var\((--cinder-z-[\w-]+)/g)].map(
+        (match) => match[1],
+      );
+      if (referencedTokens.some((token) => !declaredLayerTokens.has(token))) {
+        stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
+        return;
+      }
       if (value !== '9999' && hasAdjacentLocalReason(declaration)) return;
 
       stylelint.utils.report({

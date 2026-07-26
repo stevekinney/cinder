@@ -484,7 +484,9 @@
       widthMode="match-anchor"
       class="cinder-combobox__empty-panel"
     >
-      <div class="cinder-combobox__empty" data-cinder-active>No results</div>
+      <div class="cinder-combobox__empty" role="option" aria-disabled="true" data-cinder-active>
+        No results
+      </div>
     </Popover>
   {/if}
 
