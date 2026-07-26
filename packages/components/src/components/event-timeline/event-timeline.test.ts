@@ -235,6 +235,15 @@ describe('EventTimeline', () => {
     );
   });
 
+  test('points collision leaders toward their offset labels', () => {
+    expect(EVENT_TIMELINE_CSS).toContain(
+      "[data-cinder-lane-parity='even'] .cinder-event-timeline__leader {\n    inset-inline-end: 50%;",
+    );
+    expect(EVENT_TIMELINE_CSS).toContain(
+      "[data-cinder-lane-parity='odd'] .cinder-event-timeline__leader {\n    inset-inline-start: 50%;",
+    );
+  });
+
   test('keeps centered fallback bounds out of parity-offset lanes', async () => {
     const { container } = render(EventTimeline, {
       start,
