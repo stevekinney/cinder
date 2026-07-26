@@ -203,14 +203,10 @@
       {};
     let layoutKeyboardVisible = false;
     let layoutKeyboardResizeActive = false;
-    let layoutKeyboardResizeResetTimer: ReturnType<typeof setTimeout> | null = null;
+    let layoutKeyboardScrollsSeen = 0;
     const markLayoutKeyboardResize = () => {
       layoutKeyboardResizeActive = true;
-      if (layoutKeyboardResizeResetTimer !== null) clearTimeout(layoutKeyboardResizeResetTimer);
-      layoutKeyboardResizeResetTimer = setTimeout(() => {
-        layoutKeyboardResizeActive = false;
-        layoutKeyboardResizeResetTimer = null;
-      }, 0);
+      layoutKeyboardScrollsSeen = 0;
     };
     const readVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
       const isVisible = isVirtualKeyboardResize(source);
@@ -239,7 +235,13 @@
     };
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
-      if (event.type === 'scroll' && layoutKeyboardResizeActive) return;
+      if (event.type === 'scroll' && layoutKeyboardResizeActive) {
+        if (layoutKeyboardScrollsSeen < 2) {
+          layoutKeyboardScrollsSeen += 1;
+          return;
+        }
+        layoutKeyboardResizeActive = false;
+      }
       if (event.type === 'resize') {
         const viewportWidthChanged = window.innerWidth !== viewportWidth;
         const viewportHeightChanged = window.innerHeight !== viewportHeight;
@@ -290,8 +292,14 @@
         visualViewport?.scale === 1
           ? readVirtualKeyboardTransition('visual-viewport')
           : { active: false, isVisible: false };
-      if ((event.type === 'resize' || event.type === 'scroll') && layoutKeyboardResizeActive)
-        return;
+      if ((event.type === 'resize' || event.type === 'scroll') && layoutKeyboardResizeActive) {
+        if (event.type === 'scroll' && layoutKeyboardScrollsSeen < 2) {
+          layoutKeyboardScrollsSeen += 1;
+          return;
+        }
+        if (event.type === 'resize') return;
+        layoutKeyboardResizeActive = false;
+      }
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
         virtualKeyboardTransition.active &&
@@ -309,7 +317,6 @@
       for (const frame of Object.values(virtualKeyboardTransitionFrames)) {
         window.cancelAnimationFrame(frame);
       }
-      if (layoutKeyboardResizeResetTimer !== null) clearTimeout(layoutKeyboardResizeResetTimer);
       window.removeEventListener('scroll', dismiss, true);
       window.removeEventListener('resize', dismiss);
       visualViewport?.removeEventListener('scroll', dismissVisualViewport);
