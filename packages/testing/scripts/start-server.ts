@@ -562,7 +562,7 @@ function startPlaygroundBundleDependencyWatchers(
     for (const resolve of idleWaiters.splice(0)) resolve();
   };
   for (const packageName of playgroundBundleDependencyPackages) {
-    if (!shouldContinueStartingChildProcesses()) return watchers;
+    if (!shouldContinueStartingChildProcesses()) break;
     const state = { buildProcess: null as ChildProcess | null, pending: false };
     states.push(state);
     let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
