@@ -1589,7 +1589,11 @@ function renderPreviewMessageBridgeScript(): string {
  * injected that zeroes animation/transition durations and hides carets.
  * Without `?snapshot=1`, the output is byte-identical to the previous behavior.
  */
-async function renderComponentPage(componentName: string, snapshotMode: boolean): Promise<string> {
+async function renderComponentPage(
+  componentName: string,
+  snapshotMode: boolean,
+  previewOnly: boolean,
+): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
   const componentStylesheetUrl =
     componentDefinition?.source.componentStylesheetUrl(componentName) ?? null;
@@ -1633,19 +1637,28 @@ async function renderComponentPage(componentName: string, snapshotMode: boolean)
    * Server-render the documentation tree so the page has real content in the
    * HTML — no blank `#app` and no loading state before the bundle executes.
    *
-   * `?snapshot=1` deliberately opts OUT and keeps the historical client-only
-   * mount: the visual-regression and axe suites wait for `#app > *` to become
-   * visible and assert single-instance counts of `example-mount-*` on a bare
-   * surface (see packages/testing/src/fixtures/component-page.ts). Rendering the
-   * full documentation chrome into that surface would break ~93 suites, so the
-   * two surfaces stay separate on purpose.
+   * TWO query surfaces deliberately opt OUT and keep the historical client-only
+   * mount, because each renders a DIFFERENT tree than the canonical page:
+   *
+   * - `?snapshot=1` — the visual-regression and axe suites wait for `#app > *`
+   *   to become visible and assert single-instance counts of `example-mount-*`
+   *   on a bare surface (see packages/testing/src/fixtures/component-page.ts).
+   *   Rendering the full documentation chrome there would break ~93 suites.
+   * - `?preview=1` — the shell's preview frame renders only a single featured
+   *   example (`canonical-preview`). The client bundle `mount()`s that surface
+   *   rather than hydrating it, and `mount()` does not clear existing children,
+   *   so pre-rendering the full documentation tree here would stack a 134 KB
+   *   documentation page underneath a small preview inside the iframe.
+   *
+   * Both surfaces must therefore ship an empty `#app`. Gate on both, or the
+   * server's tree and the client's mount disagree.
    *
    * A render failure degrades to the client-only path rather than 500ing — the
    * page still works, it just loses the pre-rendered content.
    */
   let ssrBody = '';
   let ssrHead = '';
-  if (!snapshotMode) {
+  if (!snapshotMode && !previewOnly) {
     try {
       const renderComponentPageBody = await loadPageServerRenderer();
       const rendered = renderComponentPageBody({ componentName, documentation, examples });
@@ -2232,7 +2245,11 @@ export async function handleRequest(request: Request): Promise<Response> {
         fixtureContentHash,
       );
     }
-    const html = await renderComponentPage(componentName, snapshotModeActive);
+    // `?preview=1` is the shell preview frame's single-example surface. It must
+    // stay client-only for the same reason as snapshot mode — see the comment in
+    // renderComponentPage.
+    const previewOnlyActive = url.searchParams.get('preview') === '1';
+    const html = await renderComponentPage(componentName, snapshotModeActive, previewOnlyActive);
     return new Response(html, { headers: { 'Content-Type': 'text/html' } });
   }
 
