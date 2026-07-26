@@ -269,6 +269,9 @@
           document.activeElement instanceof Node &&
           popoverElement?.contains(document.activeElement);
         const virtualKeyboardTransition = readVirtualKeyboardTransition('window');
+        const composerOwnedKeyboard = expanded || commentBody.trim().length > 0;
+        if (virtualKeyboardTransition.active && !virtualKeyboardTransition.isVisible)
+          markLayoutKeyboardResize();
         const layoutKeyboardResize =
           composerHasFocus &&
           viewportHeightChanged &&
@@ -295,7 +298,9 @@
             layoutKeyboardResize ||
             closingLayoutKeyboard) &&
           (composerHasFocus ||
-            (virtualKeyboardTransition.active && !virtualKeyboardTransition.isVisible))
+            (virtualKeyboardTransition.active &&
+              !virtualKeyboardTransition.isVisible &&
+              composerOwnedKeyboard))
         ) {
           return;
         }
