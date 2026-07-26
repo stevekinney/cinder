@@ -288,6 +288,28 @@ describe('EventTimeline', () => {
     expect(document.activeElement).toBe(cluster);
   });
 
+  test('outside pointer dismissal does not refocus the cluster trigger', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [0, 1, 2, 3, 4].map((index) => ({
+        at: `2026-07-03T06:0${index}:00.000Z`,
+        label: `Event ${index + 1}`,
+      })),
+    });
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    );
+    cluster?.focus();
+    await fireEvent.click(cluster!);
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    outside.focus();
+    await fireEvent.pointerDown(outside);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(outside);
+  });
+
   test('creates one cluster marker per separated dense region', async () => {
     const { container } = render(EventTimeline, {
       start,

@@ -390,9 +390,9 @@
   const normalizedAriaLabel = $derived(ariaLabel?.trim() || undefined);
   const accessibleName = $derived(normalizedAriaLabel ?? normalizedLabel ?? 'Event timeline');
 
-  function closeCluster(): void {
+  function closeCluster(restoreFocus = false): void {
     openClusterKey = null;
-    void tick().then(() => clusterTrigger?.focus());
+    if (restoreFocus) void tick().then(() => clusterTrigger?.focus());
   }
 
   const dismissOnOutsidePointerdown = $derived(
@@ -415,7 +415,7 @@
     if (openClusterKey === null) return;
     return pushEscapeHandler((event) => {
       event.preventDefault();
-      closeCluster();
+      closeCluster(true);
     });
   });
 
