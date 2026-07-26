@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import type { ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import { join } from 'node:path';
 
 import {
@@ -24,6 +25,7 @@ import {
   shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
   stalePlaygroundServerMessage,
+  waitForExit,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -130,6 +132,13 @@ describe('playground server process', () => {
 });
 
 describe('child process cleanup', () => {
+  test('observes a child that exited before exit listeners were attached', async () => {
+    const childProcess = spawn(process.execPath, ['-e', 'process.exit(7)']);
+    await once(childProcess, 'exit');
+
+    await expect(waitForExit(childProcess)).resolves.toBe(7);
+  });
+
   test('stops starting new managed children after shutdown begins', () => {
     expect(shouldStartManagedChildProcess(null)).toBe(true);
     expect(shouldStartManagedChildProcess(130)).toBe(false);

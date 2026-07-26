@@ -196,16 +196,37 @@ export function appendServerOutputBuffer(
   return nextBuffer.length > 4096 ? nextBuffer.slice(-4096) : nextBuffer;
 }
 
-function waitForExit(childProcess: ChildProcess): Promise<number> {
+export function waitForExit(childProcess: ChildProcess): Promise<number> {
   return new Promise((resolve) => {
+    let settled = false;
+    const settle = (code: number): void => {
+      if (settled) return;
+      settled = true;
+      childProcess.off('exit', onExit);
+      childProcess.off('error', onError);
+      resolve(code);
+    };
+    const onExit = (code: number | null): void => settle(code ?? 1);
+    const onError = (error: Error): void => {
+      console.error('Child process error:', error);
+      settle(1);
+    };
+
     // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
     // EACCES, etc.) the child emits `error` and may never emit `exit`,
     // which would hang the script indefinitely.
-    childProcess.once('exit', (code) => resolve(code ?? 1));
-    childProcess.once('error', (error) => {
-      console.error('Child process error:', error);
-      resolve(1);
-    });
+    childProcess.once('exit', onExit);
+    childProcess.once('error', onError);
+
+    // A cached build can finish between spawn() and listener registration.
+    // Node retains the terminal status but does not replay the `exit` event,
+    // so consume that status after the listeners are installed to close both
+    // sides of the race.
+    if (childProcess.exitCode !== null) {
+      settle(childProcess.exitCode);
+    } else if (childProcess.signalCode !== null) {
+      settle(1);
+    }
   });
 }
 
