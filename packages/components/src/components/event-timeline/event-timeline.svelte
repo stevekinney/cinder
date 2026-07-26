@@ -90,6 +90,7 @@
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
   let isRtl = $state(false);
+  const instanceId = $props.id();
   function portalOwner(): HTMLElement | null {
     const trigger = clusterTrigger;
     if (!trigger) return null;
@@ -214,9 +215,22 @@
   });
 
   const observeItems = (node: HTMLElement) => {
+    const updateDirection = () => {
+      isRtl = getComputedStyle(node).direction === 'rtl';
+    };
     updateMeasuredWidth(node.getBoundingClientRect().width);
-    isRtl = getComputedStyle(node).direction === 'rtl';
-    return observeResize(node);
+    updateDirection();
+    const directionObserver = new MutationObserver(updateDirection);
+    directionObserver.observe(node.ownerDocument.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'dir', 'style'],
+      subtree: true,
+    });
+    const stopResizeObserver = observeResize(node);
+    return () => {
+      directionObserver.disconnect();
+      stopResizeObserver?.();
+    };
   };
 
   $effect(() => {
@@ -514,7 +528,7 @@
         </div>
       {:else}
         {@const cluster = renderItem.cluster}
-        {@const clusterId = `cinder-event-timeline-cluster-${cluster.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`}
+        {@const clusterId = `${instanceId}-cluster-${cluster.key.replace(/[^a-zA-Z0-9_-]/g, '-')}`}
         <div
           class="cinder-event-timeline__cluster"
           role="listitem"
