@@ -232,6 +232,10 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
   return violations;
 }
 
+export function hasRequiredAccessibilityRecord(content: string): boolean {
+  return content.includes('generated:a11y-record:required');
+}
+
 async function main(): Promise<void> {
   const violations: Violation[] = [];
   const globs = [new Glob('**/README.md'), new Glob('**/*.a11y.md')];
@@ -240,6 +244,19 @@ async function main(): Promise<void> {
       const filePath = join(componentsRoot, relative);
       const content = await Bun.file(filePath).text();
       violations.push(...findPlaceholderViolations(content, filePath));
+      if (hasRequiredAccessibilityRecord(content)) {
+        const directory = dirname(filePath);
+        const name = relative.split('/').at(-2) ?? '';
+        const accessibilityPath = join(directory, `${name}.a11y.md`);
+        if (!(await Bun.file(accessibilityPath).exists())) {
+          violations.push({
+            filePath: accessibilityPath,
+            lineNumber: 1,
+            line: 'Generated component is missing its accessibility review record.',
+            phrase: 'accessibility record',
+          });
+        }
+      }
     }
 
   if (violations.length === 0) {

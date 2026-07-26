@@ -210,6 +210,8 @@ export function renderReadme(context: CreationContext): string {
     : '../../../AGENTS.md#component-authoring-pre-flight';
   return `# ${pascalName}
 
+<!-- generated:a11y-record:required -->
+
 ${experimentalNote}TODO: one-line purpose statement for ${pascalName}.
 
 ## Usage

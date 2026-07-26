@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'bun:test';
 
-import { findPlaceholderViolations } from './check-placeholder-docs.ts';
+import {
+  findPlaceholderViolations,
+  hasRequiredAccessibilityRecord,
+} from './check-placeholder-docs.ts';
 
 describe('findPlaceholderViolations', () => {
+  it('marks generated component README records as requiring an accessibility file', () => {
+    expect(hasRequiredAccessibilityRecord('<!-- generated:a11y-record:required -->')).toBe(true);
+    expect(hasRequiredAccessibilityRecord('# Existing component')).toBe(false);
+  });
   it('rejects design and accessibility placeholders when accessibility review applies', () => {
     const violations = findPlaceholderViolations(
       '## Design review (required)\n- Reviewer: _Pending\n- Review outcome: done\n- Nearest neighbours: known\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — reason\nDesign: _Pending\nKeyboard: _Record',
