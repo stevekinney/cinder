@@ -331,12 +331,13 @@ export function observePortalSourceAvailability(
   }
   syncAvailability();
 
-  const onResize = () => syncAvailability();
-  window.addEventListener('resize', onResize);
+  const resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncAvailability);
+  resizeObserver?.observe(source);
 
   return () => {
     observer.disconnect();
-    window.removeEventListener('resize', onResize);
+    resizeObserver?.disconnect();
   };
 }
 
@@ -367,16 +368,13 @@ function observeInheritedPortalAttributes(
   }
   observe(document.documentElement);
 
-  const mediaQueries = ['(prefers-color-scheme: dark)', '(forced-colors: active)'];
-  const mediaLists =
-    typeof window !== 'undefined' ? mediaQueries.map((query) => window.matchMedia(query)) : [];
-  for (const media of mediaLists) media.addEventListener('change', syncAttributes);
-  if (typeof window !== 'undefined') window.addEventListener('resize', syncAttributes);
+  const resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncAttributes);
+  resizeObserver?.observe(source);
 
   return () => {
     observer.disconnect();
-    for (const media of mediaLists) media.removeEventListener('change', syncAttributes);
-    if (typeof window !== 'undefined') window.removeEventListener('resize', syncAttributes);
+    resizeObserver?.disconnect();
   };
 }
 
