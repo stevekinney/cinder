@@ -122,7 +122,7 @@
   function stableHash(value: string): string {
     let hash = 0;
     for (const character of value) {
-      hash = (hash * 31 + character.charCodeAt(0)) | 0;
+      hash = (hash * 31 + (character.codePointAt(0) ?? 0)) | 0;
     }
     return Math.abs(hash).toString(36);
   }
@@ -411,7 +411,10 @@
 
   $effect(() => {
     if (typeof window === 'undefined') return;
-    const handler = () => updateIndicator();
+    const handler = () => {
+      directionRevision += 1;
+      updateIndicator();
+    };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
   });

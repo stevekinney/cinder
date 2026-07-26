@@ -105,6 +105,21 @@ describe('MegaMenu', () => {
     expect(styles).toContain('.cinder-mega-menu__sub .cinder-mega-menu__sections {');
     expect(styles).toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\bleft:\s*0;/s);
     expect(styles).not.toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\binset-inline-start:/s);
+    expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(0, 1fr));');
+  });
+
+  test('keeps submenu trigger IDs unique for non-BMP labels', () => {
+    const unicodeItems = structuredClone(items);
+    unicodeItems[0]!.submenu = [
+      { id: '😀', label: 'Smile', sections: [] },
+      { id: '😁', label: 'Grin', sections: [] },
+    ];
+    const { container } = render(MegaMenu, { items: unicodeItems });
+    fireEvent.click(getTriggerByLabel(container, 'Products'));
+    const ids = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+    ).map((button) => button.id);
+    expect(new Set(ids).size).toBe(2);
   });
 
   test('renders independently titled nested sections below top-level section headings', async () => {
@@ -299,6 +314,27 @@ describe('MegaMenu', () => {
     products.focus();
     await fireEvent.keyDown(products, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(resources);
+  });
+
+  test('re-resolves responsive CSS direction after resize', async () => {
+    try {
+      const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+      const nav = container.querySelector('nav');
+      const products = getTriggerByLabel(container, 'Products');
+      const resources = getTriggerByLabel(container, 'Resources');
+      if (!nav) throw new Error('Missing menu nav.');
+      nav.style.direction = 'rtl';
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(resources);
+
+      nav.style.direction = 'ltr';
+      await fireEvent(window, new Event('resize'));
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(resources);
+    } finally {
+    }
   });
 
   test('resolves an explicit auto direction before an ancestor direction', async () => {

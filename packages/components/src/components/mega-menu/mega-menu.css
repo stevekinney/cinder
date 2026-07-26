@@ -104,6 +104,7 @@
   }
 
   .cinder-mega-menu__sub .cinder-mega-menu__sections {
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
     border-inline-start: 1px solid var(--cinder-border-muted);
     padding-inline-start: var(--cinder-space-4);
   }
