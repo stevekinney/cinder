@@ -312,7 +312,7 @@
             position,
             edge,
             collisionThresholdPercent,
-            offsetPercent,
+            centered ? 0 : offsetPercent,
             lane,
           );
           return candidate.start >= bounds.end + 1;
@@ -325,7 +325,7 @@
             position,
             edge,
             collisionThresholdPercent,
-            offsetPercent,
+            centered ? 0 : offsetPercent,
             lane,
           );
           laneBounds[lane] = { end: bounds.end };
@@ -417,7 +417,6 @@
 
   const laneCount = $derived(
     Math.max(
-      3,
       ...positionedItems.map((item) => item.lane + 1),
       ...clusters.map((cluster) => cluster.lane + 1),
       0,

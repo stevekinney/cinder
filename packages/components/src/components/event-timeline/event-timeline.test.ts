@@ -215,6 +215,37 @@ describe('EventTimeline', () => {
     );
   });
 
+  test('keeps centered fallback bounds out of parity-offset lanes', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T09:36:00.000Z', label: 'Centered fallback with a long label' },
+        { at: '2026-07-03T20:24:00.000Z', label: 'Edge label with a long label' },
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(280);
+    await tick();
+    const items = [...container.querySelectorAll('[role="listitem"]')];
+    expect(items[0]?.getAttribute('data-cinder-centered')).toBe('');
+    expect(items.map((item) => item.getAttribute('data-cinder-lane'))).toEqual(['0', '1']);
+  });
+
+  test('uses the occupied lane count while retaining the CSS minimum height', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T12:00:00.000Z', label: 'Single event' }],
+    });
+
+    expect(container.querySelector('[role="list"]')?.getAttribute('style')).toContain(
+      '--_cinder-event-timeline-lane-count: 1',
+    );
+    expect(EVENT_TIMELINE_CSS).toContain('block-size: max(');
+  });
+
   test('reserves lanes for physical RTL bounds', async () => {
     const { container } = render(EventTimeline, {
       start,
