@@ -43,6 +43,14 @@ function isStaticValue(value: unknown): boolean {
   if (value.type !== 'ExpressionTag') return false;
   const expression = value['expression'];
   if (!isNode(expression)) return false;
+  if (
+    expression.type === 'UnaryExpression' &&
+    (expression['operator'] === '-' || expression['operator'] === '+') &&
+    isNode(expression['argument']) &&
+    expression['argument'].type === 'Literal' &&
+    typeof expression['argument']['value'] === 'number'
+  )
+    return true;
   return (
     (expression.type === 'Literal' &&
       (typeof expression['value'] === 'string' || typeof expression['value'] === 'number')) ||

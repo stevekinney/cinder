@@ -36,6 +36,12 @@ describe('findStaticStyleAttributes', () => {
     ]);
   });
 
+  test('flags signed numeric style directive literals', () => {
+    expect(findStaticStyleAttributes('<div style:z-index={-1}></div>')).toEqual([
+      { line: 1, column: 6 },
+    ]);
+  });
+
   test('finds nested static attributes without matching script strings', () => {
     expect(
       findStaticStyleAttributes(`
