@@ -56,11 +56,27 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
   if (!stylelint.utils.validateOptions(result, ruleName, { actual: primary, possible: [true] }))
     return;
   if (!isCinderComponentSource(root)) return;
-  const customProperties = new Map();
+  const customPropertyDeclarations = [];
   root.walkDecls((decl) => {
-    if (decl.prop.startsWith('--')) customProperties.set(decl.prop, decl.value);
+    if (!decl.prop.startsWith('--')) return;
+    const parentRule = decl.parent?.type === 'rule' ? decl.parent.selector : ':root';
+    customPropertyDeclarations.push({ name: decl.prop, value: decl.value, selector: parentRule });
   });
+  const customPropertiesForRule = (selector) => {
+    const properties = new Map();
+    for (const declaration of customPropertyDeclarations) {
+      if (
+        declaration.selector === ':root' ||
+        declaration.selector === selector ||
+        selector.includes(declaration.selector)
+      ) {
+        properties.set(declaration.name, declaration.value);
+      }
+    }
+    return properties;
+  };
   root.walkRules((rule) => {
+    const customProperties = customPropertiesForRule(rule.selector);
     rule.walkDecls((decl) => {
       if (
         decl.prop === 'border' &&

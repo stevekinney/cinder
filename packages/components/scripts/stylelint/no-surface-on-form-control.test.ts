@@ -95,4 +95,17 @@ describe(ruleName, () => {
       ).toHaveLength(1);
     }
   });
+
+  test('recognizes InvocationRuleBuilder native controls', async () => {
+    for (const selector of [
+      '.cinder-invocation-rule-builder__rule-label-input',
+      '.cinder-invocation-rule-builder__condition-select',
+      '.cinder-invocation-rule-builder__condition-value',
+      '.cinder-invocation-rule-builder__action-select',
+    ]) {
+      expect(
+        warnings(await lint(`${selector} { background: var(--cinder-surface); }`)),
+      ).toHaveLength(1);
+    }
+  });
 });

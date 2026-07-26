@@ -111,4 +111,14 @@ describe(ruleName, () => {
       ),
     ).toHaveLength(1);
   });
+
+  test('resolves aliases in the declaration scope instead of later variants', async () => {
+    expect(
+      warnings(
+        await lint(
+          ':root { --divider: var(--cinder-border); } .cinder-card__header { border-block-end: 1px solid var(--divider); } .compact .cinder-card__header { --divider: var(--cinder-border-muted); }',
+        ),
+      ),
+    ).toHaveLength(1);
+  });
 });
