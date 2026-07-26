@@ -45,9 +45,7 @@ describe('AccessGate', () => {
     expect(styles).toContain('gap: var(--cinder-space-2);');
     expect(styles).toContain('.cinder-access-gate__passthrough:has(> :only-child)');
     expect(styles).toContain('inline-size: 100%;');
-    expect(styles).not.toContain(
-      '.cinder-access-gate__passthrough:has(> [data-cinder-full-width])',
-    );
+    expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-full-width])');
     expect(styles).toContain(
       '.cinder-access-gate__passthrough:where(\n    :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only])))',
     );
