@@ -88,7 +88,7 @@
     ) {
       return providedDirection;
     }
-    return localeContext?.direction ? resolvedDirection : null;
+    return localeContext?.direction ?? null;
   });
 
   $effect(() => {
