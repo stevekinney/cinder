@@ -32,7 +32,7 @@
     padding: var(--cinder-space-4);
   }
 
-  .cinder-carousel__slide[inert] {
+  .cinder-carousel__slide[data-cinder-collapsed] {
     block-size: 0;
     min-block-size: 0;
     padding-block: 0;

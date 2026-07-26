@@ -52,6 +52,8 @@
   let userPaused = $state(false);
   let isInteracting = $state(false);
   let isNativeScrolling = $state(false);
+  let settledIndex = $state(0);
+  let hasInitializedSettled = false;
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
   let activePointerId: number | null = null;
@@ -175,16 +177,23 @@
     if (viewportRect.width === 0 || slideRect.width === 0) return;
     if (Math.abs(slideRect.left - viewportRect.left) <= 1) {
       programmaticTarget = null;
+      settledIndex = currentIndex;
       return;
     }
     programmaticTarget = currentIndex;
+    const direction =
+      typeof window !== 'undefined' ? window.getComputedStyle(viewport).direction : 'ltr';
+    const destination =
+      direction === 'rtl'
+        ? viewport.scrollLeft + slideRect.left - viewportRect.left
+        : slide.offsetLeft;
     if (typeof viewport.scrollTo === 'function') {
       viewport.scrollTo({
-        left: slide.offsetLeft,
+        left: destination,
         behavior: behavior ?? (reducedMotion.current ? 'auto' : 'smooth'),
       });
     } else {
-      viewport.scrollLeft = slide.offsetLeft;
+      viewport.scrollLeft = destination;
     }
   }
 
@@ -213,6 +222,7 @@
     nativeScrollEndTimer = setTimeout(() => {
       nativeScrollEndTimer = null;
       isNativeScrolling = false;
+      settledIndex = currentIndex;
     }, 100);
   }
 
@@ -248,7 +258,10 @@
         : nearestIndex;
     }, 0);
     if (programmaticTarget !== null) {
-      if (nextIndex === programmaticTarget) programmaticTarget = null;
+      if (nextIndex === programmaticTarget) {
+        programmaticTarget = null;
+        settledIndex = nextIndex;
+      }
       return;
     }
     if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
@@ -258,6 +271,10 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
+    if (!hasInitializedSettled) {
+      settledIndex = currentIndex;
+      hasInitializedSettled = true;
+    }
     if (isInteracting || isNativeScrolling) return;
     slideIdentity;
     scrollToActiveSlide();
@@ -308,6 +325,7 @@
           aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
           aria-hidden={index === currentIndex ? undefined : 'true'}
           inert={index !== currentIndex}
+          data-cinder-collapsed={index !== currentIndex && index !== settledIndex ? '' : undefined}
           style:order={initialSlideOrder(index)}
         >
           {#if slide.href}
