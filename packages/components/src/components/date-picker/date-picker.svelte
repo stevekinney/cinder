@@ -147,7 +147,9 @@
 
     function handleFormReset(): void {
       queueMicrotask(() => {
-        if (inputElement === element) updateInputValidity(element);
+        if (inputElement !== element) return;
+        value = normalizeValue(element.value || undefined, granularity);
+        updateInputValidity(element);
       });
     }
 

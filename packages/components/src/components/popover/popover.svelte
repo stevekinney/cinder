@@ -137,7 +137,7 @@
   function moveFocusIntoPanel(): boolean {
     if (isDestroyed || !panelElement) return false;
     const focusable = initialFocus?.(panelElement) ?? findFirstFocusable(panelElement);
-    const target = focusable ?? panelElement;
+    const target = focusable && panelElement.contains(focusable) ? focusable : panelElement;
     target.focus();
     if (document.activeElement === target) return true;
     const fallback = focusable ? findFirstFocusable(panelElement) : null;
