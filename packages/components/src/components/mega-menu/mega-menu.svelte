@@ -63,9 +63,7 @@
     directionRevision;
     if (providedDirection === 'rtl' || providedDirection === 'ltr') {
       return navElement
-        ? (resolveTextDirection(navElement, providedDirection, {
-            ignoreElementDirectionAttribute: true,
-          }) ?? providedDirection)
+        ? (resolveTextDirection(navElement, providedDirection) ?? providedDirection)
         : providedDirection;
     }
     if (providedDirection === 'auto') {

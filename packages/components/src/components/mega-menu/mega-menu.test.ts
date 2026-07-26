@@ -438,6 +438,21 @@ describe('MegaMenu', () => {
     expect(container.querySelector('nav')?.getAttribute('dir')).toBe('ltr');
   });
 
+  test('traverses in the explicit direction inside an opposite-direction ancestor', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'ltr' });
+    const ancestor = document.createElement('div');
+    ancestor.dir = 'rtl';
+    const menu = container.firstElementChild!;
+    ancestor.append(menu);
+    document.body.append(ancestor);
+    const first = getTriggerByLabel(menu, 'Products');
+    const second = getTriggerByLabel(menu, 'Resources');
+    first.focus();
+    await fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(second);
+    ancestor.remove();
+  });
+
   test('uses effective CSS direction when an explicit dir prop is overridden', async () => {
     const { container } = render(MegaMenu, { items, dir: 'rtl', style: 'direction: ltr' });
     const first = getTriggerByLabel(container, 'Products');
