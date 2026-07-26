@@ -14,7 +14,8 @@
   }
 
   .cinder-access-gate__passthrough:where(
-    :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only])))
+    :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only]))),
+    :has(> .cinder-tooltip-wrapper [data-cinder-icon-only])
   ) {
     display: inline-flex;
     align-items: center;
