@@ -9,8 +9,9 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, render, waitFor } = await import('@testing-library/svelte');
-const { default: EventTimeline, __setEventTimelineModalPredicate } =
-  await import('./event-timeline.svelte');
+const { default: EventTimeline } = await import('./event-timeline.svelte');
+const { setEventTimelineModalPredicate: __setEventTimelineModalPredicate } =
+  await import('./event-timeline-modal.ts');
 const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 

@@ -1,14 +1,4 @@
 <script lang="ts" module>
-  let modalPredicate: (element: HTMLElement) => boolean = (element) => {
-    try {
-      return element.matches(':modal');
-    } catch {
-      return false;
-    }
-  };
-  export function __setEventTimelineModalPredicate(predicate: (element: HTMLElement) => boolean) {
-    modalPredicate = predicate;
-  }
   /**
    * @cinder
    * @category data-display
@@ -35,6 +25,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
+  import { isEventTimelineModal } from './event-timeline-modal.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
@@ -109,7 +100,7 @@
       if (focusTrapRoot) return focusTrapRoot;
       const dialog = trigger.closest<HTMLElement>('dialog');
       return (
-        (dialog && modalPredicate(dialog) ? dialog : null) ??
+        (dialog && isEventTimelineModal(dialog) ? dialog : null) ??
         (typeof CSS !== 'undefined' && CSS.supports?.('selector(:popover-open)')
           ? trigger.closest<HTMLElement>('[popover]:popover-open')
           : null)
