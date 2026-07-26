@@ -55,6 +55,18 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
   });
+  it('rejects keyboard rows with missing columns', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — reason\n### Focus management\nDocumented\n### Keyboard matrix\n| Key | Context | Expected behavior |\n| --- | --- | --- |\n| Tab | dialog |\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
+  });
+  it('rejects an empty accessibility record', () => {
+    expect(findPlaceholderViolations('', 'component.a11y.md')).toEqual([
+      expect.objectContaining({ phrase: 'accessibility record' }),
+    ]);
+  });
   it('parses bulleted applicability and scopes accessibility placeholders to its section', () => {
     const appliesNo = findPlaceholderViolations(
       '## Design review (required)\n- Reviewer: _Pending\n- Review outcome: done\n- Nearest neighbours: known\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static component\n- Reviewer: _Pending when this review applies.\n- Focus: _Record',
@@ -121,7 +133,7 @@ describe('findPlaceholderViolations', () => {
   });
   it('requires complete accessibility sections when Applies is yes', () => {
     const violations = findPlaceholderViolations(
-      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Key | Behavior |\n| --- | --- |\n| Tab | Moves focus |\n\n### Assistive-technology announcements\nDocumented',
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Key or gesture | Context | Expected behavior |\n| --- | --- | --- |\n| Tab | dialog | Moves focus |\n\n### Assistive-technology announcements\nDocumented',
       'component.a11y.md',
     );
     expect(violations).toEqual([]);

@@ -39,6 +39,16 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
   const isAccessibilityRecord = filePath.endsWith('.a11y.md');
   const lines = content.split('\n');
   const violations: Violation[] = [];
+  if (isAccessibilityRecord && content.trim() === '') {
+    return [
+      {
+        filePath,
+        lineNumber: 1,
+        line: 'Accessibility review record is empty.',
+        phrase: 'accessibility record',
+      },
+    ];
+  }
   const scan = (sectionLines: string[], phrases: string[], offset: number) => {
     for (const [index, line] of sectionLines.entries()) {
       for (const phrase of phrases) {
@@ -216,6 +226,7 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
           /^\s*\|/.test(line) &&
           !/^\s*\|?\s*:?-{3,}/.test(line) &&
           !/^\s*\|?\s*key\s*\|/i.test(line) &&
+          line.split('|').slice(1, -1).length === 3 &&
           line
             .split('|')
             .slice(1, -1)
