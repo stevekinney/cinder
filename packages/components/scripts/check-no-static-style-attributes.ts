@@ -41,13 +41,13 @@ function isStaticValue(value: unknown): boolean {
   if (Array.isArray(value)) return value.length > 0 && value.every((part) => part.type === 'Text');
   if (!isNode(value)) return false;
   if (value.type !== 'ExpressionTag') return false;
-  const expression = value.expression;
+  const expression = value['expression'];
   if (!isNode(expression)) return false;
   return (
-    (expression.type === 'Literal' && typeof expression.value === 'string') ||
+    (expression.type === 'Literal' && typeof expression['value'] === 'string') ||
     (expression.type === 'TemplateLiteral' &&
-      Array.isArray(expression.expressions) &&
-      expression.expressions.length === 0)
+      Array.isArray(expression['expressions']) &&
+      expression['expressions'].length === 0)
   );
 }
 
