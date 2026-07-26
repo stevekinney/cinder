@@ -108,7 +108,7 @@ describe('Portal', () => {
     host.id = 'portal-host';
     document.body.appendChild(host);
 
-    const { container } = render(Portal, {
+    const view = render(Portal, {
       props: {
         target: '#portal-host',
         children: childSnippet,
@@ -118,7 +118,10 @@ describe('Portal', () => {
     await tick();
 
     expect(host.querySelector('[data-testid="portal-child"]')).not.toBeNull();
-    expect(container.querySelector('[data-testid="portal-child"]')).toBeNull();
+    expect(view.container.querySelector('[data-testid="portal-child"]')).toBeNull();
+
+    view.unmount();
+    expect(host.querySelector('[data-testid="portal-child"]')).toBeNull();
   });
 
   test('renders inline when disabled', async () => {

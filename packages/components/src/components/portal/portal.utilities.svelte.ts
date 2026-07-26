@@ -565,6 +565,10 @@ export function createPortalAttachment(
     });
 
     return () => {
+      // The wrapper may have been moved out of Svelte's original render tree. Remove it from
+      // whichever target currently owns it so unmounting a portaled surface cannot leak it into
+      // the next render or test.
+      element.remove();
       // Final cleanup: also remove the anchor so we don't leave orphan comment nodes behind.
       if (anchor && anchor.parentNode) {
         anchor.parentNode.removeChild(anchor);
