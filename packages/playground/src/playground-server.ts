@@ -2541,7 +2541,20 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   }
   process.stdout.write(`[playground] Listening at http://localhost:${actualPort}\n`);
 
-  const prebuild = await eagerPrebuildAll();
+  let prebuild;
+  let stable = false;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const generationAtStart = rebuildGeneration;
+    prebuild = await eagerPrebuildAll();
+    if (generationAtStart === rebuildGeneration) {
+      stable = true;
+      break;
+    }
+  }
+  if (!stable || !prebuild) {
+    await dispose();
+    throw new Error('[playground] eager prebuild invalidated repeatedly; refusing readiness');
+  }
   if (!prebuild.shellSucceeded) {
     await dispose();
     throw new Error('[playground] shell bundle failed to build — see logs above');
