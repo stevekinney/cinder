@@ -218,7 +218,7 @@ function isConditionalRuleActive(rule: CSSRule, element: HTMLElement): boolean {
 }
 
 function isContainerQueryActive(conditionText: string, element: HTMLElement): boolean {
-  const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^\)]+)\)/i.exec(conditionText);
+  const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^)]+)\)/i.exec(conditionText);
   if (styleQuery) {
     let ancestor = element.parentElement;
     while (ancestor) {
