@@ -26,6 +26,7 @@
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import { tick } from 'svelte';
 
@@ -86,20 +87,20 @@
   let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
-  let clusterSurfaceStyle = $state<string | undefined>();
-
   const clusterPortalAttachment = createPortalAttachment({
-    target: () => document.body,
+    target: () => clusterTrigger?.closest('dialog[open]') ?? document.body,
     inheritAttributes: true,
     source: () => clusterTrigger,
   });
 
-  function positionClusterSurface(): void {
-    const trigger = clusterTrigger;
-    if (!trigger) return;
-    const bounds = trigger.getBoundingClientRect();
-    clusterSurfaceStyle = `position: fixed; left: ${Math.round(bounds.left)}px; top: ${Math.round(bounds.bottom + 8)}px;`;
-  }
+  const anchoredClusterSurface = createAnchoredOverlay({
+    open: () => openClusterKey !== null,
+    anchor: () => clusterTrigger,
+    panel: () => clusterSurface,
+    placement: () => 'bottom-start',
+    offset: () => 8,
+    shiftPadding: () => 8,
+  });
 
   function toTimestamp(value: EventTimelineDate | undefined): number | undefined {
     if (value === undefined) return undefined;
@@ -127,8 +128,11 @@
     offsetPercent = 0,
   ): PositionedEventTimelineItem['edge'] {
     const edgeThreshold = Math.max(10, thresholdPercent / 2 + offsetPercent);
-    if (position <= edgeThreshold) return 'start';
-    if (position >= 100 - edgeThreshold) return 'end';
+    const nearStart = position <= edgeThreshold;
+    const nearEnd = position >= 100 - edgeThreshold;
+    if (nearStart && nearEnd) return position <= 50 ? 'start' : 'end';
+    if (nearStart) return 'start';
+    if (nearEnd) return 'end';
     return 'middle';
   }
 
@@ -247,7 +251,7 @@
             collisionThresholdPercent,
             offsetPercent,
           );
-          return candidate.start >= bounds.end;
+          return candidate.start >= bounds.end + 1;
         });
         const nextLane = availableLane === -1 ? laneBounds.length : availableLane;
         const isOverflow = availableLane === -1 && nextLane >= MAX_VISIBLE_LANES;
@@ -303,7 +307,7 @@
       }
     }
 
-    const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup) => {
+    const clusters: EventTimelineCluster[] = overflowGroups.map((overflowGroup, groupIndex) => {
       const chronologicalItems = overflowGroup.slice().sort((a, b) => a.timestamp - b.timestamp);
       const first = chronologicalItems[0]!;
       const last = chronologicalItems.at(-1)!;
@@ -315,7 +319,7 @@
         count: overflowGroup.length,
         edge: edgeForPosition(first.position, collisionThresholdPercent),
         endTime,
-        key: `cluster-${JSON.stringify(chronologicalItems.map((item) => item.id ?? item.key))}`,
+        key: `cluster-${groupIndex}-${startTime}-${endTime}-${JSON.stringify(chronologicalItems.map((item) => item.id ?? item.key))}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,
@@ -462,7 +466,6 @@
               openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
               if (openClusterKey !== null)
                 void tick().then(() => {
-                  positionClusterSurface();
                   clusterSurface?.focus();
                 });
             }}>+{cluster.count}</button
@@ -475,7 +478,9 @@
               bind:this={clusterSurface}
               {@attach clusterPortalAttachment}
               tabindex="-1"
-              style={clusterSurfaceStyle}
+              data-cinder-position-ready={anchoredClusterSurface.positionReady}
+              aria-hidden={anchoredClusterSurface.positionReady ? undefined : 'true'}
+              style={anchoredClusterSurface.positionStyle}
               {@attach dismissOnOutsidePointerdown}
             >
               <strong>{cluster.accessibleLabel}</strong>

@@ -45,13 +45,13 @@
   .cinder-event-timeline__items {
     block-size: max(
       6rem,
-      calc(min(var(--_cinder-event-timeline-lane-count, 3), 5) * 1.45rem + 1.5rem)
+      calc(min(var(--_cinder-event-timeline-lane-count, 3), 5) * 2rem + 1.5rem)
     );
   }
 
   .cinder-event-timeline__item {
     position: absolute;
-    inset-block-start: calc(var(--_cinder-event-timeline-lane, 0) * 1.45rem);
+    inset-block-start: calc(var(--_cinder-event-timeline-lane, 0) * 2rem);
     display: grid;
     justify-items: center;
     gap: 0.25rem;
@@ -200,7 +200,7 @@
 
   .cinder-event-timeline__cluster-surface {
     position: absolute;
-    z-index: 1;
+    z-index: var(--cinder-z-popover, 1100);
     inset-block-start: 2.25rem;
     min-inline-size: 10rem;
     padding: var(--cinder-space-2);
