@@ -83,6 +83,11 @@ const schema = {
           'Optional callback for choosing the element that receives initial panel focus.',
       },
       {
+        name: 'outsideClickIgnoreRefs',
+        reason: 'function-or-snippet',
+        description: 'Additional elements treated as inside for outside dismissal.',
+      },
+      {
         name: 'trigger',
         reason: 'function-or-snippet',
         description: 'Optional trigger snippet rendered inside a wrapper.',
