@@ -53,7 +53,9 @@
   let savedExpansion: Record<string, boolean> = {};
   let filterWasActive = false;
   let restoredSessionFilter = $state(false);
+  let restoredExpansion = $state(false);
   const FILTER_SESSION_KEY = 'cinder-playground-sidebar-filter';
+  const EXPANSION_SESSION_KEY = 'cinder-playground-sidebar-expansion';
 
   onMount(() => {
     try {
@@ -61,13 +63,34 @@
     } catch {
       filter = '';
     }
+    try {
+      const stored = sessionStorage.getItem(EXPANSION_SESSION_KEY);
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (parsed !== null && typeof parsed === 'object') {
+          expandedFamilies = { ...expandedFamilies, ...parsed };
+        }
+      }
+    } catch {
+      /* ignore — degraded but functional */
+    }
     restoredSessionFilter = true;
+    restoredExpansion = true;
   });
 
   $effect(() => {
     if (!restoredSessionFilter) return;
     try {
       sessionStorage.setItem(FILTER_SESSION_KEY, filter);
+    } catch {
+      /* ignore — degraded but functional */
+    }
+  });
+
+  $effect(() => {
+    if (!restoredExpansion) return;
+    try {
+      sessionStorage.setItem(EXPANSION_SESSION_KEY, JSON.stringify(expandedFamilies));
     } catch {
       /* ignore — degraded but functional */
     }
@@ -140,6 +163,7 @@
       }
       const parentMatches = matchesCurrentFilter(name);
       const matchingChildren = children.filter((child) => matchesCurrentFilter(child));
+      if (filter.trim() === '' && !expandedFamilies[name]) continue;
       if (parentMatches || matchingChildren.length > 0) count += 1;
       for (const child of children) {
         if (filter.trim() === '' || parentMatches || matchesCurrentFilter(child)) {
