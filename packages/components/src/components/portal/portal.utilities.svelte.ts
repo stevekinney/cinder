@@ -103,6 +103,16 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
     inherited.setProperty('color-scheme', colorScheme);
   }
   if (computed.direction) inherited.setProperty('direction', computed.direction);
+  for (const property of [
+    'font-family',
+    'font-size',
+    'font-weight',
+    'line-height',
+    'letter-spacing',
+  ]) {
+    const value = computed.getPropertyValue(property);
+    if (value) inherited.setProperty(property, value);
+  }
   for (const property of Array.from(source.style)) {
     if (!property.startsWith('--cinder-')) continue;
     const rawValue = source.style.getPropertyValue(property);
