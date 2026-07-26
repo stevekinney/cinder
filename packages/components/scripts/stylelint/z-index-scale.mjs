@@ -22,7 +22,7 @@ import stylelint from 'stylelint';
 const ruleName = 'cinder/z-index-scale';
 const localReasonPrefix = 'cinder-z-index-local:';
 const layerTokenPattern = /^var\(\s*(--cinder-z-[a-z0-9-]+)\s*\)$/i;
-const layerTokenReferencePattern = /^var\(\s*--cinder-z-[a-z0-9-]+\s*,/i;
+const layerTokenReferencePattern = /var\(\s*--cinder-z-[a-z0-9-]+\s*,/i;
 const declaredLayerTokens = new Set([
   '--cinder-z-backdrop',
   '--cinder-z-dropdown',

@@ -46,6 +46,14 @@ describe('cinder/z-index-scale', () => {
     expect(result[0]?.text).toContain('must not have a fallback');
   });
 
+  test('rejects a nested layer token fallback', async () => {
+    const result = warnings(
+      await lint('.fixture { z-index: calc(var(--cinder-z-popover, 1000) + 1); }'),
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('must not have a fallback');
+  });
+
   test.each(['2', '4', '9999', '-1', 'calc(1 + 1)', 'var(--other-layer)'])(
     'rejects an unclassified raw layer: %s',
     async (value) => {

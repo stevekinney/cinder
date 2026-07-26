@@ -186,7 +186,6 @@
   });
 
   function handleToggle(event: MouseEvent): void {
-    event.stopPropagation();
     mobileMenuOpen = !mobileMenuOpen;
     toggleElement = event.currentTarget as HTMLElement | null;
   }

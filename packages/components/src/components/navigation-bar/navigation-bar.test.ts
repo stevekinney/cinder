@@ -549,6 +549,19 @@ describe('NavigationBar', () => {
     expect(toggle?.getAttribute('aria-expanded')).toBe('false');
   });
 
+  test('menu toggle clicks reach the consumer handler', async () => {
+    let clicks = 0;
+    const { container } = render(NavigationBar, {
+      items: textSnippet('items'),
+      menuToggle: toggleSnippet(),
+      onclick: () => {
+        clicks += 1;
+      },
+    });
+    await fireEvent.click(container.querySelector('#toggle-btn') as HTMLElement);
+    expect(clicks).toBe(1);
+  });
+
   test('menu toggle renders after the brand by default', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),
@@ -686,6 +699,7 @@ describe('NavigationBar', () => {
       container.addEventListener('keydown', recordEvent);
 
       await openCollapsedMobileMenu(container);
+      bubbledEvents.length = 0;
       const home = getItemsRegion(container).querySelector('[data-key="home"]') as HTMLElement;
       await fireEvent.keyDown(home, { key: 'a' });
       await fireEvent.click(home);

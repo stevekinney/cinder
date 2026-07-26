@@ -104,8 +104,9 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
   }
   if (computed.direction) inherited.setProperty('direction', computed.direction);
   for (const property of Array.from(source.style)) {
-    if (property.startsWith('--cinder-'))
-      inherited.setProperty(property, source.style.getPropertyValue(property));
+    if (!property.startsWith('--cinder-')) continue;
+    const rawValue = source.style.getPropertyValue(property);
+    if (!rawValue.includes('var(')) inherited.setProperty(property, rawValue);
   }
   if (source.style.colorScheme) inherited.setProperty('color-scheme', source.style.colorScheme);
 
@@ -173,7 +174,8 @@ export function copyInheritedPortalAttributes(
     element.removeAttribute('dir');
   }
 
-  const preservesExplicitLanguage = fallbackAttributes.preserveLanguage === true;
+  const preservesExplicitLanguage =
+    fallbackAttributes.preserveLanguage ?? fallbackAttributes.lang !== null;
   const inheritedLanguage =
     inheritAttributes && source && !preservesExplicitLanguage
       ? source.closest<HTMLElement>('[lang]')?.getAttribute('lang')
@@ -377,7 +379,7 @@ export function createPortalAttachment(
             : language !== managedAttributes.lang
               ? language
               : initialAttributes.lang,
-        preserveLanguage: explicitLanguage !== undefined,
+        preserveLanguage: explicitLanguage !== undefined || initialAttributes.lang !== null,
         dataTheme:
           explicitDataTheme !== undefined
             ? explicitDataTheme

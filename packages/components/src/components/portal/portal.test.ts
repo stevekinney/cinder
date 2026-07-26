@@ -51,6 +51,27 @@ describe('Portal', () => {
     expect(getInheritedPortalStyle(source)).toContain('color-scheme: normal');
   });
 
+  test('keeps computed values for Cinder aliases with non-Cinder dependencies', () => {
+    const source = document.createElement('div');
+    source.style.setProperty('--brand-surface', 'red');
+    source.style.setProperty('--cinder-surface', 'var(--brand-surface)');
+    document.body.append(source);
+
+    expect(getInheritedPortalStyle(source)).toContain('--cinder-surface: red');
+    expect(getInheritedPortalStyle(source)).not.toContain('var(--brand-surface)');
+  });
+
+  test('preserves an explicit language on direct attachment copies', () => {
+    const source = document.createElement('div');
+    source.lang = 'en';
+    const element = document.createElement('div');
+    element.lang = 'fr';
+    document.body.append(source, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+    expect(element.lang).toBe('fr');
+  });
+
   test('moves children into a custom target', async () => {
     const host = document.createElement('div');
     host.id = 'portal-host';

@@ -155,12 +155,19 @@
             !speedDialRoot.contains(candidate) &&
             !actionsElement?.contains(candidate) &&
             !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+            isRenderedCandidate(candidate) &&
             Boolean(
               candidate.compareDocumentPosition(speedDialRoot) & Node.DOCUMENT_POSITION_FOLLOWING,
             ),
         )
         .at(-1) ?? null
     );
+  }
+
+  function isRenderedCandidate(candidate: HTMLElement): boolean {
+    if (typeof window === 'undefined') return true;
+    const styles = getComputedStyle(candidate);
+    return styles.display !== 'none' && styles.visibility !== 'hidden';
   }
 
   function hasNegativeTabIndex(element: HTMLElement): boolean {

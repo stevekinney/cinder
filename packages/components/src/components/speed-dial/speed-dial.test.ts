@@ -346,6 +346,24 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(precedingButton);
   });
 
+  test('skips CSS-hidden controls when reversing from the first action', async () => {
+    const hiddenButton = document.createElement('button');
+    hiddenButton.style.display = 'none';
+    document.body.append(hiddenButton);
+    const precedingButton = document.createElement('button');
+    document.body.append(precedingButton);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.focus();
+    await fireEvent.keyDown(create, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(precedingButton);
+  });
+
   test('keyboard order follows resolved placement and spacing uses CSS layout', () => {
     expect(speedDialSource).toMatch(
       /getKeyboardNavigationButtons[\s\S]*?resolvedDirection === 'up' \|\| resolvedDirection === 'left'/,
