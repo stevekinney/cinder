@@ -143,7 +143,16 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
-  walkAst(root['instance']['content'], (node) => {
+  const walkTopLevel = (current: unknown): void => {
+    if (!isRecord(current)) return;
+    const type = current['type'];
+    if (
+      type === 'FunctionDeclaration' ||
+      type === 'FunctionExpression' ||
+      type === 'ArrowFunctionExpression'
+    )
+      return;
+    const node = current;
     let candidate: unknown;
     if (
       node['type'] === 'VariableDeclarator' &&
@@ -159,8 +168,8 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       node['left']['name'] === bindingName
     )
       candidate = node['right'];
-    for (const value of possibleStaticStringsFromExpression(candidate, bindings)) {
-      const normalizedValue = value.toLowerCase();
+    for (const candidateValue of possibleStaticStringsFromExpression(candidate, bindings)) {
+      const normalizedValue = candidateValue.toLowerCase();
       if (
         normalizedValue === 'input' ||
         normalizedValue === 'select' ||
@@ -168,7 +177,12 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       )
         possibleControls.add(normalizedValue);
     }
-  });
+    for (const child of Object.values(current)) {
+      if (Array.isArray(child)) child.forEach(walkTopLevel);
+      else if (isRecord(child)) walkTopLevel(child);
+    }
+  };
+  walkTopLevel(root['instance']['content']);
   return possibleControls;
 }
 
@@ -221,8 +235,10 @@ function hasStaticHiddenAttribute(
       return (
         expressionTag?.['type'] === 'ExpressionTag' &&
         isRecord(expression) &&
-        expression['type'] === 'Literal' &&
-        expression['value'] === true
+        ((expression['type'] === 'Literal' && expression['value'] === true) ||
+          (expression['type'] === 'Identifier' &&
+            typeof expression['name'] === 'string' &&
+            bindings.get(expression['name']) === 'true'))
       );
     }
     return (
@@ -277,6 +293,7 @@ function elementClassSet(
       ((attribute['expression']['type'] === 'Literal' &&
         attribute['expression']['value'] === true) ||
         (attribute['expression']['type'] === 'Identifier' &&
+          typeof attribute['expression']['name'] === 'string' &&
           bindings.get(attribute['expression']['name']) === 'true'))
     )
       classes.add(attribute['name']);
@@ -360,8 +377,11 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
   const fragment = parseSvelteFragment(source);
   const bindings = staticStringBindings(source);
   const total: CssPrimitiveCounts = { grid: 0, floating: 0 };
-  for (const match of source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)) {
-    const styleSource = match[1];
+  const parsedRoot: unknown = parseSvelte(source, { modern: true });
+  if (isRecord(parsedRoot) && isRecord(parsedRoot['css'])) {
+    const content = parsedRoot['css']['content'];
+    const styleSource =
+      isRecord(content) && typeof content['styles'] === 'string' ? content['styles'] : undefined;
     if (styleSource !== undefined) {
       const styleCounts = cssPrimitiveCounts(styleSource);
       total.grid += styleCounts.grid;

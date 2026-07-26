@@ -48,10 +48,50 @@ type SelectorTarget = {
   }>;
 };
 
+function normalizeAttributeValue(value: string, insensitive: boolean): string {
+  return insensitive ? value.toLowerCase() : value;
+}
+
+function attributeOperatorMatches(
+  operator: string | undefined,
+  actual: string,
+  expected: string,
+): boolean {
+  if (operator === undefined) return true;
+  if (operator === '=') return actual === expected;
+  if (operator === '~=') return actual.split(/\s+/).includes(expected);
+  if (operator === '|=') return actual === expected || actual.startsWith(`${expected}-`);
+  if (operator === '^=') return actual.startsWith(expected);
+  if (operator === '$=') return actual.endsWith(expected);
+  if (operator === '*=') return actual.includes(expected);
+  return true;
+}
+
+function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTarget): boolean {
+  return (
+    (alternative.tag === undefined || peer.tag === alternative.tag) &&
+    (alternative.id === undefined || peer.id === alternative.id) &&
+    [...alternative.classes].every((className) => peer.classes.has(className)) &&
+    [...alternative.attributes].every(([name, constraint]) => {
+      const peerConstraint = peer.attributes.get(name);
+      return (
+        peerConstraint !== undefined &&
+        peerConstraint.operator === constraint.operator &&
+        peerConstraint.value === constraint.value
+      );
+    })
+  );
+}
+
+function mediaType(query: string): string | undefined {
+  const match = query.match(/^\s*(not\s+|only\s+)?([a-z][\w-]*)\b/i);
+  return match?.[2]?.toLowerCase();
+}
+
 function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
   return {
-    tag: outer.tag ?? inner.tag,
-    id: outer.id ?? inner.id,
+    ...((outer.tag ?? inner.tag) ? { tag: outer.tag ?? inner.tag } : {}),
+    ...((outer.id ?? inner.id) ? { id: outer.id ?? inner.id } : {}),
     classes: new Set([...outer.classes, ...inner.classes]),
     attributes: new Map([...outer.attributes, ...inner.attributes]),
     functionalConstraints: [...outer.functionalConstraints, ...inner.functionalConstraints],
@@ -105,16 +145,21 @@ function selectorTargets(selector: string): SelectorTarget[] {
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
   const hasConflictingAttribute = [...left.attributes].some(([attribute, leftConstraint]) => {
     const rightConstraint = right.attributes.get(attribute);
-    if (
-      rightConstraint?.operator !== '=' ||
-      leftConstraint.operator !== '=' ||
-      rightConstraint.value === undefined ||
-      leftConstraint.value === undefined
-    )
-      return false;
-    return leftConstraint.insensitive || rightConstraint.insensitive
-      ? leftConstraint.value.toLowerCase() !== rightConstraint.value.toLowerCase()
-      : leftConstraint.value !== rightConstraint.value;
+    if (rightConstraint === undefined) return false;
+    const leftValue = leftConstraint.value;
+    const rightValue = rightConstraint.value;
+    if (leftValue === undefined || rightValue === undefined) return false;
+    const leftNormalized = normalizeAttributeValue(leftValue, leftConstraint.insensitive);
+    const rightNormalized = normalizeAttributeValue(rightValue, rightConstraint.insensitive);
+    if (leftConstraint.operator === '=' && rightConstraint.operator !== '=')
+      return !attributeOperatorMatches(rightConstraint.operator, leftNormalized, rightNormalized);
+    if (rightConstraint.operator === '=' && leftConstraint.operator !== '=')
+      return !attributeOperatorMatches(leftConstraint.operator, rightNormalized, leftNormalized);
+    return (
+      leftConstraint.operator === '=' &&
+      rightConstraint.operator === '=' &&
+      leftNormalized !== rightNormalized
+    );
   });
   const shareAnchor =
     (left.id !== undefined && left.id === right.id) ||
@@ -133,7 +178,7 @@ function functionalConstraintsCanOverlap(left: SelectorTarget, right: SelectorTa
   for (const constraint of left.functionalConstraints) {
     if (
       constraint.kind === 'not' &&
-      constraint.alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right))
+      constraint.alternatives.some((alternative) => targetNecessarilyMatches(right, alternative))
     )
       return false;
     if (
@@ -145,7 +190,7 @@ function functionalConstraintsCanOverlap(left: SelectorTarget, right: SelectorTa
   for (const constraint of right.functionalConstraints) {
     if (
       constraint.kind === 'not' &&
-      constraint.alternatives.some((alternative) => targetsCanMatchSameElement(alternative, left))
+      constraint.alternatives.some((alternative) => targetNecessarilyMatches(left, alternative))
     )
       return false;
     if (
@@ -234,6 +279,9 @@ function conditionalQueryBranches(parameters: string): string[] {
 }
 
 function conditionalQueryBranchesConflict(left: string, right: string): boolean {
+  const leftType = mediaType(left);
+  const rightType = mediaType(right);
+  if (leftType !== undefined && rightType !== undefined && leftType !== rightType) return true;
   const bounds = [...widthBounds(left), ...widthBounds(right)];
   for (const unit of ['px', 'root-em'] as const) {
     const comparableBounds = bounds.filter((bound) => bound.unit === unit);

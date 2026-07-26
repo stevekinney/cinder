@@ -89,6 +89,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('resolves immutable hidden bindings', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<script>const hiddenProxy = true;</script><input hidden={hiddenProxy} />',
+        'hidden-proxy/hidden-proxy.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('does not count canonical component tags as native controls', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -486,6 +495,57 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         '.layout:not([data-list]) { display: grid; } .layout[data-list] { grid-template-columns: 1fr; }',
         'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('allows a negated selector to overlap a generic peer', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:not(.disabled) { display: grid; } .layout { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('compares non-equality attribute constraints', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-mode~='grid'] { display: grid; } .layout[data-mode='list'] { grid-template-columns: 1fr; }",
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('keeps mutually exclusive media types separate', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media print { .layout { display: grid; } } @media screen { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('reads only actual Svelte style blocks', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<script>const example = `<style>.layout { display: grid; grid-template-columns: 1fr }</style>`;</script><div />',
+        'new-layout/new-layout.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<style>.layout { display: grid; grid-template-columns: 1fr }</style><div />',
+        'new-layout/new-layout.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps mutable polymorphic binding lookup lexical', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function helper() { let tag = 'input'; }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
       ),
     ).toEqual([]);
   });
