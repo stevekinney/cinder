@@ -48,6 +48,7 @@ describe('AccessGate', () => {
     expect(styles).not.toContain(
       '.cinder-access-gate__passthrough:has(> [data-cinder-icon-only]) {',
     );
+    expect(styles).toContain('gap: var(--cinder-space-2);');
     expect(styles).toContain('inline-size: auto;');
     expect(styles).toContain(
       ".cinder-access-gate__passthrough[data-cinder-variant='section'] {\n    display: contents;\n    inline-size: auto;",
