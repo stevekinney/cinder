@@ -190,7 +190,9 @@ export function findPlaceholderViolations(
   } else if (appliesMatches[0]) {
     const appliesMatch = appliesMatches[0].line.trim().match(/^-?\s*Applies:\s*(yes|no)\b(.*)$/i);
     const explanation = appliesMatch?.[2]?.replace(/[\s—–-]/g, '') ?? '';
-    if (!appliesMatch || explanation.length === 0) {
+    const isScaffoldExplanation =
+      explanation.replace(/[^a-z]/gi, '').toLowerCase() === 'recordyesornoandexplainthedecision';
+    if (!appliesMatch || explanation.length === 0 || isScaffoldExplanation) {
       violations.push({
         filePath,
         lineNumber: appliesMatches[0].index + 1,

@@ -202,4 +202,12 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.some(({ phrase }) => phrase === 'Applies contract')).toBe(true);
   });
+
+  it('rejects the generated applicability explanation scaffold', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — record yes or no and explain the decision._',
+      'component.a11y.md',
+    );
+    expect(violations.some(({ phrase }) => phrase === 'Applies contract')).toBe(true);
+  });
 });
