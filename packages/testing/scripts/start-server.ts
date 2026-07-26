@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -432,6 +432,14 @@ export function playgroundBundleDependencyWatchProcess(
   };
 }
 
+export function playgroundBundleDependencySourceDirectories(packageName: string): string[] {
+  const packageDirectory = packageName.slice(packageName.lastIndexOf('/') + 1);
+  return [
+    resolvePath(repoRoot, 'packages', packageDirectory, 'src'),
+    resolvePath(repoRoot, 'packages', packageDirectory, 'scripts'),
+  ];
+}
+
 export function playgroundServerArguments(): string[] {
   // Keep server/runtime modules hot-reloaded in the managed test process. A
   // warmup cache invalidation cannot re-evaluate already imported modules.
@@ -519,17 +527,51 @@ async function buildPlaygroundBundleDependencies(
 function startPlaygroundBundleDependencyWatchers(
   registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
   shouldContinueStartingChildProcesses: () => boolean,
-): void {
+): FSWatcher[] {
+  const watchers: FSWatcher[] = [];
   for (const packageName of playgroundBundleDependencyPackages) {
-    if (!shouldContinueStartingChildProcesses()) return;
-    const watchProcess = spawn('bun', playgroundBundleDependencyWatchArguments(packageName), {
-      cwd: repoRoot,
-      detached: process.platform !== 'win32',
-      stdio: 'inherit',
-      env: process.env,
-    });
-    registerChildProcess(playgroundBundleDependencyWatchProcess(watchProcess, packageName));
+    if (!shouldContinueStartingChildProcesses()) return watchers;
+    let buildProcess: ChildProcess | null = null;
+    let rebuildPending = false;
+    let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
+    const runBuild = (): void => {
+      if (!shouldContinueStartingChildProcesses()) return;
+      if (buildProcess !== null && !childProcessHasFinished(buildProcess)) {
+        rebuildPending = true;
+        return;
+      }
+      rebuildPending = false;
+      buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
+        cwd: repoRoot,
+        detached: process.platform !== 'win32',
+        stdio: 'inherit',
+        env: process.env,
+      });
+      const currentBuild = buildProcess;
+      registerChildProcess(playgroundBundleDependencyBuildProcess(currentBuild, packageName));
+      void waitForExit(currentBuild).then(() => {
+        if (buildProcess === currentBuild) buildProcess = null;
+        if (rebuildPending) runBuild();
+        return undefined;
+      });
+    };
+    const scheduleBuild = (): void => {
+      rebuildPending = true;
+      if (rebuildTimer !== null) clearTimeout(rebuildTimer);
+      rebuildTimer = setTimeout(() => {
+        rebuildTimer = null;
+        runBuild();
+      }, 100);
+    };
+    for (const directory of playgroundBundleDependencySourceDirectories(packageName)) {
+      try {
+        watchers.push(watch(directory, { recursive: true }, scheduleBuild));
+      } catch (error) {
+        console.error(`[testing] unable to watch ${directory}:`, error);
+      }
+    }
   }
+  return watchers;
 }
 
 const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
@@ -540,10 +582,13 @@ async function main(): Promise<void> {
   let serverProcess: ReturnType<typeof spawn> | null = null;
   let playgroundPortFile: string | null = null;
   const children: ManagedChildProcess[] = [];
+  let dependencyWatchers: FSWatcher[] = [];
   let cleanupPromise: Promise<void> | null = null;
   let shutdownExitCode: number | null = null;
 
   const cleanupOnce = async (): Promise<void> => {
+    for (const watcher of dependencyWatchers) watcher.close();
+    dependencyWatchers = [];
     cleanupPromise ??= cleanup(children, playgroundPortFile);
     await cleanupPromise;
   };
@@ -684,7 +729,7 @@ async function main(): Promise<void> {
     throw error;
   }
   await exitIfShuttingDown();
-  startPlaygroundBundleDependencyWatchers(
+  dependencyWatchers = startPlaygroundBundleDependencyWatchers(
     (childProcess) => children.push(childProcess),
     () => shouldStartManagedChildProcess(shutdownExitCode),
   );

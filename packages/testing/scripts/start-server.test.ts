@@ -14,6 +14,7 @@ import {
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
   playgroundBundleDependencyBuildProcess,
+  playgroundBundleDependencySourceDirectories,
   playgroundBundleDependencyWatchArguments,
   playgroundBundleDependencyWatchProcess,
   playgroundServerArguments,
@@ -134,6 +135,13 @@ describe('playground bundle dependency build preflight', () => {
       name: '@lostgradient/markdown watch',
       killProcessGroup: process.platform !== 'win32',
     });
+  });
+
+  test('watches package source and build-script directories explicitly', () => {
+    expect(playgroundBundleDependencySourceDirectories('@lostgradient/markdown')).toEqual([
+      expect.stringMatching(/packages\/markdown\/src$/),
+      expect.stringMatching(/packages\/markdown\/scripts$/),
+    ]);
   });
 });
 
