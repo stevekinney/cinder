@@ -204,7 +204,11 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
           heading.source.includes('Keyboard') &&
           /^\s*\|/.test(line) &&
           !/^\s*\|?\s*:?-{3,}/.test(line) &&
-          !/^\s*\|?\s*key\s*\|/i.test(line),
+          !/^\s*\|?\s*key\s*\|/i.test(line) &&
+          line
+            .split('|')
+            .slice(1, -1)
+            .some((cell) => cell.trim() !== ''),
       );
       if (
         start === -1 ||
