@@ -301,9 +301,10 @@
     window.addEventListener('pointercancel', finishPointerInteraction);
   }
 
-  function onWheel(): void {
+  function onWheel(event: WheelEvent): void {
     programmaticTarget = null;
     isAutoplayTransitioning = false;
+    if (Math.abs(event.deltaX) > 0) scheduleNativeScrollEnd();
   }
 
   function onWindowBlur(): void {

@@ -701,7 +701,7 @@ describe('Carousel', () => {
     const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
 
-    await fireEvent.scroll(viewport);
+    await fireEvent.wheel(viewport, { deltaX: 40 });
     jest.advanceTimersByTime(50);
     expectActiveSlide(container, 0);
   });
