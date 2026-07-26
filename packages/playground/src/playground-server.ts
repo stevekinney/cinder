@@ -2505,29 +2505,6 @@ export function createSharedDisposer(disposeWork: () => Promise<void>): () => Pr
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
-  // Eager pre-build BEFORE binding the port. Sidebar clicks should serve
-  // from cache; we don't want the first user to pay a build cost.
-  // Shell-bundle failure is fatal — there's no UI without it.
-  const prebuild = await eagerPrebuildAll();
-  if (!prebuild.shellSucceeded) {
-    throw new Error('[playground] shell bundle failed to build — see logs above');
-  }
-  const total = prebuild.succeeded + prebuild.failed.length;
-  const failedSuffix = prebuild.failed.length > 0 ? ` (failed: ${prebuild.failed.join(', ')})` : '';
-  process.stdout.write(
-    `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
-  );
-
-  // Pre-warm the component manifest (ts-morph analysis) before binding the
-  // port. Without this, the first /api/documentation/:name request pays the
-  // cold-analysis cost and can exceed the validate-playground fetch timeout
-  // as the component count grows.
-  await getManifests().catch((error: unknown) => {
-    console.error('[playground] manifest pre-warm failed:', error);
-  });
-
-  // Start the HTTP server first — if binding fails for reasons other than an
-  // occupied port, no watchers are leaked.
   const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
   const { port: actualPort, server } = playgroundHttpServer;
 
@@ -2560,6 +2537,20 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await Bun.write(portFile, `${actualPort}\n`);
   }
   process.stdout.write(`[playground] Listening at http://localhost:${actualPort}\n`);
+
+  const prebuild = await eagerPrebuildAll();
+  if (!prebuild.shellSucceeded) {
+    await dispose();
+    throw new Error('[playground] shell bundle failed to build — see logs above');
+  }
+  const total = prebuild.succeeded + prebuild.failed.length;
+  const failedSuffix = prebuild.failed.length > 0 ? ` (failed: ${prebuild.failed.join(', ')})` : '';
+  process.stdout.write(
+    `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
+  );
+  await getManifests().catch((error: unknown) => {
+    console.error('[playground] manifest pre-warm failed:', error);
+  });
   return { port: actualPort, dispose };
 }
 
