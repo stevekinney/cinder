@@ -273,7 +273,23 @@ function isContainerQueryActive(
     container = container.parentElement;
   }
   if (!container) return false;
-  const width = container.getBoundingClientRect().width;
+  const computedContainerStyle = getComputedStyle(container);
+  const readInlineSize = (property: string, fallbackProperty: string): number => {
+    const value =
+      computedContainerStyle.getPropertyValue(property).trim() ||
+      container.style.getPropertyValue(property).trim() ||
+      computedContainerStyle.getPropertyValue(fallbackProperty).trim() ||
+      container.style.getPropertyValue(fallbackProperty).trim();
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  };
+  const borderBoxWidth = container.getBoundingClientRect().width;
+  const inlineInsets =
+    readInlineSize('padding-inline-start', 'padding-left') +
+    readInlineSize('padding-inline-end', 'padding-right') +
+    readInlineSize('border-inline-start-width', 'border-left-width') +
+    readInlineSize('border-inline-end-width', 'border-right-width');
+  const width = Math.max(0, borderBoxWidth - inlineInsets);
   const minimum = /min-width\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-width\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const rootFontSize = Number.parseFloat(

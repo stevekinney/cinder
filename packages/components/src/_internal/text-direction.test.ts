@@ -489,6 +489,39 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('evaluates size queries against the container content box', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.paddingInlineStart = '20px';
+    container.style.paddingInlineEnd = '20px';
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({ width: 340 }),
+    });
+    const element = document.createElement('div');
+    element.className = 'content-box-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.content-box-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container (min-width: 20rem) { .content-box-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('uses CSSContainerRule.containerName for named size queries', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
