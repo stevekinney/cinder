@@ -33,8 +33,8 @@ export type DateRangeDatePreset = {
  * - `granularity="day"` uses the custom calendar surface and emits `YYYY-MM-DD`.
  * - `granularity="hour" | "minute" | "second"` uses the custom calendar/time
  *   surface and emits `YYYY-MM-DDTHH:mm` or `YYYY-MM-DDTHH:mm:ss`.
- * - Timezone conversion is caller-owned; browser `datetime-local` values are
- *   local wall-clock values by design.
+ * - Timezone conversion is caller-owned; emitted values are local wall-clock
+ *   values by design.
  * - Start and end constrain each other through DatePicker's min/max contract:
  *   the calendar disables out-of-range dates and manual edits are clamped.
  *   Consumers still own domain-specific validation feedback via `error`.
