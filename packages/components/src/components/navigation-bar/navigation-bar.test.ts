@@ -732,6 +732,8 @@ describe('NavigationBar', () => {
     await withResizeObserver(async () => {
       const dialog = document.createElement('dialog');
       dialog.setAttribute('open', '');
+      const nativeMatches = dialog.matches.bind(dialog);
+      dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
       document.body.append(dialog);
       const { container } = render(NavigationBar, {
         items: keyboardNavigationSnippet({}),

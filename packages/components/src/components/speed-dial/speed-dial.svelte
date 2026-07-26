@@ -152,6 +152,7 @@
         .filter(
           (candidate) =>
             !hasNegativeTabIndex(candidate) &&
+            !candidate.matches(':disabled') &&
             !speedDialRoot.contains(candidate) &&
             !actionsElement?.contains(candidate) &&
             !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&

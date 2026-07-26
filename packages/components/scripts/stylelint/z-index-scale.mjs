@@ -98,7 +98,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       // The adjacent reason is the explicit, refactor-safe allow-list for
       // component-local relationships above the universal 0/1 threshold.
       // Never allow the historical magic escape hatch back, even with a note.
-      const referencedTokens = [...value.matchAll(/var\((--cinder-z-[\w-]+)/g)].map(
+      const referencedTokens = [...value.matchAll(/var\(\s*(--cinder-z-[\w-]+)/g)].map(
         (match) => match[1],
       );
       if (referencedTokens.some((token) => !declaredLayerTokens.has(token))) {

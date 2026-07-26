@@ -283,6 +283,7 @@ export function redispatchPortaledEvent(
     'shiftKey',
     'altKey',
     'metaKey',
+    'relatedTarget',
   ]) {
     if (property in event) eventInit[property] = Reflect.get(event, property);
   }

@@ -341,6 +341,8 @@ describe('Popover — portal and arrow', () => {
   test('keeps a panel inside the nearest open native dialog', async () => {
     const dialog = document.createElement('dialog');
     dialog.setAttribute('open', '');
+    const nativeMatches = dialog.matches.bind(dialog);
+    dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
     const triggerButton = document.createElement('button');
     triggerButton.type = 'button';
     dialog.append(triggerButton);
