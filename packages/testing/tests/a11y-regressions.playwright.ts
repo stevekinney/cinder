@@ -123,7 +123,9 @@ test.describe('a11y regressions', () => {
     expectNoViolations('access-gate', sectionFixture.name, sectionBuckets);
   });
 
-  test('access-gate denied resting geometry remains measurable', async ({ componentPage }) => {
+  test('access-gate denied and granted resting geometry remains aligned', async ({
+    componentPage,
+  }) => {
     const entry = getEntry('access-gate');
     const fixture = getFixture(entry, 'inline-denied');
     const page = await componentPage.open({
@@ -133,14 +135,46 @@ test.describe('a11y regressions', () => {
       fixtureName: fixture.name,
       fixtureContentHash: fixture.fixtureContentHash,
     });
-    const geometry = await page.locator('.cinder-access-gate').evaluate((element) => {
-      const style = getComputedStyle(element);
-      const rect = element.getBoundingClientRect();
-      return { display: style.display, width: rect.width, height: rect.height };
+    const deniedGeometry = await page.locator('.cinder-access-gate').evaluate((element) => {
+      const control = element.querySelector('[data-cinder-access-gate-control]')!;
+      const reason = element.querySelector('.cinder-access-gate__inline-reason')!;
+      const root = element.getBoundingClientRect();
+      const controlRect = control.getBoundingClientRect();
+      const reasonRect = reason.getBoundingClientRect();
+      return {
+        display: getComputedStyle(element).display,
+        root,
+        controlRect,
+        reasonRect,
+      };
     });
-    expect(geometry.display).not.toBe('none');
-    expect(geometry.width).toBeGreaterThan(0);
-    expect(geometry.height).toBeGreaterThan(0);
+    expect(deniedGeometry.display).not.toBe('none');
+    expect(deniedGeometry.root.width).toBeGreaterThan(0);
+    expect(deniedGeometry.root.height).toBeGreaterThan(0);
+    expect(
+      Math.abs(deniedGeometry.controlRect.bottom - deniedGeometry.reasonRect.bottom),
+    ).toBeLessThan(12);
+
+    const grantedPage = await componentPage.open({
+      entry,
+      theme: lightTheme,
+      viewport: desktopViewport,
+      fixtureName: 'inline-granted',
+      fixtureContentHash: getFixture(entry, 'inline-granted').fixtureContentHash,
+    });
+    const grantedGeometry = await grantedPage
+      .locator('[data-access-gate-baseline]')
+      .evaluate((baseline) => {
+        const sibling = baseline.nextElementSibling!.querySelector('button')!;
+        const baselineRect = baseline.querySelector('button')!.getBoundingClientRect();
+        const siblingRect = sibling.getBoundingClientRect();
+        return { baselineRect, siblingRect };
+      });
+    expect(
+      Math.abs(grantedGeometry.baselineRect.top - grantedGeometry.siblingRect.top),
+    ).toBeLessThan(1);
+    expect(grantedGeometry.siblingRect.width).toBe(grantedGeometry.baselineRect.width);
+    expect(grantedGeometry.siblingRect.height).toBe(grantedGeometry.baselineRect.height);
   });
 
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {

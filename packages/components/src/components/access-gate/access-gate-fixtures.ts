@@ -10,6 +10,13 @@ export default [
     },
   },
   {
+    name: 'inline-granted',
+    host: './access-gate.fixture.svelte',
+    props: {
+      variant: 'inline-granted',
+    },
+  },
+  {
     name: 'section-denied',
     host: './access-gate.fixture.svelte',
     props: {
