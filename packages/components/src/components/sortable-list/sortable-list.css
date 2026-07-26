@@ -22,7 +22,7 @@
     min-inline-size: 0;
   }
 
-  .cinder-sortable-item {
+  .cinder-sortable-list__item.cinder-sortable-item {
     cursor: default;
     user-select: none;
   }

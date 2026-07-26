@@ -76,7 +76,8 @@ describe('SortableController', () => {
       '.cinder-sortable-list__item {\n    display: grid;\n    grid-template-columns: minmax(0, 1fr) auto;\n    align-items: center;',
     );
     expect(stylesheet).toContain('column-gap: var(--cinder-space-2);\n    position: relative;');
-    expect(stylesheet).not.toContain('.cinder-sortable-list .cinder-sortable-item');
+    expect(stylesheet).toContain('.cinder-sortable-list__item.cinder-sortable-item');
+    expect(stylesheet).not.toMatch(/(^|\n)\s*\.cinder-sortable-item\s*\{/);
   });
 
   test('lift sets phase, key, from/to, liftedLabel, and calls announce', () => {
