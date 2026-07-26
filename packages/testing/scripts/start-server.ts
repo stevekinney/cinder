@@ -700,6 +700,12 @@ async function main(): Promise<void> {
 
   if (alreadyUp) {
     console.log(`Reusing playground server at ${targetPlaygroundUrl}.`);
+    if (isLocalDefault) {
+      dependencyWatchController = startPlaygroundBundleDependencyWatchers(
+        (childProcess) => children.push(childProcess),
+        () => shouldStartManagedChildProcess(shutdownExitCode),
+      );
+    }
   } else if (!isLocalDefault) {
     // The local playground server starts from the local default port and scans
     // upward. Starting it cannot satisfy readiness for a custom `PLAYGROUND_URL`.
