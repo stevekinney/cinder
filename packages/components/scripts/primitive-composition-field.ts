@@ -97,7 +97,7 @@ function localMarkupEvidence(
   const terms: string[] = [];
   if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
   if (
-    (node['type'] === 'ExpressionTag' || node['type'] === 'IfBlock') &&
+    node['type'] === 'ExpressionTag' &&
     typeof node['start'] === 'number' &&
     typeof node['end'] === 'number'
   )

@@ -481,6 +481,43 @@ describe('primitive composition guard', () => {
     }
   });
 
+  test('does not pair mutually exclusive functional selectors', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:not([data-list]) { display: grid; } .layout[data-list] { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('recognizes modern width range media conditions', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media (width < 40rem) { .layout { display: grid; } } @media (width >= 64rem) { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('keeps static classes from mixed class attributes', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        '<script>let extraClass;</script><div class="menu cinder-_floating-surface {extraClass}"></div>',
+      ),
+    ).toEqual([]);
+  });
+
+  test('resolves all static style directive branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<div style:position={anchored ? 'absolute' : 'fixed'} style:z-index=\"1\"></div>",
+        'new-menu/new-menu.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('does not combine floating declarations from separate CSS rules', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -619,6 +656,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<label>Unrelated</label><FormField helpText="Help" error="Error" />',
+        'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('does not include an IfBlock source slice in field evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<label>Unrelated</label>{#if active}<FormField description="Help" error="Error" />{/if}',
         'new-field/new-field.svelte',
       ),
     ).toEqual([]);

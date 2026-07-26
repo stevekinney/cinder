@@ -280,28 +280,28 @@ function elementClassSet(
     }
 
     const value = attribute['value'];
-    const expressionTag =
-      isRecord(value) && value['type'] === 'ExpressionTag'
-        ? value
-        : Array.isArray(value) && value.length === 1 && isRecord(value[0])
-          ? value[0]
-          : undefined;
-    if (!expressionTag) continue;
-    const expression = expressionTag['expression'];
-    if (
-      !isRecord(expression) ||
-      expression['type'] !== 'CallExpression' ||
-      !isRecord(expression['callee']) ||
-      expression['callee']['type'] !== 'Identifier' ||
-      expression['callee']['name'] !== 'classNames' ||
-      !Array.isArray(expression['arguments'])
-    )
-      continue;
-
-    for (const className of expression['arguments'].flatMap(
-      (argument) => staticStringFromExpression(argument, bindings)?.split(/\s+/) ?? [],
-    ))
-      if (className) classes.add(className);
+    const parts = Array.isArray(value) ? value : [value];
+    for (const part of parts) {
+      if (!isRecord(part)) continue;
+      if (part['type'] === 'Text' && typeof part['data'] === 'string') {
+        for (const className of part['data'].split(/\s+/).filter(Boolean)) classes.add(className);
+        continue;
+      }
+      if (part['type'] !== 'ExpressionTag' || !isRecord(part['expression'])) continue;
+      const expression = part['expression'];
+      if (
+        expression['type'] !== 'CallExpression' ||
+        !isRecord(expression['callee']) ||
+        expression['callee']['type'] !== 'Identifier' ||
+        expression['callee']['name'] !== 'classNames' ||
+        !Array.isArray(expression['arguments'])
+      )
+        continue;
+      for (const className of expression['arguments'].flatMap(
+        (argument) => staticStringFromExpression(argument, bindings)?.split(/\s+/) ?? [],
+      ))
+        if (className) classes.add(className);
+    }
   }
   return classes;
 }
@@ -387,12 +387,30 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
           for (const [property, declarationValue] of declarationMap(rule))
             declarations.set(property, declarationValue);
       }
-      if (attribute['type'] === 'StyleDirective' && typeof attribute['name'] === 'string')
+      if (attribute['type'] === 'StyleDirective' && typeof attribute['name'] === 'string') {
+        const value = attribute['value'];
+        const expressionTag =
+          isRecord(value) && value['type'] === 'ExpressionTag'
+            ? value
+            : Array.isArray(value) && value.length === 1 && isRecord(value[0])
+              ? value[0]
+              : undefined;
+        const possibleValues =
+          expressionTag !== undefined
+            ? possibleStaticStringsFromExpression(expressionTag['expression'], bindings)
+            : new Set<string>();
+        const normalizedValues = [...possibleValues].map((candidate) => candidate.toLowerCase());
+        const allLayeringValues =
+          normalizedValues.length > 0 &&
+          normalizedValues.every((candidate) => candidate === 'absolute' || candidate === 'fixed');
         declarations.set(
           attribute['name'].toLowerCase(),
-          attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
-            'var(--cinder-dynamic-value)',
+          allLayeringValues
+            ? 'absolute'
+            : (attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
+                'var(--cinder-dynamic-value)'),
         );
+      }
     }
     const display = declarations.get('display');
     if (

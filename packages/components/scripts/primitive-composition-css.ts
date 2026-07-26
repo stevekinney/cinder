@@ -117,6 +117,34 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
   );
 }
 
+function functionalConstraintsCanOverlap(left: SelectorTarget, right: SelectorTarget): boolean {
+  for (const constraint of left.functionalConstraints) {
+    if (
+      constraint.kind === 'not' &&
+      constraint.alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right))
+    )
+      return false;
+    if (
+      constraint.kind === 'any' &&
+      !constraint.alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right))
+    )
+      return false;
+  }
+  for (const constraint of right.functionalConstraints) {
+    if (
+      constraint.kind === 'not' &&
+      constraint.alternatives.some((alternative) => targetsCanMatchSameElement(alternative, left))
+    )
+      return false;
+    if (
+      constraint.kind === 'any' &&
+      !constraint.alternatives.some((alternative) => targetsCanMatchSameElement(alternative, left))
+    )
+      return false;
+  }
+  return true;
+}
+
 type ConditionalScope = { name: string; parameters: string };
 
 function conditionalScope(rule: Rule): ConditionalScope[] {
@@ -150,6 +178,17 @@ function widthBounds(parameters: string): WidthBound[] {
       kind: match[1].toLowerCase() === 'min' ? 'minimum' : 'maximum',
       value: Number(match[2]),
       // Media-query em and rem units both resolve against the initial root font size.
+      unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
+    });
+  }
+  for (const match of parameters.matchAll(
+    /\(\s*width\s*(<|<=|>|>=)\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*\)/gi,
+  )) {
+    if (match[1] === undefined || match[2] === undefined || match[3] === undefined) continue;
+    const operator = match[1];
+    bounds.push({
+      kind: operator.startsWith('>') ? 'minimum' : 'maximum',
+      value: Number(match[2]) + (operator === '>' || operator === '<' ? 0.000001 : 0),
       unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
@@ -239,7 +278,11 @@ function compatibleSelectorTargetPairs(
   if (left === right) return leftTargets.map((target) => [target, target] as const);
   return leftTargets.flatMap((leftTarget) =>
     rightTargets
-      .filter((rightTarget) => targetsCanMatchSameElement(leftTarget, rightTarget))
+      .filter(
+        (rightTarget) =>
+          targetsCanMatchSameElement(leftTarget, rightTarget) &&
+          functionalConstraintsCanOverlap(leftTarget, rightTarget),
+      )
       .map((rightTarget) => [leftTarget, rightTarget] as const),
   );
 }
