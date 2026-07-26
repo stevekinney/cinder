@@ -349,6 +349,17 @@ describe('Carousel', () => {
     expect(readCount).toHaveBeenCalledTimes(6);
   });
 
+  test('keeps an incoming adjacent slide laid out during native scrolling', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const incoming = viewport.children[1] as HTMLElement;
+    await fireEvent.pointerDown(viewport, { pointerId: 4 });
+    await fireEvent.scroll(viewport);
+    expect(incoming.hasAttribute('data-cinder-collapsed')).toBe(false);
+    expect(incoming.getAttribute('aria-hidden')).toBe('true');
+    expect(incoming.hasAttribute('inert')).toBe(true);
+  });
+
   test('renders region semantics and first slide by default', () => {
     const { container } = render(Carousel, { slides, label: 'Highlights' });
     const root = container.querySelector('.cinder-carousel');
