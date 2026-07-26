@@ -40,14 +40,18 @@ const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
 const shiftSpy = mock((opts: unknown) => ({ name: 'shift', options: opts, fn: () => ({}) }));
 const offsetSpy = mock((v: unknown) => ({ name: 'offset', options: v, fn: () => ({}) }));
 
-mock.module('@floating-ui/dom', () => ({
-  computePosition: computePositionSpy,
-  autoUpdate: autoUpdateSpy,
-  arrow: arrowSpy,
-  flip: flipSpy,
-  shift: shiftSpy,
-  offset: offsetSpy,
-}));
+function registerPopoverFloatingUiMock(): void {
+  mock.module('@floating-ui/dom', () => ({
+    computePosition: computePositionSpy,
+    autoUpdate: autoUpdateSpy,
+    arrow: arrowSpy,
+    flip: flipSpy,
+    shift: shiftSpy,
+    offset: offsetSpy,
+  }));
+}
+
+registerPopoverFloatingUiMock();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Popover } = await import('./popover.svelte');
@@ -97,6 +101,10 @@ const KNOWN_POPOVER_WARNINGS = [
 let warnSpy: ReturnType<typeof spyOn<typeof console, 'warn'>>;
 
 beforeEach(() => {
+  // Bun module mocks are process-global. Re-register this fixture before each
+  // test so another floating-surface test file cannot replace the exports
+  // used by Popover when the scoped suite runs in one serial process.
+  registerPopoverFloatingUiMock();
   deferComputePosition = false;
   deferredResolvers = [];
   computePositionResult = {
@@ -114,6 +122,10 @@ afterEach(() => {
     if (node.isConnected) node.remove();
   }
   scratchNodes = [];
+  // Portaled panels can outlive Testing Library's render container when an
+  // attachment teardown is scheduled after the test settles. Clear the body
+  // so a later file in a scoped serial run cannot select a stale panel.
+  document.body.replaceChildren();
   computePositionSpy.mockClear();
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
