@@ -61,14 +61,50 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
     return violations;
   }
 
-  const accessibilityHeading = lines.findIndex((line) =>
-    /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
+  const designHeadings = lines.filter((line) =>
+    /^##\s+Design review \(required\)\s*$/i.test(line.trim()),
   );
   const accessibilityHeadings = lines.filter((line) =>
     /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
   );
   const hasAccessibilityTemplate =
     accessibilityHeadings.length > 0 || /^-?\s*Applies:/im.test(content);
+  const requiredDesignFields = [
+    /^-\s*Reviewer:/i,
+    /^-\s*Review outcome:/i,
+    /^-\s*Nearest neighbours:/i,
+    /^-\s*Why this component exists:/i,
+  ];
+  if (hasAccessibilityTemplate && designHeadings.length !== 1) {
+    violations.push({
+      filePath,
+      lineNumber: 1,
+      line: 'Expected exactly one design review heading.',
+      phrase: 'design review heading',
+    });
+  } else if (hasAccessibilityTemplate) {
+    const designStart = lines.findIndex((line) =>
+      /^##\s+Design review \(required\)\s*$/i.test(line.trim()),
+    );
+    const designEnd = lines.findIndex(
+      (line, index) => index > designStart && /^##\s+/i.test(line.trim()),
+    );
+    const designSection = lines.slice(designStart + 1, designEnd === -1 ? lines.length : designEnd);
+    for (const field of requiredDesignFields) {
+      if (!designSection.some((line) => field.test(line.trim()))) {
+        violations.push({
+          filePath,
+          lineNumber: designStart + 1,
+          line: 'Missing required design review field.',
+          phrase: 'design review field',
+        });
+      }
+    }
+  }
+
+  const accessibilityHeading = lines.findIndex((line) =>
+    /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
+  );
   if (hasAccessibilityTemplate && accessibilityHeadings.length !== 1) {
     violations.push({
       filePath,
