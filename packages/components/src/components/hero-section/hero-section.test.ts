@@ -124,6 +124,7 @@ describe('HeroSection', () => {
 
   test('preserves multi-root media flow and keeps focused media visible', () => {
     expect(HERO_SECTION_CSS).toContain('> *:only-child');
+    expect(HERO_SECTION_CSS).toContain('> *:only-child img');
     expect(HERO_SECTION_CSS).toContain(':only-child:focus-visible');
     expect(HERO_SECTION_CSS).toContain('box-shadow: inset 0 0 0 var(--cinder-ring-width)');
     expect(HERO_SECTION_CSS).toContain('outline-offset: -2px');

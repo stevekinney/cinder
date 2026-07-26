@@ -72,6 +72,12 @@
   .cinder-hero-section__media > .cinder-aspect-ratio > *:only-child {
     position: absolute;
     inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+  }
+
+  .cinder-hero-section__media > .cinder-aspect-ratio > *:only-child img {
     display: block;
     inline-size: 100%;
     block-size: 100%;
