@@ -25,6 +25,7 @@ import {
   buildContext,
   createOne,
   planFiles,
+  renderAccessibilityReview,
   renderExample,
   renderIndex,
   renderReadme,
@@ -59,6 +60,10 @@ describe('component authoring guidance', () => {
   it('keeps every checklist mirror synchronized with the machine-readable source', async () => {
     const canonicalChecklist = renderComponentAuthoringChecklist();
     expect(canonicalChecklist).toContain('`cinder-_floating-surface`');
+    expect(canonicalChecklist).toContain('design review');
+    expect(canonicalChecklist).toContain('accessibility review');
+    expect(canonicalChecklist).toContain('`*.a11y.md`');
+    expect(canonicalChecklist).toContain('#968');
 
     for (const relativePath of CHECKLIST_MIRRORS) {
       const source = await readFile(join(REPOSITORY_ROOT, relativePath), 'utf8');
@@ -225,6 +230,35 @@ describe('renderReadme', () => {
   });
 });
 
+describe('renderAccessibilityReview', () => {
+  it('requires a recorded design review for every new component', () => {
+    const review = renderAccessibilityReview(buildContext('my-widget'));
+
+    expect(review).toContain('# MyWidget design and accessibility review');
+    expect(review).toContain('## Design review (required)');
+    expect(review).toContain('Nearest neighbours');
+    expect(review).toContain('Why this component exists');
+    expect(review).toContain('Review outcome');
+  });
+
+  it('records the complete accessibility review for a novel interaction model', () => {
+    const review = renderAccessibilityReview(buildContext('my-widget'));
+
+    expect(review).toContain('## Novel interaction accessibility review');
+    expect(review).toContain('Focus management');
+    expect(review).toContain('Keyboard matrix');
+    expect(review).toContain('Assistive-technology announcements');
+    expect(review).toContain('Review outcome');
+  });
+
+  it('states plainly what the human gate catches that tooling cannot', () => {
+    const review = renderAccessibilityReview(buildContext('my-widget'));
+
+    expect(review).toContain('drab, bulbous, ugly');
+    expect(review).toMatch(/interaction\s+model is wrong/);
+  });
+});
+
 describe('renderExample', () => {
   it('produces a file the examples extractor publishes', () => {
     const context = buildContext('my-widget');
@@ -313,6 +347,7 @@ describe('planFiles', () => {
       'my-widget.types.ts',
       'index.ts',
       'my-widget.test.ts',
+      'my-widget.a11y.md',
       'README.md',
     ]) {
       expect(paths.some((path) => path.endsWith(suffix))).toBe(true);

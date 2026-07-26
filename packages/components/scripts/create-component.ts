@@ -22,7 +22,9 @@
  *      (`hasSubstantiveTest`) the moment it is discovered.
  *   5. `src/components/<name>/README.md` — with the `generated:*` region markers
  *      the README renderer expects.
- *   6. `packages/playground/src/examples/<name>/basic.example.svelte` — a
+ *   6. `src/components/<name>/<name>.a11y.md` — the required design-review
+ *      record and the conditional novel-interaction accessibility review.
+ *   7. `packages/playground/src/examples/<name>/basic.example.svelte` — a
  *      playground example with the `<script lang="ts" module>` `title`/
  *      `description` metadata the examples generator requires.
  *
@@ -246,6 +248,60 @@ None.
 }
 
 /**
+ * Render the required human review record for a new component.
+ *
+ * Design review applies to every new component. The accessibility section is
+ * required when the component introduces a novel interaction model; otherwise
+ * the author records why it is not applicable. The record lives beside the
+ * component so reviewers can verify the decision from the repository rather
+ * than relying on pull-request conversation history.
+ */
+export function renderAccessibilityReview(context: CreationContext): string {
+  const { pascalName } = context;
+  return `# ${pascalName} design and accessibility review
+
+Complete this record before merge. Automated checks can detect malformed APIs,
+missing semantics, and structural regressions. They cannot decide that a
+component is drab, bulbous, ugly, has a poor layout, or whether the interaction
+model is wrong. Those judgments require human review.
+
+## Design review (required)
+
+- Reviewer: _Pending — name the reviewer before merge._
+- Review outcome: _Pending — record approved or changes requested before merge._
+- Nearest neighbours: _Pending — list the closest existing Cinder components._
+- Why this component exists: _Pending — explain why composition or an existing neighbour is insufficient._
+- Findings and resolutions: _Pending — record the decisions and changes made._
+
+## Novel interaction accessibility review
+
+A novel interaction model includes a new disclosure or keyboard pattern,
+entering or leaving the top layer, or making previously static content
+interactive.
+
+- Applies: _Pending — record yes or no and explain the decision._
+- Reviewer: _Pending when this review applies._
+- Review outcome: _Pending when this review applies._
+
+### Focus management
+
+_Record initial focus, focus movement, dismissal, restoration, and behavior
+when the trigger or focused target disappears._
+
+### Keyboard matrix
+
+| Key or gesture | Context | Expected behavior |
+| -------------- | ------- | ----------------- |
+| _Pending_      |         |                   |
+
+### Assistive-technology announcements
+
+_Record the accessible name, role, state, live-region announcements, and the
+screen-reader/browser combinations reviewed._
+`;
+}
+
+/**
  * Render the playground `basic.example.svelte`. The module block exports the
  * `title`/`description` string literals the examples generator requires; the
  * instance imports the component via its public `@lostgradient/cinder/<name>` subpath.
@@ -349,6 +405,10 @@ export function planFiles(context: CreationContext): PlannedFile[] {
     { path: join(directory, `${name}.types.ts`), content: renderTypes(context) },
     { path: join(directory, 'index.ts'), content: renderIndex(context) },
     { path: join(directory, `${name}.test.ts`), content: renderTest(context) },
+    {
+      path: join(directory, `${name}.a11y.md`),
+      content: renderAccessibilityReview(context),
+    },
     { path: join(directory, 'README.md'), content: renderReadme(context) },
     { path: join(examplesDirectory, 'basic.example.svelte'), content: renderExample(context) },
   ];
@@ -407,10 +467,13 @@ async function main(): Promise<void> {
     `  2. Flesh out ${context.name}.test.ts with behavioral coverage (a passing stub ships already).\n`,
   );
   process.stdout.write(
-    `  3. Add 'export ... from ./components/${context.relativeDirectory}/index.ts' to src/index.ts.\n`,
+    `  3. Complete ${context.name}.a11y.md with the required human review outcomes.\n`,
   );
-  process.stdout.write('  4. Run: bun run components:generate && bun run exports:generate\n');
-  process.stdout.write('  5. Verify: bun run components:check && bun run exports:check\n');
+  process.stdout.write(
+    `  4. Add 'export ... from ./components/${context.relativeDirectory}/index.ts' to src/index.ts.\n`,
+  );
+  process.stdout.write('  5. Run: bun run components:generate && bun run exports:generate\n');
+  process.stdout.write('  6. Verify: bun run components:check && bun run exports:check\n');
 }
 
 if (import.meta.main) {
