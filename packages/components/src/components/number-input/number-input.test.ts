@@ -52,6 +52,15 @@ async function focus(input: HTMLInputElement) {
 }
 
 describe('NumberInput basics', () => {
+  test('renders Lucide icons for the stepper controls', () => {
+    const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
+
+    expect(getIncrement(container).querySelector('svg.lucide-plus')).not.toBeNull();
+    expect(getDecrement(container).querySelector('svg.lucide-minus')).not.toBeNull();
+    expect(getIncrement(container).textContent?.trim()).toBe('');
+    expect(getDecrement(container).textContent?.trim()).toBe('');
+  });
+
   test('type surface excludes inherited defaultValue', () => {
     const excludesInheritedDefaultValue: 'defaultValue' extends keyof NumberInputProps
       ? false

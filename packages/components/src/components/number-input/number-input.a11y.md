@@ -45,7 +45,7 @@ collide with stepping.
 
 - Two `<button type="button">`. `type="button"` matters inside a form — without it, clicking either
   button submits the form.
-- Visible glyphs (`+` and U+2212 minus) are `aria-hidden="true"`; the accessible name comes from
+- Lucide `Plus` and `Minus` SVG icons are `aria-hidden="true"`; the accessible name comes from
   `aria-label="Increment"` / `aria-label="Decrement"`.
 - Stepper buttons use the native `disabled` attribute at boundaries — not `aria-disabled`. This
   removes them from the tab order, which matches user expectation when the value is already at the

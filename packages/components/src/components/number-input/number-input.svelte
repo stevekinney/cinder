@@ -16,6 +16,8 @@
 </script>
 
 <script lang="ts">
+  import Minus from 'lucide-svelte/icons/minus';
+  import Plus from 'lucide-svelte/icons/plus';
   import type { NumberInputProps } from './number-input.types.ts';
   import { untrack } from 'svelte';
 
@@ -569,7 +571,7 @@
       tabindex="-1"
       onclick={() => stepBy('increment')}
     >
-      <span aria-hidden="true">+</span>
+      <Plus class="cinder-icon-sm" aria-hidden="true" />
     </button>
     <button
       type="button"
@@ -579,7 +581,7 @@
       tabindex="-1"
       onclick={() => stepBy('decrement')}
     >
-      <span aria-hidden="true">&#x2212;</span>
+      <Minus class="cinder-icon-sm" aria-hidden="true" />
     </button>
   </div>
 
