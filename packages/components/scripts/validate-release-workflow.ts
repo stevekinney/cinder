@@ -839,7 +839,7 @@ function validateWorkflowLevelEnvironmentContexts(): void {
       const startsAtColumnZero = /^\S/.test(line);
 
       if (startsAtColumnZero) {
-        insideWorkflowEnvironmentBlock = /^env:/.test(line);
+        insideWorkflowEnvironmentBlock = line.startsWith('env:');
         continue;
       }
 
