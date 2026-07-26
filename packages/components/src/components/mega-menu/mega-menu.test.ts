@@ -404,6 +404,23 @@ describe('MegaMenu', () => {
     await waitFor(() => expect(indicator.style.transform).toBe('translateX(200px)'));
   });
 
+  test('updates from provider right-to-left back to left-to-right', async () => {
+    const { container, rerender } = render(MegaMenuLocaleTestHarness, {
+      items,
+      direction: 'rtl',
+    });
+    const products = getTriggerByLabel(container, 'Products');
+    const resources = getTriggerByLabel(container, 'Resources');
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(resources);
+
+    await rerender({ items, direction: 'ltr' });
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(resources);
+  });
+
   test('closes stale open menu state when the current item is removed', async () => {
     const { container, rerender } = render(MegaMenu, { items });
     const products = getTriggerByLabel(container, 'Products');

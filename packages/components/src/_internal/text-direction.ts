@@ -47,7 +47,12 @@ export function resolveTextDirection(
 
   const computedDirection = readComputedTextDirection(element);
   const rootComputedDirection = readComputedTextDirection(element?.ownerDocument.documentElement);
-  if (computedDirection && computedDirection !== rootComputedDirection) return computedDirection;
+  if (
+    !ignoreElementDirectionAttribute &&
+    computedDirection &&
+    computedDirection !== rootComputedDirection
+  )
+    return computedDirection;
   if (
     computedDirection &&
     fallback &&
