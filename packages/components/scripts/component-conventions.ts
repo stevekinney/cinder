@@ -77,7 +77,7 @@ export const COMPONENT_AUTHORING_CHECKLIST = [
   },
   {
     id: 'shared-chrome',
-    text: 'Use the rotating chevron for disclosure controls and icons from the lucide-svelte set.',
+    text: 'Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the lucide-svelte set.',
     references: ['#957'],
   },
   {

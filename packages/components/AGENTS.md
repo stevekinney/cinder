@@ -18,7 +18,7 @@ Before creating a component, load the repository-local
 - [ ] Search the component inventory and compose an existing primitive before creating a new one. (#919, #929)
 - [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
-- [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
+- [ ] Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the lucide-svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
 <!-- component-authoring-checklist:end -->
 
