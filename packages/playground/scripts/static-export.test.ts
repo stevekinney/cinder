@@ -132,10 +132,11 @@ describe('static export', () => {
       expect(pageHtml).toContain('id="cinder-documentation"');
       expect(pageHtml).toContain('\\u003cp');
 
-      const canonicalHtml = await Bun.file(join(outputDirectory, 'c', 'chat', 'index.html')).text();
-      expect(canonicalHtml).toContain('data-canonical-documentation');
-      expect(canonicalHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
-      expect(canonicalHtml).toContain('src="/page/chat?preview=1"');
+      // The canonical documentation page IS /page/<name> now; /c/ is redirected
+      // by vercel.json and never written to disk.
+      expect(rendered.has('/c/chat')).toBe(false);
+      expect(pageHtml).toContain('data-component-page');
+      expect(pageHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
       expect(rendered.has('/page/chat?preview=1')).toBe(false);
       expect(chatStyles).toContain('.cinder-chat');
       expect(composerStyles).toContain("@import '/components/command-menu/command-menu.css';");
@@ -158,11 +159,15 @@ describe('static export', () => {
         sidebarComponents: ['chat'],
         allComponents: [],
       });
-      expect(rendered.has('/c/chat')).toBe(true);
-      expect(rendered.has('/c/chat-composer-popover')).toBe(true);
+      // `/c/<name>` is a legacy alias redirected by vercel.json, so it must NOT
+      // be written into public/ — that would restore a second documentation
+      // surface on disk.
+      expect(rendered.has('/c/chat')).toBe(false);
+      expect(rendered.has('/c/chat-composer-popover')).toBe(false);
+      expect(rendered.has('/page/chat-composer-popover')).toBe(true);
       await expect(
-        readFile(join(outputDirectory, 'c', 'chat-composer-popover', 'index.html'), 'utf8'),
-      ).resolves.toContain('data-canonical-documentation');
+        readFile(join(outputDirectory, 'page', 'chat-composer-popover', 'index.html'), 'utf8'),
+      ).resolves.toContain('data-component-page');
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }

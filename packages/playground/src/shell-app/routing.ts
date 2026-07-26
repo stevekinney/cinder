@@ -20,16 +20,20 @@ import {
 const COMPONENT_NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 /**
- * Extract a component name from a `/c/:name` pathname. Returns `null` for any
- * input that doesn't match the route shape or whose segment fails the
+ * Extract a component name from a `/page/:name` pathname. Returns `null` for
+ * any input that doesn't match the route shape or whose segment fails the
  * kebab-case invariant. The caller decides what to do with `null` — typically
  * leave the current component unchanged.
  *
- * Trailing path segments are rejected (`/c/avatar/extra` returns null) so the
- * helper has the same shape as the server's `/c/:name` route.
+ * Trailing path segments are rejected (`/page/avatar/extra` returns null) so
+ * the helper has the same shape as the server's `/page/:name` route.
+ *
+ * The legacy `/c/:name` spelling is also accepted, because links to it exist in
+ * the wild (and the server 301s them here). Accepting both keeps in-page
+ * click interception working if a stale anchor survives anywhere.
  */
 export function parseComponentFromPath(pathname: string): string | null {
-  const match = /^\/c\/([^/]+)$/.exec(pathname);
+  const match = /^\/(?:page|c)\/([^/]+)$/.exec(pathname);
   if (!match) return null;
   let decoded: string;
   try {
@@ -42,20 +46,16 @@ export function parseComponentFromPath(pathname: string): string | null {
 }
 
 /**
- * Build the shell URL for a component — used for both sidebar anchor `href`
- * attributes and `history.pushState`. The component name is always encoded
- * defensively, even though kebab slugs don't actually need encoding; this
- * keeps URL construction safe if the invariant ever slips.
+ * Build the canonical documentation URL for a component — used for sidebar
+ * anchor `href` attributes and navigation. The component name is always encoded
+ * defensively, even though kebab slugs don't actually need encoding; this keeps
+ * URL construction safe if the invariant ever slips.
+ *
+ * There is exactly ONE documentation page per component and it lives at
+ * `/page/<name>`. The former `/c/<name>` shell page was a second, condensed
+ * rendering of the same content; it now 301s here.
  */
-export function buildShellHref(componentName: string): string {
-  return `/c/${encodeURIComponent(componentName)}`;
-}
-
-/**
- * Build the iframe `src` URL for a component's preview page. Same encoding
- * discipline as `buildShellHref`.
- */
-export function buildIframeSrc(componentName: string): string {
+export function buildComponentHref(componentName: string): string {
   return `/page/${encodeURIComponent(componentName)}`;
 }
 

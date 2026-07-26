@@ -204,6 +204,7 @@ type PageServerRenderer = (props: {
   componentName: string;
   documentation: ComponentDocumentationPayload;
   examples: { scenario: string; title: string; description?: string; featured?: boolean }[];
+  sidebarComponents: string[];
 }) => { body: string; head: string };
 let pageServerRendererPromise: Promise<PageServerRenderer> | null = null;
 let lastGoodPageServerRenderer: PageServerRenderer | null = null;
@@ -946,10 +947,16 @@ const snapshotMode = new URLSearchParams(window.location.search).get('snapshot')
 const hasServerRenderedContent = target.firstElementChild !== null;
 const shouldHydrate = hasServerRenderedContent && !snapshotMode && !previewOnly;
 
+// Read the sidebar list the server embedded, so the client's first render
+// matches the server's exactly.
+const sidebarRaw = (window as unknown as Record<string, unknown>)['__CINDER_SIDEBAR__'];
+const sidebarComponents = Array.isArray(sidebarRaw) ? (sidebarRaw as string[]) : [];
+
 const props = {
   bareComponentModule: BareComponentModule,
   previewOnly,
   snapshotMode,
+  sidebarComponents,
 };
 
 if (shouldHydrate) {
@@ -1750,12 +1757,26 @@ async function renderComponentPage(
    * A render failure degrades to the client-only path rather than 500ing — the
    * page still works, it just loses the pre-rendered content.
    */
+  /*
+   * The sidebar renders inside the documentation page's own tree, so both the
+   * server render and the client hydration need the same list. It is omitted
+   * for the snapshot and preview surfaces, whose harnesses assert on a bare
+   * `#app`.
+   */
+  const sidebarComponents = snapshotMode || previewOnly ? [] : await discoverSidebarComponents();
+  const sidebarJson = jsonForScriptTag(sidebarComponents);
+
   let ssrBody = '';
   let ssrHead = '';
   if (!snapshotMode && !previewOnly) {
     try {
       const renderComponentPageBody = await loadPageServerRenderer();
-      const rendered = renderComponentPageBody({ componentName, documentation, examples });
+      const rendered = renderComponentPageBody({
+        componentName,
+        documentation,
+        examples,
+        sidebarComponents,
+      });
       ssrBody = rendered.body;
       // Inline sourcemaps in the SSR'd <style> output are ~80% of its bytes and
       // sit on the critical rendering path. See strip-inline-sourcemaps.ts.
@@ -1808,6 +1829,7 @@ async function renderComponentPage(
   <body>
     <script type="application/json" id="cinder-documentation">${documentationJson}</script>
     <script>window.__CINDER_EXAMPLES__ = ${examplesJson};</script>
+    <script>window.__CINDER_SIDEBAR__ = ${sidebarJson};</script>
     <div id="app">${ssrBody}</div>
     <script type="module" src="/page-bundle/${componentName}.js"></script>
   </body>
@@ -2429,7 +2451,18 @@ export async function handleRequest(request: Request): Promise<Response> {
     return exampleSnippetResponse(source, `${componentName}/${scenario}`);
   }
 
-  // GET /c/:name
+  /*
+   * GET /c/:name → 301 /page/:name
+   *
+   * `/c/<name>` used to render a SECOND, condensed documentation page: a hero, a
+   * 360px iframe preview, an abbreviated readme, and a link labelled "Open
+   * interactive documentation" that pointed at `/page/<name>` — the page it was
+   * duplicating. There is now exactly one documentation page per component and
+   * it lives at `/page/<name>`, with the sidebar rendered inside it.
+   *
+   * The redirect (rather than deleting the route) keeps existing links,
+   * bookmarks, and any `related`/`avoidWhen` references working.
+   */
   const componentMatch = pathname.match(/^\/c\/([^/]+)$/);
   if (componentMatch) {
     const componentName = componentMatch[1]!;
@@ -2437,26 +2470,8 @@ export async function handleRequest(request: Request): Promise<Response> {
     const allComponents = await discoverComponents();
     if (!allComponents.includes(componentName))
       return notFound(`Component "${componentName}" not found`);
-    const sidebarComponents = await discoverSidebarComponents();
-    const documentation = await buildValidatedComponentDocumentation(componentName);
-    if (documentation === null) {
-      return notFound(`Documentation for "${componentName}" not found`);
-    }
-    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
-    const renderedShell = renderShellBody({
-      initialComponent: componentName,
-      components: sidebarComponents,
-      readmeHtml: '',
-      documentation,
-      initialSearch: url.search,
-    });
-    const html = renderShell(componentName, sidebarComponents, {
-      documentation,
-      shellBody: renderedShell.body,
-      shellHead: renderedShell.head,
-      initialSearch: url.search,
-    });
-    return new Response(html, { headers: { 'Content-Type': 'text/html' } });
+
+    return Response.redirect(`/page/${encodeURIComponent(componentName)}${url.search}`, 301);
   }
 
   // GET / → README-backed landing shell

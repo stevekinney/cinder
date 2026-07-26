@@ -5,5 +5,17 @@
   "installCommand": "cd ../.. && NODE_ENV=development bun install --frozen-lockfile",
   "outputDirectory": "public",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/c/:name",
+      "destination": "/page/:name",
+      "permanent": true
+    }
+  ]
 }

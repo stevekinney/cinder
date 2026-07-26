@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { mount, onMount, unmount } from 'svelte';
+  import { mount, unmount } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -24,6 +24,7 @@
   import Sliders from 'lucide-svelte/icons/sliders-horizontal';
   import Sun from 'lucide-svelte/icons/sun';
   import X from 'lucide-svelte/icons/x';
+  import { buildComponentHref } from './shell-app/routing.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
     formatErrorForClipboard,
@@ -86,6 +87,12 @@
     snapshotMode?: boolean;
     documentation?: ComponentDocumentationPayload | null;
     documentationError?: string | null;
+    /**
+     * Sidebar navigation entries. Supplied by both render paths so the nav is
+     * part of THIS component's tree — one hydration root, no separate shell
+     * bundle. Empty means no sidebar (snapshot and preview surfaces).
+     */
+    sidebarComponents?: string[];
   };
 
   let {
@@ -96,6 +103,7 @@
     snapshotMode: snapshotModeProp,
     documentation: documentationProp,
     documentationError: documentationErrorProp,
+    sidebarComponents = [],
   }: Props = $props();
 
   // Height of the sticky top bar, in pixels — used for scroll-spy activation
@@ -170,10 +178,19 @@
   // render the same tree on first pass.
   let isHydrated = $state(false);
 
-  onMount(() => {
+  /*
+   * Adopt the real theme and flip the hydration flag once the client is live.
+   *
+   * An `$effect` rather than `onMount`: effects simply do not run on the server,
+   * whereas `onMount` THROWS there (`lifecycle_function_unavailable`). This
+   * component is compiled for both targets now, so the lifecycle hook is not
+   * safe here. Nothing reactive is read, so this runs exactly once.
+   */
+  $effect(() => {
     theme = readInitialTheme();
     isHydrated = true;
   });
+
   let themeToggleLabel = $derived(
     theme === 'dark' ? 'Preview theme: switch to light' : 'Preview theme: switch to dark',
   );
@@ -646,291 +663,323 @@
     {/if}
   </div>
 {:else}
-  <div class="dx" data-component-page>
-    <!-- ===== Top bar ===== -->
-    <header class="dx-topbar">
-      <div class="dx-topbar__inner">
-        <nav class="dx-crumbs" aria-label="Breadcrumb">
-          <span class="dx-crumbs__mark">CINDER</span>
-          <span class="dx-crumbs__sep" aria-hidden="true">/</span>
-          {#if documentation !== null}
-            <span>{documentation.component.categoryLabel}</span>
+  <!-- Sidebar navigation. Lives inside the documentation page's own tree — this
+       is the single canonical page, so there is no outer shell to own it, and
+       keeping it here means one hydration root rather than coordinating a
+       shared shell bundle with this per-component one.
+
+       Rendered only when entries are supplied, which excludes the snapshot and
+       preview surfaces (their harnesses assert on a bare `#app`). -->
+  <!-- One wrapper so this branch has a single root. Two siblings here (nav +
+       page) trip happy-dom's fragment handling in the documentation tests. -->
+  <div class="dx-shell">
+    {#if sidebarComponents.length > 0}
+      <nav class="dx-nav" aria-label="Components">
+        <a class="dx-nav__brand" href="/">CINDER</a>
+        <ul class="dx-nav__list">
+          {#each sidebarComponents as name (name)}
+            <li>
+              <a
+                class="dx-nav__link"
+                href={buildComponentHref(name)}
+                aria-current={name === componentName ? 'page' : undefined}
+              >
+                {humanizeId(name)}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </nav>
+    {/if}
+    <div class={['dx', sidebarComponents.length > 0 && 'dx--with-sidebar']} data-component-page>
+      <!-- ===== Top bar ===== -->
+      <header class="dx-topbar">
+        <div class="dx-topbar__inner">
+          <nav class="dx-crumbs" aria-label="Breadcrumb">
+            <span class="dx-crumbs__mark">CINDER</span>
             <span class="dx-crumbs__sep" aria-hidden="true">/</span>
-            <span class="dx-crumbs__current" aria-current="page"
-              >{documentation.component.name}</span
-            >
-          {/if}
-        </nav>
-        <div class="dx-topbar__actions" role="toolbar" aria-label="Page controls">
-          <Tooltip text="View source on GitHub" placement="bottom">
-            <a
-              class="dx-iconbtn"
-              href="https://github.com/stevekinney/cinder"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="View source on GitHub"
-            >
-              <Github size={17} strokeWidth={1.5} aria-hidden="true" />
-            </a>
-          </Tooltip>
-          <Tooltip text={themeToggleLabel} placement="bottom">
-            <button
-              type="button"
-              class="dx-iconbtn"
-              onclick={toggleTheme}
-              aria-label={themeToggleLabel}
-            >
-              {#if theme === 'dark'}
-                <Sun size={17} strokeWidth={1.5} aria-hidden="true" />
-              {:else}
-                <Moon size={17} strokeWidth={1.5} aria-hidden="true" />
-              {/if}
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-    </header>
-
-    {#if documentationError !== null}
-      <div class="dx__inner dx-error-region">
-        <Alert variant="danger">
-          Could not load documentation: {documentationError}
-        </Alert>
-      </div>
-    {:else if documentation !== null}
-      {@const component = documentation.component}
-
-      <!-- ===== Hero ===== -->
-      <div class="dx-hero">
-        <div class="dx__inner">
-          <div class="dx-hero__grid">
-            <div>
-              <div class="dx-eyebrow">
-                <span class="dx-eyebrow__index">{component.categoryLabel}</span>
-                <span class="dx-eyebrow__rule" aria-hidden="true"></span>
-              </div>
-              <h1 id="component-name">{component.name}</h1>
-              <p class="dx-hero__lede">{component.purpose}</p>
-              <div class="dx-hero__meta">
-                <div class="dx-import">
-                  <span class="dx-import__code">{importStatement}</span>
-                  <Tooltip text={importCopied ? 'Copied' : 'Copy import'}>
-                    <button
-                      type="button"
-                      class="dx-import__copy"
-                      data-copied={importCopied ? '' : undefined}
-                      aria-label={importCopied ? 'Copied import' : 'Copy import'}
-                      onclick={copyImport}
-                    >
-                      {#if importCopied}
-                        <Check size={14} strokeWidth={1.5} aria-hidden="true" />
-                      {:else}
-                        <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
-                      {/if}
-                    </button>
-                  </Tooltip>
-                </div>
-                {#if component.tags.length > 0}
-                  <div class="dx-tags">
-                    {#each component.tags as tag (tag)}
-                      <Badge variant="accent" size="sm">{tag}</Badge>
-                    {/each}
-                  </div>
+            {#if documentation !== null}
+              <span>{documentation.component.categoryLabel}</span>
+              <span class="dx-crumbs__sep" aria-hidden="true">/</span>
+              <span class="dx-crumbs__current" aria-current="page"
+                >{documentation.component.name}</span
+              >
+            {/if}
+          </nav>
+          <div class="dx-topbar__actions" role="toolbar" aria-label="Page controls">
+            <Tooltip text="View source on GitHub" placement="bottom">
+              <a
+                class="dx-iconbtn"
+                href="https://github.com/stevekinney/cinder"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="View source on GitHub"
+              >
+                <Github size={17} strokeWidth={1.5} aria-hidden="true" />
+              </a>
+            </Tooltip>
+            <Tooltip text={themeToggleLabel} placement="bottom">
+              <button
+                type="button"
+                class="dx-iconbtn"
+                onclick={toggleTheme}
+                aria-label={themeToggleLabel}
+              >
+                {#if theme === 'dark'}
+                  <Sun size={17} strokeWidth={1.5} aria-hidden="true" />
+                {:else}
+                  <Moon size={17} strokeWidth={1.5} aria-hidden="true" />
                 {/if}
-              </div>
-            </div>
+              </button>
+            </Tooltip>
+          </div>
+        </div>
+      </header>
 
-            <aside class="dx-spec" aria-label="Component facts">
-              <div class="dx-spec__row">
-                <span class="dx-spec__key">Status</span>
-                <span class="dx-spec__val">
-                  <!-- The adjacent Badge is the accessible status text. The dot
+      {#if documentationError !== null}
+        <div class="dx__inner dx-error-region">
+          <Alert variant="danger">
+            Could not load documentation: {documentationError}
+          </Alert>
+        </div>
+      {:else if documentation !== null}
+        {@const component = documentation.component}
+
+        <!-- ===== Hero ===== -->
+        <div class="dx-hero">
+          <div class="dx__inner">
+            <div class="dx-hero__grid">
+              <div>
+                <div class="dx-eyebrow">
+                  <span class="dx-eyebrow__index">{component.categoryLabel}</span>
+                  <span class="dx-eyebrow__rule" aria-hidden="true"></span>
+                </div>
+                <h1 id="component-name">{component.name}</h1>
+                <p class="dx-hero__lede">{component.purpose}</p>
+                <div class="dx-hero__meta">
+                  <div class="dx-import">
+                    <span class="dx-import__code">{importStatement}</span>
+                    <Tooltip text={importCopied ? 'Copied' : 'Copy import'}>
+                      <button
+                        type="button"
+                        class="dx-import__copy"
+                        data-copied={importCopied ? '' : undefined}
+                        aria-label={importCopied ? 'Copied import' : 'Copy import'}
+                        onclick={copyImport}
+                      >
+                        {#if importCopied}
+                          <Check size={14} strokeWidth={1.5} aria-hidden="true" />
+                        {:else}
+                          <Copy size={14} strokeWidth={1.5} aria-hidden="true" />
+                        {/if}
+                      </button>
+                    </Tooltip>
+                  </div>
+                  {#if component.tags.length > 0}
+                    <div class="dx-tags">
+                      {#each component.tags as tag (tag)}
+                        <Badge variant="accent" size="sm">{tag}</Badge>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+
+              <aside class="dx-spec" aria-label="Component facts">
+                <div class="dx-spec__row">
+                  <span class="dx-spec__key">Status</span>
+                  <span class="dx-spec__val">
+                    <!-- The adjacent Badge is the accessible status text. The dot
                        is a redundant color cue, so mark it decorative — otherwise
                        its role="img" name re-announces the same word the Badge
                        already speaks (the audible half of #388). -->
-                  <StatusDot status={statusDotStatus(component.status)} aria-hidden="true" />
-                  <Badge variant={statusBadgeVariant(component.status)} size="sm">
-                    {component.status}
-                  </Badge>
-                </span>
-              </div>
-              <div class="dx-spec__row">
-                <span class="dx-spec__key">Category</span>
-                <span class="dx-spec__val">{component.categoryLabel}</span>
-              </div>
-              {#if component.a11y?.pattern !== undefined}
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">A11y pattern</span>
-                  <span class="dx-spec__val">{component.a11y.pattern}</span>
+                    <StatusDot status={statusDotStatus(component.status)} aria-hidden="true" />
+                    <Badge variant={statusBadgeVariant(component.status)} size="sm">
+                      {component.status}
+                    </Badge>
+                  </span>
                 </div>
-              {/if}
-              <div class="dx-spec__row">
-                <span class="dx-spec__key">Export</span>
-                <span class="dx-spec__val dx-spec__val--monochrome">{component.exportName}</span>
-              </div>
-              <div class="dx-spec__row">
-                <span class="dx-spec__key">Version</span>
-                <span class="dx-spec__val dx-spec__val--monochrome"
-                  >v{component.packageVersion}</span
-                >
-              </div>
-            </aside>
+                <div class="dx-spec__row">
+                  <span class="dx-spec__key">Category</span>
+                  <span class="dx-spec__val">{component.categoryLabel}</span>
+                </div>
+                {#if component.a11y?.pattern !== undefined}
+                  <div class="dx-spec__row">
+                    <span class="dx-spec__key">A11y pattern</span>
+                    <span class="dx-spec__val">{component.a11y.pattern}</span>
+                  </div>
+                {/if}
+                <div class="dx-spec__row">
+                  <span class="dx-spec__key">Export</span>
+                  <span class="dx-spec__val dx-spec__val--monochrome">{component.exportName}</span>
+                </div>
+                <div class="dx-spec__row">
+                  <span class="dx-spec__key">Version</span>
+                  <span class="dx-spec__val dx-spec__val--monochrome"
+                    >v{component.packageVersion}</span
+                  >
+                </div>
+              </aside>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- ===== Layout: TOC + content ===== -->
-      <div class="dx__inner">
-        <div class="dx-layout">
-          <nav class="dx-toc" aria-label="On this page">
-            <div class="dx-toc__label">On this page</div>
-            <ul class="dx-toc__list">
-              {#each sections as section (section.id)}
-                <li>
-                  <a
-                    class="dx-toc__link"
-                    href="#{section.id}"
-                    data-active={activeSection === section.id ? '' : undefined}
-                    aria-current={activeSection === section.id ? 'location' : undefined}
-                    onclick={goToSection(section.id)}
-                  >
-                    <span class="dx-toc__num">{section.num}</span>
-                    <span>{section.label}</span>
-                  </a>
-                </li>
-              {/each}
-            </ul>
-          </nav>
-
-          <main class="dx-content">
-            <!-- -- Overview -- -->
-            <section id="overview" class="dx-section">
-              <div class="dx-section__head">
-                <span class="dx-section__num">01</span>
-                <h2 class="dx-section__title">Overview</h2>
-                <span class="dx-section__rule" aria-hidden="true"></span>
-              </div>
-              <div class="dx-prose readme-content">
-                {#each splitReadmeHtml(documentation.readme.html) as segment, i (i)}
-                  {#if segment.type === 'html'}
-                    {@html segment.content}
-                  {:else}
-                    {@const block = documentation.readme.codeBlocks[segment.index]}
-                    {#if block !== undefined}
-                      <CodeBlock
-                        code={block.value}
-                        language={block.language ?? 'plaintext'}
-                        copyable
-                      />
-                    {:else}
-                      <div class="readme-pre-fallback">{@html segment.fallbackHtml}</div>
-                    {/if}
-                  {/if}
+        <!-- ===== Layout: TOC + content ===== -->
+        <div class="dx__inner">
+          <div class="dx-layout">
+            <nav class="dx-toc" aria-label="On this page">
+              <div class="dx-toc__label">On this page</div>
+              <ul class="dx-toc__list">
+                {#each sections as section (section.id)}
+                  <li>
+                    <a
+                      class="dx-toc__link"
+                      href="#{section.id}"
+                      data-active={activeSection === section.id ? '' : undefined}
+                      aria-current={activeSection === section.id ? 'location' : undefined}
+                      onclick={goToSection(section.id)}
+                    >
+                      <span class="dx-toc__num">{section.num}</span>
+                      <span>{section.label}</span>
+                    </a>
+                  </li>
                 {/each}
-              </div>
-              {#if overviewExample !== undefined}
-                <div class="dx-stage">
-                  <div class="dx-stage__bar">
-                    <span class="dx-stage__dot" aria-hidden="true"></span>
-                    <span class="dx-stage__label">Live preview</span>
-                  </div>
-                  <div class="dx-stage__canvas">
-                    {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
-                      {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
-                      <Callout variant="danger" title="This preview failed to render">
-                        <p>{error?.message}</p>
-                      </Callout>
+              </ul>
+            </nav>
+
+            <main class="dx-content">
+              <!-- -- Overview -- -->
+              <section id="overview" class="dx-section">
+                <div class="dx-section__head">
+                  <span class="dx-section__num">01</span>
+                  <h2 class="dx-section__title">Overview</h2>
+                  <span class="dx-section__rule" aria-hidden="true"></span>
+                </div>
+                <div class="dx-prose readme-content">
+                  {#each splitReadmeHtml(documentation.readme.html) as segment, i (i)}
+                    {#if segment.type === 'html'}
+                      {@html segment.content}
+                    {:else}
+                      {@const block = documentation.readme.codeBlocks[segment.index]}
+                      {#if block !== undefined}
+                        <CodeBlock
+                          code={block.value}
+                          language={block.language ?? 'plaintext'}
+                          copyable
+                        />
+                      {:else}
+                        <div class="readme-pre-fallback">{@html segment.fallbackHtml}</div>
+                      {/if}
                     {/if}
-                    <div
-                      class="example-preview"
-                      id="overview-mount-{overviewExample.scenario}"
-                      {@attach mountScenario(overviewExample.scenario)}
-                    ></div>
+                  {/each}
+                </div>
+                {#if overviewExample !== undefined}
+                  <div class="dx-stage">
+                    <div class="dx-stage__bar">
+                      <span class="dx-stage__dot" aria-hidden="true"></span>
+                      <span class="dx-stage__label">Live preview</span>
+                    </div>
+                    <div class="dx-stage__canvas">
+                      {#if mountErrors[`overview-mount-${overviewExample.scenario}`] !== undefined}
+                        {@const error = mountErrors[`overview-mount-${overviewExample.scenario}`]}
+                        <Callout variant="danger" title="This preview failed to render">
+                          <p>{error?.message}</p>
+                        </Callout>
+                      {/if}
+                      <div
+                        class="example-preview"
+                        id="overview-mount-{overviewExample.scenario}"
+                        {@attach mountScenario(overviewExample.scenario)}
+                      ></div>
+                    </div>
                   </div>
-                </div>
-              {/if}
-            </section>
-
-            <!-- -- Guidance -- -->
-            {#if component.useWhen.length > 0 || component.avoidWhen.length > 0}
-              <section id="guidance" class="dx-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('guidance') ?? ''}</span>
-                  <h2 class="dx-section__title">When to use</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                <div class="dx-guide">
-                  {#if component.useWhen.length > 0}
-                    <div class="dx-guide__card">
-                      <div class="dx-guide__head">
-                        <span class="dx-guide__icon dx-guide__icon--use">
-                          <Check size={16} strokeWidth={1.5} aria-hidden="true" />
-                        </span>
-                        Use when
-                      </div>
-                      <ul class="dx-guide__list dx-guide__list--use">
-                        {#each component.useWhen as item, index (index)}
-                          <li>
-                            <Check size={15} strokeWidth={1.5} aria-hidden="true" />
-                            <span>{item}</span>
-                          </li>
-                        {/each}
-                      </ul>
-                    </div>
-                  {/if}
-                  {#if component.avoidWhen.length > 0}
-                    <div class="dx-guide__card">
-                      <div class="dx-guide__head">
-                        <span class="dx-guide__icon dx-guide__icon--avoid">
-                          <X size={16} strokeWidth={1.5} aria-hidden="true" />
-                        </span>
-                        Avoid when
-                      </div>
-                      <ul class="dx-guide__list dx-guide__list--avoid">
-                        {#each component.avoidWhen as item, index (index)}
-                          <li>
-                            <X size={15} strokeWidth={1.5} aria-hidden="true" />
-                            <span>
-                              {item.reason}
-                              {#if item.alternative !== undefined}
-                                <a class="dx-guide__alt" href="/c/{item.alternative}" target="_top">
-                                  Use {humanizeId(item.alternative)} instead
-                                </a>
-                              {/if}
-                            </span>
-                          </li>
-                        {/each}
-                      </ul>
-                    </div>
-                  {/if}
-                </div>
-              </section>
-            {/if}
-
-            <!-- -- Playground -- -->
-            {#if showGeneratedPlayground}
-              <section id="playground" class="dx-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
-                  <h2 class="dx-section__title">Playground</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                {#if documentation.propsManifest.isCompound}
-                  <p class="dx-prose dx-play__intro">
-                    Adjust the props below to build your snippet. This is a compound component — its
-                    children are structured sub-components, so the preview shows a composed example
-                    rather than your control changes. The snippet updates live.
-                  </p>
-                {:else}
-                  <p class="dx-prose dx-play__intro">
-                    Adjust the props below — the preview and snippet update live. Copy it when it
-                    looks right.
-                  </p>
                 {/if}
+              </section>
 
-                <div class="dx-play">
-                  <div class="dx-play__preview">
-                    <!-- When the bare component resolves from the page bundle, mount it
+              <!-- -- Guidance -- -->
+              {#if component.useWhen.length > 0 || component.avoidWhen.length > 0}
+                <section id="guidance" class="dx-section">
+                  <div class="dx-section__head">
+                    <span class="dx-section__num">{sectionNumber.get('guidance') ?? ''}</span>
+                    <h2 class="dx-section__title">When to use</h2>
+                    <span class="dx-section__rule" aria-hidden="true"></span>
+                  </div>
+                  <div class="dx-guide">
+                    {#if component.useWhen.length > 0}
+                      <div class="dx-guide__card">
+                        <div class="dx-guide__head">
+                          <span class="dx-guide__icon dx-guide__icon--use">
+                            <Check size={16} strokeWidth={1.5} aria-hidden="true" />
+                          </span>
+                          Use when
+                        </div>
+                        <ul class="dx-guide__list dx-guide__list--use">
+                          {#each component.useWhen as item, index (index)}
+                            <li>
+                              <Check size={15} strokeWidth={1.5} aria-hidden="true" />
+                              <span>{item}</span>
+                            </li>
+                          {/each}
+                        </ul>
+                      </div>
+                    {/if}
+                    {#if component.avoidWhen.length > 0}
+                      <div class="dx-guide__card">
+                        <div class="dx-guide__head">
+                          <span class="dx-guide__icon dx-guide__icon--avoid">
+                            <X size={16} strokeWidth={1.5} aria-hidden="true" />
+                          </span>
+                          Avoid when
+                        </div>
+                        <ul class="dx-guide__list dx-guide__list--avoid">
+                          {#each component.avoidWhen as item, index (index)}
+                            <li>
+                              <X size={15} strokeWidth={1.5} aria-hidden="true" />
+                              <span>
+                                {item.reason}
+                                {#if item.alternative !== undefined}
+                                  <a
+                                    class="dx-guide__alt"
+                                    href="/page/{item.alternative}"
+                                    target="_top"
+                                  >
+                                    Use {humanizeId(item.alternative)} instead
+                                  </a>
+                                {/if}
+                              </span>
+                            </li>
+                          {/each}
+                        </ul>
+                      </div>
+                    {/if}
+                  </div>
+                </section>
+              {/if}
+
+              <!-- -- Playground -- -->
+              {#if showGeneratedPlayground}
+                <section id="playground" class="dx-section">
+                  <div class="dx-section__head">
+                    <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
+                    <h2 class="dx-section__title">Playground</h2>
+                    <span class="dx-section__rule" aria-hidden="true"></span>
+                  </div>
+                  {#if documentation.propsManifest.isCompound}
+                    <p class="dx-prose dx-play__intro">
+                      Adjust the props below to build your snippet. This is a compound component —
+                      its children are structured sub-components, so the preview shows a composed
+                      example rather than your control changes. The snippet updates live.
+                    </p>
+                  {:else}
+                    <p class="dx-prose dx-play__intro">
+                      Adjust the props below — the preview and snippet update live. Copy it when it
+                      looks right.
+                    </p>
+                  {/if}
+
+                  <div class="dx-play">
+                    <div class="dx-play__preview">
+                      <!-- When the bare component resolves from the page bundle, mount it
                          directly with the synthesized prop values so the preview
                          re-renders as the controls change — a genuine "Live preview"
                          (#405). `mountLivePreview` re-runs its attachment on every
@@ -944,72 +993,72 @@
                          rather than show an error callout over what would otherwise be
                          a working preview. With no featured fallback, the live branch
                          stays and surfaces the error — better than a blank section. -->
-                    <!-- `isHydrated` keeps the live mount off the server's tree: it
+                      <!-- `isHydrated` keeps the live mount off the server's tree: it
                          needs `bareComponentModule`, which only the client bundle
                          supplies. Without the gate the server would render the
                          featured-example branch and the client the live branch on
                          its hydration pass — a mismatch. The live preview swaps in
                          immediately after mount. -->
-                    {#if isHydrated && bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
-                      <div class="dx-stage">
-                        <div class="dx-stage__bar">
-                          <span class="dx-stage__dot" aria-hidden="true"></span>
-                          <span class="dx-stage__label">Live preview</span>
+                      {#if isHydrated && bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
+                        <div class="dx-stage">
+                          <div class="dx-stage__bar">
+                            <span class="dx-stage__dot" aria-hidden="true"></span>
+                            <span class="dx-stage__label">Live preview</span>
+                          </div>
+                          <div class="dx-stage__canvas">
+                            {#if mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined}
+                              {@const error = mountErrors[LIVE_MOUNT_CONTAINER_ID]}
+                              <Callout variant="danger" title="This preview failed to render">
+                                <p>{error?.message}</p>
+                              </Callout>
+                            {/if}
+                            <div
+                              class="example-preview"
+                              id={LIVE_MOUNT_CONTAINER_ID}
+                              {@attach mountLivePreview(
+                                bareComponent,
+                                toMountProps(
+                                  playgroundModel.controls,
+                                  $state.snapshot(playgroundValues),
+                                ),
+                              )}
+                            ></div>
+                          </div>
+                          <p class="dx-stage__note">
+                            Renders with the props below. Adjust the controls to update it live.
+                          </p>
                         </div>
-                        <div class="dx-stage__canvas">
-                          {#if mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined}
-                            {@const error = mountErrors[LIVE_MOUNT_CONTAINER_ID]}
-                            <Callout variant="danger" title="This preview failed to render">
-                              <p>{error?.message}</p>
-                            </Callout>
-                          {/if}
-                          <div
-                            class="example-preview"
-                            id={LIVE_MOUNT_CONTAINER_ID}
-                            {@attach mountLivePreview(
-                              bareComponent,
-                              toMountProps(
-                                playgroundModel.controls,
-                                $state.snapshot(playgroundValues),
-                              ),
-                            )}
-                          ></div>
-                        </div>
-                        <p class="dx-stage__note">
-                          Renders with the props below. Adjust the controls to update it live.
-                        </p>
-                      </div>
-                    {:else if overviewExample !== undefined && !snapshotMode}
-                      <!-- Fallback when the bare component can't be resolved (older
+                      {:else if overviewExample !== undefined && !snapshotMode}
+                        <!-- Fallback when the bare component can't be resolved (older
                            page bundle, or a component whose default/named export isn't
                            a constructor): mount the static featured example so the
                            section still shows a rendered instance (#374), labelled
                            honestly since only the snippet is prop-driven here. -->
-                      <div class="dx-stage">
-                        <div class="dx-stage__bar">
-                          <span class="dx-stage__dot" aria-hidden="true"></span>
-                          <span class="dx-stage__label">Featured example</span>
+                        <div class="dx-stage">
+                          <div class="dx-stage__bar">
+                            <span class="dx-stage__dot" aria-hidden="true"></span>
+                            <span class="dx-stage__label">Featured example</span>
+                          </div>
+                          <div class="dx-stage__canvas">
+                            {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
+                              {@const error =
+                                mountErrors[`playground-mount-${overviewExample.scenario}`]}
+                              <Callout variant="danger" title="This preview failed to render">
+                                <p>{error?.message}</p>
+                              </Callout>
+                            {/if}
+                            <div
+                              class="example-preview"
+                              id="playground-mount-{overviewExample.scenario}"
+                              {@attach mountScenario(overviewExample.scenario)}
+                            ></div>
+                          </div>
+                          <p class="dx-stage__note">
+                            Shows the featured example. Adjust the controls to update the snippet.
+                          </p>
                         </div>
-                        <div class="dx-stage__canvas">
-                          {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
-                            {@const error =
-                              mountErrors[`playground-mount-${overviewExample.scenario}`]}
-                            <Callout variant="danger" title="This preview failed to render">
-                              <p>{error?.message}</p>
-                            </Callout>
-                          {/if}
-                          <div
-                            class="example-preview"
-                            id="playground-mount-{overviewExample.scenario}"
-                            {@attach mountScenario(overviewExample.scenario)}
-                          ></div>
-                        </div>
-                        <p class="dx-stage__note">
-                          Shows the featured example. Adjust the controls to update the snippet.
-                        </p>
-                      </div>
-                    {:else if !snapshotMode && !documentation.propsManifest.isCompound}
-                      <!-- Reserve the stage for components with NO examples (label,
+                      {:else if !snapshotMode && !documentation.propsManifest.isCompound}
+                        <!-- Reserve the stage for components with NO examples (label,
                            statistic, accordion-item, …). Without this branch the
                            server renders nothing here, and hydration then INSERTS
                            the whole live stage into an already-painted page — a
@@ -1022,406 +1071,408 @@
                            purpose, so reserving a box they never fill would leave
                            an empty frame. `isCompound` comes from the manifest, so
                            the server can make this call. -->
-                      <div class="dx-stage" data-stage-reserved>
-                        <div class="dx-stage__bar">
-                          <span class="dx-stage__dot" aria-hidden="true"></span>
-                          <span class="dx-stage__label">Live preview</span>
+                        <div class="dx-stage" data-stage-reserved>
+                          <div class="dx-stage__bar">
+                            <span class="dx-stage__dot" aria-hidden="true"></span>
+                            <span class="dx-stage__label">Live preview</span>
+                          </div>
+                          <div class="dx-stage__canvas"></div>
+                          <p class="dx-stage__note">
+                            Renders with the props below. Adjust the controls to update it live.
+                          </p>
                         </div>
-                        <div class="dx-stage__canvas"></div>
-                        <p class="dx-stage__note">
-                          Renders with the props below. Adjust the controls to update it live.
+                      {/if}
+                      <CodeBlock code={playgroundSnippet} language="svelte" copyable />
+                      {#if playgroundModel.skipped.length > 0}
+                        <p class="dx-play__skipped">
+                          Not adjustable here: {playgroundModel.skipped.join(', ')}.
                         </p>
-                      </div>
-                    {/if}
-                    <CodeBlock code={playgroundSnippet} language="svelte" copyable />
-                    {#if playgroundModel.skipped.length > 0}
-                      <p class="dx-play__skipped">
-                        Not adjustable here: {playgroundModel.skipped.join(', ')}.
-                      </p>
-                    {/if}
-                  </div>
-                  <div class="dx-play__controls">
-                    <div class="dx-play__controls-head">
-                      <Sliders size={13} strokeWidth={1.5} aria-hidden="true" />
-                      Props
+                      {/if}
                     </div>
-                    {#each playgroundModel.controls as control (control.name)}
-                      <div class={['dx-ctl', control.kind === 'boolean' && 'dx-ctl--inline']}>
-                        <div class="dx-ctl__text">
-                          <div class="dx-ctl__name" title={control.name}>{control.name}</div>
-                          {#if control.description !== undefined}
-                            <div class="dx-ctl__desc">
-                              {@html renderPropDescription(control.description)}
-                            </div>
+                    <div class="dx-play__controls">
+                      <div class="dx-play__controls-head">
+                        <Sliders size={13} strokeWidth={1.5} aria-hidden="true" />
+                        Props
+                      </div>
+                      {#each playgroundModel.controls as control (control.name)}
+                        <div class={['dx-ctl', control.kind === 'boolean' && 'dx-ctl--inline']}>
+                          <div class="dx-ctl__text">
+                            <div class="dx-ctl__name" title={control.name}>{control.name}</div>
+                            {#if control.description !== undefined}
+                              <div class="dx-ctl__desc">
+                                {@html renderPropDescription(control.description)}
+                              </div>
+                            {/if}
+                          </div>
+                          {#if control.kind === 'boolean'}
+                            <Toggle
+                              id="pg-{control.name}"
+                              label={control.name}
+                              hideLabel
+                              bind:checked={
+                                () => Boolean(playgroundValues[control.name]),
+                                (next) => (playgroundValues[control.name] = next)
+                              }
+                            />
+                          {:else if control.kind === 'select'}
+                            <select
+                              class="dx-ctl__select"
+                              aria-label={control.name}
+                              value={String(playgroundValues[control.name] ?? control.value)}
+                              onchange={(event) =>
+                                (playgroundValues[control.name] = (
+                                  event.currentTarget as HTMLSelectElement
+                                ).value)}
+                            >
+                              {#each control.options as option (option)}
+                                <option value={option}>{option}</option>
+                              {/each}
+                            </select>
+                          {:else if control.kind === 'number'}
+                            <input
+                              class="dx-ctl__input"
+                              type="number"
+                              aria-label={control.name}
+                              value={Number(playgroundValues[control.name] ?? control.value)}
+                              oninput={(event) =>
+                                (playgroundValues[control.name] = Number(
+                                  (event.currentTarget as HTMLInputElement).value,
+                                ))}
+                            />
+                          {:else}
+                            <input
+                              class="dx-ctl__input"
+                              type="text"
+                              aria-label={control.name}
+                              value={String(playgroundValues[control.name] ?? control.value)}
+                              oninput={(event) =>
+                                (playgroundValues[control.name] = (
+                                  event.currentTarget as HTMLInputElement
+                                ).value)}
+                            />
                           {/if}
                         </div>
-                        {#if control.kind === 'boolean'}
-                          <Toggle
-                            id="pg-{control.name}"
-                            label={control.name}
-                            hideLabel
-                            bind:checked={
-                              () => Boolean(playgroundValues[control.name]),
-                              (next) => (playgroundValues[control.name] = next)
-                            }
-                          />
-                        {:else if control.kind === 'select'}
-                          <select
-                            class="dx-ctl__select"
-                            aria-label={control.name}
-                            value={String(playgroundValues[control.name] ?? control.value)}
-                            onchange={(event) =>
-                              (playgroundValues[control.name] = (
-                                event.currentTarget as HTMLSelectElement
-                              ).value)}
-                          >
-                            {#each control.options as option (option)}
-                              <option value={option}>{option}</option>
-                            {/each}
-                          </select>
-                        {:else if control.kind === 'number'}
-                          <input
-                            class="dx-ctl__input"
-                            type="number"
-                            aria-label={control.name}
-                            value={Number(playgroundValues[control.name] ?? control.value)}
-                            oninput={(event) =>
-                              (playgroundValues[control.name] = Number(
-                                (event.currentTarget as HTMLInputElement).value,
-                              ))}
-                          />
-                        {:else}
-                          <input
-                            class="dx-ctl__input"
-                            type="text"
-                            aria-label={control.name}
-                            value={String(playgroundValues[control.name] ?? control.value)}
-                            oninput={(event) =>
-                              (playgroundValues[control.name] = (
-                                event.currentTarget as HTMLInputElement
-                              ).value)}
-                          />
-                        {/if}
-                      </div>
+                      {/each}
+                    </div>
+                  </div>
+                </section>
+              {/if}
+
+              <!-- -- Examples -- -->
+              {#if examples.length > 0}
+                <section id="examples" class="dx-section">
+                  <div class="dx-section__head">
+                    <span class="dx-section__num">{sectionNumber.get('examples') ?? ''}</span>
+                    <h2 class="dx-section__title">Examples</h2>
+                    <span class="dx-section__rule" aria-hidden="true"></span>
+                  </div>
+                  <div class="dx-examples">
+                    {#each examples as { scenario, title, description } (scenario)}
+                      {@const disclosure = disclosureFor(scenario)}
+                      {@const source = fetchedSource[scenario]}
+                      {@const mountError = mountErrors[`example-mount-${scenario}`]}
+                      {@const sourceError = sourceErrors[scenario]}
+                      {#if disclosure}
+                        <section id="example-card-{scenario}" class="dx-example">
+                          <div class="dx-example__head">
+                            <div>
+                              <h3 class="dx-example__title">{title}</h3>
+                              {#if description !== undefined}
+                                <p class="dx-example__desc">{description}</p>
+                              {/if}
+                            </div>
+                          </div>
+                          <div class="dx-example__body">
+                            <div class="dx-stage">
+                              <div class="dx-stage__canvas">
+                                <div
+                                  class="example-preview"
+                                  id="example-mount-{scenario}"
+                                  {@attach mountScenario(scenario)}
+                                ></div>
+                              </div>
+                            </div>
+
+                            {#if mountError !== undefined}
+                              <Callout variant="danger" title="This example failed to render">
+                                <p class="example-error__message">{mountError.message}</p>
+                                {#if mountError.stack !== undefined}
+                                  <pre
+                                    class="example-error__stack"
+                                    aria-label="Stack trace">{mountError.stack}</pre>
+                                {/if}
+                                <div class="example-error__actions">
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    aria-label="Copy error for {title}"
+                                    onclick={() => copyError(mountError)}
+                                  >
+                                    Copy error
+                                  </Button>
+                                </div>
+                              </Callout>
+                            {/if}
+
+                            <Accordion bind:expandedIds={disclosure.expandedIds}>
+                              <AccordionItem id={`source-${scenario}`} title="Show code">
+                                {#if loadingSource[scenario]}
+                                  <p class="source-loading">Loading…</p>
+                                {:else if source === null}
+                                  <Callout variant="danger" title="Could not load source">
+                                    <dl class="example-error__detail">
+                                      <dt>Requested</dt>
+                                      <dd>
+                                        <code>
+                                          {sourceError?.url ??
+                                            `/example-src/${componentName}/${scenario}`}
+                                        </code>
+                                      </dd>
+                                      <dt>Reason</dt>
+                                      <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
+                                    </dl>
+                                    <div class="example-error__actions">
+                                      <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        aria-label="Retry loading source for {title}"
+                                        onclick={() => fetchSource(scenario)}
+                                      >
+                                        Retry
+                                      </Button>
+                                    </div>
+                                  </Callout>
+                                {:else if source !== undefined}
+                                  <CodeBlock code={source} language="svelte" copyable />
+                                {/if}
+                              </AccordionItem>
+                            </Accordion>
+                          </div>
+                        </section>
+                      {/if}
                     {/each}
                   </div>
-                </div>
-              </section>
-            {/if}
+                </section>
+              {/if}
 
-            <!-- -- Examples -- -->
-            {#if examples.length > 0}
-              <section id="examples" class="dx-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('examples') ?? ''}</span>
-                  <h2 class="dx-section__title">Examples</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                <div class="dx-examples">
-                  {#each examples as { scenario, title, description } (scenario)}
-                    {@const disclosure = disclosureFor(scenario)}
-                    {@const source = fetchedSource[scenario]}
-                    {@const mountError = mountErrors[`example-mount-${scenario}`]}
-                    {@const sourceError = sourceErrors[scenario]}
-                    {#if disclosure}
-                      <section id="example-card-{scenario}" class="dx-example">
-                        <div class="dx-example__head">
-                          <div>
-                            <h3 class="dx-example__title">{title}</h3>
-                            {#if description !== undefined}
-                              <p class="dx-example__desc">{description}</p>
-                            {/if}
-                          </div>
-                        </div>
-                        <div class="dx-example__body">
-                          <div class="dx-stage">
-                            <div class="dx-stage__canvas">
-                              <div
-                                class="example-preview"
-                                id="example-mount-{scenario}"
-                                {@attach mountScenario(scenario)}
-                              ></div>
-                            </div>
-                          </div>
-
-                          {#if mountError !== undefined}
-                            <Callout variant="danger" title="This example failed to render">
-                              <p class="example-error__message">{mountError.message}</p>
-                              {#if mountError.stack !== undefined}
-                                <pre
-                                  class="example-error__stack"
-                                  aria-label="Stack trace">{mountError.stack}</pre>
-                              {/if}
-                              <div class="example-error__actions">
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  aria-label="Copy error for {title}"
-                                  onclick={() => copyError(mountError)}
-                                >
-                                  Copy error
-                                </Button>
-                              </div>
-                            </Callout>
-                          {/if}
-
-                          <Accordion bind:expandedIds={disclosure.expandedIds}>
-                            <AccordionItem id={`source-${scenario}`} title="Show code">
-                              {#if loadingSource[scenario]}
-                                <p class="source-loading">Loading…</p>
-                              {:else if source === null}
-                                <Callout variant="danger" title="Could not load source">
-                                  <dl class="example-error__detail">
-                                    <dt>Requested</dt>
-                                    <dd>
-                                      <code>
-                                        {sourceError?.url ??
-                                          `/example-src/${componentName}/${scenario}`}
-                                      </code>
-                                    </dd>
-                                    <dt>Reason</dt>
-                                    <dd>{sourceError?.detail ?? 'Unknown error'}</dd>
-                                  </dl>
-                                  <div class="example-error__actions">
-                                    <Button
-                                      size="sm"
-                                      variant="secondary"
-                                      aria-label="Retry loading source for {title}"
-                                      onclick={() => fetchSource(scenario)}
-                                    >
-                                      Retry
-                                    </Button>
-                                  </div>
-                                </Callout>
-                              {:else if source !== undefined}
-                                <CodeBlock code={source} language="svelte" copyable />
-                              {/if}
-                            </AccordionItem>
-                          </Accordion>
-                        </div>
-                      </section>
-                    {/if}
-                  {/each}
-                </div>
-              </section>
-            {/if}
-
-            <!-- -- Props -- -->
-            {#if propRows.length > 0}
-              <section id="props" class="dx-section props-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('props') ?? ''}</span>
-                  <h2 class="dx-section__title">Props</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                <!-- tabindex makes the scroll region keyboard-accessible (WCAG 2.1.1). -->
-                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-                <div
-                  class={['props-table-scroll', { 'is-scrollable': propsTableOverflows }]}
-                  role="region"
-                  aria-label="Props for {componentName}"
-                  tabindex="0"
-                  {@attach scrollOverflowSentinel}
-                >
-                  <Table caption={`Props for ${componentName}`} density="condensed">
-                    <Table.Header>
-                      <Table.Row>
-                        <Table.HeaderCell scope="col">Name</Table.HeaderCell>
-                        <Table.HeaderCell scope="col">Type</Table.HeaderCell>
-                        <Table.HeaderCell scope="col">Default</Table.HeaderCell>
-                        <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
-                        <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
-                        <Table.HeaderCell scope="col">Description</Table.HeaderCell>
-                      </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
-                      {#each propRows as prop (prop.name)}
+              <!-- -- Props -- -->
+              {#if propRows.length > 0}
+                <section id="props" class="dx-section props-section">
+                  <div class="dx-section__head">
+                    <span class="dx-section__num">{sectionNumber.get('props') ?? ''}</span>
+                    <h2 class="dx-section__title">Props</h2>
+                    <span class="dx-section__rule" aria-hidden="true"></span>
+                  </div>
+                  <!-- tabindex makes the scroll region keyboard-accessible (WCAG 2.1.1). -->
+                  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+                  <div
+                    class={['props-table-scroll', { 'is-scrollable': propsTableOverflows }]}
+                    role="region"
+                    aria-label="Props for {componentName}"
+                    tabindex="0"
+                    {@attach scrollOverflowSentinel}
+                  >
+                    <Table caption={`Props for ${componentName}`} density="condensed">
+                      <Table.Header>
                         <Table.Row>
-                          <Table.Cell>
-                            <code class="props-name">{prop.name}</code>
-                          </Table.Cell>
-                          <Table.Cell>
-                            {@const typeMembers = splitUnionType(prop.type)}
-                            {#if typeMembers.length === 1 || isShortUnion(typeMembers)}
-                              <code class="props-type">{typeMembers.join(' | ')}</code>
-                            {:else}
-                              <code class="props-type props-type--union">
-                                {#each typeMembers as member, index (index)}
-                                  <span class="props-type__member"
-                                    >{#if index > 0}<span class="props-type__sep" aria-hidden="true"
-                                        >|</span
-                                      >{/if}<span class="props-type__value">{member}</span></span
-                                  >
-                                {/each}
-                              </code>
-                            {/if}
-                          </Table.Cell>
-                          <Table.Cell>
-                            {#if prop.defaultValue !== undefined}
-                              <code class="props-default">{prop.defaultValue}</code>
-                            {:else}
-                              <span class="props-dash" aria-hidden="true">—</span>
-                            {/if}
-                          </Table.Cell>
-                          <Table.Cell align="center">
-                            {#if prop.required}
-                              <span class="dx-prop-flag dx-prop-flag--req">req</span>
-                            {:else}
-                              <span class="props-dash" aria-hidden="true">—</span>
-                            {/if}
-                          </Table.Cell>
-                          <Table.Cell align="center">
-                            {#if prop.bindable}
-                              <span class="dx-prop-flag dx-prop-flag--bind">bind</span>
-                            {:else}
-                              <span class="props-dash" aria-hidden="true">—</span>
-                            {/if}
-                          </Table.Cell>
-                          <Table.Cell>
-                            {#if prop.description !== undefined}
-                              <span class="props-description"
-                                >{@html renderPropDescription(prop.description)}</span
-                              >
-                            {:else}
-                              <span class="props-dash" aria-hidden="true">—</span>
-                            {/if}
-                          </Table.Cell>
+                          <Table.HeaderCell scope="col">Name</Table.HeaderCell>
+                          <Table.HeaderCell scope="col">Type</Table.HeaderCell>
+                          <Table.HeaderCell scope="col">Default</Table.HeaderCell>
+                          <Table.HeaderCell scope="col" align="center">Required</Table.HeaderCell>
+                          <Table.HeaderCell scope="col" align="center">Bindable</Table.HeaderCell>
+                          <Table.HeaderCell scope="col">Description</Table.HeaderCell>
                         </Table.Row>
-                      {/each}
-                    </Table.Body>
-                  </Table>
-                </div>
-              </section>
-            {/if}
-
-            <!-- -- Accessibility -- -->
-            {#if component.a11y !== undefined}
-              {@const a11y = component.a11y}
-              <section id="accessibility" class="dx-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('accessibility') ?? ''}</span>
-                  <h2 class="dx-section__title">Accessibility</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                {#if a11y.pattern !== undefined}
-                  <div class="dx-a11y-alert">
-                    <Alert variant="info">
-                      {#snippet icon()}
-                        <Accessibility size={18} strokeWidth={1.5} aria-hidden="true" />
-                      {/snippet}
-                      Implements the {a11y.pattern} pattern.
-                    </Alert>
+                      </Table.Header>
+                      <Table.Body>
+                        {#each propRows as prop (prop.name)}
+                          <Table.Row>
+                            <Table.Cell>
+                              <code class="props-name">{prop.name}</code>
+                            </Table.Cell>
+                            <Table.Cell>
+                              {@const typeMembers = splitUnionType(prop.type)}
+                              {#if typeMembers.length === 1 || isShortUnion(typeMembers)}
+                                <code class="props-type">{typeMembers.join(' | ')}</code>
+                              {:else}
+                                <code class="props-type props-type--union">
+                                  {#each typeMembers as member, index (index)}
+                                    <span class="props-type__member"
+                                      >{#if index > 0}<span
+                                          class="props-type__sep"
+                                          aria-hidden="true">|</span
+                                        >{/if}<span class="props-type__value">{member}</span></span
+                                    >
+                                  {/each}
+                                </code>
+                              {/if}
+                            </Table.Cell>
+                            <Table.Cell>
+                              {#if prop.defaultValue !== undefined}
+                                <code class="props-default">{prop.defaultValue}</code>
+                              {:else}
+                                <span class="props-dash" aria-hidden="true">—</span>
+                              {/if}
+                            </Table.Cell>
+                            <Table.Cell align="center">
+                              {#if prop.required}
+                                <span class="dx-prop-flag dx-prop-flag--req">req</span>
+                              {:else}
+                                <span class="props-dash" aria-hidden="true">—</span>
+                              {/if}
+                            </Table.Cell>
+                            <Table.Cell align="center">
+                              {#if prop.bindable}
+                                <span class="dx-prop-flag dx-prop-flag--bind">bind</span>
+                              {:else}
+                                <span class="props-dash" aria-hidden="true">—</span>
+                              {/if}
+                            </Table.Cell>
+                            <Table.Cell>
+                              {#if prop.description !== undefined}
+                                <span class="props-description"
+                                  >{@html renderPropDescription(prop.description)}</span
+                                >
+                              {:else}
+                                <span class="props-dash" aria-hidden="true">—</span>
+                              {/if}
+                            </Table.Cell>
+                          </Table.Row>
+                        {/each}
+                      </Table.Body>
+                    </Table>
                   </div>
-                {/if}
-                <div class="dx-a11y">
-                  {#if a11y.keyboard !== undefined && a11y.keyboard.length > 0}
-                    <div class="dx-keys">
-                      {#each a11y.keyboard as shortcut, index (index)}
-                        <div class="dx-keys__row">
-                          <div><Kbd label={shortcut.keys} /></div>
-                          <div class="dx-keys__action">{shortcut.action}</div>
-                        </div>
-                      {/each}
-                    </div>
-                  {/if}
-                  {#if a11y.notes !== undefined && a11y.notes.length > 0}
-                    <div class="dx-notes">
-                      {#each a11y.notes as note, index (index)}
-                        <div class="dx-note">
-                          <ShieldCheck size={15} strokeWidth={1.5} aria-hidden="true" />
-                          <span>{note}</span>
-                        </div>
-                      {/each}
-                    </div>
-                  {/if}
-                </div>
-              </section>
-            {/if}
+                </section>
+              {/if}
 
-            <!-- -- Related -- -->
-            {#if component.related.length > 0}
-              <section id="related" class="dx-section">
-                <div class="dx-section__head">
-                  <span class="dx-section__num">{sectionNumber.get('related') ?? ''}</span>
-                  <h2 class="dx-section__title">Related</h2>
-                  <span class="dx-section__rule" aria-hidden="true"></span>
-                </div>
-                <div class="dx-related">
-                  {#each component.related as related (related)}
-                    <a class="dx-rel" href="/c/{related}" target="_top">
-                      <span class="dx-rel__top">
-                        <span class="dx-rel__name">{related}</span>
-                        <ArrowUpRight
-                          class="dx-rel__arrow"
-                          size={16}
-                          strokeWidth={1.5}
-                          aria-hidden="true"
+              <!-- -- Accessibility -- -->
+              {#if component.a11y !== undefined}
+                {@const a11y = component.a11y}
+                <section id="accessibility" class="dx-section">
+                  <div class="dx-section__head">
+                    <span class="dx-section__num">{sectionNumber.get('accessibility') ?? ''}</span>
+                    <h2 class="dx-section__title">Accessibility</h2>
+                    <span class="dx-section__rule" aria-hidden="true"></span>
+                  </div>
+                  {#if a11y.pattern !== undefined}
+                    <div class="dx-a11y-alert">
+                      <Alert variant="info">
+                        {#snippet icon()}
+                          <Accessibility size={18} strokeWidth={1.5} aria-hidden="true" />
+                        {/snippet}
+                        Implements the {a11y.pattern} pattern.
+                      </Alert>
+                    </div>
+                  {/if}
+                  <div class="dx-a11y">
+                    {#if a11y.keyboard !== undefined && a11y.keyboard.length > 0}
+                      <div class="dx-keys">
+                        {#each a11y.keyboard as shortcut, index (index)}
+                          <div class="dx-keys__row">
+                            <div><Kbd label={shortcut.keys} /></div>
+                            <div class="dx-keys__action">{shortcut.action}</div>
+                          </div>
+                        {/each}
+                      </div>
+                    {/if}
+                    {#if a11y.notes !== undefined && a11y.notes.length > 0}
+                      <div class="dx-notes">
+                        {#each a11y.notes as note, index (index)}
+                          <div class="dx-note">
+                            <ShieldCheck size={15} strokeWidth={1.5} aria-hidden="true" />
+                            <span>{note}</span>
+                          </div>
+                        {/each}
+                      </div>
+                    {/if}
+                  </div>
+                </section>
+              {/if}
+
+              <!-- -- Related -- -->
+              {#if component.related.length > 0}
+                <section id="related" class="dx-section">
+                  <div class="dx-section__head">
+                    <span class="dx-section__num">{sectionNumber.get('related') ?? ''}</span>
+                    <h2 class="dx-section__title">Related</h2>
+                    <span class="dx-section__rule" aria-hidden="true"></span>
+                  </div>
+                  <div class="dx-related">
+                    {#each component.related as related (related)}
+                      <a class="dx-rel" href="/page/{related}" target="_top">
+                        <span class="dx-rel__top">
+                          <span class="dx-rel__name">{related}</span>
+                          <ArrowUpRight
+                            class="dx-rel__arrow"
+                            size={16}
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </a>
+                    {/each}
+                  </div>
+                </section>
+              {/if}
+
+              <!-- -- Raw artifacts (demoted from a primary tab) -- -->
+              <section class="dx-section dx-raw">
+                <Collapsible
+                  trigger="Raw artifacts"
+                  onToggle={(open) => {
+                    if (open) hasOpenedRawArtifacts = true;
+                  }}
+                >
+                  {#if hasOpenedRawArtifacts}
+                    <div class="dx-raw__grid">
+                      <div class="dx-raw__panel">
+                        <h3>Manifest entry</h3>
+                        <CodeBlock
+                          code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
+                          language="json"
+                          copyable
                         />
-                      </span>
-                    </a>
-                  {/each}
-                </div>
+                      </div>
+                      <div class="dx-raw__panel">
+                        <h3>Schema</h3>
+                        <CodeBlock
+                          code={jsonBlock(documentation.rawArtifacts.schema)}
+                          language="json"
+                          copyable
+                        />
+                      </div>
+                      <div class="dx-raw__panel">
+                        <h3>Variables</h3>
+                        <CodeBlock
+                          code={jsonBlock(documentation.rawArtifacts.variables)}
+                          language="json"
+                          copyable
+                        />
+                      </div>
+                      <div class="dx-raw__panel">
+                        <h3>Constraints</h3>
+                        <CodeBlock
+                          code={jsonBlock(documentation.rawArtifacts.constraints)}
+                          language="json"
+                          copyable
+                        />
+                      </div>
+                      <div class="dx-raw__panel">
+                        <h3>Examples</h3>
+                        <CodeBlock
+                          code={jsonBlock(documentation.rawArtifacts.examples)}
+                          language="json"
+                          copyable
+                        />
+                      </div>
+                    </div>
+                  {/if}
+                </Collapsible>
               </section>
-            {/if}
-
-            <!-- -- Raw artifacts (demoted from a primary tab) -- -->
-            <section class="dx-section dx-raw">
-              <Collapsible
-                trigger="Raw artifacts"
-                onToggle={(open) => {
-                  if (open) hasOpenedRawArtifacts = true;
-                }}
-              >
-                {#if hasOpenedRawArtifacts}
-                  <div class="dx-raw__grid">
-                    <div class="dx-raw__panel">
-                      <h3>Manifest entry</h3>
-                      <CodeBlock
-                        code={jsonBlock(documentation.rawArtifacts.manifestEntry)}
-                        language="json"
-                        copyable
-                      />
-                    </div>
-                    <div class="dx-raw__panel">
-                      <h3>Schema</h3>
-                      <CodeBlock
-                        code={jsonBlock(documentation.rawArtifacts.schema)}
-                        language="json"
-                        copyable
-                      />
-                    </div>
-                    <div class="dx-raw__panel">
-                      <h3>Variables</h3>
-                      <CodeBlock
-                        code={jsonBlock(documentation.rawArtifacts.variables)}
-                        language="json"
-                        copyable
-                      />
-                    </div>
-                    <div class="dx-raw__panel">
-                      <h3>Constraints</h3>
-                      <CodeBlock
-                        code={jsonBlock(documentation.rawArtifacts.constraints)}
-                        language="json"
-                        copyable
-                      />
-                    </div>
-                    <div class="dx-raw__panel">
-                      <h3>Examples</h3>
-                      <CodeBlock
-                        code={jsonBlock(documentation.rawArtifacts.examples)}
-                        language="json"
-                        copyable
-                      />
-                    </div>
-                  </div>
-                {/if}
-              </Collapsible>
-            </section>
-          </main>
+            </main>
+          </div>
         </div>
-      </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 {/if}
 
@@ -1438,6 +1489,103 @@
     min-height: 100vh;
     border: 1px solid var(--cinder-border);
     background: light-dark(oklch(100% 0 0), var(--cinder-bg));
+  }
+
+  /*
+   * Component navigation. A plain list of links, deliberately built from bare
+   * elements rather than the shell's Sidebar component: this page ships a
+   * per-component bundle, and pulling cinder's navigation components in dragged
+   * a second Svelte runtime (and the whole component barrel) along with them.
+   * Links need neither.
+   */
+  /* Single root for the documentation branch; see the template comment. */
+  .dx-shell {
+    display: contents;
+  }
+
+  .dx-nav {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 20;
+    width: 220px;
+    overflow-y: auto;
+    padding: var(--cinder-space-4) 0;
+    border-inline-end: 1px solid var(--cinder-border);
+    background: var(--cinder-surface-raised);
+  }
+
+  .dx-nav__brand {
+    display: block;
+    padding: var(--cinder-space-2) var(--cinder-space-5) var(--cinder-space-4);
+    color: var(--cinder-text);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    font-weight: var(--cinder-font-semibold);
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .dx-nav__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .dx-nav__link {
+    display: block;
+    padding: var(--cinder-space-2) var(--cinder-space-5);
+    border-inline-start: 2px solid transparent;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    text-decoration: none;
+  }
+
+  @media (hover: hover) {
+    .dx-nav__link:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
+  }
+
+  .dx-nav__link[aria-current='page'] {
+    border-inline-start-color: var(--cinder-accent);
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .dx-nav__link:focus-visible {
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: -2px;
+  }
+
+  /*
+   * The nav is fixed at the inline start with a 220px width, so the
+   * documentation column reclaims that space.
+   */
+  .dx--with-sidebar {
+    margin-inline-start: 220px;
+  }
+
+  /* Below the sidebar's breakpoint it becomes an off-canvas drawer, so the
+     documentation column takes the full width again. Mirrors the 720px
+     breakpoint in sidebar.svelte. */
+  /* Narrow viewports: the nav becomes a normal block above the content rather
+     than a fixed column, so the documentation gets the full width. */
+  @media (max-width: 720px) {
+    .dx-nav {
+      position: static;
+      width: auto;
+      max-height: 40vh;
+      border-inline-end: 0;
+      border-block-end: 1px solid var(--cinder-border);
+    }
+
+    .dx--with-sidebar {
+      margin-inline-start: 0;
+    }
   }
 
   .dx__inner {

@@ -217,7 +217,7 @@ describe('component-page single-scroll layout', () => {
     // The avoidWhen alternative links to that component's page. The link text is
     // the humanized id ("Segmented control"); the href keeps the kebab id.
     const altLink = screen.getByRole('link', { name: /Segmented control/ });
-    expect(altLink.getAttribute('href')).toBe('/c/segmented-control');
+    expect(altLink.getAttribute('href')).toBe('/page/segmented-control');
 
     unmount();
     await tick();

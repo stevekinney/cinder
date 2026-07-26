@@ -18,7 +18,7 @@
     VisuallyHidden,
   } from '../../../components/src/index.ts';
   import { humanizeComponentName } from './humanize.ts';
-  import { buildShellHref, parseComponentFromPath } from './routing.ts';
+  import { buildComponentHref, parseComponentFromPath } from './routing.ts';
   import { persistScrollPosition } from './sidebar-scroll.ts';
   import { COMPOUND_COMPONENT_FAMILIES, COMPOUND_COMPONENT_PARENTS } from './compound-families.ts';
 
@@ -282,7 +282,7 @@
       {#if familyParent(name) === undefined}
         {#if matchesCurrentFilter(name) && (COMPOUND_COMPONENT_FAMILIES[name] ?? []).length === 0}
           <SideNavigationItem
-            href={buildShellHref(name)}
+            href={buildComponentHref(name)}
             active={name === currentComponent}
             onclick={(event) => handleClick(event, name)}
           >
@@ -294,7 +294,7 @@
             bind:expanded={expandedFamilies[name]!}
           >
             <SideNavigationItem
-              href={buildShellHref(name)}
+              href={buildComponentHref(name)}
               active={name === currentComponent}
               onclick={(event) => handleClick(event, name)}
             >
@@ -303,7 +303,7 @@
             {#each COMPOUND_COMPONENT_FAMILIES[name] ?? [] as child (child)}
               {#if filter.trim() === '' || matchesCurrentFilter(name) || matchesCurrentFilter(child)}
                 <SideNavigationItem
-                  href={buildShellHref(child)}
+                  href={buildComponentHref(child)}
                   active={child === currentComponent}
                 >
                   {humanizeComponentName(child)}

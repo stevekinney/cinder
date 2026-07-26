@@ -5,10 +5,8 @@
   import Announcer from './announcer.svelte';
   import { Announcer as AnnouncerStore, setAnnouncer } from './announcer.svelte.ts';
   import { createEventSource } from './event-source.svelte.ts';
-  import type { ComponentDocumentationPayload } from '../component-documentation-types.ts';
-  import ComponentDocumentation from './component-documentation.svelte';
   import { applyThemeToDocument, PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
-  import { buildShellHref, readToolbarStateFromSearch } from './routing.ts';
+  import { buildComponentHref, readToolbarStateFromSearch } from './routing.ts';
   import ColorTokenPanel from './color-token-panel.svelte';
   import LandingPage from './landing-page.svelte';
   import Sidebar, { type SidebarHandle } from './sidebar.svelte';
@@ -18,18 +16,13 @@
     initialComponent: string;
     components: string[];
     readmeHtml: string;
-    documentation: ComponentDocumentationPayload | null;
     initialSearch: string;
   };
 
-  let { initialComponent, components, readmeHtml, documentation, initialSearch }: Props = $props();
+  let { initialComponent, components, readmeHtml, initialSearch }: Props = $props();
 
   // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
   let sidebar = $state<SidebarHandle | null>(null);
-
-  // Bound to the PreviewFrame so live-reload events reload through it (re-arming
-  // the loading overlay) instead of poking the raw iframe.
-  let componentDocumentation = $state<ComponentDocumentation | null>(null);
 
   // Seed the hydration tree exclusively from shareable, server-known URL state.
   const initialSearchValue = untrack(() => initialSearch);
@@ -144,7 +137,7 @@
     store.isSidebarOpen = false;
     if (name === store.currentComponent) return;
     const { search, hash } = window.location;
-    window.location.assign(`${buildShellHref(name)}${search}${hash}`);
+    window.location.assign(`${buildComponentHref(name)}${search}${hash}`);
   }
 
   /**
@@ -229,10 +222,9 @@
   const streamUrl = typeof window === 'undefined' ? null : '/events';
 
   function handleReloadEvent(): void {
-    // Reload through the PreviewFrame handle (not the raw iframe) so the loading
-    // overlay re-arms during hot reload — a direct contentWindow.reload() keeps
-    // the same src, so the overlay would otherwise never show.
-    componentDocumentation?.reloadPreview();
+    // The shell now only renders the landing page; component documentation is
+    // its own route. A content edit therefore means a full reload.
+    window.location.reload();
   }
 
   function handleShellReloadEvent(): void {
@@ -296,12 +288,6 @@
         {readmeHtml}
         firstComponent={components[0] ?? ''}
         onBrowseComponent={selectComponent}
-      />
-    {:else if documentation !== null}
-      <ComponentDocumentation
-        bind:this={componentDocumentation}
-        componentName={store.currentComponent}
-        {documentation}
       />
     {/if}
   </main>

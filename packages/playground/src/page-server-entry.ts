@@ -29,6 +29,8 @@ export type ComponentPageServerProps = {
   componentName: string;
   documentation: ComponentDocumentationPayload;
   examples: ComponentPageExample[];
+  /** Sidebar navigation entries, rendered inside the page's own tree. */
+  sidebarComponents: string[];
 };
 
 export type RenderedComponentPage = {
@@ -52,6 +54,7 @@ export function renderComponentPageBody(props: ComponentPageServerProps): Render
       documentation: props.documentation,
       documentationError: null,
       examples: props.examples,
+      sidebarComponents: props.sidebarComponents,
       snapshotMode: false,
     },
   });
