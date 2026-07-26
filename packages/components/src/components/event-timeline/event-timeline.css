@@ -229,7 +229,7 @@
     background: var(--cinder-surface);
     box-shadow: var(--cinder-shadow-md);
     text-align: start;
-    max-block-size: min(24rem, calc(100vh - 4rem));
+    max-block-size: min(24rem, calc(100% - 4rem), calc(100vh - 4rem));
     overflow: auto;
   }
 

@@ -88,13 +88,26 @@
   let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterSurface = $state<HTMLDivElement | null>(null);
+  function portalOwner(): HTMLElement | null {
+    const trigger = clusterTrigger;
+    if (!trigger) return null;
+    try {
+      return (
+        trigger.closest<HTMLElement>('dialog:modal') ??
+        (CSS.supports('selector(:popover-open)')
+          ? trigger.closest<HTMLElement>('[popover]:popover-open')
+          : null)
+      );
+    } catch {
+      return null;
+    }
+  }
   const clusterPortalAttachment = createPortalAttachment({
     // Anchored overlay coordinates are viewport-relative (fixed strategy). Keep the
     // surface in the document top layer so transformed dialog containers cannot
     // become a competing fixed-position containing block.
     target: () => {
-      const owner = clusterTrigger?.closest<HTMLElement>('dialog[open], [popover]:popover-open');
-      return owner ?? document.body;
+      return portalOwner() ?? document.body;
     },
     inheritAttributes: true,
     source: () => clusterTrigger,
@@ -108,8 +121,10 @@
     offset: () => 8,
     shiftPadding: () => 8,
     strategy: () => {
-      const owner = clusterTrigger?.closest<HTMLElement>('dialog[open], [popover]:popover-open');
-      return owner && getComputedStyle(owner).transform !== 'none' ? 'absolute' : 'fixed';
+      const owner = portalOwner();
+      if (!owner) return 'fixed';
+      const style = getComputedStyle(owner);
+      return style.transform !== 'none' || style.translate !== 'none' ? 'absolute' : 'fixed';
     },
   });
 
