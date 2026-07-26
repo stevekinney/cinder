@@ -722,6 +722,58 @@ describe('SelectionPopover', () => {
     },
   );
 
+  test('an external visual-viewport keyboard close dismisses a collapsed popover', async () => {
+    let closed = false;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+    const visualViewport = new EventTarget() as EventTarget & {
+      height: number;
+      scale: number;
+    };
+    visualViewport.height = window.innerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewport,
+    });
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      textarea.focus();
+      visualViewport.height = window.innerHeight - 300;
+      visualViewport.dispatchEvent(new Event('resize'));
+      expect(closed).toBe(false);
+
+      await fireEvent.keyDown(textarea, { key: 'Escape' });
+      externalInput.focus();
+      visualViewport.height = window.innerHeight;
+      visualViewport.dispatchEvent(new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      cleanup();
+      externalInput.remove();
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    }
+  });
+
   test('a desktop height-only resize dismisses while the composer is focused', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;

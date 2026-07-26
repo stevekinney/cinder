@@ -310,6 +310,7 @@
     const dismissVisualViewport = (event: Event) => {
       const composerHasFocus =
         document.activeElement instanceof Node && popoverElement?.contains(document.activeElement);
+      const composerOwnedKeyboard = expanded || commentBody.trim().length > 0;
       const virtualKeyboardTransition =
         visualViewport?.scale === 1
           ? readVirtualKeyboardTransition('visual-viewport')
@@ -325,7 +326,7 @@
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
         virtualKeyboardTransition.active &&
-        (composerHasFocus || !virtualKeyboardTransition.isVisible)
+        (composerHasFocus || (!virtualKeyboardTransition.isVisible && composerOwnedKeyboard))
       ) {
         return;
       }
