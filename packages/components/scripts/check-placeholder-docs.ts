@@ -219,7 +219,7 @@ export function findPlaceholderViolations(content: string, filePath: string): Vi
           line
             .split('|')
             .slice(1, -1)
-            .some((cell) => cell.trim() !== ''),
+            .every((cell) => cell.trim() !== ''),
       );
       if (
         start === -1 ||

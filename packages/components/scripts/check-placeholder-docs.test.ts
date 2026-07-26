@@ -48,6 +48,13 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.some(({ phrase }) => phrase === '_Pending')).toBe(true);
   });
+  it('rejects keyboard rows with missing expected behavior cells', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — reason\n### Focus management\nDocumented\n### Keyboard matrix\n| Key | Action |\n| --- | --- |\n| Tab | |\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
+  });
   it('parses bulleted applicability and scopes accessibility placeholders to its section', () => {
     const appliesNo = findPlaceholderViolations(
       '## Design review (required)\n- Reviewer: _Pending\n- Review outcome: done\n- Nearest neighbours: known\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static component\n- Reviewer: _Pending when this review applies.\n- Focus: _Record',
