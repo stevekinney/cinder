@@ -62,6 +62,13 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
   });
+  it('does not treat the generated keyboard header as behavior', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — reason\n### Focus management\nDocumented\n### Keyboard matrix\n| Key or gesture | Context | Expected behavior |\n| --- | --- | --- |\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
+  });
   it('rejects an empty accessibility record', () => {
     expect(findPlaceholderViolations('', 'component.a11y.md')).toEqual([
       expect.objectContaining({ phrase: 'accessibility record' }),
