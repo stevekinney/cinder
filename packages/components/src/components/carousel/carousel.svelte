@@ -189,7 +189,9 @@
   }
 
   const observeViewport = useResizeObserver((entries) => {
-    if (entries[0]?.contentRect.width) scrollToActiveSlide('auto');
+    if (entries[0]?.contentRect.width && !isInteracting && !isNativeScrolling) {
+      scrollToActiveSlide('auto');
+    }
   });
 
   function removePointerEndListeners(): void {

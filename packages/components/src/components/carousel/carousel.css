@@ -32,6 +32,13 @@
     padding: var(--cinder-space-4);
   }
 
+  .cinder-carousel__slide[inert] {
+    block-size: 0;
+    min-block-size: 0;
+    padding-block: 0;
+    overflow: hidden;
+  }
+
   .cinder-carousel__link {
     display: grid;
     gap: var(--cinder-space-3);
