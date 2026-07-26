@@ -28,7 +28,7 @@
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     createInheritedPortalStyle,
-    findNearestOpenPopover,
+    findNearestOpenTopLayer,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -115,7 +115,7 @@
   function getPortalTarget(): HTMLElement | null {
     const trigger = getTriggerElement();
     if (!trigger) return null;
-    return trigger.closest<HTMLElement>('dialog[open]') ?? findNearestOpenPopover(trigger) ?? null;
+    return findNearestOpenTopLayer(trigger);
   }
 
   function normalizePlacementDirection(value: string): SpeedDialDirection {

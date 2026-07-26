@@ -54,6 +54,15 @@ describe('cinder/z-index-scale', () => {
     expect(result[0]?.text).toContain('must not have a fallback');
   });
 
+  test('rejects an undeclared token even with a local reason', async () => {
+    const result = warnings(
+      await lint(
+        '.fixture { /* cinder-z-index-local: local layer. */ z-index: var(--cinder-z-popvoer); }',
+      ),
+    );
+    expect(result).toHaveLength(1);
+  });
+
   test.each(['2', '4', '9999', '-1', 'calc(1 + 1)', 'var(--other-layer)'])(
     'rejects an unclassified raw layer: %s',
     async (value) => {

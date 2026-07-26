@@ -9,7 +9,7 @@ setupHappyDom();
 
 const { render, cleanup } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
-const { copyInheritedPortalAttributes, getInheritedPortalStyle } =
+const { copyInheritedPortalAttributes, findNearestOpenTopLayer, getInheritedPortalStyle } =
   await import('./portal.utilities.svelte.ts');
 
 const childSnippet = createRawSnippet(() => ({
@@ -31,6 +31,19 @@ afterEach(() => {
 });
 
 describe('Portal', () => {
+  test('finds the innermost open dialog as the top-layer portal target', () => {
+    const outerDialog = document.createElement('dialog');
+    outerDialog.setAttribute('open', '');
+    const innerDialog = document.createElement('dialog');
+    innerDialog.setAttribute('open', '');
+    const source = document.createElement('button');
+    outerDialog.append(innerDialog);
+    innerDialog.append(source);
+    document.body.append(outerDialog);
+
+    expect(findNearestOpenTopLayer(source)).toBe(innerDialog);
+  });
+
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {
     const source = document.createElement('div');
     source.style.setProperty('--cinder-surface', 'hotpink');
@@ -41,6 +54,16 @@ describe('Portal', () => {
 
     expect(inheritedStyle).toContain('--cinder-surface: hotpink');
     expect(inheritedStyle).toContain('color-scheme: dark');
+  });
+
+  test('takes typography from the source parent context', () => {
+    const parent = document.createElement('div');
+    parent.style.fontWeight = '400';
+    const source = document.createElement('button');
+    source.style.fontWeight = '700';
+    parent.append(source);
+    document.body.append(parent);
+    expect(getInheritedPortalStyle(source)).toContain('font-weight: 400');
   });
 
   test('serializes an explicit normal color scheme for a portaled surface', () => {

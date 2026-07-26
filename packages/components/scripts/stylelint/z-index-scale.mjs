@@ -81,6 +81,8 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       if (allowedLocalValues.has(value)) return;
       if (tokenMatch) {
         if (declaredLayerTokens.has(tokenMatch[1])) return;
+        stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
+        return;
       }
 
       if (layerTokenReferencePattern.test(value)) {

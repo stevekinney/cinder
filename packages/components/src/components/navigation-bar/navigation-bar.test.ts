@@ -651,7 +651,7 @@ describe('NavigationBar', () => {
       const itemsRegion = getItemsRegion(container);
 
       expect(nav.contains(itemsRegion)).toBe(false);
-      expect(itemsRegion.parentElement).toBe(document.body);
+      expect(itemsRegion.parentElement?.parentElement).toBe(document.body);
       expect(itemsRegion.getAttribute('data-cinder-mobile-panel')).toBe('true');
     });
   });
@@ -742,7 +742,7 @@ describe('NavigationBar', () => {
       await openCollapsedMobileMenu(container);
       const itemsRegion = await waitForMobilePanelPosition(container);
 
-      expect(itemsRegion.parentElement).toBe(dialog);
+      expect(itemsRegion.parentElement?.parentElement).toBe(dialog);
     });
   });
 
@@ -756,9 +756,10 @@ describe('NavigationBar', () => {
 
       await openCollapsedMobileMenu(container);
       const itemsRegion = await waitForMobilePanelPosition(container);
+      const portalScope = itemsRegion.parentElement as HTMLElement;
 
-      expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
-      expect(itemsRegion.style.colorScheme).toBe('dark');
+      expect(portalScope.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
+      expect(portalScope.style.colorScheme).toBe('dark');
       expect(itemsRegion.style.position).toBe('fixed');
 
       const navigationBar = container.querySelector('nav') as HTMLElement;
@@ -766,8 +767,8 @@ describe('NavigationBar', () => {
       navigationBar.style.colorScheme = 'light';
 
       await waitFor(() => {
-        expect(itemsRegion.style.getPropertyValue('--cinder-surface')).toBe('rebeccapurple');
-        expect(itemsRegion.style.colorScheme).toBe('light');
+        expect(portalScope.style.getPropertyValue('--cinder-surface')).toBe('rebeccapurple');
+        expect(portalScope.style.colorScheme).toBe('light');
       });
     });
   });

@@ -87,10 +87,25 @@ export function findNearestOpenPopover(source: HTMLElement): HTMLElement | null 
   return null;
 }
 
+export function findNearestOpenTopLayer(source: HTMLElement): HTMLElement | null {
+  let candidate: HTMLElement | null = source;
+  while (candidate) {
+    if (
+      candidate.matches('dialog[open]') ||
+      (candidate.matches('[popover]') && candidate.matches(':popover-open'))
+    )
+      return candidate;
+    candidate = candidate.parentElement;
+  }
+  return null;
+}
+
 export function getInheritedPortalStyle(source: HTMLElement | null | undefined): string {
   if (!source || typeof window === 'undefined') return '';
 
   const computed = getComputedStyle(source);
+  const typographySource = source.parentElement ?? source;
+  const typography = getComputedStyle(typographySource);
   const inherited = document.createElement('div').style;
   for (let index = 0; index < computed.length; index += 1) {
     const property = computed.item(index);
@@ -110,7 +125,7 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
     'line-height',
     'letter-spacing',
   ]) {
-    const value = computed.getPropertyValue(property);
+    const value = typography.getPropertyValue(property);
     if (value) inherited.setProperty(property, value);
   }
   for (const property of Array.from(source.style)) {

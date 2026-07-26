@@ -32,7 +32,7 @@
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     createInheritedPortalStyle,
-    findNearestOpenPopover,
+    findNearestOpenTopLayer,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -86,13 +86,13 @@
   let toggleElement: HTMLElement | null = null;
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
-  const itemsPortal = createPortalAttachment({
+  const itemsPortalScope = createPortalAttachment({
     disabled: () => !isMobileLayout || !mobileMenuOpen || sourceSubtreeUnavailable,
     source: () => navigationBarElement,
     target: () => {
       const source = navigationBarElement;
       if (!source) return null;
-      return source.closest<HTMLElement>('dialog[open]') ?? findNearestOpenPopover(source) ?? null;
+      return findNearestOpenTopLayer(source);
     },
   });
   const anchoredItems = createAnchoredOverlay({
@@ -473,21 +473,26 @@
   {/if}
 
   <div
-    bind:this={itemsRegionElement}
-    {@attach itemsPortal}
-    id={regionId}
-    role={isMobileLayout ? 'region' : undefined}
-    class="cinder-navigation-bar__items"
-    data-open={mobileMenuOpen ? 'true' : 'false'}
-    data-cinder-mobile-panel={isMobileLayout || undefined}
-    aria-label={isMobileLayout ? label : undefined}
-    data-cinder-position-ready={anchoredItems.positionReady || undefined}
-    style={`${anchoredItems.positionStyle};${inheritedPortalStyle.style}`}
-    inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
-    onclick={isMobileLayout ? bridgePortaledEvent : undefined}
-    onkeydown={isMobileLayout ? bridgePortaledEvent : undefined}
+    {@attach itemsPortalScope}
+    class="cinder-navigation-bar__portal-scope"
+    style={`display: ${isMobileLayout && mobileMenuOpen ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
   >
-    {@render items({ variant, placement, labelsVisible })}
+    <div
+      bind:this={itemsRegionElement}
+      id={regionId}
+      role={isMobileLayout ? 'region' : undefined}
+      class="cinder-navigation-bar__items"
+      data-open={mobileMenuOpen ? 'true' : 'false'}
+      data-cinder-mobile-panel={isMobileLayout || undefined}
+      aria-label={isMobileLayout ? label : undefined}
+      data-cinder-position-ready={anchoredItems.positionReady || undefined}
+      style={anchoredItems.positionStyle}
+      inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
+      onclick={isMobileLayout ? bridgePortaledEvent : undefined}
+      onkeydown={isMobileLayout ? bridgePortaledEvent : undefined}
+    >
+      {@render items({ variant, placement, labelsVisible })}
+    </div>
   </div>
 
   {#if actions}
