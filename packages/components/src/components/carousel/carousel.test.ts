@@ -237,6 +237,29 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 1 });
   });
 
+  test('keeps alignment guarded when a native gesture is cancelled', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    await fireEvent.pointerDown(viewport, { pointerId: 31 });
+    await fireEvent.pointerCancel(window, { pointerId: 31 });
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
+
   test('treats a one-pixel viewport border as aligned', async () => {
     const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
@@ -334,6 +357,31 @@ describe('Carousel', () => {
 
     expectActiveSlide(container, 1);
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+
+  test('preserves a parent active-index update during native scrolling', async () => {
+    const { container, rerender } = render(Carousel, { slides, activeIndex: 0 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 1 ? 0 : 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+
+    await fireEvent.pointerDown(viewport, { pointerId: 32 });
+    await rerender({ slides, activeIndex: 2 });
+    await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
+
+    expectActiveSlide(container, 2);
+    await fireEvent.pointerUp(window, { pointerId: 32 });
   });
 
   test('waits for native scrolling to settle before realigning', async () => {

@@ -72,6 +72,9 @@
     if (clampedLength < 1) return 0;
     return Math.max(0, Math.min(clampedLength - 1, activeIndex));
   });
+  let deferredExternalIndex: number | null = null;
+  let observedActiveIndex = currentIndex;
+  let internalActiveIndexUpdate: number | null = null;
   const slideIdentity = $derived(slides.map((slide) => slide.id).join('\u0000'));
 
   $effect(() => {
@@ -213,6 +216,7 @@
     if (Math.abs(slideRect.left - viewportRect.left) <= 1) {
       programmaticTarget = null;
       settledIndex = currentIndex;
+      deferredExternalIndex = null;
       isAutoplayTransitioning = false;
       return;
     }
@@ -270,6 +274,7 @@
   }
 
   function finishPointerInteraction(event: PointerEvent): void {
+    if (event.type === 'pointercancel') scheduleNativeScrollEnd();
     activePointerIds.delete(event.pointerId);
     if (activePointerIds.size > 0) return;
     isInteracting = false;
@@ -323,6 +328,8 @@
         return;
       }
       if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
+        if (deferredExternalIndex !== null) return;
+        internalActiveIndexUpdate = nextIndex;
         activeIndex = nextIndex;
       }
     });
@@ -333,6 +340,17 @@
     if (isInteracting || isNativeScrolling) return;
     slideIdentity;
     scrollToActiveSlide();
+  });
+
+  $effect(() => {
+    const index = currentIndex;
+    if (index === observedActiveIndex) return;
+    const isInternalUpdate = internalActiveIndexUpdate === index;
+    internalActiveIndexUpdate = null;
+    observedActiveIndex = index;
+    if (!isInternalUpdate && (isInteracting || isNativeScrolling)) {
+      deferredExternalIndex = index;
+    }
   });
 
   $effect(() => {
