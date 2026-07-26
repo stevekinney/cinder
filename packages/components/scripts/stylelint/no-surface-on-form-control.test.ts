@@ -49,6 +49,13 @@ describe(ruleName, () => {
         ),
       ),
     ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          ':root { --control-bg: var(--missing, var(--cinder-surface)); } .cinder-input { background: linear-gradient(red, var(--control-bg)); }',
+        ),
+      ),
+    ).toHaveLength(1);
   });
 
   test('checks the shared input frame recipe in the component styles directory', async () => {

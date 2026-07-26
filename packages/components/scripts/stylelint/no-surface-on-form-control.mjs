@@ -6,12 +6,36 @@ const messages = stylelint.utils.ruleMessages(ruleName, {
   surface: () =>
     'Form controls must use `--cinder-surface-raised`, not `--cinder-surface`, for their background.',
 });
-function resolveValue(value, variables, seen = new Set()) {
-  return value.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^()]+))?\)/g, (_match, name, fallback) => {
-    if (seen.has(name)) return fallback?.trim() ?? '';
-    if (!variables.has(name) && !fallback) return `var(${name})`;
-    const next = variables.get(name) ?? fallback?.trim() ?? `var(${name})`;
-    return next ? resolveValue(next, variables, new Set([...seen, name])) : '';
+function variableFunctions(value) {
+  const functions = [];
+  for (let index = 0; index < value.length; index += 1) {
+    if (!value.startsWith('var(', index)) continue;
+    let depth = 1;
+    let end = index + 4;
+    for (; end < value.length && depth > 0; end += 1) {
+      if (value[end] === '(') depth += 1;
+      if (value[end] === ')') depth -= 1;
+    }
+    if (depth !== 0) continue;
+    const body = value.slice(index + 4, end - 1);
+    const comma = body.indexOf(',');
+    functions.push({
+      name: (comma < 0 ? body : body.slice(0, comma)).trim(),
+      fallback: comma < 0 ? '' : body.slice(comma + 1).trim(),
+    });
+    index = end - 1;
+  }
+  return functions;
+}
+
+function resolvesToSurface(value, variables, seen = new Set()) {
+  if (value.includes('var(--cinder-surface)')) return true;
+  return variableFunctions(value).some(({ name, fallback }) => {
+    if (seen.has(name)) return false;
+    const replacement = variables.get(name) ?? fallback;
+    return (
+      replacement !== '' && resolvesToSurface(replacement, variables, new Set([...seen, name]))
+    );
   });
 }
 
@@ -44,7 +68,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
       if (decl.prop !== 'background' && decl.prop !== 'background-color') return;
       if (
         decl.value.trim() === 'var(--cinder-surface)' ||
-        resolveValue(decl.value.trim(), variables) === 'var(--cinder-surface)'
+        resolvesToSurface(decl.value.trim(), variables)
       ) {
         stylelint.utils.report({ ruleName, result, node: decl, message: messages.surface() });
       }

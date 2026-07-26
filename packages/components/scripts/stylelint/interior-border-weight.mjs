@@ -44,6 +44,16 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
     }
     return false;
   };
+  const resolvesToBorder = (value, token, seen = new Set()) => {
+    if (value.includes(`var(${token})`)) return true;
+    return [...value.matchAll(/var\(\s*(--[\w-]+)/g)].some(([, name]) => {
+      if (seen.has(name)) return false;
+      const replacement = customProperties.get(name);
+      return (
+        replacement !== undefined && resolvesToBorder(replacement, token, new Set([...seen, name]))
+      );
+    });
+  };
   root.walkRules((rule) => {
     rule.walkDecls((decl) => {
       if (
@@ -66,7 +76,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => (root, result) => {
       }
       if (!/^border(?:-(?:block|inline)-(?:start|end)|-(?:top|bottom))?$/.test(decl.prop)) return;
       if (!isInteriorDivider(rule.selector, decl.prop)) return;
-      if (decl.value.includes('var(--cinder-border)')) {
+      if (resolvesToBorder(decl.value, '--cinder-border')) {
         stylelint.utils.report({ ruleName, result, node: decl, message: messages.border() });
       }
     });

@@ -101,4 +101,14 @@ describe(ruleName, () => {
       ),
     ).toHaveLength(1);
   });
+
+  test('resolves border aliases before checking interior dividers', async () => {
+    expect(
+      warnings(
+        await lint(
+          ':root { --full-divider: var(--cinder-border); } .cinder-card__header { border-block-end: 1px solid var(--full-divider); }',
+        ),
+      ),
+    ).toHaveLength(1);
+  });
 });
