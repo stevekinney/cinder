@@ -1318,7 +1318,7 @@ async function loadPageServerRenderer(): Promise<PageServerRenderer> {
         throw new Error(`Page server bundle failed:\n${result.logs.join('\n')}`);
       }
 
-      const serverBundleDirectory = join(PLAYGROUND_ROOT, 'src', `.tmp-${randomUUID()}`);
+      const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
       const serverBundlePath = join(serverBundleDirectory, 'page-server.js');
       let loaded: unknown;
       try {

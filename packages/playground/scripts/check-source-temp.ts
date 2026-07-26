@@ -2,6 +2,12 @@ import { readdir } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { PLAYGROUND_TEMP_ROOT } from '../src/playground-paths.ts';
 
+const serverSource = await Bun.file(join(import.meta.dir, '..', 'src', 'playground-server.ts')).text();
+if (serverSource.includes("join(PLAYGROUND_ROOT, 'src', `.tmp-")) {
+  console.error('Page server renderer must write temporary bundles under PLAYGROUND_TEMP_ROOT.');
+  process.exit(1);
+}
+
 const sourceDirectory = join(import.meta.dir, '..', 'src');
 const tempRootRelativeToSource = relative(sourceDirectory, PLAYGROUND_TEMP_ROOT);
 if (
