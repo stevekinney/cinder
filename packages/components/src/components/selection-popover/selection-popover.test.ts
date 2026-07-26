@@ -485,6 +485,53 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('a layout-keyboard height resize preserves the draft without the virtual keyboard API', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Layout keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Layout keyboard draft');
+
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+    }
+  });
+
   test('a closing window keyboard resize preserves a draft after blur', async () => {
     let closed = false;
     const originalInnerHeight = window.innerHeight;

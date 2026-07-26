@@ -201,6 +201,7 @@
     };
     const virtualKeyboardTransitionFrames: Partial<Record<'window' | 'visual-viewport', number>> =
       {};
+    let layoutKeyboardVisible = false;
     const readVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
       const isVisible = isVirtualKeyboardResize(source);
       if (isVisible) {
@@ -231,15 +232,28 @@
       if (event.type === 'resize') {
         const viewportWidthChanged = window.innerWidth !== viewportWidth;
         const viewportHeightChanged = window.innerHeight !== viewportHeight;
+        const previousViewportHeight = viewportHeight;
         viewportWidth = window.innerWidth;
         viewportHeight = window.innerHeight;
         const composerHasFocus =
           document.activeElement instanceof Node &&
           popoverElement?.contains(document.activeElement);
         const virtualKeyboardTransition = readVirtualKeyboardTransition('window');
+        const layoutKeyboardResize =
+          composerHasFocus && viewportHeightChanged && window.innerHeight < previousViewportHeight;
+        if (layoutKeyboardResize) layoutKeyboardVisible = true;
+        const closingLayoutKeyboard =
+          composerHasFocus &&
+          viewportHeightChanged &&
+          window.innerHeight > previousViewportHeight &&
+          layoutKeyboardVisible;
+        if (closingLayoutKeyboard) layoutKeyboardVisible = false;
         if (
           !viewportWidthChanged &&
-          (!viewportHeightChanged || virtualKeyboardTransition.active) &&
+          (!viewportHeightChanged ||
+            virtualKeyboardTransition.active ||
+            layoutKeyboardResize ||
+            closingLayoutKeyboard) &&
           (composerHasFocus ||
             (virtualKeyboardTransition.active && !virtualKeyboardTransition.isVisible))
         ) {
