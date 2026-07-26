@@ -290,6 +290,7 @@ describe('startup warmup stability', () => {
   it('rejects a warmup when source changes before watcher validation', () => {
     expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
     expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
+    expect(isWarmupStable(4, 4, 100, 100, true)).toBe(false);
     expect(isWarmupStable(4, 4, 100, 100)).toBe(true);
   });
 });

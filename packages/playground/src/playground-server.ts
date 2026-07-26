@@ -2510,8 +2510,13 @@ export function isWarmupStable(
   generationAtEnd: number,
   sourceMtimeAtStart: number | null,
   sourceMtimeAtEnd: number | null,
+  hasPendingRebuild = false,
 ): boolean {
-  return generationAtStart === generationAtEnd && sourceMtimeAtStart === sourceMtimeAtEnd;
+  return (
+    generationAtStart === generationAtEnd &&
+    sourceMtimeAtStart === sourceMtimeAtEnd &&
+    !hasPendingRebuild
+  );
 }
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
@@ -2562,7 +2567,13 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     }
     const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
     if (
-      isWarmupStable(generationAtStart, rebuildGeneration, sourceMtimeAtStart, sourceMtimeAtEnd)
+      isWarmupStable(
+        generationAtStart,
+        rebuildGeneration,
+        sourceMtimeAtStart,
+        sourceMtimeAtEnd,
+        rebuildDebounceTimer !== null,
+      )
     ) {
       stable = true;
       break;

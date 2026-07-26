@@ -622,7 +622,15 @@ async function main(): Promise<void> {
     }
   }
 
+  try {
+    await waitForWarmPlayground();
+  } catch (error) {
+    await exitIfShuttingDown();
+    await cleanupOnce();
+    throw error;
+  }
   await exitIfShuttingDown();
+
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
@@ -634,15 +642,6 @@ async function main(): Promise<void> {
   if (prepCode !== 0) {
     await exitAfterCleanup(prepCode);
   }
-
-  try {
-    await waitForWarmPlayground();
-  } catch (error) {
-    await exitIfShuttingDown();
-    await cleanupOnce();
-    throw error;
-  }
-  await exitIfShuttingDown();
 
   const playwright = spawn('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
