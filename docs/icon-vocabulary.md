@@ -8,6 +8,8 @@ must not be the only way to communicate what an interactive element does.
 
 - Disclosure uses a single `ChevronDown` that rotates 180 degrees when the
   controlled content is expanded. The control still exposes `aria-expanded`.
+- Nested submenus are directional disclosures: use `ChevronRight` in LTR and
+  `ChevronLeft` in RTL to indicate the menu's lateral opening direction.
 - Directional transfer uses a single chevron (`ChevronLeft` or `ChevronRight`)
   for moving selected items and a double chevron (`ChevronsLeft` or
   `ChevronsRight`) for moving all items.
@@ -39,7 +41,7 @@ an interactive affordance.
 | `menu-bar/menu-bar.svelte`                                                                                                                                             | Submenu indicator            | Additional interactive `>` affordance; tracked in [#1015](https://github.com/stevekinney/cinder/issues/1015).                                                                                                                                  |
 | `dropdown-trigger/dropdown-trigger.svelte`                                                                                                                             | Disclosure indicator         | Existing hand-authored caret exception; it must be migrated to `ChevronDown` with expanded-state rotation.                                                                                                                                     |
 | `accordion-item/accordion-item.svelte`, `collapsible/collapsible.svelte`, `json-viewer/_json-viewer-node.svelte`, `side-navigation-group/side-navigation-group.svelte` | Disclosure indicators        | Existing hand-authored SVG chevrons; migrate to `ChevronDown` with expanded-state rotation alongside DropdownTrigger.                                                                                                                          |
-| `tree/tree-item.svelte`, `tree/tree.svelte`, `tree/tree.css`                                                                                                           | Disclosure indicators        | CSS-border chevrons on static and virtualized tree branches; migrate to `ChevronDown` with expanded-state rotation in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                              |
+| `tree-item/tree-item.svelte`, `tree/tree.svelte`, `tree/tree.css`                                                                                                     | Disclosure indicators        | CSS-border chevrons on static and virtualized tree branches; migrate to `ChevronDown` with expanded-state rotation in [#1017](https://github.com/stevekinney/cinder/issues/1017).                                                              |
 | `chip/chip.svelte`, `multi-select/multi-select.svelte`, `tag-input/tag-input.svelte`                                                                                   | Remove/clear controls        | Interactive `×` affordances; migrate to the named Lucide remove icon in [#1017](https://github.com/stevekinney/cinder/issues/1017), and include `×`, `&times;`, and numeric entity variants in future audits.                                  |
 | `keyboard-shortcuts/keyboard-shortcuts.svelte`, `shortcut-hint/shortcut-hint.svelte`                                                                                   | Key-combination separators   | Intentional typography inside `aria-hidden` visual keycaps; no icon replacement needed.                                                                                                                                                        |
 | `diff-statistics/diff-statistics.svelte`, `json-schema-editor/diff-view.svelte`                                                                                        | Diff markers                 | Data notation, not controls; retain text markers.                                                                                                                                                                                              |
@@ -83,5 +85,6 @@ listed in the audit procedure. For example:
 rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#8595;|&#x2191;|&#x2193;' packages/components/src/components
 rg -n -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n -e "icon:[[:space:]]*['\"][+−-]['\"]" packages/components/src/components --glob '*.examples.json'
+rg -n -e "icon:[[:space:]]*['\"][^'\"]+['\"]" packages/components/src/components --glob '*.examples.json'
 rg -n "content:\\s*['\"]" packages/components/src/components --glob '*.css'
 ```
