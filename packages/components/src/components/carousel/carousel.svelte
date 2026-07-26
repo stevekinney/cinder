@@ -305,7 +305,8 @@
   function onWheel(event: WheelEvent): void {
     programmaticTarget = null;
     isAutoplayTransitioning = false;
-    if (Math.abs(event.deltaX) > 0) scheduleNativeScrollEnd();
+    if (Math.abs(event.deltaX) > 0 || (event.shiftKey && Math.abs(event.deltaY) > 0))
+      scheduleNativeScrollEnd();
   }
 
   function onWindowBlur(): void {

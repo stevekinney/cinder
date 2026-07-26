@@ -706,6 +706,16 @@ describe('Carousel', () => {
     expectActiveSlide(container, 0);
   });
 
+  test('pauses autoplay while shift-wheel scrolling settles', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+
+    await fireEvent.wheel(viewport, { shiftKey: true, deltaX: 0, deltaY: 40 });
+    jest.advanceTimersByTime(50);
+    expectActiveSlide(container, 0);
+  });
+
   test('hover and focus pause autoplay until interaction ends', async () => {
     jest.useFakeTimers();
     const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 100 });
