@@ -1499,8 +1499,14 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
   const generatedSchemaFile = Bun.file(generatedSchemaPath);
   if (await generatedSchemaFile.exists()) {
     const schema = (await generatedSchemaFile.json()) as {
-      properties?: Record<string, { type?: string; enum?: unknown[]; description?: string }>;
+      properties?: Record<
+        string,
+        { type?: string; enum?: unknown[]; description?: string; default?: unknown }
+      >;
       required?: string[];
+      metadata?: {
+        unsupportedProps?: Array<{ name: string; required?: boolean; reason?: string }>;
+      };
     };
     if (schema.properties !== undefined) {
       const manifest: ComponentManifest = {
@@ -1509,17 +1515,7 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
         file: definition.filePath,
         importPath: definition.importPath,
         props: Object.entries(schema.properties).map(([name, property]) => {
-          const defaultText = property.description?.match(/Default `([^`]+)`/)?.[1];
-          const defaultValue =
-            defaultText === undefined
-              ? undefined
-              : defaultText === 'true'
-                ? true
-                : defaultText === 'false'
-                  ? false
-                  : Number.isNaN(Number(defaultText))
-                    ? defaultText
-                    : Number(defaultText);
+          const defaultValue = property.default;
           const control =
             property.enum !== undefined
               ? { kind: 'select' as const, options: property.enum.map(String) }
@@ -1539,6 +1535,11 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
             ...(property.description === undefined ? {} : { description: property.description }),
           };
         }),
+        ...(schema.metadata?.unsupportedProps?.some(
+          (prop) => prop.required === true && prop.reason === 'function-or-snippet',
+        )
+          ? { isCompound: true }
+          : {}),
       };
       componentManifestCache.set(componentName, manifest);
       return manifest;
@@ -2697,6 +2698,8 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     } else {
       preparedShellServerRenderer = null;
       invalidateCachesForChange({ kind: 'components' });
+      prebuild = await eagerPrebuildAll();
+      if (!prebuild.shellSucceeded) break;
     }
   }
   if (!rendererPrepared) {

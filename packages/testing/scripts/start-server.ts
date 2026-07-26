@@ -562,7 +562,7 @@ function startPlaygroundBundleDependencyWatchers(
   let disposed = false;
   let failure: Error | null = null;
   let activeBuild = false;
-  const queuedBuilds: Array<() => void> = [];
+  const queuedBuilds: Array<{ order: number; run: () => void }> = [];
   const resolveIdle = (): void => {
     if (states.some((state) => state.pending || state.buildProcess !== null)) return;
     for (const resolve of idleWaiters.splice(0)) resolve(true);
@@ -581,7 +581,10 @@ function startPlaygroundBundleDependencyWatchers(
       state.pending = false;
       if (activeBuild) {
         state.pending = true;
-        queuedBuilds.push(runBuild);
+        queuedBuilds.push({
+          order: playgroundBundleDependencyPackages.indexOf(packageName),
+          run: runBuild,
+        });
         return;
       }
       activeBuild = true;
@@ -601,7 +604,10 @@ function startPlaygroundBundleDependencyWatchers(
         }
         if (state.buildProcess === currentBuild) state.buildProcess = null;
         activeBuild = false;
-        queuedBuilds.shift()?.();
+        queuedBuilds
+          .toSorted((left, right) => left.order - right.order)
+          .shift()
+          ?.run();
         if (state.pending && failure === null) runBuild();
         resolveIdle();
         return undefined;
@@ -623,6 +629,15 @@ function startPlaygroundBundleDependencyWatchers(
         watchers.push(watch(directory, { recursive: true }, scheduleBuild));
       } catch (error) {
         console.error(`[testing] unable to watch ${directory}:`, error);
+      }
+    }
+    const packageDirectory = playgroundBundleDependencyDirectories[packageName]!;
+    for (const metadataPath of ['package.json', 'tsconfig.json']) {
+      const path = resolvePath(repoRoot, 'packages', packageDirectory, metadataPath);
+      try {
+        watchers.push(watch(path, scheduleBuild));
+      } catch {
+        // Optional metadata files are watched only when present.
       }
     }
   }
@@ -821,6 +836,7 @@ async function main(): Promise<void> {
   if (prepCode !== 0) {
     await exitAfterCleanup(prepCode);
   }
+  await waitForWarmPlayground(dependencyWatchController);
 
   const playwright = spawn('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
@@ -833,6 +849,7 @@ async function main(): Promise<void> {
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
   const playwrightCode = await waitForExit(playwright);
   await exitIfShuttingDown();
+  await dependencyWatchController?.waitForIdle();
   const dependencyFailure = dependencyWatchController?.getFailure();
   if (dependencyFailure !== null && dependencyFailure !== undefined) {
     console.error(`Watched dependency rebuild failed: ${dependencyFailure.message}`);
