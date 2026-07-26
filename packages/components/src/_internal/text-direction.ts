@@ -205,6 +205,8 @@ function isConditionalRuleActive(rule: CSSRule): boolean {
   const conditionText = Reflect.get(rule, 'conditionText');
   if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
 
+  if (isContainerRule(rule)) return false;
+
   if (isMediaRule(rule) && typeof matchMedia === 'function') {
     return matchMedia(conditionText).matches;
   }
@@ -213,6 +215,10 @@ function isConditionalRuleActive(rule: CSSRule): boolean {
     return CSS.supports(conditionText);
 
   return true;
+}
+
+function isContainerRule(rule: CSSRule): boolean {
+  return rule.constructor.name === 'CSSContainerRule' || Reflect.get(rule, 'type') === 0;
 }
 
 function isMediaRule(rule: CSSRule): boolean {

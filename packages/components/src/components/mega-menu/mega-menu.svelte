@@ -92,7 +92,6 @@
   });
 
   $effect(() => {
-    if (providedDirection === 'rtl' || providedDirection === 'ltr') return;
     return observeTextDirection(navElement, () => {
       directionRevision += 1;
     });

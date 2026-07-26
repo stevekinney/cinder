@@ -385,7 +385,7 @@ describe('resolveTextDirection', () => {
     }
   });
 
-  test('uses nested CSS direction rules inside unsupported conditional rule shims', () => {
+  test('ignores direction rules inside inactive container-query shims', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
     const getComputedStyleOverride = ((target: Element) => {
@@ -417,7 +417,7 @@ describe('resolveTextDirection', () => {
       const direction = withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
         resolveTextDirection(element, 'rtl'),
       );
-      expect(direction).toBe('ltr');
+      expect(direction).toBe('rtl');
     } finally {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;

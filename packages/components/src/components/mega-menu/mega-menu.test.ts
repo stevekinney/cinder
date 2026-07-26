@@ -447,6 +447,19 @@ describe('MegaMenu', () => {
     expect(document.activeElement).toBe(second);
   });
 
+  test('updates explicit direction after a class or style mutation', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'rtl' });
+    const menu = container.querySelector<HTMLElement>('.cinder-mega-menu');
+    const first = getTriggerByLabel(container, 'Products');
+    const second = getTriggerByLabel(container, 'Resources');
+    if (!menu) throw new Error('Missing menu element.');
+    menu.style.direction = 'ltr';
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    first.focus();
+    await fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(second);
+  });
+
   test('repositions an open indicator after the resolved direction changes', async () => {
     const { container, rerender } = render(MegaMenuLocaleTestHarness, {
       items,
