@@ -106,7 +106,14 @@
   });
 
   const portalScopeAttachment = createPortalAttachment({
-    target: () => findNearestOpenTopLayer(anchorElement ?? document.body) ?? document.body,
+    target: () => {
+      if (!anchorElement) return document.body;
+      try {
+        return findNearestOpenTopLayer(anchorElement) ?? document.body;
+      } catch {
+        return document.body;
+      }
+    },
     inheritAttributes: true,
     source: () => anchorElement ?? null,
   });

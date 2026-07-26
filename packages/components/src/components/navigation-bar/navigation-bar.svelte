@@ -491,11 +491,9 @@
     <div
       bind:this={itemsRegionElement}
       id={regionId}
-      role={isMobileLayout ? 'region' : undefined}
       class="cinder-navigation-bar__items"
       data-open={mobileMenuOpen ? 'true' : 'false'}
       data-cinder-mobile-panel={isMobileLayout || undefined}
-      aria-label={isMobileLayout ? label : undefined}
       data-cinder-position-ready={anchoredItems.positionReady || undefined}
       style={anchoredItems.positionStyle}
       inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
