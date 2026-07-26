@@ -81,7 +81,7 @@ function allowsStyleBlock(path: string): boolean {
 }
 
 export function hasAuthoredStyleBlock(source: string): boolean {
-  const ast = parse(source, { modern: true }) as unknown as Record<string, unknown>;
+  const ast = parse(source, { modern: true });
   return isNodeStyleSheet(ast.css);
 }
 
