@@ -338,7 +338,7 @@
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='warning'] {
-    --cinder-event-stream-viewer-severity-color: var(--cinder-warning);
+    --cinder-event-stream-viewer-severity-color: var(--cinder-color-warning-fg);
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='error'] {
