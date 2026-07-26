@@ -122,7 +122,7 @@
   function stableHash(value: string): string {
     return Array.from(value)
       .map((character) => (character.codePointAt(0) ?? 0).toString(16).padStart(5, '0'))
-      .join('');
+      .join('-');
   }
 
   const instanceId = $derived(
