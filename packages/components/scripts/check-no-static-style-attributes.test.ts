@@ -41,6 +41,13 @@ describe('findStaticStyleAttributes', () => {
       { line: 1, column: 6 },
     ]);
   });
+  test('flags folded constant expressions and object spreads', () => {
+    expect(
+      findStaticStyleAttributes(
+        `<div style={'color: ' + 'red'}></div><div style:color={'r' + 'ed'}></div><div {...{ style: 'color: red' }}></div>`,
+      ),
+    ).toHaveLength(3);
+  });
 
   test('finds nested static attributes without matching script strings', () => {
     expect(

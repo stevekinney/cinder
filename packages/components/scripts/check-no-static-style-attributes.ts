@@ -56,7 +56,28 @@ function isStaticValue(value: unknown): boolean {
       (typeof expression['value'] === 'string' || typeof expression['value'] === 'number')) ||
     (expression.type === 'TemplateLiteral' &&
       Array.isArray(expression['expressions']) &&
-      expression['expressions'].length === 0)
+      expression['expressions'].length === 0) ||
+    (expression.type === 'BinaryExpression' &&
+      isStaticExpression(expression['left']) &&
+      isStaticExpression(expression['right']))
+  );
+}
+
+function isStaticExpression(expression: unknown): boolean {
+  if (!isNode(expression)) return false;
+  if (expression.type === 'Literal')
+    return typeof expression['value'] === 'string' || typeof expression['value'] === 'number';
+  if (expression.type === 'TemplateLiteral')
+    return Array.isArray(expression['expressions']) && expression['expressions'].length === 0;
+  if (expression.type === 'UnaryExpression')
+    return (
+      (expression['operator'] === '-' || expression['operator'] === '+') &&
+      isStaticExpression(expression['argument'])
+    );
+  return (
+    expression.type === 'BinaryExpression' &&
+    isStaticExpression(expression['left']) &&
+    isStaticExpression(expression['right'])
   );
 }
 
@@ -80,6 +101,30 @@ export function findStaticStyleAttributes(source: string): StaticStyleAttributeV
         line: value.name_loc?.start.line ?? 1,
         column: (value.name_loc?.start.column ?? 0) + 1,
       });
+    }
+    if (value.type === 'Spread' || value.type === 'SpreadAttribute') {
+      const expression = value['expression'];
+      const properties =
+        isNode(expression) && expression.type === 'ObjectExpression'
+          ? expression['properties']
+          : undefined;
+      if (
+        Array.isArray(properties) &&
+        properties.some(
+          (property) =>
+            isNode(property) &&
+            property.type === 'Property' &&
+            isNode(property['key']) &&
+            property['key'].type === 'Identifier' &&
+            property['key']['name'] === 'style' &&
+            isStaticExpression(property['value']),
+        )
+      ) {
+        violations.push({
+          line: value.name_loc?.start.line ?? 1,
+          column: (value.name_loc?.start.column ?? 0) + 1,
+        });
+      }
     }
 
     for (const [key, child] of Object.entries(value)) {
