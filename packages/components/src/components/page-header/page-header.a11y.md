@@ -2,14 +2,14 @@
 
 ## Pattern
 
-PageHeader organizes page-level heading content. Preserve heading semantics, keep metadata supplemental, and ensure action controls remain operable with keyboard and assistive technology.
+PageHeader organizes page-level heading content. Preserve heading semantics, keep supporting descriptions supplemental, and ensure breadcrumb and action controls remain operable with keyboard and assistive technology.
 
-Purpose: Page-level heading row that pairs a required title with optional metadata and optional trailing actions.
+Purpose: Page-level heading with named title, description, breadcrumb, and action regions.
 
 ## Use when
 
 - Rendering a route-level heading that needs consistent spacing and border treatment across pages.
-- Showing high-level page metadata (counts or state summaries) beside a title with optional right-aligned controls.
+- Pairing page context and supporting copy with optional right-aligned controls.
 
 ## Avoid when
 
@@ -26,7 +26,7 @@ Keep focus indicators visible. If you wrap or restyle PageHeader, verify the foc
 
 Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning.
 
-When PageHeader accepts snippets or arbitrary children, the caller owns the semantics inside those children. Prefer native elements first, and add ARIA only when it matches the rendered behavior.
+The caller owns semantics inside PageHeader's named snippets. Keep title and description snippets to phrasing content, render breadcrumb navigation with an accessible name, prefer native action controls, and add ARIA only when it matches the rendered behavior.
 
 ## Verification
 

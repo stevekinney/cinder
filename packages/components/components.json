@@ -3516,11 +3516,11 @@
       "exportName": "PageHeader",
       "category": "layout",
       "status": "stable",
-      "purpose": "Page-level heading row that pairs a required title with optional metadata and optional trailing actions.",
+      "purpose": "Page-level heading with named title, description, breadcrumb, and action regions.",
       "tags": ["page", "heading", "layout"],
       "useWhen": [
         "Rendering a route-level heading that needs consistent spacing and border treatment across pages.",
-        "Showing high-level page metadata (counts or state summaries) beside a title with optional right-aligned controls."
+        "Pairing page context and supporting copy with optional right-aligned controls."
       ],
       "avoidWhen": [
         {

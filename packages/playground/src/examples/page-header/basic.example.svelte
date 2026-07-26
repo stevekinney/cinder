@@ -1,20 +1,28 @@
 <script lang="ts" module>
   export const title = 'Basic page header';
   export const description =
-    'Page-level heading with optional metadata and right-aligned actions using the default snippet.';
+    'Page-level heading with named title, description, breadcrumb, and action regions.';
 </script>
 
 <script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
+  import { Breadcrumbs } from '@lostgradient/cinder/breadcrumbs';
   import { PageHeader } from '@lostgradient/cinder/page-header';
 </script>
 
 <div>
-  <PageHeader title="Approvals" meta="3 pending · 12 resolved" />
+  <PageHeader title="Approvals" description="3 pending · 12 resolved" />
 </div>
 
 <div style="margin-top: var(--cinder-space-4);">
-  <PageHeader title="Schedules" meta="No schedules">
-    <Button variant="primary" size="sm" label="+ New schedule" />
+  <PageHeader>
+    {#snippet breadcrumbs()}
+      <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Schedules' }]} />
+    {/snippet}
+    {#snippet title()}Schedules{/snippet}
+    {#snippet description()}Create and manage recurring automation schedules.{/snippet}
+    {#snippet actions()}
+      <Button variant="primary" size="sm" label="+ New schedule" />
+    {/snippet}
   </PageHeader>
 </div>

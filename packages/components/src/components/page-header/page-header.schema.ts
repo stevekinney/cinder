@@ -6,11 +6,13 @@ const schema = {
   properties: {
     title: {
       type: 'string',
-      description: 'Page-level heading text. Rendered as `<h1>`.',
+      description:
+        'Page-level heading text rendered inside `<h1>`; the runtime API also accepts a template-only snippet.',
     },
-    meta: {
+    description: {
       type: 'string',
-      description: 'Optional supporting metadata displayed beside the title.',
+      description:
+        'Optional supporting text rendered below the title; the runtime API also accepts a template-only snippet.',
     },
     class: {
       type: 'string',
@@ -22,9 +24,14 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
-        name: 'children',
+        name: 'actions',
         reason: 'function-or-snippet',
         description: 'Optional trailing actions (buttons, menus, controls).',
+      },
+      {
+        name: 'breadcrumbs',
+        reason: 'function-or-snippet',
+        description: 'Optional breadcrumb navigation rendered above the heading row.',
       },
     ],
   },
