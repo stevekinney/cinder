@@ -203,6 +203,10 @@ describe('EventTimeline', () => {
     expect(container.querySelector('[role="listitem"]')?.getAttribute('data-cinder-edge')).toBe(
       'middle',
     );
+    expect(EVENT_TIMELINE_CSS).toContain('[data-cinder-centered] .cinder-event-timeline__leader');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      ':dir(rtl) .cinder-event-timeline__item[data-cinder-centered]',
+    );
   });
 
   test('reserves lanes for physical RTL bounds', async () => {

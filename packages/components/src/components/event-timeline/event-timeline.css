@@ -87,6 +87,10 @@
     --_cinder-event-timeline-label-offset: 0px;
   }
 
+  .cinder-event-timeline__item[data-cinder-centered] .cinder-event-timeline__leader {
+    display: none;
+  }
+
   .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-edge='start'] {
     justify-items: end;
     text-align: end;
@@ -131,6 +135,10 @@
 
   .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-lane-parity='odd'] {
     --_cinder-event-timeline-label-offset: -6rem;
+  }
+
+  .cinder-event-timeline:dir(rtl) .cinder-event-timeline__item[data-cinder-centered] {
+    --_cinder-event-timeline-label-offset: 0px;
   }
 
   .cinder-event-timeline:dir(rtl)
