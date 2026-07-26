@@ -26,6 +26,13 @@ describe('findPlaceholderViolations', () => {
       'accessibility section',
     ]);
   });
+  it('rejects case-insensitive pending design placeholders', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: _pending — name the reviewer before merge.\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: no — static',
+      'component.a11y.md',
+    );
+    expect(violations.some(({ phrase }) => phrase === '_Pending')).toBe(true);
+  });
   it('allows accessibility-only placeholders when review does not apply', () => {
     expect(
       findPlaceholderViolations(

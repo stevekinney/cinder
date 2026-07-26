@@ -92,7 +92,7 @@ export function findPlaceholderViolations(
         if (
           allowConditionalPendingTemplate &&
           phrase === '_Pending' &&
-          line.includes('Pending when this review applies.')
+          line.toLowerCase().includes('pending when this review applies.')
         )
           continue;
         const matchesPhrase =
@@ -100,7 +100,9 @@ export function findPlaceholderViolations(
             ? /_Record(?:\s|_|$)/.test(line)
             : ACCESSIBILITY_SCAFFOLD_PHRASES.includes(phrase)
               ? line.toLowerCase().includes(phrase.toLowerCase())
-              : line.includes(phrase);
+              : phrase.startsWith('_Pending')
+                ? line.toLowerCase().includes(phrase.toLowerCase())
+                : line.includes(phrase);
         if (matchesPhrase) {
           const lineNumber = offset + index + 1;
           if (
