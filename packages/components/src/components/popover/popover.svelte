@@ -32,7 +32,10 @@
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
-  import { createInheritedPortalStyle } from '../portal/portal.utilities.svelte.ts';
+  import {
+    createInheritedPortalStyle,
+    findNearestOpenTopLayer,
+  } from '../portal/portal.utilities.svelte.ts';
 
   let {
     id: panelIdProp,
@@ -103,7 +106,7 @@
   });
 
   const portalScopeAttachment = createPortalAttachment({
-    target: () => anchorElement?.closest<HTMLElement>('dialog:modal') ?? document.body,
+    target: () => findNearestOpenTopLayer(anchorElement ?? document.body) ?? document.body,
     inheritAttributes: true,
     source: () => anchorElement ?? null,
   });

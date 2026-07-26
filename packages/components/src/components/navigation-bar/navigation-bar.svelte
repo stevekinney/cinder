@@ -245,7 +245,18 @@
   }
 
   function isEnabledNavigationItem(item: HTMLElement): boolean {
-    return item.getAttribute('aria-disabled') !== 'true' && !item.hasAttribute('disabled');
+    if (item.getAttribute('aria-disabled') === 'true' || item.hasAttribute('disabled'))
+      return false;
+    if (item.hidden || item.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+    if (typeof getComputedStyle === 'function') {
+      let current: HTMLElement | null = item;
+      while (current) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        current = current.parentElement;
+      }
+    }
+    return true;
   }
 
   function getEventNavigationItem(event: Event): HTMLElement | null {
@@ -357,7 +368,7 @@
     mobileMenuOpen = false;
   }
 
-  function bridgePortaledEvent(event: MouseEvent | KeyboardEvent): void {
+  function bridgePortaledEvent(event: Event): void {
     if (isRedispatchedPortaledEvent(event)) return;
     redispatchPortaledEvent(event, navigationBarElement);
   }
@@ -490,6 +501,12 @@
       inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
       onclick={isMobileLayout ? bridgePortaledEvent : undefined}
       onkeydown={isMobileLayout ? bridgePortaledEvent : undefined}
+      onfocusin={isMobileLayout ? bridgePortaledEvent : undefined}
+      onfocusout={isMobileLayout ? bridgePortaledEvent : undefined}
+      onpointerdown={isMobileLayout ? bridgePortaledEvent : undefined}
+      onpointerup={isMobileLayout ? bridgePortaledEvent : undefined}
+      oninput={isMobileLayout ? bridgePortaledEvent : undefined}
+      onchange={isMobileLayout ? bridgePortaledEvent : undefined}
     >
       {@render items({ variant, placement, labelsVisible })}
     </div>

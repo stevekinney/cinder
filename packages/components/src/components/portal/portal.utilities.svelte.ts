@@ -257,16 +257,17 @@ export function copyInheritedPortalAttributes(
 }
 
 export function redispatchPortaledEvent(
-  event: MouseEvent | KeyboardEvent,
+  event: Event,
   sourceTarget: HTMLElement | null | undefined,
 ): boolean {
   if (!sourceTarget) return false;
 
   const originalTarget = event.target;
-  const bridgedEvent =
-    event instanceof KeyboardEvent
-      ? new KeyboardEvent(event.type, event)
-      : new MouseEvent(event.type, event);
+  const EventConstructor = event.constructor as new (type: string, init?: EventInit) => Event;
+  const bridgedEvent = new EventConstructor(event.type, {
+    bubbles: true,
+    cancelable: true,
+  });
   redispatchedPortalEvents.add(bridgedEvent);
   Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
   if (event.defaultPrevented) bridgedEvent.preventDefault();
