@@ -133,7 +133,13 @@
     monthProp: string | undefined,
     fallbackIso: string,
   ): string {
-    if (valueProp && parseISODate(valueProp)) return valueProp;
+    if (
+      valueProp &&
+      parseISODate(valueProp) &&
+      (!min || valueProp >= min) &&
+      (!max || valueProp <= max)
+    )
+      return valueProp;
     if (monthProp && parseISODate(monthProp)) return monthProp;
     if (min && parseISODate(min) && fallbackIso < min) return min;
     if (max && parseISODate(max) && fallbackIso > max) return max;
@@ -142,9 +148,7 @@
 
   const initialTodayIso = localTodayIso();
   const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
-  const initialFocusedIso = untrack(() =>
-    value && parseISODate(value) ? value : initialAnchorIso,
-  );
+  const initialFocusedIso = untrack(() => initialAnchorIso);
   const todayIso = $derived(localTodayIso());
   const anchorIso = $derived(resolveAnchorIso(value, month, todayIso));
   const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso)!);
@@ -158,8 +162,7 @@
   $effect(() => {
     if (anchorIso === lastSyncedAnchorIso) return;
     visibleMonthDate = startOfMonth(anchorDate);
-    if (value) focusedIso = value;
-    else focusedIso = anchorIso;
+    focusedIso = anchorIso;
     lastSyncedAnchorIso = anchorIso;
   });
 
