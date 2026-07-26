@@ -132,6 +132,19 @@ describe('EventTimeline', () => {
     expect(items[2]?.getAttribute('data-cinder-state')).toBe('failed');
   });
 
+  test('uses a narrow-screen-safe fallback before width measurement', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [20, 32, 44, 56, 68].map((position, index) => ({
+        at: new Date(Date.parse(start) + (position / 100) * (Date.parse(end) - Date.parse(start))),
+        label: `Fallback ${index}`,
+      })),
+    });
+
+    expect(container.querySelector('.cinder-event-timeline__cluster-trigger')).not.toBeNull();
+  });
+
   test('uses the measured pixel width to determine label collisions', async () => {
     const { container } = render(EventTimeline, {
       start,
@@ -328,6 +341,9 @@ describe('EventTimeline', () => {
     expect(cluster?.getAttribute('aria-controls')).toBe(dialog?.id);
     await waitFor(() => expect(document.activeElement).toBe(dialog));
     expect(dialog?.textContent).toContain('Upcoming');
+    expect(dialog?.querySelector('time')?.getAttribute('datetime')).toBe(
+      '2026-07-03T06:04:00.000Z',
+    );
     await fireEvent.keyDown(window, { key: 'Escape' });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(cluster);
@@ -336,6 +352,10 @@ describe('EventTimeline', () => {
   test('keeps cluster surfaces inside a Cinder popover panel', async () => {
     const popover = document.createElement('div');
     popover.className = 'cinder-popover';
+    Object.defineProperty(popover, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ width: 320 }),
+    });
     document.body.append(popover);
     try {
       const { container } = render(EventTimeline, {
@@ -350,6 +370,16 @@ describe('EventTimeline', () => {
       await fireEvent.click(popover.querySelector('.cinder-event-timeline__cluster-trigger')!);
       await waitFor(() =>
         expect(popover.querySelector('[role="dialog"]')?.parentElement).toBe(popover),
+      );
+      expect(popover.querySelector<HTMLElement>('[role="dialog"]')?.style.maxInlineSize).toContain(
+        '304px',
+      );
+      TestResizeObserver.instances
+        .filter((observer) => observer.observed === popover)
+        .forEach((observer) => observer.trigger(200));
+      await tick();
+      expect(popover.querySelector<HTMLElement>('[role="dialog"]')?.style.maxInlineSize).toContain(
+        '184px',
       );
     } finally {
       popover.remove();
@@ -428,6 +458,46 @@ describe('EventTimeline', () => {
     }
   });
 
+  test('keeps cluster surfaces inside the nearest open native popover owner', async () => {
+    const originalCSS = globalThis.CSS;
+    Object.defineProperty(globalThis, 'CSS', {
+      configurable: true,
+      value: { supports: () => true },
+    });
+    const modalPanel = document.createElement('div');
+    modalPanel.className = 'cinder-modal__panel';
+    const nativePopover = document.createElement('div');
+    nativePopover.setAttribute('popover', 'auto');
+    const originalMatches = nativePopover.matches.bind(nativePopover);
+    Object.defineProperty(nativePopover, 'matches', {
+      configurable: true,
+      value: (selector: string) =>
+        selector === ':popover-open' ? true : originalMatches(selector),
+    });
+    modalPanel.append(nativePopover);
+    document.body.append(modalPanel);
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      nativePopover.append(container.firstElementChild!);
+      await fireEvent.click(
+        nativePopover.querySelector('.cinder-event-timeline__cluster-trigger')!,
+      );
+      await waitFor(() =>
+        expect(nativePopover.querySelector('[role="dialog"]')?.parentElement).toBe(nativePopover),
+      );
+    } finally {
+      modalPanel.remove();
+      Object.defineProperty(globalThis, 'CSS', { configurable: true, value: originalCSS });
+    }
+  });
+
   test('outside pointer dismissal does not refocus the cluster trigger', async () => {
     const { container } = render(EventTimeline, {
       start,
@@ -448,6 +518,28 @@ describe('EventTimeline', () => {
     await fireEvent.pointerDown(outside);
     expect(document.querySelector('[role="dialog"]')).toBeNull();
     expect(document.activeElement).toBe(outside);
+  });
+
+  test('does not steal focus after the user tabs away while positioning', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [0, 1, 2, 3, 4].map((index) => ({
+        at: `2026-07-03T06:0${index}:00.000Z`,
+        label: `Event ${index + 1}`,
+      })),
+    });
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    );
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    await fireEvent.click(cluster!);
+    outside.focus();
+    await tick();
+    await tick();
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
   });
 
   test('creates one cluster marker per separated dense region', async () => {

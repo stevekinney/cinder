@@ -74,7 +74,8 @@
   const MAX_VISIBLE_LANES = 4;
   const LABEL_MAX_WIDTH_REM = { sm: 7, md: 9 } as const;
   const FALLBACK_ROOT_FONT_SIZE_PX = 16;
-  const FALLBACK_COLLISION_THRESHOLD_PERCENT = 10;
+  const FALLBACK_LAYOUT_WIDTH_PX = 320;
+  const CLUSTER_SHIFT_PADDING_PX = 8;
 
   let {
     start,
@@ -92,24 +93,36 @@
   let rootFontSize = $state(FALLBACK_ROOT_FONT_SIZE_PX);
   let openClusterKey = $state<string | null>(null);
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
+  let clusterFocusPending = $state(false);
   let clusterSurface = $state<HTMLDivElement | null>(null);
+  let portalOwnerWidth = $state(0);
   let isRtl = $state(false);
   const instanceId = $props.id();
   function portalOwner(): HTMLElement | null {
     const trigger = clusterTrigger;
     if (!trigger) return null;
     try {
-      const focusTrapRoot = trigger.closest<HTMLElement>(
-        '.cinder-modal__panel, .cinder-sheet__panel, .cinder-drawer__panel, .cinder-popover',
-      );
-      if (focusTrapRoot) return focusTrapRoot;
-      const dialog = trigger.closest<HTMLElement>('dialog');
-      return (
-        (dialog && isEventTimelineModal(dialog) ? dialog : null) ??
-        (typeof CSS !== 'undefined' && CSS.supports?.('selector(:popover-open)')
-          ? trigger.closest<HTMLElement>('[popover]:popover-open')
-          : null)
-      );
+      for (
+        let current: HTMLElement | null = trigger.parentElement;
+        current;
+        current = current.parentElement
+      ) {
+        if (
+          current.matches(
+            '.cinder-modal__panel, .cinder-sheet__panel, .cinder-drawer__panel, .cinder-popover',
+          )
+        )
+          return current;
+        if (current.matches('dialog') && isEventTimelineModal(current)) return current;
+        if (
+          current.hasAttribute('popover') &&
+          typeof CSS !== 'undefined' &&
+          CSS.supports?.('selector(:popover-open)') &&
+          current.matches(':popover-open')
+        )
+          return current;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -118,8 +131,9 @@
   function clusterSurfaceMaxInlineSize(): string {
     const owner = portalOwner();
     if (!owner) return 'min(28rem, calc(100vw - var(--cinder-space-4)))';
-    const width = owner.getBoundingClientRect().width;
-    return width > 0 ? `min(28rem, ${width}px)` : '28rem';
+    const width = portalOwnerWidth || owner.getBoundingClientRect().width;
+    const usableWidth = width - CLUSTER_SHIFT_PADDING_PX * 2;
+    return usableWidth > 0 ? `min(28rem, ${usableWidth}px)` : '28rem';
   }
   const clusterPortalAttachment = createPortalAttachment({
     // Anchored overlay coordinates are viewport-relative (fixed strategy). Keep the
@@ -168,7 +182,7 @@
 
   function edgeForPosition(
     position: number,
-    thresholdPercent = FALLBACK_COLLISION_THRESHOLD_PERCENT,
+    thresholdPercent = collisionThresholdPercent,
     offsetPercent = 0,
   ): PositionedEventTimelineItem['edge'] {
     const edgeThreshold = Math.max(10, thresholdPercent / 2 + offsetPercent);
@@ -253,7 +267,7 @@
   const collisionThresholdPercent = $derived(
     measuredWidth > 0
       ? (getLabelMaxWidthPx() / measuredWidth) * 100
-      : FALLBACK_COLLISION_THRESHOLD_PERCENT,
+      : (LABEL_MAX_WIDTH_REM[size] * FALLBACK_ROOT_FONT_SIZE_PX * 100) / FALLBACK_LAYOUT_WIDTH_PX,
   );
 
   const range = $derived.by(() => {
@@ -446,6 +460,7 @@
 
   function closeCluster(restoreFocus = false): void {
     openClusterKey = null;
+    clusterFocusPending = false;
     if (restoreFocus) void tick().then(() => clusterTrigger?.focus());
   }
 
@@ -461,6 +476,7 @@
   $effect(() => {
     if (openClusterKey !== null && !clusters.some((cluster) => cluster.key === openClusterKey)) {
       openClusterKey = null;
+      clusterFocusPending = false;
       clusterTrigger = null;
     }
   });
@@ -474,7 +490,22 @@
   });
 
   $effect(() => {
-    if (openClusterKey !== null && anchoredClusterSurface.positionReady) {
+    if (openClusterKey === null || typeof ResizeObserver === 'undefined') return;
+    const owner = portalOwner();
+    if (!owner) return;
+    portalOwnerWidth = 0;
+    const observer = new ResizeObserver(([entry]) => {
+      const inlineSize = entry?.borderBoxSize?.[0]?.inlineSize;
+      portalOwnerWidth =
+        inlineSize ?? entry?.contentRect.width ?? owner.getBoundingClientRect().width;
+    });
+    observer.observe(owner);
+    return () => observer.disconnect();
+  });
+
+  $effect(() => {
+    if (openClusterKey !== null && anchoredClusterSurface.positionReady && clusterFocusPending) {
+      clusterFocusPending = false;
       clusterSurface?.focus();
     }
   });
@@ -547,7 +578,12 @@
             aria-label={cluster.accessibleLabel}
             onclick={(event) => {
               clusterTrigger = event.currentTarget as HTMLButtonElement;
-              openClusterKey = openClusterKey === cluster.key ? null : cluster.key;
+              const isOpen = openClusterKey === cluster.key;
+              clusterFocusPending = !isOpen;
+              openClusterKey = isOpen ? null : cluster.key;
+            }}
+            onfocusout={() => {
+              clusterFocusPending = false;
             }}>+{cluster.count}</button
           >
           {#if openClusterKey === cluster.key}
@@ -571,7 +607,10 @@
                   <li>
                     <span>{hiddenItem.label}</span>
                     <span class="cinder-event-timeline__cluster-item-details">
-                      {hiddenItem.sublabel ?? hiddenItem.isoDatetime} · {hiddenItem.stateLabel}
+                      <time datetime={hiddenItem.isoDatetime}>
+                        {hiddenItem.sublabel ?? hiddenItem.isoDatetime}
+                      </time>
+                      · {hiddenItem.stateLabel}
                     </span>
                   </li>
                 {/each}
