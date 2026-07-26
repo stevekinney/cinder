@@ -218,6 +218,23 @@ describe('Sidebar', () => {
     ).toBe('false');
   });
 
+  test('preserves persisted collapsed families when restoring an active filter', async () => {
+    sessionStorage.setItem('cinder-playground-sidebar-filter', 'composer');
+    sessionStorage.setItem('cinder-playground-sidebar-expansion', JSON.stringify({ chat: false }));
+    render(Sidebar, {
+      props: {
+        components: ['chat', 'chat-composer-popover', 'button'],
+        currentComponent: 'chat',
+        onSelect: () => {},
+      },
+    });
+    await tick();
+    await tick();
+    expect(JSON.parse(sessionStorage.getItem('cinder-playground-sidebar-expansion')!).chat).toBe(
+      false,
+    );
+  });
+
   test('filter narrows the list by humanized name (case-insensitive)', async () => {
     const { container } = render(Sidebar, {
       props: { components: COMPONENTS, currentComponent: 'button', onSelect: () => {} },

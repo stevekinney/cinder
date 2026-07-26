@@ -75,6 +75,9 @@
     } catch {
       /* ignore — degraded but functional */
     }
+    if (filter.trim() !== '') {
+      savedExpansion = { ...expandedFamilies };
+    }
     restoredSessionFilter = true;
     restoredExpansion = true;
   });
