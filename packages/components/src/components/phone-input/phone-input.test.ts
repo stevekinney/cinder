@@ -487,6 +487,21 @@ describe('PhoneInput form reset', () => {
     rendered.unmount();
     form.remove();
   });
+  test('resynchronizes an untouched initial national display on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: { id: 'p', label: 'Phone', country: 'US', value: '+14155550132' },
+    });
+    const input = nationalInput(rendered.container);
+    await waitFor(() => expect(input.value).toContain('415'));
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(input.value).toContain('415');
+    rendered.unmount();
+    form.remove();
+  });
 
   test('does not reset when the reset event is canceled', async () => {
     const form = document.createElement('form');

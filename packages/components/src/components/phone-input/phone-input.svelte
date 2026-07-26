@@ -375,11 +375,17 @@
         const countrySelect = fieldRoot?.querySelector<HTMLSelectElement>('select');
         if (countrySelect && countrySelect.value !== resetCountry)
           countrySelect.value = resetCountry;
-        nationalDisplay = initialParsedCountryAllowed
+        const resetDisplay = initialParsedCountryAllowed
           ? initialParsed.formatted
           : initialParsed
             ? initialValue
             : formatNationalAsYouType(resetCountry, digitsOnly(initialValue));
+        nationalDisplay = resetDisplay;
+        const nationalInput = fieldRoot?.querySelector<HTMLInputElement>(
+          'input:not([type="hidden"])',
+        );
+        if (nationalInput && nationalInput.value !== resetDisplay)
+          nationalInput.value = resetDisplay;
       }),
     );
   }
