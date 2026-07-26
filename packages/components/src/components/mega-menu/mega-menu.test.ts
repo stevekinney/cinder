@@ -397,6 +397,17 @@ describe('MegaMenu', () => {
     }
   });
 
+  test('restamps inherited direction after an ancestor mutation', async () => {
+    const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+    const nav = container.querySelector('nav');
+    const ancestor = nav?.parentElement;
+    if (!nav || !ancestor) throw new Error('Missing menu ancestor.');
+    expect(nav.getAttribute('dir')).toBe('rtl');
+    ancestor.setAttribute('dir', 'ltr');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(nav.getAttribute('dir')).toBe('ltr');
+  });
+
   test('resolves an explicit auto direction before an ancestor direction', async () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

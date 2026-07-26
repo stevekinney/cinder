@@ -81,6 +81,7 @@
       : resolveTextDirection(directionElement, localeContext?.direction);
   });
   const renderedDirection = $derived.by(() => {
+    directionRevision;
     if (
       providedDirection === 'auto' ||
       providedDirection === 'rtl' ||
