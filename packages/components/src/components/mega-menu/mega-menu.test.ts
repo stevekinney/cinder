@@ -442,7 +442,7 @@ describe('MegaMenu', () => {
     const { container } = render(MegaMenu, { items, dir: 'ltr' });
     const ancestor = document.createElement('div');
     ancestor.dir = 'rtl';
-    const menu = container.firstElementChild!;
+    const menu = container.firstElementChild as HTMLElement;
     ancestor.append(menu);
     document.body.append(ancestor);
     const first = getTriggerByLabel(menu, 'Products');
