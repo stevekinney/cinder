@@ -79,4 +79,12 @@ describe(ruleName, () => {
       ),
     ).toHaveLength(1);
   });
+
+  test('recognizes native checkbox and radio controls', async () => {
+    for (const selector of ['.cinder-checkbox', '.cinder-radio']) {
+      expect(
+        warnings(await lint(`${selector} { background: var(--cinder-surface); }`)),
+      ).toHaveLength(1);
+    }
+  });
 });
