@@ -104,9 +104,14 @@
       : (normalizedValue?.slice(11) ??
           (granularity === 'second' ? '00:00:00' : granularity === 'minute' ? '00:00' : '00:00')),
   );
+  let hasInputValidityError = $state(false);
   const step = $derived(granularity === 'second' ? 1 : granularity === 'minute' ? 60 : 3600);
   const invalid = $derived(
-    error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined,
+    error || hasInputValidityError
+      ? 'true'
+      : ariaInvalid === true || ariaInvalid === 'true'
+        ? 'true'
+        : undefined,
   );
   const resolvedPlaceholder = $derived(
     placeholder === 'YYYY-MM-DD' && granularity !== 'day'
@@ -124,6 +129,7 @@
     const valid =
       current === '' ||
       (normalizedCurrent === current && clampToBounds(normalizedCurrent) === normalizedCurrent);
+    hasInputValidityError = !valid;
     element.setCustomValidity(valid ? '' : 'Enter a valid date within the allowed range.');
   }
 
