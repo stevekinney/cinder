@@ -181,8 +181,8 @@ const fixtureArtifactByPath = new Map<string, string>();
  */
 const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
-let shellBuildPromise: Promise<string | null> | null = null;
-let shellBuildUsedFallback = false;
+type ShellBuildResult = { code: string | null; usedFallback: boolean };
+let shellBuildPromise: Promise<ShellBuildResult> | null = null;
 type ShellServerRenderer = (props: {
   initialComponent: string;
   components: string[];
@@ -1370,20 +1370,18 @@ async function loadPageServerRenderer(): Promise<PageServerRenderer> {
  * falls back to the last-good cached shell (if any) instead — see
  * `shellStale`'s doc comment for why the shell specifically needs this.
  */
-async function buildShellBundle(): Promise<string | null> {
+async function buildShellBundle(): Promise<ShellBuildResult> {
   const cachedEntryPath = shellEntryByName.get('shell');
   const cachedCode =
     cachedEntryPath !== undefined ? shellArtifactByPath.get(cachedEntryPath) : undefined;
   if (cachedCode !== undefined && !shellStale) {
-    shellBuildUsedFallback = false;
-    return cachedCode;
+    return { code: cachedCode, usedFallback: false };
   }
 
   if (shellBuildPromise !== null) return shellBuildPromise;
 
-  const buildPromise: Promise<string | null> = (async () => {
+  const buildPromise: Promise<ShellBuildResult> = (async () => {
     const generationAtStart = rebuildGeneration;
-    shellBuildUsedFallback = false;
     // A Svelte syntax error makes the underlying `Bun.build()` call THROW
     // rather than resolve with `{ success: false }` — `.catch()` converts
     // that into the same graceful-failure path as a build that resolves
@@ -1394,11 +1392,10 @@ async function buildShellBundle(): Promise<string | null> {
       return null;
     });
     if (entry === null) {
-      shellBuildUsedFallback = true;
       console.error(
         '[playground] shell rebuild failed — serving last-good shell (if cached); will retry on next request',
       );
-      return cachedCode ?? null;
+      return { code: cachedCode ?? null, usedFallback: true };
     }
 
     // Always publish chunks (see buildPageBundle's comment for the
@@ -1409,7 +1406,7 @@ async function buildShellBundle(): Promise<string | null> {
       shellEntryByName.set('shell', entry.entryPath);
       shellStale = false;
     }
-    return entry.entryCode;
+    return { code: entry.entryCode, usedFallback: false };
   })();
   shellBuildPromise = buildPromise;
 
@@ -2179,10 +2176,10 @@ export async function handleRequest(request: Request): Promise<Response> {
     // be hashed chunks served from the cache above; we never lazily build
     // anything other than the entry on this route.
     if (filename !== 'shell') return notFound();
-    const code = await buildShellBundle();
-    if (code === null) return notFound('Shell bundle failed to build');
+    const shellResult = await buildShellBundle();
+    if (shellResult.code === null) return notFound('Shell bundle failed to build');
     // Bare, unhashed shell entry URL (`/shell-bundle/shell.js`) — never cache.
-    return new Response(code, {
+    return new Response(shellResult.code, {
       headers: {
         'Content-Type': 'application/javascript',
         'Cache-Control': NO_STORE_CACHE_CONTROL,
@@ -2480,7 +2477,7 @@ async function eagerPrebuildAll(): Promise<{
 }> {
   const shellPromise = buildShellBundle().catch((error) => {
     console.error('[playground] shell bundle threw during pre-build:', error);
-    return null;
+    return { code: null, usedFallback: true };
   });
   const components = await discoverSidebarComponents();
   // Sidebar components are a subset of all components, so each is a valid
@@ -2505,7 +2502,7 @@ async function eagerPrebuildAll(): Promise<{
   }
 
   return {
-    shellSucceeded: shellBuildSucceeded(shellCode, shellBuildUsedFallback),
+    shellSucceeded: shellBuildSucceeded(shellCode.code, shellCode.usedFallback),
     succeeded,
     failed,
   };

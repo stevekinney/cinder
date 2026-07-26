@@ -490,9 +490,13 @@ async function waitForWarmPlayground(
     if (readiness.ok) {
       stableReadinessReads += 1;
       if (stableReadinessReads >= PLAYGROUND_WARM_READINESS_STABLE_READS) {
-        await dependencyWatchController?.waitForIdle();
+        const rebuilt = (await dependencyWatchController?.waitForIdle()) ?? false;
         const finalFailure = dependencyWatchController?.getFailure();
         if (finalFailure !== null && finalFailure !== undefined) throw finalFailure;
+        if (rebuilt) {
+          stableReadinessReads = 0;
+          continue;
+        }
         return;
       }
     } else {
@@ -543,7 +547,7 @@ async function buildPlaygroundBundleDependencies(
 
 type DependencyWatchController = {
   dispose: () => void;
-  waitForIdle: () => Promise<void>;
+  waitForIdle: () => Promise<boolean>;
   getFailure: () => Error | null;
 };
 
@@ -554,12 +558,12 @@ function startPlaygroundBundleDependencyWatchers(
   const watchers: FSWatcher[] = [];
   const timers = new Set<ReturnType<typeof setTimeout>>();
   const states: Array<{ buildProcess: ChildProcess | null; pending: boolean }> = [];
-  const idleWaiters: Array<() => void> = [];
+  const idleWaiters: Array<(rebuilt: boolean) => void> = [];
   let disposed = false;
   let failure: Error | null = null;
   const resolveIdle = (): void => {
     if (states.some((state) => state.pending || state.buildProcess !== null)) return;
-    for (const resolve of idleWaiters.splice(0)) resolve();
+    for (const resolve of idleWaiters.splice(0)) resolve(true);
   };
   for (const packageName of playgroundBundleDependencyPackages) {
     if (!shouldContinueStartingChildProcesses()) break;
@@ -585,6 +589,7 @@ function startPlaygroundBundleDependencyWatchers(
       void waitForExit(currentBuild).then((buildCode) => {
         if (buildCode !== 0 && failure === null) {
           failure = new Error(`${packageName} watched build exited with code ${buildCode}`);
+          state.pending = false;
         }
         if (state.buildProcess === currentBuild) state.buildProcess = null;
         if (state.pending && failure === null) runBuild();
@@ -623,8 +628,8 @@ function startPlaygroundBundleDependencyWatchers(
     },
     waitForIdle: () =>
       states.every((state) => !state.pending && state.buildProcess === null)
-        ? Promise.resolve()
-        : new Promise<void>((resolve) => idleWaiters.push(resolve)),
+        ? Promise.resolve(false)
+        : new Promise<boolean>((resolve) => idleWaiters.push(resolve)),
     getFailure: () => failure,
   };
 }
