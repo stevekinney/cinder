@@ -193,6 +193,7 @@ type ShellServerRenderer = (props: {
 let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 let preparedShellServerRenderer: ShellServerRenderer | null = null;
+let shellRendererUsedFallback = false;
 
 /**
  * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
@@ -784,7 +785,7 @@ async function buildBundleUncached(
   // Captured before the (potentially slow) compile so we can tell, after it
   // resolves, whether an invalidation raced past us — see the publish guard
   // below.
-  const generationAtStart = rebuildGeneration;
+  const analysisGenerationAtStart = rebuildGeneration;
 
   // Bun's `naming` template uses the entrypoint basename for `[name]`. To
   // emit the entry as `bundle-<name>-<scenario>.js` (disjoint from the
@@ -1299,6 +1300,7 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
       const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
       if (generationAtStart === rebuildGeneration) {
         lastGoodShellServerRenderer = renderer;
+        shellRendererUsedFallback = false;
       }
       return renderer;
     } catch (error) {
@@ -1306,6 +1308,7 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
         '[playground] shell server rebuild failed; serving the last-good renderer:',
         error,
       );
+      shellRendererUsedFallback = true;
       return fallbackToLastGood(lastGoodShellServerRenderer, error);
     }
   })();
@@ -1449,7 +1452,7 @@ async function getManifests(): Promise<ComponentManifest[]> {
   if (manifestCache !== null) return manifestCache;
   // Captured before awaiting so we can tell, once the analysis resolves,
   // whether an invalidation raced past us — see the publish guard below.
-  const generationAtStart = rebuildGeneration;
+  const analysisGenerationAtStart = rebuildGeneration;
   // Reuse the in-flight promise so concurrent callers don't each analyze the
   // same package sources. Discovery has already rejected duplicate route slugs.
   manifestPromise ??= discoverComponentDefinitions().then(async (definitions) => {
@@ -1497,6 +1500,7 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
     `${componentName}.schema.json`,
   );
   const generatedSchemaFile = Bun.file(generatedSchemaPath);
+  const generationAtStart = rebuildGeneration;
   if (await generatedSchemaFile.exists()) {
     const schema = (await generatedSchemaFile.json()) as {
       properties?: Record<
@@ -1510,7 +1514,7 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
     };
     if (schema.properties !== undefined) {
       const manifest: ComponentManifest = {
-        name: componentName,
+        name: humanizeComponentName(componentName),
         kebabName: componentName,
         file: definition.filePath,
         importPath: definition.importPath,
@@ -1541,15 +1545,16 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
           ? { isCompound: true }
           : {}),
       };
-      componentManifestCache.set(componentName, manifest);
+      if (generationAtStart === rebuildGeneration)
+        componentManifestCache.set(componentName, manifest);
       return manifest;
     }
   }
-  const generationAtStart = rebuildGeneration;
+  const analysisGenerationAtStart = rebuildGeneration;
   const manifest = await analyzeComponent(definition.filePath, {
     importPath: definition.importPath,
   });
-  if (generationAtStart === rebuildGeneration) {
+  if (analysisGenerationAtStart === rebuildGeneration) {
     componentManifestCache.set(componentName, manifest);
   }
   return manifest;
@@ -2680,6 +2685,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
     try {
       preparedShellServerRenderer = await loadShellServerRenderer();
+      if (shellRendererUsedFallback) {
+        preparedShellServerRenderer = null;
+        continue;
+      }
     } catch (error) {
       await dispose();
       throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
