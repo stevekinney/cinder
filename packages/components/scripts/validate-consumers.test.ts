@@ -230,7 +230,8 @@ describe('hydration teardown reclamation verdict', () => {
       ),
     ).toEqual([4242]);
 
-    // The same line truncated to a default-width terminal must NOT look clean.
+    // A default-width truncated line incorrectly looks clean because it hides
+    // the token; the wide process listing is what prevents that false verdict.
     expect(
       parseHydrationBrowserProcessIds(
         { exitCode: 0, stdout: `  4242 ${argv.slice(0, 80)}`, stderr: '' },

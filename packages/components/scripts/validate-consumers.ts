@@ -1895,10 +1895,12 @@ async function stopConsumerFixtureServer(server: Bun.Subprocess): Promise<void> 
         await server.exited;
       },
       state: () => `fixtureServerExitCode=${server.exitCode ?? 'running'}`,
+      reclaimed: () => server.exitCode !== null,
     },
   ]);
-  if (failures.length > 0) {
-    const failure = failures[0]!;
+  const unreclaimed = unreclaimedTeardownFailures(failures);
+  if (unreclaimed.length > 0) {
+    const failure = unreclaimed[unreclaimed.length - 1]!;
     throw new ConsumerTeardownError(
       new Error(
         `teardown phase=${failure.phase} ${failure.state}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
