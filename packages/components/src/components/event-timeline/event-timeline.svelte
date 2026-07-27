@@ -503,9 +503,7 @@
     if (!owner) return;
     portalOwnerWidth = 0;
     const observer = new ResizeObserver(([entry]) => {
-      const inlineSize = entry?.borderBoxSize?.[0]?.inlineSize;
-      portalOwnerWidth =
-        inlineSize ?? entry?.contentRect.width ?? owner.getBoundingClientRect().width;
+      portalOwnerWidth = entry ? getObservedWidth(entry) : owner.getBoundingClientRect().width;
     });
     observer.observe(owner);
     return () => observer.disconnect();
