@@ -418,6 +418,7 @@
     {liveAnnouncement}
   </p>
 
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
     class="cinder-carousel__viewport"
     role="group"
