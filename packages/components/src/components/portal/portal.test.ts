@@ -56,6 +56,42 @@ describe('Portal', () => {
     expect(findNearestOpenTopLayer(source)).toBeNull();
   });
 
+  test('does not resolve a trigger wrapper marker to itself (self-owned scope)', () => {
+    // Regression test: `.cinder-popover__trigger` wrappers tag themselves with
+    // `data-cinder-portal-owner` while open so nested content can find an enclosing owner.
+    // Resolving that marker back to the trigger's own source produces a self-referential
+    // target that later throws `appendChild` on itself — this must fall through to null.
+    const trigger = document.createElement('div');
+    trigger.className = 'cinder-popover__trigger';
+    trigger.setAttribute('data-cinder-portal-owner', 'own-panel-scope');
+    const source = document.createElement('button');
+    trigger.append(source);
+    document.body.append(trigger);
+
+    expect(findNearestOpenTopLayer(source)).toBeNull();
+  });
+
+  test('finds an enclosing owner marker beyond the source’s own trigger wrapper', () => {
+    // A popover nested inside another popover's trigger content should resolve the OUTER
+    // trigger's marker as its owner, not its own (inner) trigger's self-reference.
+    const outerTrigger = document.createElement('div');
+    outerTrigger.className = 'cinder-popover__trigger';
+    outerTrigger.setAttribute('data-cinder-portal-owner', 'outer-scope');
+    const outerScope = document.createElement('div');
+    outerScope.id = 'outer-scope';
+    document.body.append(outerScope);
+
+    const innerTrigger = document.createElement('div');
+    innerTrigger.className = 'cinder-popover__trigger';
+    innerTrigger.setAttribute('data-cinder-portal-owner', 'inner-scope');
+    const source = document.createElement('button');
+    innerTrigger.append(source);
+    outerTrigger.append(innerTrigger);
+    document.body.append(outerTrigger);
+
+    expect(findNearestOpenTopLayer(source)).toBe(outerScope);
+  });
+
   test('crosses an open shadow host while finding a top-layer owner', () => {
     const dialog = document.createElement('dialog');
     const host = document.createElement('div');

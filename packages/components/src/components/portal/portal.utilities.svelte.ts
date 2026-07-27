@@ -95,7 +95,11 @@ export function findNearestOpenTopLayer(
   source: HTMLElement,
   isModalDialog: (element: HTMLElement) => boolean = (element) => element.matches(':modal'),
 ): HTMLElement | null {
-  const ownerLookupSource = source.closest('.cinder-popover__trigger') ?? source;
+  // Skip the nearest `.cinder-popover__trigger` itself: that marker is always the source's own
+  // (not-yet-existing) scope, not a genuinely enclosing owner. Continuing the search from its
+  // parent finds the next marker up the tree, which — by construction — belongs to a different,
+  // truly enclosing popover/top-layer instance (see the nested-popover-in-trigger follow-up).
+  const ownerLookupSource = source.closest('.cinder-popover__trigger')?.parentElement ?? source;
   const ownerId = ownerLookupSource.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset[
     'cinderPortalOwner'
   ];
@@ -593,7 +597,16 @@ export function createPortalAttachment(
       const inheritAttributes = readOption(options.inheritAttributes ?? true);
       const targetValue = readOption(options.target ?? null);
       const attributeSource = readOption(options.source ?? initialParent) ?? initialParent;
-      const resolved = disabled ? null : resolvePortalTarget(targetValue);
+      const rawResolved = disabled ? null : resolvePortalTarget(targetValue);
+      // A resolved target that is the wrapper itself (or nests inside it) is never valid — most
+      // often this means an ownership lookup (e.g. findNearestOpenTopLayer) fed its own scope
+      // element back as the target. Treat it the same as "unresolved" rather than attempting the
+      // append, which would throw (a node cannot become its own child).
+      const resolved =
+        rawResolved?.kind === 'resolved' &&
+        (rawResolved.target === element || element.contains(rawResolved.target))
+          ? ({ kind: 'unresolved', key: 'own-wrapper' } as const)
+          : rawResolved;
 
       if (!disabled && resolved?.kind === 'resolved') {
         activeAttributeSource = attributeSource;

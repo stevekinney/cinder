@@ -433,6 +433,29 @@ describe('NavigationBar', () => {
     expect(container.querySelector('nav')?.getAttribute('data-collapsible')).toBe('false');
   });
 
+  test('without menuToggle, no MutationObserver is attached to watch source availability', () => {
+    // Regression test: `observePortalSourceAvailability` used to run for every mounted
+    // NavigationBar, even ones that can never enter mobile/portal layout because
+    // `menuToggle` is undefined (`isCollapsible` is false). That attached an unnecessary
+    // MutationObserver on desktop/non-collapsible variants.
+    const originalMutationObserver = globalThis.MutationObserver;
+    let constructedCount = 0;
+    class CountingMutationObserver extends originalMutationObserver {
+      constructor(...args: ConstructorParameters<typeof MutationObserver>) {
+        super(...args);
+        constructedCount += 1;
+      }
+    }
+    globalThis.MutationObserver = CountingMutationObserver as unknown as typeof MutationObserver;
+
+    try {
+      render(NavigationBar, { items: textSnippet('items') });
+      expect(constructedCount).toBe(0);
+    } finally {
+      globalThis.MutationObserver = originalMutationObserver;
+    }
+  });
+
   test('placement defaults to top and labelsVisible defaults to always', () => {
     const { container } = render(NavigationBar, {
       items: textSnippet('items'),

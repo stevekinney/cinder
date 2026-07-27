@@ -117,12 +117,14 @@
     firstItem?.focus();
   });
 
-  $effect(() =>
-    observePortalSourceAvailability(navigationBarElement, (unavailable) => {
+  $effect(() => {
+    if (!isCollapsible) return;
+
+    return observePortalSourceAvailability(navigationBarElement, (unavailable) => {
       sourceSubtreeUnavailable = unavailable;
       if (unavailable) mobileMenuOpen = false;
-    }),
-  );
+    });
+  });
 
   function getCollapsibleMaxWidthPx(): number {
     if (typeof window === 'undefined') {
