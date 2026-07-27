@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 
-import { setupHappyDom } from './happy-dom';
+import { setupHappyDom } from './happy-dom.ts';
 
 test('keeps the installed MutationObserver replaceable', () => {
   setupHappyDom();

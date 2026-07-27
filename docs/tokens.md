@@ -301,7 +301,7 @@ Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ s
 The token table is the single source of truth. A `z-index` reference must use
 `var(--cinder-z-*)` without an inline fallback; otherwise a partial stylesheet
 can silently put two components that name the same layer at different heights.
-Component-local stacking may use `0` or `1`. A higher local relationship needs
+Component-local stacking may use `auto`, `0`, or `1`. A higher local relationship needs
 an adjacent `cinder-z-index-local:` reason so Stylelint can distinguish it from
 a new global layer.
 
