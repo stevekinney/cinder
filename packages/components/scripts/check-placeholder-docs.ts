@@ -22,6 +22,12 @@ const DESIGN_REVIEW_PHRASES: string[] = [
   'This migration scaffold is incomplete',
   'opt-in highlighting',
 ];
+const DESIGN_REVIEW_SCAFFOLD_PHRASES: string[] = [
+  'name the reviewer before merge',
+  'record approved or changes requested before merge',
+  'list the closest existing Cinder components',
+  'explain why composition or an existing neighbour is insufficient',
+];
 const ACCESSIBILITY_REVIEW_PHRASES: string[] = [
   '_Pending',
   '_Pending when this review applies.',
@@ -102,7 +108,9 @@ export function findPlaceholderViolations(
               ? line.toLowerCase().includes(phrase.toLowerCase())
               : phrase.startsWith('_Pending')
                 ? line.toLowerCase().includes(phrase.toLowerCase())
-                : line.includes(phrase);
+                : DESIGN_REVIEW_SCAFFOLD_PHRASES.includes(phrase)
+                  ? line.toLowerCase().includes(phrase.toLowerCase())
+                  : line.includes(phrase);
         if (matchesPhrase) {
           const lineNumber = offset + index + 1;
           if (
@@ -126,7 +134,9 @@ export function findPlaceholderViolations(
   const accessibilityHeadings = lines.filter((line) =>
     /^##\s+Novel interaction accessibility review\s*$/i.test(line.trim()),
   );
+  const isLikelyReviewRecord = /^#\s+.*\breview\b/im.test(content);
   const hasAccessibilityTemplate =
+    isLikelyReviewRecord ||
     requiredAccessibilityRecord ||
     designHeadings.length > 0 ||
     accessibilityHeadings.length > 0 ||
@@ -234,7 +244,7 @@ export function findPlaceholderViolations(
   const designEnd = designSectionEnd === -1 ? lines.length : designSectionEnd;
   scan(
     lines.slice(designHeading === -1 ? 0 : designHeading, designEnd),
-    [...DESIGN_REVIEW_PHRASES, '_Pending'],
+    [...DESIGN_REVIEW_PHRASES, ...DESIGN_REVIEW_SCAFFOLD_PHRASES, '_Pending'],
     designHeading === -1 ? 0 : designHeading,
   );
   if (accessibilityHeading !== -1 && accessibilityApplies) {

@@ -108,6 +108,24 @@ describe('findPlaceholderViolations', () => {
       ]),
     );
   });
+  it('requires structure for manual accessibility records without markers', () => {
+    const violations = findPlaceholderViolations('# Review completed', 'component.a11y.md');
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ phrase: 'design review heading' }),
+        expect.objectContaining({ phrase: 'accessibility heading' }),
+      ]),
+    );
+  });
+  it('rejects design review instruction scaffolds after marker removal', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: name the reviewer before merge._\n- Review outcome: record approved or changes requested before merge._\n- Nearest neighbours: list the closest existing Cinder components._\n- Why this component exists: explain why composition or an existing neighbour is insufficient._\n\n## Novel interaction accessibility review\n- Applies: no — static component',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase.includes('before merge')).length).toBe(2);
+    expect(violations.some(({ phrase }) => phrase.includes('closest existing'))).toBe(true);
+    expect(violations.some(({ phrase }) => phrase.includes('composition'))).toBe(true);
+  });
   it('allows completed prose beginning with Record', () => {
     expect(
       findPlaceholderViolations(
