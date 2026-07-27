@@ -1792,7 +1792,7 @@ async function stopHydrationFixtureServer(server: Bun.Subprocess): Promise<void>
         server.kill();
         await server.exited;
       },
-      forceClose: () => server.kill(),
+      forceClose: () => server.kill('SIGKILL'),
       state: () => `fixtureServerExitCode=${server.exitCode ?? 'running'}`,
     },
   ]);
