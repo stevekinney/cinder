@@ -97,7 +97,7 @@ export function findNearestOpenTopLayer(
 ): HTMLElement | null {
   const ownerId = source.closest('.cinder-popover__trigger')
     ? null
-    : source.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset.cinderPortalOwner;
+    : source.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset['cinderPortalOwner'];
   if (ownerId) {
     const owner = document.getElementById(ownerId);
     if (owner instanceof HTMLElement) return owner;
