@@ -785,7 +785,7 @@ async function buildBundleUncached(
   // Captured before the (potentially slow) compile so we can tell, after it
   // resolves, whether an invalidation raced past us — see the publish guard
   // below.
-  const analysisGenerationAtStart = rebuildGeneration;
+  const generationAtStart = rebuildGeneration;
 
   // Bun's `naming` template uses the entrypoint basename for `[name]`. To
   // emit the entry as `bundle-<name>-<scenario>.js` (disjoint from the
@@ -1452,7 +1452,7 @@ async function getManifests(): Promise<ComponentManifest[]> {
   if (manifestCache !== null) return manifestCache;
   // Captured before awaiting so we can tell, once the analysis resolves,
   // whether an invalidation raced past us — see the publish guard below.
-  const analysisGenerationAtStart = rebuildGeneration;
+  const generationAtStart = rebuildGeneration;
   // Reuse the in-flight promise so concurrent callers don't each analyze the
   // same package sources. Discovery has already rejected duplicate route slugs.
   manifestPromise ??= discoverComponentDefinitions().then(async (definitions) => {
