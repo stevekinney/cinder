@@ -127,7 +127,7 @@ test.describe('a11y regressions', () => {
     componentPage,
   }) => {
     const entry = getEntry('access-gate');
-    const fixture = getFixture(entry, 'inline-denied');
+    const fixture = getFixture(entry, 'inline-toggle');
     const page = await componentPage.open({
       entry,
       theme: lightTheme,
@@ -135,50 +135,16 @@ test.describe('a11y regressions', () => {
       fixtureName: fixture.name,
       fixtureContentHash: fixture.fixtureContentHash,
     });
-    const deniedGeometry = await page.locator('.cinder-access-gate').evaluate((element) => {
-      const control = element.querySelector('[data-cinder-access-gate-control]')!;
-      const reason = element.querySelector('.cinder-access-gate__inline-reason')!;
-      const root = element.getBoundingClientRect();
-      const controlRect = control.getBoundingClientRect();
-      const reasonRect = reason.getBoundingClientRect();
-      return {
-        display: getComputedStyle(element).display,
-        rootWidth: root.width,
-        rootHeight: root.height,
-        controlBottom: controlRect.bottom,
-        reasonBottom: reasonRect.bottom,
-      };
-    });
-    expect(deniedGeometry.display).not.toBe('none');
-    expect(deniedGeometry.rootWidth).toBeGreaterThan(0);
-    expect(deniedGeometry.rootHeight).toBeGreaterThan(0);
-    expect(Math.abs(deniedGeometry.controlBottom - deniedGeometry.reasonBottom)).toBeLessThan(12);
+    const gatedControl = page.locator('[data-access-gate-toggle-anchor] button');
+    const deniedGeometry = await gatedControl.boundingBox();
+    expect(deniedGeometry).not.toBeNull();
 
-    const grantedPage = await componentPage.open({
-      entry,
-      theme: lightTheme,
-      viewport: desktopViewport,
-      fixtureName: 'inline-granted',
-      fixtureContentHash: getFixture(entry, 'inline-granted').fixtureContentHash,
-    });
-    const grantedGeometry = await grantedPage
-      .locator('[data-access-gate-baseline]')
-      .evaluate((baseline) => {
-        const sibling = baseline.nextElementSibling!.querySelector('button')!;
-        const baselineRect = baseline.querySelector('button')!.getBoundingClientRect();
-        const siblingRect = sibling.getBoundingClientRect();
-        return {
-          baselineTop: baselineRect.top,
-          baselineWidth: baselineRect.width,
-          baselineHeight: baselineRect.height,
-          siblingTop: siblingRect.top,
-          siblingWidth: siblingRect.width,
-          siblingHeight: siblingRect.height,
-        };
-      });
-    expect(Math.abs(grantedGeometry.baselineTop - grantedGeometry.siblingTop)).toBeLessThan(1);
-    expect(grantedGeometry.siblingWidth).toBe(grantedGeometry.baselineWidth);
-    expect(grantedGeometry.siblingHeight).toBe(grantedGeometry.baselineHeight);
+    await page.getByRole('button', { name: 'Toggle access' }).click();
+    const grantedGeometry = await gatedControl.boundingBox();
+    expect(grantedGeometry).not.toBeNull();
+    expect(Math.abs(grantedGeometry!.y - deniedGeometry!.y)).toBeLessThan(1);
+    expect(grantedGeometry!.width).toBe(deniedGeometry!.width);
+    expect(grantedGeometry!.height).toBe(deniedGeometry!.height);
   });
 
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {

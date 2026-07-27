@@ -17,6 +17,13 @@ export default [
     },
   },
   {
+    name: 'inline-toggle',
+    host: './access-gate.fixture.svelte',
+    props: {
+      variant: 'inline-toggle',
+    },
+  },
+  {
     name: 'section-denied',
     host: './access-gate.fixture.svelte',
     props: {

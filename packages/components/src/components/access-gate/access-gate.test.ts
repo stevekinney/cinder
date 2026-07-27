@@ -38,7 +38,8 @@ describe('AccessGate', () => {
     const styles = readFileSync(new URL('./access-gate.css', import.meta.url), 'utf8');
 
     expect(styles).toContain('.cinder-access-gate__passthrough {');
-    expect(styles).toContain('.cinder-access-gate__passthrough {\n    display: contents;');
+    expect(styles).toContain('.cinder-access-gate__passthrough {\n    display: inline-flex;');
+    expect(styles).toContain('align-items: baseline;');
     expect(styles).not.toContain('.cinder-access-gate__passthrough:has(> :only-child)');
     expect(styles).toContain('inline-size: 100%;');
     expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-full-width])');
@@ -68,7 +69,7 @@ describe('AccessGate', () => {
     cleanup();
   });
 
-  test('granted inline gates render children without an extra wrapper', () => {
+  test('granted inline gates render children in a semantic-neutral layout wrapper', () => {
     const { container } = render(AccessGate, {
       granted: true,
       reason: 'Requires scope: workflows:cancel',

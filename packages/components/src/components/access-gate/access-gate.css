@@ -5,11 +5,15 @@
   }
 
   .cinder-access-gate__passthrough {
-    display: contents;
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    max-inline-size: 100%;
     vertical-align: baseline;
   }
 
   .cinder-access-gate__passthrough:has(> [data-cinder-full-width]) {
+    display: flex;
     inline-size: 100%;
   }
 
