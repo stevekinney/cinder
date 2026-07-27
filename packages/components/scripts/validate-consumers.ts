@@ -1797,8 +1797,8 @@ async function runSvelteKitHydrationRoutesOnce(
       : [
           {
             phase: 'context.close',
-            close: () => context!.close(),
-            state: () => `contextPages=${context!.pages().length}`,
+            close: () => context.close(),
+            state: () => `contextPages=${context.pages().length}`,
           },
         ]),
     {
