@@ -321,7 +321,7 @@
     return: 'ArrowLeft' | 'ArrowRight';
   } {
     const element = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    const isRightToLeft = resolveTextDirection(element, localeContext?.direction) === 'rtl';
+    const isRightToLeft = resolvedDirection === 'rtl';
     return isRightToLeft
       ? { enter: 'ArrowLeft', return: 'ArrowRight' }
       : { enter: 'ArrowRight', return: 'ArrowLeft' };

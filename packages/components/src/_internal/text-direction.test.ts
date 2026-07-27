@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 import {
+  isContainerRule,
   isRightToLeftElement,
   observeTextDirection,
   resolveTextDirection,
@@ -75,6 +76,15 @@ function createStyleSheetWithThrowingRules(): CSSStyleSheet {
 }
 
 describe('resolveTextDirection', () => {
+  test('only treats unknown CSS rules with container at-rule text as container rules', () => {
+    const unknownRule = { cssText: '@unknown (min-width: 1px) {}', type: 0 } as unknown as CSSRule;
+    const containerRule = {
+      cssText: '@container (min-width: 1px) {}',
+      type: 0,
+    } as unknown as CSSRule;
+    expect(isContainerRule(unknownRule)).toBe(false);
+    expect(isContainerRule(containerRule)).toBe(true);
+  });
   test('returns undefined when no element, fallback, or document direction is available', () => {
     expect(resolveTextDirection(null)).toBeUndefined();
   });

@@ -367,8 +367,11 @@ function evaluateContainerSizeCondition(
   return !/^\s*not\b/i.test(conditionText);
 }
 
-function isContainerRule(rule: CSSRule): boolean {
-  return rule.constructor.name === 'CSSContainerRule' || Reflect.get(rule, 'type') === 0;
+export function isContainerRule(rule: CSSRule): boolean {
+  if (rule.constructor.name === 'CSSContainerRule') return true;
+  if (Reflect.get(rule, 'type') !== 0) return false;
+  const cssText = Reflect.get(rule, 'cssText');
+  return typeof cssText === 'string' && /^\s*@container\b/i.test(cssText);
 }
 
 function isMediaRule(rule: CSSRule): boolean {
