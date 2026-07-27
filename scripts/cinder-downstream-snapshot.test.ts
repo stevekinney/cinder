@@ -110,6 +110,8 @@ test('clones a file remote ref and records its commit', async () => {
   const result = await runSnapshotCli(['--request', request]);
   const snapshot = JSON.parse(result.stdout);
   expect(snapshot.repositories[0].commit).toBe(expected);
+  expect(snapshot.repositories[0].remote).toBe(`file://${source}`);
+  expect(snapshot.repositories[0].ref).toBe('main');
 });
 
 test('redacts credentials from remote output', () => {

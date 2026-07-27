@@ -8,24 +8,44 @@
     {
       "name": "agent-bureau",
       "remote": "https://github.com/stevekinney/agent-bureau.git",
-      "ref": "main"
+      "ref": "main",
+      "globs": ["package.json", "README.md", "src/**/*.{ts,tsx,svelte,css}"],
+      "evidence": { "imports": ["src/**/*.{ts,tsx,svelte}"], "styles": ["src/**/*.{svelte,css}"] }
     },
     {
       "name": "narrate-studio",
       "remote": "https://github.com/stevekinney/narrate-studio.git",
-      "ref": "main"
+      "ref": "main",
+      "globs": ["package.json", "README.md", "src/**/*.{ts,tsx,svelte,css}"],
+      "evidence": { "imports": ["src/**/*.{ts,tsx,svelte}"], "styles": ["src/**/*.{svelte,css}"] }
     },
     {
       "name": "stevekinney.net",
       "remote": "https://github.com/stevekinney/stevekinney.net.git",
-      "ref": "main"
+      "ref": "main",
+      "globs": ["package.json", "README.md", "src/**/*.{ts,tsx,svelte,css}"],
+      "evidence": { "imports": ["src/**/*.{ts,tsx,svelte}"], "styles": ["src/**/*.{svelte,css}"] }
     },
-    { "name": "tribunal", "remote": "https://github.com/stevekinney/tribunal.git", "ref": "main" },
-    { "name": "weft", "remote": "https://github.com/stevekinney/weft.git", "ref": "main" },
+    {
+      "name": "tribunal",
+      "remote": "https://github.com/stevekinney/tribunal.git",
+      "ref": "main",
+      "globs": ["package.json", "README.md", "src/**/*.{ts,tsx,svelte,css}"],
+      "evidence": { "imports": ["src/**/*.{ts,tsx,svelte}"], "styles": ["src/**/*.{svelte,css}"] }
+    },
+    {
+      "name": "weft",
+      "remote": "https://github.com/stevekinney/weft.git",
+      "ref": "main",
+      "globs": ["package.json", "README.md", "src/**/*.{ts,tsx,svelte,css}"],
+      "evidence": { "imports": ["src/**/*.{ts,tsx,svelte}"], "styles": ["src/**/*.{svelte,css}"] }
+    },
     {
       "name": "weft-console",
       "remote": "https://github.com/stevekinney/weft-console.git",
-      "ref": "main"
+      "ref": "main",
+      "globs": ["package.json", "README.md", "src/**/*.{ts,tsx,svelte,css}"],
+      "evidence": { "imports": ["src/**/*.{ts,tsx,svelte}"], "styles": ["src/**/*.{svelte,css}"] }
     }
   ],
   "issueWindow": { "open": 100, "recentlyClosed": 100, "since": "2026-07-17" }

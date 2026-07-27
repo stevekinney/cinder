@@ -193,8 +193,14 @@ async function main(): Promise<void> {
                 { timeout: REMOTE_CLONE_TIMEOUT_MS },
               )
             : clone;
+        if (clone.exitCode !== 0)
+          throw new Error(
+            `git init failed (exit ${clone.exitCode}): ${(clone.stderr.toString() || clone.stdout.toString()).trim()}`,
+          );
         if (fetch.exitCode !== 0)
-          throw new Error(`clone failed: ${fetch.stderr.toString().trim()}`);
+          throw new Error(
+            `git fetch failed (exit ${fetch.exitCode}): ${(fetch.stderr.toString() || fetch.stdout.toString()).trim()}`,
+          );
         const checkout = Bun.spawnSync(
           ['git', '-C', temporaryRoot, 'checkout', '--detach', 'FETCH_HEAD'],
           { timeout: REMOTE_CLONE_TIMEOUT_MS },
@@ -361,7 +367,16 @@ async function main(): Promise<void> {
         message: redactSecrets(error instanceof Error ? error.message : String(error)),
       });
     } finally {
-      if (temporaryRoot !== null) await rm(temporaryRoot, { recursive: true, force: true });
+      if (temporaryRoot !== null) {
+        try {
+          await rm(temporaryRoot, { recursive: true, force: true });
+        } catch (error) {
+          errors.push({
+            scope: `repository:${repository.name}:cleanup`,
+            message: redactSecrets(error instanceof Error ? error.message : String(error)),
+          });
+        }
+      }
     }
   }
   const output = {
