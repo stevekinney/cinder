@@ -297,11 +297,15 @@ describe('NavigationBar', () => {
     expect(navigationBarSource).toContain(
       'class="cinder-navigation-bar__items cinder-_floating-surface"',
     );
+    expect(navigationBarSource).toContain(
+      "classNames('cinder-navigation-bar__portal-scope', className)",
+    );
     expect(navigationBarSource).toContain("window.addEventListener('resize'");
   });
   test('passes the toggle click handler through the same snippet shape during SSR and hydration', () => {
-    expect(navigationBarSource).not.toMatch(/browser\s*\?\s*{\s*onclick:\s*handleToggle/);
-    expect([...navigationBarSource.matchAll(/onclick:\s*handleToggle/g)]).toHaveLength(2);
+    expect([...navigationBarSource.matchAll(/onclick:\s*browser \? handleToggle/g)]).toHaveLength(
+      2,
+    );
   });
 
   // ── Legacy tests (preserved) ────────────────────────────────────────────

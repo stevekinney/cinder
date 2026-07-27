@@ -462,8 +462,8 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: handleToggle,
-        onkeydown: handleToggleKeyDown,
+        onclick: browser ? handleToggle : undefined,
+        onkeydown: browser ? handleToggleKeyDown : undefined,
       })}
     </div>
   {/if}
@@ -479,8 +479,8 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: handleToggle,
-        onkeydown: handleToggleKeyDown,
+        onclick: browser ? handleToggle : undefined,
+        onkeydown: browser ? handleToggleKeyDown : undefined,
       })}
     </div>
   {/if}
@@ -491,7 +491,7 @@
 
   <div
     {@attach itemsPortalScope}
-    class={classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)}
+    class={classNames('cinder-navigation-bar__portal-scope', className)}
     style={`display: ${isMobileLayout && mobileMenuOpen ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
   >
     <div

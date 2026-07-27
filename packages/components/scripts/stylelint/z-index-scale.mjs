@@ -45,7 +45,7 @@ const messages = stylelint.utils.ruleMessages(ruleName, {
 });
 
 const meta = {
-  url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index',
+  url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index-layers',
 };
 
 function hasAdjacentLocalReason(declaration) {
