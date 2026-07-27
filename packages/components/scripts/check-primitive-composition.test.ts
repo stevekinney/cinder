@@ -744,13 +744,22 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
-  test('does not combine bounds from differently named containers', () => {
+  test('recognizes value-first width range media conditions', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media (40rem < width) { .layout { display: grid; } } @media (width <= 40rem) { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('allows bounds from differently named containers to overlap', () => {
     expect(
       findPrimitiveCompositionViolations(
         '@container sidebar (max-width: 40rem) { .layout { display: grid; } } @container main (min-width: 64rem) { .layout { grid-template-columns: 1fr; } }',
         'new-layout/new-layout.css',
       ),
-    ).toEqual([]);
+    ).toHaveLength(1);
   });
 
   test('recognizes conditional style-object grid branches', () => {

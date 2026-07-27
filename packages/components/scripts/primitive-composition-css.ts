@@ -257,6 +257,17 @@ function widthBounds(parameters: string): WidthBound[] {
       unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
+  for (const match of parameters.matchAll(
+    /\(\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*(<|<=|>|>=)\s*width\s*\)/gi,
+  )) {
+    if (match[1] === undefined || match[2] === undefined || match[3] === undefined) continue;
+    const operator = match[3];
+    bounds.push({
+      kind: operator.startsWith('<') ? 'minimum' : 'maximum',
+      value: Number(match[1]) + (operator === '<' ? 0.000001 : operator === '>' ? -0.000001 : 0),
+      unit: match[2].toLowerCase() === 'px' ? 'px' : 'root-em',
+    });
+  }
   return bounds;
 }
 
@@ -330,7 +341,7 @@ function conditionalScopesConflict(left: ConditionalScope, right: ConditionalSco
   if (left.name === 'container') {
     const leftName = left.parameters.match(/^([\w-]+)\s+/)?.[1] ?? '';
     const rightName = right.parameters.match(/^([\w-]+)\s+/)?.[1] ?? '';
-    if (leftName !== rightName) return true;
+    if (leftName !== rightName) return false;
   }
   const leftBranches = conditionalQueryBranches(left.parameters);
   const rightBranches = conditionalQueryBranches(right.parameters);
