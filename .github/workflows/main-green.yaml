@@ -23,7 +23,22 @@ env:
   # hits instead of re-executing — exactly the case this workflow exists to
   # catch — so force real execution here. unit-tests.yaml deliberately keeps
   # cache hits; do not add this there.
+  #
+  # TURBO_FORCE is load-bearing in a way it was not before remote caching: it is
+  # the only thing stopping this workflow from reading the shared remote cache
+  # and degrading into a no-op verifier that replays entries instead of proving
+  # the code still executes. Never remove it.
+  #
+  # There is deliberately no `actions/cache` step for `.turbo` in this workflow.
+  # A restore could never be read under force, and a save would collide with
+  # unit-tests.yaml's unsuffixed primary key: `actions/cache` selects an exact
+  # key match before consulting `restore-keys`, so once unit-tests has saved
+  # `turbo-<os>-<lock>-<config>`, entries saved here under any other key are
+  # never consumed. Remote caching is the cross-run sharing mechanism now, and
+  # this workflow always has secrets (push to main + schedule, never a fork).
   TURBO_FORCE: 'true'
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   workspace-gates:
@@ -38,14 +53,6 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-
-      - name: Restore Turbo cache
-        uses: actions/cache@v6
-        with:
-          path: .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ hashFiles('turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

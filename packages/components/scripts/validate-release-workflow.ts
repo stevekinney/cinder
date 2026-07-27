@@ -26,8 +26,15 @@
  *     inherited by the publish step without appearing in the step's own lines,
  *     so the whole-file check closes that evasion path. Comment lines are
  *     allowed (they document the OIDC rationale).
- *   - release-manual.yaml is NOT checked — that file intentionally uses a token
- *     as a documented break-glass fallback.
+ *   - release-manual.yaml is exempt from the TOKEN guards above only — that file
+ *     intentionally uses a token as a documented break-glass fallback. It is
+ *     still covered by the workflow-level `env:` context check below, which
+ *     scans every workflow in the directory.
+ *   - No workflow (not just release.yaml) references a job- or step-scoped
+ *     context (`runner`, `steps`, `job`, `matrix`, `needs`, `strategy`) inside a
+ *     workflow-level `env:` block. GitHub rejects the entire file in that case,
+ *     failing every job before it starts with only a generic "workflow file
+ *     issue" message. The YAML itself parses fine, so nothing else catches it.
  *   - Pending changeset files do NOT target packages listed in
  *     `.changeset/config.json` `ignore`. Ignored-package changesets are never
  *     consumed by `changeset version`, but `changesets/action` still treats them
@@ -787,6 +794,196 @@ function runValidation(): void {
 
   pass('No pending changesets target ignored packages');
   pass('release.yaml is correctly configured for npm Trusted Publishing');
+
+  validateWorkflowLevelEnvironmentContexts();
+}
+
+/**
+ * Contexts that do not exist when a workflow-level `env:` block is evaluated.
+ * GitHub rejects the ENTIRE workflow file if one appears there — the run fails
+ * before any job starts, reporting only "This run likely failed because of a
+ * workflow file issue" with no annotation pointing at the line. A YAML parse
+ * check cannot catch it: the file is perfectly valid YAML.
+ *
+ * `runner` is the one that actually bit us (`TURBO_PLATFORM: ${{ runner.os }}`
+ * in a workflow-level `env:`); the rest share the same failure mode because
+ * they are all scoped to a job or a step.
+ */
+const CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL = new Set(['github', 'secrets', 'inputs', 'vars']);
+
+/**
+ * Expression functions that are NOT available to a workflow-level `env:`.
+ *
+ * `hashFiles` needs a workspace that only exists once a job has checked out on a
+ * runner, and the status functions describe a job that has not started. The
+ * always-available functions (`contains`, `startsWith`, `endsWith`, `format`,
+ * `join`, `toJSON`, `fromJSON`) are deliberately absent from this set.
+ */
+const FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL = new Set([
+  'hashfiles',
+  'success',
+  'failure',
+  'cancelled',
+  'always',
+]);
+
+/** Bare words in a GitHub expression that are values, not context references. */
+const EXPRESSION_LITERALS = new Set(['true', 'false', 'null']);
+
+/**
+ * Names of functions invoked inside every `${{ … }}` expression on a line,
+ * lowercased because GitHub's expression functions are case-insensitive.
+ */
+export function workflowExpressionFunctionNames(line: string): string[] {
+  const names: string[] = [];
+
+  for (const expression of line.matchAll(/\$\{\{(?<body>.*?)\}\}/g)) {
+    const body = (expression.groups?.['body'] ?? '').replace(/'(?:[^']|'')*'/g, "''");
+
+    for (const call of body.matchAll(/(?<![.\w-])(?<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\(/g)) {
+      const name = call.groups?.['name'];
+      if (name !== undefined) names.push(name.toLowerCase());
+    }
+  }
+
+  return names;
+}
+
+/**
+ * Extract the root identifier of every context reference inside a `${{ … }}`
+ * expression — the part before the first `.` or `[`, so both `runner.os` and
+ * `runner['os']` yield `runner`.
+ *
+ * Single-quoted strings are stripped first so a literal like `format('a.b', …)`
+ * cannot be mistaken for a context reference. Function calls are naturally
+ * excluded: `fromJSON(…)` is followed by `(`, never `.` or `[`.
+ *
+ * The leading `(?<![.\w-])` is what keeps this to the ROOT: without it,
+ * `github.event.pull_request.number` reports `event` and `pull_request` as
+ * roots too and the allowlist rejects a perfectly valid expression.
+ *
+ * A bare context counts. `${{ runner }}` and `${{ toJSON(runner) }}` are just as
+ * invalid as `${{ runner.os }}`, and an earlier version of this function missed
+ * both by requiring a trailing `.` or `[`. So any identifier NOT followed by `(`
+ * is treated as a context reference; one followed by `(` is a function name and
+ * belongs to `workflowExpressionFunctionNames` instead.
+ */
+export function workflowExpressionContextRoots(line: string): string[] {
+  const roots: string[] = [];
+
+  for (const expression of line.matchAll(/\$\{\{(?<body>.*?)\}\}/g)) {
+    const body = (expression.groups?.['body'] ?? '').replace(/'(?:[^']|'')*'/g, "''");
+
+    for (const reference of body.matchAll(
+      /(?<![.\w-])(?<root>[A-Za-z_][A-Za-z0-9_-]*)\s*(?<suffix>\()?/g,
+    )) {
+      const root = reference.groups?.['root'];
+
+      if (root === undefined) continue;
+      if (reference.groups?.['suffix'] === '(') continue;
+      if (EXPRESSION_LITERALS.has(root.toLowerCase())) continue;
+
+      roots.push(root);
+    }
+  }
+
+  return roots;
+}
+
+/**
+ * Reject contexts that do not exist in a top-level `env:` block.
+ *
+ * Uses GitHub's allowlist rather than a denylist of known-bad roots: the set of
+ * *available* contexts is short, closed, and documented, whereas a denylist
+ * silently passes anything it forgot (`env`, `jobs`, and bracket access all
+ * slipped through the first version of this check).
+ *
+ * Scans raw lines rather than the parsed tree: we need the workflow-level block
+ * specifically, and a parsed mapping loses the column information that
+ * distinguishes it from `jobs.<id>.env`. A top-level key sits at column 0, so
+ * the block runs from a line matching `env:` at column 0 until the next
+ * column-0 key.
+ */
+export function workflowLevelEnvironmentLines(content: string): string[] {
+  const environmentLines: string[] = [];
+
+  let insideWorkflowEnvironmentBlock = false;
+
+  for (const line of content.split('\n')) {
+    // Comments first: YAML ignores comment indentation, so a `# note` at column
+    // 0 is legal INSIDE the block. Testing for a column-zero key before this
+    // would treat that comment as the next top-level key, end the scan early,
+    // and let everything after it through unchecked.
+    if (isComment(line) || line.trim().length === 0) continue;
+
+    if (/^\S/.test(line)) {
+      insideWorkflowEnvironmentBlock = false;
+
+      if (!line.startsWith('env:')) continue;
+
+      // `env: { A: "${{ runner.os }}" }` is a valid flow mapping that lives
+      // entirely on the key's own line. Inspect that remainder here — a
+      // line-based scanner that only looked at INDENTED lines would mark the
+      // block open, skip this line as the key, and then close the block at the
+      // next top-level key without ever examining the mapping.
+      if (line.slice('env:'.length).trim().length > 0) {
+        environmentLines.push(line);
+        continue;
+      }
+
+      insideWorkflowEnvironmentBlock = true;
+      continue;
+    }
+
+    if (insideWorkflowEnvironmentBlock) environmentLines.push(line);
+  }
+
+  return environmentLines;
+}
+
+function validateWorkflowLevelEnvironmentContexts(): void {
+  const workflowFileNames = readdirSync(workflowsDirectoryPath).filter(
+    (fileName) => fileName.endsWith('.yaml') || fileName.endsWith('.yml'),
+  );
+
+  for (const fileName of workflowFileNames) {
+    const content = readFileSync(join(workflowsDirectoryPath, fileName), 'utf8');
+
+    for (const line of workflowLevelEnvironmentLines(content)) {
+      for (const functionName of workflowExpressionFunctionNames(line)) {
+        if (!FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL.has(functionName)) continue;
+
+        fail(
+          `${fileName} calls \`${functionName}()\` in its workflow-level \`env:\` block:\n` +
+            `  ${line.trim()}\n\n` +
+            '`hashFiles` needs a checked-out workspace, and the status functions\n' +
+            '(`success`, `failure`, `cancelled`, `always`) describe a job that has not\n' +
+            'started — none are available before a job is assigned to a runner. GitHub\n' +
+            'rejects the ENTIRE workflow file, so every job fails before it starts.\n' +
+            'Move the value to the job or step that needs it.',
+        );
+      }
+
+      for (const root of workflowExpressionContextRoots(line)) {
+        if (CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL.has(root)) continue;
+
+        fail(
+          `${fileName} uses the \`${root}\` context in its workflow-level \`env:\` block:\n` +
+            `  ${line.trim()}\n\n` +
+            'A workflow-level `env:` is evaluated before any job is assigned to a runner,\n' +
+            'so only `github`, `secrets`, `inputs`, and `vars` exist there. Anything else\n' +
+            '(`runner`, `steps`, `job`, `matrix`, `needs`, `strategy`, `env`, `jobs`, …)\n' +
+            'makes GitHub reject the ENTIRE workflow file: every job fails before it starts,\n' +
+            'reporting only a generic "workflow file issue" with no annotation.\n\n' +
+            'Move the value to the job or step that needs it. For the runner OS\n' +
+            'specifically, GitHub already exports `RUNNER_OS` as a plain variable inside\n' +
+            'every job — no expression required.',
+        );
+      }
+    }
+  }
+
+  pass('Workflow-level `env:` blocks only use contexts available at workflow level');
 }
 
 if (import.meta.main) {

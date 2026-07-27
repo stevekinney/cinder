@@ -4,79 +4,172 @@
     "tsconfig.json",
     "tsconfig.base.json",
     ".oxlintrc.json",
-    "packages/components/scripts/check-coverage-ratchet.ts",
-    "tsconfig.build.json",
-    "packages/components/scripts/svelte-plugin.ts"
+    "tsconfig.build.json"
   ],
+  // No `globalEnv`. `NODE_ENV` was here first, on the grounds that
+  // `packages/components/scripts/svelte-plugin.ts` branches on it to pick Svelte's `dev`
+  // compilation mode — but as `globalEnv` it partitioned EVERY task on the caller's ambient value,
+  // including `build`, which normalizes `NODE_ENV` to `production` internally before compiling and
+  // so cannot vary because of it. That is pure cache-hit-rate loss for no correctness gain. It is
+  // declared on `test`/`test:coverage` instead, the only tasks that inherit the caller's value.
   "tasks": {
+    // A package-task override REPLACES the base definition — turbo does not merge them field by
+    // field. That makes a hand-written `dependsOn` a silent way to LOSE edges that `^build` would
+    // have supplied: the editor overrides used to declare only `@lostgradient/markdown#build`, which
+    // dropped the `@lostgradient/cinder#build` edge even though editor imports Cinder components
+    // directly. So: always keep `^build` in the list and append extra edges to it, never restate the
+    // expansion by hand. Most overrides then turn out to be identical to the base task and are gone.
+    //
+    // `packages/components/scripts/**` is an input to tasks in EVERY package, not just cinder's:
+    // chat, editor, and playground import `svelte-plugin.ts`, `check-coverage-ratchet.ts`, the
+    // component-artifact generators, and `lib/visual-fixtures/**` across the package boundary. Those
+    // files never land in cinder's `dist/**`, so the `^build` edge does not cover them. They used to
+    // be listed one-by-one in `globalDependencies`, which was both incomplete (only two of them were
+    // listed) and too blunt (a global dependency invalidates every cached task in the repo).
+    //
+    // Package `src/**` directories are deliberately NOT listed as inputs: a change there rehashes
+    // that package's `build`, and turbo folds a dependency task's hash into its dependents, so
+    // `^build` already covers it.
+    //
+    // `CINDER_FORCE_BUILD` is the escape hatch in `scripts/lib/build-cache.ts` for recovering from
+    // suspect `dist` output — `shouldSkipBuild()` returns `skip: false` when it is `1`. Declaring it
+    // here puts forced builds on a separate cache lineage from unforced ones, so the FIRST forced
+    // run after any change re-executes instead of replaying an unforced entry.
+    //
+    // It is deliberately NOT a claim that the variable bypasses turbo. It cannot: once a forced run
+    // stores its entry, repeating the same command hits that entry and the package script never
+    // runs again. Turbo's cache sits above the script, so no env var read INSIDE the script can
+    // defeat it. To genuinely re-execute through the root build, force turbo itself:
+    // `TURBO_FORCE=1 bun run build` (or `bunx turbo run build --force`).
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**"],
+      "env": ["CINDER_FORCE_BUILD"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
+    // `RUNNER_OS` + `TURBO_PLATFORM` are OS discriminators for the REMOTE cache. Turbo's hash covers
+    // declared files, env vars, and engines — there is no platform component (confirmed absent from
+    // `--dry=json`'s `globalCacheInputs`). Once macOS laptops and Linux CI share one remote
+    // namespace, a platform-conditioned test can have its success replayed on the OS that never
+    // executed that branch; `packages/testing/scripts/start-server.test.ts` and
+    // `packages/components/scripts/husky/utilities.test.ts` both derive assertions from
+    // `process.platform`.
+    //
+    // Two variables because no single one covers both environments. GitHub defines `RUNNER_OS` in
+    // every job automatically, so CI needs no workflow wiring (and `${{ runner.os }}` could not be
+    // used in a workflow-level `env:` block anyway — the `runner` context only exists at step
+    // level). Developers export `TURBO_PLATFORM="$(uname -s)"` per CONTRIBUTING.md. Every
+    // combination hashes distinctly: Linux CI sets only RUNNER_OS, a macOS laptop sets only
+    // TURBO_PLATFORM=Darwin, a Linux laptop sets only TURBO_PLATFORM=Linux. Unset fails SAFE — it
+    // hashes differently from any set value, so a laptop cannot read a CI test entry by accident.
+    //
+    // Only `test`/`test:coverage` carry these. `build`, `typecheck`, and `lint` are deterministic
+    // across platforms, so they keep full CI-to-laptop cache sharing.
+    //
+    // `.github/workflows/**` and `docs/**` are test inputs, not just repo furniture. Drift tests
+    // read them off disk: `validate-release-workflow.test.ts` asserts unit-tests.yaml's and
+    // main-green.yaml's build ordering and filters, and `tokens-doc-drift.test.ts` fails when
+    // `docs/tokens.md`'s token table diverges from `tokens-base.css`. Without these declared, a
+    // regression in either collects a false cached pass.
+    //
+    // Whole directories rather than the two named files, deliberately: a hand-maintained list of
+    // individual paths is exactly the fragile pattern this PR removed from `globalDependencies`,
+    // and it would silently fail to cover the next drift test someone adds. Both trees change
+    // rarely enough that the extra invalidation is cheap.
     "test": {
       "dependsOn": ["^build"],
-      "outputs": []
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.changeset/**",
+        "$TURBO_ROOT$/packages/*/package.json"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.changeset/**",
+        "$TURBO_ROOT$/packages/*/package.json"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
-      "outputs": []
-    },
-    "@cinder/playground#typecheck": {
-      "dependsOn": [
-        "@lostgradient/markdown#build",
-        "@lostgradient/cinder#build",
-        "@lostgradient/editor#build",
-        "@lostgradient/chat#build"
-      ],
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/src/**",
-        "$TURBO_ROOT$/packages/chat/src/**",
-        "$TURBO_ROOT$/packages/editor/src/**",
-        "$TURBO_ROOT$/packages/markdown/src/**"
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
       ]
     },
-    "@lostgradient/chat#typecheck": {
-      "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": [],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/components/src/**",
-        "$TURBO_ROOT$/packages/markdown/src/**"
-      ]
-    },
+    // `^build`, not `[]`: oxlint runs with `--type-aware`, which reads dependency `.d.ts` files, so
+    // a package's lint genuinely needs its dependencies built. Builds hash-skip, so the added edge
+    // is close to free on a warm tree.
     "lint": {
-      "dependsOn": [],
-      "outputs": []
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
-    "@lostgradient/editor#lint": {
-      "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": []
+    // `@cinder/testing` reaches the other way across the boundary: `scripts/changed-components.ts`
+    // imports `packages/playground/src/component-sources.ts`, and testing does not depend on
+    // playground, so `^build` cannot fold that hash in. Scoped to testing's own tasks rather than
+    // added to the base inputs — playground/src is the most-edited tree in the repo, and hashing it
+    // into every package's tasks would gut the cache for changes that cannot possibly affect them.
+    "@cinder/testing#test": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/packages/playground/src/**",
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.changeset/**",
+        "$TURBO_ROOT$/packages/*/package.json"
+      ],
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
+    "@cinder/testing#typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/packages/playground/src/**"
+      ]
+    },
+    // Cinder's lint reaches editor types, which is an edge `^build`
+    // cannot supply (editor depends on cinder, not the reverse). Appended to `^build` rather than
+    // replacing it, so the `@cinder/testing#build` and markdown edges survive.
     "@lostgradient/cinder#lint": {
-      "dependsOn": ["@lostgradient/markdown#build", "@lostgradient/editor#build"],
-      "outputs": []
-    },
-    "@lostgradient/editor#build": {
-      "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": ["dist/**"]
-    },
-    "@lostgradient/editor#typecheck": {
-      "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": []
-    },
-    "@lostgradient/editor#test": {
-      "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": []
-    },
-    "@lostgradient/editor#test:coverage": {
-      "dependsOn": ["@lostgradient/markdown#build"],
-      "outputs": ["coverage/**"]
+      "dependsOn": ["^build", "@lostgradient/editor#build"],
+      "outputs": [],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/packages/components/scripts/**",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
+      ]
     },
     "validate": {
       "dependsOn": ["^build", "build"],

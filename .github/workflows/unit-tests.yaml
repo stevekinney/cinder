@@ -83,6 +83,19 @@ env:
   # Read by `turbo run --affected`; harmless on push/workflow_dispatch runs
   # since those invocations omit --affected entirely.
   TURBO_SCM_BASE: origin/${{ github.base_ref }}
+  # Remote cache. This trigger is `pull_request`, NOT `pull_request_target`, so
+  # runs from forks get an empty string for both of these — turbo then silently
+  # skips the remote cache and falls back to the `actions/cache` .turbo restore
+  # below. That fallback is why this workflow keeps its local cache step even
+  # though main-green.yaml drops its restore: it is the only cache a fork PR
+  # can reach. Do not "clean it up".
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+  # No OS discriminator is set here on purpose. The `test` tasks in turbo.json
+  # declare `RUNNER_OS`, which GitHub already defines in every job — nothing to
+  # wire up. (`${{ runner.os }}` cannot be used in a workflow-level `env:` block
+  # at all: the `runner` context only exists at step level, and referencing it
+  # here makes GitHub reject the whole workflow file.)
 
 jobs:
   scope:

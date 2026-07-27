@@ -19,8 +19,182 @@ import {
   rootValidationSeparatesSourceAndConsumerGates,
   workflowDeclaresPermission,
   workflowDispatchInputHasDefault,
+  workflowExpressionContextRoots,
+  workflowExpressionFunctionNames,
+  workflowLevelEnvironmentLines,
   workflowRunScriptsContainActiveLine,
 } from './validate-release-workflow.ts';
+
+/**
+ * The four contexts GitHub makes available to a workflow-level `env:` block.
+ * Mirrors the allowlist the validator applies.
+ */
+const CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL = new Set(['github', 'secrets', 'inputs', 'vars']);
+
+/** Mirrors the validator's set of functions unavailable before a runner exists. */
+const FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL = new Set([
+  'hashfiles',
+  'success',
+  'failure',
+  'cancelled',
+  'always',
+]);
+
+function workflowLevelEnvironmentLineIsRejected(line: string): boolean {
+  const hasUnavailableContext = workflowExpressionContextRoots(line).some(
+    (root) => !CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL.has(root),
+  );
+  const hasUnavailableFunction = workflowExpressionFunctionNames(line).some((name) =>
+    FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL.has(name),
+  );
+
+  return hasUnavailableContext || hasUnavailableFunction;
+}
+
+describe('workflow-level env context guard', () => {
+  // Regression: `TURBO_PLATFORM: ${{ runner.os }}` in a workflow-level `env:`
+  // made GitHub reject unit-tests.yaml and main-green.yaml outright — every job
+  // failed before starting, and the YAML parsed fine so nothing caught it.
+  test.each([
+    ['runner, the context that caused the outage', '  TURBO_PLATFORM: ${{ runner.os }}'],
+    ['runner via bracket access', "  TURBO_PLATFORM: ${{ runner['os'] }}"],
+    ['env, which is not available to itself', '  A: ${{ env.FOO }}'],
+    ['jobs', '  A: ${{ jobs.some_job.outputs.value }}'],
+    ['needs', '  A: ${{ needs.build.outputs.artifact }}'],
+    ['matrix', '  A: ${{ matrix.chunk }}'],
+    ['steps', '  A: ${{ steps.compute.outputs.value }}'],
+    ['strategy', '  A: ${{ strategy.job-index }}'],
+    // hashFiles needs a checked-out workspace; the status functions describe a
+    // job that has not started. Neither exists before a runner is assigned.
+    ['hashFiles, which needs a workspace', "  A: ${{ hashFiles('bun.lock') }}"],
+    ['hashFiles regardless of casing', "  A: ${{ HASHFILES('bun.lock') }}"],
+    ['the always status function', '  A: ${{ always() }}'],
+    ['the success status function', '  A: ${{ success() }}'],
+    // A whole context is as invalid as one of its properties, and neither the
+    // dotted-root scan nor the function scan sees these on its own.
+    ['a bare context with no property access', '  A: ${{ runner }}'],
+    ['a bare context passed to an allowed function', '  A: ${{ toJSON(runner) }}'],
+    ['a bare context inside a comparison', "  A: ${{ matrix == 'x' }}"],
+  ])('rejects %s', (_label, line) => {
+    expect(workflowLevelEnvironmentLineIsRejected(line)).toBe(true);
+  });
+
+  test.each([
+    ['secrets', '  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}'],
+    ['vars', '  TURBO_TEAM: ${{ vars.TURBO_TEAM }}'],
+    ['a deep github path', '  A: ${{ github.event.pull_request.number }}'],
+    ['github with bracket access mid-chain', "  A: ${{ github['event'].pull_request.number }}"],
+    ['github inside an interpolated string', '  TURBO_SCM_BASE: origin/${{ github.base_ref }}'],
+    ['an always-available function', "  A: ${{ format('{0}', github.sha) }}"],
+    ['toJSON over an allowed context', '  A: ${{ toJSON(github.event) }}'],
+    ['a bare allowed context', '  A: ${{ github }}'],
+    ['a boolean literal', '  A: ${{ true }}'],
+    ['a comparison against an allowed context', "  A: ${{ inputs.mode == 'full' }}"],
+    ['a dotted string literal argument', "  A: ${{ format('{0}.{1}', github.a, github.b) }}"],
+    [
+      'a boolean expression over github',
+      '  A: ${{ github.event_name && github.sha || github.ref }}',
+    ],
+    ['a plain value with no expression', '  BUN_VERSION: 1.3.13'],
+  ])('allows %s', (_label, line) => {
+    expect(workflowLevelEnvironmentLineIsRejected(line)).toBe(false);
+  });
+
+  test('reports only the root of a chain, not every segment', () => {
+    expect(workflowExpressionContextRoots('  A: ${{ github.event.pull_request.number }}')).toEqual([
+      'github',
+    ]);
+  });
+
+  test('collects a root from each expression on one line', () => {
+    expect(workflowExpressionContextRoots('  A: ${{ github.sha }}-${{ runner.os }}')).toEqual([
+      'github',
+      'runner',
+    ]);
+  });
+});
+
+describe('workflow-level env block scanning', () => {
+  test('collects entries in the top-level env block only', () => {
+    const workflow = [
+      'name: example',
+      'env:',
+      '  TOP: ${{ vars.A }}',
+      'jobs:',
+      '  build:',
+      '    env:',
+      '      JOB_LEVEL: ${{ runner.os }}',
+      '    steps:',
+      '      - run: echo hi',
+    ].join('\n');
+
+    // The job-level `runner.os` is legal and must NOT be collected — collecting
+    // it would make the guard reject valid workflows.
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual(['  TOP: ${{ vars.A }}']);
+  });
+
+  // Regression: a column-0 comment used to be read as the next top-level key,
+  // ending the scan and letting everything after it bypass the guard entirely.
+  test('keeps scanning past a comment at column zero', () => {
+    const workflow = [
+      'env:',
+      '  FIRST: ${{ vars.A }}',
+      '# an unindented comment is legal YAML inside the block',
+      '  SECOND: ${{ runner.os }}',
+    ].join('\n');
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual([
+      '  FIRST: ${{ vars.A }}',
+      '  SECOND: ${{ runner.os }}',
+    ]);
+  });
+
+  test('keeps scanning past a blank line inside the block', () => {
+    const workflow = ['env:', '  FIRST: ${{ vars.A }}', '', '  SECOND: ${{ runner.os }}'].join(
+      '\n',
+    );
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual([
+      '  FIRST: ${{ vars.A }}',
+      '  SECOND: ${{ runner.os }}',
+    ]);
+  });
+
+  test('stops at the next real top-level key', () => {
+    const workflow = ['env:', '  FIRST: ${{ vars.A }}', 'on:', '  push: {}'].join('\n');
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual(['  FIRST: ${{ vars.A }}']);
+  });
+
+  test('returns nothing when there is no workflow-level env block', () => {
+    expect(workflowLevelEnvironmentLines('name: example\non:\n  push: {}')).toEqual([]);
+  });
+
+  // A flow mapping lives entirely on the key's own line. A scanner that only
+  // looked at indented lines would open the block, skip this line as the key,
+  // then close at the next top-level key having inspected nothing.
+  test('inspects an inline flow mapping', () => {
+    const workflow = ['env: { TURBO_PLATFORM: "${{ runner.os }}" }', 'on:', '  push: {}'].join(
+      '\n',
+    );
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual([
+      'env: { TURBO_PLATFORM: "${{ runner.os }}" }',
+    ]);
+  });
+
+  test('does not treat a flow mapping as an open block', () => {
+    const workflow = [
+      'env: { A: ${{ vars.A }} }',
+      'jobs:',
+      '  build:',
+      '    x: ${{ runner.os }}',
+    ].join('\n');
+
+    // The job-level line must not leak in just because a flow mapping preceded it.
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual(['env: { A: ${{ vars.A }} }']);
+  });
+});
 
 describe('validate-release-workflow changeset guards', () => {
   test('requires artifact and publish commands for every public package', () => {

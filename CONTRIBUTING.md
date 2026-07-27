@@ -57,6 +57,80 @@ root `bun run validate`, full test/coverage/browser suites, or consumer
 validation as an ordinary local pull request gate; required CI and release own
 those broad checks.
 
+## Turborepo remote cache
+
+`build`, `test`, `test:coverage`, `typecheck`, and `lint` run through Turborepo
+and are content-hashed, so an unchanged package replays its previous result
+instead of re-executing. Locally that cache lives in `.turbo/cache/` at the root
+turbo resolves for the run. Each worktree has its own real `node_modules` (see
+the worktree rule in [AGENTS.md](./AGENTS.md) — never symlink one to another
+checkout), so treat every worktree and every clone as starting with a cold local
+cache.
+
+That is precisely the gap the remote cache closes: a fresh worktree, a fresh
+clone, or a second machine starts warm instead of cold. Export the credentials
+from your shell profile rather than running `turbo link`, which writes
+`.turbo/config.json` into whichever root it was run from:
+
+```bash
+# ~/.zshrc
+export TURBO_TOKEN='<your Vercel access token>'
+export TURBO_TEAM='<vercel team slug>'
+export TURBO_PLATFORM="$(uname -s)"
+```
+
+Mint the token at Vercel → Account Settings → Tokens, scoped to the team rather
+than Full Account. None of this is required — without it turbo silently falls
+back to the local `.turbo/` cache.
+
+`TURBO_PLATFORM` is an OS discriminator, not a credential. Turbo's task hash
+covers declared files, environment variables, and engines, but has **no platform
+component**. Since parts of the suite branch on `process.platform`, sharing one
+remote namespace between macOS laptops and Linux CI would let a success be
+replayed on the OS that never ran that branch. `turbo.json` declares it on
+`test`/`test:coverage` only, so `build`, `typecheck`, and `lint` keep full
+CI-to-laptop sharing. It fails safe when unset: an unset value hashes differently
+from any set value, so a laptop cannot read a CI test entry by accident.
+
+CI needs no equivalent setting — the same task declaration also lists
+`RUNNER_OS`, which GitHub defines in every job automatically.
+
+In CI the same variables come from `secrets.TURBO_TOKEN` and `vars.TURBO_TEAM` in
+`unit-tests.yaml` and `main-green.yaml`. Two deliberate asymmetries:
+
+- `main-green.yaml` sets `TURBO_FORCE=true` so it never _reads_ any cache. It is
+  the full-execution safety net; replaying entries would defeat its purpose. It
+  also has no `actions/cache` step at all — a restore could never be read under
+  force, and a save would be dead weight, because `actions/cache` matches an
+  exact key before consulting `restore-keys` and `unit-tests.yaml` already owns
+  the unsuffixed primary key.
+- `unit-tests.yaml` keeps its `actions/cache` step for `.turbo`. It triggers on
+  `pull_request` (not `pull_request_target`), so fork PRs get empty secrets and
+  no remote cache — the local archive is the only cache they can reach.
+
+> [!WARNING] Cache correctness is a shared concern now
+> Because entries are shared across machines, an under-declared task input
+> becomes a wrong result everywhere rather than one stale local hit. Several
+> packages import across the boundary from `packages/components/scripts/**`
+> (`svelte-plugin.ts`, `check-coverage-ratchet.ts`, the artifact generators),
+> and those files never land in cinder's `dist/**`, so the `^build` edge does
+> not cover them. `turbo.json` declares that directory as an explicit input on
+> the affected tasks, and does the same for `packages/testing/scripts/**` (which
+> the playground imports) and `packages/playground/src/**` (which the testing
+> package imports back). If you add a new cross-package import from a cached
+> task, add its directory to that task's `inputs` too — a relative `../../`
+> import into a package you do not declare a dependency on is invisible to the
+> task graph.
+
+> [!IMPORTANT] A package-task override replaces the base task — it does not merge
+> Writing `"@scope/pkg#build": { "dependsOn": ["@scope/other#build"] }` discards
+> the base task's `^build` rather than adding to it, which silently drops every
+> workspace-dependency edge. That is how the editor tasks came to omit Cinder's
+> build hash despite importing Cinder components. Always keep `^build` in the
+> list and append: `["^build", "@scope/other#build"]`. After any change, run
+> `bunx turbo run build lint typecheck test --dry=json` and confirm each task's
+> resolved `dependencies` is a superset of what it was before.
+
 ## Tests
 
 - Unit tests use `bun:test` and live alongside the source as `*.test.ts`.
