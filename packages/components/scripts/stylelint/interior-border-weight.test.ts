@@ -91,6 +91,27 @@ describe(ruleName, () => {
     ).toHaveLength(1);
   });
 
+  test('checks shared component and Chat source files', async () => {
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.cinder-card__header { border-bottom: 1px solid var(--cinder-border); }',
+          codeFilename: '/workspace/packages/components/src/styles/components/card.css',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.chat-card__header { border-bottom: 1px solid var(--cinder-border); }',
+          codeFilename: '/workspace/packages/chat/src/lib/card.css',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toHaveLength(1);
+  });
+
   test('matches interior BEM elements at a name boundary', async () => {
     expect(
       warnings(

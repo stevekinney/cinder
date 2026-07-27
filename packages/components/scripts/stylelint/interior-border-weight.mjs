@@ -14,7 +14,9 @@ function isCinderComponentSource(root) {
   return (
     file === undefined ||
     file.startsWith('<') ||
-    /packages[\\/]components[\\/]src[\\/]components[\\/]/.test(file)
+    /packages[\\/](?:components[\\/]src[\\/](?:components|styles[\\/]components)|chat[\\/]src[\\/])/.test(
+      file,
+    )
   );
 }
 
