@@ -1,7 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const PIXEL_TOLERANCE = 0.5;
-
 type ComputedMetrics = {
   appearance: string;
   borderBlockStartWidth: number;
@@ -57,7 +55,7 @@ async function waitForShellLayout(page: Page): Promise<void> {
 }
 
 test.describe('playground shell styles', () => {
-  test('outer shell chrome loads Cinder component styles', async ({ page }, testInfo) => {
+  test('outer shell chrome loads Cinder component styles', async ({ page }) => {
     await page.goto('/', { waitUntil: 'load' });
     await waitForShellLayout(page);
 
