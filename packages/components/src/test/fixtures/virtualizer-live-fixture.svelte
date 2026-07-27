@@ -147,7 +147,7 @@
 <div
   data-testid="tree-scroll"
   style:height={`${treeHeight}px`}
-  class="cinder-virtualizer-scroll"
+  class="virtualizer-scroll"
   {@attach attachTreeScrollElement}
 >
   <div data-testid="tree-total" style:height={`${treeTotalSize}px`}>
@@ -178,7 +178,7 @@
   data-testid="grid-scroll"
   style:height={`${gridHeight}px`}
   style:width={`${gridWidth}px`}
-  class="cinder-virtualizer-scroll"
+  class="virtualizer-scroll"
   {@attach attachGridScrollElement}
 >
   <div
@@ -218,3 +218,9 @@
 <output data-testid="grid-column-indices"
   >{gridColumns.map((column) => column.index).join(',')}</output
 >
+
+<style>
+  .virtualizer-scroll {
+    overflow: auto;
+  }
+</style>
