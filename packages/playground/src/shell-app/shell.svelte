@@ -31,6 +31,9 @@
   const store = new PreviewStore('');
   setPreviewStore(store);
 
+  /** Accessible name of the panel trigger; also the focus-restoration hook. */
+  const COLOR_PANEL_LABEL = 'Color token panel';
+
   let isColorPanelOpen = $state(false);
 
   $effect(() => {
@@ -67,8 +70,13 @@
 
   function closeColorPanel(): void {
     isColorPanelOpen = false;
+    /*
+     * Selected by its accessible name, not by `data-testid`. Focus restoration
+     * is runtime behaviour; keying it off a testing affordance means renaming
+     * that attribute silently breaks keyboard focus when the panel closes.
+     */
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>('[data-testid="color-token-panel-toggle"]')?.focus();
+      document.querySelector<HTMLElement>(`button[aria-label="${COLOR_PANEL_LABEL}"]`)?.focus();
     });
   }
 </script>
@@ -83,7 +91,7 @@
       variant="ghost"
       size="sm"
       iconOnly
-      aria-label="Color token panel"
+      aria-label={COLOR_PANEL_LABEL}
       {...isColorPanelOpen ? { 'aria-controls': 'color-token-panel' } : {}}
       aria-expanded={isColorPanelOpen}
       data-testid="color-token-panel-toggle"

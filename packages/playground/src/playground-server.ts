@@ -1384,9 +1384,13 @@ async function loadPageServerRenderer(): Promise<PageServerRenderers> {
         typeof Reflect.get(loaded, 'renderComponentPageBody') !== 'function' ||
         typeof Reflect.get(loaded, 'renderLandingBody') !== 'function'
       ) {
-        throw new Error(
-          'Page server bundle did not export renderComponentPageBody and renderLandingBody',
+        const missing = ['renderComponentPageBody', 'renderLandingBody'].filter(
+          (name) =>
+            typeof loaded !== 'object' ||
+            loaded === null ||
+            typeof Reflect.get(loaded, name) !== 'function',
         );
+        throw new Error(`Page server bundle did not export ${missing.join(' and ')}`);
       }
       const renderer: PageServerRenderers = {
         renderComponentPageBody: Reflect.get(

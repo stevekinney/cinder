@@ -826,10 +826,12 @@
         <div class="dx-topbar__inner">
           <nav class="dx-crumbs" aria-label="Breadcrumb">
             <span class="dx-crumbs__mark">CINDER</span>
+            <!-- The separator only renders when a crumb follows it. A bare
+                 "CINDER /" reads as a truncated trail to a screen reader. -->
             {#if isLanding}
               <span class="dx-crumbs__sep" aria-hidden="true">/</span>
               <span class="dx-crumbs__current" aria-current="page">Overview</span>
-            {:else}
+            {:else if documentation !== null}
               <span class="dx-crumbs__sep" aria-hidden="true">/</span>
             {/if}
             {#if documentation !== null}
