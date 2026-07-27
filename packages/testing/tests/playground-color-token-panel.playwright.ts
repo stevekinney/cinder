@@ -55,16 +55,14 @@ type ColorTokenRowLayoutState = {
 };
 
 /**
- * Put the page into a specific theme.
+ * Put the shell into a specific theme via its Light/Dark radio group.
  *
- * The canonical documentation page carries a single icon toggle rather than the
- * shell's Light/Dark radio group, so this reads the current theme off
- * `data-cinder-theme` and clicks only when a change is actually needed.
+ * The panel still lives on the shell at `/`: it pulls ColorPicker/Popover/Input/
+ * Button, and the documentation page compiles once per component, where that
+ * graph made every bundle ~4x slower to build.
  */
 async function selectTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
-  const current = await page.evaluate(() => document.documentElement.dataset['cinderTheme']);
-  if (current === theme) return;
-  await page.getByRole('button', { name: `Preview theme: switch to ${theme}` }).click();
+  await page.getByRole('radio', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', theme);
 }
 
@@ -531,7 +529,7 @@ test.describe('playground color token panel', () => {
   test('supports visual color editing with correct swatches, focus, theme isolation, and reset UX', async ({
     page,
   }) => {
-    await page.goto('/page/button', { waitUntil: 'load' });
+    await page.goto('/', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
@@ -711,7 +709,7 @@ test.describe('playground color token panel', () => {
 
   test('keeps token row actions and value input usable at narrow widths', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/page/button', { waitUntil: 'load' });
+    await page.goto('/', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
@@ -757,7 +755,7 @@ test.describe('playground color token panel', () => {
     page,
   }) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    await page.goto('/page/button', { waitUntil: 'load' });
+    await page.goto('/', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');

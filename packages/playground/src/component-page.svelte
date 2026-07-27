@@ -24,8 +24,6 @@
   import Sliders from 'lucide-svelte/icons/sliders-horizontal';
   import Sun from 'lucide-svelte/icons/sun';
   import X from 'lucide-svelte/icons/x';
-  import ColorTokenPanel from './shell-app/color-token-panel.svelte';
-  import { PreviewStore, setPreviewStore } from './shell-app/preview-store.svelte.ts';
   import { buildComponentHref } from './shell-app/routing.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
@@ -211,44 +209,7 @@
   let isFocusMode = $state(false);
 
   /*
-   * Colour-token authoring. The panel edits `--cinder-*` custom properties live.
-   * On the old shell it pushed every edit across a postMessage bridge into the
-   * preview iframe; with one document it just writes to `:root`, so the store is
-   * the only thing it still needs.
-   */
-  const previewStore = new PreviewStore(componentName);
-  setPreviewStore(previewStore);
-  let isColorPanelOpen = $state(false);
-
-  $effect(() => {
-    previewStore.applyActiveColorTokenOverridesToDocument(document);
-  });
-
-  // Keep the store's notion of the active theme in step with the page toggle so
-  // overrides land on the theme the reader is actually looking at. `theme` is a
-  // getter on the store; `setTheme` is the writer.
-  $effect(() => {
-    previewStore.setTheme(theme);
-  });
-
-  /**
-   * True when an open colour-picker popover should absorb this Escape — either a
-   * token trigger is expanded, or the event came from inside the popover.
-   */
-  function isColorTokenPickerEscape(event: KeyboardEvent): boolean {
-    if (document.querySelector('.token-color-trigger[aria-expanded="true"]') !== null) return true;
-    return event
-      .composedPath()
-      .some(
-        (target) =>
-          target instanceof HTMLElement && target.classList.contains('color-token-picker-popover'),
-      );
-  }
-
-  /*
-   * Escape closes the topmost transient surface: the colour-token panel first,
-   * then focus mode. Focus returns to the panel's trigger so a keyboard user is
-   * not dropped at the top of the document.
+   * Escape exits focus mode.
    *
    * Registered through an effect rather than `<svelte:window>`: that tag has to
    * be top level, and a second top-level node makes happy-dom's fragment
@@ -256,27 +217,10 @@
    * not run on the server, so there is no SSR guard to remember.
    */
   $effect(() => {
-    if (!isColorPanelOpen && !isFocusMode) return;
+    if (!isFocusMode) return;
 
     const onKeydown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
-
-      if (isColorPanelOpen) {
-        // A colour-picker popover inside the panel gets first claim on Escape:
-        // the first press dismisses the popover, only a later one closes the
-        // panel. Without this the panel vanishes underneath the picker the user
-        // was actually dismissing.
-        if (isColorTokenPickerEscape(event)) return;
-
-        isColorPanelOpen = false;
-        // The colour picker popovers inside the panel claim Escape first via the
-        // shared overlay stack; by the time it reaches here the panel itself is
-        // the target, so restore focus to its trigger.
-        requestAnimationFrame(() => {
-          document.querySelector<HTMLElement>('[data-testid="color-token-panel-toggle"]')?.focus();
-        });
-        return;
-      }
 
       isFocusMode = false;
     };
@@ -769,14 +713,6 @@
   <!-- One wrapper so this branch has a single root. Two siblings here (nav +
        page) trip happy-dom's fragment handling in the documentation tests. -->
   <div class="dx-shell">
-    <!-- Fixed page-level overlay, so it sits outside the preview column's scroll
-         container — but INSIDE this wrapper: a second top-level node makes
-         happy-dom's fragment handling throw in the documentation tests, and
-         `display: contents` on the wrapper leaves `position: fixed` resolving
-         against the viewport either way. -->
-    {#if isColorPanelOpen}
-      <ColorTokenPanel onClose={() => (isColorPanelOpen = false)} />
-    {/if}
     {#if sidebarComponents.length > 0}
       <nav class="dx-nav" aria-label="Components">
         <a class="dx-nav__brand" href="/">CINDER</a>
@@ -1402,16 +1338,6 @@
                   <span class="dx-viewport__readout" aria-live="polite">
                     {previewWidth === null ? 'Full' : `${previewWidth}px`}
                   </span>
-                  <button
-                    type="button"
-                    class="dx-viewport__expand"
-                    aria-controls="color-token-panel"
-                    aria-expanded={isColorPanelOpen}
-                    data-testid="color-token-panel-toggle"
-                    onclick={() => (isColorPanelOpen = !isColorPanelOpen)}
-                  >
-                    Tokens
-                  </button>
                   <button
                     type="button"
                     class="dx-viewport__expand"

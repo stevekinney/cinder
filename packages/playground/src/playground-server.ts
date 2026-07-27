@@ -88,7 +88,6 @@ import { humanizeComponentName } from './shell-app/humanize.ts';
 
 import { stripExampleHarness } from '../../components/scripts/lib/strip-example-harness.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
-import { flattenStylesheet } from './flatten-stylesheet.ts';
 import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 import {
   isSnapshotMode,
@@ -2015,42 +2014,6 @@ export function rewriteRepositoryRelativeReadmeLinks(html: string): string {
   return rewriteRelativeRenderedMarkdownLinks(html, (href) => repositorySourceHref('', href));
 }
 
-/** The one stylesheet served flattened — the playground shell's chrome entry. */
-const SHELL_STYLESHEET_PATH = '/styles/shell.css';
-
-/**
- * Read a stylesheet by the root-relative URL the browser would request, for
- * {@link flattenStylesheet}.
- *
- * The shell graph spans two URL spaces — `/styles/*` (the aggregators and
- * tokens) and `/components/<name>/<name>.css` (per-component CSS) — so this
- * mirrors the routing of both handlers, including their traversal guards.
- * Returns `null` for anything outside those roots so a malformed `@import` can
- * never read arbitrary files off disk.
- */
-async function readPlaygroundStylesheet(url: string): Promise<string | null> {
-  const roots: [prefix: string, root: string][] = [
-    ['/styles/', join(COMPONENTS_ROOT, 'src', 'styles')],
-    ['/components/', join(COMPONENTS_ROOT, 'src', 'components')],
-  ];
-
-  for (const [prefix, root] of roots) {
-    if (!url.startsWith(prefix)) continue;
-    const relative = url.slice(prefix.length);
-    if (relative === '' || !relative.endsWith('.css')) return null;
-    if (relative.includes('..') || relative.startsWith('/')) return null;
-
-    const path = join(root, relative);
-    const contained = relativePath(root, path);
-    if (contained.startsWith('..') || isAbsolute(contained)) return null;
-
-    const file = Bun.file(path);
-    return (await file.exists()) ? file.text() : null;
-  }
-
-  return null;
-}
-
 async function renderLandingReadmeHtml(): Promise<string> {
   await initializeHighlighter();
   const markdown = await Bun.file(join(PLAYGROUND_ROOT, '..', '..', 'README.md')).text();
@@ -2156,30 +2119,6 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (cssRelativePath.startsWith('..') || isAbsolute(cssRelativePath)) return notFound();
     const cssFile = Bun.file(cssPath);
     if (!(await cssFile.exists())) return notFound(`${relative} not found`);
-
-    /*
-     * The shell's chrome stylesheet is served FLATTENED — its `@import` graph
-     * inlined into one file.
-     *
-     * A `<link rel="stylesheet">` blocks first paint only on the linked file.
-     * Sheets it pulls in via `@import` are discovered afterwards and fetched
-     * asynchronously, so the browser paints as soon as the top-level sheet
-     * parses. `shell.css` is ~1 KB of almost nothing but `@import` statements,
-     * so the page painted with essentially no component CSS: `.cinder-sr-only`
-     * had not arrived, and every visually-hidden top-bar label ("Viewport
-     * width", "Preview theme", "Color token panel", "Open preview in new tab",
-     * "Focus mode") rendered as raw text beside an unstyled toolbar until the
-     * imports landed. Measured with the imports delayed, `.cinder-sr-only`
-     * computed `position: static` at 400 ms with the document already painted.
-     *
-     * Only the shell entry is flattened. Every other `/styles/*` file is served
-     * verbatim so it stays individually fetchable, which the static export and
-     * the flattener's own loader both rely on.
-     */
-    if (pathname === SHELL_STYLESHEET_PATH) {
-      const flattened = await flattenStylesheet(pathname, readPlaygroundStylesheet);
-      return new Response(flattened, { headers: { 'Content-Type': 'text/css' } });
-    }
 
     const css = await cssFile.text();
     return new Response(css, { headers: { 'Content-Type': 'text/css' } });

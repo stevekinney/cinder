@@ -1,14 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
 
-  // Per-component subpaths, NOT the `src/index.ts` barrel. This panel now renders
-  // inside the per-component documentation page, and the barrel dragged every
-  // component into that page's bundle — and collided with the documentation
-  // tests' module mocks ("export default cannot be used with export *").
-  import { Button } from '@lostgradient/cinder/button';
-  import { ColorPicker } from '@lostgradient/cinder/color-picker';
-  import { Input } from '@lostgradient/cinder/input';
-  import { Popover } from '@lostgradient/cinder/popover';
+  import { Button, ColorPicker, Input, Popover } from '../../../components/src/index.ts';
   import { RotateCcw } from 'lucide-svelte';
   import {
     COLOR_TOKEN_GROUPS,
