@@ -8,6 +8,7 @@ import {
 import { cssPrimitiveCounts } from './primitive-composition-css.ts';
 import {
   allowedFieldWrapperCounts,
+  allowedFloatingCounts,
   allowedGridCounts,
 } from './primitive-composition-migrations.ts';
 import { primitiveCompositionSourceRoots } from './primitive-composition-runner.ts';
@@ -32,6 +33,17 @@ describe('primitive composition guard', () => {
   test('tracks only the remaining date field-wrapper migrations', () => {
     expect(allowedFieldWrapperCounts.get('date-picker/date-picker.svelte')).toBe(2);
     expect(allowedFieldWrapperCounts.has('date-range-field/date-range-field.svelte')).toBe(false);
+  });
+
+  test('does not retain completed internal-layer floating migrations', () => {
+    for (const filePath of [
+      'checkbox/checkbox.css',
+      'meter/meter.css',
+      'radio-group/radio-group.css',
+      'slider/slider.css',
+    ]) {
+      expect(allowedFloatingCounts.has(filePath)).toBe(false);
+    }
   });
 
   test('ignores hidden submission inputs and controls mentioned in comments', () => {

@@ -111,7 +111,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'area-chart/area-chart.css',
     'backdrop/backdrop.css',
     'bar-chart/bar-chart.css',
-    'checkbox/checkbox.css',
     'combobox/combobox.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
@@ -119,9 +118,7 @@ export const allowedFloatingCounts = new Map<string, number>(
     'line-chart/line-chart.css',
     'marquee/marquee.css',
     'matrix-chart/matrix-chart.css',
-    'meter/meter.css',
     'navigation-bar/navigation-bar.css',
-    'radio-group/radio-group.css',
     'run-step-timeline/run-step-timeline.css',
     'select/select.css',
     'selection-popover/selection-popover.css',
@@ -137,7 +134,6 @@ export const allowedFloatingCounts = new Map<string, number>(
 );
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
-allowedFloatingCounts.set('slider/slider.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
 
 export const allowedFieldWrapperCounts = new Map<string, number>(
