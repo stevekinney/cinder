@@ -462,8 +462,7 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: browser ? handleToggle : undefined,
-        onkeydown: browser ? handleToggleKeyDown : undefined,
+        ...(browser ? { onclick: handleToggle, onkeydown: handleToggleKeyDown } : {}),
       })}
     </div>
   {/if}
@@ -479,8 +478,7 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: browser ? handleToggle : undefined,
-        onkeydown: browser ? handleToggleKeyDown : undefined,
+        ...(browser ? { onclick: handleToggle, onkeydown: handleToggleKeyDown } : {}),
       })}
     </div>
   {/if}

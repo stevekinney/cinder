@@ -302,10 +302,13 @@ describe('NavigationBar', () => {
     );
     expect(navigationBarSource).toContain("window.addEventListener('resize'");
   });
-  test('passes the toggle click handler through the same snippet shape during SSR and hydration', () => {
-    expect([...navigationBarSource.matchAll(/onclick:\s*browser \? handleToggle/g)]).toHaveLength(
-      2,
-    );
+  test('omits toggle handlers during SSR and supplies them after hydration', () => {
+    expect([
+      ...navigationBarSource.matchAll(
+        /\.\.\.\(browser \? \{ onclick: handleToggle, onkeydown: handleToggleKeyDown \} : \{\}\)/g,
+      ),
+    ]).toHaveLength(2);
+    expect(navigationBarSource).not.toContain('onclick: browser ? handleToggle : undefined');
   });
 
   // ── Legacy tests (preserved) ────────────────────────────────────────────
