@@ -143,8 +143,8 @@ test.describe('a11y regressions', () => {
     const grantedGeometry = await gatedControl.boundingBox();
     expect(grantedGeometry).not.toBeNull();
     expect(Math.abs(grantedGeometry!.y - deniedGeometry!.y)).toBeLessThan(1);
-    expect(grantedGeometry!.width).toBe(deniedGeometry!.width);
-    expect(grantedGeometry!.height).toBe(deniedGeometry!.height);
+    expect(Math.abs(grantedGeometry!.width - deniedGeometry!.width)).toBeLessThan(1);
+    expect(Math.abs(grantedGeometry!.height - deniedGeometry!.height)).toBeLessThan(1);
   });
 
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {

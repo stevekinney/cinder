@@ -37,22 +37,21 @@ describe('AccessGate', () => {
   test('preserves intrinsic, full-width, wrapping, and icon-only inline layout', () => {
     const styles = readFileSync(new URL('./access-gate.css', import.meta.url), 'utf8');
 
-    expect(styles).toContain('.cinder-access-gate__passthrough {');
-    expect(styles).toContain('.cinder-access-gate__passthrough {\n    display: inline-flex;');
+    expect(styles).toMatch(/\.cinder-access-gate__passthrough\s*\{\s*display:\s*inline-flex;/);
     expect(styles).toContain('align-items: baseline;');
     expect(styles).not.toContain('.cinder-access-gate__passthrough:has(> :only-child)');
     expect(styles).toContain('inline-size: 100%;');
     expect(styles).toContain('.cinder-access-gate__passthrough:has(> [data-cinder-full-width])');
-    expect(styles).toContain(
-      '.cinder-access-gate__passthrough:where(\n    :has(> [data-cinder-icon-only]):has(> :nth-child(2)):not(:has(> :not([data-cinder-icon-only])))',
+    expect(styles).toMatch(
+      /\.cinder-access-gate__passthrough:where\(\s*:has\(> \[data-cinder-icon-only\]\):has\(> :nth-child\(2\)\):not\(:has\(> :not\(\[data-cinder-icon-only\]\)\)\)/,
     );
     expect(styles).not.toContain(
       '.cinder-access-gate__passthrough:has(> [data-cinder-icon-only]) {',
     );
     expect(styles).toContain('gap: var(--cinder-space-2);');
     expect(styles).toContain('inline-size: auto;');
-    expect(styles).toContain(
-      ".cinder-access-gate__passthrough[data-cinder-variant='section'] {\n    display: contents;\n    inline-size: auto;",
+    expect(styles).toMatch(
+      /\.cinder-access-gate__passthrough\[data-cinder-variant='section'\]\s*\{\s*display:\s*contents;\s*inline-size:\s*auto;/,
     );
     expect(styles).toContain(
       ".cinder-access-gate[data-cinder-variant='inline']:has(\n      .cinder-access-gate__inline-content > [data-cinder-icon-only]",
