@@ -1647,7 +1647,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     } catch (error) {
       bodyError = error;
     }
-    const teardownError = await stopHydrationFixtureServer(fixtureServer).catch((error) => error);
+    const teardownError = await stopConsumerFixtureServer(fixtureServer).catch((error) => error);
     if (bodyError !== undefined) {
       if (teardownError !== undefined) {
         process.stderr.write(
@@ -1701,6 +1701,17 @@ function forceKillHydrationBrowser(processToken: string): void {
   }
 }
 
+async function waitForHydrationBrowserExit(processToken: string): Promise<void> {
+  const deadline = Date.now() + 500;
+  while (hydrationBrowserProcessIds(processToken).length > 0 && Date.now() < deadline) {
+    await Bun.sleep(10);
+  }
+  const remaining = hydrationBrowserProcessIds(processToken);
+  if (remaining.length > 0) {
+    throw new Error(`Chromium process still running after SIGKILL: ${remaining.join(', ')}`);
+  }
+}
+
 async function launchHydrationChromium(): Promise<HydrationBrowser> {
   const { chromium } = await import('@playwright/test');
   const processToken = `cinder-hydration-${randomUUID()}`;
@@ -1733,10 +1744,10 @@ function isBrowserCrashError(error: unknown): boolean {
  * distinct type: the retry wrapper surfaces it immediately rather than
  * re-running routes that already succeeded.
  */
-class HydrationTeardownError extends Error {
+class ConsumerTeardownError extends Error {
   constructor(cause: unknown) {
     super(cause instanceof Error ? cause.message : String(cause));
-    this.name = 'HydrationTeardownError';
+    this.name = 'ConsumerTeardownError';
     this.cause = cause;
   }
 }
@@ -1784,7 +1795,7 @@ export async function runBoundedHydrationTeardown(
   return failures;
 }
 
-async function stopHydrationFixtureServer(server: Bun.Subprocess): Promise<void> {
+async function stopConsumerFixtureServer(server: Bun.Subprocess): Promise<void> {
   const failures = await runBoundedHydrationTeardown([
     {
       phase: 'fixture-server.exited',
@@ -1792,13 +1803,16 @@ async function stopHydrationFixtureServer(server: Bun.Subprocess): Promise<void>
         server.kill();
         await server.exited;
       },
-      forceClose: () => server.kill('SIGKILL'),
+      forceClose: async () => {
+        server.kill('SIGKILL');
+        await server.exited;
+      },
       state: () => `fixtureServerExitCode=${server.exitCode ?? 'running'}`,
     },
   ]);
   if (failures.length > 0) {
     const failure = failures[0]!;
-    throw new HydrationTeardownError(
+    throw new ConsumerTeardownError(
       new Error(
         `teardown phase=${failure.phase} ${failure.state}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
         { cause: failure.error },
@@ -1855,7 +1869,10 @@ async function runSvelteKitHydrationRoutesOnce(
     {
       phase: 'browser.close',
       close: () => browser.close(),
-      forceClose: () => forceKillHydrationBrowser(processToken),
+      forceClose: async () => {
+        forceKillHydrationBrowser(processToken);
+        await waitForHydrationBrowserExit(processToken);
+      },
       state: () =>
         `browserConnected=${browser.isConnected()} processRunning=${hydrationBrowserProcessIds(processToken).length > 0}`,
     },
@@ -1868,7 +1885,7 @@ async function runSvelteKitHydrationRoutesOnce(
   if (bodyFailed) throw bodyError;
   if (closeErrors.length > 0) {
     const first = closeErrors[0]!;
-    throw new HydrationTeardownError(
+    throw new ConsumerTeardownError(
       new Error(
         `teardown phase=${first.phase} routes=${routePaths.join(',')} ${first.state} events=${browserEvents.join('|') || 'none'}: ${first.error instanceof Error ? first.error.message : String(first.error)}`,
         { cause: first.error },
@@ -1886,10 +1903,10 @@ async function assertSvelteKitClientRoutesHydrate(
     await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
   } catch (error) {
     // Only a crash DURING route assertions is retried. A teardown failure
-    // after passing assertions (HydrationTeardownError) is surfaced as-is —
+    // after passing assertions (ConsumerTeardownError) is surfaced as-is —
     // re-running routes that already succeeded would be wasted work — and any
     // non-crash failure (a real hydration/content assertion) is rethrown too.
-    if (error instanceof HydrationTeardownError || !isBrowserCrashError(error)) throw error;
+    if (error instanceof ConsumerTeardownError || !isBrowserCrashError(error)) throw error;
     process.stderr.write(
       `[validate-consumers] Chromium crashed during ${label} hydration ` +
         `(${routePaths.join(', ')}); relaunching once: ` +
@@ -1910,7 +1927,9 @@ async function assertSvelteKitHydrationRoute(
   const page = await context.newPage();
   const errors: string[] = [];
   page.on('crash', () => browserEvents.push(`page:crash route=${routePath}`));
-  page.on('requestfailed', (request) => browserEvents.push(`requestfailed:${request.url()}`));
+  page.on('requestfailed', (request) =>
+    browserEvents.push(`requestfailed route=${routePath} url=${request.url()}`),
+  );
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     const text = message.text();
@@ -1948,7 +1967,7 @@ async function assertSvelteKitHydrationRoute(
   if (bodyError !== undefined) throw bodyError;
   if (pageFailures.length > 0) {
     const failure = pageFailures[0]!;
-    throw new HydrationTeardownError(
+    throw new ConsumerTeardownError(
       new Error(
         `teardown phase=${failure.phase} route=${routePath} ${failure.state} events=${browserEvents.join('|') || 'none'}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
         { cause: failure.error },
@@ -2525,7 +2544,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
     } catch (error) {
       bodyError = error;
     }
-    const teardownError = await stopHydrationFixtureServer(fixtureServer).catch((error) => error);
+    const teardownError = await stopConsumerFixtureServer(fixtureServer).catch((error) => error);
     if (bodyError !== undefined) {
       if (teardownError !== undefined) {
         process.stderr.write(
