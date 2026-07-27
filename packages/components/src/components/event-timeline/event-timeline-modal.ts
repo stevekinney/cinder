@@ -1,27 +1,36 @@
-let modalPredicate: (element: HTMLElement) => boolean = (element) => {
+const defaultModalPredicate = (element: HTMLElement): boolean => {
   try {
     return element.matches(':modal');
   } catch {
     return false;
   }
 };
+let modalPredicate: (element: HTMLElement) => boolean = defaultModalPredicate;
 
 export function setEventTimelineModalPredicate(predicate: (element: HTMLElement) => boolean): void {
   modalPredicate = predicate;
+}
+
+export function resetEventTimelineModalPredicate(): void {
+  modalPredicate = defaultModalPredicate;
 }
 
 export function isEventTimelineModal(element: HTMLElement): boolean {
   return modalPredicate(element);
 }
 
+function createsContainingBlock(value: string | undefined): boolean {
+  return value !== undefined && value !== '' && value !== 'none';
+}
+
 function hasContainingBlockStyle(style: CSSStyleDeclaration): boolean {
   return (
-    style.transform !== 'none' ||
-    style.translate !== 'none' ||
-    style.scale !== 'none' ||
-    style.rotate !== 'none' ||
-    style.filter !== 'none' ||
-    style.contain !== 'none'
+    createsContainingBlock(style.transform) ||
+    createsContainingBlock(style.translate) ||
+    createsContainingBlock(style.scale) ||
+    createsContainingBlock(style.rotate) ||
+    createsContainingBlock(style.filter) ||
+    createsContainingBlock(style.contain)
   );
 }
 

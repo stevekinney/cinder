@@ -10,8 +10,11 @@ setupHappyDom();
 
 const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
-const { setEventTimelineModalPredicate: __setEventTimelineModalPredicate } =
-  await import('./event-timeline-modal.ts');
+const {
+  hasFixedPositionContainingBlock,
+  resetEventTimelineModalPredicate: __resetEventTimelineModalPredicate,
+  setEventTimelineModalPredicate: __setEventTimelineModalPredicate,
+} = await import('./event-timeline-modal.ts');
 const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 
@@ -309,6 +312,25 @@ describe('EventTimeline', () => {
     expect(EVENT_TIMELINE_MODAL_SOURCE).not.toContain('subtree: true');
   });
 
+  test('does not treat missing individual transform properties as containing blocks', () => {
+    const element = document.createElement('div');
+    const original = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() =>
+      ({
+        contain: '',
+        filter: '',
+        rotate: undefined,
+        scale: undefined,
+        transform: '',
+        translate: undefined,
+      }) as unknown as CSSStyleDeclaration) as typeof getComputedStyle;
+    try {
+      expect(hasFixedPositionContainingBlock(element)).toBe(false);
+    } finally {
+      globalThis.getComputedStyle = original;
+    }
+  });
+
   test('offsets colliding lanes and renders hidden leader lines', () => {
     const { container } = render(EventTimeline, {
       start,
@@ -471,7 +493,7 @@ describe('EventTimeline', () => {
         expect(document.activeElement).toBe(panel.querySelector('[role="dialog"]')),
       );
     } finally {
-      __setEventTimelineModalPredicate((element) => element.matches(':modal'));
+      __resetEventTimelineModalPredicate();
       globalThis.getComputedStyle = original;
       dialog.remove();
     }
@@ -500,7 +522,7 @@ describe('EventTimeline', () => {
         expect(panel.querySelector('[role="dialog"]')?.parentElement).toBe(panel),
       );
     } finally {
-      __setEventTimelineModalPredicate((element) => element.matches(':modal'));
+      __resetEventTimelineModalPredicate();
       dialog.remove();
     }
   });
