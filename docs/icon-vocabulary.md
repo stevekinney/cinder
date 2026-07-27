@@ -102,7 +102,7 @@ document and search both templates and generated CSS declarations for the glyphs
 listed in the audit procedure. For example:
 
 ```sh
-rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&lt;|&#60;|&#x3C;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#x8595;|&#x2191;|&#x2193;|&#43;|&#x2B;' packages/components/src/components --glob '*.svelte' --glob '*.css' --glob '*.examples.json'
+rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&lt;|&#60;|&#x3C;|&#62;|&#x3E;|&#8722;|&#x2212;|&#8593;|&#8595;|&#x2191;|&#x2193;|&#43;|&#x2B;' packages/components/src/components --glob '*.svelte' --glob '*.css' --glob '*.examples.json'
 # Search Svelte text-node shapes for a literal greater-than affordance. The
 # opening-element/text/closing-element shape avoids matching tag delimiters,
 # CSS combinators, or embedded script expressions.
