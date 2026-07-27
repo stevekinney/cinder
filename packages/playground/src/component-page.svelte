@@ -191,6 +191,40 @@
     isHydrated = true;
   });
 
+  /**
+   * Preview stage widths. `null` means "fill the pane". The numeric values match
+   * the breakpoints the shell's viewport control used, so shared links keep
+   * meaning the same thing.
+   */
+  const PREVIEW_WIDTHS = [
+    { label: 'Mobile', width: 375 },
+    { label: 'Tablet', width: 768 },
+    { label: 'Desktop', width: 1280 },
+    { label: 'Full', width: null },
+  ] as const satisfies readonly { label: string; width: number | null }[];
+
+  let previewWidth = $state<number | null>(null);
+
+  /** Focus mode expands the stage over the viewport; Escape exits. */
+  let isFocusMode = $state(false);
+
+  /*
+   * Escape exits focus mode.
+   *
+   * Registered through an effect rather than `<svelte:window>`: that tag has to
+   * be top level, and a second top-level node makes happy-dom's fragment
+   * handling throw on `firstChild` in the documentation tests. Effects also do
+   * not run on the server, so there is no SSR guard to remember.
+   */
+  $effect(() => {
+    if (!isFocusMode) return;
+    const onKeydown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') isFocusMode = false;
+    };
+    window.addEventListener('keydown', onKeydown);
+    return () => window.removeEventListener('keydown', onKeydown);
+  });
+
   let themeToggleLabel = $derived(
     theme === 'dark' ? 'Preview theme: switch to light' : 'Preview theme: switch to dark',
   );
@@ -522,7 +556,9 @@
     ) {
       list.push({ id: 'guidance', num: '', label: 'When to use' });
     }
-    if (showGeneratedPlayground) list.push({ id: 'playground', num: '', label: 'Playground' });
+    // No 'Playground' entry: the controls live in the persistent preview pane
+    // beside the prose now, not as a section you scroll to. A TOC link would
+    // point at an anchor that no longer exists.
     if (examples.length > 0) list.push({ id: 'examples', num: '', label: 'Examples' });
     if (propRows.length > 0) list.push({ id: 'props', num: '', label: 'Props' });
     if (documentation.component.a11y !== undefined) {
@@ -691,7 +727,14 @@
         </ul>
       </nav>
     {/if}
-    <div class={['dx', sidebarComponents.length > 0 && 'dx--with-sidebar']} data-component-page>
+    <div
+      class={[
+        'dx',
+        sidebarComponents.length > 0 && 'dx--with-sidebar',
+        isFocusMode && 'is-focus-mode',
+      ]}
+      data-component-page
+    >
       <!-- ===== Top bar ===== -->
       <header class="dx-topbar">
         <div class="dx-topbar__inner">
@@ -952,208 +995,6 @@
                         </ul>
                       </div>
                     {/if}
-                  </div>
-                </section>
-              {/if}
-
-              <!-- -- Playground -- -->
-              {#if showGeneratedPlayground}
-                <section id="playground" class="dx-section">
-                  <div class="dx-section__head">
-                    <span class="dx-section__num">{sectionNumber.get('playground') ?? ''}</span>
-                    <h2 class="dx-section__title">Playground</h2>
-                    <span class="dx-section__rule" aria-hidden="true"></span>
-                  </div>
-                  {#if documentation.propsManifest.isCompound}
-                    <p class="dx-prose dx-play__intro">
-                      Adjust the props below to build your snippet. This is a compound component —
-                      its children are structured sub-components, so the preview shows a composed
-                      example rather than your control changes. The snippet updates live.
-                    </p>
-                  {:else}
-                    <p class="dx-prose dx-play__intro">
-                      Adjust the props below — the preview and snippet update live. Copy it when it
-                      looks right.
-                    </p>
-                  {/if}
-
-                  <div class="dx-play">
-                    <div class="dx-play__preview">
-                      <!-- When the bare component resolves from the page bundle, mount it
-                         directly with the synthesized prop values so the preview
-                         re-renders as the controls change — a genuine "Live preview"
-                         (#405). `mountLivePreview` re-runs its attachment on every
-                         `playgroundValues` change. The stage is gated off under
-                         `?snapshot=1`: the browser tests count `example-mount-*`
-                         selectors and run axe against a fixed surface, so a live mount
-                         must not appear there (see snapshot-mode contract).
-
-                         If the bare mount FAILS and a featured example exists, the
-                         `liveMountFailed` guard falls through to the featured branch
-                         rather than show an error callout over what would otherwise be
-                         a working preview. With no featured fallback, the live branch
-                         stays and surfaces the error — better than a blank section. -->
-                      <!-- `isHydrated` keeps the live mount off the server's tree: it
-                         needs `bareComponentModule`, which only the client bundle
-                         supplies. Without the gate the server would render the
-                         featured-example branch and the client the live branch on
-                         its hydration pass — a mismatch. The live preview swaps in
-                         immediately after mount. -->
-                      {#if isHydrated && bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
-                        <div class="dx-stage">
-                          <div class="dx-stage__bar">
-                            <span class="dx-stage__dot" aria-hidden="true"></span>
-                            <span class="dx-stage__label">Live preview</span>
-                          </div>
-                          <div class="dx-stage__canvas">
-                            {#if mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined}
-                              {@const error = mountErrors[LIVE_MOUNT_CONTAINER_ID]}
-                              <Callout variant="danger" title="This preview failed to render">
-                                <p>{error?.message}</p>
-                              </Callout>
-                            {/if}
-                            <div
-                              class="example-preview"
-                              id={LIVE_MOUNT_CONTAINER_ID}
-                              {@attach mountLivePreview(
-                                bareComponent,
-                                toMountProps(
-                                  playgroundModel.controls,
-                                  $state.snapshot(playgroundValues),
-                                ),
-                              )}
-                            ></div>
-                          </div>
-                          <p class="dx-stage__note">
-                            Renders with the props below. Adjust the controls to update it live.
-                          </p>
-                        </div>
-                      {:else if overviewExample !== undefined && !snapshotMode}
-                        <!-- Fallback when the bare component can't be resolved (older
-                           page bundle, or a component whose default/named export isn't
-                           a constructor): mount the static featured example so the
-                           section still shows a rendered instance (#374), labelled
-                           honestly since only the snippet is prop-driven here. -->
-                        <div class="dx-stage">
-                          <div class="dx-stage__bar">
-                            <span class="dx-stage__dot" aria-hidden="true"></span>
-                            <span class="dx-stage__label">Featured example</span>
-                          </div>
-                          <div class="dx-stage__canvas">
-                            {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
-                              {@const error =
-                                mountErrors[`playground-mount-${overviewExample.scenario}`]}
-                              <Callout variant="danger" title="This preview failed to render">
-                                <p>{error?.message}</p>
-                              </Callout>
-                            {/if}
-                            <div
-                              class="example-preview"
-                              id="playground-mount-{overviewExample.scenario}"
-                              {@attach mountScenario(overviewExample.scenario)}
-                            ></div>
-                          </div>
-                          <p class="dx-stage__note">
-                            Shows the featured example. Adjust the controls to update the snippet.
-                          </p>
-                        </div>
-                      {:else if !snapshotMode && !documentation.propsManifest.isCompound}
-                        <!-- Reserve the stage for components with NO examples (label,
-                           statistic, accordion-item, …). Without this branch the
-                           server renders nothing here, and hydration then INSERTS
-                           the whole live stage into an already-painted page — a
-                           layout shift, and the opposite of the reservation the
-                           server entry promises.
-
-                           A non-compound component is one whose bare mount the
-                           client can resolve, so a live stage is what will appear.
-                           Compound components keep `bareComponent` undefined on
-                           purpose, so reserving a box they never fill would leave
-                           an empty frame. `isCompound` comes from the manifest, so
-                           the server can make this call. -->
-                        <div class="dx-stage" data-stage-reserved>
-                          <div class="dx-stage__bar">
-                            <span class="dx-stage__dot" aria-hidden="true"></span>
-                            <span class="dx-stage__label">Live preview</span>
-                          </div>
-                          <div class="dx-stage__canvas"></div>
-                          <p class="dx-stage__note">
-                            Renders with the props below. Adjust the controls to update it live.
-                          </p>
-                        </div>
-                      {/if}
-                      <CodeBlock code={playgroundSnippet} language="svelte" copyable />
-                      {#if playgroundModel.skipped.length > 0}
-                        <p class="dx-play__skipped">
-                          Not adjustable here: {playgroundModel.skipped.join(', ')}.
-                        </p>
-                      {/if}
-                    </div>
-                    <div class="dx-play__controls">
-                      <div class="dx-play__controls-head">
-                        <Sliders size={13} strokeWidth={1.5} aria-hidden="true" />
-                        Props
-                      </div>
-                      {#each playgroundModel.controls as control (control.name)}
-                        <div class={['dx-ctl', control.kind === 'boolean' && 'dx-ctl--inline']}>
-                          <div class="dx-ctl__text">
-                            <div class="dx-ctl__name" title={control.name}>{control.name}</div>
-                            {#if control.description !== undefined}
-                              <div class="dx-ctl__desc">
-                                {@html renderPropDescription(control.description)}
-                              </div>
-                            {/if}
-                          </div>
-                          {#if control.kind === 'boolean'}
-                            <Toggle
-                              id="pg-{control.name}"
-                              label={control.name}
-                              hideLabel
-                              bind:checked={
-                                () => Boolean(playgroundValues[control.name]),
-                                (next) => (playgroundValues[control.name] = next)
-                              }
-                            />
-                          {:else if control.kind === 'select'}
-                            <select
-                              class="dx-ctl__select"
-                              aria-label={control.name}
-                              value={String(playgroundValues[control.name] ?? control.value)}
-                              onchange={(event) =>
-                                (playgroundValues[control.name] = (
-                                  event.currentTarget as HTMLSelectElement
-                                ).value)}
-                            >
-                              {#each control.options as option (option)}
-                                <option value={option}>{option}</option>
-                              {/each}
-                            </select>
-                          {:else if control.kind === 'number'}
-                            <input
-                              class="dx-ctl__input"
-                              type="number"
-                              aria-label={control.name}
-                              value={Number(playgroundValues[control.name] ?? control.value)}
-                              oninput={(event) =>
-                                (playgroundValues[control.name] = Number(
-                                  (event.currentTarget as HTMLInputElement).value,
-                                ))}
-                            />
-                          {:else}
-                            <input
-                              class="dx-ctl__input"
-                              type="text"
-                              aria-label={control.name}
-                              value={String(playgroundValues[control.name] ?? control.value)}
-                              oninput={(event) =>
-                                (playgroundValues[control.name] = (
-                                  event.currentTarget as HTMLInputElement
-                                ).value)}
-                            />
-                          {/if}
-                        </div>
-                      {/each}
-                    </div>
                   </div>
                 </section>
               {/if}
@@ -1469,6 +1310,225 @@
                 </Collapsible>
               </section>
             </main>
+            <aside class="dx-preview" aria-label="Live preview">
+              <div
+                class="dx-preview__sticky"
+                style:--dx-stage-w={previewWidth === null ? '100%' : `${previewWidth}px`}
+              >
+                <!-- Stage controls. Width simulation and focus mode used to live on
+                     the shell's top bar and act on an iframe; they now sit with the
+                     stage they resize, and work by constraining a plain container. -->
+                <div class="dx-viewport" role="group" aria-label="Preview viewport">
+                  <div class="dx-viewport__sizes">
+                    {#each PREVIEW_WIDTHS as option (option.label)}
+                      <button
+                        type="button"
+                        class="dx-viewport__size"
+                        aria-pressed={previewWidth === option.width}
+                        onclick={() => (previewWidth = option.width)}
+                      >
+                        {option.label}
+                      </button>
+                    {/each}
+                  </div>
+                  <span class="dx-viewport__readout" aria-live="polite">
+                    {previewWidth === null ? 'Full' : `${previewWidth}px`}
+                  </span>
+                  <button
+                    type="button"
+                    class="dx-viewport__expand"
+                    aria-pressed={isFocusMode}
+                    onclick={() => (isFocusMode = !isFocusMode)}
+                  >
+                    {isFocusMode ? 'Exit' : 'Expand'}
+                  </button>
+                </div>
+                {#if showGeneratedPlayground}
+                  <!-- Single wrapper: a branch with several top-level children trips
+                       happy-dom's fragment handling in the documentation tests. -->
+                  <div class="dx-play">
+                    <!-- When the bare component resolves from the page bundle, mount it
+               directly with the synthesized prop values so the preview
+               re-renders as the controls change — a genuine "Live preview"
+               (#405). `mountLivePreview` re-runs its attachment on every
+               `playgroundValues` change. The stage is gated off under
+               `?snapshot=1`: the browser tests count `example-mount-*`
+               selectors and run axe against a fixed surface, so a live mount
+               must not appear there (see snapshot-mode contract).
+
+               If the bare mount FAILS and a featured example exists, the
+               `liveMountFailed` guard falls through to the featured branch
+               rather than show an error callout over what would otherwise be
+               a working preview. With no featured fallback, the live branch
+               stays and surfaces the error — better than a blank section. -->
+                    <!-- `isHydrated` keeps the live mount off the server's tree: it
+               needs `bareComponentModule`, which only the client bundle
+               supplies. Without the gate the server would render the
+               featured-example branch and the client the live branch on
+               its hydration pass — a mismatch. The live preview swaps in
+               immediately after mount. -->
+                    {#if isHydrated && bareComponent !== undefined && !snapshotMode && (!liveMountFailed || overviewExample === undefined)}
+                      <div class="dx-stage">
+                        <div class="dx-stage__bar">
+                          <span class="dx-stage__dot" aria-hidden="true"></span>
+                          <span class="dx-stage__label">Live preview</span>
+                        </div>
+                        <div class="dx-stage__canvas">
+                          {#if mountErrors[LIVE_MOUNT_CONTAINER_ID] !== undefined}
+                            {@const error = mountErrors[LIVE_MOUNT_CONTAINER_ID]}
+                            <Callout variant="danger" title="This preview failed to render">
+                              <p>{error?.message}</p>
+                            </Callout>
+                          {/if}
+                          <div
+                            class="example-preview"
+                            id={LIVE_MOUNT_CONTAINER_ID}
+                            {@attach mountLivePreview(
+                              bareComponent,
+                              toMountProps(
+                                playgroundModel.controls,
+                                $state.snapshot(playgroundValues),
+                              ),
+                            )}
+                          ></div>
+                        </div>
+                        <p class="dx-stage__note">
+                          Renders with the props below. Adjust the controls to update it live.
+                        </p>
+                      </div>
+                    {:else if overviewExample !== undefined && !snapshotMode}
+                      <!-- Fallback when the bare component can't be resolved (older
+                 page bundle, or a component whose default/named export isn't
+                 a constructor): mount the static featured example so the
+                 section still shows a rendered instance (#374), labelled
+                 honestly since only the snippet is prop-driven here. -->
+                      <div class="dx-stage">
+                        <div class="dx-stage__bar">
+                          <span class="dx-stage__dot" aria-hidden="true"></span>
+                          <span class="dx-stage__label">Featured example</span>
+                        </div>
+                        <div class="dx-stage__canvas">
+                          {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
+                            {@const error =
+                              mountErrors[`playground-mount-${overviewExample.scenario}`]}
+                            <Callout variant="danger" title="This preview failed to render">
+                              <p>{error?.message}</p>
+                            </Callout>
+                          {/if}
+                          <div
+                            class="example-preview"
+                            id="playground-mount-{overviewExample.scenario}"
+                            {@attach mountScenario(overviewExample.scenario)}
+                          ></div>
+                        </div>
+                        <p class="dx-stage__note">
+                          Shows the featured example. Adjust the controls to update the snippet.
+                        </p>
+                      </div>
+                    {:else if !snapshotMode && !documentation.propsManifest.isCompound}
+                      <!-- Reserve the stage for components with NO examples (label,
+                 statistic, accordion-item, …). Without this branch the
+                 server renders nothing here, and hydration then INSERTS
+                 the whole live stage into an already-painted page — a
+                 layout shift, and the opposite of the reservation the
+                 server entry promises.
+
+                 A non-compound component is one whose bare mount the
+                 client can resolve, so a live stage is what will appear.
+                 Compound components keep `bareComponent` undefined on
+                 purpose, so reserving a box they never fill would leave
+                 an empty frame. `isCompound` comes from the manifest, so
+                 the server can make this call. -->
+                      <div class="dx-stage" data-stage-reserved>
+                        <div class="dx-stage__bar">
+                          <span class="dx-stage__dot" aria-hidden="true"></span>
+                          <span class="dx-stage__label">Live preview</span>
+                        </div>
+                        <div class="dx-stage__canvas"></div>
+                        <p class="dx-stage__note">
+                          Renders with the props below. Adjust the controls to update it live.
+                        </p>
+                      </div>
+                    {/if}
+                    <CodeBlock code={playgroundSnippet} language="svelte" copyable />
+                    {#if playgroundModel.skipped.length > 0}
+                      <p class="dx-play__skipped">
+                        Not adjustable here: {playgroundModel.skipped.join(', ')}.
+                      </p>
+                    {/if}
+                    <div class="dx-play__controls">
+                      <div class="dx-play__controls-head">
+                        <Sliders size={13} strokeWidth={1.5} aria-hidden="true" />
+                        Props
+                      </div>
+                      {#each playgroundModel.controls as control (control.name)}
+                        <div class={['dx-ctl', control.kind === 'boolean' && 'dx-ctl--inline']}>
+                          <div class="dx-ctl__text">
+                            <div class="dx-ctl__name" title={control.name}>{control.name}</div>
+                            {#if control.description !== undefined}
+                              <div class="dx-ctl__desc">
+                                {@html renderPropDescription(control.description)}
+                              </div>
+                            {/if}
+                          </div>
+                          {#if control.kind === 'boolean'}
+                            <Toggle
+                              id="pg-{control.name}"
+                              label={control.name}
+                              hideLabel
+                              bind:checked={
+                                () => Boolean(playgroundValues[control.name]),
+                                (next) => (playgroundValues[control.name] = next)
+                              }
+                            />
+                          {:else if control.kind === 'select'}
+                            <select
+                              class="dx-ctl__select"
+                              aria-label={control.name}
+                              value={String(playgroundValues[control.name] ?? control.value)}
+                              onchange={(event) =>
+                                (playgroundValues[control.name] = (
+                                  event.currentTarget as HTMLSelectElement
+                                ).value)}
+                            >
+                              {#each control.options as option (option)}
+                                <option value={option}>{option}</option>
+                              {/each}
+                            </select>
+                          {:else if control.kind === 'number'}
+                            <input
+                              class="dx-ctl__input"
+                              type="number"
+                              aria-label={control.name}
+                              value={Number(playgroundValues[control.name] ?? control.value)}
+                              oninput={(event) =>
+                                (playgroundValues[control.name] = Number(
+                                  (event.currentTarget as HTMLInputElement).value,
+                                ))}
+                            />
+                          {:else}
+                            <input
+                              class="dx-ctl__input"
+                              type="text"
+                              aria-label={control.name}
+                              value={String(playgroundValues[control.name] ?? control.value)}
+                              oninput={(event) =>
+                                (playgroundValues[control.name] = (
+                                  event.currentTarget as HTMLInputElement
+                                ).value)}
+                            />
+                          {/if}
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {:else}
+                  <p class="dx-preview__empty">
+                    This component has no adjustable props. See the examples for usage.
+                  </p>
+                {/if}
+              </div>
+            </aside>
           </div>
         </div>
       {/if}
@@ -1483,8 +1543,14 @@
      every other playground iframe — stays untouched. */
   .dx {
     --dx-gutter: clamp(1.25rem, 4vw, 3.5rem);
-    --dx-max: 78rem;
+    /* Wider than the old single-column cap: the page now carries a prose column
+       AND a preview column, and 78rem left the prose at ~544px. */
+    --dx-max: 104rem;
     --dx-rail: 14.5rem;
+    /* Preview column. Wide enough for real component layouts — the previous
+       inline stage was a fixed 360px box, far too small for tables, editors,
+       and anything with a sidebar of its own. */
+    --dx-preview-w: 38rem;
     --dx-topbar-h: 3.25rem;
     min-height: 100vh;
     border: 1px solid var(--cinder-border);
@@ -1854,33 +1920,178 @@
   }
 
   /* ===== Layout + TOC ===== */
+  /*
+   * Split view: documentation reads on the left, the live preview stays put on
+   * the right. The preview is the reason this page exists, so it holds its own
+   * column and its own scroll position rather than being one section you scroll
+   * past — the old inline stage was a fixed 360px box buried mid-page.
+   */
   .dx-layout {
     display: grid;
-    grid-template-columns: var(--dx-rail) minmax(0, 1fr);
-    gap: clamp(1.5rem, 4vw, 4rem);
+    /*
+     * TWO panes, as asked: prose on the left, live preview on the right. The
+     * "on this page" rail becomes a horizontal strip above the prose instead of
+     * a third column — at three columns the prose collapsed to ~280px, which is
+     * unreadable, and the reader already has the component nav on the far left.
+     */
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--dx-preview-w));
+    grid-template-areas:
+      'toc preview'
+      'docs preview';
+    column-gap: clamp(1.5rem, 3vw, 3rem);
     padding-block: clamp(2rem, 4vw, 3.25rem) 5rem;
     align-items: start;
   }
   .dx-toc {
+    grid-area: toc;
+  }
+  .dx-content {
+    grid-area: docs;
+  }
+  .dx-preview {
+    grid-area: preview;
+  }
+
+  .dx-preview__sticky {
     position: sticky;
     top: calc(var(--dx-topbar-h) + 1.5rem);
-    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    max-height: calc(100vh - var(--dx-topbar-h) - 3rem);
+    overflow: hidden auto;
+    padding-inline-end: var(--cinder-space-1);
+    overscroll-behavior: contain;
   }
-  .dx-toc__label {
+
+  /* Stage controls: a compact instrument strip above the stage. */
+  .dx-viewport {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    padding: var(--cinder-space-1);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+  }
+  .dx-viewport__sizes {
+    display: flex;
+    gap: 2px;
+  }
+  .dx-viewport__size,
+  .dx-viewport__expand {
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    border: 1px solid transparent;
+    border-radius: var(--cinder-radius-sm);
+    background: transparent;
+    color: var(--cinder-text-muted);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-2xs);
-    letter-spacing: 0.18em;
+    letter-spacing: 0.06em;
+    cursor: pointer;
     text-transform: uppercase;
+  }
+  @media (hover: hover) {
+    .dx-viewport__size:hover,
+    .dx-viewport__expand:hover {
+      background: var(--cinder-surface-hover);
+      color: var(--cinder-text);
+    }
+  }
+  .dx-viewport__size[aria-pressed='true'] {
+    border-color: var(--cinder-border);
+    background: var(--cinder-bg);
+    color: var(--cinder-text);
+  }
+  .dx-viewport__expand {
+    margin-inline-start: auto;
+  }
+  .dx-viewport__readout {
     color: var(--cinder-text-subtle);
-    padding-inline-start: var(--cinder-space-4);
-    margin-block-end: var(--cinder-space-3);
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-2xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .dx-viewport__size:focus-visible,
+  .dx-viewport__expand:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .dx-viewport__size:focus-visible,
+    .dx-viewport__expand:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      box-shadow: none;
+    }
+  }
+
+  /* The stage honours the simulated width, centred, so narrow settings read as
+     a device rather than a left-aligned sliver. */
+  .dx-preview__sticky .dx-stage {
+    width: min(100%, var(--dx-stage-w, 100%));
+    margin-inline: auto;
+  }
+  .dx-preview__sticky .dx-stage__canvas {
+    min-height: 12rem;
+  }
+  .dx.is-focus-mode .dx-preview__sticky .dx-stage {
+    flex: 1;
+  }
+
+  .dx-preview__empty {
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+  }
+
+  /*
+   * Focus mode expands the stage over the whole viewport. Pure CSS on one
+   * document — the old implementation needed an iframe and postMessage.
+   */
+  .dx.is-focus-mode .dx-preview {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: var(--cinder-bg);
+  }
+  .dx.is-focus-mode .dx-preview__sticky {
+    top: 0;
+    max-height: 100vh;
+    height: 100vh;
+    padding: var(--cinder-space-5);
+  }
+  .dx.is-focus-mode .dx-toc,
+  .dx.is-focus-mode .dx-content,
+  .dx.is-focus-mode .dx-hero,
+  .dx.is-focus-mode .dx-topbar {
+    display: none;
+  }
+  .dx-toc {
+    position: sticky;
+    top: var(--dx-topbar-h);
+    z-index: 30;
+    align-self: start;
+    margin-block-end: var(--cinder-space-5);
+    padding-block: var(--cinder-space-2);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: color-mix(in oklch, var(--cinder-bg), transparent 8%);
+    backdrop-filter: blur(8px);
+  }
+  .dx-toc__label {
+    display: none;
   }
   .dx-toc__list {
     list-style: none;
     margin: 0;
     padding: 0;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    gap: var(--cinder-space-1);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .dx-toc__list::-webkit-scrollbar {
+    display: none;
   }
   .dx-toc__link {
     position: relative;
@@ -2199,11 +2410,16 @@
   .dx-play__intro {
     margin-block-end: var(--cinder-space-5);
   }
+  /*
+   * Inside the preview pane the stage and its controls stack: the pane is
+   * already the narrow axis of the page-level split, so splitting it again gave
+   * a 260px stage — smaller than the 360px box this rework set out to fix.
+   */
   .dx-play {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 16.5rem;
-    gap: var(--cinder-space-4);
-    align-items: start;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+    min-width: 0;
   }
   .dx-play__preview {
     display: flex;
@@ -2217,6 +2433,7 @@
     color: var(--cinder-text-subtle);
   }
   .dx-play__controls {
+    container-type: inline-size;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
@@ -2675,6 +2892,26 @@
       max-width: 26rem;
     }
   }
+  /*
+   * Vertical split below the breakpoint: the preview stacks ABOVE the prose,
+   * because it is what the reader came for. It stops being sticky so the page
+   * scrolls as one document on a phone.
+   */
+  @media (max-width: 1100px) {
+    .dx-layout {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        'preview'
+        'toc'
+        'docs';
+    }
+    .dx-preview__sticky {
+      position: static;
+      max-height: none;
+      overflow: visible;
+    }
+  }
+
   @media (max-width: 920px) {
     .dx-layout {
       grid-template-columns: minmax(0, 1fr);
@@ -2717,6 +2954,7 @@
       grid-template-columns: minmax(0, 1fr);
     }
     .dx-play__controls {
+      container-type: inline-size;
       position: static;
       order: -1;
       /* No longer sticky here, so drop the viewport height cap — the stacked
