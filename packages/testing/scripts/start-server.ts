@@ -863,6 +863,7 @@ async function main(): Promise<void> {
     exitIfShuttingDown,
     cleanupOnce,
   );
+  await exitIfShuttingDown();
 
   const playwright = spawn('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
