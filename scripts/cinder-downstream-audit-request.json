@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    { "name": "@lostgradient/cinder", "resolution": "published" },
+    { "name": "@lostgradient/chat", "resolution": "published" }
+  ],
+  "repositories": [
+    {
+      "name": "agent-bureau",
+      "remote": "https://github.com/stevekinney/agent-bureau.git",
+      "ref": "main"
+    },
+    {
+      "name": "narrate-studio",
+      "remote": "https://github.com/stevekinney/narrate-studio.git",
+      "ref": "main"
+    },
+    {
+      "name": "stevekinney.net",
+      "remote": "https://github.com/stevekinney/stevekinney.net.git",
+      "ref": "main"
+    },
+    { "name": "tribunal", "remote": "https://github.com/stevekinney/tribunal.git", "ref": "main" },
+    { "name": "weft", "remote": "https://github.com/stevekinney/weft.git", "ref": "main" },
+    {
+      "name": "weft-console",
+      "remote": "https://github.com/stevekinney/weft-console.git",
+      "ref": "main"
+    }
+  ],
+  "issueWindow": { "open": 100, "recentlyClosed": 100, "since": "2026-07-17" }
+}

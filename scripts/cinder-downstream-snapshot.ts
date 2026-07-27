@@ -1,4 +1,4 @@
-import { lstat, readFile, readlink } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, readlink, rm } from 'node:fs/promises';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 type Request = {
@@ -6,7 +6,9 @@ type Request = {
   packages?: Array<{ name: string; version?: string; resolution?: 'latest' | 'published' }>;
   repositories?: Array<{
     name: string;
-    path: string;
+    path?: string;
+    remote?: string;
+    ref?: string;
     commit?: string;
     branch?: string;
     globs?: string[];
@@ -135,8 +137,37 @@ async function main(): Promise<void> {
   for (const repository of (request.repositories ?? []).toSorted((a, b) =>
     a.name.localeCompare(b.name),
   )) {
+    let temporaryRoot: string | null = null;
     try {
-      const root = resolve(repository.path);
+      const hasPath = repository.path !== undefined;
+      const hasRemote = repository.remote !== undefined;
+      if (
+        hasPath === hasRemote ||
+        (hasRemote && repository.ref === undefined) ||
+        (!hasRemote && repository.ref !== undefined)
+      ) {
+        throw new Error('repository source must be exactly path(+optional branch) XOR remote+ref');
+      }
+      let root: string;
+      if (hasRemote) {
+        temporaryRoot = await mkdtemp('/tmp/cinder-downstream-');
+        const clone = Bun.spawnSync([
+          'git',
+          'clone',
+          '--depth',
+          '1',
+          '--single-branch',
+          '--branch',
+          repository.ref!,
+          repository.remote!,
+          temporaryRoot,
+        ]);
+        if (clone.exitCode !== 0)
+          throw new Error(`clone failed: ${clone.stderr.toString().trim()}`);
+        root = temporaryRoot;
+      } else {
+        root = resolve(repository.path!);
+      }
       const files = [];
       const evidence: Record<
         string,
@@ -218,7 +249,7 @@ async function main(): Promise<void> {
         }
       }
       let resolvedCommit = repository.commit ?? null;
-      if (repository.commit || repository.branch) {
+      if (repository.commit || repository.branch || repository.remote) {
         const headRevision = Bun.spawnSync([
           'git',
           '-C',
@@ -279,6 +310,9 @@ async function main(): Promise<void> {
       }
       repositories.push({
         name: repository.name,
+        ...(repository.remote === undefined
+          ? {}
+          : { remote: repository.remote, ref: repository.ref! }),
         branch: repository.branch ?? null,
         commit: resolvedCommit,
         files: files.toSorted((a, b) => a.path.localeCompare(b.path)),
@@ -289,6 +323,8 @@ async function main(): Promise<void> {
         scope: `repository:${repository.name}`,
         message: error instanceof Error ? error.message : String(error),
       });
+    } finally {
+      if (temporaryRoot !== null) await rm(temporaryRoot, { recursive: true, force: true });
     }
   }
   const output = {
