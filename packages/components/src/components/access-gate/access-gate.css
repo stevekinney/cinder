@@ -47,6 +47,11 @@
     min-inline-size: 0;
   }
 
+  .cinder-access-gate__inline-content:has(> [data-cinder-full-width]) {
+    display: flex;
+    inline-size: 100%;
+  }
+
   .cinder-access-gate[data-cinder-variant='inline']:has(
       .cinder-access-gate__inline-content > [data-cinder-icon-only]
     ) {

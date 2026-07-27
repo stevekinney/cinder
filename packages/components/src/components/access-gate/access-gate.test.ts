@@ -56,6 +56,7 @@ describe('AccessGate', () => {
     expect(styles).toContain(
       ".cinder-access-gate[data-cinder-variant='inline']:has(\n      .cinder-access-gate__inline-content > [data-cinder-icon-only]",
     );
+    expect(styles).toContain('.cinder-access-gate__inline-content:has(> [data-cinder-full-width])');
     expect(styles).toContain('.cinder-access-gate__inline-reason {');
     expect(styles).toContain('display: inline-block;');
     expect(styles).toContain('align-self: first baseline;');
