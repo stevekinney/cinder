@@ -26,7 +26,7 @@ function isInteriorDivider(selector, property) {
 }
 
 function resolvesToRaisedSurface(value, customProperties, seen = new Set()) {
-  if (value.includes('var(--cinder-surface-raised)')) return true;
+  if (/var\(\s*--cinder-surface-raised(?:-(?:hover|pressed))?\s*[,)]/.test(value)) return true;
   for (const match of value.matchAll(/var\(\s*(--[\w-]+)/g)) {
     const token = match[1];
     if (seen.has(token)) continue;

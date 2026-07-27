@@ -8,14 +8,13 @@
  *   --cinder-surface-inset   →  a sunken region inside a card body
  *                                (code blocks, wells, recessed sub-regions)
  *
- * The rule: a card root sets ONE background. Every region inside the card
- * should INHERIT (do not redeclare). Children that need contrast (an input
- * field) use `--cinder-surface-raised`; deliberately sunken regions opt into
- * `--cinder-surface-inset`.
+ * The rule: a card root sets one background. Nested regions inherit it unless
+ * the component deliberately changes tiers: primary bodies may use
+ * `--cinder-surface`, controls or elevated regions may use
+ * `--cinder-surface-raised`, and sunken regions use `--cinder-surface-inset`.
  *
- * If a region declares its own background AND the parent already set one,
- * you create a visible color band. That is the failure mode the rule
- * prevents.
+ * Repeating the same tier on a child creates accidental visible banding.
+ * Declare a nested background only for an intentional tier change.
  * ============================================================ */
 
 :root {

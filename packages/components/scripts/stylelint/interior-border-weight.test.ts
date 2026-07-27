@@ -59,13 +59,19 @@ describe(ruleName, () => {
   });
 
   test('rejects a muted full border around a raised surface', async () => {
-    expect(
-      warnings(
-        await lint(
-          '.cinder-card { background: var(--cinder-surface-raised); border: 1px solid var(--cinder-border-muted); }',
+    for (const raisedSurface of [
+      '--cinder-surface-raised',
+      '--cinder-surface-raised-hover',
+      '--cinder-surface-raised-pressed',
+    ]) {
+      expect(
+        warnings(
+          await lint(
+            `.cinder-card { background: var(${raisedSurface}); border: 1px solid var(--cinder-border-muted); }`,
+          ),
         ),
-      ),
-    ).toHaveLength(1);
+      ).toHaveLength(1);
+    }
   });
 
   test('resolves local aliases to raised surfaces', async () => {
