@@ -95,7 +95,7 @@ export function findNearestOpenTopLayer(
   source: HTMLElement,
   isModalDialog: (element: HTMLElement) => boolean = (element) => element.matches(':modal'),
 ): HTMLElement | null {
-  const ownerLookupSource = source.closest('.cinder-popover__trigger')?.parentElement ?? source;
+  const ownerLookupSource = source.closest('.cinder-popover__trigger') ?? source;
   const ownerId = ownerLookupSource.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset[
     'cinderPortalOwner'
   ];
@@ -156,7 +156,9 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
   if (colorScheme) {
     inherited.setProperty('color-scheme', colorScheme);
   }
-  if (computed.direction) inherited.setProperty('direction', computed.direction);
+  if (!source.hasAttribute('dir') && computed.direction) {
+    inherited.setProperty('direction', computed.direction);
+  }
   for (const property of [
     'font-family',
     'font-size',

@@ -295,7 +295,7 @@ describe('NavigationBar', () => {
     expect(navigationBarSource).toContain("item.matches(':disabled')");
     expect(navigationBarSource).toContain('pendingTabFocus');
     expect(navigationBarSource).toContain(
-      'class="cinder-navigation-bar__items cinder-_floating-surface"',
+      "isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined",
     );
     expect(navigationBarSource).toContain(
       "classNames('cinder-navigation-bar__portal-scope', className)",

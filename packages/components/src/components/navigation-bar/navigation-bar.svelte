@@ -498,7 +498,10 @@
     <div
       bind:this={itemsRegionElement}
       id={regionId}
-      class="cinder-navigation-bar__items cinder-_floating-surface"
+      class={classNames(
+        'cinder-navigation-bar__items',
+        isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined,
+      )}
       data-open={mobileMenuOpen ? 'true' : 'false'}
       data-cinder-mobile-panel={isMobileLayout || undefined}
       data-cinder-position-ready={anchoredItems.positionReady || undefined}
