@@ -316,7 +316,7 @@
     (firstFocusable ?? panel).focus();
   }
 
-  function submenuHorizontalKeys(event: KeyboardEvent): {
+  function submenuHorizontalKeys(): {
     enter: 'ArrowLeft' | 'ArrowRight';
     return: 'ArrowLeft' | 'ArrowRight';
   } {
@@ -340,7 +340,7 @@
       (event.altKey || event.ctrlKey || event.metaKey)
     )
       return;
-    const horizontalKeys = submenuHorizontalKeys(event);
+    const horizontalKeys = submenuHorizontalKeys();
     if (event.key === horizontalKeys.enter) {
       event.preventDefault();
       if (openItem?.submenu?.[index]) {
@@ -393,7 +393,7 @@
 
   function onSubmenuPanelKeydown(event: KeyboardEvent) {
     if (isModifiedHorizontalArrow(event)) return;
-    if (event.key === submenuHorizontalKeys(event).return && openItem && openSubmenu) {
+    if (event.key === submenuHorizontalKeys().return && openItem && openSubmenu) {
       event.preventDefault();
       event.stopPropagation();
       document.getElementById(submenuTriggerId(openItem.id, openSubmenu.id))?.focus();

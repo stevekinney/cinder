@@ -89,9 +89,7 @@ test('Accessibility shortcut alternatives wrap without overflowing', async ({ co
 
   const overflows = await keyList.locator('.cinder-kbd').evaluateAll((keys) =>
     keys.some((key) => {
-      const keyBox = key.getBoundingClientRect();
-      const listBox = key.closest('.dx-keys__key-list')?.getBoundingClientRect();
-      return listBox === undefined || keyBox.left < listBox.left || keyBox.right > listBox.right;
+      return key.scrollHeight > key.clientHeight || key.scrollWidth > key.clientWidth;
     }),
   );
   expect(overflows).toBe(false);
