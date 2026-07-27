@@ -379,7 +379,9 @@
           ? initialParsed.formatted
           : initialParsed
             ? initialValue
-            : formatNationalAsYouType(resetCountry, digitsOnly(initialValue));
+            : initialValue === digitsOnly(initialValue)
+              ? formatNationalAsYouType(resetCountry, initialValue)
+              : initialValue;
         nationalDisplay = resetDisplay;
         const nationalInput = fieldRoot?.querySelector<HTMLInputElement>(
           'input:not([type="hidden"])',

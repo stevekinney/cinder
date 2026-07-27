@@ -470,6 +470,21 @@ describe('PhoneInput form reset', () => {
     form.remove();
   });
 
+  test('preserves invalid initial text on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: { id: 'p', label: 'Phone', value: 'invalid' },
+    });
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(nationalInput(rendered.container).value).toBe('invalid');
+    rendered.unmount();
+    form.remove();
+  });
+
   test('resynchronizes an untouched non-first initial country on reset', async () => {
     const form = document.createElement('form');
     document.body.append(form);
