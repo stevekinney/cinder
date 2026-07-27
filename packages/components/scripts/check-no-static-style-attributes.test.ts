@@ -41,6 +41,7 @@ describe('findStaticStyleAttributes', () => {
       { line: 1, column: 6 },
     ]);
     expect(findStaticStyleAttributes('<Widget style="compact" />')).toEqual([]);
+    expect(findStaticStyleAttributes('<div><Widget style="compact" /></div>')).toEqual([]);
   });
 
   test('flags numeric style directive literals', () => {

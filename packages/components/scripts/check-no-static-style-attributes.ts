@@ -166,11 +166,15 @@ export function findStaticStyleAttributes(source: string): StaticStyleAttributeV
       }
     }
 
+    const isDomElementNode = value.type === 'RegularElement' || value.type === 'Element';
     for (const [key, child] of Object.entries(value)) {
       if (key !== 'metadata') {
         const childIsDomElement =
           isNode(child) && (child.type === 'RegularElement' || child.type === 'Element');
-        visit(child, domElement || childIsDomElement);
+        // Only an element's direct attributes inherit its DOM context. Do not
+        // propagate that context through descendants, or a nested component's
+        // `style` prop would be mistaken for an inline DOM style.
+        visit(child, (isDomElementNode && key === 'attributes') || childIsDomElement);
       }
     }
   }
