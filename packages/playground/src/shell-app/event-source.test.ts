@@ -151,6 +151,26 @@ describe('createEventSource factory', () => {
     unmount();
   });
 
+  test('debounces named event listeners and cleans up the pending callback', async () => {
+    let reloads = 0;
+    const { unmount } = render(Fixture, {
+      url: '/events',
+      handlers: { debounceMs: 10, events: { reload: () => (reloads += 1) } },
+    });
+    await tick();
+    const [source] = [...liveSources];
+    const handler = source?.listeners.get('reload');
+    handler?.(new MessageEvent('reload'));
+    handler?.(new MessageEvent('reload'));
+    expect(reloads).toBe(0);
+    await Bun.sleep(20);
+    expect(reloads).toBe(1);
+    handler?.(new MessageEvent('reload'));
+    unmount();
+    await Bun.sleep(20);
+    expect(reloads).toBe(1);
+  });
+
   test('closes on unmount', async () => {
     const { unmount } = render(Fixture, { url: '/events' });
     await tick();

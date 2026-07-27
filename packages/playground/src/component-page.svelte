@@ -30,6 +30,7 @@
     readPreviewWidthFromSearch,
   } from './shell-app/routing.ts';
   import { persistScrollPosition } from './shell-app/sidebar-scroll.ts';
+  import { createEventSource } from './shell-app/event-source.svelte.ts';
   import { THEME_STORAGE_KEY } from './shell-app/theme-storage.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
@@ -151,6 +152,15 @@
   }
 
   const componentName: string = componentNameProp ?? readComponentNameFromLocation();
+
+  // The canonical page owns the preview now, so subscribe directly to the
+  // dev-server stream. Snapshot pages deliberately stay quiet: automated
+  // visual and focus suites share the dev server and a reload would interrupt
+  // the test currently driving the page.
+  const liveReloadUrl = !snapshotMode && typeof window !== 'undefined' ? '/events' : null;
+  function handleLiveReload(): void {
+    window.location.reload();
+  }
 
   // --- Theme toggle -----------------------------------------------------
   // Cinder tokens switch on `color-scheme` (via `light-dark()`); the playground
@@ -690,7 +700,14 @@
 </script>
 
 {#if previewOnly}
-  <div class="canonical-preview" data-component-preview>
+  <div
+    class="canonical-preview"
+    data-component-preview
+    {@attach createEventSource(() => liveReloadUrl, {
+      debounceMs: 100,
+      events: { reload: handleLiveReload },
+    })}
+  >
     {#if overviewExample === undefined}
       <h1 class="snapshot-empty-heading">{humanizeId(componentName)}</h1>
     {:else}
@@ -708,7 +725,14 @@
        examples-only snapshot). Rendering the full page here would add README
        Shiki code blocks (low-contrast tokens), the hero, scroll-spy, etc. to
        every component's snapshot — so we render only the example mounts. -->
-  <div class="snapshot-examples" data-component-page>
+  <div
+    class="snapshot-examples"
+    data-component-page
+    {@attach createEventSource(() => liveReloadUrl, {
+      debounceMs: 100,
+      events: { reload: handleLiveReload },
+    })}
+  >
     {#if examples.length === 0}
       <!-- Components without `*.example.svelte` files have nothing to mount. The
            test harness still waits for `#app > *` to be VISIBLE (non-zero box)
@@ -736,7 +760,13 @@
        preview surfaces (their harnesses assert on a bare `#app`). -->
   <!-- One wrapper so this branch has a single root. Two siblings here (nav +
        page) trip happy-dom's fragment handling in the documentation tests. -->
-  <div class="dx-shell">
+  <div
+    class="dx-shell"
+    {@attach createEventSource(() => liveReloadUrl, {
+      debounceMs: 100,
+      events: { reload: handleLiveReload },
+    })}
+  >
     <div
       class={[
         'dx',

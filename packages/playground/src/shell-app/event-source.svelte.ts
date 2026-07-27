@@ -24,6 +24,8 @@ export type EventSourceHandlers = {
   onmessage?: (event: MessageEvent) => void;
   onError?: (event: Event) => void;
   events?: Record<string, (event: MessageEvent) => void>;
+  /** Collapse bursts of server events into one callback. */
+  debounceMs?: number;
 };
 
 export function createEventSource(
@@ -32,6 +34,7 @@ export function createEventSource(
 ): Attachment<HTMLElement> {
   return (_node) => {
     let source: EventSource | null = null;
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 
     $effect(() => {
       const url = getUrl();
@@ -39,20 +42,32 @@ export function createEventSource(
       // never leak a stale EventSource.
       source?.close();
       source = null;
+      if (debounceTimer !== undefined) clearTimeout(debounceTimer);
+      debounceTimer = undefined;
       if (!url) return;
       source = new EventSource(url);
-      const { onmessage, onError } = handlers;
+      const { onmessage, onError, debounceMs } = handlers;
+      const wrap = <T extends Event>(handler: (event: T) => void): ((event: T) => void) => {
+        if (!debounceMs || debounceMs <= 0) return handler;
+        return (event) => {
+          if (debounceTimer !== undefined) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            debounceTimer = undefined;
+            handler(event);
+          }, debounceMs);
+        };
+      };
       if (onmessage) {
-        source.addEventListener('message', (event: MessageEvent) => onmessage(event));
+        source.addEventListener('message', wrap(onmessage));
       }
       if (onError) {
-        source.addEventListener('error', (event: Event) => onError(event));
+        source.addEventListener('error', wrap(onError));
       }
       if (handlers.events) {
         for (const [name, handler] of Object.entries(handlers.events)) {
           // EventSource named events are always MessageEvent at runtime.
           // eslint-disable-next-line no-unsafe-type-assertion -- EventSource dispatches named events as MessageEvent; the handler contract is correct.
-          source.addEventListener(name, handler as EventListener);
+          source.addEventListener(name, wrap(handler) as EventListener);
         }
       }
       // Inner cleanup runs on URL change (before re-running) and on
@@ -60,6 +75,8 @@ export function createEventSource(
       return () => {
         source?.close();
         source = null;
+        if (debounceTimer !== undefined) clearTimeout(debounceTimer);
+        debounceTimer = undefined;
       };
     });
   };
