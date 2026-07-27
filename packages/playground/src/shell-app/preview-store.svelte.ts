@@ -27,6 +27,7 @@ import {
   readPreviewWidthFromSearch,
   readThemeFromSearch,
 } from './routing.ts';
+import { THEME_STORAGE_KEY } from './theme-storage.ts';
 
 export type { ThemeChoice };
 
@@ -35,7 +36,6 @@ export type ColorTokenOverrideState = Record<ThemeChoice, ColorTokenOverrides>;
 const PREVIEW_STORE_KEY = Symbol('cinder-preview-store');
 
 /** Persisted theme key — must match `PRE_PAINT_THEME_SCRIPT` in render-shell.ts. */
-import { THEME_STORAGE_KEY } from './theme-storage.ts';
 
 export { THEME_STORAGE_KEY };
 export const COLOR_TOKEN_SESSION_KEY = 'cinder-playground-color-token-overrides';
