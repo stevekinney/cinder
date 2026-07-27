@@ -28,7 +28,7 @@
  * `vercel.json` publishes as the deployment's static root.
  */
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import {
@@ -254,6 +254,15 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     outputDirectory,
     rendered: new Set<string>(),
   };
+
+  /*
+   * Remove the legacy route tree before exporting. A reused output directory —
+   * `vercel-build` into `public/`, or a repeated local run — would otherwise keep
+   * the previous version's `/c/<name>/index.html` files, leaving a second
+   * documentation surface on disk that the `vercel.json` redirect never gets a
+   * chance to shadow.
+   */
+  await rm(join(outputDirectory, 'c'), { recursive: true, force: true });
 
   const sidebarComponents = options.sidebarComponents ?? (await discoverSidebarComponents());
   const allComponents = options.allComponents ?? (await discoverComponents());

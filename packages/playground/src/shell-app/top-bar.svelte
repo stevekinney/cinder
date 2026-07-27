@@ -154,7 +154,7 @@
     // the routing tests assert), then make it absolute for window.open.
     const url = `${window.location.origin}${buildComponentHref(store.currentComponent)}`;
     window.open(url, '_blank', 'noopener');
-    announce(`Opened ${store.currentComponent} preview in a new tab`);
+    announce(`Opened ${store.currentComponent} documentation in a new tab`);
   }
 </script>
 
@@ -310,11 +310,11 @@
       </Tooltip>
 
       {#if store.currentComponent !== ''}
-        <Tooltip text="Open preview in new tab" placement="bottom">
+        <Tooltip text="Open documentation in new tab" placement="bottom">
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Open preview in new tab"
+            aria-label="Open documentation in new tab"
             onclick={openInNewTab}
           >
             <span aria-hidden="true">↗</span>

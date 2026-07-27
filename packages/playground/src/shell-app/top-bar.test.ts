@@ -145,7 +145,9 @@ describe('top-bar open-in-new-tab button', () => {
     expect(toolbar).not.toBeNull();
     if (toolbar === null) throw new Error('Expected playground controls toolbar');
     expect(toolbar.querySelectorAll('[role="radiogroup"]').length).toBeGreaterThanOrEqual(2);
-    expect(toolbar.querySelector('button[aria-label="Open preview in new tab"]')).not.toBeNull();
+    expect(
+      toolbar.querySelector('button[aria-label="Open documentation in new tab"]'),
+    ).not.toBeNull();
     expect(
       toolbar.querySelector(
         'button[aria-label="Focus mode — hide sidebar and toolbar (press Escape to exit)"]',
@@ -170,7 +172,7 @@ describe('top-bar open-in-new-tab button', () => {
       ['Open GitHub repository', 'Open GitHub repository'],
       ['Open npm package', 'Open npm package'],
       ['Color token panel', 'Color token panel'],
-      ['Open preview in new tab', 'Open preview in new tab'],
+      ['Open documentation in new tab', 'Open documentation in new tab'],
       ['Focus mode — hide sidebar and toolbar (press Escape to exit)', 'Focus mode'],
     ]);
     for (const [label, tooltip] of expectedTooltips) {
@@ -188,7 +190,7 @@ describe('top-bar open-in-new-tab button', () => {
   test('renders the button when a component is selected', async () => {
     const { container, unmount } = render(TopBarFixture, { currentComponent: 'button' });
     await tick();
-    const button = container.querySelector('button[aria-label="Open preview in new tab"]');
+    const button = container.querySelector('button[aria-label="Open documentation in new tab"]');
     expect(button).not.toBeNull();
     unmount();
   });
@@ -196,7 +198,7 @@ describe('top-bar open-in-new-tab button', () => {
   test('does not render the button when no component is selected', async () => {
     const { container, unmount } = render(TopBarFixture, { currentComponent: '' });
     await tick();
-    const button = container.querySelector('button[aria-label="Open preview in new tab"]');
+    const button = container.querySelector('button[aria-label="Open documentation in new tab"]');
     expect(button).toBeNull();
     unmount();
   });
@@ -206,7 +208,7 @@ describe('top-bar open-in-new-tab button', () => {
     await tick();
 
     const button = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Open preview in new tab"]',
+      'button[aria-label="Open documentation in new tab"]',
     );
     expect(button).not.toBeNull();
 

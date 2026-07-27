@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -238,3 +239,23 @@ describe('assertDocumentationPagesArePreRendered', () => {
     expect(error?.message).toContain('card');
   });
 });
+
+test('clears a legacy /c/ tree left by a previous export', async () => {
+  const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-export-legacy-'));
+  try {
+    // Simulate output from before `/c/<name>` became a redirect.
+    await mkdir(join(outputDirectory, 'c', 'button'), { recursive: true });
+    await writeFile(join(outputDirectory, 'c', 'button', 'index.html'), '<html>stale</html>');
+
+    await runStaticExport({
+      outputDirectory,
+      sidebarComponents: ['button'],
+      allComponents: ['button'],
+    });
+
+    // A stale second documentation surface must not survive into public/.
+    expect(existsSync(join(outputDirectory, 'c'))).toBe(false);
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+}, 120_000);

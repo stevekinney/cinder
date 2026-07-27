@@ -24,7 +24,11 @@
   import Sliders from 'lucide-svelte/icons/sliders-horizontal';
   import Sun from 'lucide-svelte/icons/sun';
   import X from 'lucide-svelte/icons/x';
-  import { buildComponentHref } from './shell-app/routing.ts';
+  import {
+    buildComponentHref,
+    readFocusModeFromSearch,
+    readPreviewWidthFromSearch,
+  } from './shell-app/routing.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
     formatErrorForClipboard,
@@ -189,6 +193,10 @@
   $effect(() => {
     theme = readInitialTheme();
     isHydrated = true;
+    // Adopted after hydration, not during init: the server cannot read the URL's
+    // toolbar state without the two trees disagreeing.
+    previewWidth = readInitialPreviewWidth();
+    isFocusMode = readFocusModeFromSearch(new URLSearchParams(window.location.search));
   });
 
   /**
@@ -202,6 +210,17 @@
     { label: 'Desktop', width: 1280 },
     { label: 'Full', width: null },
   ] as const satisfies readonly { label: string; width: number | null }[];
+
+  /*
+   * Seed from the URL so `?w=768&focus=1` still means what it did on the shell —
+   * `/c/<name>?w=…` preserves its query across the 301, so those links keep
+   * working. Read once, and only in the browser: the server tree must not depend
+   * on values the client would then re-derive.
+   */
+  function readInitialPreviewWidth(): number | null {
+    if (typeof window === 'undefined') return null;
+    return readPreviewWidthFromSearch(new URLSearchParams(window.location.search));
+  }
 
   let previewWidth = $state<number | null>(null);
 
@@ -2036,9 +2055,18 @@
 
   /* The stage honours the simulated width, centred, so narrow settings read as
      a device rather than a left-aligned sliver. */
+  /*
+   * A preset wider than the pane (Desktop is 1280px against a 38rem column) must
+   * still reach its width, or picking it does nothing visible. The stage takes
+   * the requested width and the pane scrolls horizontally to it.
+   */
   .dx-preview__sticky .dx-stage {
-    width: min(100%, var(--dx-stage-w, 100%));
+    width: var(--dx-stage-w, 100%);
+    max-width: none;
     margin-inline: auto;
+  }
+  .dx-preview__sticky {
+    overflow: auto;
   }
   .dx-preview__sticky .dx-stage__canvas {
     min-height: 12rem;
@@ -2072,6 +2100,13 @@
   .dx.is-focus-mode .dx-content,
   .dx.is-focus-mode .dx-hero,
   .dx.is-focus-mode .dx-topbar {
+    display: none;
+  }
+
+  /* The nav sits outside `.dx`, so the rule above cannot reach it. Left visible
+     it stayed focusable underneath the full-viewport preview — keyboard users
+     would tab into links they cannot see. */
+  .dx-shell:has(.dx.is-focus-mode) .dx-nav {
     display: none;
   }
   .dx-toc {

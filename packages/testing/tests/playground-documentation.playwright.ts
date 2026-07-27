@@ -115,3 +115,29 @@ test.describe('playground component documentation', () => {
     await expect(preview.getByText('--cinder-avatar-group-overlap')).toBeVisible();
   });
 });
+
+test.describe('canonical page preview controls', () => {
+  test('Expand enters focus mode and Escape leaves it', async ({ page }) => {
+    await page.goto('/page/badge', { waitUntil: 'load' });
+
+    const page_ = page.locator('[data-component-page]');
+    await expect(page_).not.toHaveClass(/is-focus-mode/);
+
+    await page.getByRole('button', { name: 'Expand' }).click();
+    await expect(page_).toHaveClass(/is-focus-mode/);
+    // The component nav must leave the tab order while the preview covers it.
+    await expect(page.locator('nav.dx-nav')).toBeHidden();
+
+    await page.keyboard.press('Escape');
+    await expect(page_).not.toHaveClass(/is-focus-mode/);
+    await expect(page.locator('nav.dx-nav')).toBeVisible();
+  });
+
+  test('seeds the preview width from a shared ?w= link', async ({ page }) => {
+    // `/c/<name>?w=768` preserves its query across the 301, so these links must
+    // keep meaning what they did on the shell.
+    await page.goto('/page/badge?w=768', { waitUntil: 'load' });
+
+    await expect(page.getByRole('group', { name: 'Preview viewport' })).toContainText('768px');
+  });
+});

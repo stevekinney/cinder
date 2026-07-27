@@ -15,7 +15,7 @@
     {
       "source": "/c/:name",
       "destination": "/page/:name",
-      "permanent": true
+      "statusCode": 301
     }
   ]
 }

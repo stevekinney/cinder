@@ -948,8 +948,12 @@ const shouldHydrate = hasServerRenderedContent && !snapshotMode && !previewOnly;
 
 // Read the sidebar list the server embedded, so the client's first render
 // matches the server's exactly.
+// Validate rather than assert: this global is page-supplied, and a tampered or
+// malformed value would otherwise reach \`humanizeId\` and crash the page.
 const sidebarRaw = (window as unknown as Record<string, unknown>)['__CINDER_SIDEBAR__'];
-const sidebarComponents = Array.isArray(sidebarRaw) ? (sidebarRaw as string[]) : [];
+const sidebarComponents = Array.isArray(sidebarRaw)
+  ? sidebarRaw.filter((entry): entry is string => typeof entry === 'string')
+  : [];
 
 const props = {
   bareComponentModule: BareComponentModule,
@@ -1734,6 +1738,28 @@ async function renderComponentPage(
   const pageDescription = `Live ${humanName} examples from the cinder Svelte 5 component library.`;
 
   /*
+   * `/page/<name>` is the canonical documentation URL now — `/c/<name>` 301s
+   * here — so this page, not the retired shell route, has to carry the canonical
+   * link and the Open Graph tags a crawler or a shared link will read.
+   */
+  const baseUrl = (Bun.env['PLAYGROUND_BASE_URL'] ?? '').replace(/\/+$/, '');
+  const canonicalUrl = baseUrl
+    ? escapeHtml(`${baseUrl}/page/${encodeURIComponent(componentName)}`)
+    : '';
+  const canonicalTags = [
+    canonicalUrl ? `<link rel="canonical" href="${canonicalUrl}" />` : '',
+    `<meta property="og:title" content="${humanName} — cinder playground" />`,
+    `<meta property="og:description" content="${pageDescription}" />`,
+    `<meta property="og:type" content="website" />`,
+    `<meta property="og:site_name" content="cinder playground" />`,
+    canonicalUrl ? `<meta property="og:url" content="${canonicalUrl}" />` : '',
+    `<meta name="twitter:card" content="summary_large_image" />`,
+  ]
+    .filter(Boolean)
+    .map((tag) => `\n    ${tag}`)
+    .join('');
+
+  /*
    * Server-render the documentation tree so the page has real content in the
    * HTML — no blank `#app` and no loading state before the bundle executes.
    *
@@ -1791,7 +1817,7 @@ async function renderComponentPage(
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>${humanName} — cinder playground</title>
-    <meta name="description" content="${pageDescription}" />
+    <meta name="description" content="${pageDescription}" />${canonicalTags}
     <link rel="icon" href="${FAVICON_HREF}" />
     <link rel="stylesheet" href="/styles/all.css" />${componentStylesheetLink}
     ${ssrHead}

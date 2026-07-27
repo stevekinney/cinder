@@ -3,7 +3,8 @@
  *
  * Starts the playground server in-process by calling startServer() from server.ts
  * (guarded by import.meta.main so importing it here does not auto-start it),
- * crawls every /c/<name> route for all discovered components, validates HTTP
+ * crawls every /page/<name> route for all discovered components (and asserts the
+ * legacy /c/<name> alias still redirects), validates HTTP
  * status codes and page content, and tests the SSE reload path.
  *
  * Usage:
@@ -129,7 +130,7 @@ async function waitForPing(baseUrl: string, timeoutMs: number): Promise<void> {
 
 /**
  * Validate shell + component page routes for all discovered components:
- *   - /c/:name — shell scaffold with the SPA mount point and initial data island
+ *   - /c/:name — legacy alias; must 301 to /page/:name
  *   - /page/:name — standalone component page (the iframe content)
  */
 async function validateComponentRoutes(baseUrl: string, components: string[]): Promise<void> {
@@ -145,32 +146,28 @@ async function validateComponentRoutes(baseUrl: string, components: string[]): P
   );
 
   for (const name of components) {
-    // Shell route
-    const shellUrl = `${baseUrl}/c/${name}`;
-    let shellResponse: Response;
+    /*
+     * Legacy alias. `/c/<name>` used to render a second, condensed documentation
+     * page; it now permanently redirects to the one canonical page. `redirect:
+     * 'manual'` is required — following it would land on `/page/<name>`, whose
+     * markup has none of the shell markers this used to assert.
+     */
+    const legacyUrl = `${baseUrl}/c/${name}`;
+    let legacyResponse: Response;
     try {
-      shellResponse = await fetch(shellUrl, { signal: AbortSignal.timeout(5_000) });
+      legacyResponse = await fetch(legacyUrl, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(5_000),
+      });
     } catch (error) {
-      fail(`fetch ${shellUrl} threw: ${String(error)}`);
+      fail(`fetch ${legacyUrl} threw: ${String(error)}`);
     }
-    if (shellResponse.status !== 200) {
-      fail(`GET ${shellUrl} returned ${shellResponse.status}, expected 200`);
+    if (legacyResponse.status !== 301) {
+      fail(`GET ${legacyUrl} returned ${legacyResponse.status}, expected a 301 redirect`);
     }
-    const shellBody = await shellResponse.text();
-    if (!shellBody.includes('<!DOCTYPE html>')) {
-      fail(`GET ${shellUrl} did not return HTML (missing DOCTYPE)`);
-    }
-    if (!shellBody.includes('id="shell-root"')) {
-      fail(`GET ${shellUrl} HTML is missing the expected #shell-root mount point`);
-    }
-    if (!shellBody.includes('id="cinder-initial"')) {
-      fail(`GET ${shellUrl} HTML is missing the expected cinder-initial data island`);
-    }
-    if (!shellBody.includes('src="/shell-bundle/shell.js"')) {
-      fail(`GET ${shellUrl} HTML does not load the shell bundle`);
-    }
-    if (shellBody.includes(`src="/c/${name}"`)) {
-      fail(`GET ${shellUrl} shell scaffold references /c/${name} recursively`);
+    const location = legacyResponse.headers.get('Location');
+    if (location !== `/page/${name}`) {
+      fail(`GET ${legacyUrl} redirected to ${String(location)}, expected /page/${name}`);
     }
 
     // Component page route (iframe content)
