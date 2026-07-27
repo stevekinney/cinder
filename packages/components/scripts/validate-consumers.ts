@@ -1704,15 +1704,9 @@ export function parseHydrationBrowserProcessIds(
 }
 
 function hydrationBrowserProcessIds(processToken: string): number[] {
-  // `-ww` disables ps's column truncation, and stderr is piped so a failed
-  // listing can report why.
-  //
-  // The width flag is load-bearing, not defensive tidying: Chromium's argv is
-  // ~1.9 KB and Playwright appends our token ~1.7 KB into it. procps falls back
-  // to 80 columns when stdout is not a TTY — which is exactly the case on a CI
-  // runner — so a default-width listing would drop the token, report "no
-  // process", and let the reclamation verdict read a leaked browser as
-  // reclaimed. That fails open: a permanently green gate hiding an orphan.
+  // `-axww` disables ps's column truncation, and stderr is piped so a failed
+  // listing can report why. Chromium's long argv includes our unique token;
+  // without the width flag, CI's non-TTY ps output can silently drop it.
   const listing = Bun.spawnSync(['ps', '-axww', '-o', 'pid=,command='], {
     stdout: 'pipe',
     stderr: 'pipe',
@@ -1986,7 +1980,8 @@ async function runSvelteKitHydrationRoutesOnce(
   // an abandoned `page.close()` that a later `browser.close()` (or its SIGKILL
   // escalation) reclaimed leaked nothing and must not fail the gate.
   if (bodyFailed) {
-    const secondaryTeardown = unreclaimedTeardownFailures(teardownFailures)[0];
+    const unreclaimed = unreclaimedTeardownFailures(teardownFailures);
+    const secondaryTeardown = unreclaimed[unreclaimed.length - 1];
     if (secondaryTeardown !== undefined) {
       process.stderr.write(
         `[validate-consumers] hydration teardown failed after assertion failure: phase=${secondaryTeardown.phase} ${secondaryTeardown.state}: ${secondaryTeardown.error instanceof Error ? secondaryTeardown.error.message : String(secondaryTeardown.error)}\n`,
@@ -1996,12 +1991,12 @@ async function runSvelteKitHydrationRoutesOnce(
   }
 
   const unreclaimed = unreclaimedTeardownFailures(teardownFailures);
-  const first = unreclaimed[0];
-  if (first !== undefined) {
+  const widest = unreclaimed[unreclaimed.length - 1];
+  if (widest !== undefined) {
     throw new ConsumerTeardownError(
       new Error(
-        `teardown phase=${first.phase} routes=${routePaths.join(',')} ${first.state} events=${browserEvents.join('|') || 'none'}: ${first.error instanceof Error ? first.error.message : String(first.error)}`,
-        { cause: first.error },
+        `teardown phase=${widest.phase} routes=${routePaths.join(',')} ${widest.state} events=${browserEvents.join('|') || 'none'}: ${widest.error instanceof Error ? widest.error.message : String(widest.error)}`,
+        { cause: widest.error },
       ),
     );
   }
