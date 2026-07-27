@@ -37,6 +37,7 @@ import {
   fallbackToLastGood,
   handleRequest,
   isWarmupStable,
+  mergeGeneratedSchemaMetadata,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
   setPreparedShellServerRenderer,
@@ -1372,6 +1373,42 @@ describe('/api/manifest/:name', () => {
     const result = (await response.json()) as ComponentManifest;
     expect(result.importPath).toBe('@lostgradient/chat');
   }, 30_000);
+});
+
+describe('generated schema metadata', () => {
+  it('overlays defaults without adding private props or losing analyzer-owned bindability', () => {
+    const analyzedManifest: ComponentManifest = {
+      name: 'Input',
+      kebabName: 'input',
+      file: '/components/input/input.svelte',
+      importPath: '@lostgradient/cinder/input',
+      props: [
+        {
+          name: 'value',
+          control: { kind: 'text' },
+          bindable: true,
+          optional: true,
+        },
+      ],
+    };
+
+    const merged = mergeGeneratedSchemaMetadata(analyzedManifest, {
+      properties: {
+        value: { default: '' },
+        class: { default: 'schema-only-private-prop' },
+      },
+    });
+
+    expect(merged.props).toEqual([
+      {
+        name: 'value',
+        control: { kind: 'text' },
+        bindable: true,
+        optional: true,
+        defaultValue: '',
+      },
+    ]);
+  });
 });
 
 describe('/api/documentation/:name', () => {

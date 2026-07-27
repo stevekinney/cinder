@@ -221,8 +221,8 @@ export function waitForExit(childProcess: ChildProcess): Promise<number> {
     // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
     // EACCES, etc.) the child emits `error` and may never emit `exit`,
     // which would hang the script indefinitely.
-    childProcess.once('exit', onExit);
-    childProcess.once('error', onError);
+    childProcess.on('exit', onExit);
+    childProcess.on('error', onError);
 
     // A cached build can finish between spawn() and listener registration.
     // Node retains the terminal status but does not replay the `exit` event,
@@ -553,6 +553,36 @@ type DependencyWatchController = {
   getFailure: () => Error | null;
 };
 
+export function takeNextOrderedBuild<T extends { order: number }>(
+  queuedBuilds: T[],
+): T | undefined {
+  queuedBuilds.sort((left, right) => left.order - right.order);
+  return queuedBuilds.shift();
+}
+
+export function clearTrackedTimer(
+  timer: ReturnType<typeof setTimeout> | null,
+  timers: Set<ReturnType<typeof setTimeout>>,
+): void {
+  if (timer === null) return;
+  clearTimeout(timer);
+  timers.delete(timer);
+}
+
+export async function waitForPlaygroundReadinessWithCleanup(
+  waitForReadiness: () => Promise<void>,
+  exitIfShuttingDown: () => Promise<void>,
+  cleanupAfterFailure: () => Promise<void>,
+): Promise<void> {
+  try {
+    await waitForReadiness();
+  } catch (error) {
+    await exitIfShuttingDown();
+    await cleanupAfterFailure();
+    throw error;
+  }
+}
+
 function startPlaygroundBundleDependencyWatchers(
   registerChildProcess: (managedChildProcess: ManagedChildProcess) => void,
   shouldContinueStartingChildProcesses: () => boolean,
@@ -606,10 +636,7 @@ function startPlaygroundBundleDependencyWatchers(
         }
         if (state.buildProcess === currentBuild) state.buildProcess = null;
         activeBuild = false;
-        queuedBuilds
-          .toSorted((left, right) => left.order - right.order)
-          .shift()
-          ?.run();
+        takeNextOrderedBuild(queuedBuilds)?.run();
         if (state.pending && failure === null) runBuild();
         resolveIdle();
         return undefined;
@@ -618,7 +645,9 @@ function startPlaygroundBundleDependencyWatchers(
     const scheduleBuild = (): void => {
       if (disposed) return;
       state.pending = true;
-      if (rebuildTimer !== null) clearTimeout(rebuildTimer);
+      if (rebuildTimer !== null) {
+        clearTrackedTimer(rebuildTimer, timers);
+      }
       rebuildTimer = setTimeout(() => {
         timers.delete(rebuildTimer!);
         rebuildTimer = null;
@@ -818,13 +847,11 @@ async function main(): Promise<void> {
     }
   }
 
-  try {
-    await waitForWarmPlayground(dependencyWatchController);
-  } catch (error) {
-    await exitIfShuttingDown();
-    await cleanupOnce();
-    throw error;
-  }
+  await waitForPlaygroundReadinessWithCleanup(
+    () => waitForWarmPlayground(dependencyWatchController),
+    exitIfShuttingDown,
+    cleanupOnce,
+  );
   await exitIfShuttingDown();
 
   const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
@@ -838,7 +865,11 @@ async function main(): Promise<void> {
   if (prepCode !== 0) {
     await exitAfterCleanup(prepCode);
   }
-  await waitForWarmPlayground(dependencyWatchController);
+  await waitForPlaygroundReadinessWithCleanup(
+    () => waitForWarmPlayground(dependencyWatchController),
+    exitIfShuttingDown,
+    cleanupOnce,
+  );
 
   const playwright = spawn('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,

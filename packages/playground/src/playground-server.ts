@@ -1485,6 +1485,31 @@ async function getManifests(): Promise<ComponentManifest[]> {
   }
 }
 
+type GeneratedComponentSchema = {
+  properties?: Record<string, { default?: unknown }>;
+  metadata?: {
+    unsupportedProps?: Array<{ name: string; required?: boolean; reason?: string }>;
+  };
+};
+
+export function mergeGeneratedSchemaMetadata(
+  analyzedManifest: ComponentManifest,
+  schema: GeneratedComponentSchema,
+): ComponentManifest {
+  return {
+    ...analyzedManifest,
+    props: analyzedManifest.props.map((prop) => {
+      const defaultValue = schema.properties?.[prop.name]?.default;
+      return defaultValue === undefined ? prop : { ...prop, defaultValue };
+    }),
+    ...(schema.metadata?.unsupportedProps?.some(
+      (prop) => prop.required === true && prop.reason === 'function-or-snippet',
+    )
+      ? { isCompound: true }
+      : {}),
+  };
+}
+
 async function getComponentManifest(componentName: string): Promise<ComponentManifest | null> {
   const cached = componentManifestCache.get(componentName);
   if (cached !== undefined) return cached;
@@ -1501,60 +1526,17 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
   );
   const generatedSchemaFile = Bun.file(generatedSchemaPath);
   const generationAtStart = rebuildGeneration;
-  if (await generatedSchemaFile.exists()) {
-    const schema = (await generatedSchemaFile.json()) as {
-      properties?: Record<
-        string,
-        { type?: string; enum?: unknown[]; description?: string; default?: unknown }
-      >;
-      required?: string[];
-      metadata?: {
-        unsupportedProps?: Array<{ name: string; required?: boolean; reason?: string }>;
-      };
-    };
-    if (schema.properties !== undefined) {
-      const manifest: ComponentManifest = {
-        name: humanizeComponentName(componentName),
-        kebabName: componentName,
-        file: definition.filePath,
-        importPath: definition.importPath,
-        props: Object.entries(schema.properties).map(([name, property]) => {
-          const defaultValue = property.default;
-          const control =
-            property.enum !== undefined
-              ? { kind: 'select' as const, options: property.enum.map(String) }
-              : property.type === 'boolean'
-                ? { kind: 'boolean' as const }
-                : property.type === 'number' || property.type === 'integer'
-                  ? { kind: 'number' as const }
-                  : property.type === 'string'
-                    ? { kind: 'text' as const }
-                    : { kind: 'unknown' as const, rawType: property.type ?? 'unknown' };
-          return {
-            name,
-            control,
-            bindable: property.description?.includes('Bindable') ?? false,
-            optional: !(schema.required ?? []).includes(name),
-            ...(defaultValue === undefined ? {} : { defaultValue }),
-            ...(property.description === undefined ? {} : { description: property.description }),
-          };
-        }),
-        ...(schema.metadata?.unsupportedProps?.some(
-          (prop) => prop.required === true && prop.reason === 'function-or-snippet',
-        )
-          ? { isCompound: true }
-          : {}),
-      };
-      if (generationAtStart === rebuildGeneration)
-        componentManifestCache.set(componentName, manifest);
-      return manifest;
-    }
-  }
-  const analysisGenerationAtStart = rebuildGeneration;
-  const manifest = await analyzeComponent(definition.filePath, {
+  const analyzedManifest = await analyzeComponent(definition.filePath, {
     importPath: definition.importPath,
   });
-  if (analysisGenerationAtStart === rebuildGeneration) {
+  let manifest = analyzedManifest;
+  if (await generatedSchemaFile.exists()) {
+    const schema = (await generatedSchemaFile.json()) as GeneratedComponentSchema;
+    if (schema.properties !== undefined) {
+      manifest = mergeGeneratedSchemaMetadata(analyzedManifest, schema);
+    }
+  }
+  if (generationAtStart === rebuildGeneration) {
     componentManifestCache.set(componentName, manifest);
   }
   return manifest;
