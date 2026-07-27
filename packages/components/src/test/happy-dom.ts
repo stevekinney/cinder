@@ -189,10 +189,14 @@ function retainMutationObserverCallbacks(happyWindow: Window, target: Global): v
   Object.defineProperty(happyWindow, 'MutationObserver', {
     value: StableMutationObserver,
     configurable: true,
+    enumerable: true,
+    writable: true,
   });
   Object.defineProperty(target, 'MutationObserver', {
     value: StableMutationObserver,
     configurable: true,
+    enumerable: true,
+    writable: true,
   });
 }
 
