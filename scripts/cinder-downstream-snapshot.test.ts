@@ -2,8 +2,30 @@ import { expect, test } from 'bun:test';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
+
+const snapshotScript = fileURLToPath(new URL('./cinder-downstream-snapshot.ts', import.meta.url));
+type Snapshot = {
+  repositories: Array<{
+    files: Array<{ path: string; bytes?: number; gitlink?: string }>;
+    evidence?: Record<string, unknown>;
+  }>;
+  errors: Array<{ scope?: string; message: string }>;
+};
+
+function runSnapshot(args: string[]): string {
+  const result = Bun.spawnSync([process.execPath, 'run', snapshotScript, ...args]);
+  const stderr = result.stderr.toString();
+  if (result.exitCode !== 0)
+    throw new Error(`snapshot child exited with code ${result.exitCode}: ${stderr}`);
+  return result.stdout.toString();
+}
+
+function parseSnapshot(args: string[]): Snapshot {
+  return JSON.parse(runSnapshot(args)) as Snapshot;
+}
 
 test('snapshot input is deterministic and sorted', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-'));
@@ -14,29 +36,15 @@ test('snapshot input is deterministic and sorted', async () => {
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const first = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]).stdout.toString();
-  const second = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]).stdout.toString();
+  const first = runSnapshot(['--request', request]);
+  const second = runSnapshot(['--request', request]);
   const normalize = (value: string) =>
     JSON.stringify({ ...JSON.parse(value), collectedAt: 'stable' });
   expect(normalize(first)).toBe(normalize(second));
 });
 
 test('help prints usage without requiring a request', () => {
-  const result = Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--help']);
-  expect(result.exitCode).toBe(0);
-  expect(result.stdout.toString()).toContain('Usage:');
+  expect(runSnapshot(['--help'])).toContain('Usage:');
 });
 
 test('partial repository failures stay in the snapshot', async () => {
@@ -49,15 +57,9 @@ test('partial repository failures stay in the snapshot', async () => {
       repositories: [{ name: 'missing', path: join(root, 'missing') }],
     }),
   );
-  const result = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]);
-  expect(result.exitCode).toBe(0);
-  expect(JSON.parse(result.stdout.toString()).errors[0].scope).toBe('repository:missing');
+  expect((parseSnapshot(['--request', request]) as { errors: Array<{ scope: string }> }).errors[0].scope).toBe(
+    'repository:missing',
+  );
 });
 
 test('hashes binary bytes and rejects malformed options', async () => {
@@ -68,20 +70,16 @@ test('hashes binary bytes and rejects malformed options', async () => {
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const result = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]);
-  const file = JSON.parse(result.stdout.toString()).repositories[0].files.find(
+  const snapshot = parseSnapshot(['--request', request]) as {
+    repositories: Array<{ files: Array<{ path: string; bytes: number }> }>;
+  };
+  const file = snapshot.repositories[0]!.files.find(
     (entry: { path: string }) => entry.path === 'binary.bin',
   );
   expect(file.bytes).toBe(3);
   expect(
-    Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--wat']).exitCode,
-  ).not.toBe(0);
+    () => runSnapshot(['--wat']),
+  ).toThrow(/snapshot child exited with code \d+:[\s\S]*Unknown option/);
 });
 
 test('keeps scans inside the repository and excludes Git internals', async () => {
@@ -100,15 +98,7 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
     defaultRequest,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const defaultSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      defaultRequest,
-    ]).stdout.toString(),
-  );
+  const defaultSnapshot = parseSnapshot(['--request', defaultRequest]);
   expect(defaultSnapshot.repositories[0].files.map((file: { path: string }) => file.path)).toEqual([
     'inside.txt',
   ]);
@@ -121,15 +111,7 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
       repositories: [{ name: 'repo', path: root, globs: ['nested/**/*.txt'] }],
     }),
   );
-  const narrowedSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      narrowedRequest,
-    ]).stdout.toString(),
-  );
+  const narrowedSnapshot = parseSnapshot(['--request', narrowedRequest]);
   expect(narrowedSnapshot.repositories[0].files).toEqual([]);
 
   const escapingRequest = join(parent, 'escaping-request.json');
@@ -140,15 +122,7 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
       repositories: [{ name: 'repo', path: root, globs: ['../outside.txt'] }],
     }),
   );
-  const escapingSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      escapingRequest,
-    ]).stdout.toString(),
-  );
+  const escapingSnapshot = parseSnapshot(['--request', escapingRequest]);
   expect(escapingSnapshot.repositories).toEqual([]);
   expect(escapingSnapshot.errors[0].message).toContain('escapes repository root');
 });
@@ -176,15 +150,7 @@ test('requires the requested branch and commit to match checkout HEAD', async ()
       repositories: [{ name: 'repo', path: root, branch: 'main', commit: mainCommit }],
     }),
   );
-  const snapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      request,
-    ]).stdout.toString(),
-  );
+  const snapshot = parseSnapshot(['--request', request]);
   expect(snapshot.repositories).toEqual([]);
   expect(snapshot.errors[0].message).toContain('does not match checkout HEAD');
 });
@@ -210,15 +176,7 @@ test('matches evidence case-insensitively without decoding unrelated binary file
       ],
     }),
   );
-  const snapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      request,
-    ]).stdout.toString(),
-  );
+  const snapshot = parseSnapshot(['--request', request]);
   expect(snapshot.repositories[0].evidence.source).toEqual([
     { path: 'source.ts', line: 1, text: 'const CINDER_API_URL = "example";' },
     { path: 'source.ts', line: 2, text: 'CINDER_API_TOKEN=[REDACTED]' },
@@ -259,15 +217,7 @@ test('records Git links without scanning nested checkout contents', async () => 
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const snapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      request,
-    ]).stdout.toString(),
-  );
+  const snapshot = parseSnapshot(['--request', request]);
   expect(
     snapshot.repositories[0].files.find((file: { path: string }) => file.path === 'vendor/nested'),
   ).toEqual({ path: 'vendor/nested', gitlink: gitlinkCommit });
@@ -285,15 +235,7 @@ test('records Git links without scanning nested checkout contents', async () => 
       repositories: [{ name: 'repo', path: root, globs: ['tracked.txt'] }],
     }),
   );
-  const scopedSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      scopedRequest,
-    ]).stdout.toString(),
-  );
+  const scopedSnapshot = parseSnapshot(['--request', scopedRequest]);
   expect(
     scopedSnapshot.repositories[0].files.some(
       (file: { path: string }) => file.path === 'vendor/nested',
