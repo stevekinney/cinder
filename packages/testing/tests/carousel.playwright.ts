@@ -3,6 +3,9 @@ import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 
 const carousel = loadManifest().find((entry) => entry.slug === 'carousel');
+if (!carousel) throw new Error('Carousel manifest entry is missing.');
+const desktopViewport = VIEWPORTS.find((viewport) => viewport.name === 'desktop');
+if (!desktopViewport) throw new Error('Desktop viewport fixture is missing.');
 // Chromium serializes the equivalent `pan-x pan-y pinch-zoom` declaration as
 // its `manipulation` alias in computed styles.
 const nativePanTouchAction = /^(?:manipulation|pan-x pan-y pinch-zoom)$/;
@@ -10,11 +13,10 @@ const nativePanTouchAction = /^(?:manipulation|pan-x pan-y pinch-zoom)$/;
 test('carousel uses a native snapping track and keeps pagination in sync', async ({
   componentPage,
 }) => {
-  expect(carousel).toBeDefined();
   const page = await componentPage.open({
-    entry: carousel!,
+    entry: carousel,
     theme: 'light',
-    viewport: VIEWPORTS.find((viewport) => viewport.name === 'desktop')!,
+    viewport: desktopViewport,
   });
 
   const viewport = page.locator('.cinder-carousel__viewport');
