@@ -85,6 +85,8 @@ an interactive affordance.
 | `menu-bar/menu-bar.svelte`, `kanban-board/kanban-board.svelte`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Disclosure icon sizing            | Record existing component-specific disclosure icon sizing as part of the Lucide migration.                                                                                                                                                                                                                                                                                       |
 | `menu-bar/menu-bar.svelte`, `kanban-board/kanban-board.svelte`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Current sizing contracts          | MenuBar uses `size={16}`; KanbanBoard uses inherited `ChevronDown` sizing with transition-only styling until utility migration.                                                                                                                                                                                                                                                  |
 
+| `breadcrumbs/breadcrumbs.examples.json` | Custom breadcrumb separator | The exported `separator="›"` example is intentional navigation typography, not an interactive affordance; retain it as a documented separator exception. |
+
 The rows above account for every interactive text-glyph affordance found by the
 audit. Future audits should keep this distinction: a glyph that conveys data is
 not an icon affordance, while a glyph inside a button or menu trigger must
@@ -105,7 +107,7 @@ rg -n -e '[×−‹›✓▾▸↑↓]' -e '&times;|&#215;|&#xD7;|&gt;|&lt;|&#60
 # opening-element/text/closing-element shape avoids matching tag delimiters,
 # CSS combinators, or embedded script expressions.
 rg -nU -P '<[A-Za-z][^>]*>[^<>{}]*>[^<>{}]*(?:<|$)' packages/components/src/components --glob '*.svelte'
-rg -n -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
+rg -nU -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n -e "icon:[[:space:]]*['\"][+−-]['\"]" packages/components/src/components --glob '*.examples.json'
 rg -n -e "icon:[[:space:]]*['\"][^'\"]+['\"]" packages/components/src/components --glob '*.examples.json'
 rg -n -e 'label=\\"[+−-]' packages/components/src/components --glob '*.examples.json'
