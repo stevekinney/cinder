@@ -21,6 +21,7 @@ import {
   workflowDispatchInputHasDefault,
   workflowExpressionContextRoots,
   workflowExpressionFunctionNames,
+  workflowLevelEnvironmentLines,
   workflowRunScriptsContainActiveLine,
 } from './validate-release-workflow.ts';
 
@@ -110,6 +111,63 @@ describe('workflow-level env context guard', () => {
       'github',
       'runner',
     ]);
+  });
+});
+
+describe('workflow-level env block scanning', () => {
+  test('collects entries in the top-level env block only', () => {
+    const workflow = [
+      'name: example',
+      'env:',
+      '  TOP: ${{ vars.A }}',
+      'jobs:',
+      '  build:',
+      '    env:',
+      '      JOB_LEVEL: ${{ runner.os }}',
+      '    steps:',
+      '      - run: echo hi',
+    ].join('\n');
+
+    // The job-level `runner.os` is legal and must NOT be collected — collecting
+    // it would make the guard reject valid workflows.
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual(['  TOP: ${{ vars.A }}']);
+  });
+
+  // Regression: a column-0 comment used to be read as the next top-level key,
+  // ending the scan and letting everything after it bypass the guard entirely.
+  test('keeps scanning past a comment at column zero', () => {
+    const workflow = [
+      'env:',
+      '  FIRST: ${{ vars.A }}',
+      '# an unindented comment is legal YAML inside the block',
+      '  SECOND: ${{ runner.os }}',
+    ].join('\n');
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual([
+      '  FIRST: ${{ vars.A }}',
+      '  SECOND: ${{ runner.os }}',
+    ]);
+  });
+
+  test('keeps scanning past a blank line inside the block', () => {
+    const workflow = ['env:', '  FIRST: ${{ vars.A }}', '', '  SECOND: ${{ runner.os }}'].join(
+      '\n',
+    );
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual([
+      '  FIRST: ${{ vars.A }}',
+      '  SECOND: ${{ runner.os }}',
+    ]);
+  });
+
+  test('stops at the next real top-level key', () => {
+    const workflow = ['env:', '  FIRST: ${{ vars.A }}', 'on:', '  push: {}'].join('\n');
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual(['  FIRST: ${{ vars.A }}']);
+  });
+
+  test('returns nothing when there is no workflow-level env block', () => {
+    expect(workflowLevelEnvironmentLines('name: example\non:\n  push: {}')).toEqual([]);
   });
 });
 

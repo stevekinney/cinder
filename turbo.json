@@ -6,11 +6,12 @@
     ".oxlintrc.json",
     "tsconfig.build.json"
   ],
-  // `NODE_ENV` is a real hash input, not boilerplate: `packages/components/scripts/svelte-plugin.ts`
-  // branches on it to pick Svelte's `dev` compilation mode, and the editor's runtime guards read it
-  // too. The `build` scripts pin it to `production` internally, but `test` inherits whatever the
-  // caller had, so a local run and a CI run must not be allowed to share a cache entry.
-  "globalEnv": ["NODE_ENV"],
+  // No `globalEnv`. `NODE_ENV` was here first, on the grounds that
+  // `packages/components/scripts/svelte-plugin.ts` branches on it to pick Svelte's `dev`
+  // compilation mode — but as `globalEnv` it partitioned EVERY task on the caller's ambient value,
+  // including `build`, which normalizes `NODE_ENV` to `production` internally before compiling and
+  // so cannot vary because of it. That is pure cache-hit-rate loss for no correctness gain. It is
+  // declared on `test`/`test:coverage` instead, the only tasks that inherit the caller's value.
   "tasks": {
     // A package-task override REPLACES the base definition — turbo does not merge them field by
     // field. That makes a hand-written `dependsOn` a silent way to LOSE edges that `^build` would
@@ -29,9 +30,15 @@
     // Package `src/**` directories are deliberately NOT listed as inputs: a change there rehashes
     // that package's `build`, and turbo folds a dependency task's hash into its dependents, so
     // `^build` already covers it.
+    // `CINDER_FORCE_BUILD` is the escape hatch in `scripts/lib/build-cache.ts` for recovering from
+    // suspect `dist` output — `shouldSkipBuild()` returns `skip: false` when it is `1`. Declaring
+    // it here is what makes that work through `bun run build`: without it, turbo restores a cached
+    // entry and the package script never runs, so the documented "never skips" behavior would
+    // silently not apply to the root build command.
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**"],
+      "env": ["CINDER_FORCE_BUILD"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
@@ -75,9 +82,10 @@
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
         "$TURBO_ROOT$/.github/workflows/**",
-        "$TURBO_ROOT$/docs/**"
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.changeset/**"
       ],
-      "env": ["TURBO_PLATFORM", "RUNNER_OS"]
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "test:coverage": {
       "dependsOn": ["^build"],
@@ -87,9 +95,10 @@
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
         "$TURBO_ROOT$/.github/workflows/**",
-        "$TURBO_ROOT$/docs/**"
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.changeset/**"
       ],
-      "env": ["TURBO_PLATFORM", "RUNNER_OS"]
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "typecheck": {
       "dependsOn": ["^build"],
@@ -126,9 +135,10 @@
         "$TURBO_ROOT$/packages/testing/scripts/**",
         "$TURBO_ROOT$/packages/playground/src/**",
         "$TURBO_ROOT$/.github/workflows/**",
-        "$TURBO_ROOT$/docs/**"
+        "$TURBO_ROOT$/docs/**",
+        "$TURBO_ROOT$/.changeset/**"
       ],
-      "env": ["TURBO_PLATFORM", "RUNNER_OS"]
+      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
     "@cinder/testing#typecheck": {
       "dependsOn": ["^build"],

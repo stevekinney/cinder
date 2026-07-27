@@ -904,26 +904,38 @@ export function workflowExpressionContextRoots(line: string): string[] {
  * the block runs from a line matching `env:` at column 0 until the next
  * column-0 key.
  */
+export function workflowLevelEnvironmentLines(content: string): string[] {
+  const environmentLines: string[] = [];
+
+  let insideWorkflowEnvironmentBlock = false;
+
+  for (const line of content.split('\n')) {
+    // Comments first: YAML ignores comment indentation, so a `# note` at column
+    // 0 is legal INSIDE the block. Testing for a column-zero key before this
+    // would treat that comment as the next top-level key, end the scan early,
+    // and let everything after it through unchecked.
+    if (isComment(line) || line.trim().length === 0) continue;
+
+    if (/^\S/.test(line)) {
+      insideWorkflowEnvironmentBlock = line.startsWith('env:');
+      continue;
+    }
+
+    if (insideWorkflowEnvironmentBlock) environmentLines.push(line);
+  }
+
+  return environmentLines;
+}
+
 function validateWorkflowLevelEnvironmentContexts(): void {
   const workflowFileNames = readdirSync(workflowsDirectoryPath).filter(
     (fileName) => fileName.endsWith('.yaml') || fileName.endsWith('.yml'),
   );
 
   for (const fileName of workflowFileNames) {
-    const lines = readFileSync(join(workflowsDirectoryPath, fileName), 'utf8').split('\n');
+    const content = readFileSync(join(workflowsDirectoryPath, fileName), 'utf8');
 
-    let insideWorkflowEnvironmentBlock = false;
-
-    for (const line of lines) {
-      const startsAtColumnZero = /^\S/.test(line);
-
-      if (startsAtColumnZero) {
-        insideWorkflowEnvironmentBlock = line.startsWith('env:');
-        continue;
-      }
-
-      if (!insideWorkflowEnvironmentBlock || isComment(line)) continue;
-
+    for (const line of workflowLevelEnvironmentLines(content)) {
       for (const functionName of workflowExpressionFunctionNames(line)) {
         if (!FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL.has(functionName)) continue;
 
