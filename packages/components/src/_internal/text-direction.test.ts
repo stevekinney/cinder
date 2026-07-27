@@ -434,6 +434,31 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('treats container queries as inactive without computed styles', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    window.getComputedStyle = undefined as unknown as typeof window.getComputedStyle;
+    globalThis.getComputedStyle = undefined as unknown as typeof globalThis.getComputedStyle;
+    try {
+      const element = document.createElement('div');
+      document.body.appendChild(element);
+      const nestedRule = createStyleRule({ selectorText: 'div', direction: 'ltr' });
+      const outerRule = {
+        cssText: '@container (min-width: 1px) { div { direction: ltr; } }',
+        type: 0,
+        conditionText: '(min-width: 1px)',
+        cssRules: [nestedRule],
+      } as unknown as CSSRule;
+      const direction = withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      );
+      expect(direction).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('uses an active style container query direction rule', () => {
     const wrapper = document.createElement('section');
     wrapper.style.setProperty('--example', 'true');

@@ -320,7 +320,6 @@
     enter: 'ArrowLeft' | 'ArrowRight';
     return: 'ArrowLeft' | 'ArrowRight';
   } {
-    const element = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     const isRightToLeft = resolvedDirection === 'rtl';
     return isRightToLeft
       ? { enter: 'ArrowLeft', return: 'ArrowRight' }

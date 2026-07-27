@@ -222,6 +222,7 @@ function isContainerQueryActive(
   element: HTMLElement,
   rule: CSSRule,
 ): boolean {
+  if (typeof getComputedStyle !== 'function') return false;
   const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^)]+)\)/i.exec(conditionText);
   if (styleQuery) {
     const containerName = Reflect.get(rule, 'containerName');
