@@ -100,6 +100,20 @@ describe(ruleName, () => {
         ),
       ),
     ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.cinder-table__row-header { border-block-end: 1px solid var(--cinder-border); }',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.cinder-table__column-header { border-inline-end: 1px solid var(--cinder-border); }',
+        ),
+      ),
+    ).toHaveLength(1);
   });
 
   test('resolves border aliases before checking interior dividers', async () => {

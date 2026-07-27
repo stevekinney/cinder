@@ -47,8 +47,8 @@ async function clickAndFlush(element: HTMLElement): Promise<void> {
 describe('ChatMessage — tool-call rendering', () => {
   test('uses the warning foreground token for action-required status text', () => {
     const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
-    expect(source).toContain(
-      ".tool-call-group[data-status='action-required'] .tool-call-status {\n    color: var(--cinder-color-warning-fg);",
+    expect(source).toMatch(
+      /\.tool-call-group\[data-status=['"]action-required['"]\]\s+\.tool-call-status\s*\{\s*color:\s*var\(--cinder-color-warning-fg\);/u,
     );
   });
 

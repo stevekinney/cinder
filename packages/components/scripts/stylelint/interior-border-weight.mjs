@@ -20,7 +20,7 @@ function isCinderComponentSource(root) {
 
 function isInteriorDivider(selector, property) {
   if (property === 'border') return false;
-  return /(?:__(?:header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|[+~])/i.test(
+  return /(?:__(?:header|row-header|column-header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|[+~])/i.test(
     selector,
   );
 }
