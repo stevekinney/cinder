@@ -1898,9 +1898,11 @@ async function stopConsumerFixtureServer(server: Bun.Subprocess): Promise<void> 
       reclaimed: () => server.exitCode !== null,
     },
   ]);
-  const unreclaimed = unreclaimedTeardownFailures(failures);
-  if (unreclaimed.length > 0) {
-    const failure = unreclaimed[unreclaimed.length - 1]!;
+  // The fixture server has no wider cleanup step that can subsume its failure.
+  // Preserve the terminal force-close diagnostic even if the subprocess later
+  // reports an exit code while its `exited` promise rejects.
+  const failure = failures.at(-1);
+  if (failure !== undefined) {
     throw new ConsumerTeardownError(
       new Error(
         `teardown phase=${failure.phase} ${failure.state}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
