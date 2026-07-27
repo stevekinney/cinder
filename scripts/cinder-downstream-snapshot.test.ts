@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { redactRemote, selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
+import {
+  redactRemote,
+  redactSecrets,
+  selectMostRecentlyPublishedVersion,
+} from './cinder-downstream-snapshot.ts';
 
 /**
  * Absolute path to the CLI under test. Resolving from `import.meta.url` rather than
@@ -103,14 +107,8 @@ test('clones a file remote ref and records its commit', async () => {
       repositories: [{ name: 'remote', remote: `file://${source}`, ref: 'main' }],
     }),
   );
-  const result = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]);
-  const snapshot = JSON.parse(result.stdout.toString());
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
   expect(snapshot.repositories[0].commit).toBe(expected);
 });
 
@@ -120,6 +118,9 @@ test('redacts credentials from remote output', () => {
   );
   expect(redactRemote('git@github.com:owner/repository.git')).toBe(
     'git@github.com:owner/repository.git',
+  );
+  expect(redactSecrets('ssh://user:secret@example.test/repository.git')).toBe(
+    'ssh://[REDACTED]@example.test/repository.git',
   );
 });
 

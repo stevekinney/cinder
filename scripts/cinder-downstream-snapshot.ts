@@ -52,8 +52,8 @@ export function redactRemote(remote: string): string {
   }
 }
 
-function redactSecrets(value: string): string {
-  return value.replace(/(https?:\/\/)[^\s/@]+(?::[^\s/@]*)?@/giu, '$1[REDACTED]@');
+export function redactSecrets(value: string): string {
+  return value.replace(/([a-z][a-z\d+.-]*:\/\/)[^\s/@]+(?::[^\s/@]*)?@/giu, '$1[REDACTED]@');
 }
 
 export function selectMostRecentlyPublishedVersion(packument: PackagePackument): string {
