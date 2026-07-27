@@ -65,7 +65,7 @@ function isStaticValue(value: unknown): boolean {
       (typeof expression['value'] === 'string' || typeof expression['value'] === 'number')) ||
     (expression.type === 'TemplateLiteral' &&
       Array.isArray(expression['expressions']) &&
-      expression['expressions'].length === 0) ||
+      expression['expressions'].every(isStaticExpression)) ||
     (expression.type === 'ObjectExpression' && isStaticExpression(expression)) ||
     (expression.type === 'BinaryExpression' &&
       isStaticExpression(expression['left']) &&
@@ -78,7 +78,10 @@ function isStaticExpression(expression: unknown): boolean {
   if (expression.type === 'Literal')
     return typeof expression['value'] === 'string' || typeof expression['value'] === 'number';
   if (expression.type === 'TemplateLiteral')
-    return Array.isArray(expression['expressions']) && expression['expressions'].length === 0;
+    return (
+      Array.isArray(expression['expressions']) &&
+      expression['expressions'].every(isStaticExpression)
+    );
   if (expression.type === 'UnaryExpression')
     return (
       (expression['operator'] === '-' || expression['operator'] === '+') &&
@@ -107,17 +110,29 @@ function isStaticExpression(expression: unknown): boolean {
 export function findStaticStyleAttributes(source: string): StaticStyleAttributeViolation[] {
   const violations: StaticStyleAttributeViolation[] = [];
   const ast = parse(source, { modern: true });
+  const locationAt = (offset: unknown): { line: number; column: number } => {
+    if (typeof offset !== 'number') return { line: 1, column: 1 };
+    const prefix = source.slice(0, offset);
+    const lineBreaks = prefix.match(/\n/g)?.length ?? 0;
+    const lastBreak = prefix.lastIndexOf('\n');
+    return { line: lineBreaks + 1, column: offset - lastBreak };
+  };
 
-  function visit(value: unknown): void {
+  function visit(value: unknown, domElement = false): void {
     if (Array.isArray(value)) {
-      for (const item of value) visit(item);
+      for (const item of value) {
+        const itemIsDomElement =
+          isNode(item) && (item.type === 'RegularElement' || item.type === 'Element');
+        visit(item, domElement || itemIsDomElement);
+      }
       return;
     }
 
     if (!isNode(value)) return;
 
     if (
-      ((value.type === 'Attribute' && value.name === 'style') || value.type === 'StyleDirective') &&
+      ((value.type === 'Attribute' && value.name === 'style' && domElement) ||
+        (value.type === 'StyleDirective' && domElement)) &&
       isStaticValue(value.value)
     ) {
       violations.push({
@@ -125,7 +140,7 @@ export function findStaticStyleAttributes(source: string): StaticStyleAttributeV
         column: (value.name_loc?.start.column ?? 0) + 1,
       });
     }
-    if (value.type === 'Spread' || value.type === 'SpreadAttribute') {
+    if (domElement && (value.type === 'Spread' || value.type === 'SpreadAttribute')) {
       const expression = value['expression'];
       const properties =
         isNode(expression) && expression.type === 'ObjectExpression'
@@ -143,15 +158,20 @@ export function findStaticStyleAttributes(source: string): StaticStyleAttributeV
             isStaticExpression(property['value']),
         )
       ) {
+        const location = locationAt(value['start']);
         violations.push({
-          line: value.name_loc?.start.line ?? 1,
-          column: (value.name_loc?.start.column ?? 0) + 1,
+          line: location.line,
+          column: location.column,
         });
       }
     }
 
     for (const [key, child] of Object.entries(value)) {
-      if (key !== 'metadata') visit(child);
+      if (key !== 'metadata') {
+        const childIsDomElement =
+          isNode(child) && (child.type === 'RegularElement' || child.type === 'Element');
+        visit(child, domElement || childIsDomElement);
+      }
     }
   }
 

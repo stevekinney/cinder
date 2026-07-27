@@ -36,6 +36,13 @@ describe('findStaticStyleAttributes', () => {
     ]);
   });
 
+  test('flags constant template interpolations and ignores component props', () => {
+    expect(findStaticStyleAttributes(`<div style={\`color: ${'red'}\`}></div>`)).toEqual([
+      { line: 1, column: 6 },
+    ]);
+    expect(findStaticStyleAttributes('<Widget style="compact" />')).toEqual([]);
+  });
+
   test('flags numeric style directive literals', () => {
     expect(findStaticStyleAttributes('<div style:opacity={0.5}></div>')).toEqual([
       { line: 1, column: 6 },
@@ -77,5 +84,13 @@ describe('findStaticStyleAttributes', () => {
         {/if}
       `),
     ).toEqual([{ line: 6, column: 26 }]);
+  });
+
+  test('reports spread style violations at the spread location', () => {
+    expect(
+      findStaticStyleAttributes(
+        '\n<section>\n  <div {...{ style: "color: red" }}></div>\n</section>',
+      ),
+    ).toEqual([{ line: 3, column: 8 }]);
   });
 });
