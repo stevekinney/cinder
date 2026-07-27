@@ -378,7 +378,6 @@
         } else {
           visibleItems.push(positionedItem);
         }
-        return positionedItem;
       });
 
     const overflowGroups: PositionedEventTimelineItem[][] = [];
