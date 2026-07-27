@@ -17,6 +17,7 @@ import {
   allowedFloatingCounts,
   allowedGridCounts,
   allowedRawControlCounts,
+  allowedRawControlSignatures,
   missingMigrationRecordPaths,
 } from './primitive-composition-migrations.ts';
 import { runPrimitiveCompositionCheck } from './primitive-composition-runner.ts';
@@ -297,14 +298,18 @@ function hasStaticHiddenAttribute(
 }
 
 export function visibleControlCount(source: string): number {
+  return visibleControlSignatures(source).length;
+}
+
+export function visibleControlSignatures(source: string): string[] {
   const fragment = parseSvelteFragment(source);
   const bindings = staticStringBindings(source);
-  if (fragment === undefined) return 0;
-  let count = 0;
+  if (fragment === undefined) return [];
+  const signatures: string[] = [];
   walkAst(fragment, (node) => {
     if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
       const html = staticStringFromExpression(node['expression'], bindings);
-      if (html !== undefined) count += visibleControlCount(html);
+      if (html !== undefined) signatures.push(...visibleControlSignatures(html));
       return;
     }
     const elementNames = new Set<string>();
@@ -322,10 +327,23 @@ export function visibleControlCount(source: string): number {
           elementName === 'input' || elementName === 'select' || elementName === 'textarea',
       ),
     );
-    if (controlNames.size > 0 && !hasStaticHiddenAttribute(node, controlNames, bindings))
-      count += 1;
+    if (controlNames.size > 0 && !hasStaticHiddenAttribute(node, controlNames, bindings)) {
+      const attributes = Array.isArray(node['attributes'])
+        ? node['attributes']
+            .filter(isRecord)
+            .map((attribute) => {
+              const name = typeof attribute['name'] === 'string' ? attribute['name'] : '';
+              const value = staticAttributeValue(attribute);
+              return value === undefined ? name : `${name}=${value}`;
+            })
+            .filter(Boolean)
+            .toSorted()
+            .join('|')
+        : '';
+      signatures.push(`${[...controlNames].toSorted().join(',')}|${attributes}`);
+    }
   });
-  return count;
+  return signatures;
 }
 
 function elementClassSet(
@@ -576,6 +594,9 @@ export function findPrimitiveCompositionViolations(
     .replace(/^.*packages\/components\/src\/components\//, '');
   const violations: PrimitiveCompositionViolation[] = [];
   const rawControlCount = normalized.endsWith('.svelte') ? visibleControlCount(source) : 0;
+  const rawControlSignatures = normalized.endsWith('.svelte')
+    ? visibleControlSignatures(source)
+    : [];
   const expectedRawControlCount = allowedRawControlCounts.get(normalized);
   if (rawControlCount > 0 && expectedRawControlCount === undefined) {
     violations.push({
@@ -588,6 +609,20 @@ export function findPrimitiveCompositionViolations(
       filePath,
       message:
         'A tracked raw-control count changed; migrate it or update the explicit migration record.',
+    });
+  }
+  const expectedRawControlSignatures = allowedRawControlSignatures.get(normalized);
+  if (
+    expectedRawControlSignatures !== undefined &&
+    (expectedRawControlSignatures.length !== rawControlSignatures.length ||
+      expectedRawControlSignatures.some(
+        (signature, index) => signature !== rawControlSignatures[index],
+      ))
+  ) {
+    violations.push({
+      filePath,
+      message:
+        'A tracked raw-control identity changed; migrate it or update the explicit migration record.',
     });
   }
   const companionSources =

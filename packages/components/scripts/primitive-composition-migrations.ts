@@ -30,6 +30,19 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['tree-item/tree-item.svelte', 2],
 ]);
 
+// Stable descriptors for tracked files where equal-count substitutions must not
+// silently pass the migration guard. Other records retain the count guard until
+// their primitive migration is completed.
+export const allowedRawControlSignatures = new Map<string, readonly string[]>([
+  [
+    'approval-card/approval-card-actions.svelte',
+    [
+      'textarea|class=cinder-approval-card__textarea cinder-approval-card__textarea--reason|id|rows=2|value',
+      'input|checked|type=checkbox',
+    ],
+  ],
+]);
+
 export const allowedGridCounts = new Map<string, number>(
   [
     'access-gate/access-gate.css',

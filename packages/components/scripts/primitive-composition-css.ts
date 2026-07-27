@@ -31,12 +31,9 @@ export function declarationMap(rule: Rule): Map<string, string> {
   return declarations;
 }
 
-function isPanelLikeTarget(target: SelectorTarget): boolean {
-  if (target.classes.size === 0 && target.id === undefined && target.tag === undefined) return true;
+function isInternalLayerTarget(target: SelectorTarget): boolean {
   return [...target.classes].some((className) =>
-    /(?:floating|surface|menu|popover|dialog|modal|drawer|tooltip|dropdown|sheet|panel|listbox|combobox|command)/i.test(
-      className,
-    ),
+    /(?:indicator|track|fill|thumb|handle|icon|caret|separator|progress)/i.test(className),
   );
 }
 
@@ -514,7 +511,7 @@ export function cssPrimitiveCounts(
           pairCount +
           compatibleSelectorTargetPairs(rule, zIndexRule).filter(
             ([positionTarget, zIndexTarget]) => {
-              if (!isPanelLikeTarget(positionTarget) && !isPanelLikeTarget(zIndexTarget))
+              if (isInternalLayerTarget(positionTarget) || isInternalLayerTarget(zIndexTarget))
                 return false;
               const sharedPair = sharedTargets.some(
                 (sharedTarget) =>

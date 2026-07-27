@@ -421,6 +421,20 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('rejects a tracked raw-control substitution with the same count', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<textarea class="cinder-approval-card__textarea cinder-approval-card__textarea--reason" id="reason" rows="3" value={reason}></textarea><input type="checkbox" checked={rememberResolution} />',
+        'approval-card/approval-card-actions.svelte',
+      ),
+    ).toEqual([
+      expect.objectContaining({
+        message:
+          'A tracked raw-control identity changed; migrate it or update the explicit migration record.',
+      }),
+    ]);
+  });
+
   test('rejects a layered floating surface without the shared sidecar', () => {
     expect(
       findPrimitiveCompositionViolations(
