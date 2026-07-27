@@ -179,8 +179,7 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   },
   'check:placeholder-docs': {
     layers: ['unit-tests', 'main-green'],
-    reason:
-      'Source audit runs through components:check in unit-tests and as a direct main-green gate.',
+    reason: 'Source audit runs through components:check in both unit-tests and main-green.',
   },
   'platform:audit': {
     layers: ['main-green'],

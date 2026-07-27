@@ -340,14 +340,16 @@ async function main(): Promise<void> {
     : [];
   const globs = [new Glob('**/README.md'), new Glob('**/*.a11y.md')];
   const readmes = new Map<string, string>();
+  const contents = new Map<string, string>();
   for (const glob of globs)
     for await (const relative of glob.scan({ cwd: componentsRoot })) {
       const filePath = join(componentsRoot, relative);
+      const content = await Bun.file(filePath).text();
+      contents.set(filePath, content);
       if (relative.endsWith('/README.md') || relative === 'README.md')
         readmes.set(relative.split('/').at(-2) ?? '', filePath);
-      const content = await Bun.file(filePath).text();
-      const siblingReadme = Bun.file(join(dirname(filePath), 'README.md'));
-      const readmeContent = (await siblingReadme.exists()) ? await siblingReadme.text() : '';
+      const siblingReadmePath = join(dirname(filePath), 'README.md');
+      const readmeContent = contents.get(siblingReadmePath) ?? '';
       const requiresRecord =
         relative.endsWith('.a11y.md') && readmeContent.includes('generated:a11y-record:required');
       violations.push(...findPlaceholderViolations(content, filePath, requiresRecord));
