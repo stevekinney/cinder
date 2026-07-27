@@ -30,6 +30,7 @@ test('overlapping event labels occupy non-intersecting layout boxes', async ({ p
   await root.evaluate((element) => {
     (element as HTMLElement).style.width = '32rem';
   });
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(resolve)));
 
   const labels = timeline.locator('.cinder-event-timeline__content');
   await expect(labels).toHaveCount(4);
