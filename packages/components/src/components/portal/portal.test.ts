@@ -87,12 +87,14 @@ describe('Portal', () => {
   test('preserves mouse and input details when redispatching', () => {
     const source = document.createElement('div');
     let receivedClick: MouseEvent | undefined;
-    let receivedInput: InputEvent | undefined;
+    let receivedInput: { data: string | null; inputType: string } | undefined;
     source.addEventListener('click', (event) => {
       receivedClick = event as MouseEvent;
     });
     source.addEventListener('input', (event) => {
-      receivedInput = event;
+      if (event instanceof InputEvent) {
+        receivedInput = { data: event.data, inputType: event.inputType };
+      }
     });
 
     redispatchPortaledEvent(new MouseEvent('click', { bubbles: true, detail: 2 }), source);
