@@ -607,7 +607,14 @@
 <style>
   .color-token-panel {
     position: fixed;
-    top: var(--cinder-top-bar-height);
+    /*
+     * Fallback matters: the panel now also renders on the canonical
+     * documentation page, which has no shell top bar and therefore never
+     * declares `--cinder-top-bar-height`. Without a fallback the declaration is
+     * invalid, `top` resolves to `auto`, and the fixed panel lands at its static
+     * position — off screen.
+     */
+    top: var(--cinder-top-bar-height, 0px);
     right: 0;
     bottom: 0;
     z-index: 12;

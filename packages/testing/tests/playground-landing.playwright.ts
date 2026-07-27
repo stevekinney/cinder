@@ -40,10 +40,11 @@ test.describe('playground landing page', () => {
     await page.locator('#sidebar-filter').fill('button');
 
     await page.getByRole('link', { name: 'Browse components' }).click();
-    await expect(page).toHaveURL(/\/c\/[^/]+$/);
+    // The one documentation route. `/c/<name>` 301s here, and there is no iframe
+    // any more — the preview mounts inline on the page itself.
+    await expect(page).toHaveURL(/\/page\/[^/?]+/);
     await expect.poll(() => readShellMarker(page)).toBeUndefined();
-    await expect(page.locator('iframe')).toHaveAttribute('src', /\/page\/[^/?]+\?preview=1$/);
-    await expect(page.locator('#sidebar-filter')).toHaveValue('button');
+    await expect(page.locator('iframe')).toHaveCount(0);
 
     await page.evaluate(() => {
       (window as typeof window & { __cinderShellMarker?: string }).__cinderShellMarker = 'mounted';

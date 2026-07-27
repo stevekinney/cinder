@@ -13,8 +13,9 @@
  * What gets rendered (every route `handleRequest` answers, except the live SSE
  * `/events` stream, which has no static form):
  *   - `/` README-backed landing shell HTML
- *   - `/c/<name>` shell HTML, for every sidebar component
- *   - `/page/<name>` iframe HTML, for every component
+ *   - `/page/<name>` documentation HTML, for every component (the ONE
+ *     documentation surface; `/c/<name>` is a legacy alias redirected by
+ *     `vercel.json` and deliberately not written here)
  *   - `/shell-bundle/shell.js` + every hashed chunk it imports
  *   - `/page-bundle/<name>.js` + every hashed chunk each imports
  *   - `/styles.css`, `/styles/all.css`, and every core or extracted-package CSS
@@ -27,7 +28,7 @@
  * `vercel.json` publishes as the deployment's static root.
  */
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 import {
@@ -121,8 +122,7 @@ async function writeFile(path: string, contents: string): Promise<void> {
  * `/projects/atlas → HTTP 404`.
  *
  * Every real route is enumerated explicitly by `runStaticExport` (`/page/<name>`
- * for all components, `/c/<name>` for the sidebar, the API and example-source
- * routes), so scraping anchors added no coverage — only the risk of treating
+ * for all components and family children, the API and example-source routes), so scraping anchors added no coverage — only the risk of treating
  * demo content as a build requirement.
  */
 const ASSET_ELEMENTS = ['link', 'script', 'img', 'iframe', 'source'] as const;
@@ -255,6 +255,15 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     rendered: new Set<string>(),
   };
 
+  /*
+   * Remove the legacy route tree before exporting. A reused output directory —
+   * `vercel-build` into `public/`, or a repeated local run — would otherwise keep
+   * the previous version's `/c/<name>/index.html` files, leaving a second
+   * documentation surface on disk that the `vercel.json` redirect never gets a
+   * chance to shadow.
+   */
+  await rm(join(outputDirectory, 'c'), { recursive: true, force: true });
+
   const sidebarComponents = options.sidebarComponents ?? (await discoverSidebarComponents());
   const allComponents = options.allComponents ?? (await discoverComponents());
   const sidebarRoutes = [
@@ -283,9 +292,17 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   // writing both would collide on the static host (a file at `api/manifest` and
   // a directory `api/manifest/` cannot coexist).
 
-  // Per-component: shell page, iframe page, page-bundle graph, manifest, sources.
+  /*
+   * Every component that needs a documentation page. `/page/<name>` is now the
+   * ONE documentation surface, so it must cover both the full component list and
+   * any navigable compound-family children — those used to be materialized only
+   * by the `/c/<name>` loop, which is gone.
+   */
+  const documentationRoutes = [...new Set([...allComponents, ...sidebarRoutes])];
+
+  // Per-component: documentation page, page-bundle graph, manifest, sources.
   const documentationPages: { name: string; html: string }[] = [];
-  for (const name of allComponents) {
+  for (const name of documentationRoutes) {
     const pageHtml = await render(`/page/${name}`, context);
     if (pageHtml !== null) {
       collect(pageHtml);
@@ -298,10 +315,12 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
       await render(`/example-src/${name}/${scenario}`, context);
     }
   }
-  for (const name of sidebarRoutes) {
-    const shellHtml = await render(`/c/${name}`, context);
-    if (shellHtml !== null) collect(shellHtml);
-  }
+  /*
+   * `/c/<name>` is intentionally NOT exported. It is a legacy alias that 301s to
+   * `/page/<name>`, declared in `vercel.json` so the host answers with a real
+   * 301 rather than a meta-refresh stub. Writing files here would also put a
+   * second documentation surface back into `public/`.
+   */
 
   // Now render every CSS/asset the pages referenced. A stylesheet is rendered
   // through the CSS graph so its `@import` cascade (tokens → foundation →

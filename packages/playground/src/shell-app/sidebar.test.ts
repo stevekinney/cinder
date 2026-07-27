@@ -62,11 +62,11 @@ function getLiveRegion(container: HTMLElement): HTMLElement {
 
 /**
  * Find the sidebar nav link for a component name. The sidebar renders each
- * entry as an anchor whose href is `/c/<name>` (built by `buildShellHref`), so
+ * entry as an anchor whose href is `/page/<name>` (built by `buildComponentHref`), so
  * we select on that stable contract rather than on text or class names.
  */
 function linkFor(container: HTMLElement, name: string): HTMLAnchorElement {
-  const anchor = container.querySelector<HTMLAnchorElement>(`a[href="/c/${name}"]`);
+  const anchor = container.querySelector<HTMLAnchorElement>(`a[href="/page/${name}"]`);
   if (anchor === null) throw new Error(`No sidebar link found for "${name}"`);
   return anchor;
 }
@@ -126,8 +126,8 @@ describe('Sidebar', () => {
     const hrefs = [...container.querySelectorAll('nav[aria-label="Components"] a')].map((node) =>
       node.getAttribute('href'),
     );
-    expect(hrefs).toContain('/c/json-schema-editor');
-    expect(hrefs).toContain('/c/tag-input');
+    expect(hrefs).toContain('/page/json-schema-editor');
+    expect(hrefs).toContain('/page/tag-input');
   });
 
   test('groups visible compound families under a collapsible parent', () => {
@@ -144,17 +144,17 @@ describe('Sidebar', () => {
     );
     expect(groupToggle?.textContent).toContain('Chat');
     const group = groupToggle?.parentElement?.parentElement;
-    expect(group?.querySelector('a[href="/c/chat"]')).not.toBeNull();
-    expect(group?.querySelector('a[href="/c/chat-composer-popover"]')).not.toBeNull();
-    expect(container.querySelector('a[href="/c/button"]')).not.toBeNull();
+    expect(group?.querySelector('a[href="/page/chat"]')).not.toBeNull();
+    expect(group?.querySelector('a[href="/page/chat-composer-popover"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/page/button"]')).not.toBeNull();
   });
 
   test('keeps compose-only leaves out of sidebar navigation', () => {
     const { container } = render(Sidebar, {
       props: { components: ['accordion'], currentComponent: 'accordion', onSelect: () => {} },
     });
-    expect(container.querySelector('a[href="/c/accordion"]')).not.toBeNull();
-    expect(container.querySelector('a[href="/c/accordion-item"]')).toBeNull();
+    expect(container.querySelector('a[href="/page/accordion"]')).not.toBeNull();
+    expect(container.querySelector('a[href="/page/accordion-item"]')).toBeNull();
   });
 
   test('renders a family when only a child matches the filter', async () => {
@@ -500,7 +500,7 @@ describe('sidebar onSelect contract', () => {
 
 /**
  * Capture-phase guarantee. The sidebar nav installs a capture-phase click
- * listener on the wrapping <nav> so a plain left-click on an in-app `/c/<name>`
+ * listener on the wrapping <nav> so a plain left-click on an in-app `/page/<name>`
  * anchor is ALWAYS preventDefaulted and routed through onSelect — independent of
  * cinder NavigationItem's bubble-phase handler. This is what stops a stray
  * default anchor navigation (a full page load to a route the static server does
@@ -542,7 +542,7 @@ describe('sidebar capture-phase navigation guarantee', () => {
     await tick();
 
     // The label text is rendered inside the anchor; clicking a descendant node
-    // must still resolve to the `/c/<name>` anchor via closest() and route.
+    // must still resolve to the `/page/<name>` anchor via closest() and route.
     const anchor = linkFor(container, 'card');
     const innerTarget = anchor.firstChild instanceof Element ? anchor.firstChild : anchor;
     const event = dispatchClick(innerTarget);

@@ -294,7 +294,10 @@ function componentReadmeHref(
   const normalizedPath = posix.normalize(posix.join(componentName, path));
   const match = normalizedPath.match(/^([a-z0-9][a-z0-9-]*)\/README\.md$/);
   if (match?.[1] !== undefined && componentIds.has(match[1])) {
-    return { href: `/c/${match[1]}`, attributes: ' target="_top"' };
+    // `/page/<name>` is the one documentation route. This used to emit
+    // `/c/<name>`, which now 301s here — correct, but a needless redirect on
+    // every cross-reference between component READMEs.
+    return { href: `/page/${match[1]}`, attributes: ' target="_top"' };
   }
   return {
     href: componentReadmeSourceHref(componentSource, componentName, href),

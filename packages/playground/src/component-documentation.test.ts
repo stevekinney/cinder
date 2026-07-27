@@ -71,12 +71,12 @@ describe('buildComponentDocumentation', () => {
   it('rewrites component README links to playground component routes', async () => {
     const payload = await buildComponentDocumentation('modal', await componentManifest('modal'));
 
-    expect(payload.readme.html).toContain('href="/c/confirm-dialog" target="_top"');
-    expect(payload.readme.html).toContain('href="/c/alert-dialog" target="_top"');
-    expect(payload.readme.html).toContain('href="/c/drawer" target="_top"');
-    expect(payload.readme.html).toContain('href="/c/sidebar" target="_top"');
-    expect(payload.readme.html).toContain('href="/c/sheet" target="_top"');
-    expect(payload.readme.html).toContain('href="/c/popover" target="_top"');
+    expect(payload.readme.html).toContain('href="/page/confirm-dialog" target="_top"');
+    expect(payload.readme.html).toContain('href="/page/alert-dialog" target="_top"');
+    expect(payload.readme.html).toContain('href="/page/drawer" target="_top"');
+    expect(payload.readme.html).toContain('href="/page/sidebar" target="_top"');
+    expect(payload.readme.html).toContain('href="/page/sheet" target="_top"');
+    expect(payload.readme.html).toContain('href="/page/popover" target="_top"');
     expect(payload.readme.html).not.toContain('../confirm-dialog/README.md');
   });
 
@@ -86,8 +86,8 @@ describe('buildComponentDocumentation', () => {
       await componentManifest('table-cell'),
     );
 
-    expect(payload.readme.html).toContain('href="/c/table" target="_top"');
-    expect(payload.readme.html).not.toContain('href="/c/table#usage"');
+    expect(payload.readme.html).toContain('href="/page/table" target="_top"');
+    expect(payload.readme.html).not.toContain('href="/page/table#usage"');
   });
 
   it('rewrites non-component README links to GitHub source URLs', async () => {

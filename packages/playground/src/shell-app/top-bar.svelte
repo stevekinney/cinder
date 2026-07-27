@@ -5,7 +5,7 @@
   import type { ThemeChoice } from './preview-store.svelte.ts';
   import { getPreviewStore } from './preview-store.svelte.ts';
   import { GITHUB_REPOSITORY_URL } from '../repository-links.ts';
-  import { buildIframeSrc } from './routing.ts';
+  import { buildComponentHref } from './routing.ts';
   import {
     Button,
     Input,
@@ -149,12 +149,12 @@
 
   function openInNewTab(): void {
     if (store.currentComponent === '') return;
-    // Reuse buildIframeSrc so the component name is encodeURIComponent-escaped
+    // Reuse buildComponentHref so the component name is encodeURIComponent-escaped
     // exactly like every other /page/:name URL the shell builds (and like the
-    // preview-frame tests assert), then make it absolute for window.open.
-    const url = `${window.location.origin}${buildIframeSrc(store.currentComponent)}`;
+    // the routing tests assert), then make it absolute for window.open.
+    const url = `${window.location.origin}${buildComponentHref(store.currentComponent)}`;
     window.open(url, '_blank', 'noopener');
-    announce(`Opened ${store.currentComponent} preview in a new tab`);
+    announce(`Opened ${store.currentComponent} documentation in a new tab`);
   }
 </script>
 
@@ -310,11 +310,11 @@
       </Tooltip>
 
       {#if store.currentComponent !== ''}
-        <Tooltip text="Open preview in new tab" placement="bottom">
+        <Tooltip text="Open documentation in new tab" placement="bottom">
           <Button
             variant="ghost"
             size="sm"
-            aria-label="Open preview in new tab"
+            aria-label="Open documentation in new tab"
             onclick={openInNewTab}
           >
             <span aria-hidden="true">↗</span>

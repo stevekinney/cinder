@@ -152,55 +152,6 @@ describe('request idle timeout configuration', () => {
   });
 });
 
-function cssImportUrlsFrom(cssUrl: string, css: string): string[] {
-  const urls = new Set<string>();
-  const importRule = /@import\s+(?:url\(\s*)?["']?([^"')\s]+\.css)["']?/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = importRule.exec(css)) !== null) {
-    const specifier = match[1]!;
-    if (specifier.startsWith('/')) {
-      urls.add(specifier);
-      continue;
-    }
-    if (!specifier.startsWith('.')) continue;
-
-    urls.add(new URL(specifier, `http://localhost:${PORT}${cssUrl}`).pathname);
-  }
-
-  return [...urls];
-}
-
-function shellStylesheetUrl(html: string): string {
-  const match = html.match(/<link\s+[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*\/?>/);
-  if (match === null) throw new Error('Shell HTML did not contain a stylesheet link');
-  return match[1]!;
-}
-
-async function reachableCssFrom(entryUrl: string): Promise<{ css: string; urls: Set<string> }> {
-  const queue = [entryUrl];
-  const visited = new Set<string>();
-  const parts: string[] = [];
-
-  while (queue.length > 0) {
-    const url = queue.shift()!;
-    if (visited.has(url)) continue;
-    visited.add(url);
-
-    const response = await handleRequest(req(url));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')?.startsWith('text/css')).toBe(true);
-    const css = await response.text();
-    parts.push(`/* ${url} */\n${css}`);
-
-    for (const importUrl of cssImportUrlsFrom(url, css)) {
-      if (!visited.has(importUrl)) queue.push(importUrl);
-    }
-  }
-
-  return { css: parts.join('\n'), urls: visited };
-}
-
 function reservePort(start: number): ReturnType<typeof Bun.serve> {
   for (let port = start; port < start + 100; port++) {
     try {
@@ -418,129 +369,95 @@ describe('rewriteRepositoryRelativeReadmeLinks', () => {
   });
 });
 
-describe('/c/:name', () => {
-  it('returns 200 HTML for a known component', async () => {
+describe('/c/:name (legacy route)', () => {
+  /*
+   * `/c/<name>` used to render a SECOND, condensed documentation page — a hero,
+   * a 360px iframe preview, an abbreviated readme, and a link labelled "Open
+   * interactive documentation" pointing at `/page/<name>`, the page it was
+   * duplicating. There is now exactly one documentation page per component.
+   *
+   * The route is kept as a permanent redirect so existing links and bookmarks
+   * survive.
+   */
+
+  it('permanently redirects to the canonical documentation page', async () => {
     const response = await handleRequest(req('/c/button'));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('Content-Type')).toBe('text/html');
-    const html = await response.text();
-    expect(html).toContain('<!DOCTYPE html>');
-    // Shell SPA scaffolding: mount point, data island, and bundle tag.
-    expect(html).toContain('id="shell-root"');
-    expect(html).toContain('id="cinder-initial"');
-    expect(html).toContain('/shell-bundle/shell.js');
-  });
 
-  it('server-renders crawlable documentation and scopes the iframe to the live preview', async () => {
+    expect(response.status).toBe(301);
+    expect(response.headers.get('Location')).toBe('/page/button');
+  }, 30_000);
+
+  it('preserves the query string across the redirect', async () => {
+    const response = await handleRequest(req('/c/button?theme=dark'));
+
+    expect(response.headers.get('Location')).toBe('/page/button?theme=dark');
+  }, 30_000);
+
+  it('does not render a second documentation surface', async () => {
     const response = await handleRequest(req('/c/button'));
-    const html = await response.text();
+    const body = await response.text();
 
-    expect(html).toContain('data-canonical-documentation');
-    expect(html).toMatch(/<h1[^>]*>.*Button.*<\/h1>/s);
-    expect(html).toContain('Overview');
-    expect(html).toContain('Props');
-    expect(html).toContain('src="/page/button?preview=1"');
-    expect(html).toContain('href="/page/button"');
-    expect(html.match(/data-canonical-documentation/g)).toHaveLength(1);
-  });
-
-  it('seeds SSR and hydration from the same toolbar query', async () => {
-    const response = await handleRequest(req('/c/button?w=768&focus=1'));
-    const html = await response.text();
-
-    expect(html).toContain('id="viewport-width-input"');
-    expect(html).toContain('value="768"');
-    expect(html).toContain('"initialSearch":"?w=768\\u0026focus=1"');
-    expect(html).toMatch(/class="shell [^"]*focus-mode"/);
-  });
-
-  it('includes server-rendered scoped shell styles for no-JavaScript rendering', async () => {
-    const response = await handleRequest(req('/c/button'));
-    const html = await response.text();
-
-    expect(html).toMatch(/<style[^>]*>[\s\S]*\.documentation/);
-  });
-
-  it('embeds the active component name in the cinder-initial data island', async () => {
-    const response = await handleRequest(req('/c/button'));
-    const html = await response.text();
-    const match = html.match(
-      /<script type="application\/json" id="cinder-initial">([^<]+)<\/script>/,
-    );
-    expect(match).not.toBeNull();
-    const payload = JSON.parse(match![1]!) as { component: string; components: string[] };
-    expect(payload.component).toBe('button');
-    expect(payload.components).toContain('button');
-    expect(payload.components).toContain('avatar');
-    expect(payload).toHaveProperty('documentation.component.id', 'button');
-  });
-
-  it('loads the shell CSS bundle so Cinder shell chrome is styled', async () => {
-    const response = await handleRequest(req('/c/button'));
-    const html = await response.text();
-    expect(shellStylesheetUrl(html)).toBe('/styles/shell.css');
-    expect(html).not.toContain('href="/styles/all.css"');
-    expect(html).not.toContain('href="/styles/index.css"');
-  });
-
-  it('makes component CSS for shell primitives reachable from the shell stylesheet', async () => {
-    const shellResponse = await handleRequest(req('/c/button'));
-    const shellHtml = await shellResponse.text();
-    const stylesheetUrl = shellStylesheetUrl(shellHtml);
-    const { css, urls } = await reachableCssFrom(stylesheetUrl);
-
-    expect(urls.has('/styles/shell.css')).toBe(true);
-    expect(urls.has('/styles/index.css')).toBe(true);
-    expect(urls.has('/styles/components.css')).toBe(false);
-    expect(urls.has('/components/toolbar/toolbar.css')).toBe(true);
-    expect(urls.has('/components/segmented-control/segmented-control.css')).toBe(true);
-    expect(urls.has('/components/button/button.css')).toBe(true);
-    expect(urls.has('/components/color-picker/color-picker.css')).toBe(true);
-    expect(urls.has('/components/color-swatch-picker/color-swatch-picker.css')).toBe(true);
-    expect(urls.has('/components/input/input.css')).toBe(true);
-    expect(urls.has('/components/number-input/number-input.css')).toBe(true);
-    expect(urls.has('/components/popover/popover.css')).toBe(true);
-    expect(urls.has('/components/side-navigation/side-navigation.css')).toBe(true);
-    // Regression: side-navigation.css carries no per-item styling, so the shell
-    // MUST also load navigation-item.css or the sidebar links fall back to bare
-    // underlined anchors (no padding, no active indicator, wrong focus ring).
-    expect(urls.has('/components/navigation-item/navigation-item.css')).toBe(true);
-
-    for (const selector of [
-      '.cinder-toolbar',
-      '.cinder-segmented-control',
-      '.cinder-button',
-      '.cinder-color-picker',
-      '.cinder-color-swatch-picker',
-      '.cinder-input',
-      '.cinder-number-input',
-      '.cinder-popover',
-      '.cinder-side-navigation',
-      '.cinder-side-navigation__list',
-      // The per-row styling (text-decoration:none, padding, active indicator)
-      // lives on .cinder-navigation-item — assert it's actually in the cascade.
-      '.cinder-navigation-item',
-    ]) {
-      expect(css).toContain(selector);
-    }
-  });
+    expect(body).not.toContain('data-canonical-documentation');
+    expect(body).not.toContain('Open interactive documentation');
+  }, 30_000);
 
   it('returns 404 for an unknown component', async () => {
     const response = await handleRequest(req('/c/does-not-exist'));
     expect(response.status).toBe(404);
-  });
+  }, 30_000);
 
   it('returns 404 for segments with uppercase (not in safe-segment pattern)', async () => {
     const response = await handleRequest(req('/c/Button'));
     expect(response.status).toBe(404);
-  });
+  }, 30_000);
 
   it('returns 404 for segments starting with a hyphen', async () => {
     const response = await handleRequest(req('/c/-bad'));
     expect(response.status).toBe(404);
-  });
+  }, 30_000);
 });
 
+describe('canonical page navigation', () => {
+  it('renders the sidebar inside the documentation page itself', async () => {
+    const response = await handleRequest(req('/page/button'));
+    const html = await response.text();
+
+    /*
+     * One hydration root: the nav is part of THIS page's tree, not a separate
+     * shell bundle needing its own coordination.
+     *
+     * It is built from bare elements rather than cinder's SideNavigation on
+     * purpose — importing those into a per-component page dragged the whole
+     * component barrel (and a second Svelte runtime) into every page bundle.
+     */
+    // Svelte appends a scoped class, so match the token rather than the whole
+    // attribute value.
+    expect(html).toMatch(/<nav[^>]*class="dx-nav[^"]*"/);
+    expect(html).toContain('aria-label="Components"');
+    expect(html).toContain('__CINDER_SIDEBAR__');
+  }, 60_000);
+
+  it('points every navigation link at the canonical route', async () => {
+    const response = await handleRequest(req('/page/button'));
+    const html = await response.text();
+
+    expect(html).toMatch(/href="\/page\/[a-z]/);
+    // No link should still aim at the redirecting legacy route.
+    expect(html).not.toContain('href="/c/');
+  }, 60_000);
+
+  it('omits the sidebar from the snapshot and preview surfaces', async () => {
+    for (const query of ['?snapshot=1', '?preview=1']) {
+      const response = await handleRequest(req(`/page/button${query}`));
+      const html = await response.text();
+      // Assert the class the canonical page's nav ACTUALLY uses. Checking the
+      // shell's old `cinder-side-navigation` would pass even if the nav leaked
+      // onto these surfaces.
+      expect(html).not.toContain('dx-nav');
+      expect(html).toContain('<div id="app"></div>');
+    }
+  }, 60_000);
+});
 describe('/shell-bundle/:filename.js', () => {
   it('returns 200 application/javascript for the canonical /shell.js entry', async () => {
     const response = await handleRequest(req('/shell-bundle/shell.js'));

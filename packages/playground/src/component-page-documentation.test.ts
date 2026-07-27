@@ -217,7 +217,7 @@ describe('component-page single-scroll layout', () => {
     // The avoidWhen alternative links to that component's page. The link text is
     // the humanized id ("Segmented control"); the href keeps the kebab id.
     const altLink = screen.getByRole('link', { name: /Segmented control/ });
-    expect(altLink.getAttribute('href')).toBe('/c/segmented-control');
+    expect(altLink.getAttribute('href')).toBe('/page/segmented-control');
 
     unmount();
     await tick();
@@ -384,7 +384,9 @@ describe('component-page single-scroll layout', () => {
     await screen.findByRole('heading', { level: 1, name: 'Button' });
 
     // `variant` is a select prop with a default → a control is generated.
-    expect(document.getElementById('playground')).toBeTruthy();
+    // The controls live in the persistent preview pane beside the prose, not in
+    // a `#playground` section you scroll to.
+    expect(document.querySelector('.dx-preview')).toBeTruthy();
     const select = await screen.findByLabelText('variant');
     expect(select.tagName).toBe('SELECT');
 

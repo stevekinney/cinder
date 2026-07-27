@@ -1,4 +1,5 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -132,10 +133,11 @@ describe('static export', () => {
       expect(pageHtml).toContain('id="cinder-documentation"');
       expect(pageHtml).toContain('\\u003cp');
 
-      const canonicalHtml = await Bun.file(join(outputDirectory, 'c', 'chat', 'index.html')).text();
-      expect(canonicalHtml).toContain('data-canonical-documentation');
-      expect(canonicalHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
-      expect(canonicalHtml).toContain('src="/page/chat?preview=1"');
+      // The canonical documentation page IS /page/<name> now; /c/ is redirected
+      // by vercel.json and never written to disk.
+      expect(rendered.has('/c/chat')).toBe(false);
+      expect(pageHtml).toContain('data-component-page');
+      expect(pageHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
       expect(rendered.has('/page/chat?preview=1')).toBe(false);
       expect(chatStyles).toContain('.cinder-chat');
       expect(composerStyles).toContain("@import '/components/command-menu/command-menu.css';");
@@ -158,11 +160,15 @@ describe('static export', () => {
         sidebarComponents: ['chat'],
         allComponents: [],
       });
-      expect(rendered.has('/c/chat')).toBe(true);
-      expect(rendered.has('/c/chat-composer-popover')).toBe(true);
+      // `/c/<name>` is a legacy alias redirected by vercel.json, so it must NOT
+      // be written into public/ — that would restore a second documentation
+      // surface on disk.
+      expect(rendered.has('/c/chat')).toBe(false);
+      expect(rendered.has('/c/chat-composer-popover')).toBe(false);
+      expect(rendered.has('/page/chat-composer-popover')).toBe(true);
       await expect(
-        readFile(join(outputDirectory, 'c', 'chat-composer-popover', 'index.html'), 'utf8'),
-      ).resolves.toContain('data-canonical-documentation');
+        readFile(join(outputDirectory, 'page', 'chat-composer-popover', 'index.html'), 'utf8'),
+      ).resolves.toContain('data-component-page');
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
@@ -233,3 +239,23 @@ describe('assertDocumentationPagesArePreRendered', () => {
     expect(error?.message).toContain('card');
   });
 });
+
+test('clears a legacy /c/ tree left by a previous export', async () => {
+  const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-export-legacy-'));
+  try {
+    // Simulate output from before `/c/<name>` became a redirect.
+    await mkdir(join(outputDirectory, 'c', 'button'), { recursive: true });
+    await writeFile(join(outputDirectory, 'c', 'button', 'index.html'), '<html>stale</html>');
+
+    await runStaticExport({
+      outputDirectory,
+      sidebarComponents: ['button'],
+      allComponents: ['button'],
+    });
+
+    // A stale second documentation surface must not survive into public/.
+    expect(existsSync(join(outputDirectory, 'c'))).toBe(false);
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+}, 120_000);

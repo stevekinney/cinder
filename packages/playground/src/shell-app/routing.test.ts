@@ -11,8 +11,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
-  buildIframeSrc,
-  buildShellHref,
+  buildComponentHref,
   buildToolbarSearch,
   createPreviewMessage,
   parseComponentFromPath,
@@ -41,10 +40,15 @@ describe('parseComponentFromPath', () => {
     expect(parseComponentFromPath('/c/h1-heading')).toBe('h1-heading');
   });
 
-  it('returns null for paths outside /c/', () => {
-    expect(parseComponentFromPath('/page/avatar')).toBeNull();
+  it('parses the canonical /page/ route', () => {
+    expect(parseComponentFromPath('/page/avatar')).toBe('avatar');
+    expect(parseComponentFromPath('/page/markdown-editor')).toBe('markdown-editor');
+  });
+
+  it('returns null for paths that are not a component route', () => {
     expect(parseComponentFromPath('/styles.css')).toBeNull();
     expect(parseComponentFromPath('/')).toBeNull();
+    expect(parseComponentFromPath('/page/avatar/extra')).toBeNull();
   });
 
   it('returns null for an empty segment', () => {
@@ -77,25 +81,17 @@ describe('parseComponentFromPath', () => {
   });
 });
 
-describe('buildShellHref', () => {
-  it('returns /c/<name> for a kebab-case component', () => {
-    expect(buildShellHref('avatar')).toBe('/c/avatar');
-    expect(buildShellHref('markdown-editor')).toBe('/c/markdown-editor');
+describe('buildComponentHref', () => {
+  // There is exactly ONE documentation page per component, at /page/<name>.
+  // The former /c/<name> shell page was a second rendering of the same content
+  // and now 301s here.
+  it('builds the canonical documentation path', () => {
+    expect(buildComponentHref('avatar')).toBe('/page/avatar');
+    expect(buildComponentHref('markdown-editor')).toBe('/page/markdown-editor');
   });
 
-  it('encodes special characters defensively', () => {
-    expect(buildShellHref('weird name')).toBe('/c/weird%20name');
-  });
-});
-
-describe('buildIframeSrc', () => {
-  it('returns /page/<name> for a kebab-case component', () => {
-    expect(buildIframeSrc('button')).toBe('/page/button');
-    expect(buildIframeSrc('markdown-editor')).toBe('/page/markdown-editor');
-  });
-
-  it('encodes special characters defensively', () => {
-    expect(buildIframeSrc('weird name')).toBe('/page/weird%20name');
+  it('encodes the component name defensively', () => {
+    expect(buildComponentHref('weird name')).toBe('/page/weird%20name');
   });
 });
 
