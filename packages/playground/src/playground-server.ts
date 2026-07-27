@@ -1542,7 +1542,7 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
   });
   let manifest = analyzedManifest;
   const schema = await readGeneratedComponentSchema(generatedSchemaFile);
-  if (schema?.properties !== undefined) {
+  if (schema !== null) {
     manifest = mergeGeneratedSchemaMetadata(analyzedManifest, schema);
   }
   if (generationAtStart === rebuildGeneration) {

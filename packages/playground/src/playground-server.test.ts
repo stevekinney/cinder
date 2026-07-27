@@ -1419,6 +1419,24 @@ describe('generated schema metadata', () => {
       },
     ]);
   });
+
+  it('preserves schema metadata when no properties block is present', () => {
+    const analyzedManifest: ComponentManifest = {
+      name: 'Snippet',
+      kebabName: 'snippet',
+      file: '/components/snippet/snippet.svelte',
+      importPath: '@lostgradient/cinder/snippet',
+      props: [],
+    };
+
+    expect(
+      mergeGeneratedSchemaMetadata(analyzedManifest, {
+        metadata: {
+          unsupportedProps: [{ name: 'children', required: true, reason: 'function-or-snippet' }],
+        },
+      }).isCompound,
+    ).toBe(true);
+  });
 });
 
 describe('/api/documentation/:name', () => {
