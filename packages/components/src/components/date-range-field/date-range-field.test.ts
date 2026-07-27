@@ -47,17 +47,19 @@ describe('DateRangeField', () => {
       expect(container.querySelector('.cinder-date-range-field')).not.toBeNull();
     });
 
-    test('renders start and end date inputs', () => {
+    test('renders start and end text inputs for the custom picker surface', () => {
       const { container } = render(DateRangeField, { id: 'drf' });
       const startInput = getStartInput(container);
       const endInput = getEndInput(container);
       expect(startInput).not.toBeNull();
       expect(endInput).not.toBeNull();
-      expect(startInput.type).toBe('date');
-      expect(endInput.type).toBe('date');
+      expect(startInput.type).toBe('text');
+      expect(endInput.type).toBe('text');
+      expect(startInput.getAttribute('aria-haspopup')).toBeNull();
+      expect(endInput.getAttribute('aria-haspopup')).toBeNull();
     });
 
-    test('renders datetime-local inputs when granularity includes time', () => {
+    test('keeps text inputs when granularity includes time', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         granularity: 'minute',
@@ -66,8 +68,8 @@ describe('DateRangeField', () => {
       const startInput = getStartInput(container);
       const endInput = getEndInput(container);
 
-      expect(startInput.type).toBe('datetime-local');
-      expect(endInput.type).toBe('datetime-local');
+      expect(startInput.type).toBe('text');
+      expect(endInput.type).toBe('text');
       expect(startInput.step).toBe('60');
       expect(endInput.step).toBe('60');
       expect(startInput.value).toBe('2026-06-01T09:30');
@@ -176,8 +178,8 @@ describe('DateRangeField', () => {
         granularity: 'hour',
       });
 
-      expect(getStartInput(container).type).toBe('datetime-local');
-      expect(getEndInput(container).type).toBe('datetime-local');
+      expect(getStartInput(container).type).toBe('text');
+      expect(getEndInput(container).type).toBe('text');
       expect(getStartInput(container).step).toBe('3600');
       expect(getEndInput(container).step).toBe('3600');
     });
@@ -427,10 +429,11 @@ describe('DateRangeField', () => {
         startLabel: 'From',
         endLabel: 'To',
       });
-      const labels = container.querySelectorAll('.cinder-date-range-field__input-label');
+      const labels = container.querySelectorAll('.cinder-date-picker__label');
       const labelTexts = Array.from(labels).map((l) => l.textContent?.trim());
       expect(labelTexts).toContain('From');
       expect(labelTexts).toContain('To');
+      expect(container.querySelectorAll('label')).toHaveLength(2);
     });
 
     test('uses datetime-aware default labels for datetime granularities', () => {
@@ -438,9 +441,9 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
       });
-      const labelTexts = Array.from(
-        container.querySelectorAll('.cinder-date-range-field__input-label'),
-      ).map((labelElement) => labelElement.textContent?.trim());
+      const labelTexts = Array.from(container.querySelectorAll('.cinder-date-picker__label')).map(
+        (labelElement) => labelElement.textContent?.trim(),
+      );
 
       expect(labelTexts).toEqual(['Start date and time', 'End date and time']);
     });

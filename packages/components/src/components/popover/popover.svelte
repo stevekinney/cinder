@@ -46,6 +46,8 @@
     children,
     role = 'dialog',
     focusManagement = 'panel',
+    initialFocus,
+    outsideClickIgnoreRefs = [],
     wireTriggerAria = true,
     closeOnEscape = true,
     widthMode = 'content',
@@ -129,14 +131,23 @@
       capture: true,
       // Use the open-time snapshot so a swapped/removed trigger does not cause
       // unexpected close when the user mouses down on the original opener.
-      ignoreRefs: [() => resolvedAnchorAtOpen ?? null],
+      ignoreRefs: [() => resolvedAnchorAtOpen ?? null, ...outsideClickIgnoreRefs],
     }),
   );
 
-  function moveFocusIntoPanel() {
-    if (isDestroyed || !panelElement) return;
-    const focusable = findFirstFocusable(panelElement);
-    (focusable ?? panelElement).focus();
+  function moveFocusIntoPanel(): boolean {
+    if (isDestroyed || !panelElement) return false;
+    const focusable = initialFocus?.(panelElement) ?? findFirstFocusable(panelElement);
+    const target = focusable && panelElement.contains(focusable) ? focusable : panelElement;
+    target.focus();
+    if (document.activeElement === target) return true;
+    const fallback = focusable ? findFirstFocusable(panelElement) : null;
+    if (fallback && fallback !== target) {
+      fallback.focus();
+      if (document.activeElement === fallback) return true;
+    }
+    panelElement.focus();
+    return document.activeElement === panelElement;
   }
 
   // Effect: open lifecycle (captures focus, registers Escape + outside-mousedown).
@@ -212,8 +223,7 @@
     ) {
       return;
     }
-    moveFocusIntoPanel();
-    pendingInitialFocus = false;
+    if (moveFocusIntoPanel()) pendingInitialFocus = false;
   });
 
   // Effect: dev-only guidance warnings. Single effect, fires on each open

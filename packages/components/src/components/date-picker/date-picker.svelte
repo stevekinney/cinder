@@ -3,7 +3,7 @@
    * @cinder
    * @category form
    * @status alpha
-   * @purpose Controlled date picker that combines a text trigger, floating calendar grid, and optional time controls.
+   * @purpose Controlled date picker that combines a text field, calendar-trigger button, floating calendar grid, and optional time controls.
    * @tag form
    * @tag date
    * @tag calendar
@@ -103,11 +103,61 @@
       : (normalizedValue?.slice(11) ??
           (granularity === 'second' ? '00:00:00' : granularity === 'minute' ? '00:00' : '00:00')),
   );
+  let hasInputValidityError = $state(false);
   const step = $derived(granularity === 'second' ? 1 : granularity === 'minute' ? 60 : 3600);
-  const inputType = $derived(granularity === 'day' ? 'date' : 'datetime-local');
   const invalid = $derived(
-    error ? 'true' : ariaInvalid === true || ariaInvalid === 'true' ? 'true' : undefined,
+    error || hasInputValidityError
+      ? 'true'
+      : ariaInvalid === true || ariaInvalid === 'true'
+        ? 'true'
+        : undefined,
   );
+  const resolvedPlaceholder = $derived(
+    placeholder === 'YYYY-MM-DD' && granularity !== 'day'
+      ? granularity === 'hour'
+        ? 'YYYY-MM-DDTHH:00'
+        : granularity === 'minute'
+          ? 'YYYY-MM-DDTHH:mm'
+          : 'YYYY-MM-DDTHH:mm:ss'
+      : placeholder,
+  );
+
+  function updateInputValidity(element: HTMLInputElement): void {
+    const current = element.value;
+    const normalizedCurrent = normalizeValue(current || undefined, granularity);
+    const valid =
+      current === '' ||
+      (normalizedCurrent === current && clampToBounds(normalizedCurrent) === normalizedCurrent);
+    hasInputValidityError = !valid;
+    element.setCustomValidity(valid ? '' : 'Enter a valid date within the allowed range.');
+  }
+
+  $effect(() => {
+    normalizedValue;
+    if (!inputElement) return;
+    updateInputValidity(inputElement);
+  });
+
+  $effect(() => {
+    if (!inputElement) return;
+    const element = inputElement;
+    const form = element.form;
+    if (!form) return;
+
+    function handleFormReset(): void {
+      queueMicrotask(() => {
+        if (inputElement !== element) return;
+        value = normalizeValue(element.value || undefined, granularity);
+        updateInputValidity(element);
+      });
+    }
+
+    form.addEventListener('reset', handleFormReset);
+    return () => {
+      form.removeEventListener('reset', handleFormReset);
+    };
+  });
+
   const describedById = $derived(
     [
       ariaDescribedBy,
@@ -153,7 +203,42 @@
 
   function handleInputChange(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
-    emit(clampToBounds(normalizeValue(target.value, granularity)));
+    const pattern =
+      granularity === 'day' ? /^\d{4}-\d{2}-\d{2}$/ : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
+    updateInputValidity(target);
+    const nextValue = pattern.test(target.value)
+      ? clampToBounds(normalizeValue(target.value, granularity))
+      : undefined;
+    if (nextValue !== value) emit(nextValue);
+    else if (nextValue !== undefined && target.value !== nextValue) {
+      target.value = nextValue;
+      updateInputValidity(target);
+    }
+  }
+
+  function handleInput(event: Event) {
+    const target = event.currentTarget as HTMLInputElement;
+    updateInputValidity(target);
+    const normalizedDraft = normalizeValue(target.value || undefined, granularity);
+    if (
+      (normalizedDraft === target.value || target.value === '') &&
+      clampToBounds(normalizedDraft) === normalizedDraft &&
+      normalizedDraft !== value
+    ) {
+      emit(normalizedDraft);
+    }
+  }
+
+  function focusCalendarDay(panel: HTMLElement, date = selectedDate): HTMLElement | null {
+    return (
+      (date &&
+        panel.querySelector<HTMLElement>(
+          `.cinder-calendar__day[id$="-day-${date}"]:not([disabled])`,
+        )) ||
+      panel.querySelector(
+        '.cinder-calendar__day[data-focused], .cinder-calendar__day[tabindex="0"]',
+      )
+    );
   }
 
   const timeMin = $derived.by(() => {
@@ -178,15 +263,16 @@
       bind:this={inputElement}
       class="cinder-date-picker__input"
       {id}
-      type={inputType}
+      type="text"
       value={normalizedValue ?? ''}
       min={normalizedMin}
       max={normalizedMax}
       step={granularity === 'day' ? undefined : step}
-      {placeholder}
+      placeholder={resolvedPlaceholder}
       {disabled}
       aria-invalid={invalid}
       aria-describedby={describedById}
+      oninput={handleInput}
       onchange={handleInputChange}
     />
     <button
@@ -208,7 +294,9 @@
     triggerRef={triggerElement ?? inputElement}
     role="dialog"
     label={label ? `${label} calendar` : 'Date picker calendar'}
-    focusManagement="preserve"
+    focusManagement="panel"
+    initialFocus={focusCalendarDay}
+    outsideClickIgnoreRefs={[() => inputElement]}
     widthMode="content"
     class="cinder-date-picker__panel"
   >
@@ -221,8 +309,9 @@
     />
     {#if granularity !== 'day'}
       <div class="cinder-date-picker__time">
-        <span class="cinder-date-picker__time-label">Time</span>
+        <label class="cinder-date-picker__time-label" for={`${id}-time`}>Time</label>
         <input
+          id={`${id}-time`}
           class="cinder-date-picker__time-input"
           type="time"
           {step}

@@ -31,6 +31,15 @@
   };
 
   const WEEKDAY_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
+  const MINIMUM_CALENDAR_YEAR = 0;
+  const MAXIMUM_CALENDAR_YEAR = 9999;
+
+  function createCalendarDate(year: number, monthValue: number, day: number): Date {
+    const date = new Date(0);
+    date.setUTCHours(0, 0, 0, 0);
+    date.setUTCFullYear(year, monthValue, day);
+    return date;
+  }
 
   let {
     id,
@@ -61,11 +70,11 @@
     const monthValue = Number(match[2]);
     const day = Number(match[3]);
     if (monthValue < 1 || monthValue > 12) return null;
-    const date = new Date(year, monthValue - 1, day);
+    const date = createCalendarDate(year, monthValue - 1, day);
     if (
-      date.getFullYear() !== year ||
-      date.getMonth() !== monthValue - 1 ||
-      date.getDate() !== day
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== monthValue - 1 ||
+      date.getUTCDate() !== day
     ) {
       return null;
     }
@@ -73,28 +82,38 @@
   }
 
   function toISODate(date: Date): string {
-    const year = date.getFullYear();
-    const monthValue = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+    const year = String(date.getUTCFullYear()).padStart(4, '0');
+    const monthValue = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${monthValue}-${day}`;
   }
 
+  function isSupportedCalendarDate(date: Date): boolean {
+    const year = date.getUTCFullYear();
+    return year >= MINIMUM_CALENDAR_YEAR && year <= MAXIMUM_CALENDAR_YEAR;
+  }
+
+  function localTodayIso(): string {
+    const today = new Date();
+    return `${String(today.getFullYear()).padStart(4, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  }
+
   function startOfMonth(date: Date): Date {
-    return new Date(date.getFullYear(), date.getMonth(), 1);
+    return createCalendarDate(date.getUTCFullYear(), date.getUTCMonth(), 1);
   }
 
   function addDays(date: Date, days: number): Date {
     const next = new Date(date);
-    next.setDate(next.getDate() + days);
+    next.setUTCDate(next.getUTCDate() + days);
     return next;
   }
 
   function addMonths(date: Date, months: number): Date {
-    return new Date(date.getFullYear(), date.getMonth() + months, 1);
+    return createCalendarDate(date.getUTCFullYear(), date.getUTCMonth() + months, 1);
   }
 
   function startOfWeek(date: Date, weekStart: number): Date {
-    const offset = (date.getDay() - weekStart + 7) % 7;
+    const offset = (date.getUTCDay() - weekStart + 7) % 7;
     return addDays(date, -offset);
   }
 
@@ -114,20 +133,26 @@
     monthProp: string | undefined,
     fallbackIso: string,
   ): string {
-    if (valueProp && parseISODate(valueProp)) return valueProp;
+    if (valueProp && parseISODate(valueProp)) {
+      if (min && valueProp < min) return min;
+      if (max && valueProp > max) return max;
+      return valueProp;
+    }
     if (monthProp && parseISODate(monthProp)) return monthProp;
+    if (min && parseISODate(min) && fallbackIso < min) return min;
+    if (max && parseISODate(max) && fallbackIso > max) return max;
     return fallbackIso;
   }
 
-  const initialTodayIso = toISODate(new Date());
+  const initialTodayIso = localTodayIso();
   const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
-  const initialFocusedIso = untrack(() =>
-    value && parseISODate(value) ? value : initialAnchorIso,
-  );
-  const todayIso = $derived(toISODate(new Date()));
+  const initialFocusedIso = untrack(() => initialAnchorIso);
+  const todayIso = $derived(localTodayIso());
   const anchorIso = $derived(resolveAnchorIso(value, month, todayIso));
-  const anchorDate = $derived(parseISODate(anchorIso) ?? new Date());
-  let visibleMonthDate = $state(startOfMonth(parseISODate(initialAnchorIso) ?? new Date()));
+  const anchorDate = $derived(parseISODate(anchorIso) ?? parseISODate(todayIso)!);
+  let visibleMonthDate = $state(
+    startOfMonth(parseISODate(initialAnchorIso) ?? parseISODate(initialTodayIso)!),
+  );
   let focusedIso = $state(initialFocusedIso);
   let lastSyncedAnchorIso = $state<string | null>(initialAnchorIso);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
@@ -135,20 +160,24 @@
   $effect(() => {
     if (anchorIso === lastSyncedAnchorIso) return;
     visibleMonthDate = startOfMonth(anchorDate);
-    if (value) focusedIso = value;
-    else focusedIso = anchorIso;
+    focusedIso = anchorIso;
     lastSyncedAnchorIso = anchorIso;
   });
 
   const monthLabel = $derived(
-    new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(visibleMonthDate),
+    new Intl.DateTimeFormat(locale, {
+      month: 'long',
+      year: 'numeric',
+      era: visibleMonthDate.getUTCFullYear() <= 0 ? 'short' : undefined,
+      timeZone: 'UTC',
+    }).format(visibleMonthDate),
   );
 
   const weekdayLabels = $derived(
     WEEKDAY_INDEXES.map((index) => {
       const dayIndex = (index + firstDayOfWeek) % 7;
-      const base = new Date(2024, 0, 7 + dayIndex);
-      return new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(base);
+      const base = createCalendarDate(2024, 0, 7 + dayIndex);
+      return new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(base);
     }),
   );
 
@@ -162,19 +191,30 @@
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      timeZone: 'UTC',
+    });
+    const dayLabelWithEraFmt = new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      era: 'short',
+      timeZone: 'UTC',
     });
     const next: CalendarCell[] = [];
     for (let index = 0; index < 42; index += 1) {
       const date = addDays(gridStart, index);
-      const iso = toISODate(date);
+      const supported = isSupportedCalendarDate(date);
+      const iso = supported ? toISODate(date) : '';
       next.push({
         iso,
-        day: date.getDate(),
-        inMonth: date.getMonth() === visibleMonthDate.getMonth(),
-        disabled: disabled || isDateDisabled(iso),
+        day: date.getUTCDate(),
+        inMonth: date.getUTCMonth() === visibleMonthDate.getUTCMonth(),
+        disabled: disabled || !supported || isDateDisabled(iso),
         focused: iso === focused,
         selected: iso === selectedIso,
-        ariaLabel: dayLabelFmt.format(date),
+        ariaLabel:
+          date.getUTCFullYear() <= 0 ? dayLabelWithEraFmt.format(date) : dayLabelFmt.format(date),
       });
     }
     return next;
@@ -189,11 +229,14 @@
   });
 
   async function focusDate(iso: string, moveDomFocus = false) {
-    focusedIso = iso;
     const parsed = parseISODate(iso);
-    if (parsed) {
-      visibleMonthDate = startOfMonth(parsed);
-    }
+    if (!parsed) return;
+    if (min && iso < min) iso = min;
+    if (max && iso > max) iso = max;
+    const clamped = parseISODate(iso);
+    if (!clamped) return;
+    focusedIso = iso;
+    visibleMonthDate = startOfMonth(clamped);
     if (!moveDomFocus) return;
     await tick();
     const target = document.getElementById(focusedDayId) as HTMLButtonElement | null;
@@ -201,7 +244,7 @@
   }
 
   function commitDate(iso: string) {
-    if (disabled || isDateDisabled(iso)) return;
+    if (disabled || !parseISODate(iso) || isDateDisabled(iso)) return;
     value = iso;
     focusedIso = iso;
     onchange?.(iso);
@@ -214,17 +257,17 @@
   }
 
   function clampDayToMonth(year: number, monthValue: number, day: number): Date {
-    const lastDay = new Date(year, monthValue + 1, 0).getDate();
-    return new Date(year, monthValue, Math.min(day, lastDay));
+    const lastDay = createCalendarDate(year, monthValue + 1, 0).getUTCDate();
+    return createCalendarDate(year, monthValue, Math.min(day, lastDay));
   }
 
   async function moveFocusedByMonths(delta: number, moveDomFocus = true) {
     const base = parseISODate(focusedIso) ?? visibleMonthDate;
     const monthStart = addMonths(startOfMonth(base), delta);
     const candidate = clampDayToMonth(
-      monthStart.getFullYear(),
-      monthStart.getMonth(),
-      base.getDate(),
+      monthStart.getUTCFullYear(),
+      monthStart.getUTCMonth(),
+      base.getUTCDate(),
     );
     await focusDate(toISODate(candidate), moveDomFocus);
   }
@@ -282,16 +325,18 @@
   }
 
   function canGoPrevMonth(): boolean {
-    if (!min) return true;
     const prev = addMonths(visibleMonthDate, -1);
-    const monthEnd = new Date(prev.getFullYear(), prev.getMonth() + 1, 0);
+    if (!isSupportedCalendarDate(prev)) return false;
+    if (!min) return true;
+    const monthEnd = createCalendarDate(prev.getUTCFullYear(), prev.getUTCMonth() + 1, 0);
     return toISODate(monthEnd) >= min;
   }
 
   function canGoNextMonth(): boolean {
-    if (!max) return true;
     const next = addMonths(visibleMonthDate, 1);
-    const monthStart = new Date(next.getFullYear(), next.getMonth(), 1);
+    if (!isSupportedCalendarDate(next)) return false;
+    if (!max) return true;
+    const monthStart = createCalendarDate(next.getUTCFullYear(), next.getUTCMonth(), 1);
     return toISODate(monthStart) <= max;
   }
 </script>
@@ -337,9 +382,9 @@
     tabindex="-1"
     onkeydown={handleKeydown}
   >
-    {#each rows as row, rowIndex (row[0]?.iso ?? rowIndex)}
+    {#each rows as row, rowIndex (row[0]?.iso || rowIndex)}
       <div role="row" class="cinder-calendar__grid-row">
-        {#each row as cell (cell.iso)}
+        {#each row as cell, cellIndex (cell.iso || cellIndex)}
           <div
             role="gridcell"
             aria-selected={cell.selected || undefined}
@@ -347,7 +392,7 @@
           >
             <button
               type="button"
-              id={`${monthGridId}-day-${cell.iso}`}
+              id={cell.iso ? `${monthGridId}-day-${cell.iso}` : undefined}
               class="cinder-calendar__day"
               data-outside={cell.inMonth ? undefined : ''}
               data-selected={cell.selected ? '' : undefined}
@@ -360,7 +405,7 @@
                 commitDate(cell.iso);
               }}
               onfocus={() => {
-                focusedIso = cell.iso;
+                if (cell.iso) focusedIso = cell.iso;
               }}
             >
               {cell.day}

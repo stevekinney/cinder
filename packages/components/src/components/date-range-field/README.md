@@ -4,9 +4,9 @@ Controlled start/end date range picker with preset shortcuts and validation feed
 
 ## Overview
 
-`DateRangeField` renders two native date or date-time inputs (start and end) along with a row of preset shortcut buttons (Today, Yesterday & today, Last 7 days by default). It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
+`DateRangeField` renders two text inputs backed by custom calendar/time popovers (start and end) along with preset shortcut buttons. It is fully controlled: the consumer owns the `value` and responds to `onchange` callbacks. It does not own routing, query-string synchronization, timezone conversion, or data fetching.
 
-Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; `granularity="hour"`, `"minute"`, and `"second"` use native `datetime-local` inputs and emit values truncated to the selected precision.
+Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time granularities use the custom time popover and emit values truncated to the selected precision.
 
 ## Usage
 
@@ -96,7 +96,7 @@ value        DateRangeValue       no        Current range. Bindable. Both fields
 label        string               no        Visible legend rendered above the inputs.
 startLabel   string               no        Label for the start input. Default: "Start date".
 endLabel     string               no        Label for the end input. Default: "End date".
-granularity  DateRangeGranularity no        Precision for native inputs: day, hour, minute, or second. Default: day.
+granularity  DateRangeGranularity no        Precision for custom picker fields: day, hour, minute, or second. Default: day.
 presets      DateRangeDatePreset[]  no      Custom preset buttons. Defaults to today, yesterday-today, last-7d.
 hidePresets  boolean              no        When true, hides the preset row. Default: false.
 description  string               no        Helper text below the field, wired via aria-describedby.
@@ -137,6 +137,6 @@ The component implements accessible form labelling throughout:
 
 ## Scope limits
 
-- Timezone conversion is caller-owned. Native `datetime-local` values are local wall-clock strings without timezone offsets.
-- The browser owns the date and date-time picker UI. Keyboard behavior inside those native pickers is browser-controlled.
-- No range constraint enforcement. The component sets `min`/`max` on the inputs to hint the browser's picker (end min = start, start max = end), but does not block the user from entering out-of-order values programmatically. Validation is the consumer's responsibility via the `error` prop.
+- Timezone conversion is caller-owned. Emitted date-time values are local wall-clock strings without timezone offsets.
+- The component owns the custom date and date-time picker UI.
+- Start and end constrain each other through DatePicker's `min`/`max` contract: the calendar disables out-of-range dates and manual edits are validated and clamped. Consumers still own domain-specific validation and error messaging through the `error` prop.

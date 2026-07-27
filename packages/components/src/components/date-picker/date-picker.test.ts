@@ -1,10 +1,8 @@
 /// <reference lib="dom" />
-import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
-expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 setupHappyDom();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
@@ -14,10 +12,140 @@ beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
 describe('DatePicker', () => {
-  test('renders date input and trigger button', () => {
+  test('renders one custom text input and trigger button', () => {
     const { container } = render(DatePicker, { id: 'dp', value: '2026-06-29' });
-    expect(container.querySelector<HTMLInputElement>('#dp')?.type).toBe('date');
+    const input = container.querySelector<HTMLInputElement>('#dp');
+    expect(input?.type).toBe('text');
+    expect(input?.getAttribute('aria-haspopup')).toBeNull();
     expect(container.querySelector('.cinder-date-picker__trigger')).not.toBeNull();
+  });
+
+  test('rejects trailing characters in manually entered day values', async () => {
+    let nextValue = 'sentinel';
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => {
+        nextValue = value ?? '';
+      },
+    });
+
+    await fireEvent.change(container.querySelector<HTMLInputElement>('#dp')!, {
+      target: { value: '2026-06-29junk' },
+    });
+
+    expect(nextValue).toBe('');
+  });
+
+  test.each(['2026-06-29junk', '2026-02-31'])(
+    'marks malformed empty-model edits invalid: %s',
+    async (rawValue) => {
+      const { container } = render(DatePicker, {
+        id: 'dp',
+        value: undefined,
+      });
+      const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+      await fireEvent.change(input, {
+        target: { value: rawValue },
+      });
+
+      expect(input.value).toBe(rawValue);
+      expect(input.checkValidity()).toBe(false);
+    },
+  );
+
+  test('marks malformed drafts invalid before change or blur', async () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: undefined,
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+    await fireEvent.input(input, {
+      target: { value: 'not-a-date' },
+    });
+
+    expect(input.value).toBe('not-a-date');
+    expect(input.checkValidity()).toBe(false);
+  });
+
+  test('commits a complete valid draft during input', async () => {
+    let nextValue = '';
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => {
+        nextValue = value ?? '';
+      },
+    });
+    await fireEvent.input(container.querySelector<HTMLInputElement>('#dp')!, {
+      target: { value: '2026-07-01' },
+    });
+    expect(nextValue).toBe('2026-07-01');
+  });
+
+  test('does not emit when a valid draft restores the committed value', async () => {
+    const values: Array<string | undefined> = [];
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => values.push(value),
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+    await fireEvent.input(input, { target: { value: '2026-06-2' } });
+    await fireEvent.input(input, { target: { value: '2026-06-29' } });
+
+    expect(values).toEqual([]);
+  });
+
+  test('commits clearing the field during input and does not duplicate on blur', async () => {
+    const values: Array<string | undefined> = [];
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      onchange: (value: string | undefined) => values.push(value),
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+    await fireEvent.input(input, { target: { value: '' } });
+    expect(values).toEqual([undefined]);
+    await fireEvent.change(input, { target: { value: '' } });
+    expect(values).toEqual([undefined]);
+  });
+
+  test('clears custom validity after a native form reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const { container } = render(DatePicker, {
+      target: form,
+      props: {
+        id: 'dp',
+        value: undefined,
+      },
+    });
+    const input = container.querySelector<HTMLInputElement>('#dp')!;
+
+    await fireEvent.change(input, {
+      target: { value: 'not-a-date' },
+    });
+    expect(input.checkValidity()).toBe(false);
+
+    form.reset();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(input.value).toBe('');
+    expect(input.checkValidity()).toBe(true);
+  });
+
+  test('marks controlled out-of-range values invalid', () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-29',
+      min: '2026-07-01',
+    });
+
+    expect(container.querySelector<HTMLInputElement>('#dp')?.checkValidity()).toBe(false);
   });
 
   test('opens calendar popover and selects a date', async () => {
@@ -40,9 +168,49 @@ describe('DatePicker', () => {
     });
   });
 
+  test.each([
+    {
+      bounds: { min: '2090-04-10' },
+      expectedMonth: 'April 2090',
+    },
+    {
+      bounds: { max: '2000-03-20' },
+      expectedMonth: 'March 2000',
+    },
+  ])('opens an empty bounded picker at $expectedMonth', async ({ bounds, expectedMonth }) => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: undefined,
+      ...bounds,
+    });
+
+    await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
+
+    expect(document.body.querySelector('.cinder-calendar__title')?.textContent).toContain(
+      expectedMonth,
+    );
+  });
+
+  test('moves focus into the custom picker when the trigger opens it', async () => {
+    const { container } = render(DatePicker, {
+      id: 'dp',
+      value: '2026-06-10',
+    });
+
+    await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
+
+    await waitFor(() => {
+      const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
+      expect(dialog).not.toBeNull();
+      expect(dialog?.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.classList.contains('cinder-calendar__day')).toBe(true);
+      expect(document.activeElement?.getAttribute('aria-label')).toContain('June 10, 2026');
+    });
+  });
+
   test('renders time input for minute granularity and emits datetime value', async () => {
     let nextValue = '';
-    const { container } = render(DatePicker, {
+    const rendered = render(DatePicker, {
       id: 'dp',
       granularity: 'minute',
       value: '2026-06-29T09:30',
@@ -50,12 +218,11 @@ describe('DatePicker', () => {
         nextValue = value ?? '';
       },
     });
+    const { container } = rendered;
 
     await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
-    const timeInput = document.body.querySelector<HTMLInputElement>(
-      '.cinder-date-picker__time-input',
-    );
-    if (!timeInput) throw new Error('time input missing');
+    const timeInput = rendered.getByLabelText('Time') as HTMLInputElement;
+    expect(timeInput.classList.contains('cinder-date-picker__time-input')).toBe(true);
     await fireEvent.change(timeInput, { target: { value: '10:15' } });
 
     expect(nextValue).toBe('2026-06-29T10:15');

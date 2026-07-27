@@ -343,18 +343,12 @@
 
   <div class="cinder-date-range-field__inputs">
     <div class="cinder-date-range-field__input-group">
-      <label
-        for={startId}
-        class="cinder-date-range-field__input-label"
-        data-disabled={disabled || undefined}
-      >
-        {resolvedStartLabel}
-      </label>
       <DatePicker
         id={startId}
         class="cinder-date-range-field__date-picker"
         {granularity}
         value={normalizedValue.start}
+        label={resolvedStartLabel}
         max={normalizedValue.end ?? undefined}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
@@ -366,18 +360,12 @@
     <span class="cinder-date-range-field__separator" aria-hidden="true">–</span>
 
     <div class="cinder-date-range-field__input-group">
-      <label
-        for={endId}
-        class="cinder-date-range-field__input-label"
-        data-disabled={disabled || undefined}
-      >
-        {resolvedEndLabel}
-      </label>
       <DatePicker
         id={endId}
         class="cinder-date-range-field__date-picker"
         {granularity}
         value={normalizedValue.end}
+        label={resolvedEndLabel}
         min={normalizedValue.start ?? undefined}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
