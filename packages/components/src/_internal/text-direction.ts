@@ -10,10 +10,17 @@ export function resolveTextDirection(
   if (ignoreElementDirectionAttribute && element) {
     const styledDirection = readComputedTextDirection(element);
     const rootComputedDirection = readComputedTextDirection(element.ownerDocument.documentElement);
+    // A computed direction that differs from the root is only trustworthy here when
+    // something other than the element's own `dir` attribute could be causing it — in
+    // browsers where getComputedStyle() reflects `dir` (which this option exists to
+    // ignore), a bare divergence-from-root check would let that attribute leak back in.
+    const elementDirectionAttribute = element.getAttribute('dir')?.toLowerCase();
+    const differsFromRootViaStyling =
+      styledDirection !== rootComputedDirection && styledDirection !== elementDirectionAttribute;
     if (
       styledDirection &&
       (hasElementDirectionStylingHint(element, directionStyleRuleCache) ||
-        styledDirection !== rootComputedDirection)
+        differsFromRootViaStyling)
     )
       return styledDirection;
   }

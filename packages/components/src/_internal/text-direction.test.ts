@@ -843,6 +843,46 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('ignoreElementDirectionAttribute does not leak the dir attribute back in via computed style', () => {
+    // Real browsers apply a UA rule (`[dir] { direction: attr(dir) }`-ish behavior) so
+    // getComputedStyle(element).direction reflects the element's own `dir` attribute even
+    // when it carries no inline style or matching author rule. This mock reproduces that so
+    // the "ignore the element's own dir attribute" contract is exercised the way it would be
+    // in a real browser rather than happy-dom's non-inheriting default.
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      if (target instanceof HTMLElement) {
+        const dir = target.getAttribute('dir');
+        if (dir === 'rtl' || dir === 'ltr') {
+          Object.defineProperty(style, 'direction', { value: dir, configurable: true });
+        }
+      }
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      document.documentElement.dir = 'ltr';
+      const element = document.createElement('div');
+      element.dir = 'rtl';
+      document.body.appendChild(element);
+
+      // No inline style and no matching CSS rule on the element — the only thing making
+      // its computed direction differ from the root is the `dir` attribute this option
+      // is meant to ignore, so the fallback must win.
+      expect(resolveTextDirection(element, 'ltr', { ignoreElementDirectionAttribute: true })).toBe(
+        'ltr',
+      );
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+      document.documentElement.removeAttribute('dir');
+    }
+  });
+
   test('uses grouped CSS direction rules inside active media conditions', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
