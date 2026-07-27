@@ -917,7 +917,21 @@ export function workflowLevelEnvironmentLines(content: string): string[] {
     if (isComment(line) || line.trim().length === 0) continue;
 
     if (/^\S/.test(line)) {
-      insideWorkflowEnvironmentBlock = line.startsWith('env:');
+      insideWorkflowEnvironmentBlock = false;
+
+      if (!line.startsWith('env:')) continue;
+
+      // `env: { A: "${{ runner.os }}" }` is a valid flow mapping that lives
+      // entirely on the key's own line. Inspect that remainder here — a
+      // line-based scanner that only looked at INDENTED lines would mark the
+      // block open, skip this line as the key, and then close the block at the
+      // next top-level key without ever examining the mapping.
+      if (line.slice('env:'.length).trim().length > 0) {
+        environmentLines.push(line);
+        continue;
+      }
+
+      insideWorkflowEnvironmentBlock = true;
       continue;
     }
 

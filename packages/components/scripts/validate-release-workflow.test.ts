@@ -169,6 +169,31 @@ describe('workflow-level env block scanning', () => {
   test('returns nothing when there is no workflow-level env block', () => {
     expect(workflowLevelEnvironmentLines('name: example\non:\n  push: {}')).toEqual([]);
   });
+
+  // A flow mapping lives entirely on the key's own line. A scanner that only
+  // looked at indented lines would open the block, skip this line as the key,
+  // then close at the next top-level key having inspected nothing.
+  test('inspects an inline flow mapping', () => {
+    const workflow = ['env: { TURBO_PLATFORM: "${{ runner.os }}" }', 'on:', '  push: {}'].join(
+      '\n',
+    );
+
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual([
+      'env: { TURBO_PLATFORM: "${{ runner.os }}" }',
+    ]);
+  });
+
+  test('does not treat a flow mapping as an open block', () => {
+    const workflow = [
+      'env: { A: ${{ vars.A }} }',
+      'jobs:',
+      '  build:',
+      '    x: ${{ runner.os }}',
+    ].join('\n');
+
+    // The job-level line must not leak in just because a flow mapping preceded it.
+    expect(workflowLevelEnvironmentLines(workflow)).toEqual(['env: { A: ${{ vars.A }} }']);
+  });
 });
 
 describe('validate-release-workflow changeset guards', () => {
