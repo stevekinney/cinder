@@ -289,11 +289,11 @@ export function findPlaceholderViolations(
         const cells = parseMarkdownTableCells(line);
         if (cells.length !== 3 || cells.some((cell) => cell === '')) return false;
         if (cells.every((cell) => /^:?-{3,}:?$/.test(cell))) return false;
-        const [key = '', context = '', behavior = ''] = cells.map((cell) => cell.toLowerCase());
-        const isKeyboardHeader =
-          /^(?:key|keyboard input|key or gesture)$/.test(key) &&
-          context === 'context' &&
-          behavior === 'expected behavior';
+        const [, context = '', behavior = ''] = cells.map((cell) => cell.toLowerCase());
+        // Identify the header row by its fixed "Context" / "Expected behavior" columns
+        // rather than an allowlist of first-column labels, so renaming the first column
+        // (e.g. "Keys") can't make the header itself count as a substantive data row.
+        const isKeyboardHeader = context === 'context' && behavior === 'expected behavior';
         return !isKeyboardHeader;
       });
       if (

@@ -102,6 +102,13 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
   });
+  it('does not accept a header renamed beyond the allowlist without a data row', () => {
+    const violations = findPlaceholderViolations(
+      '## Design review (required)\n- Reviewer: Sam\n- Review outcome: approved\n- Nearest neighbours: Button\n- Why this component exists: reason\n\n## Novel interaction accessibility review\n- Applies: yes — interactive\n- Reviewer: Sam\n- Review outcome: approved\n\n### Focus management\nDocumented\n\n### Keyboard matrix\n| Keys | Context | Expected behavior |\n| --- | --- | --- |\n\n### Assistive-technology announcements\nDocumented',
+      'component.a11y.md',
+    );
+    expect(violations.filter(({ phrase }) => phrase === 'accessibility section')).toHaveLength(1);
+  });
   it('rejects an empty accessibility record', () => {
     expect(findPlaceholderViolations('', 'component.a11y.md')).toEqual([
       expect.objectContaining({ phrase: 'accessibility record' }),
