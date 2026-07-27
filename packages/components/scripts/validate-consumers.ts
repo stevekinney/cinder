@@ -1,4 +1,5 @@
 import { Glob } from 'bun';
+import { randomUUID } from 'node:crypto';
 import {
   existsSync,
   readFileSync,
@@ -1672,13 +1673,45 @@ type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
  * `/dev/shm` is not constrained), so the crash first surfaced as a blocked
  * release rather than in PR CI. Writing shared memory under `/tmp` avoids it.
  */
-async function launchHydrationChromium(): Promise<Browser> {
+type HydrationBrowser = { browser: Browser; processToken: string };
+
+function hydrationBrowserProcessIds(processToken: string): number[] {
+  const listing = Bun.spawnSync(['ps', '-axo', 'pid=,command='], { stdout: 'pipe' });
+  if (listing.exitCode !== 0) return [];
+  return listing.stdout
+    .toString()
+    .split('\n')
+    .flatMap((line) => {
+      if (!line.includes(processToken)) return [];
+      const match = /^\s*(\d+)\s+/.exec(line);
+      if (!match) return [];
+      const pid = Number(match[1]);
+      return pid === process.pid ? [] : [pid];
+    });
+}
+
+function forceKillHydrationBrowser(processToken: string): void {
+  for (const pid of hydrationBrowserProcessIds(processToken)) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      // The process may have exited between `ps` and `kill`; the next state
+      // snapshot records whether any matching process remains.
+    }
+  }
+}
+
+async function launchHydrationChromium(): Promise<HydrationBrowser> {
   const { chromium } = await import('@playwright/test');
-  return promiseWithTimeout(
-    chromium.launch({ args: ['--disable-dev-shm-usage'] }),
+  const processToken = `cinder-hydration-${randomUUID()}`;
+  const browser = await promiseWithTimeout(
+    chromium.launch({
+      args: ['--disable-dev-shm-usage', `--cinder-hydration-token=${processToken}`],
+    }),
     15_000,
     'launching Chromium for SvelteKit hydration validation',
   );
+  return { browser, processToken };
 }
 
 /**
@@ -1779,7 +1812,8 @@ async function runSvelteKitHydrationRoutesOnce(
   label: string,
   routePaths: SvelteKitHydrationRoute[],
 ): Promise<void> {
-  const browser = await launchHydrationChromium();
+  const browserHandle = await launchHydrationChromium();
+  const { browser, processToken } = browserHandle;
   let context: BrowserContext | undefined;
   let bodyError: unknown;
   let bodyFailed = false;
@@ -1821,8 +1855,9 @@ async function runSvelteKitHydrationRoutesOnce(
     {
       phase: 'browser.close',
       close: () => browser.close(),
-      forceClose: () => browser.close(),
-      state: () => `browserConnected=${browser.isConnected()}`,
+      forceClose: () => forceKillHydrationBrowser(processToken),
+      state: () =>
+        `browserConnected=${browser.isConnected()} processRunning=${hydrationBrowserProcessIds(processToken).length > 0}`,
     },
   ]);
 
