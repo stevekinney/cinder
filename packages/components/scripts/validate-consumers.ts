@@ -1506,6 +1506,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     });
 
     let bodyError: unknown;
+    let bodyFailed = false;
     try {
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
 
@@ -1646,9 +1647,10 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       );
     } catch (error) {
       bodyError = error;
+      bodyFailed = true;
     }
     const teardownError = await stopConsumerFixtureServer(fixtureServer).catch((error) => error);
-    if (bodyError !== undefined) {
+    if (bodyFailed) {
       if (teardownError !== undefined) {
         process.stderr.write(
           `[validate-consumers] sveltekit-consumer fixture teardown failed after assertion failure: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}\n`,
@@ -1702,7 +1704,7 @@ function forceKillHydrationBrowser(processToken: string): void {
 }
 
 async function waitForHydrationBrowserExit(processToken: string): Promise<void> {
-  const deadline = Date.now() + 500;
+  const deadline = Date.now() + HYDRATION_TEARDOWN_TIMEOUT_MS;
   while (hydrationBrowserProcessIds(processToken).length > 0 && Date.now() < deadline) {
     await Bun.sleep(10);
   }
@@ -1942,6 +1944,7 @@ async function assertSvelteKitHydrationRoute(
   });
 
   let bodyError: unknown;
+  let bodyFailed = false;
   try {
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, {
       waitUntil: 'domcontentloaded',
@@ -1956,6 +1959,7 @@ async function assertSvelteKitHydrationRoute(
     }
   } catch (error) {
     bodyError = error;
+    bodyFailed = true;
   }
   const pageFailures = await runBoundedHydrationTeardown([
     {
@@ -1964,7 +1968,7 @@ async function assertSvelteKitHydrationRoute(
       state: () => `pageClosed=${page.isClosed()} browserConnected=${browser.isConnected()}`,
     },
   ]);
-  if (bodyError !== undefined) throw bodyError;
+  if (bodyFailed) throw bodyError;
   if (pageFailures.length > 0) {
     const failure = pageFailures[0]!;
     throw new ConsumerTeardownError(
@@ -2488,6 +2492,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
     });
 
     let bodyError: unknown;
+    let bodyFailed = false;
     try {
       // Poll a static build asset so readiness checks do not repeatedly start
       // the intentionally expensive all-examples SSR render and abort it after
@@ -2543,9 +2548,10 @@ async function runExamplesConsumerFixture(): Promise<void> {
       );
     } catch (error) {
       bodyError = error;
+      bodyFailed = true;
     }
     const teardownError = await stopConsumerFixtureServer(fixtureServer).catch((error) => error);
-    if (bodyError !== undefined) {
+    if (bodyFailed) {
       if (teardownError !== undefined) {
         process.stderr.write(
           `[validate-consumers] examples-consumer fixture teardown failed after assertion failure: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}\n`,
