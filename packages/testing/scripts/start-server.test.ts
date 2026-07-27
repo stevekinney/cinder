@@ -7,6 +7,7 @@ import {
   appendServerOutputBuffer,
   childProcessHasFinished,
   clearTrackedTimer,
+  enqueueOrderedBuild,
   finalPlaywrightExitCode,
   installSignalCleanupHandlers,
   localPlaygroundUrlForReportedPort,
@@ -152,6 +153,16 @@ describe('dependency rebuild scheduling', () => {
 
     expect(takeNextOrderedBuild(queue)).toEqual({ order: 0 });
     expect(queue).toEqual([{ order: 1 }, { order: 2 }]);
+  });
+
+  test('queues at most one pending build per package order', () => {
+    const queue = [{ order: 1, run: () => {} }];
+    const duplicate = { order: 1, run: () => {} };
+
+    enqueueOrderedBuild(queue, duplicate);
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).not.toBe(duplicate);
   });
 
   test('removes a superseded debounce timer from the tracked set', () => {

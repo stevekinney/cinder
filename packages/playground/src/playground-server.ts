@@ -1492,6 +1492,17 @@ type GeneratedComponentSchema = {
   };
 };
 
+export async function readGeneratedComponentSchema(
+  generatedSchemaFile: Pick<Bun.BunFile, 'exists' | 'json'>,
+): Promise<GeneratedComponentSchema | null> {
+  try {
+    if (!(await generatedSchemaFile.exists())) return null;
+    return (await generatedSchemaFile.json()) as GeneratedComponentSchema;
+  } catch {
+    return null;
+  }
+}
+
 export function mergeGeneratedSchemaMetadata(
   analyzedManifest: ComponentManifest,
   schema: GeneratedComponentSchema,
@@ -1530,11 +1541,9 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
     importPath: definition.importPath,
   });
   let manifest = analyzedManifest;
-  if (await generatedSchemaFile.exists()) {
-    const schema = (await generatedSchemaFile.json()) as GeneratedComponentSchema;
-    if (schema.properties !== undefined) {
-      manifest = mergeGeneratedSchemaMetadata(analyzedManifest, schema);
-    }
+  const schema = await readGeneratedComponentSchema(generatedSchemaFile);
+  if (schema?.properties !== undefined) {
+    manifest = mergeGeneratedSchemaMetadata(analyzedManifest, schema);
   }
   if (generationAtStart === rebuildGeneration) {
     componentManifestCache.set(componentName, manifest);

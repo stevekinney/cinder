@@ -38,6 +38,7 @@ import {
   handleRequest,
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
+  readGeneratedComponentSchema,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
   setPreparedShellServerRenderer,
@@ -1376,6 +1377,15 @@ describe('/api/manifest/:name', () => {
 });
 
 describe('generated schema metadata', () => {
+  it('falls back when a generated schema disappears or is malformed during a read', async () => {
+    expect(
+      await readGeneratedComponentSchema({
+        exists: () => Promise.resolve(true),
+        json: () => Promise.reject(new SyntaxError('partial schema')),
+      }),
+    ).toBeNull();
+  });
+
   it('overlays defaults without adding private props or losing analyzer-owned bindability', () => {
     const analyzedManifest: ComponentManifest = {
       name: 'Input',

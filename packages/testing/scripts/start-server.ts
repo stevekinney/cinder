@@ -545,6 +545,14 @@ export function takeNextOrderedBuild<T extends { order: number }>(
   return queuedBuilds.shift();
 }
 
+export function enqueueOrderedBuild<T extends { order: number }>(
+  queuedBuilds: T[],
+  build: T,
+): void {
+  if (queuedBuilds.some((queuedBuild) => queuedBuild.order === build.order)) return;
+  queuedBuilds.push(build);
+}
+
 export function clearTrackedTimer(
   timer: ReturnType<typeof setTimeout> | null,
   timers: Set<ReturnType<typeof setTimeout>>,
@@ -598,7 +606,7 @@ function startPlaygroundBundleDependencyWatchers(
       state.pending = false;
       if (activeBuild) {
         state.pending = true;
-        queuedBuilds.push({
+        enqueueOrderedBuild(queuedBuilds, {
           order: playgroundBundleDependencyPackages.indexOf(packageName),
           run: runBuild,
         });
