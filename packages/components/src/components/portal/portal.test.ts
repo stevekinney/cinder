@@ -92,7 +92,7 @@ describe('Portal', () => {
       receivedClick = event as MouseEvent;
     });
     source.addEventListener('input', (event) => {
-      receivedInput = event as InputEvent;
+      receivedInput = event;
     });
 
     redispatchPortaledEvent(new MouseEvent('click', { bubbles: true, detail: 2 }), source);
