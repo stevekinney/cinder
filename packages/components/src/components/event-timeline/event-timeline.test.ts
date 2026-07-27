@@ -8,14 +8,13 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
 const {
   hasFixedPositionContainingBlock,
   resetEventTimelineModalPredicate: __resetEventTimelineModalPredicate,
   setEventTimelineModalPredicate: __setEventTimelineModalPredicate,
 } = await import('./event-timeline-modal.ts');
-const { fireEvent } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 
 const EVENT_TIMELINE_CSS = readFileSync(join(import.meta.dir, 'event-timeline.css'), 'utf8');
@@ -369,7 +368,7 @@ describe('EventTimeline', () => {
     expect(cluster?.getAttribute('aria-label')).toBe(
       '1 event between 2026-07-03T06:04:00.000Z and 2026-07-03T06:04:00.000Z',
     );
-    expect(cluster?.tabIndex).toBe(0);
+    expect(cluster?.hasAttribute('tabindex')).toBe(false);
     expect(cluster?.getAttribute('aria-haspopup')).toBe('dialog');
 
     cluster?.focus();

@@ -579,7 +579,6 @@
           <button
             class="cinder-event-timeline__cluster-trigger"
             type="button"
-            tabindex="0"
             aria-expanded={openClusterKey === cluster.key}
             aria-haspopup="dialog"
             aria-controls={openClusterKey === cluster.key ? clusterId : undefined}

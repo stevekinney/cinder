@@ -205,6 +205,8 @@
   }
 
   .cinder-event-timeline__cluster-trigger:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
@@ -216,8 +218,6 @@
   }
 
   .cinder-event-timeline__cluster-surface {
-    position: absolute;
-    z-index: var(--cinder-z-popover, 1100);
     inset-block-start: 2.25rem;
     min-inline-size: 10rem;
     padding: var(--cinder-space-2);
