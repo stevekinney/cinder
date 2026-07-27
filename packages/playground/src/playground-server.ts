@@ -115,6 +115,7 @@ export function resolvePreferredPort(): number {
 }
 
 export const PORT = resolvePreferredPort();
+let startupReady = true;
 const MAX_PORT_SCAN_ATTEMPTS = 100;
 const COMPONENTS_ROOT = CINDER_COMPONENT_SOURCE.packageRoot; // packages/components/
 const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..'); // repo root
@@ -180,7 +181,8 @@ const fixtureArtifactByPath = new Map<string, string>();
  */
 const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
-let shellBuildPromise: Promise<string | null> | null = null;
+type ShellBuildResult = { code: string | null; usedFallback: boolean };
+let shellBuildPromise: Promise<ShellBuildResult> | null = null;
 type ShellServerRenderer = (props: {
   initialComponent: string;
   components: string[];
@@ -190,6 +192,8 @@ type ShellServerRenderer = (props: {
 }) => { body: string; head: string };
 let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
+let preparedShellServerRenderer: ShellServerRenderer | null = null;
+let shellRendererUsedFallback = false;
 
 /**
  * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
@@ -476,6 +480,7 @@ function invalidateCachesForChange(scope: ChangeScope): void {
   shellStale = true;
   shellBuildPromise = null;
   shellServerRendererPromise = null;
+  preparedShellServerRenderer = null;
   // The documentation page's server bundle shares the component graph the shell
   // rebuild invalidates, so drop its dedup slot on the same signal.
   pageServerRendererPromise = null;
@@ -547,6 +552,19 @@ function startWatcher(): FSWatcher[] {
       }
     }
 
+    // Markdown is a transitive dependency of the shell and page bundles, but
+    // it is not one of the published component sources. Watch its source tree
+    // explicitly so a successful dependency rebuild invalidates cached
+    // artifacts instead of leaving stale renderer bytes in memory.
+    const markdownSourcePath = join(REPO_ROOT, 'packages', 'markdown', 'src');
+    if (existsSync(markdownSourcePath)) {
+      created.push(
+        watch(markdownSourcePath, { recursive: true }, (_event, filename) => {
+          if (filename) scheduleRebuild({ kind: 'components' });
+        }),
+      );
+    }
+
     // Examples directory: an edit to `<name>/<scenario>.example.svelte` can
     // only ever affect that one component's page bundle, so the scope is
     // precisely the touched component name (the first path segment). Other
@@ -598,6 +616,7 @@ function startWatcher(): FSWatcher[] {
         if (
           filename &&
           !filename.startsWith('examples/') &&
+          !filename.startsWith('.tmp-') &&
           !filename.endsWith('.test.ts') &&
           !filename.startsWith('.')
         ) {
@@ -1240,6 +1259,10 @@ export function fallbackToLastGood<T>(lastGood: T | null, error: unknown): T {
   return lastGood;
 }
 
+export function shellBuildSucceeded(code: string | null, usedFallback: boolean): boolean {
+  return code !== null && !usedFallback;
+}
+
 async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
@@ -1275,6 +1298,7 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
         throw new Error('Shell server bundle did not export renderShellBody');
       }
       const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
+      shellRendererUsedFallback = false;
       if (generationAtStart === rebuildGeneration) {
         lastGoodShellServerRenderer = renderer;
       }
@@ -1284,11 +1308,17 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
         '[playground] shell server rebuild failed; serving the last-good renderer:',
         error,
       );
+      shellRendererUsedFallback = true;
       return fallbackToLastGood(lastGoodShellServerRenderer, error);
     }
   })();
 
   return shellServerRendererPromise;
+}
+
+/** Inject the renderer prepared by server startup (or a deterministic test renderer). */
+export function setPreparedShellServerRenderer(renderer: ShellServerRenderer | null): void {
+  preparedShellServerRenderer = renderer;
 }
 
 /**
@@ -1364,15 +1394,17 @@ async function loadPageServerRenderer(): Promise<PageServerRenderer> {
  * falls back to the last-good cached shell (if any) instead — see
  * `shellStale`'s doc comment for why the shell specifically needs this.
  */
-async function buildShellBundle(): Promise<string | null> {
+async function buildShellBundle(): Promise<ShellBuildResult> {
   const cachedEntryPath = shellEntryByName.get('shell');
   const cachedCode =
     cachedEntryPath !== undefined ? shellArtifactByPath.get(cachedEntryPath) : undefined;
-  if (cachedCode !== undefined && !shellStale) return cachedCode;
+  if (cachedCode !== undefined && !shellStale) {
+    return { code: cachedCode, usedFallback: false };
+  }
 
   if (shellBuildPromise !== null) return shellBuildPromise;
 
-  const buildPromise: Promise<string | null> = (async () => {
+  const buildPromise: Promise<ShellBuildResult> = (async () => {
     const generationAtStart = rebuildGeneration;
     // A Svelte syntax error makes the underlying `Bun.build()` call THROW
     // rather than resolve with `{ success: false }` — `.catch()` converts
@@ -1387,7 +1419,7 @@ async function buildShellBundle(): Promise<string | null> {
       console.error(
         '[playground] shell rebuild failed — serving last-good shell (if cached); will retry on next request',
       );
-      return cachedCode ?? null;
+      return { code: cachedCode ?? null, usedFallback: true };
     }
 
     // Always publish chunks (see buildPageBundle's comment for the
@@ -1398,7 +1430,7 @@ async function buildShellBundle(): Promise<string | null> {
       shellEntryByName.set('shell', entry.entryPath);
       shellStale = false;
     }
-    return entry.entryCode;
+    return { code: entry.entryCode, usedFallback: false };
   })();
   shellBuildPromise = buildPromise;
 
@@ -1453,6 +1485,42 @@ async function getManifests(): Promise<ComponentManifest[]> {
   }
 }
 
+type GeneratedComponentSchema = {
+  properties?: Record<string, { default?: unknown }>;
+  metadata?: {
+    unsupportedProps?: Array<{ name: string; required?: boolean; reason?: string }>;
+  };
+};
+
+export async function readGeneratedComponentSchema(
+  generatedSchemaFile: Pick<Bun.BunFile, 'exists' | 'json'>,
+): Promise<GeneratedComponentSchema | null> {
+  try {
+    if (!(await generatedSchemaFile.exists())) return null;
+    return (await generatedSchemaFile.json()) as GeneratedComponentSchema;
+  } catch {
+    return null;
+  }
+}
+
+export function mergeGeneratedSchemaMetadata(
+  analyzedManifest: ComponentManifest,
+  schema: GeneratedComponentSchema,
+): ComponentManifest {
+  return {
+    ...analyzedManifest,
+    props: analyzedManifest.props.map((prop) => {
+      const defaultValue = schema.properties?.[prop.name]?.default;
+      return defaultValue === undefined ? prop : { ...prop, defaultValue };
+    }),
+    ...(schema.metadata?.unsupportedProps?.some(
+      (prop) => prop.required === true && prop.reason === 'function-or-snippet',
+    )
+      ? { isCompound: true }
+      : {}),
+  };
+}
+
 async function getComponentManifest(componentName: string): Promise<ComponentManifest | null> {
   const cached = componentManifestCache.get(componentName);
   if (cached !== undefined) return cached;
@@ -1462,10 +1530,21 @@ async function getComponentManifest(componentName: string): Promise<ComponentMan
 
   const definition = await discoverComponentDefinition(componentName);
   if (definition === undefined) return null;
+  const generatedSchemaPath = join(
+    definition.source.componentsRoot,
+    componentName,
+    `${componentName}.schema.json`,
+  );
+  const generatedSchemaFile = Bun.file(generatedSchemaPath);
   const generationAtStart = rebuildGeneration;
-  const manifest = await analyzeComponent(definition.filePath, {
+  const analyzedManifest = await analyzeComponent(definition.filePath, {
     importPath: definition.importPath,
   });
+  let manifest = analyzedManifest;
+  const schema = await readGeneratedComponentSchema(generatedSchemaFile);
+  if (schema !== null) {
+    manifest = mergeGeneratedSchemaMetadata(analyzedManifest, schema);
+  }
   if (generationAtStart === rebuildGeneration) {
     componentManifestCache.set(componentName, manifest);
   }
@@ -1963,7 +2042,8 @@ export async function handleRequest(request: Request): Promise<Response> {
 
   // GET /ready
   if (pathname === '/ready') {
-    return new Response('ready', {
+    return new Response(startupReady ? 'ready' : 'warming', {
+      status: startupReady ? 200 : 503,
       headers: {
         'Content-Type': 'text/plain',
         'X-Cinder-Playground-Fingerprint': JSON.stringify(STARTUP_FINGERPRINT),
@@ -2167,10 +2247,10 @@ export async function handleRequest(request: Request): Promise<Response> {
     // be hashed chunks served from the cache above; we never lazily build
     // anything other than the entry on this route.
     if (filename !== 'shell') return notFound();
-    const code = await buildShellBundle();
-    if (code === null) return notFound('Shell bundle failed to build');
+    const shellResult = await buildShellBundle();
+    if (shellResult.code === null) return notFound('Shell bundle failed to build');
     // Bare, unhashed shell entry URL (`/shell-bundle/shell.js`) — never cache.
-    return new Response(code, {
+    return new Response(shellResult.code, {
       headers: {
         'Content-Type': 'application/javascript',
         'Cache-Control': NO_STORE_CACHE_CONTROL,
@@ -2300,7 +2380,7 @@ export async function handleRequest(request: Request): Promise<Response> {
     if (documentation === null) {
       return notFound(`Documentation for "${componentName}" not found`);
     }
-    const renderShellBody = await loadShellServerRenderer();
+    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
     const renderedShell = renderShellBody({
       initialComponent: componentName,
       components: sidebarComponents,
@@ -2323,7 +2403,7 @@ export async function handleRequest(request: Request): Promise<Response> {
       discoverSidebarComponents(),
       renderLandingReadmeHtml(),
     ]);
-    const renderShellBody = await loadShellServerRenderer();
+    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
     const renderedShell = renderShellBody({
       initialComponent: '',
       components: sidebarComponents,
@@ -2468,7 +2548,7 @@ async function eagerPrebuildAll(): Promise<{
 }> {
   const shellPromise = buildShellBundle().catch((error) => {
     console.error('[playground] shell bundle threw during pre-build:', error);
-    return null;
+    return { code: null, usedFallback: true };
   });
   const components = await discoverSidebarComponents();
   // Sidebar components are a subset of all components, so each is a valid
@@ -2492,7 +2572,11 @@ async function eagerPrebuildAll(): Promise<{
     }
   }
 
-  return { shellSucceeded: shellCode !== null, succeeded, failed };
+  return {
+    shellSucceeded: shellBuildSucceeded(shellCode.code, shellCode.usedFallback),
+    succeeded,
+    failed,
+  };
 }
 
 export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
@@ -2503,42 +2587,27 @@ export function createSharedDisposer(disposeWork: () => Promise<void>): () => Pr
   };
 }
 
+export function isWarmupStable(
+  generationAtStart: number,
+  generationAtEnd: number,
+  sourceMtimeAtStart: number | null,
+  sourceMtimeAtEnd: number | null,
+  hasPendingRebuild = false,
+): boolean {
+  return (
+    generationAtStart === generationAtEnd &&
+    sourceMtimeAtStart === sourceMtimeAtEnd &&
+    !hasPendingRebuild
+  );
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
-  // Eager pre-build BEFORE binding the port. Sidebar clicks should serve
-  // from cache; we don't want the first user to pay a build cost.
-  // Shell-bundle failure is fatal — there's no UI without it.
-  const prebuild = await eagerPrebuildAll();
-  if (!prebuild.shellSucceeded) {
-    throw new Error('[playground] shell bundle failed to build — see logs above');
-  }
-  const total = prebuild.succeeded + prebuild.failed.length;
-  const failedSuffix = prebuild.failed.length > 0 ? ` (failed: ${prebuild.failed.join(', ')})` : '';
-  process.stdout.write(
-    `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
-  );
-
-  // Pre-warm the component manifest (ts-morph analysis) before binding the
-  // port. Without this, the first /api/documentation/:name request pays the
-  // cold-analysis cost and can exceed the validate-playground fetch timeout
-  // as the component count grows.
-  await getManifests().catch((error: unknown) => {
-    console.error('[playground] manifest pre-warm failed:', error);
-  });
-
-  // Start the HTTP server first — if binding fails for reasons other than an
-  // occupied port, no watchers are leaked.
+  startupReady = false;
   const playgroundHttpServer = createHttpServerOnAvailablePort(port, handleRequest);
   const { port: actualPort, server } = playgroundHttpServer;
 
-  let watchers: FSWatcher[];
-  try {
-    watchers = startWatcher();
-  } catch (error) {
-    // startWatcher() failed — stop the already-listening server before rethrowing.
-    await server.stop(true);
-    throw error;
-  }
+  let watchers: FSWatcher[] = [];
 
   const dispose = createSharedDisposer(async () => {
     for (const watcher of watchers) {
@@ -2560,7 +2629,91 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await Bun.write(portFile, `${actualPort}\n`);
   }
   process.stdout.write(`[playground] Listening at http://localhost:${actualPort}\n`);
-  return { port: actualPort, dispose };
+
+  let prebuild;
+  let stable = false;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const generationAtStart = rebuildGeneration;
+    // Register before the eager build so deletions and edits during warmup
+    // advance the generation even when the removed file is no longer present
+    // in the end-of-build mtime scan.
+    if (watchers.length === 0) {
+      try {
+        watchers = startWatcher();
+      } catch (error) {
+        await dispose();
+        throw error;
+      }
+    }
+    prebuild = await eagerPrebuildAll();
+    await getManifests().catch((error: unknown) => {
+      console.error('[playground] manifest pre-warm failed:', error);
+    });
+    if (generationAtStart === rebuildGeneration && rebuildDebounceTimer === null) {
+      stable = true;
+      break;
+    }
+    invalidateCachesForChange({ kind: 'components' });
+  }
+  if (!stable || !prebuild) {
+    await dispose();
+    throw new Error('[playground] eager prebuild invalidated repeatedly; refusing readiness');
+  }
+  if (!prebuild.shellSucceeded) {
+    await dispose();
+    throw new Error('[playground] shell bundle failed to build — see logs above');
+  }
+  const total = prebuild.succeeded + prebuild.failed.length;
+  const failedSuffix = prebuild.failed.length > 0 ? ` (failed: ${prebuild.failed.join(', ')})` : '';
+  process.stdout.write(
+    `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix}\n`,
+  );
+  // Prepare the SSR shell renderer before advertising readiness. Requests must
+  // never pay the cold Svelte server compilation cost on the first navigation.
+  let rendererPrepared = false;
+  for (let attempt = 0; attempt < 5 && !rendererPrepared; attempt += 1) {
+    const generationAtStart = rebuildGeneration;
+    const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
+    try {
+      preparedShellServerRenderer = await loadShellServerRenderer();
+      if (shellRendererUsedFallback) {
+        preparedShellServerRenderer = null;
+        continue;
+      }
+    } catch (error) {
+      await dispose();
+      throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
+    }
+    const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
+    if (
+      isWarmupStable(
+        generationAtStart,
+        rebuildGeneration,
+        sourceMtimeAtStart,
+        sourceMtimeAtEnd,
+        rebuildDebounceTimer !== null,
+      )
+    ) {
+      rendererPrepared = true;
+    } else {
+      preparedShellServerRenderer = null;
+      invalidateCachesForChange({ kind: 'components' });
+      prebuild = await eagerPrebuildAll();
+      if (!prebuild.shellSucceeded) break;
+    }
+  }
+  if (!rendererPrepared) {
+    await dispose();
+    throw new Error('[playground] shell renderer invalidated repeatedly; refusing readiness');
+  }
+  startupReady = true;
+  return {
+    port: actualPort,
+    dispose: async () => {
+      startupReady = false;
+      await dispose();
+    },
+  };
 }
 
 if (import.meta.main) {

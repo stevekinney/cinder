@@ -18,7 +18,7 @@
  * by the "playground bundle dependency build preflight" test.
  */
 
-import { afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
@@ -36,8 +36,13 @@ import {
   createSharedDisposer,
   fallbackToLastGood,
   handleRequest,
+  isWarmupStable,
+  mergeGeneratedSchemaMetadata,
+  readGeneratedComponentSchema,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
+  setPreparedShellServerRenderer,
+  shellBuildSucceeded,
   triggerReload,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
@@ -71,8 +76,44 @@ beforeAll(async () => {
 });
 
 const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
+const testShellServerRenderer: NonNullable<
+  Parameters<typeof setPreparedShellServerRenderer>[0]
+> = ({ initialComponent, documentation, initialSearch }) => {
+  const search = new URLSearchParams(initialSearch);
+  const focusClass = search.get('focus') === '1' ? 'shell focus-mode' : 'shell';
+  const viewportWidth = search.get('w') ?? '';
+  const documentationBody =
+    documentation === null
+      ? ''
+      : `<article class="documentation" data-canonical-documentation>
+          <h1>${documentation.component.name}</h1>
+          <h2>Overview</h2>
+          ${documentation.readme.html}
+          <h2>Props</h2>
+          <iframe src="/page/${initialComponent}?preview=1"></iframe>
+          <a href="/page/${initialComponent}">Open documentation</a>
+        </article>`;
+
+  return {
+    body: `<div id="shell-root"><div class="${focusClass}">
+      <input id="viewport-width-input" value="${viewportWidth}" />
+      ${documentationBody}
+    </div></div>`,
+    head: '<style>.documentation { display: block; }</style>',
+  };
+};
+
+beforeEach(() => {
+  setPreparedShellServerRenderer(testShellServerRenderer);
+});
 
 describe('last-good rebuild fallback', () => {
+  it('does not treat a last-good shell fallback as a successful fresh build', () => {
+    expect(shellBuildSucceeded('last-good-shell', true)).toBe(false);
+    expect(shellBuildSucceeded('fresh-shell', false)).toBe(true);
+    expect(shellBuildSucceeded(null, false)).toBe(false);
+  });
+
   it('keeps a successful renderer available through a transient rebuild failure', () => {
     const renderer = () => ({ body: '<main>last good</main>', head: '' });
     expect(fallbackToLastGood(renderer, new Error('transient compile failure'))).toBe(renderer);
@@ -85,6 +126,7 @@ describe('last-good rebuild fallback', () => {
 });
 
 afterEach(async () => {
+  setPreparedShellServerRenderer(null);
   const servers = temporaryServers.splice(0);
   await Promise.all(servers.map((server) => server.stop(true)));
 });
@@ -282,6 +324,15 @@ describe('shared disposer', () => {
 
     expect(dispose()).toBe(firstDispose);
     expect(disposeCalls).toBe(1);
+  });
+});
+
+describe('startup warmup stability', () => {
+  it('rejects a warmup when source changes before watcher validation', () => {
+    expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
+    expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
+    expect(isWarmupStable(4, 4, 100, 100, true)).toBe(false);
+    expect(isWarmupStable(4, 4, 100, 100)).toBe(true);
   });
 });
 
@@ -1323,6 +1374,69 @@ describe('/api/manifest/:name', () => {
     const result = (await response.json()) as ComponentManifest;
     expect(result.importPath).toBe('@lostgradient/chat');
   }, 30_000);
+});
+
+describe('generated schema metadata', () => {
+  it('falls back when a generated schema disappears or is malformed during a read', async () => {
+    expect(
+      await readGeneratedComponentSchema({
+        exists: () => Promise.resolve(true),
+        json: () => Promise.reject(new SyntaxError('partial schema')),
+      }),
+    ).toBeNull();
+  });
+
+  it('overlays defaults without adding private props or losing analyzer-owned bindability', () => {
+    const analyzedManifest: ComponentManifest = {
+      name: 'Input',
+      kebabName: 'input',
+      file: '/components/input/input.svelte',
+      importPath: '@lostgradient/cinder/input',
+      props: [
+        {
+          name: 'value',
+          control: { kind: 'text' },
+          bindable: true,
+          optional: true,
+        },
+      ],
+    };
+
+    const merged = mergeGeneratedSchemaMetadata(analyzedManifest, {
+      properties: {
+        value: { default: '' },
+        class: { default: 'schema-only-private-prop' },
+      },
+    });
+
+    expect(merged.props).toEqual([
+      {
+        name: 'value',
+        control: { kind: 'text' },
+        bindable: true,
+        optional: true,
+        defaultValue: '',
+      },
+    ]);
+  });
+
+  it('preserves schema metadata when no properties block is present', () => {
+    const analyzedManifest: ComponentManifest = {
+      name: 'Snippet',
+      kebabName: 'snippet',
+      file: '/components/snippet/snippet.svelte',
+      importPath: '@lostgradient/cinder/snippet',
+      props: [],
+    };
+
+    expect(
+      mergeGeneratedSchemaMetadata(analyzedManifest, {
+        metadata: {
+          unsupportedProps: [{ name: 'children', required: true, reason: 'function-or-snippet' }],
+        },
+      }).isCompound,
+    ).toBe(true);
+  });
 });
 
 describe('/api/documentation/:name', () => {

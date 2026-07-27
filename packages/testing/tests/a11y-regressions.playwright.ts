@@ -123,6 +123,32 @@ test.describe('a11y regressions', () => {
     expectNoViolations('access-gate', sectionFixture.name, sectionBuckets);
   });
 
+  test('access-gate denied and granted resting geometry remains aligned', async ({
+    componentPage,
+  }) => {
+    const entry = getEntry('access-gate');
+    const fixture = getFixture(entry, 'inline-toggle');
+    const page = await componentPage.open({
+      entry,
+      theme: lightTheme,
+      viewport: desktopViewport,
+      fixtureName: fixture.name,
+      fixtureContentHash: fixture.fixtureContentHash,
+    });
+    const gatedControl = page.locator('[data-access-gate-toggle-anchor] button');
+    await expect(gatedControl).toBeDisabled();
+    const deniedGeometry = await gatedControl.boundingBox();
+    expect(deniedGeometry).not.toBeNull();
+
+    await page.getByRole('button', { name: 'Toggle access' }).click();
+    await expect(gatedControl).toBeEnabled();
+    const grantedGeometry = await gatedControl.boundingBox();
+    expect(grantedGeometry).not.toBeNull();
+    expect(Math.abs(grantedGeometry!.y - deniedGeometry!.y)).toBeLessThan(1);
+    expect(Math.abs(grantedGeometry!.width - deniedGeometry!.width)).toBeLessThan(1);
+    expect(Math.abs(grantedGeometry!.height - deniedGeometry!.height)).toBeLessThan(1);
+  });
+
   test('section-heading uses div roots without header landmarks', async ({ componentPage }) => {
     const page = await componentPage.open({
       entry: getEntry('section-heading'),

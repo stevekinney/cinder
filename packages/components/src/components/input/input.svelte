@@ -160,7 +160,7 @@
   />
 {/snippet}
 
-<div class="cinder-input-field">
+<div class="cinder-input-field" data-cinder-full-width>
   {#if label}
     <label
       for={id}

@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'bun:test';
-import type { ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { once } from 'node:events';
 import { join } from 'node:path';
 
 import {
   appendServerOutputBuffer,
   childProcessHasFinished,
+  clearTrackedTimer,
+  enqueueOrderedBuild,
   finalPlaywrightExitCode,
   installSignalCleanupHandlers,
   localPlaygroundUrlForReportedPort,
@@ -13,6 +16,7 @@ import {
   playgroundBundleDependencyBuildArguments,
   playgroundBundleDependencyBuildPackages,
   playgroundBundleDependencyBuildProcess,
+  playgroundBundleDependencySourceDirectories,
   playgroundServerArguments,
   playgroundServerWorkingDirectory,
   playgroundUrlForPath,
@@ -24,6 +28,9 @@ import {
   shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
   stalePlaygroundServerMessage,
+  takeNextOrderedBuild,
+  waitForExit,
+  waitForPlaygroundReadinessWithCleanup,
 } from './start-server.ts';
 
 describe('parsePlaygroundListeningPort', () => {
@@ -116,10 +123,21 @@ describe('playground bundle dependency build preflight', () => {
     expect(managedChildProcess.name).toBe('@lostgradient/markdown build');
     expect(managedChildProcess.killProcessGroup).toBe(process.platform !== 'win32');
   });
+
+  test('watches package source and build-script directories explicitly', () => {
+    expect(playgroundBundleDependencySourceDirectories('@lostgradient/markdown')).toEqual([
+      expect.stringMatching(/packages\/markdown\/src$/),
+      expect.stringMatching(/packages\/markdown\/scripts$/),
+    ]);
+    expect(playgroundBundleDependencySourceDirectories('@lostgradient/cinder')).toEqual([
+      expect.stringMatching(/packages\/components\/src$/),
+      expect.stringMatching(/packages\/components\/scripts$/),
+    ]);
+  });
 });
 
 describe('playground server process', () => {
-  test('starts the plain server entrypoint instead of the watch-mode dev script', () => {
+  test('leaves runtime edits to the managed source and dependency watchers', () => {
     const argumentsList = playgroundServerArguments();
 
     expect(argumentsList).toEqual(['run', 'src/playground-server.ts']);
@@ -129,7 +147,64 @@ describe('playground server process', () => {
   });
 });
 
+describe('dependency rebuild scheduling', () => {
+  test('dequeues the lowest-order build from the actual queue', () => {
+    const queue = [{ order: 2 }, { order: 0 }, { order: 1 }];
+
+    expect(takeNextOrderedBuild(queue)).toEqual({ order: 0 });
+    expect(queue).toEqual([{ order: 1 }, { order: 2 }]);
+  });
+
+  test('queues at most one pending build per package order', () => {
+    const queue = [{ order: 1, run: () => {} }];
+    const duplicate = { order: 1, run: () => {} };
+
+    enqueueOrderedBuild(queue, duplicate);
+
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).not.toBe(duplicate);
+  });
+
+  test('removes a superseded debounce timer from the tracked set', () => {
+    const timer = setTimeout(() => {}, 60_000);
+    const timers = new Set([timer]);
+
+    clearTrackedTimer(timer, timers);
+
+    expect(timers.size).toBe(0);
+  });
+});
+
+describe('playground readiness cleanup', () => {
+  test('cleans up a managed server whenever a readiness check fails', async () => {
+    const calls: string[] = [];
+    const readinessError = new Error('not warm');
+
+    await expect(
+      waitForPlaygroundReadinessWithCleanup(
+        () => Promise.reject(readinessError),
+        () => {
+          calls.push('shutdown-check');
+          return Promise.resolve();
+        },
+        () => {
+          calls.push('cleanup');
+          return Promise.resolve();
+        },
+      ),
+    ).rejects.toBe(readinessError);
+    expect(calls).toEqual(['shutdown-check', 'cleanup']);
+  });
+});
+
 describe('child process cleanup', () => {
+  test('observes a child that exited before exit listeners were attached', async () => {
+    const childProcess = spawn(process.execPath, ['-e', 'process.exit(7)']);
+    await once(childProcess, 'exit');
+
+    await expect(waitForExit(childProcess)).resolves.toBe(7);
+  });
+
   test('stops starting new managed children after shutdown begins', () => {
     expect(shouldStartManagedChildProcess(null)).toBe(true);
     expect(shouldStartManagedChildProcess(130)).toBe(false);

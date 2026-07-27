@@ -4,10 +4,11 @@
   import { AccessGate } from './index.ts';
 
   type Props = {
-    variant?: 'inline' | 'section';
+    variant?: 'inline' | 'inline-granted' | 'inline-toggle' | 'section';
   };
 
   let { variant = 'inline' }: Props = $props();
+  let toggleGranted = $state(false);
 </script>
 
 {#if variant === 'section'}
@@ -17,6 +18,24 @@
     reason="Requires scope: storage:admin"
     requirement="storage:admin"
   />
+{:else if variant === 'inline-granted'}
+  <span data-access-gate-baseline><Button label="Cancel workflow" variant="danger" /></span>
+  <AccessGate granted={true} reason="Requires scope: workflows:cancel">
+    <Button label="Cancel workflow" variant="danger" />
+  </AccessGate>
+{:else if variant === 'inline-toggle'}
+  <Button
+    label="Toggle access"
+    size="sm"
+    onclick={() => {
+      toggleGranted = !toggleGranted;
+    }}
+  />
+  <span data-access-gate-toggle-anchor>
+    <AccessGate granted={toggleGranted} reason="Requires scope: workflows:cancel">
+      <Button label="Cancel workflow" variant="danger" />
+    </AccessGate>
+  </span>
 {:else}
   <AccessGate granted={false} reason="Requires scope: workflows:cancel">
     <Button label="Cancel workflow" variant="danger" />
