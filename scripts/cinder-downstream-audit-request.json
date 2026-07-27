@@ -1,0 +1,165 @@
+{
+  "schemaVersion": 1,
+  "packages": [
+    {
+      "name": "@lostgradient/chat",
+      "resolution": "published"
+    },
+    {
+      "name": "@lostgradient/cinder",
+      "resolution": "published"
+    }
+  ],
+  "repositories": [
+    {
+      "name": "agent-bureau",
+      "remote": "https://github.com/stevekinney/agent-bureau.git",
+      "ref": "main",
+      "globs": [
+        "**/package.json",
+        "**/bun.lock",
+        "**/pnpm-lock.yaml",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/*.{ts,tsx,js,jsx,svelte,css,scss,md,mdx}"
+      ],
+      "evidence": {
+        "manifests": [
+          "**/package.json",
+          "**/bun.lock",
+          "**/pnpm-lock.yaml",
+          "**/package-lock.json",
+          "**/yarn.lock"
+        ],
+        "source": ["**/*.{ts,tsx,js,jsx,svelte}"],
+        "styles": ["**/*.{css,scss}"],
+        "documentation": ["**/*.{md,mdx}"]
+      }
+    },
+    {
+      "name": "sandman",
+      "remote": "https://github.com/stevekinney/sandman.git",
+      "ref": "main",
+      "globs": [
+        "**/package.json",
+        "**/bun.lock",
+        "**/pnpm-lock.yaml",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/*.{ts,tsx,js,jsx,svelte,css,scss,md,mdx}"
+      ],
+      "evidence": {
+        "manifests": [
+          "**/package.json",
+          "**/bun.lock",
+          "**/pnpm-lock.yaml",
+          "**/package-lock.json",
+          "**/yarn.lock"
+        ],
+        "source": ["**/*.{ts,tsx,js,jsx,svelte}"],
+        "styles": ["**/*.{css,scss}"],
+        "documentation": ["**/*.{md,mdx}"]
+      }
+    },
+    {
+      "name": "stardust",
+      "remote": "https://github.com/stevekinney/stardust.git",
+      "ref": "main",
+      "globs": [
+        "**/package.json",
+        "**/bun.lock",
+        "**/pnpm-lock.yaml",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/*.{ts,tsx,js,jsx,svelte,css,scss,md,mdx}"
+      ],
+      "evidence": {
+        "manifests": [
+          "**/package.json",
+          "**/bun.lock",
+          "**/pnpm-lock.yaml",
+          "**/package-lock.json",
+          "**/yarn.lock"
+        ],
+        "source": ["**/*.{ts,tsx,js,jsx,svelte}"],
+        "styles": ["**/*.{css,scss}"],
+        "documentation": ["**/*.{md,mdx}"]
+      }
+    },
+    {
+      "name": "temporal-explorer",
+      "remote": "https://github.com/stevekinney/temporal-explorer.git",
+      "ref": "main",
+      "globs": [
+        "**/package.json",
+        "**/bun.lock",
+        "**/pnpm-lock.yaml",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/*.{ts,tsx,js,jsx,svelte,css,scss,md,mdx}"
+      ],
+      "evidence": {
+        "manifests": [
+          "**/package.json",
+          "**/bun.lock",
+          "**/pnpm-lock.yaml",
+          "**/package-lock.json",
+          "**/yarn.lock"
+        ],
+        "source": ["**/*.{ts,tsx,js,jsx,svelte}"],
+        "styles": ["**/*.{css,scss}"],
+        "documentation": ["**/*.{md,mdx}"]
+      }
+    },
+    {
+      "name": "tribunal",
+      "remote": "https://github.com/stevekinney/tribunal.git",
+      "ref": "main",
+      "globs": [
+        "**/package.json",
+        "**/bun.lock",
+        "**/pnpm-lock.yaml",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/*.{ts,tsx,js,jsx,svelte,css,scss,md,mdx}"
+      ],
+      "evidence": {
+        "manifests": [
+          "**/package.json",
+          "**/bun.lock",
+          "**/pnpm-lock.yaml",
+          "**/package-lock.json",
+          "**/yarn.lock"
+        ],
+        "source": ["**/*.{ts,tsx,js,jsx,svelte}"],
+        "styles": ["**/*.{css,scss}"],
+        "documentation": ["**/*.{md,mdx}"]
+      }
+    },
+    {
+      "name": "weft-console",
+      "remote": "https://github.com/stevekinney/weft-console.git",
+      "ref": "main",
+      "globs": [
+        "**/package.json",
+        "**/bun.lock",
+        "**/pnpm-lock.yaml",
+        "**/package-lock.json",
+        "**/yarn.lock",
+        "**/*.{ts,tsx,js,jsx,svelte,css,scss,md,mdx}"
+      ],
+      "evidence": {
+        "manifests": [
+          "**/package.json",
+          "**/bun.lock",
+          "**/pnpm-lock.yaml",
+          "**/package-lock.json",
+          "**/yarn.lock"
+        ],
+        "source": ["**/*.{ts,tsx,js,jsx,svelte}"],
+        "styles": ["**/*.{css,scss}"],
+        "documentation": ["**/*.{md,mdx}"]
+      }
+    }
+  ]
+}

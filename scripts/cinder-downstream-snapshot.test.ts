@@ -1,10 +1,15 @@
 import { expect, test } from 'bun:test';
-import { mkdir, mkdtemp } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
+import {
+  CLONE_DIRECTORY_PREFIX,
+  describeInvalidRepositorySource,
+  removeTemporaryCheckout,
+  selectMostRecentlyPublishedVersion,
+} from './cinder-downstream-snapshot.ts';
 
 /**
  * Absolute path to the CLI under test. Resolving from `import.meta.url` rather than
@@ -47,6 +52,41 @@ async function runSnapshotCli(
   }
 
   return { exitCode, stdout, stderr };
+}
+
+/** Creates a committed local Git repository usable as a `file://` remote in tests. */
+async function createSourceRepository(
+  prefix: string,
+  files: Record<string, string>,
+): Promise<{ root: string; remote: string; commit: string }> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  Bun.spawnSync(['git', '-C', root, 'init', '-b', 'main']);
+  Bun.spawnSync(['git', '-C', root, 'config', 'user.email', 'test@example.com']);
+  Bun.spawnSync(['git', '-C', root, 'config', 'user.name', 'Snapshot Test']);
+  for (const [path, contents] of Object.entries(files)) {
+    await Bun.write(join(root, path), contents);
+  }
+  Bun.spawnSync(['git', '-C', root, 'add', '-A']);
+  Bun.spawnSync(['git', '-C', root, 'commit', '-m', 'initial']);
+  const commit = Bun.spawnSync(['git', '-C', root, 'rev-parse', 'HEAD']).stdout.toString().trim();
+  return { root, remote: `file://${root}`, commit };
+}
+
+/** Lists the snapshot tool's temporary clone directories currently in `tmpdir()`. */
+async function listCloneDirectories(): Promise<string[]> {
+  const entries = await readdir(tmpdir());
+  return entries.filter((entry) => entry.startsWith(CLONE_DIRECTORY_PREFIX)).toSorted();
+}
+
+/**
+ * Asserts a run left no temporary clone directory behind. Only directories absent
+ * beforehand are treated as leaks, so a concurrent worktree running its own snapshot
+ * cannot make this flake in either direction.
+ */
+async function expectNoNewCloneDirectories(before: string[]): Promise<void> {
+  for (const directory of await listCloneDirectories()) {
+    expect(before).toContain(directory);
+  }
 }
 
 test('snapshot input is deterministic and sorted', async () => {
@@ -302,6 +342,318 @@ test('published package resolution selects the most recently published version',
       },
     }),
   ).toBe('1.1.0-beta.1');
+});
+
+test('a repository request declares exactly one of a local path or a remote ref', () => {
+  expect(describeInvalidRepositorySource({ name: 'local', path: '/tmp/checkout' })).toBeNull();
+  expect(
+    describeInvalidRepositorySource({ name: 'local', path: '/tmp/checkout', branch: 'main' }),
+  ).toBeNull();
+  expect(
+    describeInvalidRepositorySource({ name: 'remote', remote: 'file:///tmp/origin', ref: 'main' }),
+  ).toBeNull();
+
+  expect(
+    describeInvalidRepositorySource({
+      name: 'both',
+      path: '/tmp/checkout',
+      remote: 'file:///tmp/origin',
+      ref: 'main',
+    }),
+  ).toBe('declares both path and remote; declare exactly one');
+  expect(describeInvalidRepositorySource({ name: 'neither' })).toBe(
+    'declares neither path nor remote; declare exactly one',
+  );
+  expect(
+    describeInvalidRepositorySource({ name: 'bare-remote', remote: 'file:///tmp/origin' }),
+  ).toBe('declares remote without ref');
+  expect(describeInvalidRepositorySource({ name: 'bare-ref', ref: 'main' })).toBe(
+    'declares ref without remote',
+  );
+});
+
+test('a remote request rejects local-only pins and credential-bearing remotes', () => {
+  const remote = 'https://github.com/stevekinney/tribunal.git';
+  expect(describeInvalidRepositorySource({ name: 'remote', remote, ref: 'main' })).toBeNull();
+
+  expect(
+    describeInvalidRepositorySource({ name: 'remote', remote, ref: 'main', branch: 'main' }),
+  ).toBe('declares remote with branch; a remote source is pinned by ref');
+  expect(
+    describeInvalidRepositorySource({ name: 'remote', remote, ref: 'main', commit: 'abc1234' }),
+  ).toBe('declares remote with commit; a remote source is pinned by ref');
+
+  for (const credentialed of [
+    'https://user:token@github.com/stevekinney/tribunal.git',
+    'https://token@github.com/stevekinney/tribunal.git',
+    'http://user:token@example.com/repository.git',
+  ]) {
+    expect(
+      describeInvalidRepositorySource({ name: 'remote', remote: credentialed, ref: 'main' }),
+    ).toBe('declares a remote with embedded credentials; use a credential helper instead');
+  }
+
+  // An SSH remote's user name is not a secret, and `file://` remotes carry no userinfo.
+  expect(
+    describeInvalidRepositorySource({
+      name: 'ssh',
+      remote: 'git@github.com:stevekinney/tribunal.git',
+      ref: 'main',
+    }),
+  ).toBeNull();
+  expect(
+    describeInvalidRepositorySource({ name: 'file', remote: 'file:///tmp/origin', ref: 'main' }),
+  ).toBeNull();
+});
+
+test('every invalid repository source combination is rejected before any collection', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'cinder-snapshot-invalid-'));
+  const invalidRepositories = [
+    { name: 'both', path: workspace, remote: 'file:///tmp/origin', ref: 'main' },
+    { name: 'neither' },
+    { name: 'bare-remote', remote: 'file:///tmp/origin' },
+    { name: 'bare-ref', ref: 'main' },
+  ];
+
+  for (const repository of invalidRepositories) {
+    const request = join(workspace, `${repository.name}-request.json`);
+    await Bun.write(request, JSON.stringify({ schemaVersion: 1, repositories: [repository] }));
+    const result = await runSnapshotCli(['--request', request], { expectSuccess: false });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain('invalid repository sources');
+    expect(result.stderr).toContain(repository.name);
+    expect(result.stdout).toBe('');
+  }
+});
+
+test('a remote request clones the requested ref and records its exact commit', async () => {
+  const source = await createSourceRepository('cinder-snapshot-remote-source-', {
+    'package.json': '{ "dependencies": { "@lostgradient/cinder": "^0.1.0" } }',
+    'app.ts': "import { Button } from '@lostgradient/cinder';\n",
+  });
+  const workspace = await mkdtemp(join(tmpdir(), 'cinder-snapshot-remote-'));
+  const request = join(workspace, 'request.json');
+  await Bun.write(
+    request,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [
+        {
+          name: 'downstream',
+          remote: source.remote,
+          ref: 'main',
+          evidence: { manifests: ['**/package.json'], source: ['**/*.ts'] },
+        },
+      ],
+    }),
+  );
+  const cloneDirectoriesBefore = await listCloneDirectories();
+
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
+  expect(snapshot.errors).toEqual([]);
+
+  const repository = snapshot.repositories[0];
+  expect(repository.name).toBe('downstream');
+  expect(repository.remote).toBe(source.remote);
+  expect(repository.ref).toBe('main');
+  expect(repository.commit).toBe(source.commit);
+  expect(repository.commit).toMatch(/^[0-9a-f]{40}$/u);
+
+  expect(repository.files.map((file: { path: string }) => file.path)).toEqual([
+    'app.ts',
+    'package.json',
+  ]);
+  expect(repository.evidence.source).toEqual([
+    { path: 'app.ts', line: 1, text: "import { Button } from '@lostgradient/cinder';" },
+  ]);
+  expect(repository.evidence.manifests[0].path).toBe('package.json');
+  expect(repository.files.some((file: { path: string }) => file.path.startsWith('.git'))).toBe(
+    false,
+  );
+
+  await expectNoNewCloneDirectories(cloneDirectoriesBefore);
+});
+
+test('replaying a remote request against the same commit is byte-identical', async () => {
+  const source = await createSourceRepository('cinder-snapshot-replay-', {
+    'package.json': '{ "dependencies": { "@lostgradient/cinder": "^0.1.0" } }',
+    'app.svelte': "<script>import { Button } from '@lostgradient/cinder';</script>\n",
+    'notes.md': 'We depend on Cinder tokens.\n',
+  });
+  const workspace = await mkdtemp(join(tmpdir(), 'cinder-snapshot-replay-request-'));
+  const request = join(workspace, 'request.json');
+  await Bun.write(
+    request,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [
+        {
+          name: 'downstream',
+          remote: source.remote,
+          ref: 'main',
+          evidence: {
+            manifests: ['**/package.json'],
+            source: ['**/*.svelte'],
+            documentation: ['**/*.md'],
+          },
+        },
+      ],
+    }),
+  );
+
+  const first = await runSnapshotCli(['--request', request]);
+  const second = await runSnapshotCli(['--request', request]);
+  const normalize = (value: string) =>
+    JSON.stringify({ ...JSON.parse(value), collectedAt: 'stable' });
+
+  expect(normalize(first.stdout)).toBe(normalize(second.stdout));
+  expect(JSON.parse(first.stdout).repositories[0].commit).toBe(source.commit);
+});
+
+test('remote repositories stay sorted by name regardless of request order', async () => {
+  const zulu = await createSourceRepository('cinder-snapshot-zulu-', {
+    'readme.md': 'cinder zulu',
+  });
+  const alpha = await createSourceRepository('cinder-snapshot-alpha-', {
+    'readme.md': 'cinder alpha',
+  });
+  const workspace = await mkdtemp(join(tmpdir(), 'cinder-snapshot-order-'));
+  const request = join(workspace, 'request.json');
+  await Bun.write(
+    request,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [
+        { name: 'zulu', remote: zulu.remote, ref: 'main' },
+        { name: 'alpha', remote: alpha.remote, ref: 'main' },
+      ],
+    }),
+  );
+
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
+  expect(snapshot.errors).toEqual([]);
+  expect(snapshot.repositories.map((entry: { name: string }) => entry.name)).toEqual([
+    'alpha',
+    'zulu',
+  ]);
+  expect(snapshot.repositories[0].commit).toBe(alpha.commit);
+  expect(snapshot.repositories[1].commit).toBe(zulu.commit);
+});
+
+test('clone failures land in errors and still remove the temporary checkout', async () => {
+  const source = await createSourceRepository('cinder-snapshot-badref-source-', {
+    'readme.md': 'cinder',
+  });
+  const workspace = await mkdtemp(join(tmpdir(), 'cinder-snapshot-badref-'));
+  const request = join(workspace, 'request.json');
+  await Bun.write(
+    request,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [{ name: 'downstream', remote: source.remote, ref: 'refs/heads/absent' }],
+    }),
+  );
+  const cloneDirectoriesBefore = await listCloneDirectories();
+
+  const result = await runSnapshotCli(['--request', request]);
+  expect(result.exitCode).toBe(0);
+  const snapshot = JSON.parse(result.stdout);
+  expect(snapshot.repositories).toEqual([]);
+  expect(snapshot.errors).toHaveLength(1);
+  expect(snapshot.errors[0].scope).toBe('repository:downstream');
+  expect(snapshot.errors[0].message).toContain('cloning refs/heads/absent');
+
+  await expectNoNewCloneDirectories(cloneDirectoriesBefore);
+});
+
+test('collecting a remote repository never mutates the source repository', async () => {
+  const source = await createSourceRepository('cinder-snapshot-immutable-', {
+    'package.json': '{ "name": "downstream" }',
+    'app.ts': "import '@lostgradient/cinder/styles';\n",
+  });
+  const describeSource = () => ({
+    head: Bun.spawnSync(['git', '-C', source.root, 'rev-parse', 'HEAD']).stdout.toString().trim(),
+    status: Bun.spawnSync(['git', '-C', source.root, 'status', '--porcelain'])
+      .stdout.toString()
+      .trim(),
+    index: Bun.spawnSync(['git', '-C', source.root, 'ls-files', '--stage']).stdout.toString(),
+    reflog: Bun.spawnSync(['git', '-C', source.root, 'reflog', '--format=%H %gs'])
+      .stdout.toString()
+      .trim(),
+  });
+  const before = describeSource();
+
+  const workspace = await mkdtemp(join(tmpdir(), 'cinder-snapshot-immutable-request-'));
+  const request = join(workspace, 'request.json');
+  await Bun.write(
+    request,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [{ name: 'downstream', remote: source.remote, ref: 'main' }],
+    }),
+  );
+
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
+  expect(snapshot.errors).toEqual([]);
+  expect(snapshot.repositories[0].commit).toBe(source.commit);
+  expect(describeSource()).toEqual(before);
+});
+
+test('an unremovable temporary checkout is reported instead of aborting the run', async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'cinder-snapshot-cleanup-'));
+  const checkout = join(parent, 'checkout');
+  await mkdir(checkout, { recursive: true });
+  await Bun.write(join(checkout, 'tracked.txt'), 'cinder');
+
+  expect(await removeTemporaryCheckout(checkout, 'downstream')).toBeNull();
+
+  const blocked = join(parent, 'blocked');
+  await mkdir(blocked, { recursive: true });
+  await Bun.write(join(blocked, 'tracked.txt'), 'cinder');
+  // Without write permission on the parent, the child entry cannot be unlinked.
+  await chmod(parent, 0o500);
+  try {
+    const cleanupError = await removeTemporaryCheckout(blocked, 'downstream');
+    expect(cleanupError?.scope).toBe('repository:downstream');
+    expect(cleanupError?.message).toContain('removing the temporary checkout');
+    expect(cleanupError?.message).toContain(blocked);
+  } finally {
+    await chmod(parent, 0o700);
+  }
+});
+
+test('the canonical audit request only uses remote sources on live default branches', async () => {
+  const auditRequest = await Bun.file(
+    new URL('./cinder-downstream-audit-request.json', import.meta.url),
+  ).json();
+  expect(auditRequest.schemaVersion).toBe(1);
+  expect(auditRequest.repositories).toHaveLength(6);
+  expect(auditRequest.repositories.map((entry: { name: string }) => entry.name)).toEqual(
+    auditRequest.repositories.map((entry: { name: string }) => entry.name).toSorted(),
+  );
+
+  for (const repository of auditRequest.repositories) {
+    expect(describeInvalidRepositorySource(repository)).toBeNull();
+    expect(repository.path).toBeUndefined();
+    expect(repository.remote).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\.git$/u);
+    expect(repository.branch).toBeUndefined();
+    expect(repository.commit).toBeUndefined();
+    expect(repository.globs.length).toBeGreaterThan(0);
+    expect(Object.keys(repository.evidence).toSorted()).toEqual([
+      'documentation',
+      'manifests',
+      'source',
+      'styles',
+    ]);
+  }
+
+  expect(auditRequest.packages.map((entry: { name: string }) => entry.name)).toEqual([
+    '@lostgradient/chat',
+    '@lostgradient/cinder',
+  ]);
 });
 
 test('workspace script tests are wired into documented and required CI gates', async () => {
