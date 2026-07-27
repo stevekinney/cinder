@@ -1710,7 +1710,7 @@ function forceKillHydrationBrowser(processToken: string): void {
 async function waitForHydrationBrowserExit(processToken: string): Promise<void> {
   const deadline = Date.now() + HYDRATION_TEARDOWN_TIMEOUT_MS;
   while (hydrationBrowserProcessIds(processToken).length > 0 && Date.now() < deadline) {
-    await Bun.sleep(10);
+    await Bun.sleep(50);
   }
   const remaining = hydrationBrowserProcessIds(processToken);
   if (remaining.length > 0) {
@@ -1791,7 +1791,6 @@ const NEVER_RECLAIMED = (): boolean => false;
  * would only describe the client's view of the pipe.
  */
 function isHydrationBrowserGone(browser: Browser, processToken: string): boolean {
-  if (!browser.isConnected()) return true;
   try {
     return hydrationBrowserProcessIds(processToken).length === 0;
   } catch {
