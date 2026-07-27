@@ -171,6 +171,37 @@ describe('createEventSource factory', () => {
     expect(reloads).toBe(1);
   });
 
+  test("debounces independently per event type — one type arriving does not cancel another type's pending callback", async () => {
+    // Regression: a single shared debounce timer let a `reload` burst cancel
+    // an already-pending `message` callback (and vice versa). Each listener
+    // key (`message`, `error`, or a named event) must debounce on its own.
+    let messages = 0;
+    let reloads = 0;
+    const { unmount } = render(Fixture, {
+      url: '/events',
+      handlers: {
+        debounceMs: 10,
+        onmessage: () => (messages += 1),
+        events: { reload: () => (reloads += 1) },
+      },
+    });
+    await tick();
+    const [source] = [...liveSources];
+    const messageHandler = source?.listeners.get('message');
+    const reloadHandler = source?.listeners.get('reload');
+
+    // Start the `message` debounce timer, then immediately fire `reload`.
+    // Before the fix, this would clear the shared timer and drop the
+    // pending `message` callback.
+    messageHandler?.(new MessageEvent('message'));
+    reloadHandler?.(new MessageEvent('reload'));
+
+    await Bun.sleep(20);
+    expect(messages).toBe(1);
+    expect(reloads).toBe(1);
+    unmount();
+  });
+
   test('closes on unmount', async () => {
     const { unmount } = render(Fixture, { url: '/events' });
     await tick();
