@@ -15,16 +15,31 @@ type Snapshot = {
   errors: Array<{ scope?: string; message: string }>;
 };
 
-function runSnapshot(args: string[]): string {
+type SnapshotProcessResult = { stdout: string; stderr: string };
+
+function runSnapshot(args: string[]): SnapshotProcessResult {
   const result = Bun.spawnSync([process.execPath, 'run', snapshotScript, ...args]);
+  const stdout = result.stdout.toString();
   const stderr = result.stderr.toString();
   if (result.exitCode !== 0)
     throw new Error(`snapshot child exited with code ${result.exitCode}: ${stderr}`);
-  return result.stdout.toString();
+  return { stdout, stderr };
 }
 
 function parseSnapshot(args: string[]): Snapshot {
-  return JSON.parse(runSnapshot(args)) as Snapshot;
+  const { stdout, stderr } = runSnapshot(args);
+  return parseSnapshotOutput(stdout, stderr);
+}
+
+function parseSnapshotOutput(stdout: string, stderr: string): Snapshot {
+  try {
+    return JSON.parse(stdout) as Snapshot;
+  } catch (error) {
+    throw new Error(
+      `snapshot child produced invalid JSON: ${error instanceof Error ? error.message : String(error)}; stderr: ${stderr || '(empty)'}`,
+      { cause: error },
+    );
+  }
 }
 
 test('snapshot input is deterministic and sorted', async () => {
@@ -36,15 +51,15 @@ test('snapshot input is deterministic and sorted', async () => {
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const first = runSnapshot(['--request', request]);
-  const second = runSnapshot(['--request', request]);
+  const first = runSnapshot(['--request', request]).stdout;
+  const second = runSnapshot(['--request', request]).stdout;
   const normalize = (value: string) =>
     JSON.stringify({ ...JSON.parse(value), collectedAt: 'stable' });
   expect(normalize(first)).toBe(normalize(second));
 });
 
 test('help prints usage without requiring a request', () => {
-  expect(runSnapshot(['--help'])).toContain('Usage:');
+  expect(runSnapshot(['--help']).stdout).toContain('Usage:');
 });
 
 test('partial repository failures stay in the snapshot', async () => {
@@ -80,6 +95,12 @@ test('hashes binary bytes and rejects malformed options', async () => {
   expect(
     () => runSnapshot(['--wat']),
   ).toThrow(/snapshot child exited with code \d+:[\s\S]*Unknown option/);
+});
+
+test('invalid child output includes stderr diagnostics before JSON parsing', () => {
+  expect(() => parseSnapshotOutput('', 'child warning: output stream unavailable')).toThrow(
+    /invalid JSON:[\s\S]*child warning: output stream unavailable/,
+  );
 });
 
 test('keeps scans inside the repository and excludes Git internals', async () => {
