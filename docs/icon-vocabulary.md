@@ -87,10 +87,11 @@ an interactive affordance.
 
 | `breadcrumbs/breadcrumbs.examples.json` | Custom breadcrumb separator | The exported `separator="›"` example is intentional navigation typography, not an interactive affordance; retain it as a documented separator exception. |
 
-The rows above account for every interactive text-glyph affordance found by the
-audit. Future audits should keep this distinction: a glyph that conveys data is
-not an icon affordance, while a glyph inside a button or menu trigger must
-follow this vocabulary.
+The rows above account for every interactive glyph affordance found by the
+audit, along with the non-text SVG, mask, and sizing exceptions that keep the
+inventory complete. Future audits should keep this distinction: a glyph that
+conveys data is not an icon affordance, while a glyph inside a button or menu
+trigger must follow this vocabulary.
 
 ## Enforcement
 
@@ -110,9 +111,9 @@ rg -nU -P '<[A-Za-z][^>]*>[^<>{}]*>[^<>{}]*(?:<|$)' packages/components/src/comp
 rg -nU -e '>[[:space:]]*[+-][[:space:]]*<' packages/components/src/components
 rg -n -e "icon:[[:space:]]*['\"][+−-]['\"]" packages/components/src/components --glob '*.examples.json'
 rg -n -e "icon:[[:space:]]*['\"][^'\"]+['\"]" packages/components/src/components --glob '*.examples.json'
-rg -n -e 'label=\\"[+−-]' packages/components/src/components --glob '*.examples.json'
+rg -n -e 'label=\"[+−-]' packages/components/src/components --glob '*.examples.json'
 rg -n "content:\\s*['\"]" packages/components/src/components --glob '*.css'
-rg -n '<svg\\b' packages/components/src/components --glob '*.svelte'
-rg -n 'mask(-image)?|data:image/svg\\+xml' packages/components/src/components --glob '*.css'
+rg -n '<svg\b' packages/components/src/components --glob '*.svelte'
+rg -n 'mask(-image)?|data:image/svg\+xml' packages/components/src/components --glob '*.css'
 rg -n '<svg\b|data:image/svg\+xml|icon:[[:space:]]*[^[:space:]]+' packages/components/src/components --glob '*.examples.json'
 ```
