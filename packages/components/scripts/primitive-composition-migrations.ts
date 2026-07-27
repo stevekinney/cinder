@@ -1,6 +1,6 @@
-// Exact occurrence counts for known primitive-composition migrations.
-// Remove a record as soon as its count reaches zero; changing a nonzero count
-// must be an explicit migration decision rather than an accidental exemption.
+// Exact occurrence counts for canonical primitives and known migrations.
+// Remove completed migration records as soon as their count reaches zero;
+// changing any nonzero baseline must be an explicit composition decision.
 
 export const allowedRawControlCounts = new Map<string, number>([
   ['_radio/radio.svelte', 1],

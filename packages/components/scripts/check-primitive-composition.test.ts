@@ -659,6 +659,18 @@ describe('primitive composition guard', () => {
         'new-layout/new-layout.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let dense = true;</script><div style={dense ? { display: 'grid' } : { gridTemplateColumns: '1fr' }} />",
+        'new-layout/new-layout.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '<script>let raised = true;</script><div class="menu" style={raised ? { position: \'absolute\' } : { zIndex: 1 }} />',
+        'new-layout/new-layout.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('resolves conditional style bindings', () => {

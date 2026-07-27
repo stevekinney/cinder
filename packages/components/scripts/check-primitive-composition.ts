@@ -21,7 +21,7 @@ import {
   missingMigrationRecordPaths,
 } from './primitive-composition-migrations.ts';
 import { runPrimitiveCompositionCheck } from './primitive-composition-runner.ts';
-import { styleObjectDeclarations } from './primitive-composition-style-object.ts';
+import { styleObjectDeclarationBranches } from './primitive-composition-style-object.ts';
 
 export type PrimitiveCompositionViolation = {
   filePath: string;
@@ -506,7 +506,7 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
     )
       return;
     const classes = elementClassSet(node, bindings);
-    const declarations = new Map<string, string>();
+    let declarationBranches = [new Map<string, string>()];
     for (const attribute of node['attributes']) {
       if (!isRecord(attribute)) continue;
       if (attribute['type'] === 'Attribute' && attribute['name'] === 'style') {
@@ -520,18 +520,23 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
                 attributeValue[0]['type'] === 'ExpressionTag'
               ? attributeValue[0]
               : undefined;
-        for (const [property, declarationValue] of styleObjectDeclarations(
+        const styleObjectBranches = styleObjectDeclarationBranches(
           expressionTag?.['expression'],
           source,
-        ))
-          declarations.set(property, declarationValue);
+        );
+        declarationBranches = declarationBranches.flatMap((declarations) =>
+          styleObjectBranches.map(
+            (styleObjectDeclarations) => new Map([...declarations, ...styleObjectDeclarations]),
+          ),
+        );
         const value = attributeValueWithDynamics(attribute, bindings);
         if (value === undefined || !value.includes(':')) continue;
         const root = parseCss(`:root { ${value} }`);
         const rule = root.first;
         if (rule?.type === 'rule')
-          for (const [property, declarationValue] of declarationMap(rule))
-            declarations.set(property, declarationValue);
+          for (const declarations of declarationBranches)
+            for (const [property, declarationValue] of declarationMap(rule))
+              declarations.set(property, declarationValue);
       }
       if (attribute['type'] === 'StyleDirective' && typeof attribute['name'] === 'string') {
         const value = attribute['value'];
@@ -549,27 +554,36 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
         const allLayeringValues =
           normalizedValues.length > 0 &&
           normalizedValues.every((candidate) => candidate === 'absolute' || candidate === 'fixed');
-        declarations.set(
-          attribute['name'].toLowerCase(),
-          allLayeringValues
-            ? 'absolute'
-            : (attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
-                'var(--cinder-dynamic-value)'),
-        );
+        for (const declarations of declarationBranches)
+          declarations.set(
+            attribute['name'].toLowerCase(),
+            allLayeringValues
+              ? 'absolute'
+              : (attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
+                  'var(--cinder-dynamic-value)'),
+          );
       }
     }
-    const display = declarations.get('display');
     if (
-      (display === 'grid' || display === 'inline-grid') &&
-      gridDefinitionProperties.some((property) => declarations.has(property))
+      declarationBranches.some((declarations) => {
+        const display = declarations.get('display');
+        return (
+          (display === 'grid' || display === 'inline-grid') &&
+          gridDefinitionProperties.some((property) => declarations.has(property))
+        );
+      })
     )
       total.grid++;
-    const position = declarations.get('position');
-    const zIndex = declarations.get('z-index')?.trim();
     if (
-      (position === 'absolute' || position === 'fixed') &&
-      zIndex !== undefined &&
-      !['auto', 'inherit', 'initial', 'revert', 'revert-layer', 'unset'].includes(zIndex) &&
+      declarationBranches.some((declarations) => {
+        const position = declarations.get('position');
+        const zIndex = declarations.get('z-index')?.trim();
+        return (
+          (position === 'absolute' || position === 'fixed') &&
+          zIndex !== undefined &&
+          !['auto', 'inherit', 'initial', 'revert', 'revert-layer', 'unset'].includes(zIndex)
+        );
+      }) &&
       (classes.size === 0 || isPanelLikeClassSet(classes)) &&
       !classes.has('cinder-_floating-surface')
     )

@@ -35,59 +35,51 @@ function staticValue(
   return undefined;
 }
 
-function collectObjectDeclarations(
+function mergeDeclarations(
+  base: ReadonlyMap<string, string>,
+  additions: ReadonlyMap<string, string>,
+): Map<string, string> {
+  return new Map([...base, ...additions]);
+}
+
+function collectObjectDeclarationBranches(
   expression: unknown,
   bindings: ReadonlyMap<string, unknown>,
-  declarations: Map<string, string>,
-): void {
-  if (!isRecord(expression)) return;
+): Map<string, string>[] {
+  if (!isRecord(expression)) return [new Map()];
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
-    collectObjectDeclarations(bindings.get(expression['name']), bindings, declarations);
-    return;
+    return collectObjectDeclarationBranches(bindings.get(expression['name']), bindings);
   }
   if (
     expression['type'] === 'ConditionalExpression' ||
     expression['type'] === 'LogicalExpression'
   ) {
-    const consequentDeclarations = new Map<string, string>();
-    const alternateDeclarations = new Map<string, string>();
-    collectObjectDeclarations(
-      expression['consequent'] ?? expression['left'],
-      bindings,
-      consequentDeclarations,
-    );
-    collectObjectDeclarations(
-      expression['alternate'] ?? expression['right'],
-      bindings,
-      alternateDeclarations,
-    );
-    for (const [property, value] of [...consequentDeclarations, ...alternateDeclarations]) {
-      const existing = declarations.get(property);
-      if (
-        property !== 'display' ||
-        existing === undefined ||
-        value === 'grid' ||
-        value === 'inline-grid'
-      )
-        declarations.set(property, value);
-    }
-    return;
+    return [
+      ...collectObjectDeclarationBranches(expression['consequent'] ?? expression['left'], bindings),
+      ...collectObjectDeclarationBranches(expression['alternate'] ?? expression['right'], bindings),
+    ];
   }
-  if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties'])) return;
+  if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties']))
+    return [new Map()];
+  let branches = [new Map<string, string>()];
   for (const property of expression['properties']) {
     if (!isRecord(property)) continue;
     if (property['type'] === 'SpreadElement') {
-      collectObjectDeclarations(property['argument'], bindings, declarations);
+      const spreadBranches = collectObjectDeclarationBranches(property['argument'], bindings);
+      branches = branches.flatMap((branch) =>
+        spreadBranches.map((spreadBranch) => mergeDeclarations(branch, spreadBranch)),
+      );
       continue;
     }
     if (property['type'] !== 'Property' || property['computed'] === true) continue;
     const propertyName = staticPropertyName(property);
     if (propertyName === undefined) continue;
-    declarations.set(
-      cssPropertyName(propertyName),
-      staticValue(property['value'], bindings)?.toLowerCase() ?? 'var(--cinder-dynamic-value)',
-    );
+    const normalizedPropertyName = cssPropertyName(propertyName);
+    const normalizedValue =
+      staticValue(property['value'], bindings)?.toLowerCase() ?? 'var(--cinder-dynamic-value)';
+    for (const branch of branches) branch.set(normalizedPropertyName, normalizedValue);
   }
+  return branches;
 }
 
 function staticBindings(instance: unknown): Map<string, unknown> {
@@ -157,10 +149,11 @@ function staticBindings(instance: unknown): Map<string, unknown> {
   return bindings;
 }
 
-export function styleObjectDeclarations(expression: unknown, source: string): Map<string, string> {
-  const declarations = new Map<string, string>();
+export function styleObjectDeclarationBranches(
+  expression: unknown,
+  source: string,
+): Map<string, string>[] {
   const root: unknown = parseSvelte(source, { modern: true });
   const bindings = isRecord(root) ? staticBindings(root['instance']) : new Map<string, unknown>();
-  collectObjectDeclarations(expression, bindings, declarations);
-  return declarations;
+  return collectObjectDeclarationBranches(expression, bindings);
 }
