@@ -46,6 +46,7 @@
   let popoverElement = $state<HTMLDivElement | null>(null);
   let restoreFocusElement: HTMLElement | null = null;
   let wasOpen = false;
+  let closeRequested = false;
 
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
     if (!position) return null;
@@ -102,9 +103,15 @@
     restoreFocusElement = null;
   }
 
-  function closePopover(): void {
+  function requestClose(preventScroll = false): void {
+    if (closeRequested) return;
+    closeRequested = true;
     onClose?.();
-    restoreFocus();
+    restoreFocus(preventScroll);
+  }
+
+  function closePopover(): void {
+    requestClose();
   }
 
   function handleExpand(): void {
@@ -194,7 +201,6 @@
     let viewportWidth = window.innerWidth;
     let viewportHeight = window.innerHeight;
     const visualViewport = window.visualViewport;
-    let movementDismissed = false;
     const virtualKeyboardWasVisible = {
       window: isVirtualKeyboardResize('window'),
       'visual-viewport': isVirtualKeyboardResize('visual-viewport'),
@@ -245,10 +251,7 @@
       return { active: true, isVisible };
     };
     const closeForMovement = () => {
-      if (movementDismissed) return;
-      movementDismissed = true;
-      onClose?.();
-      restoreFocus(true);
+      requestClose(true);
     };
     const dismiss = (event: Event) => {
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
@@ -372,6 +375,7 @@
     // after an internal close-and-restore left the popover open).
     if (!wasOpen) {
       wasOpen = true;
+      closeRequested = false;
       rememberFocus();
     }
   });

@@ -1003,6 +1003,40 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('focus-restoration scrolling does not request a second close', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let closeCount = 0;
+    trigger.focus = () => {
+      window.dispatchEvent(new Event('scroll'));
+    };
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: false,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closeCount += 1;
+        },
+      },
+    });
+
+    try {
+      await rerender({ open: true, position: { x: 120, y: 80 } });
+      await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
+        key: 'Escape',
+      });
+
+      expect(closeCount).toBe(1);
+    } finally {
+      trigger.remove();
+    }
+  });
+
   test('movement dismissal restores focus without scrolling the prior focus owner', async () => {
     const trigger = document.createElement('button');
     trigger.textContent = 'Open selection actions';
