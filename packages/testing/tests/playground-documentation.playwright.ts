@@ -19,13 +19,15 @@ test.describe('playground component documentation', () => {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.emulateMedia({ colorScheme: 'dark' });
 
-    await page.goto('/c/button?w=768', { waitUntil: 'load' });
-    const documentation = page.locator('[data-canonical-documentation]');
+    await page.goto('/page/button', { waitUntil: 'load' });
+    const documentation = page.locator('[data-component-page]');
     await expect(documentation).toHaveCount(1);
     await expect(documentation.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
     await expect(documentation.getByRole('heading', { name: 'Overview' })).toBeVisible();
     await expect(documentation.getByRole('heading', { name: 'Props' })).toBeVisible();
-    const readme = documentation.locator('.cinder-markdown-content');
+    // The canonical page renders README prose as `.dx-prose.readme-content`;
+    // `.cinder-markdown-content` belonged to the deleted condensed page.
+    const readme = documentation.locator('.dx-prose.readme-content');
     await expect(readme).toBeVisible();
     expect(
       await readme
@@ -35,16 +37,14 @@ test.describe('playground component documentation', () => {
           return Number.parseFloat(getComputedStyle(paragraph).marginBlockEnd);
         }),
     ).toBeGreaterThan(0);
-    await expect(page.locator('iframe[data-cinder-preview]')).toHaveAttribute(
-      'src',
-      '/page/button?preview=1',
-    );
-    await expect(page.locator('#viewport-width-input')).toHaveValue('768');
-    await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked();
-    await expect(
-      page.getByRole('link', { name: 'Open interactive documentation' }),
-    ).toHaveAttribute('href', '/page/button');
+    // One documentation surface: no iframe, no second page to link out to, and
+    // no loading state. `/c/<name>` 301s here.
+    await expect(page.locator('iframe')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Open interactive documentation' })).toHaveCount(0);
     await expect(page.getByTestId('preview-loading-overlay')).toHaveCount(0);
+    // The preview pane rides alongside the prose rather than being a section.
+    await expect(page.locator('.dx-preview')).toHaveCount(1);
+    await expect(page.getByRole('group', { name: 'Preview viewport' })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -60,9 +60,12 @@ test.describe('playground component documentation', () => {
       localStorage.setItem('cinder-playground-theme', 'dark');
     });
 
-    await page.goto('/c/button', { waitUntil: 'load' });
+    await page.goto('/page/button', { waitUntil: 'load' });
 
-    await expect(page.getByRole('radio', { name: 'Dark' })).toBeChecked();
+    // The pre-paint script seeds `data-cinder-theme` from the persisted key
+    // before first paint; the page adopts it after hydration without changing
+    // the server tree.
+    await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
     expect(errors).toEqual([]);
   });
 
@@ -75,9 +78,11 @@ test.describe('playground component documentation', () => {
     await page.goto('/page/toggle', { waitUntil: 'load' });
     const preview = page;
 
-    // The Playground section mounts the BARE component live with the synthesized
-    // prop values, labelled "Live preview" — not the static "Featured example".
-    const playground = preview.locator('#playground');
+    // The preview pane mounts the BARE component live with the synthesized prop
+    // values, labelled "Live preview" — not the static "Featured example". The
+    // controls used to live in a `#playground` section you scrolled to; they are
+    // now in the persistent pane beside the prose.
+    const playground = preview.locator('.dx-preview');
     await expect(playground).toBeVisible();
     const liveMount = preview.locator('#playground-live-mount');
     await expect(liveMount).toBeVisible();

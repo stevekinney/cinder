@@ -12,8 +12,6 @@ const EXPECTED_COLOR_TOKEN_COUNT = 61;
 const LIGHT_ADVANCED_OVERRIDE = 'oklch(60% 0.2 195)';
 const LIGHT_BULK_OVERRIDE = '#118833';
 const DARK_BULK_OVERRIDE = '#884422';
-const STALE_DARK_MESSAGE_OVERRIDE = '#123456';
-const MATCHING_LIGHT_MESSAGE_OVERRIDE = '#654321';
 
 const PICKER_SEED_TOKENS = [
   '--cinder-surface',
@@ -56,8 +54,21 @@ type ColorTokenRowLayoutState = {
   resetCenterRatio: number | null;
 };
 
+/**
+ * Put the page into a specific theme.
+ *
+ * The canonical documentation page carries a single icon toggle rather than the
+ * shell's Light/Dark radio group, so this reads the current theme off
+ * `data-cinder-theme` and clicks only when a change is actually needed.
+ */
+async function selectTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
+  const current = await page.evaluate(() => document.documentElement.dataset['cinderTheme']);
+  if (current === theme) return;
+  await page.getByRole('button', { name: `Preview theme: switch to ${theme}` }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', theme);
+}
+
 async function waitForPlayground(page: Page): Promise<void> {
-  await page.waitForSelector('iframe[data-cinder-preview]', { state: 'attached' });
   await page.waitForSelector('[data-testid="color-token-panel-toggle"]', { state: 'visible' });
   await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe('');
 }
@@ -68,12 +79,18 @@ async function shellTokenValue(page: Page, tokenName: string): Promise<string> {
   }, tokenName);
 }
 
+/**
+ * Read a token as the PREVIEW sees it.
+ *
+ * There is one document now — the panel writes custom properties straight to
+ * `:root` instead of pushing them across a postMessage bridge into a preview
+ * iframe — so this resolves to the same root read as {@link shellTokenValue}.
+ * The two names are kept distinct because the assertions below still mean
+ * different things: one checks the authoring chrome, the other the rendered
+ * component.
+ */
 async function iframeTokenValue(page: Page, tokenName: string): Promise<string> {
-  const frame = page.frames().find((candidate) => candidate.url().includes('/page/button'));
-  if (frame === undefined) return '';
-  return frame.evaluate((token) => {
-    return getComputedStyle(document.documentElement).getPropertyValue(token).trim();
-  }, tokenName);
+  return shellTokenValue(page, tokenName);
 }
 
 async function renderedTokenBackgroundValue(page: Page, tokenName: string): Promise<string> {
@@ -510,35 +527,14 @@ function expectCleanTokenRowLayout(layout: ColorTokenRowLayoutState): void {
   expect(layout.valueSummaryRightGap).toBeGreaterThanOrEqual(0);
 }
 
-async function postIframeColorOverrideMessage(
-  page: Page,
-  theme: 'light' | 'dark',
-  overrides: Record<string, string>,
-): Promise<void> {
-  await page.evaluate(
-    ({ theme: messageTheme, overrides: messageOverrides }) => {
-      const iframe = document.querySelector<HTMLIFrameElement>('iframe[data-cinder-preview]');
-      iframe?.contentWindow?.postMessage(
-        {
-          type: 'cinder:set-color-token-overrides',
-          theme: messageTheme,
-          overrides: messageOverrides,
-        },
-        window.location.origin,
-      );
-    },
-    { theme, overrides },
-  );
-}
-
 test.describe('playground color token panel', () => {
   test('supports visual color editing with correct swatches, focus, theme isolation, and reset UX', async ({
     page,
   }) => {
-    await page.goto('/c/button', { waitUntil: 'load' });
+    await page.goto('/page/button', { waitUntil: 'load' });
     await waitForPlayground(page);
 
-    await page.getByRole('radio', { name: 'Light' }).click();
+    await selectTheme(page, 'light');
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'light');
 
     const panel = await openColorTokenPanel(page);
@@ -668,14 +664,14 @@ test.describe('playground color token panel', () => {
     await expect.poll(() => shellTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
 
-    await page.getByRole('radio', { name: 'Dark' }).click();
+    await selectTheme(page, 'dark');
     await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
     await fillTokenCssValue(page, DANGER_TOKEN_NAME, DARK_BULK_OVERRIDE);
     await expect.poll(() => shellTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
 
-    await page.getByRole('radio', { name: 'Light' }).click();
+    await selectTheme(page, 'light');
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(visualPickerValue);
     await expect.poll(() => shellTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
     await expect(page.getByRole('button', { name: 'Reset light' })).toBeEnabled();
@@ -690,11 +686,11 @@ test.describe('playground color token panel', () => {
       .not.toBe(LIGHT_BULK_OVERRIDE);
     await expect(page.getByRole('button', { name: 'Reset light' })).toBeDisabled();
 
-    await page.getByRole('radio', { name: 'Dark' }).click();
+    await selectTheme(page, 'dark');
     await expect.poll(() => shellTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, DANGER_TOKEN_NAME)).toBe(DARK_BULK_OVERRIDE);
 
-    await page.getByRole('radio', { name: 'Light' }).click();
+    await selectTheme(page, 'light');
     await fillTokenCssValue(page, TOKEN_NAME, LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).toBe(LIGHT_ADVANCED_OVERRIDE);
@@ -715,10 +711,10 @@ test.describe('playground color token panel', () => {
 
   test('keeps token row actions and value input usable at narrow widths', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/c/button', { waitUntil: 'load' });
+    await page.goto('/page/button', { waitUntil: 'load' });
     await waitForPlayground(page);
 
-    await page.getByRole('radio', { name: 'Light' }).click();
+    await selectTheme(page, 'light');
     const panel = await openColorTokenPanel(page);
     const accentRow = page.locator(`[data-color-token="${TOKEN_NAME}"]`);
     const accentColorPickerButton = accentRow.getByRole('button', {
@@ -745,39 +741,26 @@ test.describe('playground color token panel', () => {
     await expect(panel).toBeVisible();
   });
 
-  test('preview frame ignores stale wrong-theme color override messages', async ({ page }) => {
-    await page.goto('/c/button', { waitUntil: 'load' });
-    await waitForPlayground(page);
-
-    await page.getByRole('radio', { name: 'Light' }).click();
-    await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'light');
-    await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe('');
-
-    await postIframeColorOverrideMessage(page, 'dark', {
-      [TOKEN_NAME]: STALE_DARK_MESSAGE_OVERRIDE,
-    });
-    await postIframeColorOverrideMessage(page, 'light', {
-      [SUCCESS_TOKEN_NAME]: LIGHT_BULK_OVERRIDE,
-    });
-    await expect.poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
-    expect(await iframeTokenValue(page, TOKEN_NAME)).not.toBe(STALE_DARK_MESSAGE_OVERRIDE);
-
-    await postIframeColorOverrideMessage(page, 'light', {
-      [TOKEN_NAME]: MATCHING_LIGHT_MESSAGE_OVERRIDE,
-    });
-    await expect
-      .poll(() => iframeTokenValue(page, TOKEN_NAME))
-      .toBe(MATCHING_LIGHT_MESSAGE_OVERRIDE);
-  });
+  /*
+   * REMOVED: 'preview frame ignores stale wrong-theme color override messages'.
+   *
+   * That test drove the shell -> iframe postMessage bridge and asserted the
+   * iframe discarded overrides addressed to the other theme. The bridge no
+   * longer exists: the documentation page is one document, so the panel writes
+   * custom properties straight to `:root` and there is no cross-document
+   * message to mis-address. Theme isolation itself is still covered by the
+   * editing test above, which switches themes and asserts overrides do not
+   * leak between them.
+   */
 
   test('token trigger focus remains visible when forced-colors mode disables shadows', async ({
     page,
   }) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    await page.goto('/c/button', { waitUntil: 'load' });
+    await page.goto('/page/button', { waitUntil: 'load' });
     await waitForPlayground(page);
 
-    await page.getByRole('radio', { name: 'Light' }).click();
+    await selectTheme(page, 'light');
     const panel = await openColorTokenPanel(page);
     await expect(page.locator('#color-token-filter')).toBeFocused();
 

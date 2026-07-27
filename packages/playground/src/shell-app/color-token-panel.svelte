@@ -1,7 +1,14 @@
 <script lang="ts">
   import { untrack } from 'svelte';
 
-  import { Button, ColorPicker, Input, Popover } from '../../../components/src/index.ts';
+  // Per-component subpaths, NOT the `src/index.ts` barrel. This panel now renders
+  // inside the per-component documentation page, and the barrel dragged every
+  // component into that page's bundle — and collided with the documentation
+  // tests' module mocks ("export default cannot be used with export *").
+  import { Button } from '@lostgradient/cinder/button';
+  import { ColorPicker } from '@lostgradient/cinder/color-picker';
+  import { Input } from '@lostgradient/cinder/input';
+  import { Popover } from '@lostgradient/cinder/popover';
   import { RotateCcw } from 'lucide-svelte';
   import {
     COLOR_TOKEN_GROUPS,
@@ -607,7 +614,14 @@
 <style>
   .color-token-panel {
     position: fixed;
-    top: var(--cinder-top-bar-height);
+    /*
+     * Fallback matters: the panel now also renders on the canonical
+     * documentation page, which has no shell top bar and therefore never
+     * declares `--cinder-top-bar-height`. Without a fallback the declaration is
+     * invalid, `top` resolves to `auto`, and the fixed panel lands at its static
+     * position — off screen.
+     */
+    top: var(--cinder-top-bar-height, 0px);
     right: 0;
     bottom: 0;
     z-index: 12;

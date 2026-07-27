@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 /**
- * Regression coverage for playground-owned page chrome on `/c/:name`.
+ * Regression coverage for playground-owned page chrome on `/page/:name`.
  *
  * The broad focus sweep should be able to separate component-under-test focus
  * rings from reusable playground chrome. These assertions therefore target the
@@ -202,7 +202,7 @@ async function locatePropsTableScrollRegion(
   const propsTableCount = await frame.locator('.props-table-scroll').count();
   expect(
     propsTableCount,
-    '/c/button Props section no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
+    '/page/button Props section no longer exposes `.props-table-scroll`; update the stable page-chrome fixture.',
   ).toBe(1);
 
   // The last example's `Show code` disclosure trigger is the final focusable
