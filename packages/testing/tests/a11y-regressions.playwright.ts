@@ -136,10 +136,12 @@ test.describe('a11y regressions', () => {
       fixtureContentHash: fixture.fixtureContentHash,
     });
     const gatedControl = page.locator('[data-access-gate-toggle-anchor] button');
+    await expect(gatedControl).toBeDisabled();
     const deniedGeometry = await gatedControl.boundingBox();
     expect(deniedGeometry).not.toBeNull();
 
     await page.getByRole('button', { name: 'Toggle access' }).click();
+    await expect(gatedControl).toBeEnabled();
     const grantedGeometry = await gatedControl.boundingBox();
     expect(grantedGeometry).not.toBeNull();
     expect(Math.abs(grantedGeometry!.y - deniedGeometry!.y)).toBeLessThan(1);
