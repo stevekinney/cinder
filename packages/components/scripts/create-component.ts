@@ -474,8 +474,12 @@ async function main(): Promise<void> {
   process.stdout.write(
     `  4. Add 'export ... from ./components/${context.relativeDirectory}/index.ts' to src/index.ts.\n`,
   );
-  process.stdout.write('  5. Run: bun run components:generate && bun run exports:generate\n');
-  process.stdout.write('  6. Verify: bun run components:check && bun run exports:check\n');
+  process.stdout.write(
+    '  5. Run: bun run --filter=@lostgradient/cinder components:generate && bun run --filter=@lostgradient/cinder exports:generate\n',
+  );
+  process.stdout.write(
+    '  6. Verify: bun run --filter=@lostgradient/cinder components:check && bun run --filter=@lostgradient/cinder exports:check\n',
+  );
 }
 
 if (import.meta.main) {
