@@ -1003,7 +1003,7 @@
                                 {#if item.alternative !== undefined}
                                   <a
                                     class="dx-guide__alt"
-                                    href="/page/{item.alternative}"
+                                    href={buildComponentHref(item.alternative)}
                                     target="_top"
                                   >
                                     Use {humanizeId(item.alternative)} instead
@@ -1259,7 +1259,7 @@
                   </div>
                   <div class="dx-related">
                     {#each component.related as related (related)}
-                      <a class="dx-rel" href="/page/{related}" target="_top">
+                      <a class="dx-rel" href={buildComponentHref(related)} target="_top">
                         <span class="dx-rel__top">
                           <span class="dx-rel__name">{related}</span>
                           <ArrowUpRight

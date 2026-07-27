@@ -131,7 +131,7 @@ async function waitForPing(baseUrl: string, timeoutMs: number): Promise<void> {
 /**
  * Validate shell + component page routes for all discovered components:
  *   - /c/:name — legacy alias; must 301 to /page/:name
- *   - /page/:name — standalone component page (the iframe content)
+ *   - /page/:name — the canonical, server-rendered documentation page
  */
 async function validateComponentRoutes(baseUrl: string, components: string[]): Promise<void> {
   process.stdout.write(`[validate:playground] crawling ${components.length} component routes…\n`);
@@ -170,7 +170,7 @@ async function validateComponentRoutes(baseUrl: string, components: string[]): P
       fail(`GET ${legacyUrl} redirected to ${String(location)}, expected /page/${name}`);
     }
 
-    // Component page route (iframe content)
+    // Canonical documentation route
     const pageUrl = `${baseUrl}/page/${name}`;
     let pageResponse: Response;
     try {
