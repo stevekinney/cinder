@@ -108,14 +108,14 @@ describe('MegaMenu', () => {
     expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(0, 1fr));');
   });
 
-  test('keeps submenu trigger IDs unique for non-BMP labels', () => {
+  test('keeps submenu trigger IDs unique for non-BMP labels', async () => {
     const unicodeItems = structuredClone(items);
     unicodeItems[0]!.submenu = [
       { id: '😀', label: 'Smile', sections: [] },
       { id: '😁', label: 'Grin', sections: [] },
     ];
     const { container } = render(MegaMenu, { items: unicodeItems });
-    fireEvent.click(getTriggerByLabel(container, 'Products'));
+    await fireEvent.click(getTriggerByLabel(container, 'Products'));
     const ids = Array.from(
       container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
     ).map((button) => button.id);
