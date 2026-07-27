@@ -1677,23 +1677,43 @@ type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
  */
 type HydrationBrowser = { browser: Browser; processToken: string };
 
-function hydrationBrowserProcessIds(processToken: string): number[] {
-  const listing = Bun.spawnSync(['ps', '-axo', 'pid=,command='], { stdout: 'pipe' });
+/**
+ * Extracted from the `ps` call so the "unreadable process table" branch can be
+ * pinned by a test without shelling out. Throws rather than returning `[]` on a
+ * failed listing: an empty list means "provably gone" and drives the
+ * reclamation verdict, so collapsing the two would report every resource as
+ * reclaimed and turn the gate permanently green.
+ */
+export function parseHydrationBrowserProcessIds(
+  listing: { exitCode: number; stdout: string; stderr: string },
+  processToken: string,
+  selfPid: number,
+): number[] {
   if (listing.exitCode !== 0) {
     throw new Error(
-      `ps failed while inspecting Chromium process state (exit ${listing.exitCode}): ${listing.stderr.toString()}`,
+      `ps failed while inspecting Chromium process state (exit ${listing.exitCode}): ${listing.stderr}`,
     );
   }
-  return listing.stdout
-    .toString()
-    .split('\n')
-    .flatMap((line) => {
-      if (!line.includes(processToken)) return [];
-      const match = /^\s*(\d+)\s+/.exec(line);
-      if (!match) return [];
-      const pid = Number(match[1]);
-      return pid === process.pid ? [] : [pid];
-    });
+  return listing.stdout.split('\n').flatMap((line) => {
+    if (!line.includes(processToken)) return [];
+    const match = /^\s*(\d+)\s+/.exec(line);
+    if (!match) return [];
+    const pid = Number(match[1]);
+    return pid === selfPid ? [] : [pid];
+  });
+}
+
+function hydrationBrowserProcessIds(processToken: string): number[] {
+  const listing = Bun.spawnSync(['ps', '-axo', 'pid=,command='], { stdout: 'pipe' });
+  return parseHydrationBrowserProcessIds(
+    {
+      exitCode: listing.exitCode,
+      stdout: listing.stdout.toString(),
+      stderr: listing.stderr.toString(),
+    },
+    processToken,
+    process.pid,
+  );
 }
 
 function forceKillHydrationBrowser(processToken: string): void {
@@ -1790,10 +1810,15 @@ const NEVER_RECLAIMED = (): boolean => false;
  * process hosting every context and page is gone with it. `isConnected()` alone
  * would only describe the client's view of the pipe.
  */
-function isHydrationBrowserGone(browser: Browser, processToken: string): boolean {
+function isHydrationBrowserGone(processToken: string): boolean {
   try {
+    // The process table is consulted FIRST and on its own. A closed client pipe
+    // (`isConnected() === false`) says Playwright lost its connection, which is
+    // not proof the process died — a Chromium wedged badly enough to drop the
+    // pipe while still running is exactly the orphan this gate must catch.
     return hydrationBrowserProcessIds(processToken).length === 0;
   } catch {
+    // Unreadable process table: nothing here is proof, so nothing is reclaimed.
     return false;
   }
 }
@@ -1926,7 +1951,7 @@ async function runSvelteKitHydrationRoutesOnce(
               phase: 'context.close',
               close: () => context.close(),
               state: () => `contextPages=${context.pages().length}`,
-              reclaimed: () => isHydrationBrowserGone(browser, processToken),
+              reclaimed: () => isHydrationBrowserGone(processToken),
             },
           ]),
       {
@@ -1938,7 +1963,7 @@ async function runSvelteKitHydrationRoutesOnce(
         },
         state: () =>
           `browserConnected=${browser.isConnected()} processRunning=${hydrationBrowserProcessIds(processToken).length > 0}`,
-        reclaimed: () => isHydrationBrowserGone(browser, processToken),
+        reclaimed: () => isHydrationBrowserGone(processToken),
       },
     ])),
   );
@@ -2047,7 +2072,7 @@ async function assertSvelteKitHydrationRoute(
         phase: `page.close route=${routePath}`,
         close: () => page.close(),
         state: () => `pageClosed=${page.isClosed()} browserConnected=${browser.isConnected()}`,
-        reclaimed: () => page.isClosed() || isHydrationBrowserGone(browser, processToken),
+        reclaimed: () => page.isClosed() || isHydrationBrowserGone(processToken),
       },
     ])),
   );

@@ -7,6 +7,7 @@ import {
   bumpPackageVersion,
   chatPeerValidationTarballPath,
   EXAMPLES_CONSUMER_READINESS_PATH,
+  parseHydrationBrowserProcessIds,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
   unreclaimedTeardownFailures,
@@ -188,6 +189,40 @@ describe('hydration teardown reclamation verdict', () => {
     // No `reclaimed` signal: the fixture server sits outside the browser
     // containment chain, so its failure always counts.
     expect(unreclaimedTeardownFailures(failures)).toHaveLength(1);
+  });
+
+  test('refuses to read an unreadable process table as a reclaimed browser', () => {
+    // `[]` means "provably gone" and subsumes earlier teardown failures, so a
+    // failed `ps` must never produce it — that would turn the gate permanently
+    // green, which is strictly worse than the flake this fixes.
+    expect(() =>
+      parseHydrationBrowserProcessIds(
+        { exitCode: 1, stdout: '', stderr: 'ps: permission denied' },
+        'cinder-hydration-abc',
+        10,
+      ),
+    ).toThrow('ps failed');
+
+    expect(
+      parseHydrationBrowserProcessIds(
+        { exitCode: 0, stdout: '', stderr: '' },
+        'cinder-hydration-abc',
+        10,
+      ),
+    ).toEqual([]);
+  });
+
+  test('matches only this run’s launch token and never its own pid', () => {
+    const token = 'cinder-hydration-abc';
+    const stdout = [
+      `  4242 /path/chrome-headless-shell --cinder-hydration-token=${token} --headless`,
+      `    10 bun validate-consumers.ts --cinder-hydration-token=${token}`,
+      '  5150 /path/chrome-headless-shell --cinder-hydration-token=cinder-hydration-other',
+    ].join('\n');
+
+    expect(parseHydrationBrowserProcessIds({ exitCode: 0, stdout, stderr: '' }, token, 10)).toEqual(
+      [4242],
+    );
   });
 });
 
