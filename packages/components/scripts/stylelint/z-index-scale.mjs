@@ -106,6 +106,10 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }
+      if (Number.isFinite(Number(value)) && Number(value) < 0) {
+        stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
+        return;
+      }
       if (value !== '9999' && hasAdjacentLocalReason(declaration)) return;
 
       stylelint.utils.report({

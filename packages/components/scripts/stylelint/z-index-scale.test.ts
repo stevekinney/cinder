@@ -82,6 +82,16 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
+  test('rejects a negative numeric layer even with a local reason', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this layer must stay behind its stacking context. */
+        z-index: -1;
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test('accepts a reasoned component-local expression but never the historical 9999 escape hatch', async () => {
     const localExpression = await lint(`
       .fixture {
