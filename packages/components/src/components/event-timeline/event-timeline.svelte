@@ -95,6 +95,7 @@
   let clusterTrigger = $state<HTMLButtonElement | null>(null);
   let clusterFocusPending = $state(false);
   let clusterSurface = $state<HTMLDivElement | null>(null);
+  let itemsElement = $state<HTMLDivElement | null>(null);
   let portalOwnerWidth = $state(0);
   let isRtl = $state(false);
   const instanceId = $props.id();
@@ -473,8 +474,16 @@
     }),
   );
 
-  $effect(() => {
+  $effect.pre(() => {
     if (openClusterKey !== null && !clusters.some((cluster) => cluster.key === openClusterKey)) {
+      if (clusterSurface?.contains(document.activeElement)) {
+        const survivingTrigger = [
+          ...(itemsElement?.querySelectorAll<HTMLButtonElement>(
+            '.cinder-event-timeline__cluster-trigger',
+          ) ?? []),
+        ].find((trigger) => trigger !== clusterTrigger);
+        (survivingTrigger ?? itemsElement)?.focus();
+      }
       openClusterKey = null;
       clusterFocusPending = false;
       clusterTrigger = null;
@@ -522,9 +531,11 @@
   </div>
   <div
     class="cinder-event-timeline__items"
+    bind:this={itemsElement}
     {@attach observeItems}
     role="list"
     aria-label={accessibleName}
+    tabindex="-1"
     style:--_cinder-event-timeline-lane-count={laneCount}
   >
     {#each renderItems as renderItem (renderItem.key)}

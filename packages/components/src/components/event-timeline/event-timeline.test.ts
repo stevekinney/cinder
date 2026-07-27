@@ -368,6 +368,34 @@ describe('EventTimeline', () => {
     expect(document.activeElement).toBe(cluster);
   });
 
+  test('restores focus to the timeline before removing an open stale cluster', async () => {
+    const denseItems = [0, 1, 2, 3, 4].map((index) => ({
+      at: `2026-07-03T06:0${index}:00.000Z`,
+      label: `Event ${index + 1}`,
+    }));
+    const { container, rerender } = render(EventTimeline, {
+      start,
+      end,
+      items: denseItems,
+    });
+
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    )!;
+    await fireEvent.click(cluster);
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+
+    await rerender({
+      start,
+      end,
+      items: denseItems.slice(0, 1),
+    });
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(container.querySelector('[role="list"]'));
+  });
+
   test('keeps cluster surfaces inside a Cinder popover panel', async () => {
     const popover = document.createElement('div');
     popover.className = 'cinder-popover';
@@ -755,5 +783,8 @@ describe('EventTimeline', () => {
     expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__leader');
     expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__cluster-trigger');
     expect(EVENT_TIMELINE_CSS).toContain(':focus-visible');
+    expect(EVENT_TIMELINE_CSS).not.toMatch(
+      /:dir\(rtl\).*data-cinder-edge='(?:start|end)'\][^{]*\{[^}]*justify-items:/s,
+    );
   });
 });
