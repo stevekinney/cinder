@@ -84,6 +84,36 @@ test('invalid options report exit code and stderr instead of a JSON parse error'
   expect((failure as Error).message).not.toContain('JSON Parse error');
 });
 
+test('clones a file remote ref, records its commit, and redacts remote credentials', async () => {
+  const source = await mkdtemp(join(tmpdir(), 'cinder-snapshot-remote-'));
+  Bun.spawnSync(['git', '-C', source, 'init', '-q', '-b', 'main']);
+  Bun.spawnSync(['git', '-C', source, 'config', 'user.email', 'snapshot@example.test']);
+  Bun.spawnSync(['git', '-C', source, 'config', 'user.name', 'Snapshot']);
+  await Bun.write(join(source, 'remote.txt'), 'remote');
+  Bun.spawnSync(['git', '-C', source, 'add', 'remote.txt']);
+  Bun.spawnSync(['git', '-C', source, 'commit', '-qm', 'remote']);
+  const expected = Bun.spawnSync(['git', '-C', source, 'rev-parse', 'HEAD'])
+    .stdout.toString()
+    .trim();
+  const request = join(await mkdtemp(join(tmpdir(), 'cinder-snapshot-request-')), 'request.json');
+  await Bun.write(
+    request,
+    JSON.stringify({
+      schemaVersion: 1,
+      repositories: [{ name: 'remote', remote: `file://${source}`, ref: 'main' }],
+    }),
+  );
+  const result = Bun.spawnSync([
+    'bun',
+    'run',
+    'scripts/cinder-downstream-snapshot.ts',
+    '--request',
+    request,
+  ]);
+  const snapshot = JSON.parse(result.stdout.toString());
+  expect(snapshot.repositories[0].commit).toBe(expected);
+});
+
 test('partial repository failures stay in the snapshot', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-error-'));
   const request = join(root, 'request.json');

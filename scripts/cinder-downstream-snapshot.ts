@@ -39,6 +39,19 @@ function redactEvidenceLine(line: string): string {
   return line.replace(SENSITIVE_EVIDENCE_ASSIGNMENT, '$1[REDACTED]');
 }
 
+function redactRemote(remote: string): string {
+  try {
+    const url = new URL(remote);
+    if (url.username || url.password) {
+      url.username = '[REDACTED]';
+      url.password = '';
+    }
+    return url.toString();
+  } catch {
+    return '[REDACTED]';
+  }
+}
+
 export function selectMostRecentlyPublishedVersion(packument: PackagePackument): string {
   const versions = packument.versions ?? {};
   const candidates = Object.entries(packument.time ?? {})
@@ -323,6 +336,9 @@ async function main(): Promise<void> {
         name: repository.name,
         ...(repository.remote === undefined
           ? {}
+          : { remote: redactRemote(repository.remote), ref: repository.ref! }),
+        ...(repository.remote === undefined
+          ? {}
           : { remote: repository.remote, ref: repository.ref! }),
         branch: repository.branch ?? null,
         commit: resolvedCommit,
@@ -332,7 +348,7 @@ async function main(): Promise<void> {
     } catch (error) {
       errors.push({
         scope: `repository:${repository.name}`,
-        message: error instanceof Error ? error.message : String(error),
+        message: redactEvidenceLine(error instanceof Error ? error.message : String(error)),
       });
     } finally {
       if (temporaryRoot !== null) await rm(temporaryRoot, { recursive: true, force: true });
