@@ -161,6 +161,30 @@ function bindingPatternIncludesName(pattern: unknown, bindingName: string): bool
   return false;
 }
 
+function declaresBindingWithinFunctionScope(node: unknown, bindingName: string): boolean {
+  if (!isRecord(node)) return false;
+  // Nested function/arrow bodies are separate scopes with their own shadowing
+  // handled independently by the caller's recursion; don't descend into them
+  // here or a same-named local in a nested function would falsely shadow the
+  // outer binding.
+  if (
+    node['type'] === 'FunctionDeclaration' ||
+    node['type'] === 'FunctionExpression' ||
+    node['type'] === 'ArrowFunctionExpression'
+  )
+    return false;
+  if (node['type'] === 'VariableDeclarator' && bindingPatternIncludesName(node['id'], bindingName))
+    return true;
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) {
+      if (value.some((item) => declaresBindingWithinFunctionScope(item, bindingName))) return true;
+    } else if (isRecord(value) && declaresBindingWithinFunctionScope(value, bindingName)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function possibleMutableControlNames(source: string, expression: unknown): Set<string> {
   if (
     !isRecord(expression) ||
@@ -183,16 +207,12 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       type === 'FunctionExpression' ||
       type === 'ArrowFunctionExpression'
     ) {
-      let declaresBinding =
-        Array.isArray(current['params']) &&
-        current['params'].some((parameter) => bindingPatternIncludesName(parameter, bindingName));
-      walkAst(current['body'], (node) => {
-        if (
-          node['type'] === 'VariableDeclarator' &&
-          bindingPatternIncludesName(node['id'], bindingName)
-        )
-          declaresBinding = true;
-      });
+      const declaresBinding =
+        (Array.isArray(current['params']) &&
+          current['params'].some((parameter) =>
+            bindingPatternIncludesName(parameter, bindingName),
+          )) ||
+        declaresBindingWithinFunctionScope(current['body'], bindingName);
       currentShadowed ||= declaresBinding;
     }
     const node = current;

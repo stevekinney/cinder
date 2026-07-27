@@ -10,6 +10,7 @@ import {
   allowedFieldWrapperCounts,
   allowedFloatingCounts,
   allowedGridCounts,
+  allowedRawControlSignatures,
 } from './primitive-composition-migrations.ts';
 import { primitiveCompositionSourceRoots } from './primitive-composition-runner.ts';
 
@@ -433,6 +434,21 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('resolves a conditional/logical expression assigned to a mutable style-object binding', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; layout = dense ? { display: 'grid', gridTemplateColumns: '1fr' } : { display: 'block' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; layout = dense && { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('resolves style-object bindings wrapped in a TypeScript `as const` assertion', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -740,6 +756,15 @@ describe('primitive composition guard', () => {
         'polymorphic/polymorphic.svelte',
       ),
     ).toEqual([]);
+  });
+
+  test('detects a real outer write even when an unrelated nested function shadows the name', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function outer() { tag = 'input'; function inner() { let tag = 'x'; } }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('counts literal HtmlTag field composition', () => {
@@ -1123,5 +1148,16 @@ describe('primitive composition guard', () => {
     expect(missingMigrationRecordPaths(new Set(['pin-input/pin-input.svelte']))).not.toContain(
       'pin-input/pin-input.svelte',
     );
+  });
+
+  test('tracks a raw-control-signature-only path in the missing-migration-record set', () => {
+    const syntheticPath = '__test-only__/synthetic-signature.svelte';
+    allowedRawControlSignatures.set(syntheticPath, ['input']);
+    try {
+      expect(missingMigrationRecordPaths(new Set())).toContain(syntheticPath);
+      expect(missingMigrationRecordPaths(new Set([syntheticPath]))).not.toContain(syntheticPath);
+    } finally {
+      allowedRawControlSignatures.delete(syntheticPath);
+    }
   });
 });

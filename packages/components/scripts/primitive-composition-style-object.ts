@@ -153,7 +153,12 @@ function staticBindings(instance: unknown): Map<string, unknown> {
       continue;
     if (!mutableBindings.has(expression['left']['name'])) continue;
     const assignedValue = unwrapTypeExpression(expression['right']);
-    if (isRecord(assignedValue) && assignedValue['type'] === 'ObjectExpression')
+    if (
+      isRecord(assignedValue) &&
+      ['ObjectExpression', 'ConditionalExpression', 'LogicalExpression'].includes(
+        String(assignedValue['type']),
+      )
+    )
       bindings.set(expression['left']['name'], assignedValue);
     else if (isRecord(assignedValue) && assignedValue['type'] === 'Literal')
       bindings.set(expression['left']['name'], assignedValue['value']);

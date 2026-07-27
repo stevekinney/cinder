@@ -155,12 +155,13 @@ export const allowedFieldWrapperCounts = new Map<string, number>(
 );
 allowedFieldWrapperCounts.set('date-picker/date-picker.svelte', 2);
 
-const migrationMaps = [
+const migrationMaps: ReadonlyArray<ReadonlyMap<string, unknown>> = [
   allowedRawControlCounts,
+  allowedRawControlSignatures,
   allowedGridCounts,
   allowedFloatingCounts,
   allowedFieldWrapperCounts,
-] as const;
+];
 
 export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>): string[] {
   return (
