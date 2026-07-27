@@ -3,6 +3,9 @@ import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
 
 const carousel = loadManifest().find((entry) => entry.slug === 'carousel');
+// Chromium serializes the equivalent `pan-x pan-y pinch-zoom` declaration as
+// its `manipulation` alias in computed styles.
+const nativePanTouchAction = /^(?:manipulation|pan-x pan-y pinch-zoom)$/;
 
 test('carousel uses a native snapping track and keeps pagination in sync', async ({
   componentPage,
@@ -16,7 +19,7 @@ test('carousel uses a native snapping track and keeps pagination in sync', async
 
   const viewport = page.locator('.cinder-carousel__viewport');
   await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
-  await expect(viewport).toHaveCSS('touch-action', 'pan-x pan-y pinch-zoom');
+  await expect(viewport).toHaveCSS('touch-action', nativePanTouchAction);
   await expect(viewport.locator('.cinder-carousel__slide')).toHaveCount(3);
 
   await viewport.evaluate((element) => {
@@ -44,7 +47,7 @@ test('carousel track remains scrollable in a touch-capable context', async ({ br
     await page.goto('/page/carousel?snapshot=1', { waitUntil: 'load' });
     const viewport = page.locator('.cinder-carousel__viewport');
     await expect(viewport).toBeVisible();
-    await expect(viewport).toHaveCSS('touch-action', 'pan-x pan-y pinch-zoom');
+    await expect(viewport).toHaveCSS('touch-action', nativePanTouchAction);
     await expect(viewport).toHaveCSS('scroll-snap-type', /x mandatory/);
   } finally {
     await context.close();
