@@ -264,7 +264,7 @@ test('selection popover dismisses when a nested scroll container scrolls', async
     }
 
     const scrollContainer = document.createElement('div');
-    scrollContainer.dataset.testid = 'nested-selection-scroll-container';
+    scrollContainer.dataset['testid'] = 'nested-selection-scroll-container';
     scrollContainer.style.height = '8rem';
     scrollContainer.style.overflow = 'auto';
     article.style.minHeight = '30rem';
