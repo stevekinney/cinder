@@ -56,13 +56,19 @@
     //
     // Only `test`/`test:coverage` carry these. `build`, `typecheck`, and `lint` are deterministic
     // across platforms, so they keep full CI-to-laptop cache sharing.
+    // `.github/workflows/**` is a test input, not just CI configuration:
+    // `validate-release-workflow.test.ts` reads unit-tests.yaml and main-green.yaml off disk and
+    // asserts their build ordering and filters, so a workflow regression would otherwise collect a
+    // false cached pass. Declared on the base task rather than scoped to cinder — workflow files
+    // change rarely, so the extra invalidation for other packages costs almost nothing.
     "test": {
       "dependsOn": ["^build"],
       "outputs": [],
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**"
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/.github/workflows/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
@@ -72,7 +78,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**"
+        "$TURBO_ROOT$/packages/testing/scripts/**",
+        "$TURBO_ROOT$/.github/workflows/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
@@ -109,7 +116,8 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
-        "$TURBO_ROOT$/packages/playground/src/**"
+        "$TURBO_ROOT$/packages/playground/src/**",
+        "$TURBO_ROOT$/.github/workflows/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },

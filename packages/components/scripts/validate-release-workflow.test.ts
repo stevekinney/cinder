@@ -20,6 +20,7 @@ import {
   workflowDeclaresPermission,
   workflowDispatchInputHasDefault,
   workflowExpressionContextRoots,
+  workflowExpressionFunctionNames,
   workflowRunScriptsContainActiveLine,
 } from './validate-release-workflow.ts';
 
@@ -29,10 +30,24 @@ import {
  */
 const CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL = new Set(['github', 'secrets', 'inputs', 'vars']);
 
+/** Mirrors the validator's set of functions unavailable before a runner exists. */
+const FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL = new Set([
+  'hashfiles',
+  'success',
+  'failure',
+  'cancelled',
+  'always',
+]);
+
 function workflowLevelEnvironmentLineIsRejected(line: string): boolean {
-  return workflowExpressionContextRoots(line).some(
+  const hasUnavailableContext = workflowExpressionContextRoots(line).some(
     (root) => !CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL.has(root),
   );
+  const hasUnavailableFunction = workflowExpressionFunctionNames(line).some((name) =>
+    FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL.has(name),
+  );
+
+  return hasUnavailableContext || hasUnavailableFunction;
 }
 
 describe('workflow-level env context guard', () => {
@@ -48,6 +63,12 @@ describe('workflow-level env context guard', () => {
     ['matrix', '  A: ${{ matrix.chunk }}'],
     ['steps', '  A: ${{ steps.compute.outputs.value }}'],
     ['strategy', '  A: ${{ strategy.job-index }}'],
+    // hashFiles needs a checked-out workspace; the status functions describe a
+    // job that has not started. Neither exists before a runner is assigned.
+    ['hashFiles, which needs a workspace', "  A: ${{ hashFiles('bun.lock') }}"],
+    ['hashFiles regardless of casing', "  A: ${{ HASHFILES('bun.lock') }}"],
+    ['the always status function', '  A: ${{ always() }}'],
+    ['the success status function', '  A: ${{ success() }}'],
   ])('rejects %s', (_label, line) => {
     expect(workflowLevelEnvironmentLineIsRejected(line)).toBe(true);
   });
@@ -58,7 +79,8 @@ describe('workflow-level env context guard', () => {
     ['a deep github path', '  A: ${{ github.event.pull_request.number }}'],
     ['github with bracket access mid-chain', "  A: ${{ github['event'].pull_request.number }}"],
     ['github inside an interpolated string', '  TURBO_SCM_BASE: origin/${{ github.base_ref }}'],
-    ['a bare function call', "  A: ${{ hashFiles('bun.lock') }}"],
+    ['an always-available function', "  A: ${{ format('{0}', github.sha) }}"],
+    ['toJSON over an allowed context', '  A: ${{ toJSON(github.event) }}'],
     ['a dotted string literal argument', "  A: ${{ format('{0}.{1}', github.a, github.b) }}"],
     [
       'a boolean expression over github',

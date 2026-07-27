@@ -26,8 +26,10 @@
  *     inherited by the publish step without appearing in the step's own lines,
  *     so the whole-file check closes that evasion path. Comment lines are
  *     allowed (they document the OIDC rationale).
- *   - release-manual.yaml is NOT checked — that file intentionally uses a token
- *     as a documented break-glass fallback.
+ *   - release-manual.yaml is exempt from the TOKEN guards above only — that file
+ *     intentionally uses a token as a documented break-glass fallback. It is
+ *     still covered by the workflow-level `env:` context check below, which
+ *     scans every workflow in the directory.
  *   - No workflow (not just release.yaml) references a job- or step-scoped
  *     context (`runner`, `steps`, `job`, `matrix`, `needs`, `strategy`) inside a
  *     workflow-level `env:` block. GitHub rejects the entire file in that case,
@@ -810,6 +812,41 @@ function runValidation(): void {
 const CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL = new Set(['github', 'secrets', 'inputs', 'vars']);
 
 /**
+ * Expression functions that are NOT available to a workflow-level `env:`.
+ *
+ * `hashFiles` needs a workspace that only exists once a job has checked out on a
+ * runner, and the status functions describe a job that has not started. The
+ * always-available functions (`contains`, `startsWith`, `endsWith`, `format`,
+ * `join`, `toJSON`, `fromJSON`) are deliberately absent from this set.
+ */
+const FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL = new Set([
+  'hashfiles',
+  'success',
+  'failure',
+  'cancelled',
+  'always',
+]);
+
+/**
+ * Names of functions invoked inside every `${{ … }}` expression on a line,
+ * lowercased because GitHub's expression functions are case-insensitive.
+ */
+export function workflowExpressionFunctionNames(line: string): string[] {
+  const names: string[] = [];
+
+  for (const expression of line.matchAll(/\$\{\{(?<body>.*?)\}\}/g)) {
+    const body = (expression.groups?.['body'] ?? '').replace(/'(?:[^']|'')*'/g, "''");
+
+    for (const call of body.matchAll(/(?<![.\w-])(?<name>[A-Za-z_][A-Za-z0-9_-]*)\s*\(/g)) {
+      const name = call.groups?.['name'];
+      if (name !== undefined) names.push(name.toLowerCase());
+    }
+  }
+
+  return names;
+}
+
+/**
  * Extract the root identifier of every context reference inside a `${{ … }}`
  * expression — the part before the first `.` or `[`, so both `runner.os` and
  * `runner['os']` yield `runner`.
@@ -872,6 +909,20 @@ function validateWorkflowLevelEnvironmentContexts(): void {
       }
 
       if (!insideWorkflowEnvironmentBlock || isComment(line)) continue;
+
+      for (const functionName of workflowExpressionFunctionNames(line)) {
+        if (!FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL.has(functionName)) continue;
+
+        fail(
+          `${fileName} calls \`${functionName}()\` in its workflow-level \`env:\` block:\n` +
+            `  ${line.trim()}\n\n` +
+            '`hashFiles` needs a checked-out workspace, and the status functions\n' +
+            '(`success`, `failure`, `cancelled`, `always`) describe a job that has not\n' +
+            'started — none are available before a job is assigned to a runner. GitHub\n' +
+            'rejects the ENTIRE workflow file, so every job fails before it starts.\n' +
+            'Move the value to the job or step that needs it.',
+        );
+      }
 
       for (const root of workflowExpressionContextRoots(line)) {
         if (CONTEXTS_AVAILABLE_AT_WORKFLOW_LEVEL.has(root)) continue;
