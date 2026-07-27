@@ -137,9 +137,8 @@
     return usableWidth > 0 ? `min(28rem, ${usableWidth}px)` : '28rem';
   }
   const clusterPortalAttachment = createPortalAttachment({
-    // Anchored overlay coordinates are viewport-relative (fixed strategy). Keep the
-    // surface in the document top layer so transformed dialog containers cannot
-    // become a competing fixed-position containing block.
+    // Keep the surface attached to the nearest overlay owner so its positioning
+    // strategy can account for transformed dialog or popover containers.
     target: () => {
       return portalOwner() ?? document.body;
     },
@@ -308,7 +307,7 @@
       })
       .filter((item): item is NonNullable<typeof item> => item !== undefined)
       .sort((a, b) => a.position - b.position)
-      .map(({ item, index, timestamp, position }) => {
+      .forEach(({ item, index, timestamp, position }) => {
         const offsetPercent =
           measuredWidth > 0
             ? ((6 * rootFontSize) / measuredWidth) * 100
@@ -585,7 +584,7 @@
             tabindex="0"
             aria-expanded={openClusterKey === cluster.key}
             aria-haspopup="dialog"
-            aria-controls={clusterId}
+            aria-controls={openClusterKey === cluster.key ? clusterId : undefined}
             aria-label={cluster.accessibleLabel}
             onclick={(event) => {
               clusterTrigger = event.currentTarget as HTMLButtonElement;
