@@ -430,6 +430,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('ignores positioned internal layers that are not panel-like surfaces', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<div class="checkbox-indicator" style="position: absolute; z-index: 1"></div>',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('allows a floating surface composed on the matching rendered element', () => {
     expect(
       findPrimitiveCompositionViolations(

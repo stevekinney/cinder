@@ -415,6 +415,14 @@ function elementClassSet(
   return classes;
 }
 
+function isPanelLikeClassSet(classes: ReadonlySet<string>): boolean {
+  return [...classes].some((className) =>
+    /(?:floating|surface|menu|popover|dialog|modal|drawer|tooltip|dropdown|sheet|panel|listbox|combobox|command)/i.test(
+      className,
+    ),
+  );
+}
+
 function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
   const fragment = parseSvelteFragment(source);
   const bindings = staticStringBindings(source);
@@ -544,6 +552,7 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
       (position === 'absolute' || position === 'fixed') &&
       zIndex !== undefined &&
       !['auto', 'inherit', 'initial', 'revert', 'revert-layer', 'unset'].includes(zIndex) &&
+      (classes.size === 0 || isPanelLikeClassSet(classes)) &&
       !classes.has('cinder-_floating-surface')
     )
       total.floating++;
