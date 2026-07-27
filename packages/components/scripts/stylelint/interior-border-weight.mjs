@@ -41,7 +41,8 @@ function resolvesToRaisedSurface(value, customProperties, seen = new Set()) {
 }
 
 function resolvesToBorder(value, token, customProperties, seen = new Set()) {
-  if (value.includes(`var(${token})`)) return true;
+  const tokenPattern = new RegExp(`var\\(\\s*${token}\\s*(?:[,)]|$)`);
+  if (tokenPattern.test(value)) return true;
   return [...value.matchAll(/var\(\s*(--[\w-]+)/g)].some(([, name]) => {
     if (seen.has(name)) return false;
     const replacement = customProperties.get(name);

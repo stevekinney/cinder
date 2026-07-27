@@ -29,7 +29,7 @@ function variableFunctions(value) {
 }
 
 function resolvesToSurface(value, variables, seen = new Set()) {
-  if (value.includes('var(--cinder-surface)')) return true;
+  if (/var\(\s*--cinder-surface\s*(?:[,)]|$)/.test(value)) return true;
   return variableFunctions(value).some(({ name, fallback }) => {
     if (seen.has(name)) return false;
     const replacement = variables.get(name) ?? fallback;

@@ -88,7 +88,7 @@ describe('respondingPlaygroundUrl', () => {
     expect(probeCount).toBe(1);
   });
 
-  test('probes the fallback URL until the server reports a selected port', async () => {
+  test('probes the fallback URL once when no port is reported', async () => {
     const probedUrls: string[] = [];
 
     await respondingPlaygroundUrl(null, 'http://localhost:5555', async (url) => {

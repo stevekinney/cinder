@@ -23,6 +23,13 @@ describe(ruleName, () => {
     ).toHaveLength(1);
     expect(
       warnings(
+        await lint(
+          '.cinder-card__header { border-bottom: 1px solid var(--cinder-border, transparent); }',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
         await lint('.cinder-table__cell { border-bottom: 1px solid var(--cinder-border); }'),
       ),
     ).toHaveLength(1);
