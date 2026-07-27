@@ -1643,8 +1643,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         'explicit `@lostgradient/cinder/button/styles` import',
       );
     } finally {
-      fixtureServer.kill();
-      await fixtureServer.exited;
+      await stopHydrationFixtureServer(fixtureServer);
     }
   } finally {
     restoreManifest();
@@ -1662,7 +1661,7 @@ type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
  * `/dev/shm` is not constrained), so the crash first surfaced as a blocked
  * release rather than in PR CI. Writing shared memory under `/tmp` avoids it.
  */
-async function launchHydrationChromium() {
+async function launchHydrationChromium(): Promise<Browser> {
   const { chromium } = await import('@playwright/test');
   return promiseWithTimeout(
     chromium.launch({ args: ['--disable-dev-shm-usage'] }),
@@ -1698,6 +1697,66 @@ class HydrationTeardownError extends Error {
   }
 }
 
+const HYDRATION_TEARDOWN_TIMEOUT_MS = 5_000;
+
+type TeardownStep = {
+  phase: string;
+  close: () => Promise<void>;
+  forceClose?: () => Promise<void> | void;
+  state: () => string;
+};
+
+type TeardownStepFailure = { phase: string; error: unknown; state: string };
+
+export async function runBoundedHydrationTeardown(
+  steps: readonly TeardownStep[],
+  timeoutMs = HYDRATION_TEARDOWN_TIMEOUT_MS,
+): Promise<TeardownStepFailure[]> {
+  const failures: TeardownStepFailure[] = [];
+  for (const step of steps) {
+    try {
+      await promiseWithTimeout(step.close(), timeoutMs, `teardown phase=${step.phase}`);
+    } catch (error) {
+      let state: string;
+      try {
+        state = step.state();
+      } catch (stateError) {
+        state = `state-error=${stateError instanceof Error ? stateError.message : String(stateError)}`;
+      }
+      failures.push({ phase: step.phase, error, state });
+      try {
+        await step.forceClose?.();
+      } catch (forceError) {
+        failures.push({ phase: `${step.phase}.force`, error: forceError, state });
+      }
+    }
+  }
+  return failures;
+}
+
+async function stopHydrationFixtureServer(server: Bun.Subprocess): Promise<void> {
+  const failures = await runBoundedHydrationTeardown([
+    {
+      phase: 'fixture-server.exited',
+      close: async () => {
+        server.kill();
+        await server.exited;
+      },
+      forceClose: () => server.kill(),
+      state: () => `fixtureServerExitCode=${server.exitCode ?? 'running'}`,
+    },
+  ]);
+  if (failures.length > 0) {
+    const failure = failures[0]!;
+    throw new HydrationTeardownError(
+      new Error(
+        `teardown phase=${failure.phase} ${failure.state}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
+        { cause: failure.error },
+      ),
+    );
+  }
+}
+
 async function runSvelteKitHydrationRoutesOnce(
   httpPort: number,
   label: string,
@@ -1707,11 +1766,20 @@ async function runSvelteKitHydrationRoutesOnce(
   let context: BrowserContext | undefined;
   let bodyError: unknown;
   let bodyFailed = false;
+  const browserEvents: string[] = [];
+  browser.on('disconnected', () => browserEvents.push('browser:disconnected'));
 
   try {
     context = await browser.newContext();
     for (const routePath of routePaths) {
-      await assertSvelteKitHydrationRoute(browser, context, httpPort, label, routePath);
+      await assertSvelteKitHydrationRoute(
+        browser,
+        context,
+        httpPort,
+        label,
+        routePath,
+        browserEvents,
+      );
     }
   } catch (error) {
     bodyError = error;
@@ -1723,40 +1791,38 @@ async function runSvelteKitHydrationRoutesOnce(
   // passing run never leaks a Chromium process/handle that would hang a later
   // validate:consumer run; collect rather than throw inline so `browser.close()`
   // still runs if `context.close()` fails.
-  const closeErrors: unknown[] = [];
-  if (context !== undefined) {
-    await promiseWithTimeout(
-      context.close(),
-      5_000,
-      `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-    ).catch((error: unknown) =>
-      closeErrors.push(
-        new Error(
-          `teardown phase=context.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error },
-        ),
-      ),
-    );
-  }
-  await promiseWithTimeout(
-    browser.close(),
-    5_000,
-    `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-  ).catch((error: unknown) =>
-    closeErrors.push(
-      new Error(
-        `teardown phase=browser.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
-        { cause: error },
-      ),
-    ),
-  );
+  const closeErrors = await runBoundedHydrationTeardown([
+    ...(context === undefined
+      ? []
+      : [
+          {
+            phase: 'context.close',
+            close: () => context!.close(),
+            state: () => `contextPages=${context!.pages().length}`,
+          },
+        ]),
+    {
+      phase: 'browser.close',
+      close: () => browser.close(),
+      forceClose: () => browser.close(),
+      state: () => `browserConnected=${browser.isConnected()}`,
+    },
+  ]);
 
   // A body failure wins: its error is what the retry decision needs (a crashed
   // browser makes both closes throw too — those are swallowed). But when every
   // route assertion PASSED and teardown still failed, surface it: a browser
   // dying during close is a real problem, not noise to hide behind a green run.
   if (bodyFailed) throw bodyError;
-  if (closeErrors.length > 0) throw new HydrationTeardownError(closeErrors[0]);
+  if (closeErrors.length > 0) {
+    const first = closeErrors[0]!;
+    throw new HydrationTeardownError(
+      new Error(
+        `teardown phase=${first.phase} routes=${routePaths.join(',')} ${first.state} events=${browserEvents.join('|') || 'none'}: ${first.error instanceof Error ? first.error.message : String(first.error)}`,
+        { cause: first.error },
+      ),
+    );
+  }
 }
 
 async function assertSvelteKitClientRoutesHydrate(
@@ -1787,9 +1853,12 @@ async function assertSvelteKitHydrationRoute(
   httpPort: number,
   label: string,
   routePath: SvelteKitHydrationRoute,
+  browserEvents: string[],
 ): Promise<void> {
   const page = await context.newPage();
   const errors: string[] = [];
+  page.on('crash', () => browserEvents.push(`page:crash route=${routePath}`));
+  page.on('requestfailed', (request) => browserEvents.push(`requestfailed:${request.url()}`));
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     const text = message.text();
@@ -1801,6 +1870,7 @@ async function assertSvelteKitHydrationRoute(
     }
   });
 
+  let bodyError: unknown;
   try {
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, {
       waitUntil: 'domcontentloaded',
@@ -1813,19 +1883,25 @@ async function assertSvelteKitHydrationRoute(
         `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,
       );
     }
-  } finally {
-    await promiseWithTimeout(
-      page.close(),
-      5_000,
-      `closing SvelteKit hydration page for ${routePath}`,
-    ).catch((error: unknown) => {
-      throw new HydrationTeardownError(
-        new Error(
-          `teardown phase=page.close route=${routePath} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error },
-        ),
-      );
-    });
+  } catch (error) {
+    bodyError = error;
+  }
+  const pageFailures = await runBoundedHydrationTeardown([
+    {
+      phase: 'page.close',
+      close: () => page.close(),
+      state: () => `pageClosed=${page.isClosed()} browserConnected=${browser.isConnected()}`,
+    },
+  ]);
+  if (bodyError !== undefined) throw bodyError;
+  if (pageFailures.length > 0) {
+    const failure = pageFailures[0]!;
+    throw new HydrationTeardownError(
+      new Error(
+        `teardown phase=${failure.phase} route=${routePath} ${failure.state} events=${browserEvents.join('|') || 'none'}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
+        { cause: failure.error },
+      ),
+    );
   }
 }
 
@@ -2394,8 +2470,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
         `[validate-consumers] examples-consumer OK — ${expected.entryCount} example entries each rendered exactly once.\n`,
       );
     } finally {
-      fixtureServer.kill();
-      await fixtureServer.exited;
+      await stopHydrationFixtureServer(fixtureServer);
     }
   } finally {
     restoreManifest();

@@ -8,7 +8,46 @@ import {
   chatPeerValidationTarballPath,
   EXAMPLES_CONSUMER_READINESS_PATH,
   resolveChatFixtureCinderVersion,
+  runBoundedHydrationTeardown,
 } from './validate-consumers.ts';
+
+describe('hydration teardown', () => {
+  test('forces later resources closed when page close never settles', async () => {
+    const calls: string[] = [];
+    const failures = await runBoundedHydrationTeardown(
+      [
+        {
+          phase: 'page.close',
+          close: () => new Promise<void>(() => {}),
+          forceClose: () => {
+            calls.push('page.forceClose');
+          },
+          state: () => 'pageClosed=false',
+        },
+        {
+          phase: 'browser.close',
+          close: async () => {
+            calls.push('browser.close');
+          },
+          state: () => 'browserConnected=false',
+        },
+        {
+          phase: 'fixture-server.exited',
+          close: async () => {
+            calls.push('fixture-server.exited');
+          },
+          state: () => 'fixtureServerExitCode=0',
+        },
+      ],
+      1,
+    );
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0]?.phase).toBe('page.close');
+    expect(failures[0]?.state).toBe('pageClosed=false');
+    expect(calls).toEqual(['page.forceClose', 'browser.close', 'fixture-server.exited']);
+  });
+});
 
 describe('examples consumer readiness', () => {
   test('polls a static build asset instead of repeatedly rendering every example', () => {
