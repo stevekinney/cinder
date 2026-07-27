@@ -109,7 +109,17 @@ function staticBindings(instance: unknown): Map<string, unknown> {
           continue;
         if (statement['kind'] !== 'const') {
           mutableBindings.add(declaration['id']['name']);
-          bindings.delete(declaration['id']['name']);
+          const initializer = declaration['init'];
+          if (
+            isRecord(initializer) &&
+            ['ObjectExpression', 'ConditionalExpression', 'LogicalExpression'].includes(
+              String(initializer['type']),
+            )
+          )
+            bindings.set(declaration['id']['name'], initializer);
+          else if (isRecord(initializer) && initializer['type'] === 'Literal')
+            bindings.set(declaration['id']['name'], initializer['value']);
+          else bindings.delete(declaration['id']['name']);
           continue;
         }
         const initializer = declaration['init'];

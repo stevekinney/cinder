@@ -241,7 +241,34 @@ function hasStaticHiddenAttribute(
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
   return attributes.some((attribute) => {
-    if (!isRecord(attribute) || attribute['type'] !== 'Attribute') return false;
+    if (!isRecord(attribute)) return false;
+    if (attribute['type'] === 'SpreadAttribute' && isRecord(attribute['expression'])) {
+      const expression = attribute['expression'];
+      if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties']))
+        return false;
+      return expression['properties'].some((property) => {
+        if (!isRecord(property) || property['type'] !== 'Property' || property['computed'] === true)
+          return false;
+        const key = property['key'];
+        const name = isRecord(key)
+          ? key['type'] === 'Identifier' && typeof key['name'] === 'string'
+            ? key['name']
+            : key['type'] === 'Literal' && typeof key['value'] === 'string'
+              ? key['value']
+              : undefined
+          : undefined;
+        if (
+          name !== 'hidden' &&
+          !(elementNames.size === 1 && elementNames.has('input') && name === 'type')
+        )
+          return false;
+        const value = property['value'];
+        if (name === 'hidden')
+          return isRecord(value) && value['type'] === 'Literal' && value['value'] === true;
+        return staticStringFromExpression(value, bindings)?.toLowerCase() === 'hidden';
+      });
+    }
+    if (attribute['type'] !== 'Attribute') return false;
     if (attribute['name'] === 'hidden') {
       if (attribute['value'] === true || staticAttributeValue(attribute) !== undefined) return true;
       const value = attribute['value'];

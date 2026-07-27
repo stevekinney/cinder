@@ -43,6 +43,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('resolves hidden attributes from static object spreads', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<input {...{ type: 'hidden' }} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('ignores expression-backed static hidden input types', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -392,6 +401,12 @@ describe('primitive composition guard', () => {
   });
 
   test('resolves top-level writes to mutable style-object bindings', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
     expect(
       findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'block' }; layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
