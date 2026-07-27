@@ -29,6 +29,8 @@
     readFocusModeFromSearch,
     readPreviewWidthFromSearch,
   } from './shell-app/routing.ts';
+  import { readSidebarScroll, writeSidebarScroll } from './shell-app/sidebar-scroll.ts';
+  import { THEME_STORAGE_KEY } from './shell-app/theme-storage.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
     formatErrorForClipboard,
@@ -227,6 +229,16 @@
   /** Focus mode expands the stage over the viewport; Escape exits. */
   let isFocusMode = $state(false);
 
+  /** Restore the nav's scroll offset, and keep persisting it as the user scrolls. */
+  function restoreNavScroll(element: HTMLElement): () => void {
+    const saved = readSidebarScroll();
+    if (saved !== null) element.scrollTop = saved;
+
+    const onScroll = (): void => writeSidebarScroll(element.scrollTop);
+    element.addEventListener('scroll', onScroll, { passive: true });
+    return () => element.removeEventListener('scroll', onScroll);
+  }
+
   /*
    * Escape exits focus mode.
    *
@@ -257,7 +269,10 @@
     document.documentElement.style.colorScheme = theme;
     document.documentElement.dataset['cinderTheme'] = theme;
     try {
-      localStorage.setItem('cinder-docs-theme', theme);
+      // Same key the pre-paint script in render-shell.ts reads. It previously
+      // wrote `cinder-docs-theme`, which nothing read, so the choice was lost on
+      // every navigation.
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
     } catch {
       // Private mode / disabled storage — the in-memory theme still applies.
     }
@@ -1544,7 +1559,13 @@
          the content it put ~170 link stops between a keyboard user and the
          documentation they came for. -->
     {#if sidebarComponents.length > 0}
-      <nav class="dx-nav" aria-label="Components">
+      <!--
+        Restores its own scroll offset. Selecting a component is a full document
+        navigation, so without this the 170-link column snapped back to the top
+        every time and the reader lost their place.
+
+-->
+      <nav class="dx-nav" aria-label="Components" {@attach restoreNavScroll}>
         <a class="dx-nav__brand" href="/">CINDER</a>
         <ul class="dx-nav__list">
           {#each sidebarComponents as name (name)}
