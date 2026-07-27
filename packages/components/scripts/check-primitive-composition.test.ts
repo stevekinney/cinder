@@ -707,6 +707,18 @@ describe('primitive composition guard', () => {
         'polymorphic/polymorphic.svelte',
       ),
     ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function helper(tag) { tag = 'input'; }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function helper({ tag }) { tag = 'input'; }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('counts literal HtmlTag field composition', () => {

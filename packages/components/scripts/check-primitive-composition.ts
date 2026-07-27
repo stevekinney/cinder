@@ -137,6 +137,30 @@ function staticStringBindings(source: string): Map<string, string> {
   return bindings;
 }
 
+function bindingPatternIncludesName(pattern: unknown, bindingName: string): boolean {
+  if (!isRecord(pattern)) return false;
+  if (pattern['type'] === 'Identifier') return pattern['name'] === bindingName;
+  if (pattern['type'] === 'RestElement') {
+    return bindingPatternIncludesName(pattern['argument'], bindingName);
+  }
+  if (pattern['type'] === 'AssignmentPattern') {
+    return bindingPatternIncludesName(pattern['left'], bindingName);
+  }
+  if (pattern['type'] === 'ArrayPattern' && Array.isArray(pattern['elements'])) {
+    return pattern['elements'].some((element) => bindingPatternIncludesName(element, bindingName));
+  }
+  if (pattern['type'] === 'ObjectPattern' && Array.isArray(pattern['properties'])) {
+    return pattern['properties'].some((property) => {
+      if (!isRecord(property)) return false;
+      if (property['type'] === 'RestElement') {
+        return bindingPatternIncludesName(property['argument'], bindingName);
+      }
+      return bindingPatternIncludesName(property['value'], bindingName);
+    });
+  }
+  return false;
+}
+
 function possibleMutableControlNames(source: string, expression: unknown): Set<string> {
   if (
     !isRecord(expression) ||
@@ -159,12 +183,13 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       type === 'FunctionExpression' ||
       type === 'ArrowFunctionExpression'
     ) {
-      let declaresBinding = false;
+      let declaresBinding =
+        Array.isArray(current['params']) &&
+        current['params'].some((parameter) => bindingPatternIncludesName(parameter, bindingName));
       walkAst(current['body'], (node) => {
         if (
           node['type'] === 'VariableDeclarator' &&
-          isRecord(node['id']) &&
-          node['id']['name'] === bindingName
+          bindingPatternIncludesName(node['id'], bindingName)
         )
           declaresBinding = true;
       });
