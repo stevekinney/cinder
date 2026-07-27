@@ -406,9 +406,7 @@
         count: overflowGroup.length,
         edge: edgeForPosition(first.position, collisionThresholdPercent),
         endTime,
-        key: `cluster-${startTime}-${endTime}-${JSON.stringify(
-          chronologicalItems.map((item) => item.id ?? item.key).sort(),
-        )}`,
+        key: `cluster-${startTime}-${endTime}-${overflowGroup.length}`,
         lane: MAX_VISIBLE_LANES,
         position: first.position,
         startTime,

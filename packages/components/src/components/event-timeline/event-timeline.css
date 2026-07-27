@@ -205,14 +205,14 @@
   }
 
   .cinder-event-timeline__cluster-trigger:focus-visible {
-    outline: 2px solid transparent;
+    outline: var(--cinder-ring-width) solid transparent;
     outline-offset: 2px;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
   @media (forced-colors: active) {
     .cinder-event-timeline__cluster-trigger:focus-visible {
-      outline: 2px solid CanvasText;
+      outline: var(--cinder-ring-width) solid CanvasText;
       outline-offset: 2px;
     }
   }
