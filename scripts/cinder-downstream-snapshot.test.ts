@@ -2,8 +2,52 @@ import { expect, test } from 'bun:test';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
+
+/**
+ * Absolute path to the CLI under test. Resolving from `import.meta.url` rather than
+ * the runner's working directory keeps every invocation identical no matter where
+ * `bun test` was started from.
+ */
+const snapshotCliPath = fileURLToPath(new URL('./cinder-downstream-snapshot.ts', import.meta.url));
+
+const STDERR_EXCERPT_LIMIT = 2000;
+
+type SnapshotCliResult = { exitCode: number; stdout: string; stderr: string };
+
+/**
+ * Runs the snapshot CLI with the installed Bun executable and returns its exit code
+ * and captured streams. stdout and stderr are drained concurrently with the exit
+ * code so neither pipe can fill and stall the child.
+ *
+ * Pass `expectSuccess: false` to inspect a failing invocation instead of throwing.
+ */
+async function runSnapshotCli(
+  args: string[],
+  { expectSuccess = true }: { expectSuccess?: boolean } = {},
+): Promise<SnapshotCliResult> {
+  const child = Bun.spawn([process.execPath, snapshotCliPath, ...args], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+    child.exited,
+  ]);
+
+  if (expectSuccess && exitCode !== 0) {
+    throw new Error(
+      `snapshot CLI exited ${exitCode} for arguments [${args.join(' ')}]\n` +
+        `stderr: ${stderr.slice(0, STDERR_EXCERPT_LIMIT)}`,
+    );
+  }
+
+  return { exitCode, stdout, stderr };
+}
 
 test('snapshot input is deterministic and sorted', async () => {
   const root = await mkdtemp(join(tmpdir(), 'cinder-snapshot-'));
@@ -14,29 +58,30 @@ test('snapshot input is deterministic and sorted', async () => {
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const first = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]).stdout.toString();
-  const second = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]).stdout.toString();
+  const first = await runSnapshotCli(['--request', request]);
+  const second = await runSnapshotCli(['--request', request]);
   const normalize = (value: string) =>
     JSON.stringify({ ...JSON.parse(value), collectedAt: 'stable' });
-  expect(normalize(first)).toBe(normalize(second));
+  expect(normalize(first.stdout)).toBe(normalize(second.stdout));
 });
 
-test('help prints usage without requiring a request', () => {
-  const result = Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--help']);
+test('help prints usage without requiring a request', async () => {
+  const result = await runSnapshotCli(['--help']);
   expect(result.exitCode).toBe(0);
-  expect(result.stdout.toString()).toContain('Usage:');
+  expect(result.stdout).toContain('Usage:');
+});
+
+test('invalid options report exit code and stderr instead of a JSON parse error', async () => {
+  const result = await runSnapshotCli(['--wat'], { expectSuccess: false });
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stdout).toBe('');
+  expect(result.stderr).toContain('Unknown option: --wat');
+
+  const failure = await runSnapshotCli(['--wat']).catch((error: unknown) => error as Error);
+  expect(failure).toBeInstanceOf(Error);
+  expect((failure as Error).message).toContain(`exited ${result.exitCode}`);
+  expect((failure as Error).message).toContain('Unknown option: --wat');
+  expect((failure as Error).message).not.toContain('JSON Parse error');
 });
 
 test('partial repository failures stay in the snapshot', async () => {
@@ -49,15 +94,9 @@ test('partial repository failures stay in the snapshot', async () => {
       repositories: [{ name: 'missing', path: join(root, 'missing') }],
     }),
   );
-  const result = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]);
+  const result = await runSnapshotCli(['--request', request]);
   expect(result.exitCode).toBe(0);
-  expect(JSON.parse(result.stdout.toString()).errors[0].scope).toBe('repository:missing');
+  expect(JSON.parse(result.stdout).errors[0].scope).toBe('repository:missing');
 });
 
 test('hashes binary bytes and rejects malformed options', async () => {
@@ -68,20 +107,13 @@ test('hashes binary bytes and rejects malformed options', async () => {
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const result = Bun.spawnSync([
-    'bun',
-    'run',
-    'scripts/cinder-downstream-snapshot.ts',
-    '--request',
-    request,
-  ]);
-  const file = JSON.parse(result.stdout.toString()).repositories[0].files.find(
+  const result = await runSnapshotCli(['--request', request]);
+  const file = JSON.parse(result.stdout).repositories[0].files.find(
     (entry: { path: string }) => entry.path === 'binary.bin',
   );
   expect(file.bytes).toBe(3);
-  expect(
-    Bun.spawnSync(['bun', 'run', 'scripts/cinder-downstream-snapshot.ts', '--wat']).exitCode,
-  ).not.toBe(0);
+  const malformed = await runSnapshotCli(['--wat'], { expectSuccess: false });
+  expect(malformed.exitCode).not.toBe(0);
 });
 
 test('keeps scans inside the repository and excludes Git internals', async () => {
@@ -100,15 +132,8 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
     defaultRequest,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const defaultSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      defaultRequest,
-    ]).stdout.toString(),
-  );
+  const defaultResult = await runSnapshotCli(['--request', defaultRequest]);
+  const defaultSnapshot = JSON.parse(defaultResult.stdout);
   expect(defaultSnapshot.repositories[0].files.map((file: { path: string }) => file.path)).toEqual([
     'inside.txt',
   ]);
@@ -121,15 +146,8 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
       repositories: [{ name: 'repo', path: root, globs: ['nested/**/*.txt'] }],
     }),
   );
-  const narrowedSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      narrowedRequest,
-    ]).stdout.toString(),
-  );
+  const narrowedResult = await runSnapshotCli(['--request', narrowedRequest]);
+  const narrowedSnapshot = JSON.parse(narrowedResult.stdout);
   expect(narrowedSnapshot.repositories[0].files).toEqual([]);
 
   const escapingRequest = join(parent, 'escaping-request.json');
@@ -140,15 +158,8 @@ test('keeps scans inside the repository and excludes Git internals', async () =>
       repositories: [{ name: 'repo', path: root, globs: ['../outside.txt'] }],
     }),
   );
-  const escapingSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      escapingRequest,
-    ]).stdout.toString(),
-  );
+  const escapingResult = await runSnapshotCli(['--request', escapingRequest]);
+  const escapingSnapshot = JSON.parse(escapingResult.stdout);
   expect(escapingSnapshot.repositories).toEqual([]);
   expect(escapingSnapshot.errors[0].message).toContain('escapes repository root');
 });
@@ -176,15 +187,8 @@ test('requires the requested branch and commit to match checkout HEAD', async ()
       repositories: [{ name: 'repo', path: root, branch: 'main', commit: mainCommit }],
     }),
   );
-  const snapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      request,
-    ]).stdout.toString(),
-  );
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
   expect(snapshot.repositories).toEqual([]);
   expect(snapshot.errors[0].message).toContain('does not match checkout HEAD');
 });
@@ -210,15 +214,8 @@ test('matches evidence case-insensitively without decoding unrelated binary file
       ],
     }),
   );
-  const snapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      request,
-    ]).stdout.toString(),
-  );
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
   expect(snapshot.repositories[0].evidence.source).toEqual([
     { path: 'source.ts', line: 1, text: 'const CINDER_API_URL = "example";' },
     { path: 'source.ts', line: 2, text: 'CINDER_API_TOKEN=[REDACTED]' },
@@ -259,15 +256,8 @@ test('records Git links without scanning nested checkout contents', async () => 
     request,
     JSON.stringify({ schemaVersion: 1, repositories: [{ name: 'repo', path: root }] }),
   );
-  const snapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      request,
-    ]).stdout.toString(),
-  );
+  const result = await runSnapshotCli(['--request', request]);
+  const snapshot = JSON.parse(result.stdout);
   expect(
     snapshot.repositories[0].files.find((file: { path: string }) => file.path === 'vendor/nested'),
   ).toEqual({ path: 'vendor/nested', gitlink: gitlinkCommit });
@@ -285,15 +275,8 @@ test('records Git links without scanning nested checkout contents', async () => 
       repositories: [{ name: 'repo', path: root, globs: ['tracked.txt'] }],
     }),
   );
-  const scopedSnapshot = JSON.parse(
-    Bun.spawnSync([
-      'bun',
-      'run',
-      'scripts/cinder-downstream-snapshot.ts',
-      '--request',
-      scopedRequest,
-    ]).stdout.toString(),
-  );
+  const scopedResult = await runSnapshotCli(['--request', scopedRequest]);
+  const scopedSnapshot = JSON.parse(scopedResult.stdout);
   expect(
     scopedSnapshot.repositories[0].files.some(
       (file: { path: string }) => file.path === 'vendor/nested',
