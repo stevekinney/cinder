@@ -423,21 +423,6 @@ export function playgroundBundleDependencyBuildProcess(
   };
 }
 
-export function playgroundBundleDependencyWatchArguments(packageName: string): string[] {
-  return ['--watch', 'run', `--filter=${packageName}`, 'build'];
-}
-
-export function playgroundBundleDependencyWatchProcess(
-  childProcess: ChildProcess,
-  packageName: string,
-): ManagedChildProcess {
-  return {
-    childProcess,
-    name: `${packageName} watch`,
-    killProcessGroup: process.platform !== 'win32',
-  };
-}
-
 export function playgroundBundleDependencySourceDirectories(packageName: string): string[] {
   const packageDirectory = playgroundBundleDependencyDirectories[packageName];
   if (packageDirectory === undefined)

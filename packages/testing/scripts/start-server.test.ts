@@ -16,8 +16,6 @@ import {
   playgroundBundleDependencyBuildPackages,
   playgroundBundleDependencyBuildProcess,
   playgroundBundleDependencySourceDirectories,
-  playgroundBundleDependencyWatchArguments,
-  playgroundBundleDependencyWatchProcess,
   playgroundServerArguments,
   playgroundServerWorkingDirectory,
   playgroundUrlForPath,
@@ -123,21 +121,6 @@ describe('playground bundle dependency build preflight', () => {
     expect(managedChildProcess.childProcess).toBe(childProcess);
     expect(managedChildProcess.name).toBe('@lostgradient/markdown build');
     expect(managedChildProcess.killProcessGroup).toBe(process.platform !== 'win32');
-  });
-
-  test('runs dependency builds in watch mode after the initial preflight', () => {
-    expect(playgroundBundleDependencyWatchArguments('@lostgradient/markdown')).toEqual([
-      '--watch',
-      'run',
-      '--filter=@lostgradient/markdown',
-      'build',
-    ]);
-    const childProcess = {} as ChildProcess;
-    expect(playgroundBundleDependencyWatchProcess(childProcess, '@lostgradient/markdown')).toEqual({
-      childProcess,
-      name: '@lostgradient/markdown watch',
-      killProcessGroup: process.platform !== 'win32',
-    });
   });
 
   test('watches package source and build-script directories explicitly', () => {
