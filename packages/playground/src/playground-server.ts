@@ -1298,9 +1298,9 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
         throw new Error('Shell server bundle did not export renderShellBody');
       }
       const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
+      shellRendererUsedFallback = false;
       if (generationAtStart === rebuildGeneration) {
         lastGoodShellServerRenderer = renderer;
-        shellRendererUsedFallback = false;
       }
       return renderer;
     } catch (error) {
