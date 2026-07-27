@@ -68,6 +68,14 @@
   const initialSlideId = untrack(
     () => slides[Math.max(0, Math.min(slides.length - 1, activeIndex))]?.id ?? slides[0]?.id,
   );
+  const initialSlideIndex = $derived(
+    slides.length < 1
+      ? 0
+      : Math.max(
+          0,
+          slides.findIndex((slide) => slide.id === initialSlideId),
+        ),
+  );
   const currentIndex = $derived.by(() => {
     if (clampedLength < 1) return 0;
     return Math.max(0, Math.min(clampedLength - 1, activeIndex));
@@ -193,10 +201,6 @@
 
   function initialSlideOrder(index: number): number {
     if (slides.length < 1) return 0;
-    const initialSlideIndex = Math.max(
-      0,
-      slides.findIndex((slide) => slide.id === initialSlideId),
-    );
     return (index - initialSlideIndex + slides.length) % slides.length;
   }
 
