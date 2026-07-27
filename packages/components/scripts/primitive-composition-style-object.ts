@@ -35,6 +35,17 @@ function staticValue(
   return undefined;
 }
 
+function unwrapTypeExpression(expression: unknown): unknown {
+  if (!isRecord(expression)) return expression;
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return unwrapTypeExpression(expression['expression']);
+  return expression;
+}
+
 function mergeDeclarations(
   base: ReadonlyMap<string, string>,
   additions: ReadonlyMap<string, string>,
@@ -43,9 +54,10 @@ function mergeDeclarations(
 }
 
 function collectObjectDeclarationBranches(
-  expression: unknown,
+  rawExpression: unknown,
   bindings: ReadonlyMap<string, unknown>,
 ): Map<string, string>[] {
+  const expression = unwrapTypeExpression(rawExpression);
   if (!isRecord(expression)) return [new Map()];
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
     return collectObjectDeclarationBranches(bindings.get(expression['name']), bindings);
@@ -101,7 +113,7 @@ function staticBindings(instance: unknown): Map<string, unknown> {
           continue;
         if (statement['kind'] !== 'const') {
           mutableBindings.add(declaration['id']['name']);
-          const initializer = declaration['init'];
+          const initializer = unwrapTypeExpression(declaration['init']);
           if (
             isRecord(initializer) &&
             ['ObjectExpression', 'ConditionalExpression', 'LogicalExpression'].includes(
@@ -114,7 +126,7 @@ function staticBindings(instance: unknown): Map<string, unknown> {
           else bindings.delete(declaration['id']['name']);
           continue;
         }
-        const initializer = declaration['init'];
+        const initializer = unwrapTypeExpression(declaration['init']);
         if (
           isRecord(initializer) &&
           ['ObjectExpression', 'ConditionalExpression', 'LogicalExpression'].includes(
@@ -139,7 +151,7 @@ function staticBindings(instance: unknown): Map<string, unknown> {
     )
       continue;
     if (!mutableBindings.has(expression['left']['name'])) continue;
-    const assignedValue = expression['right'];
+    const assignedValue = unwrapTypeExpression(expression['right']);
     if (isRecord(assignedValue) && assignedValue['type'] === 'ObjectExpression')
       bindings.set(expression['left']['name'], assignedValue);
     else if (isRecord(assignedValue) && assignedValue['type'] === 'Literal')

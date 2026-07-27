@@ -433,6 +433,21 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('resolves style-object bindings wrapped in a TypeScript `as const` assertion', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script lang=\"ts\">const layoutStyle = { display: 'grid', gridTemplateColumns: '1fr 1fr' } as const;</script><div style={layoutStyle}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script lang=\"ts\">let layout = { display: 'block' } as const; layout = { display: 'grid', gridTemplateColumns: '1fr' } as const;</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('rejects a tracked raw-control substitution with the same count', () => {
     expect(
       findPrimitiveCompositionViolations(
