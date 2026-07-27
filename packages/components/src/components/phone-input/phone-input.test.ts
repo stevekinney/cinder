@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { PhoneInputChange } from './phone-input.types.ts';
 
 setupHappyDom();
 
@@ -551,6 +552,7 @@ describe('PhoneInput form reset', () => {
   test('preserves a disallowed initial E.164 value literally on reset', async () => {
     const form = document.createElement('form');
     document.body.append(form);
+    const changes: PhoneInputChange[] = [];
     const rendered = render(PhoneInput, {
       target: form,
       props: {
@@ -558,6 +560,7 @@ describe('PhoneInput form reset', () => {
         label: 'Phone',
         countries: ['US'],
         value: '+442079460958',
+        onchange: (change: PhoneInputChange) => changes.push(change),
       },
     });
     const input = nationalInput(rendered.container);
@@ -568,6 +571,9 @@ describe('PhoneInput form reset', () => {
 
     expect(countrySelect(rendered.container).value).toBe('US');
     expect(input.value).toBe('+442079460958');
+
+    await fireEvent.input(input, { target: { value: '4155550132' } });
+    expect(changes.at(-1)?.country).toBe('US');
     rendered.unmount();
     form.remove();
   });

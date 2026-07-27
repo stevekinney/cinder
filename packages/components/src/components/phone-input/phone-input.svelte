@@ -360,7 +360,7 @@
         if (!rawCountry || !isCountryCode(rawCountry)) return;
         const initialParsed = parseE164Value(initialValue);
         const initialParsedCountryAllowed =
-          initialParsed !== null && isCountryCode(initialParsed.country);
+          initialParsed !== null && isAllowed(initialParsed.country);
         const resetCountry = initialParsed
           ? initialParsedCountryAllowed
             ? initialParsed.country
