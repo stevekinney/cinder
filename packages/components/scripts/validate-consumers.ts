@@ -1679,7 +1679,11 @@ type HydrationBrowser = { browser: Browser; processToken: string };
 
 function hydrationBrowserProcessIds(processToken: string): number[] {
   const listing = Bun.spawnSync(['ps', '-axo', 'pid=,command='], { stdout: 'pipe' });
-  if (listing.exitCode !== 0) return [];
+  if (listing.exitCode !== 0) {
+    throw new Error(
+      `ps failed while inspecting Chromium process state (exit ${listing.exitCode}): ${listing.stderr.toString()}`,
+    );
+  }
   return listing.stdout
     .toString()
     .split('\n')
@@ -1787,7 +1791,12 @@ const NEVER_RECLAIMED = (): boolean => false;
  * would only describe the client's view of the pipe.
  */
 function isHydrationBrowserGone(browser: Browser, processToken: string): boolean {
-  return !browser.isConnected() || hydrationBrowserProcessIds(processToken).length === 0;
+  if (!browser.isConnected()) return true;
+  try {
+    return hydrationBrowserProcessIds(processToken).length === 0;
+  } catch {
+    return false;
+  }
 }
 
 export async function runBoundedHydrationTeardown(
@@ -1940,7 +1949,15 @@ async function runSvelteKitHydrationRoutesOnce(
   // verdict is taken ONCE, here, against the state after every step has run:
   // an abandoned `page.close()` that a later `browser.close()` (or its SIGKILL
   // escalation) reclaimed leaked nothing and must not fail the gate.
-  if (bodyFailed) throw bodyError;
+  if (bodyFailed) {
+    const secondaryTeardown = unreclaimedTeardownFailures(teardownFailures)[0];
+    if (secondaryTeardown !== undefined) {
+      process.stderr.write(
+        `[validate-consumers] hydration teardown failed after assertion failure: phase=${secondaryTeardown.phase} ${secondaryTeardown.state}: ${secondaryTeardown.error instanceof Error ? secondaryTeardown.error.message : String(secondaryTeardown.error)}\n`,
+      );
+    }
+    throw bodyError;
+  }
 
   const unreclaimed = unreclaimedTeardownFailures(teardownFailures);
   const first = unreclaimed[0];

@@ -19,9 +19,9 @@ describe('hydration teardown', () => {
       [
         {
           phase: 'page.close',
-          close: () => new Promise<void>(() => {}),
-          forceClose: () => {
-            calls.push('page.forceClose');
+          close: () => {
+            calls.push('page.close');
+            return new Promise<void>(() => {});
           },
           state: () => 'pageClosed=false',
         },
@@ -46,7 +46,7 @@ describe('hydration teardown', () => {
     expect(failures).toHaveLength(1);
     expect(failures[0]?.phase).toBe('page.close');
     expect(failures[0]?.state).toBe('pageClosed=false');
-    expect(calls).toEqual(['page.forceClose', 'browser.close', 'fixture-server.exited']);
+    expect(calls).toEqual(['page.close', 'browser.close', 'fixture-server.exited']);
   });
 
   test('continues after a force-close path also times out', async () => {
