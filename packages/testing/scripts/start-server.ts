@@ -449,9 +449,11 @@ export function playgroundBundleDependencySourceDirectories(packageName: string)
 }
 
 export function playgroundServerArguments(): string[] {
-  // Keep server/runtime modules hot-reloaded in the managed test process. A
-  // warmup cache invalidation cannot re-evaluate already imported modules.
-  return ['--watch', 'run', 'src/playground-server.ts'];
+  // The wrapper owns dependency rebuild ordering and the playground owns its
+  // source watchers. Bun's module watcher also observes rebuilt workspace
+  // dist files, so enabling it here restarts the server during its own warmup
+  // and prevents readiness from ever becoming stable.
+  return ['run', 'src/playground-server.ts'];
 }
 
 export function playgroundServerWorkingDirectory(): string {
