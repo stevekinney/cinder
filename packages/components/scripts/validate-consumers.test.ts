@@ -212,6 +212,34 @@ describe('hydration teardown reclamation verdict', () => {
     ).toEqual([]);
   });
 
+  test('finds the launch token deep inside a full-length Chromium argv', () => {
+    const token = 'cinder-hydration-abc';
+    // Playwright appends our flag ~1.7 KB into Chromium's ~1.9 KB argv, so the
+    // listing must be read untruncated (`ps -ww`). A truncated line drops the
+    // token, reports "no process", and lets the reclamation verdict read a
+    // leaked browser as reclaimed — the gate would fail open.
+    const argv = `/path/chrome-headless-shell ${'--disable-some-feature '.repeat(75)}--cinder-hydration-token=${token} --headless`;
+
+    expect(argv.length).toBeGreaterThan(1_500);
+    expect(argv.indexOf(token)).toBeGreaterThan(80);
+    expect(
+      parseHydrationBrowserProcessIds(
+        { exitCode: 0, stdout: `  4242 ${argv}`, stderr: '' },
+        token,
+        10,
+      ),
+    ).toEqual([4242]);
+
+    // The same line truncated to a default-width terminal must NOT look clean.
+    expect(
+      parseHydrationBrowserProcessIds(
+        { exitCode: 0, stdout: `  4242 ${argv.slice(0, 80)}`, stderr: '' },
+        token,
+        10,
+      ),
+    ).toEqual([]);
+  });
+
   test('matches only this run’s launch token and never its own pid', () => {
     const token = 'cinder-hydration-abc';
     const stdout = [

@@ -1704,7 +1704,19 @@ export function parseHydrationBrowserProcessIds(
 }
 
 function hydrationBrowserProcessIds(processToken: string): number[] {
-  const listing = Bun.spawnSync(['ps', '-axo', 'pid=,command='], { stdout: 'pipe' });
+  // `-ww` disables ps's column truncation, and stderr is piped so a failed
+  // listing can report why.
+  //
+  // The width flag is load-bearing, not defensive tidying: Chromium's argv is
+  // ~1.9 KB and Playwright appends our token ~1.7 KB into it. procps falls back
+  // to 80 columns when stdout is not a TTY — which is exactly the case on a CI
+  // runner — so a default-width listing would drop the token, report "no
+  // process", and let the reclamation verdict read a leaked browser as
+  // reclaimed. That fails open: a permanently green gate hiding an orphan.
+  const listing = Bun.spawnSync(['ps', '-axww', '-o', 'pid=,command='], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
   return parseHydrationBrowserProcessIds(
     {
       exitCode: listing.exitCode,
