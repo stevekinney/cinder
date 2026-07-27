@@ -415,6 +415,18 @@ describe('Carousel', () => {
     expect(container.querySelector('.cinder-carousel')?.getAttribute('tabindex')).toBe('0');
   });
 
+  test('makes the scrollable viewport keyboard focusable for slide navigation', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    expect(viewport.getAttribute('tabindex')).toBe('0');
+
+    viewport.focus();
+    await fireEvent.keyDown(viewport, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(viewport);
+    expectActiveSlide(container, 1);
+  });
+
   test('moves focus to the stable root before making the active slide inert', async () => {
     const { container } = render(Carousel, {
       slides: [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)],
@@ -427,6 +439,21 @@ describe('Carousel', () => {
 
     expect(document.activeElement).toBe(root);
     expectActiveSlide(container, 1);
+  });
+
+  test('keeps focus on carousel controls during keyboard navigation', async () => {
+    const { container } = render(Carousel, { slides });
+    const nextButton = container.querySelectorAll<HTMLButtonElement>(
+      '.cinder-carousel__control',
+    )[1];
+    const root = container.querySelector('.cinder-carousel') as HTMLElement;
+    if (!nextButton) throw new Error('Missing next control.');
+    nextButton.focus();
+
+    await fireEvent.keyDown(nextButton, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(nextButton);
+    expect(document.activeElement).not.toBe(root);
   });
 
   test('does not clear initial alignment while the viewport is hidden', async () => {
@@ -714,6 +741,18 @@ describe('Carousel', () => {
     await fireEvent.wheel(viewport, { shiftKey: true, deltaX: 0, deltaY: 40 });
     jest.advanceTimersByTime(50);
     expectActiveSlide(container, 0);
+  });
+
+  test('clears autoplay ownership when a pointer takes over', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const liveRegion = container.querySelector('[aria-live]');
+
+    jest.advanceTimersByTime(10);
+    await fireEvent.pointerDown(viewport, { pointerId: 1, pointerType: 'touch' });
+
+    expect(liveRegion?.getAttribute('aria-live')).toBe('polite');
   });
 
   test('hover and focus pause autoplay until interaction ends', async () => {

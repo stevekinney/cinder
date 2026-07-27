@@ -169,10 +169,15 @@
 
   function focusCarouselRoot(event: KeyboardEvent): void {
     const root = event.currentTarget;
+    const target = event.target;
+    const activeSlide = viewportElement?.children[currentIndex];
     if (
       root instanceof HTMLElement &&
-      event.target !== root &&
-      root.contains(document.activeElement)
+      target !== root &&
+      target instanceof Node &&
+      root.contains(target) &&
+      activeSlide instanceof HTMLElement &&
+      activeSlide.contains(target)
     ) {
       root.focus();
     }
@@ -295,6 +300,7 @@
 
   function onPointerDown(event: PointerEvent): void {
     programmaticTarget = null;
+    isAutoplayTransitioning = false;
     isInteracting = true;
     activePointerIds.add(event.pointerId);
     removePointerEndListeners();
@@ -416,6 +422,7 @@
     class="cinder-carousel__viewport"
     role="group"
     aria-label={`${label} slides`}
+    tabindex="0"
     bind:this={viewportElement}
     {@attach observeViewport}
     onscroll={onViewportScroll}
