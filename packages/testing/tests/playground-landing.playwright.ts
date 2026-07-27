@@ -29,10 +29,12 @@ test.describe('playground landing page', () => {
 
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
     await expect(page.getByText('Svelte 5 components for product interfaces')).toHaveCount(0);
-    await expect(page.locator('.landing-page__readme')).toContainText('Install');
+    await expect(page.locator('.dx-content--landing .readme-content')).toContainText('Install');
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);
-    await expect(page.locator('.component-name')).toHaveText('README');
+    // The landing page shares the documentation chrome now; its breadcrumb reads
+    // CINDER / Overview rather than a separate shell's "README" label.
+    await expect(page.locator('.dx-crumbs__current')).toHaveText('Overview');
 
     await page.evaluate(() => {
       (window as typeof window & { __cinderShellMarker?: string }).__cinderShellMarker = 'mounted';
@@ -57,7 +59,9 @@ test.describe('playground landing page', () => {
     await expect(page.getByRole('heading', { name: 'cinder', exact: true })).toBeVisible();
     await expect(page.locator('iframe')).toHaveCount(0);
     await expect(page.locator('#viewport-preset')).toHaveCount(0);
-    await expect(page.locator('.component-name')).toHaveText('README');
+    // The landing page shares the documentation chrome now; its breadcrumb reads
+    // CINDER / Overview rather than a separate shell's "README" label.
+    await expect(page.locator('.dx-crumbs__current')).toHaveText('Overview');
   });
 
   test('presents README content with usable landing-page layout styles', async ({ page }) => {
@@ -67,12 +71,12 @@ test.describe('playground landing page', () => {
     const browseMetrics = await computedMetrics(browseLink);
     expect(browseMetrics.width).toBeLessThan(browseMetrics.parentWidth);
 
-    const table = page.locator('.landing-page__readme table').first();
+    const table = page.locator('.dx-content--landing .readme-content table').first();
     const tableMetrics = await computedMetrics(table);
     expect(Math.round(tableMetrics.width)).toBe(Math.round(tableMetrics.parentWidth));
 
     const highlightedToken = page
-      .locator('.landing-page__readme pre code span[style*="--syntax-"]')
+      .locator('.dx-content--landing .readme-content pre code span[style*="--syntax-"]')
       .first();
     await expect(highlightedToken).toBeVisible();
     const codeMetrics = await computedMetrics(highlightedToken);
