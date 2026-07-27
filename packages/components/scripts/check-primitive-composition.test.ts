@@ -446,6 +446,12 @@ describe('primitive composition guard', () => {
         'new-grid/new-grid.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script lang=\"ts\">const layoutStyle = { display: 'grid' as const, gridTemplateColumns: '1fr' };</script><div style={layoutStyle}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('rejects a tracked raw-control substitution with the same count', () => {

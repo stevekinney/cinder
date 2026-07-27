@@ -19,9 +19,10 @@ function cssPropertyName(propertyName: string): string {
 }
 
 function staticValue(
-  expression: unknown,
+  rawExpression: unknown,
   bindings: ReadonlyMap<string, unknown>,
 ): string | undefined {
+  const expression = unwrapTypeExpression(rawExpression);
   if (!isRecord(expression)) return undefined;
   if (
     expression['type'] === 'Literal' &&
