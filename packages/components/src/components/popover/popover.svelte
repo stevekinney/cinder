@@ -332,6 +332,7 @@
     aria-labelledby={ariaLabelledby}
     aria-hidden={anchoredOverlay.positionReady ? undefined : 'true'}
     class={classNames('cinder-_floating-surface', 'cinder-popover', className)}
+    data-cinder-portal-owner={`${panelId}-scope`}
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
     style={anchoredOverlay.positionStyle}

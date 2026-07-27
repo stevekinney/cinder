@@ -296,7 +296,7 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 
 ## Z-index layers
 
-Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast < drag preview. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open, while the active drag preview remains attached to the pointer above every surface. Override these only if you are integrating cinder into an app with its own established stacking contract.
+Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast < focused affordance < drag preview. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open, while the active drag preview remains attached to the pointer above every surface. Override these only if you are integrating cinder into an app with its own established stacking contract.
 
 The token table is the single source of truth. A `z-index` reference must use
 `var(--cinder-z-*)` without an inline fallback; otherwise a partial stylesheet

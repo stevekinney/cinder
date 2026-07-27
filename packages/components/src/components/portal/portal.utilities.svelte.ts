@@ -317,6 +317,14 @@ export function redispatchPortaledEvent(
     'altKey',
     'metaKey',
     'relatedTarget',
+    'pointerId',
+    'pointerType',
+    'isPrimary',
+    'pressure',
+    'tiltX',
+    'tiltY',
+    'twist',
+    'tangentialPressure',
   ]) {
     if (property in event) eventInit[property] = Reflect.get(event, property);
   }

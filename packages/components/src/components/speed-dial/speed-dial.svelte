@@ -367,7 +367,9 @@
     data-cinder-position-ready={anchoredActions.positionReady || undefined}
     style={anchoredActions.positionStyle}
     aria-hidden={hidden || (open && !anchoredActions.positionReady) ? 'true' : undefined}
-    inert={!open || hidden || sourceSubtreeUnavailable ? true : undefined}
+    inert={!open || hidden || sourceSubtreeUnavailable || (open && !anchoredActions.positionReady)
+      ? true
+      : undefined}
     tabindex="-1"
     onclick={bridgePortaledEvent}
     onkeydown={handlePortaledActionsKeydown}

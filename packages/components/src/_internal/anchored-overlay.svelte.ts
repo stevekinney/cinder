@@ -144,11 +144,12 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         if (cancelled) return;
         const currentGeneration = ++generation;
         let result: Awaited<ReturnType<typeof computePosition>>;
+        const strategy = panel.closest('dialog') ? 'absolute' : 'fixed';
         try {
           result = await computePosition(anchor, panel, {
             placement,
             middleware,
-            strategy: 'fixed',
+            strategy,
           });
         } catch {
           if (cancelled || currentGeneration !== generation) return;
@@ -161,7 +162,6 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         if (cancelled || currentGeneration !== generation) return;
 
         const widthStyle = getAnchoredOverlayWidthStyle(widthMode, anchor.getBoundingClientRect());
-        const strategy = panel.parentElement?.matches('dialog') ? 'absolute' : 'fixed';
         positionStyle = [
           `position: ${strategy};`,
           `left: ${result.x}px;`,

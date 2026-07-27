@@ -10,14 +10,15 @@ async function clipComponent(page: import('@playwright/test').Page, selector: st
       host.style.overflow = 'hidden';
       host.style.maxHeight = '3rem';
       host.dataset['containmentFixture'] = 'true';
-      return host.getBoundingClientRect().bottom;
+      const bounds = host.getBoundingClientRect();
+      return { top: bounds.top, bottom: bounds.bottom };
     });
 }
 
 test.describe('floating surfaces escape component containment', () => {
   test('SpeedDial actions portal outside a clipping ancestor', async ({ page }) => {
     await page.goto('/page/speed-dial?snapshot=1', { waitUntil: 'load' });
-    const clippingBottom = await clipComponent(page, '.cinder-speed-dial');
+    const clippingBounds = await clipComponent(page, '.cinder-speed-dial');
 
     await page.getByRole('button', { name: 'Quick actions' }).first().click();
     const actions = page
@@ -26,7 +27,7 @@ test.describe('floating surfaces escape component containment', () => {
     await expect(actions).toBeVisible();
     const box = await actions.boundingBox();
     expect(box).not.toBeNull();
-    expect(box!.y < clippingBottom || box!.y + box!.height > clippingBottom).toBe(true);
+    expect(box!.y < clippingBounds.top || box!.y + box!.height > clippingBounds.bottom).toBe(true);
   });
 
   test('Combobox empty state uses the portaled options-panel path', async ({ page }) => {
