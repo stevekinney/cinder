@@ -377,7 +377,7 @@ describe('SpeedDial', () => {
     expect(speedDialSource).toContain('cinder-_floating-surface cinder-speed-dial__actions');
     expect(speedDialSource).toContain('new ResizeObserver(() => spacingVersion++)');
     expect(speedDialSource).toContain(
-      "classNames('cinder-speed-dial__portal-scope', customClassName)",
+      "classNames('cinder-speed-dial__portal-scope', 'cinder-speed-dial', customClassName)",
     );
   });
 

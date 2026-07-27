@@ -203,9 +203,9 @@
 
   function handleToggleKeyDown(event: KeyboardEvent): void {
     if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
-    event.preventDefault();
     if (!anchoredItems.positionReady) {
       pendingTabFocus = true;
+      event.preventDefault();
       return;
     }
     const brandTarget =
@@ -213,11 +213,13 @@
         ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
         : null;
     if (brandTarget) {
+      event.preventDefault();
       brandTarget.focus();
       return;
     }
     const firstItem = getNavigationItems().find(isEnabledNavigationItem);
     if (!firstItem) return;
+    event.preventDefault();
     firstItem.focus();
   }
 

@@ -351,7 +351,7 @@
   <div
     bind:this={actionsPortalScopeElement}
     {@attach actionsPortalScope}
-    class={classNames('cinder-speed-dial__portal-scope', customClassName)}
+    class={classNames('cinder-speed-dial__portal-scope', 'cinder-speed-dial', customClassName)}
     style={`display: contents;${inheritedPortalStyle.style}`}
   ></div>
   <div

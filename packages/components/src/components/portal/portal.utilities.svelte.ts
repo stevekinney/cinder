@@ -95,9 +95,10 @@ export function findNearestOpenTopLayer(
   source: HTMLElement,
   isModalDialog: (element: HTMLElement) => boolean = (element) => element.matches(':modal'),
 ): HTMLElement | null {
-  const ownerId = source.closest('.cinder-popover__trigger')
-    ? null
-    : source.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset['cinderPortalOwner'];
+  const ownerLookupSource = source.closest('.cinder-popover__trigger')?.parentElement ?? source;
+  const ownerId = ownerLookupSource.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset[
+    'cinderPortalOwner'
+  ];
   if (ownerId) {
     const owner = document.getElementById(ownerId);
     if (owner instanceof HTMLElement) return owner;
@@ -342,6 +343,11 @@ export function redispatchPortaledEvent(
 
 const redispatchedPortalEvents = new WeakSet<Event>();
 
+function getShadowHost(element: HTMLElement): HTMLElement | null {
+  const root = element.getRootNode();
+  return root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null;
+}
+
 export function isRedispatchedPortaledEvent(event: Event): boolean {
   return redispatchedPortalEvents.has(event);
 }
@@ -363,7 +369,7 @@ function isEffectivelyUnavailable(source: HTMLElement): boolean {
   while (ancestor) {
     const computed = getComputedStyle(ancestor);
     if (computed.display === 'none' || computed.visibility === 'hidden') return true;
-    ancestor = ancestor.parentElement;
+    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
   }
   return false;
 }
@@ -389,7 +395,7 @@ export function observePortalSourceAvailability(
       attributes: true,
       attributeFilter: ['hidden', 'inert', 'aria-hidden', 'disabled', 'class', 'style'],
     });
-    ancestor = ancestor.parentElement;
+    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
   }
   syncAvailability();
 
