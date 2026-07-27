@@ -713,24 +713,6 @@
   <!-- One wrapper so this branch has a single root. Two siblings here (nav +
        page) trip happy-dom's fragment handling in the documentation tests. -->
   <div class="dx-shell">
-    {#if sidebarComponents.length > 0}
-      <nav class="dx-nav" aria-label="Components">
-        <a class="dx-nav__brand" href="/">CINDER</a>
-        <ul class="dx-nav__list">
-          {#each sidebarComponents as name (name)}
-            <li>
-              <a
-                class="dx-nav__link"
-                href={buildComponentHref(name)}
-                aria-current={name === componentName ? 'page' : undefined}
-              >
-                {humanizeId(name)}
-              </a>
-            </li>
-          {/each}
-        </ul>
-      </nav>
-    {/if}
     <div
       class={[
         'dx',
@@ -1537,6 +1519,29 @@
         </div>
       {/if}
     </div>
+
+    <!-- Rendered LAST in the DOM on purpose. The nav is `position: fixed`, so its
+         visual placement is unaffected, but source order IS tab order — ahead of
+         the content it put ~170 link stops between a keyboard user and the
+         documentation they came for. -->
+    {#if sidebarComponents.length > 0}
+      <nav class="dx-nav" aria-label="Components">
+        <a class="dx-nav__brand" href="/">CINDER</a>
+        <ul class="dx-nav__list">
+          {#each sidebarComponents as name (name)}
+            <li>
+              <a
+                class="dx-nav__link"
+                href={buildComponentHref(name)}
+                aria-current={name === componentName ? 'page' : undefined}
+              >
+                {humanizeId(name)}
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </nav>
+    {/if}
   </div>
 {/if}
 
