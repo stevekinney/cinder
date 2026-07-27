@@ -118,4 +118,13 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(detached)).toHaveLength(1);
   });
+
+  test('matches relative files and case-insensitive property names', async () => {
+    const result = await stylelint.lint({
+      code: '.fixture { Z-INDEX: 42; }',
+      codeFilename: 'packages/components/src/components/fixture.css',
+      config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+    });
+    expect(warnings(result)).toHaveLength(1);
+  });
 });

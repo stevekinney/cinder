@@ -291,6 +291,14 @@ function cancelingNavigationSnippet(clicks: Record<string, number>) {
 }
 
 describe('NavigationBar', () => {
+  test('guards responsive portal focus and effective disabled targets', () => {
+    expect(navigationBarSource).toContain("item.matches(':disabled')");
+    expect(navigationBarSource).toContain('pendingTabFocus');
+    expect(navigationBarSource).toContain(
+      'class="cinder-navigation-bar__items cinder-_floating-surface"',
+    );
+    expect(navigationBarSource).toContain("window.addEventListener('resize'");
+  });
   test('passes the toggle click handler through the same snippet shape during SSR and hydration', () => {
     expect(navigationBarSource).not.toMatch(/browser\s*\?\s*{\s*onclick:\s*handleToggle/);
     expect([...navigationBarSource.matchAll(/onclick:\s*handleToggle/g)]).toHaveLength(2);

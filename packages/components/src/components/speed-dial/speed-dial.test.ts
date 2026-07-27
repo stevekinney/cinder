@@ -374,6 +374,11 @@ describe('SpeedDial', () => {
     expect(speedDialSource).toContain('inline-size: var(--cinder-space-3)');
     expect(speedDialSource).toContain('spacingProbeElement?.getBoundingClientRect().width');
     expect(speedDialSource).toContain('pixels >= 0');
+    expect(speedDialSource).toContain('cinder-_floating-surface cinder-speed-dial__actions');
+    expect(speedDialSource).toContain('new ResizeObserver(() => spacingVersion++)');
+    expect(speedDialSource).toContain(
+      "classNames('cinder-speed-dial__portal-scope', customClassName)",
+    );
   });
 
   test('Escape closes the dial and restores focus to the trigger', async () => {

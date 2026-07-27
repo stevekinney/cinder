@@ -9,8 +9,12 @@ setupHappyDom();
 
 const { render, cleanup } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
-const { copyInheritedPortalAttributes, findNearestOpenTopLayer, getInheritedPortalStyle } =
-  await import('./portal.utilities.svelte.ts');
+const {
+  copyInheritedPortalAttributes,
+  findNearestOpenTopLayer,
+  getInheritedPortalStyle,
+  redispatchPortaledEvent,
+} = await import('./portal.utilities.svelte.ts');
 
 const childSnippet = createRawSnippet(() => ({
   render: () => '<button data-testid="portal-child">Portaled child</button>',
@@ -50,6 +54,34 @@ describe('Portal', () => {
     dialog.append(source);
     document.body.append(dialog);
     expect(findNearestOpenTopLayer(source)).toBeNull();
+  });
+
+  test('crosses an open shadow host while finding a top-layer owner', () => {
+    const dialog = document.createElement('dialog');
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const source = document.createElement('button');
+    shadow.append(source);
+    dialog.append(host);
+    document.body.append(dialog);
+    expect(findNearestOpenTopLayer(source, (element) => element === dialog)).toBe(dialog);
+  });
+
+  test('preserves event propagation flags when redispatching', () => {
+    const source = document.createElement('div');
+    const target = document.createElement('button');
+    source.append(target);
+    document.body.append(source);
+    let received: Event | undefined;
+    source.addEventListener('input', (event) => {
+      received = event;
+    });
+    const original = new Event('input', { bubbles: false, cancelable: false, composed: true });
+    Object.defineProperty(original, 'target', { configurable: true, value: target });
+    redispatchPortaledEvent(original, source);
+    expect(received?.bubbles).toBe(false);
+    expect(received?.cancelable).toBe(false);
+    expect(received?.composed).toBe(true);
   });
 
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {
