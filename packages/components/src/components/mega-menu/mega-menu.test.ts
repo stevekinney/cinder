@@ -122,7 +122,7 @@ describe('MegaMenu', () => {
     expect(new Set(ids).size).toBe(2);
   });
 
-  test('keeps submenu IDs unique for normalized hash collisions', () => {
+  test('keeps submenu IDs unique for normalized hash collisions', async () => {
     const collisionItems = [
       {
         ...items[0]!,
@@ -133,6 +133,7 @@ describe('MegaMenu', () => {
       },
     ];
     const { container } = render(MegaMenu, { items: collisionItems });
+    await fireEvent.click(getTriggerByLabel(container, 'Products'));
     const triggers = [...container.querySelectorAll('[id*="submenu-trigger"]')];
     const panels = [...container.querySelectorAll('[id*="submenu-panel"]')];
     expect(new Set(triggers.map((element) => element.id)).size).toBe(triggers.length);

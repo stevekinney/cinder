@@ -248,6 +248,9 @@ function isContainerQueryActive(
     return false;
   }
   const containerName = Reflect.get(rule, 'containerName');
+  const queriesPhysicalWidth = /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(
+    conditionText,
+  );
   let container = element.parentElement;
   while (container) {
     const computedStyle = getComputedStyle(container);
@@ -261,12 +264,22 @@ function isContainerQueryActive(
       computedStyle.getPropertyValue('container-name') ||
       container.style.containerName ||
       container.style.getPropertyValue('container-name');
+    const writingMode =
+      computedStyle.writingMode ||
+      computedStyle.getPropertyValue('writing-mode') ||
+      container.style.writingMode ||
+      container.style.getPropertyValue('writing-mode');
     if (
       (typeof containerName !== 'string' ||
         !containerName ||
         name.split(/\s+/).includes(containerName)) &&
       type &&
-      type !== 'normal'
+      type !== 'normal' &&
+      !(
+        queriesPhysicalWidth &&
+        /^(?:vertical|sideways)-/i.test(writingMode) &&
+        type === 'inline-size'
+      )
     ) {
       break;
     }
@@ -303,12 +316,20 @@ function isContainerQueryActive(
     : readInset('padding-inline-end', 'padding-right') +
       readInset('border-inline-end-width', 'border-right-width');
   const width = Math.max(0, borderBoxSize - firstInset - secondInset);
-  const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const rootFontSize = Number.parseFloat(
     getComputedStyle(element.ownerDocument.documentElement).fontSize,
   );
   const remSize = Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
+  const queryUsesPhysicalWidth = /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(
+    conditionText,
+  );
+  if (queryUsesPhysicalWidth && /\bor\b/i.test(conditionText)) {
+    return conditionText
+      .split(/\s+or\s+/i)
+      .some((clause) => evaluateContainerSizeCondition(clause, width, remSize));
+  }
+  const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const toPixels = (value: RegExpExecArray) =>
     Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
   const matches =
@@ -323,6 +344,27 @@ function isContainerQueryActive(
     return /^\s*not\b/i.test(conditionText) ? false : true;
   }
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
+}
+
+function evaluateContainerSizeCondition(
+  conditionText: string,
+  width: number,
+  remSize: number,
+): boolean {
+  const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const toPixels = (value: RegExpExecArray) =>
+    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
+  const matches =
+    (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
+  const range = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  if (!range) return /^\s*not\b/i.test(conditionText) ? !matches : matches;
+  const threshold = Number(range[2]) * (range[3]!.toLowerCase() === 'rem' ? remSize : 1);
+  if (range[1] === '>=' && width < threshold) return false;
+  if (range[1] === '>' && width <= threshold) return false;
+  if (range[1] === '<=' && width > threshold) return false;
+  if (range[1] === '<' && width >= threshold) return false;
+  return !/^\s*not\b/i.test(conditionText);
 }
 
 function isContainerRule(rule: CSSRule): boolean {
