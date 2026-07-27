@@ -535,11 +535,7 @@
     aria-required={resolvedRequired || undefined}
     aria-disabled={resolvedDisabled || undefined}
   >
-    <div
-      class="cinder-phone-input__country"
-      data-disabled={resolvedDisabled || undefined}
-      data-invalid={resolvedAriaInvalid === 'true' || undefined}
-    >
+    <div class="cinder-phone-input__country" data-disabled={resolvedDisabled || undefined}>
       <span id={countryLabelId} class="cinder-sr-only">{countryAccessibleLabel}</span>
       <Select
         id={countrySelectId}

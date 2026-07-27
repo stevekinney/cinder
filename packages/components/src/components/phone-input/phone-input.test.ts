@@ -455,6 +455,8 @@ describe('PhoneInput form reset', () => {
     expect(rendered.container.querySelector('input[type="hidden"]')?.getAttribute('value')).toBe(
       '+442079460958',
     );
+    rendered.unmount();
+    form.remove();
   });
   test('restores the initial national formatting on reset', async () => {
     const form = document.createElement('form');
