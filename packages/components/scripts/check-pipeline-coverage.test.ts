@@ -92,7 +92,7 @@ describe('checkPipelineCoverage', () => {
         workflowText: {
           'unit-tests': 'bun run --filter=@lostgradient/cinder components:check',
           'browser-tests': '',
-          'main-green': 'bun run --filter=@lostgradient/cinder check:placeholder-docs',
+          'main-green': 'bun run --filter=@lostgradient/cinder components:check',
           release: '',
           'changeset-guard': '',
         },
