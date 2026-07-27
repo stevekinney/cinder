@@ -3,8 +3,8 @@
  *
  * Fully static `style="..."` attributes survive server rendering as inline
  * style attributes, so browsers reject them under `style-src 'self'`. Dynamic
- * style attributes and `style:` directives compile to CSSOM mutations and are
- * intentionally outside this check.
+ * values are allowed, while static `style:property="..."` directives and
+ * constant style spreads are rejected because they still emit inline styles.
  */
 
 import { Glob } from 'bun';
