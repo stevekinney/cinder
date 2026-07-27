@@ -144,7 +144,7 @@ export const allowedFieldWrapperCounts = new Map<string, number>(
     'time-field/time-field.svelte',
   ].map((filePath) => [filePath, 1] as const),
 );
-allowedFieldWrapperCounts.set('date-range-field/date-range-field.svelte', 2);
+allowedFieldWrapperCounts.set('date-picker/date-picker.svelte', 2);
 
 const migrationMaps = [
   allowedRawControlCounts,

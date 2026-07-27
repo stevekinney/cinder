@@ -6,7 +6,10 @@ import {
   shouldCheckComponentSource,
 } from './check-primitive-composition.ts';
 import { cssPrimitiveCounts } from './primitive-composition-css.ts';
-import { allowedGridCounts } from './primitive-composition-migrations.ts';
+import {
+  allowedFieldWrapperCounts,
+  allowedGridCounts,
+} from './primitive-composition-migrations.ts';
 import { primitiveCompositionSourceRoots } from './primitive-composition-runner.ts';
 
 describe('primitive composition guard', () => {
@@ -24,6 +27,11 @@ describe('primitive composition guard', () => {
 
   test('keeps the footer grid migration baseline at two tracked definitions', () => {
     expect(allowedGridCounts.get('footer/footer.css')).toBe(2);
+  });
+
+  test('tracks only the remaining date field-wrapper migrations', () => {
+    expect(allowedFieldWrapperCounts.get('date-picker/date-picker.svelte')).toBe(2);
+    expect(allowedFieldWrapperCounts.has('date-range-field/date-range-field.svelte')).toBe(false);
   });
 
   test('ignores hidden submission inputs and controls mentioned in comments', () => {
