@@ -1,5 +1,5 @@
 const focusCandidateSelector =
-  'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+  'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
 
 function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];

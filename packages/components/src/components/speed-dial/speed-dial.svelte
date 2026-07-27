@@ -39,7 +39,7 @@
   const actionsId = $props.id();
   const defaultAriaLabel = 'Quick actions';
   const documentFocusSelector =
-    'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]';
+    'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
 
   let {
     open = $bindable(false),
@@ -57,6 +57,7 @@
   let actionsPortalScopeElement = $state<HTMLDivElement | null>(null);
   let actionsElement = $state<HTMLDivElement | null>(null);
   let spacingProbeElement = $state<HTMLSpanElement | null>(null);
+  let spacingVersion = $state(0);
   let sourceSubtreeUnavailable = $state(false);
   let hasFocusedCurrentOpenSession = false;
   const actionButtons: HTMLButtonElement[] = [];
@@ -87,7 +88,10 @@
     anchor: () => getTriggerElement(),
     panel: () => actionsElement,
     placement: () => placement,
-    offset: () => getSpacingOffset(),
+    offset: () => {
+      spacingVersion;
+      return getSpacingOffset();
+    },
     widthMode: () => 'none',
   });
   const resolvedDirection = $derived(
@@ -102,6 +106,13 @@
     () => getTriggerElement(),
     () => open && !hidden,
   );
+
+  $effect(() => {
+    if (!spacingProbeElement || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => spacingVersion++);
+    observer.observe(spacingProbeElement);
+    return () => observer.disconnect();
+  });
 
   function normalizeAriaLabel(label: string | null | undefined): string {
     const trimmed = label?.trim() ?? '';
@@ -340,7 +351,7 @@
   <div
     bind:this={actionsPortalScopeElement}
     {@attach actionsPortalScope}
-    class="cinder-speed-dial__portal-scope"
+    class={classNames('cinder-speed-dial__portal-scope', customClassName)}
     style={`display: contents;${inheritedPortalStyle.style}`}
   ></div>
   <div
@@ -350,7 +361,7 @@
     role="toolbar"
     aria-label="Actions"
     aria-orientation={orientation}
-    class="cinder-speed-dial__actions"
+    class="cinder-_floating-surface cinder-speed-dial__actions"
     data-cinder-open={open ? '' : undefined}
     data-cinder-direction={resolvedDirection}
     data-cinder-position-ready={anchoredActions.positionReady || undefined}

@@ -70,12 +70,13 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
     const sourceFile = root.source?.input.file?.replaceAll('\\', '/');
     if (
       sourceFile &&
-      !sourceFile.includes('/packages/components/src/components/') &&
-      !sourceFile.includes('/packages/components/src/styles/')
+      !sourceFile.includes('packages/components/src/components/') &&
+      !sourceFile.includes('packages/components/src/styles/')
     )
       return;
 
-    root.walkDecls('z-index', (declaration) => {
+    root.walkDecls((declaration) => {
+      if (declaration.prop.toLowerCase() !== 'z-index') return;
       const value = declaration.value.trim();
       const tokenMatch = layerTokenPattern.exec(value);
       if (allowedLocalValues.has(value)) return;

@@ -81,7 +81,11 @@ export function resolvePortalTarget(target: PortalTargetInput): ResolvedPortalTa
 export function findNearestOpenPopover(source: HTMLElement): HTMLElement | null {
   let candidate = source.closest<HTMLElement>('[popover]');
   while (candidate) {
-    if (candidate.matches(':popover-open')) return candidate;
+    try {
+      if (candidate.matches(':popover-open')) return candidate;
+    } catch {
+      // Unsupported pseudo-classes are treated as closed.
+    }
     candidate = candidate.parentElement?.closest<HTMLElement>('[popover]') ?? null;
   }
   return null;
@@ -93,12 +97,18 @@ export function findNearestOpenTopLayer(
 ): HTMLElement | null {
   let candidate: HTMLElement | null = source;
   while (candidate) {
-    if (
-      (candidate.matches('dialog') && isModalDialog(candidate)) ||
-      (candidate.matches('[popover]') && candidate.matches(':popover-open'))
-    )
-      return candidate;
-    candidate = candidate.parentElement;
+    try {
+      if (
+        (candidate.matches('dialog') && isModalDialog(candidate)) ||
+        (candidate.matches('[popover]') && candidate.matches(':popover-open'))
+      )
+        return candidate;
+    } catch {
+      // Unsupported pseudo-classes are treated as closed.
+    }
+    const rootNode = candidate.getRootNode();
+    const shadowHost: Element | null = rootNode instanceof ShadowRoot ? rootNode.host : null;
+    candidate = candidate.parentElement ?? (shadowHost instanceof HTMLElement ? shadowHost : null);
   }
   return null;
 }
@@ -165,7 +175,22 @@ export function createInheritedPortalStyle(
       style = getInheritedPortalStyle(inheritanceSource);
     };
     syncStyle();
-    return observeInheritedPortalAttributes(inheritanceSource, true, syncStyle) ?? undefined;
+    const stopObserving = observeInheritedPortalAttributes(inheritanceSource, true, syncStyle);
+    if (typeof window === 'undefined') return stopObserving ?? undefined;
+    const mediaQueries = [
+      '(prefers-color-scheme: dark)',
+      '(prefers-contrast: more)',
+      '(forced-colors: active)',
+    ].map((query) => window.matchMedia(query));
+    const onMediaChange = () => syncStyle();
+    for (const mediaQuery of mediaQueries) mediaQuery.addEventListener('change', onMediaChange);
+    window.addEventListener('resize', onMediaChange);
+    return () => {
+      stopObserving?.();
+      for (const mediaQuery of mediaQueries)
+        mediaQuery.removeEventListener('change', onMediaChange);
+      window.removeEventListener('resize', onMediaChange);
+    };
   });
 
   return {
@@ -264,8 +289,9 @@ export function redispatchPortaledEvent(
 
   const originalTarget = event.target;
   const eventInit: EventInit & { [property: string]: unknown } = {
-    bubbles: true,
-    cancelable: true,
+    bubbles: event.bubbles,
+    cancelable: event.cancelable,
+    composed: event.composed,
   };
   for (const property of [
     'key',
@@ -445,8 +471,8 @@ export function createPortalAttachment(
             ? explicitLanguage
             : language !== managedAttributes.lang
               ? language
-              : initialAttributes.lang,
-        preserveLanguage: explicitLanguage !== undefined || initialAttributes.lang !== null,
+              : null,
+        preserveLanguage: explicitLanguage !== undefined,
         dataTheme:
           explicitDataTheme !== undefined
             ? explicitDataTheme

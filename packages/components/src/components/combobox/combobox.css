@@ -134,6 +134,7 @@
   .cinder-combobox__empty-panel {
     margin: var(--cinder-space-1) 0 0 0;
     min-inline-size: 0;
+    max-inline-size: unset;
   }
 
   .cinder-combobox__empty {
