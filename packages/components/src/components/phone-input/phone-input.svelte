@@ -435,16 +435,24 @@
   const resolvedAriaInvalid = $derived(error ? ariaInvalid(true) : context?.invalid);
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  const resolvedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
+  const resolvedAriaLabelledBy = $derived(
+    typeof ariaLabelledBy === 'string' && ariaLabelledBy.trim().length > 0
+      ? ariaLabelledBy
+      : undefined,
+  );
 
   const resolvedGroupLabelledBy = $derived.by(() => {
     if (groupLabelId) return groupLabelId;
     if (context?.labelId) return context.labelId;
-    if (ariaLabelledBy) return ariaLabelledBy;
+    if (resolvedAriaLabelledBy) return resolvedAriaLabelledBy;
     return undefined;
   });
 
   const groupAriaLabel = $derived(
-    !resolvedGroupLabelledBy && !ariaLabelledBy ? ariaLabel : undefined,
+    !resolvedGroupLabelledBy && !resolvedAriaLabelledBy ? resolvedAriaLabel : undefined,
   );
 
   function controlLabelledBy(controlLabelId: string): string | undefined {
@@ -458,7 +466,7 @@
   }
 
   const hasGroupAccessibleName = $derived(
-    !!label || !!context?.labelId || !!ariaLabelledBy || !!ariaLabel,
+    !!label || !!context?.labelId || !!resolvedAriaLabelledBy || !!resolvedAriaLabel,
   );
 
   $effect(() => {

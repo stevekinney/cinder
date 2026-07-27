@@ -40,6 +40,18 @@ describe('PhoneInput rendering', () => {
     expect(getByRole('combobox', { name: 'Phone Country: United States, +1' })).not.toBeNull();
   });
 
+  test('ignores whitespace-only ARIA names and preserves control fallbacks', () => {
+    const { container, getByRole } = render(PhoneInput, {
+      props: { id: 'p', 'aria-label': '   ', 'aria-labelledby': '\t' },
+    });
+    const group = container.querySelector('[role="group"]')!;
+
+    expect(group.hasAttribute('aria-label')).toBe(false);
+    expect(group.hasAttribute('aria-labelledby')).toBe(false);
+    expect(getByRole('combobox', { name: 'Country: United States, +1' })).not.toBeNull();
+    expect(getByRole('textbox', { name: 'Phone number' })).not.toBeNull();
+  });
+
   test('visible country summary stays compact while options retain full names', () => {
     const { container } = render(PhoneInput, {
       props: { id: 'p', label: 'Phone', country: 'AE', countries: ['US', 'AE'] },
