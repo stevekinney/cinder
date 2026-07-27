@@ -317,6 +317,14 @@ describe('Modal', () => {
     }
   });
 
+  test('overflow fade uses a surface-colored overlay instead of masking the body', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-overflows\]::after\s*\{[^}]*background:\s*linear-gradient\(to bottom, transparent, var\(--cinder-surface\)\)/s,
+    );
+    expect(css).not.toContain('mask-image:');
+  });
+
   test('autofocus DOM property on arbitrary child prevents body fallback focus', () => {
     const originalFocus = HTMLElement.prototype.focus;
     const focusTargets: HTMLElement[] = [];

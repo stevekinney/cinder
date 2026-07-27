@@ -694,6 +694,14 @@ describe('Sheet', () => {
     }
   });
 
+  test('overflow fade uses a surface-colored overlay instead of masking the body', async () => {
+    const css = await Bun.file(new URL('./sheet.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-sheet__body\[data-cinder-overflows\]::after\s*\{[^}]*background:\s*linear-gradient\(to bottom, transparent, var\(--cinder-surface\)\)/s,
+    );
+    expect(css).not.toContain('mask-image:');
+  });
+
   test('close button has aria-label="Close sheet"', () => {
     const { container } = render(Sheet, {
       props: { open: true, title: 'Test', children: emptySnippet },
