@@ -69,6 +69,11 @@ describe('workflow-level env context guard', () => {
     ['hashFiles regardless of casing', "  A: ${{ HASHFILES('bun.lock') }}"],
     ['the always status function', '  A: ${{ always() }}'],
     ['the success status function', '  A: ${{ success() }}'],
+    // A whole context is as invalid as one of its properties, and neither the
+    // dotted-root scan nor the function scan sees these on its own.
+    ['a bare context with no property access', '  A: ${{ runner }}'],
+    ['a bare context passed to an allowed function', '  A: ${{ toJSON(runner) }}'],
+    ['a bare context inside a comparison', "  A: ${{ matrix == 'x' }}"],
   ])('rejects %s', (_label, line) => {
     expect(workflowLevelEnvironmentLineIsRejected(line)).toBe(true);
   });
@@ -81,6 +86,9 @@ describe('workflow-level env context guard', () => {
     ['github inside an interpolated string', '  TURBO_SCM_BASE: origin/${{ github.base_ref }}'],
     ['an always-available function', "  A: ${{ format('{0}', github.sha) }}"],
     ['toJSON over an allowed context', '  A: ${{ toJSON(github.event) }}'],
+    ['a bare allowed context', '  A: ${{ github }}'],
+    ['a boolean literal', '  A: ${{ true }}'],
+    ['a comparison against an allowed context', "  A: ${{ inputs.mode == 'full' }}"],
     ['a dotted string literal argument', "  A: ${{ format('{0}.{1}', github.a, github.b) }}"],
     [
       'a boolean expression over github',

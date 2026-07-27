@@ -827,6 +827,9 @@ const FUNCTIONS_UNAVAILABLE_AT_WORKFLOW_LEVEL = new Set([
   'always',
 ]);
 
+/** Bare words in a GitHub expression that are values, not context references. */
+const EXPRESSION_LITERALS = new Set(['true', 'false', 'null']);
+
 /**
  * Names of functions invoked inside every `${{ … }}` expression on a line,
  * lowercased because GitHub's expression functions are case-insensitive.
@@ -858,6 +861,12 @@ export function workflowExpressionFunctionNames(line: string): string[] {
  * The leading `(?<![.\w-])` is what keeps this to the ROOT: without it,
  * `github.event.pull_request.number` reports `event` and `pull_request` as
  * roots too and the allowlist rejects a perfectly valid expression.
+ *
+ * A bare context counts. `${{ runner }}` and `${{ toJSON(runner) }}` are just as
+ * invalid as `${{ runner.os }}`, and an earlier version of this function missed
+ * both by requiring a trailing `.` or `[`. So any identifier NOT followed by `(`
+ * is treated as a context reference; one followed by `(` is a function name and
+ * belongs to `workflowExpressionFunctionNames` instead.
  */
 export function workflowExpressionContextRoots(line: string): string[] {
   const roots: string[] = [];
@@ -866,10 +875,15 @@ export function workflowExpressionContextRoots(line: string): string[] {
     const body = (expression.groups?.['body'] ?? '').replace(/'(?:[^']|'')*'/g, "''");
 
     for (const reference of body.matchAll(
-      /(?<![.\w-])(?<root>[A-Za-z_][A-Za-z0-9_-]*)\s*(?:\.|\[)/g,
+      /(?<![.\w-])(?<root>[A-Za-z_][A-Za-z0-9_-]*)\s*(?<suffix>\()?/g,
     )) {
       const root = reference.groups?.['root'];
-      if (root !== undefined) roots.push(root);
+
+      if (root === undefined) continue;
+      if (reference.groups?.['suffix'] === '(') continue;
+      if (EXPRESSION_LITERALS.has(root.toLowerCase())) continue;
+
+      roots.push(root);
     }
   }
 

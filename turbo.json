@@ -56,11 +56,17 @@
     //
     // Only `test`/`test:coverage` carry these. `build`, `typecheck`, and `lint` are deterministic
     // across platforms, so they keep full CI-to-laptop cache sharing.
-    // `.github/workflows/**` is a test input, not just CI configuration:
-    // `validate-release-workflow.test.ts` reads unit-tests.yaml and main-green.yaml off disk and
-    // asserts their build ordering and filters, so a workflow regression would otherwise collect a
-    // false cached pass. Declared on the base task rather than scoped to cinder — workflow files
-    // change rarely, so the extra invalidation for other packages costs almost nothing.
+    //
+    // `.github/workflows/**` and `docs/**` are test inputs, not just repo furniture. Drift tests
+    // read them off disk: `validate-release-workflow.test.ts` asserts unit-tests.yaml's and
+    // main-green.yaml's build ordering and filters, and `tokens-doc-drift.test.ts` fails when
+    // `docs/tokens.md`'s token table diverges from `tokens-base.css`. Without these declared, a
+    // regression in either collects a false cached pass.
+    //
+    // Whole directories rather than the two named files, deliberately: a hand-maintained list of
+    // individual paths is exactly the fragile pattern this PR removed from `globalDependencies`,
+    // and it would silently fail to cover the next drift test someone adds. Both trees change
+    // rarely enough that the extra invalidation is cheap.
     "test": {
       "dependsOn": ["^build"],
       "outputs": [],
@@ -68,7 +74,8 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
-        "$TURBO_ROOT$/.github/workflows/**"
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
@@ -79,7 +86,8 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
-        "$TURBO_ROOT$/.github/workflows/**"
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
@@ -117,7 +125,8 @@
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
         "$TURBO_ROOT$/packages/playground/src/**",
-        "$TURBO_ROOT$/.github/workflows/**"
+        "$TURBO_ROOT$/.github/workflows/**",
+        "$TURBO_ROOT$/docs/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS"]
     },
