@@ -378,24 +378,21 @@ describe('MegaMenu', () => {
   });
 
   test('re-resolves responsive CSS direction after resize', async () => {
-    try {
-      const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
-      const nav = container.querySelector('nav');
-      const products = getTriggerByLabel(container, 'Products');
-      const resources = getTriggerByLabel(container, 'Resources');
-      if (!nav) throw new Error('Missing menu nav.');
-      nav.style.direction = 'rtl';
-      products.focus();
-      await fireEvent.keyDown(products, { key: 'ArrowLeft' });
-      expect(document.activeElement).toBe(resources);
+    const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+    const nav = container.querySelector('nav');
+    const products = getTriggerByLabel(container, 'Products');
+    const resources = getTriggerByLabel(container, 'Resources');
+    if (!nav) throw new Error('Missing menu nav.');
+    nav.style.direction = 'rtl';
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(resources);
 
-      nav.style.direction = 'ltr';
-      await fireEvent(window, new Event('resize'));
-      products.focus();
-      await fireEvent.keyDown(products, { key: 'ArrowRight' });
-      expect(document.activeElement).toBe(resources);
-    } finally {
-    }
+    nav.style.direction = 'ltr';
+    await fireEvent(window, new Event('resize'));
+    products.focus();
+    await fireEvent.keyDown(products, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(resources);
   });
 
   test('restamps inherited direction after an ancestor mutation', async () => {

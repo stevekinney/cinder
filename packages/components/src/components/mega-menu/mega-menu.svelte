@@ -435,36 +435,6 @@
   });
 
   $effect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
-    const queries = new Set<string>();
-    const collect = (rules: CSSRuleList | undefined): void => {
-      if (!rules) return;
-      for (const rule of Array.from(rules)) {
-        const mediaText = Reflect.get(Reflect.get(rule, 'media') ?? {}, 'mediaText');
-        if (typeof mediaText === 'string' && mediaText) queries.add(mediaText);
-        const nested = Reflect.get(rule, 'cssRules');
-        if (nested && typeof nested.length === 'number') collect(nested as CSSRuleList);
-      }
-    };
-    for (const sheet of Array.from(document.styleSheets)) {
-      try {
-        collect(sheet.cssRules);
-      } catch {
-        // Cross-origin stylesheets cannot be inspected.
-      }
-    }
-    const mediaQueries = [...queries].map((query) => window.matchMedia(query));
-    const handler = () => {
-      directionRevision += 1;
-      updateIndicator();
-    };
-    for (const mediaQuery of mediaQueries) mediaQuery.addEventListener('change', handler);
-    return () => {
-      for (const mediaQuery of mediaQueries) mediaQuery.removeEventListener('change', handler);
-    };
-  });
-
-  $effect(() => {
     if (!navElement || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
       directionRevision += 1;
