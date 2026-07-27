@@ -2133,6 +2133,10 @@ async function promiseWithTimeout<T>(
   timeoutMs: number,
   description: string,
 ): Promise<T> {
+  // A timeout intentionally abandons the underlying close operation. Mark its
+  // eventual rejection handled so a late browser/fixture error cannot become
+  // an unhandled rejection after teardown has moved on.
+  void promise.catch(() => undefined);
   return await Promise.race([
     promise,
     Bun.sleep(timeoutMs).then(() => fail(`${description} timed out after ${timeoutMs}ms`)),
