@@ -118,6 +118,9 @@ test('redacts credentials from remote output', () => {
   expect(redactRemote('https://user:secret@example.test/repository.git')).toBe(
     'https://%5BREDACTED%5D@example.test/repository.git',
   );
+  expect(redactRemote('git@github.com:owner/repository.git')).toBe(
+    'git@github.com:owner/repository.git',
+  );
 });
 
 test('partial repository failures stay in the snapshot', async () => {

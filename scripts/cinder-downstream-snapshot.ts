@@ -48,7 +48,7 @@ export function redactRemote(remote: string): string {
     }
     return url.toString();
   } catch {
-    return '[REDACTED]';
+    return remote.replace(/([^\s/@]+):[^\s/@]+@/u, '[REDACTED]@');
   }
 }
 
@@ -160,6 +160,12 @@ async function main(): Promise<void> {
     try {
       const hasPath = repository.path !== undefined;
       const hasRemote = repository.remote !== undefined;
+      if (hasPath && (typeof repository.path !== 'string' || repository.path.length === 0))
+        throw new Error('repository path must be a non-empty string');
+      if (hasRemote && (typeof repository.remote !== 'string' || repository.remote.length === 0))
+        throw new Error('repository remote must be a non-empty string');
+      if (hasRemote && (typeof repository.ref !== 'string' || repository.ref.length === 0))
+        throw new Error('repository ref must be a non-empty string');
       if (
         hasPath === hasRemote ||
         (hasRemote && repository.ref === undefined) ||
