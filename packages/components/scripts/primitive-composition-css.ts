@@ -38,6 +38,7 @@ type AttributeConstraint = {
 };
 
 type SelectorTarget = {
+  ancestorSignature?: string;
   tag?: string;
   id?: string;
   classes: Set<string>;
@@ -139,13 +140,34 @@ function selectorTargets(selector: string): SelectorTarget[] {
       const lastCombinator = selectorNode.nodes.findLastIndex((node) => node.type === 'combinator');
       const targetNodes = selectorNode.nodes.slice(lastCombinator + 1);
       if (targetNodes.some((node) => node.type === 'pseudo' && node.value.startsWith('::'))) return;
-      targets.push(selectorTargetFromNodes(targetNodes));
+      const target = selectorTargetFromNodes(targetNodes);
+      if (lastCombinator >= 0) {
+        const ancestorSignature = selectorNode.nodes
+          .slice(0, lastCombinator)
+          .map((node) => node.toString())
+          .join('')
+          .trim();
+        if (ancestorSignature) target.ancestorSignature = ancestorSignature;
+      }
+      targets.push(target);
     });
   }).processSync(selector);
   return targets;
 }
 
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
+  const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
+    (match) => match[1],
+  );
+  const rightAncestorIds = [...(right.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
+    (match) => match[1],
+  );
+  if (
+    leftAncestorIds.length > 0 &&
+    rightAncestorIds.length > 0 &&
+    !leftAncestorIds.some((id) => rightAncestorIds.includes(id))
+  )
+    return false;
   const hasConflictingAttribute = [...left.attributes].some(([attribute, leftConstraint]) => {
     const rightConstraint = right.attributes.get(attribute);
     if (rightConstraint === undefined) return false;

@@ -566,6 +566,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('preserves ancestor constraints when pairing selectors', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '#compact > .layout { display: grid; } #wide > .layout { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('keeps mutually exclusive media types separate', () => {
     expect(
       findPrimitiveCompositionViolations(
