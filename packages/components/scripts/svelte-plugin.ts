@@ -64,7 +64,7 @@ export function publishedSvelteCompileFilename(filePath: string): string {
   return filePath;
 }
 
-function allowsStyleBlock(path: string): boolean {
+export function allowsStyleBlock(path: string): boolean {
   const normalizedPath = path.replaceAll('\\', '/');
 
   // Playground chrome is not part of the design-system cascade — the no-style
@@ -72,6 +72,9 @@ function allowsStyleBlock(path: string): boolean {
   // Files under packages/playground/ are dev-only scaffolding and may co-locate
   // their styles with their markup.
   if (normalizedPath.includes('/packages/playground/')) return true;
+  // Test fixtures are not published package components or part of the public
+  // cascade. Allow them to keep scoped styles local to the fixture.
+  if (normalizedPath.includes('/packages/components/src/test/fixtures/')) return true;
 
   const componentPathMatch = normalizedPath.match(
     /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,

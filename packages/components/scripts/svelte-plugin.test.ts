@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  allowsStyleBlock,
   findOneArgumentServerComponentBoundaries,
   hasAuthoredStyleBlock,
   preserveServerComponentIdentity,
@@ -54,6 +55,16 @@ describe('hasAuthoredStyleBlock', () => {
         `<!-- <style>.fake { color: red; }</style> --><script>const example = '<style>.fake {}</style>';</script><div style:height={height}></div>`,
       ),
     ).toBe(false);
+  });
+});
+
+describe('allowsStyleBlock', () => {
+  it('allows component test fixtures to keep scoped styles local', () => {
+    expect(
+      allowsStyleBlock(
+        '/checkout/packages/components/src/test/fixtures/virtualizer-live-fixture.svelte',
+      ),
+    ).toBe(true);
   });
 });
 
