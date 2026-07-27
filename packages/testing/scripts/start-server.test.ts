@@ -24,6 +24,7 @@ import {
   playgroundWarmReadinessMissingEndpointMessage,
   playwrightCommandArguments,
   playwrightProcessEnvironment,
+  respondingPlaygroundUrl,
   shouldRefuseStaleServerReuse,
   shouldStartManagedChildProcess,
   shutdownExitCodeAfterRequest,
@@ -72,6 +73,30 @@ describe('localPlaygroundUrlForReportedPort', () => {
 
   test('returns the local playground URL for a reported port', () => {
     expect(localPlaygroundUrlForReportedPort(5556)).toBe('http://localhost:5556');
+  });
+});
+
+describe('respondingPlaygroundUrl', () => {
+  test('accepts one successful readiness probe without immediately probing again', async () => {
+    let probeCount = 0;
+    const respondingUrl = await respondingPlaygroundUrl(5556, 'http://localhost:5555', async () => {
+      probeCount += 1;
+      return probeCount === 1;
+    });
+
+    expect(respondingUrl).toBe('http://localhost:5556');
+    expect(probeCount).toBe(1);
+  });
+
+  test('probes the fallback URL until the server reports a selected port', async () => {
+    const probedUrls: string[] = [];
+
+    await respondingPlaygroundUrl(null, 'http://localhost:5555', async (url) => {
+      probedUrls.push(url);
+      return false;
+    });
+
+    expect(probedUrls).toEqual(['http://localhost:5555']);
   });
 });
 

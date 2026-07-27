@@ -172,6 +172,16 @@ export function localPlaygroundUrlForReportedPort(port: number | null): string |
   return port === null ? null : localPlaygroundUrlForPort(port);
 }
 
+export async function respondingPlaygroundUrl(
+  reportedPort: number | null,
+  fallbackUrl: string,
+  probe: (playgroundUrl: string) => Promise<boolean>,
+): Promise<string | null> {
+  const reportedUrl = localPlaygroundUrlForReportedPort(reportedPort);
+  const candidateUrl = reportedUrl ?? fallbackUrl;
+  return (await probe(candidateUrl)) ? candidateUrl : null;
+}
+
 function localPlaygroundUrlForPort(port: number): string {
   return `http://localhost:${port}`;
 }
@@ -807,17 +817,14 @@ async function main(): Promise<void> {
     const startedAt = Date.now();
     const deadline = startedAt + PLAYGROUND_READY_TIMEOUT_MS;
     let lastLog = startedAt;
+    let serverReady = false;
     while (Date.now() < deadline) {
       const selectedPort =
         (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
-      const selectedPlaygroundUrl = localPlaygroundUrlForReportedPort(selectedPort);
-      if (selectedPlaygroundUrl !== null) {
-        targetPlaygroundUrl = selectedPlaygroundUrl;
-        if (await ping(selectedPlaygroundUrl)) break;
-      } else if (await ping(targetPlaygroundUrl)) {
-        // Local runs can start successfully on the default port without writing
-        // the file or logging the selected port. Accept direct readiness at the
-        // target URL so the wrapper does not hang despite a healthy server.
+      const respondingUrl = await respondingPlaygroundUrl(selectedPort, targetPlaygroundUrl, ping);
+      if (respondingUrl !== null) {
+        targetPlaygroundUrl = respondingUrl;
+        serverReady = true;
         break;
       }
       if (Date.now() - lastLog >= 10_000) {
@@ -830,7 +837,7 @@ async function main(): Promise<void> {
       await new Promise<void>((resolve) => setTimeout(resolve, 500));
     }
 
-    if (!(await ping())) {
+    if (!serverReady) {
       console.error(
         `Playground server did not become ready within ${Math.round(
           PLAYGROUND_READY_TIMEOUT_MS / 1000,
