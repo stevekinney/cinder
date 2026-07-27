@@ -161,8 +161,9 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         if (cancelled || currentGeneration !== generation) return;
 
         const widthStyle = getAnchoredOverlayWidthStyle(widthMode, anchor.getBoundingClientRect());
+        const strategy = panel.parentElement?.matches('dialog') ? 'absolute' : 'fixed';
         positionStyle = [
-          'position: fixed;',
+          `position: ${strategy};`,
           `left: ${result.x}px;`,
           `top: ${result.y}px;`,
           widthStyle,

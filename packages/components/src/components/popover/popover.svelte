@@ -305,7 +305,11 @@
 </script>
 
 {#if trigger}
-  <div bind:this={triggerWrapper} class="cinder-popover__trigger">
+  <div
+    bind:this={triggerWrapper}
+    class="cinder-popover__trigger"
+    data-cinder-portal-owner={open ? `${panelId}-scope` : undefined}
+  >
     {@render trigger()}
   </div>
 {/if}
@@ -314,6 +318,7 @@
   <div
     bind:this={portalScopeElement}
     {@attach portalScopeAttachment}
+    id={`${panelId}-scope`}
     class="cinder-popover__portal-scope"
     style={`display: contents;${inheritedPortalStyle.style}`}
   ></div>

@@ -95,6 +95,13 @@ export function findNearestOpenTopLayer(
   source: HTMLElement,
   isModalDialog: (element: HTMLElement) => boolean = (element) => element.matches(':modal'),
 ): HTMLElement | null {
+  const ownerId = source.closest('.cinder-popover__trigger')
+    ? null
+    : source.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset.cinderPortalOwner;
+  if (ownerId) {
+    const owner = document.getElementById(ownerId);
+    if (owner instanceof HTMLElement) return owner;
+  }
   let candidate: HTMLElement | null = source;
   while (candidate) {
     try {
