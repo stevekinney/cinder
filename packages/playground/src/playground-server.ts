@@ -183,13 +183,10 @@ const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
 type ShellBuildResult = { code: string | null; usedFallback: boolean };
 let shellBuildPromise: Promise<ShellBuildResult> | null = null;
-type ShellServerRenderer = (props: {
-  initialComponent: string;
-  components: string[];
-  readmeHtml: string;
-  documentation: ComponentDocumentationPayload | null;
-  initialSearch: string;
-}) => { body: string; head: string };
+type ShellServerRenderer = (props: { components: string[]; readmeHtml: string }) => {
+  body: string;
+  head: string;
+};
 let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 let preparedShellServerRenderer: ShellServerRenderer | null = null;
@@ -199,14 +196,27 @@ let shellRendererUsedFallback = false;
  * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
  * Same shape and caching discipline as {@link ShellServerRenderer}.
  */
+type RenderedBody = { body: string; head: string };
 type PageServerRenderer = (props: {
   componentName: string;
   documentation: ComponentDocumentationPayload;
   examples: { scenario: string; title: string; description?: string; featured?: boolean }[];
   sidebarComponents: string[];
-}) => { body: string; head: string };
-let pageServerRendererPromise: Promise<PageServerRenderer> | null = null;
-let lastGoodPageServerRenderer: PageServerRenderer | null = null;
+}) => RenderedBody;
+type LandingServerRenderer = (props: {
+  readmeHtml: string;
+  sidebarComponents: string[];
+}) => RenderedBody;
+/**
+ * Both renderers come from the same server bundle: `/` and `/page/<name>` are
+ * the same Svelte component with different content, so they share one chrome.
+ */
+type PageServerRenderers = {
+  renderComponentPageBody: PageServerRenderer;
+  renderLandingBody: LandingServerRenderer;
+};
+let pageServerRendererPromise: Promise<PageServerRenderers> | null = null;
+let lastGoodPageServerRenderer: PageServerRenderers | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
 /**
@@ -1341,7 +1351,7 @@ export function setPreparedShellServerRenderer(renderer: ShellServerRenderer | n
  * transient compile error during development serves the previous good renderer
  * instead of a 500.
  */
-async function loadPageServerRenderer(): Promise<PageServerRenderer> {
+async function loadPageServerRenderer(): Promise<PageServerRenderers> {
   if (pageServerRendererPromise !== null) return pageServerRendererPromise;
 
   pageServerRendererPromise = (async () => {
@@ -1371,11 +1381,20 @@ async function loadPageServerRenderer(): Promise<PageServerRenderer> {
       if (
         typeof loaded !== 'object' ||
         loaded === null ||
-        typeof Reflect.get(loaded, 'renderComponentPageBody') !== 'function'
+        typeof Reflect.get(loaded, 'renderComponentPageBody') !== 'function' ||
+        typeof Reflect.get(loaded, 'renderLandingBody') !== 'function'
       ) {
-        throw new Error('Page server bundle did not export renderComponentPageBody');
+        throw new Error(
+          'Page server bundle did not export renderComponentPageBody and renderLandingBody',
+        );
       }
-      const renderer = Reflect.get(loaded, 'renderComponentPageBody') as PageServerRenderer;
+      const renderer: PageServerRenderers = {
+        renderComponentPageBody: Reflect.get(
+          loaded,
+          'renderComponentPageBody',
+        ) as PageServerRenderer,
+        renderLandingBody: Reflect.get(loaded, 'renderLandingBody') as LandingServerRenderer,
+      };
       if (generationAtStart === rebuildGeneration) {
         lastGoodPageServerRenderer = renderer;
       }
@@ -1795,7 +1814,7 @@ async function renderComponentPage(
   let ssrHead = '';
   if (!snapshotMode && !previewOnly) {
     try {
-      const renderComponentPageBody = await loadPageServerRenderer();
+      const { renderComponentPageBody } = await loadPageServerRenderer();
       const rendered = renderComponentPageBody({
         componentName,
         documentation,
@@ -2447,11 +2466,8 @@ export async function handleRequest(request: Request): Promise<Response> {
     ]);
     const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
     const renderedShell = renderShellBody({
-      initialComponent: '',
       components: sidebarComponents,
       readmeHtml,
-      documentation: null,
-      initialSearch: url.search,
     });
     const html = renderShell(null, sidebarComponents, {
       readmeHtml,
