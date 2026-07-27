@@ -134,10 +134,22 @@ export function getInheritedPortalStyle(source: HTMLElement | null | undefined):
   const typographySource = hasDirectTypography ? source : (source.parentElement ?? source);
   const typography = getComputedStyle(typographySource);
   const inherited = document.createElement('div').style;
+  const customPropertyNames = new Set<string>();
+  let customPropertySource: HTMLElement | null = source;
+  while (customPropertySource) {
+    for (const property of Array.from(customPropertySource.style)) {
+      if (property.startsWith('--cinder-')) customPropertyNames.add(property);
+    }
+    customPropertySource =
+      customPropertySource.parentElement ?? getShadowHost(customPropertySource);
+  }
   for (let index = 0; index < computed.length; index += 1) {
     const property = computed.item(index);
-    if (!property.startsWith('--cinder-')) continue;
-    inherited.setProperty(property, computed.getPropertyValue(property));
+    if (property.startsWith('--cinder-')) customPropertyNames.add(property);
+  }
+  for (const property of customPropertyNames) {
+    const value = computed.getPropertyValue(property);
+    if (value) inherited.setProperty(property, value);
   }
 
   const colorScheme = computed.colorScheme || source.style.colorScheme;

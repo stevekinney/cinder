@@ -110,6 +110,7 @@
   );
 
   $effect(() => {
+    if (!mobileMenuOpen || !isMobileLayout) pendingTabFocus = false;
     if (!pendingTabFocus || !anchoredItems.positionReady) return;
     pendingTabFocus = false;
     const firstItem = getNavigationItems().find(isEnabledNavigationItem);
