@@ -20,9 +20,10 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
 
 describe(ruleName, () => {
   test('rejects the page surface on a form control', async () => {
-    expect(
-      warnings(await lint('.cinder-input { background: var(--cinder-surface); }')),
-    ).toHaveLength(1);
+    const [warning] = warnings(await lint('.cinder-input { background: var(--cinder-surface); }'));
+    expect(warning?.text).toContain(
+      'must not use `--cinder-surface` for their background; the default control fill is `--cinder-surface-raised`',
+    );
   });
 
   test('allows the raised surface and non-form surfaces', async () => {

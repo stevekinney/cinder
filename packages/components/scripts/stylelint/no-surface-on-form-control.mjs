@@ -1,10 +1,10 @@
-/** Stylelint rule: form controls use the raised surface token. */
+/** Stylelint rule: form controls do not use the page surface token. */
 import stylelint from 'stylelint';
 
 const ruleName = 'cinder/no-surface-on-form-control';
 const messages = stylelint.utils.ruleMessages(ruleName, {
   surface: () =>
-    'Form controls must use `--cinder-surface-raised`, not `--cinder-surface`, for their background.',
+    'Form controls must not use `--cinder-surface` for their background; the default control fill is `--cinder-surface-raised`.',
 });
 function variableFunctions(value) {
   const functions = [];
