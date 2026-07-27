@@ -103,7 +103,7 @@ export function findPlaceholderViolations(
           continue;
         const matchesPhrase =
           phrase === '_Record'
-            ? /_Record(?:\s|_|$)/.test(line)
+            ? /_Record(?:\s|_|$)/i.test(line)
             : ACCESSIBILITY_SCAFFOLD_PHRASES.includes(phrase)
               ? line.toLowerCase().includes(phrase.toLowerCase())
               : phrase.startsWith('_Pending')

@@ -33,6 +33,13 @@ describe('findPlaceholderViolations', () => {
     );
     expect(violations.some(({ phrase }) => phrase === '_Pending')).toBe(true);
   });
+  it('rejects case-insensitive record placeholders', () => {
+    const violations = findPlaceholderViolations(
+      'Applies: no\nAccessibility: _record',
+      'README.md',
+    );
+    expect(violations.map(({ phrase }) => phrase)).toContain('_Record');
+  });
   it('allows accessibility-only placeholders when review does not apply', () => {
     expect(
       findPlaceholderViolations(
