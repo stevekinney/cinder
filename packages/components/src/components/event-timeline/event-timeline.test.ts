@@ -386,7 +386,7 @@ describe('EventTimeline', () => {
     );
     await fireEvent.keyDown(window, { key: 'Escape' });
     expect(document.querySelector('[role="dialog"]')).toBeNull();
-    expect(document.activeElement).toBe(cluster);
+    await waitFor(() => expect(document.activeElement).toBe(cluster));
   });
 
   test('restores focus to the timeline before removing an open stale cluster', async () => {
