@@ -1761,9 +1761,34 @@ type TeardownStep = {
   close: () => Promise<void>;
   forceClose?: () => Promise<void> | void;
   state: () => string;
+  /**
+   * Whether the resource this step owns is provably gone. Evaluated only once
+   * the WHOLE teardown sequence has finished, so a wider later step can reclaim
+   * what a narrower earlier one failed to close. Omit for a resource nothing
+   * else can subsume (the fixture server) — an omitted signal is never clean.
+   */
+  reclaimed?: () => boolean | 'unavailable';
 };
 
-type TeardownStepFailure = { phase: string; error: unknown; state: string };
+type TeardownStepFailure = {
+  phase: string;
+  error: unknown;
+  state: string;
+  reclaimed: () => boolean | 'unavailable';
+};
+
+/** Nothing wider will reclaim this resource, so its failure always counts. */
+const NEVER_RECLAIMED = (): boolean => false;
+
+/**
+ * The authoritative reclamation signal for the whole browser chain: the token
+ * stamped into Chromium's argv at launch is gone from the process table, so the
+ * process hosting every context and page is gone with it. `isConnected()` alone
+ * would only describe the client's view of the pipe.
+ */
+function isHydrationBrowserGone(browser: Browser, processToken: string): boolean {
+  return !browser.isConnected() || hydrationBrowserProcessIds(processToken).length === 0;
+}
 
 export async function runBoundedHydrationTeardown(
   steps: readonly TeardownStep[],
@@ -1771,6 +1796,7 @@ export async function runBoundedHydrationTeardown(
 ): Promise<TeardownStepFailure[]> {
   const failures: TeardownStepFailure[] = [];
   for (const step of steps) {
+    const reclaimed = step.reclaimed ?? NEVER_RECLAIMED;
     try {
       await promiseWithTimeout(step.close(), timeoutMs, `teardown phase=${step.phase}`);
     } catch (error) {
@@ -1780,7 +1806,7 @@ export async function runBoundedHydrationTeardown(
       } catch (stateError) {
         state = `state-error=${stateError instanceof Error ? stateError.message : String(stateError)}`;
       }
-      failures.push({ phase: step.phase, error, state });
+      failures.push({ phase: step.phase, error, state, reclaimed });
       try {
         if (step.forceClose) {
           await promiseWithTimeout(
@@ -1790,11 +1816,31 @@ export async function runBoundedHydrationTeardown(
           );
         }
       } catch (forceError) {
-        failures.push({ phase: `${step.phase}.force`, error: forceError, state });
+        failures.push({ phase: `${step.phase}.force`, error: forceError, state, reclaimed });
       }
     }
   }
   return failures;
+}
+
+/**
+ * The teardown contract is **resource reclamation, not per-call success**.
+ *
+ * A `page.close()` that never settles inside its deadline is not by itself a
+ * failure: if the following `browser.close()` (or its SIGKILL escalation) leaves
+ * no Chromium process behind, that page and its renderer are provably gone, so
+ * nothing leaked. Only a step whose resource is STILL unreclaimed once every
+ * step has run should fail the gate.
+ *
+ * This is what makes the smoke deterministic. Throwing the moment `page.close()`
+ * blew its deadline is why an identical commit went red or green purely on how
+ * contended the runner was when Chromium acknowledged `Target.closeTarget` —
+ * run 30174454297 failed and run 30198964154 passed on the same SHA (#900).
+ */
+export function unreclaimedTeardownFailures(
+  failures: readonly TeardownStepFailure[],
+): TeardownStepFailure[] {
+  return failures.filter((failure) => failure.reclaimed() !== true);
 }
 
 async function stopConsumerFixtureServer(server: Bun.Subprocess): Promise<void> {
@@ -1834,6 +1880,9 @@ async function runSvelteKitHydrationRoutesOnce(
   let bodyError: unknown;
   let bodyFailed = false;
   const browserEvents: string[] = [];
+  // Every phase — per-route page closes included — reports into one ledger so
+  // the reclamation verdict can be taken once, after the widest close has run.
+  const teardownFailures: TeardownStepFailure[] = [];
   browser.on('disconnected', () => browserEvents.push('browser:disconnected'));
 
   try {
@@ -1846,6 +1895,8 @@ async function runSvelteKitHydrationRoutesOnce(
         label,
         routePath,
         browserEvents,
+        processToken,
+        teardownFailures,
       );
     }
   } catch (error) {
@@ -1858,35 +1909,42 @@ async function runSvelteKitHydrationRoutesOnce(
   // passing run never leaks a Chromium process/handle that would hang a later
   // validate:consumer run; collect rather than throw inline so `browser.close()`
   // still runs if `context.close()` fails.
-  const closeErrors = await runBoundedHydrationTeardown([
-    ...(context === undefined
-      ? []
-      : [
-          {
-            phase: 'context.close',
-            close: () => context.close(),
-            state: () => `contextPages=${context.pages().length}`,
-          },
-        ]),
-    {
-      phase: 'browser.close',
-      close: () => browser.close(),
-      forceClose: async () => {
-        forceKillHydrationBrowser(processToken);
-        await waitForHydrationBrowserExit(processToken);
+  teardownFailures.push(
+    ...(await runBoundedHydrationTeardown([
+      ...(context === undefined
+        ? []
+        : [
+            {
+              phase: 'context.close',
+              close: () => context.close(),
+              state: () => `contextPages=${context.pages().length}`,
+              reclaimed: () => isHydrationBrowserGone(browser, processToken),
+            },
+          ]),
+      {
+        phase: 'browser.close',
+        close: () => browser.close(),
+        forceClose: async () => {
+          forceKillHydrationBrowser(processToken);
+          await waitForHydrationBrowserExit(processToken);
+        },
+        state: () =>
+          `browserConnected=${browser.isConnected()} processRunning=${hydrationBrowserProcessIds(processToken).length > 0}`,
+        reclaimed: () => isHydrationBrowserGone(browser, processToken),
       },
-      state: () =>
-        `browserConnected=${browser.isConnected()} processRunning=${hydrationBrowserProcessIds(processToken).length > 0}`,
-    },
-  ]);
+    ])),
+  );
 
   // A body failure wins: its error is what the retry decision needs (a crashed
-  // browser makes both closes throw too — those are swallowed). But when every
-  // route assertion PASSED and teardown still failed, surface it: a browser
-  // dying during close is a real problem, not noise to hide behind a green run.
+  // browser makes every close throw too — those are swallowed). Otherwise the
+  // verdict is taken ONCE, here, against the state after every step has run:
+  // an abandoned `page.close()` that a later `browser.close()` (or its SIGKILL
+  // escalation) reclaimed leaked nothing and must not fail the gate.
   if (bodyFailed) throw bodyError;
-  if (closeErrors.length > 0) {
-    const first = closeErrors[0]!;
+
+  const unreclaimed = unreclaimedTeardownFailures(teardownFailures);
+  const first = unreclaimed[0];
+  if (first !== undefined) {
     throw new ConsumerTeardownError(
       new Error(
         `teardown phase=${first.phase} routes=${routePaths.join(',')} ${first.state} events=${browserEvents.join('|') || 'none'}: ${first.error instanceof Error ? first.error.message : String(first.error)}`,
@@ -1925,6 +1983,8 @@ async function assertSvelteKitHydrationRoute(
   label: string,
   routePath: SvelteKitHydrationRoute,
   browserEvents: string[],
+  processToken: string,
+  teardownFailures: TeardownStepFailure[],
 ): Promise<void> {
   const page = await context.newPage();
   const errors: string[] = [];
@@ -1961,23 +2021,22 @@ async function assertSvelteKitHydrationRoute(
     bodyError = error;
     bodyFailed = true;
   }
-  const pageFailures = await runBoundedHydrationTeardown([
-    {
-      phase: 'page.close',
-      close: () => page.close(),
-      state: () => `pageClosed=${page.isClosed()} browserConnected=${browser.isConnected()}`,
-    },
-  ]);
+  // Record, never throw. Throwing here would abandon the context and browser
+  // closes that are the only things able to reclaim this page once its own
+  // close has stopped responding — and would replace a real hydration or
+  // content assertion with a teardown message.
+  teardownFailures.push(
+    ...(await runBoundedHydrationTeardown([
+      {
+        phase: `page.close route=${routePath}`,
+        close: () => page.close(),
+        state: () => `pageClosed=${page.isClosed()} browserConnected=${browser.isConnected()}`,
+        reclaimed: () => page.isClosed() || isHydrationBrowserGone(browser, processToken),
+      },
+    ])),
+  );
+
   if (bodyFailed) throw bodyError;
-  if (pageFailures.length > 0) {
-    const failure = pageFailures[0]!;
-    throw new ConsumerTeardownError(
-      new Error(
-        `teardown phase=${failure.phase} route=${routePath} ${failure.state} events=${browserEvents.join('|') || 'none'}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
-        { cause: failure.error },
-      ),
-    );
-  }
 }
 
 async function assertSvelteKitHydrationRouteContent(
