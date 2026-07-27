@@ -47,6 +47,33 @@ describe('hydration teardown', () => {
     expect(failures[0]?.state).toBe('pageClosed=false');
     expect(calls).toEqual(['page.forceClose', 'browser.close', 'fixture-server.exited']);
   });
+
+  test('continues after a force-close path also times out', async () => {
+    const calls: string[] = [];
+    const failures = await runBoundedHydrationTeardown(
+      [
+        {
+          phase: 'browser.close',
+          close: () => new Promise<void>(() => {}),
+          forceClose: () => new Promise<void>(() => {}),
+          state: () => 'browserConnected=true',
+        },
+        {
+          phase: 'fixture-server.exited',
+          close: async () => {
+            calls.push('fixture-server.exited');
+          },
+          state: () => 'fixtureServerExitCode=0',
+        },
+      ],
+      1,
+    );
+
+    expect(failures).toHaveLength(2);
+    expect(failures[0]?.phase).toBe('browser.close');
+    expect(failures[1]?.phase).toBe('browser.close.force');
+    expect(calls).toEqual(['fixture-server.exited']);
+  });
 });
 
 describe('examples consumer readiness', () => {

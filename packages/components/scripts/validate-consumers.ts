@@ -1504,6 +1504,7 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       },
     });
 
+    let bodyError: unknown;
     try {
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
 
@@ -1642,9 +1643,19 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         '/a-la-carte',
         'explicit `@lostgradient/cinder/button/styles` import',
       );
-    } finally {
-      await stopHydrationFixtureServer(fixtureServer);
+    } catch (error) {
+      bodyError = error;
     }
+    const teardownError = await stopHydrationFixtureServer(fixtureServer).catch((error) => error);
+    if (bodyError !== undefined) {
+      if (teardownError !== undefined) {
+        process.stderr.write(
+          `[validate-consumers] sveltekit-consumer fixture teardown failed after assertion failure: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}\n`,
+        );
+      }
+      throw bodyError;
+    }
+    if (teardownError !== undefined) throw teardownError;
   } finally {
     restoreManifest();
   }
@@ -1725,7 +1736,13 @@ export async function runBoundedHydrationTeardown(
       }
       failures.push({ phase: step.phase, error, state });
       try {
-        await step.forceClose?.();
+        if (step.forceClose) {
+          await promiseWithTimeout(
+            Promise.resolve(step.forceClose()),
+            timeoutMs,
+            `teardown phase=${step.phase}.force`,
+          );
+        }
       } catch (forceError) {
         failures.push({ phase: `${step.phase}.force`, error: forceError, state });
       }
@@ -2416,6 +2433,7 @@ async function runExamplesConsumerFixture(): Promise<void> {
       },
     });
 
+    let bodyError: unknown;
     try {
       // Poll a static build asset so readiness checks do not repeatedly start
       // the intentionally expensive all-examples SSR render and abort it after
@@ -2469,9 +2487,19 @@ async function runExamplesConsumerFixture(): Promise<void> {
       process.stdout.write(
         `[validate-consumers] examples-consumer OK — ${expected.entryCount} example entries each rendered exactly once.\n`,
       );
-    } finally {
-      await stopHydrationFixtureServer(fixtureServer);
+    } catch (error) {
+      bodyError = error;
     }
+    const teardownError = await stopHydrationFixtureServer(fixtureServer).catch((error) => error);
+    if (bodyError !== undefined) {
+      if (teardownError !== undefined) {
+        process.stderr.write(
+          `[validate-consumers] examples-consumer fixture teardown failed after assertion failure: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}\n`,
+        );
+      }
+      throw bodyError;
+    }
+    if (teardownError !== undefined) throw teardownError;
   } finally {
     restoreManifest();
   }
