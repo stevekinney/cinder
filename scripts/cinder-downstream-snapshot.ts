@@ -39,7 +39,7 @@ function redactEvidenceLine(line: string): string {
   return line.replace(SENSITIVE_EVIDENCE_ASSIGNMENT, '$1[REDACTED]');
 }
 
-function redactRemote(remote: string): string {
+export function redactRemote(remote: string): string {
   try {
     const url = new URL(remote);
     if (url.username || url.password) {
@@ -50,6 +50,10 @@ function redactRemote(remote: string): string {
   } catch {
     return '[REDACTED]';
   }
+}
+
+function redactSecrets(value: string): string {
+  return value.replace(/(https?:\/\/)[^\s/@]+(?::[^\s/@]*)?@/giu, '$1[REDACTED]@');
 }
 
 export function selectMostRecentlyPublishedVersion(packument: PackagePackument): string {
@@ -142,8 +146,6 @@ async function main(): Promise<void> {
         exports: metadata.exports ?? null,
       });
     } catch (error) {
-      if (error instanceof Error && error.message.startsWith('repository source must be exactly'))
-        throw new Error(`repository:${repository.name}: ${error.message}`);
       errors.push({
         scope: `package:${packageRequest.name}`,
         message: error instanceof Error ? error.message : String(error),
@@ -187,7 +189,12 @@ async function main(): Promise<void> {
             : clone;
         if (fetch.exitCode !== 0)
           throw new Error(`clone failed: ${fetch.stderr.toString().trim()}`);
-        Bun.spawnSync(['git', '-C', temporaryRoot, 'checkout', '--detach', 'FETCH_HEAD']);
+        const checkout = Bun.spawnSync(
+          ['git', '-C', temporaryRoot, 'checkout', '--detach', 'FETCH_HEAD'],
+          { timeout: REMOTE_CLONE_TIMEOUT_MS },
+        );
+        if (checkout.exitCode !== 0)
+          throw new Error(`checkout failed: ${checkout.stderr.toString().trim()}`);
         root = temporaryRoot;
       } else {
         root = resolve(repository.path!);
@@ -337,9 +344,6 @@ async function main(): Promise<void> {
         ...(repository.remote === undefined
           ? {}
           : { remote: redactRemote(repository.remote), ref: repository.ref! }),
-        ...(repository.remote === undefined
-          ? {}
-          : { remote: repository.remote, ref: repository.ref! }),
         branch: repository.branch ?? null,
         commit: resolvedCommit,
         files: files.toSorted((a, b) => a.path.localeCompare(b.path)),
@@ -348,7 +352,7 @@ async function main(): Promise<void> {
     } catch (error) {
       errors.push({
         scope: `repository:${repository.name}`,
-        message: redactEvidenceLine(error instanceof Error ? error.message : String(error)),
+        message: redactSecrets(error instanceof Error ? error.message : String(error)),
       });
     } finally {
       if (temporaryRoot !== null) await rm(temporaryRoot, { recursive: true, force: true });

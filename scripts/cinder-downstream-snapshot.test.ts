@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
+import { redactRemote, selectMostRecentlyPublishedVersion } from './cinder-downstream-snapshot.ts';
 
 /**
  * Absolute path to the CLI under test. Resolving from `import.meta.url` rather than
@@ -84,7 +84,7 @@ test('invalid options report exit code and stderr instead of a JSON parse error'
   expect((failure as Error).message).not.toContain('JSON Parse error');
 });
 
-test('clones a file remote ref, records its commit, and redacts remote credentials', async () => {
+test('clones a file remote ref and records its commit', async () => {
   const source = await mkdtemp(join(tmpdir(), 'cinder-snapshot-remote-'));
   Bun.spawnSync(['git', '-C', source, 'init', '-q', '-b', 'main']);
   Bun.spawnSync(['git', '-C', source, 'config', 'user.email', 'snapshot@example.test']);
@@ -112,6 +112,12 @@ test('clones a file remote ref, records its commit, and redacts remote credentia
   ]);
   const snapshot = JSON.parse(result.stdout.toString());
   expect(snapshot.repositories[0].commit).toBe(expected);
+});
+
+test('redacts credentials from remote output', () => {
+  expect(redactRemote('https://user:secret@example.test/repository.git')).toBe(
+    'https://%5BREDACTED%5D@example.test/repository.git',
+  );
 });
 
 test('partial repository failures stay in the snapshot', async () => {
