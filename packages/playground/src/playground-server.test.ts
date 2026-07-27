@@ -450,7 +450,10 @@ describe('canonical page navigation', () => {
     for (const query of ['?snapshot=1', '?preview=1']) {
       const response = await handleRequest(req(`/page/button${query}`));
       const html = await response.text();
-      expect(html).not.toContain('cinder-side-navigation');
+      // Assert the class the canonical page's nav ACTUALLY uses. Checking the
+      // shell's old `cinder-side-navigation` would pass even if the nav leaked
+      // onto these surfaces.
+      expect(html).not.toContain('dx-nav');
       expect(html).toContain('<div id="app"></div>');
     }
   }, 60_000);

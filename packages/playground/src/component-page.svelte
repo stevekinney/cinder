@@ -2008,7 +2008,9 @@
     flex-direction: column;
     gap: var(--cinder-space-3);
     max-height: calc(100vh - var(--dx-topbar-h) - 3rem);
-    overflow: hidden auto;
+    /* Both axes scroll: a viewport preset wider than the column (Desktop is
+       1280px against 38rem) has to be reachable horizontally. */
+    overflow: auto;
     padding-inline-end: var(--cinder-space-1);
     overscroll-behavior: contain;
   }
@@ -2085,9 +2087,6 @@
     width: var(--dx-stage-w, 100%);
     max-width: none;
     margin-inline: auto;
-  }
-  .dx-preview__sticky {
-    overflow: auto;
   }
   .dx-preview__sticky .dx-stage__canvas {
     min-height: 12rem;
