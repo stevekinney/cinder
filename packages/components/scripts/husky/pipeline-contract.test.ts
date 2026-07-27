@@ -24,6 +24,7 @@ import { REPO_ROOT } from './utilities.ts';
  */
 
 const huskyDirectory = join(REPO_ROOT, 'packages/components/scripts/husky');
+const hookDirectory = join(REPO_ROOT, '.husky');
 const componentsPackageRoot = join(REPO_ROOT, 'packages/components');
 
 /** Strip line comments and block comments so source-text assertions aren't fooled by comment text. */
@@ -63,6 +64,15 @@ function chainIncludesScript(script: string, name: string): boolean {
 }
 
 describe('pipeline contract: commit stays cheap', () => {
+  it('hook wrappers execute the script from the current worktree', async () => {
+    for (const hookName of ['post-checkout', 'post-merge', 'pre-commit', 'pre-push']) {
+      const source = await Bun.file(join(hookDirectory, hookName)).text();
+      expect(source).toContain('git rev-parse --show-toplevel');
+      expect(source).toContain('$WORKTREE_ROOT/packages/components/scripts/husky/');
+      expect(source).not.toContain('SCRIPT_DIR');
+    }
+  });
+
   it('pre-commit.ts dispatches no install, lint, typecheck, or test job', async () => {
     const source = stripComments(await Bun.file(join(huskyDirectory, 'pre-commit.ts')).text());
     // Required PR CI and main-green own source lint, typecheck, and tests. A
