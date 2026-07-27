@@ -29,7 +29,7 @@
     readFocusModeFromSearch,
     readPreviewWidthFromSearch,
   } from './shell-app/routing.ts';
-  import { readSidebarScroll, writeSidebarScroll } from './shell-app/sidebar-scroll.ts';
+  import { persistScrollPosition } from './shell-app/sidebar-scroll.ts';
   import { THEME_STORAGE_KEY } from './shell-app/theme-storage.ts';
   import { splitReadmeHtml } from './split-readme-html.ts';
   import {
@@ -228,16 +228,6 @@
 
   /** Focus mode expands the stage over the viewport; Escape exits. */
   let isFocusMode = $state(false);
-
-  /** Restore the nav's scroll offset, and keep persisting it as the user scrolls. */
-  function restoreNavScroll(element: HTMLElement): () => void {
-    const saved = readSidebarScroll();
-    if (saved !== null) element.scrollTop = saved;
-
-    const onScroll = (): void => writeSidebarScroll(element.scrollTop);
-    element.addEventListener('scroll', onScroll, { passive: true });
-    return () => element.removeEventListener('scroll', onScroll);
-  }
 
   /*
    * Escape exits focus mode.
@@ -1565,7 +1555,7 @@
         every time and the reader lost their place.
 
 -->
-      <nav class="dx-nav" aria-label="Components" {@attach restoreNavScroll}>
+      <nav class="dx-nav" aria-label="Components" {@attach persistScrollPosition}>
         <a class="dx-nav__brand" href="/">CINDER</a>
         <ul class="dx-nav__list">
           {#each sidebarComponents as name (name)}
