@@ -84,6 +84,28 @@ describe('Portal', () => {
     expect(received?.composed).toBe(true);
   });
 
+  test('preserves mouse and input details when redispatching', () => {
+    const source = document.createElement('div');
+    let receivedClick: MouseEvent | undefined;
+    let receivedInput: InputEvent | undefined;
+    source.addEventListener('click', (event) => {
+      receivedClick = event as MouseEvent;
+    });
+    source.addEventListener('input', (event) => {
+      receivedInput = event as InputEvent;
+    });
+
+    redispatchPortaledEvent(new MouseEvent('click', { bubbles: true, detail: 2 }), source);
+    redispatchPortaledEvent(
+      new InputEvent('input', { bubbles: true, data: 'x', inputType: 'insertText' }),
+      source,
+    );
+
+    expect(receivedClick?.detail).toBe(2);
+    expect(receivedInput?.data).toBe('x');
+    expect(receivedInput?.inputType).toBe('insertText');
+  });
+
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {
     const source = document.createElement('div');
     source.style.setProperty('--cinder-surface', 'hotpink');
@@ -515,6 +537,31 @@ describe('Portal', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+  });
+
+  test('follows inherited attributes across a shadow host while mounted', async () => {
+    const host = document.createElement('section');
+    host.setAttribute('data-theme', 'dark');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const mountPoint = document.createElement('div');
+    shadow.appendChild(mountPoint);
+    document.body.appendChild(host);
+
+    render(Portal, {
+      target: mountPoint,
+      props: {
+        children: childSnippet,
+      },
+    });
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('data-theme')).toBe('dark');
+
+    host.setAttribute('data-theme', 'light');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('data-theme')).toBe('light');
   });
 
   test('preserves a protected computed direction over inherited auto direction', () => {

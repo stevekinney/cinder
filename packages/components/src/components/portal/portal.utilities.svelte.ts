@@ -244,7 +244,7 @@ export function copyInheritedPortalAttributes(
     fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
   const inheritedDir =
     inheritAttributes && source && !preservesExplicitDirection
-      ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir')
+      ? closestAcrossShadow(source, '[dir]')?.getAttribute('dir')
       : null;
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
   if (nextDir) {
@@ -257,7 +257,7 @@ export function copyInheritedPortalAttributes(
     fallbackAttributes.preserveLanguage ?? fallbackAttributes.lang !== null;
   const inheritedLanguage =
     inheritAttributes && source && !preservesExplicitLanguage
-      ? source.closest<HTMLElement>('[lang]')?.getAttribute('lang')
+      ? closestAcrossShadow(source, '[lang]')?.getAttribute('lang')
       : null;
   const nextLanguage = inheritedLanguage ?? fallbackAttributes.lang;
   if (nextLanguage !== null && nextLanguage !== undefined) {
@@ -272,7 +272,7 @@ export function copyInheritedPortalAttributes(
     source &&
     !preservesExplicitDataTheme &&
     fallbackAttributes.dataTheme === null
-      ? source.closest<HTMLElement>('[data-theme]')?.getAttribute('data-theme')
+      ? closestAcrossShadow(source, '[data-theme]')?.getAttribute('data-theme')
       : null;
   const nextDataTheme = inheritedDataTheme ?? fallbackAttributes.dataTheme;
   if (nextDataTheme) {
@@ -284,7 +284,7 @@ export function copyInheritedPortalAttributes(
   const preservesExplicitTheme = fallbackAttributes.preserveTheme === true;
   const inheritedTheme =
     inheritAttributes && source && !preservesExplicitTheme && fallbackAttributes.theme === null
-      ? source.closest<HTMLElement>('[data-cinder-theme]')?.getAttribute('data-cinder-theme')
+      ? closestAcrossShadow(source, '[data-cinder-theme]')?.getAttribute('data-cinder-theme')
       : null;
   const nextTheme = inheritedTheme ?? fallbackAttributes.theme;
   if (nextTheme) {
@@ -333,6 +333,10 @@ export function redispatchPortaledEvent(
     'pointerId',
     'pointerType',
     'isPrimary',
+    'detail',
+    'data',
+    'inputType',
+    'dataTransfer',
     'pressure',
     'tiltX',
     'tiltY',
@@ -358,6 +362,16 @@ const redispatchedPortalEvents = new WeakSet<Event>();
 function getShadowHost(element: HTMLElement): HTMLElement | null {
   const root = element.getRootNode();
   return root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null;
+}
+
+function closestAcrossShadow(element: HTMLElement, selector: string): HTMLElement | null {
+  let current: HTMLElement | null = element;
+  while (current) {
+    const match = current.closest<HTMLElement>(selector);
+    if (match) return match;
+    current = getShadowHost(current);
+  }
+  return null;
 }
 
 export function isRedispatchedPortaledEvent(event: Event): boolean {
@@ -444,7 +458,7 @@ function observeInheritedPortalAttributes(
   let ancestor: HTMLElement | null = source;
   while (ancestor) {
     observe(ancestor);
-    ancestor = ancestor.parentElement;
+    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
   }
   observe(document.documentElement);
 
