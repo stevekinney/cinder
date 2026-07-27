@@ -222,6 +222,7 @@
     onThemeChange?.(theme);
     isHydrated = true;
     navFilter = readStoredNavFilter();
+    navFilterRestored = true;
     // Adopted after hydration, not during init: the server cannot read the URL's
     // toolbar state without the two trees disagreeing.
     previewWidth = readInitialPreviewWidth();
@@ -277,7 +278,16 @@
 
   let navFilter = $state('');
 
+  /*
+   * Writes are held until the stored value has been restored. Without the guard
+   * this effect fires on the initial empty `navFilter` and clobbers the stored
+   * filter before the mount effect can read it back — the persistence would
+   * silently never work.
+   */
+  let navFilterRestored = $state(false);
+
   $effect(() => {
+    if (!navFilterRestored) return;
     try {
       sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, navFilter);
     } catch {

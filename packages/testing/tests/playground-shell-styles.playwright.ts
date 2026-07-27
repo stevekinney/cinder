@@ -124,4 +124,22 @@ test.describe('playground shell styles', () => {
     await page.locator('#sidebar-filter').fill('badge');
     await expect(page.locator('.dx-nav__link')).toHaveCount(1);
   });
+
+  test('the nav filter survives a full document navigation', async ({ page }) => {
+    /*
+     * Selecting a component is a full page load, not client-side routing, so an
+     * unpersisted filter would reset the moment you used it.
+     */
+    await page.goto('/', { waitUntil: 'load' });
+    await waitForShellLayout(page);
+
+    await page.locator('#sidebar-filter').fill('badge');
+    await expect(page.locator('.dx-nav__link')).toHaveCount(1);
+
+    await page.locator('.dx-nav__link').first().click();
+    await expect(page).toHaveURL(/\/page\/badge/);
+
+    await expect(page.locator('#sidebar-filter')).toHaveValue('badge');
+    await expect(page.locator('.dx-nav__link')).toHaveCount(1);
+  });
 });

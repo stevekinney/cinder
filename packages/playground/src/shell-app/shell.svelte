@@ -84,7 +84,7 @@
       size="sm"
       iconOnly
       aria-label="Color token panel"
-      aria-controls="color-token-panel"
+      {...isColorPanelOpen ? { 'aria-controls': 'color-token-panel' } : {}}
       aria-expanded={isColorPanelOpen}
       data-testid="color-token-panel-toggle"
       onclick={() => (isColorPanelOpen = !isColorPanelOpen)}
