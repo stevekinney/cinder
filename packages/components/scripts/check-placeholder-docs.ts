@@ -1,5 +1,5 @@
 /**
- * Guards against placeholder or stale text creeping back into component README files.
+ * Guards against placeholder or stale text creeping back into component README files and accessibility review records.
  *
  * Scans every README.md and accessibility review record under `src/components/` for known staleness markers and
  * exits non-zero if any are found. Run as part of `bun run check:placeholder-docs`
@@ -383,12 +383,14 @@ async function main(): Promise<void> {
   }
 
   if (violations.length === 0) {
-    process.stdout.write('✓ No placeholder or stale phrases found in component READMEs.\n');
+    process.stdout.write(
+      '✓ No placeholder or stale phrases found in component READMEs or accessibility review records.\n',
+    );
     process.exit(0);
   }
 
   process.stderr.write(
-    `Found ${violations.length} placeholder/stale phrase${violations.length === 1 ? '' : 's'} in component READMEs:\n\n`,
+    `Found ${violations.length} placeholder/stale phrase${violations.length === 1 ? '' : 's'} in component READMEs or accessibility review records:\n\n`,
   );
 
   for (const { filePath, lineNumber, line, phrase } of violations) {
