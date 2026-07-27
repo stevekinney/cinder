@@ -1,5 +1,6 @@
 import { lstat, mkdtemp, readFile, readlink, rm } from 'node:fs/promises';
-import { isAbsolute, relative, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import { isAbsolute, join, relative, resolve } from 'node:path';
 
 type Request = {
   schemaVersion: 1;
@@ -30,6 +31,7 @@ type PackagePackument = {
 
 const usage = 'Usage: bun run scripts/cinder-downstream-snapshot.ts --request FILE [--output FILE]';
 const NPM_METADATA_TIMEOUT_MS = 10_000;
+const REMOTE_CLONE_TIMEOUT_MS = 60_000;
 const SENSITIVE_EVIDENCE_ASSIGNMENT =
   /^(.*?(?:["']?[\w.-]*(?:authorization|credential|password|secret|token|api[_-]?key)[\w.-]*["']?)\s*[:=]\s*).*$/iu;
 
@@ -127,6 +129,8 @@ async function main(): Promise<void> {
         exports: metadata.exports ?? null,
       });
     } catch (error) {
+      if (error instanceof Error && error.message.startsWith('repository source must be exactly'))
+        throw new Error(`repository:${repository.name}: ${error.message}`);
       errors.push({
         scope: `package:${packageRequest.name}`,
         message: error instanceof Error ? error.message : String(error),
@@ -150,20 +154,27 @@ async function main(): Promise<void> {
       }
       let root: string;
       if (hasRemote) {
-        temporaryRoot = await mkdtemp('/tmp/cinder-downstream-');
-        const clone = Bun.spawnSync([
-          'git',
-          'clone',
-          '--depth',
-          '1',
-          '--single-branch',
-          '--branch',
-          repository.ref!,
-          repository.remote!,
-          temporaryRoot,
-        ]);
-        if (clone.exitCode !== 0)
-          throw new Error(`clone failed: ${clone.stderr.toString().trim()}`);
+        temporaryRoot = await mkdtemp(join(tmpdir(), 'cinder-downstream-'));
+        const clone = Bun.spawnSync(['git', 'init', '-q', temporaryRoot]);
+        const fetch =
+          clone.exitCode === 0
+            ? Bun.spawnSync(
+                [
+                  'git',
+                  '-C',
+                  temporaryRoot,
+                  'fetch',
+                  '--depth',
+                  '1',
+                  repository.remote!,
+                  repository.ref!,
+                ],
+                { timeout: REMOTE_CLONE_TIMEOUT_MS },
+              )
+            : clone;
+        if (fetch.exitCode !== 0)
+          throw new Error(`clone failed: ${fetch.stderr.toString().trim()}`);
+        Bun.spawnSync(['git', '-C', temporaryRoot, 'checkout', '--detach', 'FETCH_HEAD']);
         root = temporaryRoot;
       } else {
         root = resolve(repository.path!);
