@@ -335,18 +335,24 @@
       }
       closeForMovement();
     };
-    window.addEventListener('scroll', dismiss, true);
+    const windowScrollOptions: AddEventListenerOptions = { capture: true, passive: true };
+    const visualViewportScrollOptions: AddEventListenerOptions = { passive: true };
+    window.addEventListener('scroll', dismiss, windowScrollOptions);
     window.addEventListener('resize', dismiss);
-    visualViewport?.addEventListener('scroll', dismissVisualViewport);
+    visualViewport?.addEventListener('scroll', dismissVisualViewport, visualViewportScrollOptions);
     visualViewport?.addEventListener('resize', dismissVisualViewport);
     return () => {
       for (const frame of Object.values(virtualKeyboardTransitionFrames)) {
-        window.cancelAnimationFrame(frame);
+        if (frame !== undefined) window.cancelAnimationFrame(frame);
       }
       for (const frame of layoutKeyboardSettleFrames) window.cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', dismiss, true);
+      window.removeEventListener('scroll', dismiss, windowScrollOptions);
       window.removeEventListener('resize', dismiss);
-      visualViewport?.removeEventListener('scroll', dismissVisualViewport);
+      visualViewport?.removeEventListener(
+        'scroll',
+        dismissVisualViewport,
+        visualViewportScrollOptions,
+      );
       visualViewport?.removeEventListener('resize', dismissVisualViewport);
     };
   });

@@ -247,7 +247,9 @@ test('selection popover dismisses when the viewport scrolls', async ({ component
   const popover = page.locator('#basic-selection-popover');
   await expect(popover).toHaveAttribute('data-cinder-position-ready', 'true');
 
-  await page.evaluate(() => window.dispatchEvent(new Event('scroll')));
+  const initialScrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(initialScrollY);
   await expect(popover).toHaveAttribute('data-cinder-position-ready', 'false');
 });
 
