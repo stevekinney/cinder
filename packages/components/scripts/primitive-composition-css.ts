@@ -139,11 +139,19 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
   return target;
 }
 
+function lastIndexOfCombinator(nodes: ReadonlyArray<{ type: string }>): number {
+  for (let index = nodes.length - 1; index >= 0; index--) {
+    const node = nodes[index];
+    if (node && node.type === 'combinator') return index;
+  }
+  return -1;
+}
+
 function selectorTargets(selector: string): SelectorTarget[] {
   const targets: SelectorTarget[] = [];
   selectorParser((root) => {
     root.each((selectorNode) => {
-      const lastCombinator = selectorNode.nodes.findLastIndex((node) => node.type === 'combinator');
+      const lastCombinator = lastIndexOfCombinator(selectorNode.nodes);
       const targetNodes = selectorNode.nodes.slice(lastCombinator + 1);
       if (targetNodes.some((node) => node.type === 'pseudo' && node.value.startsWith('::'))) return;
       const target = selectorTargetFromNodes(targetNodes);

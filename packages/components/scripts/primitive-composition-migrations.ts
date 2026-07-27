@@ -163,7 +163,10 @@ const migrationMaps = [
 ] as const;
 
 export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>): string[] {
-  return [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
-    .filter((filePath) => !existingPaths.has(filePath))
-    .toSorted();
+  return (
+    [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
+      .filter((filePath) => !existingPaths.has(filePath))
+      // eslint-disable-next-line unicorn/no-array-sort -- toSorted() is ES2023; this package targets ES2022. Array is freshly created above, so the mutation is safe.
+      .sort()
+  );
 }

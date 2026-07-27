@@ -362,10 +362,14 @@ export function visibleControlSignatures(source: string): string[] {
               return value === undefined ? name : `${name}=${value}`;
             })
             .filter(Boolean)
-            .toSorted()
+            // eslint-disable-next-line unicorn/no-array-sort -- toSorted() is ES2023; this package targets ES2022. Array is freshly created above, so the mutation is safe.
+            .sort()
             .join('|')
         : '';
-      signatures.push(`${[...controlNames].toSorted().join(',')}|${attributes}`);
+      signatures.push(
+        // eslint-disable-next-line unicorn/no-array-sort -- toSorted() is ES2023; this package targets ES2022. Spread creates a fresh array, so the mutation is safe.
+        `${[...controlNames].sort().join(',')}|${attributes}`,
+      );
     }
   });
   return signatures;
