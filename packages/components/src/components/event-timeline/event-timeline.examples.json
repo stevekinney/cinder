@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { EventTimeline } from '@lostgradient/cinder/event-timeline';\n</script>\n\n<EventTimeline\n  label=\"Next 24 hours\"\n  start=\"2026-07-03T00:00:00.000Z\"\n  end=\"2026-07-04T00:00:00.000Z\"\n  now=\"2026-07-03T10:30:00.000Z\"\n  items={[\n    { at: '2026-07-03T02:00:00.000Z', label: 'Digest', sublabel: '02:00', state: 'done' },\n    { at: '2026-07-03T10:00:00.000Z', label: 'Retry', sublabel: '10:00', state: 'failed' },\n    { at: '2026-07-03T16:00:00.000Z', label: 'Deploy', sublabel: '16:00' },\n    { at: '2026-07-03T22:00:00.000Z', label: 'Archive', sublabel: '22:00' },\n  ]}\n/>\n"
     },
     {
+      "id": "cluster",
+      "title": "Dense cluster",
+      "description": "Excess overlapping events collapse into a keyboard-accessible cluster.",
+      "code": "<script lang=\"ts\">\n  import { EventTimeline } from '@lostgradient/cinder/event-timeline';\n</script>\n\n<EventTimeline\n  ariaLabel=\"Dense incident timeline\"\n  start=\"2026-07-03T12:00:00.000Z\"\n  end=\"2026-07-03T18:00:00.000Z\"\n  items={[\n    { at: '2026-07-03T13:00:00.000Z', label: 'Queued', sublabel: '13:00' },\n    { at: '2026-07-03T13:02:00.000Z', label: 'Started', sublabel: '13:02' },\n    { at: '2026-07-03T13:04:00.000Z', label: 'Checked', sublabel: '13:04' },\n    { at: '2026-07-03T13:06:00.000Z', label: 'Retried', sublabel: '13:06' },\n    { at: '2026-07-03T13:08:00.000Z', label: 'Escalated', sublabel: '13:08' },\n    { at: '2026-07-03T13:10:00.000Z', label: 'Paged', sublabel: '13:10' },\n    { at: '2026-07-03T13:12:00.000Z', label: 'Acknowledged', sublabel: '13:12' },\n    { at: '2026-07-03T13:14:00.000Z', label: 'Mitigated', sublabel: '13:14' },\n  ]}\n/>\n"
+    },
+    {
       "id": "overlap",
       "title": "Overlapping labels",
       "description": "Nearby events are nudged into separate label lanes.",
