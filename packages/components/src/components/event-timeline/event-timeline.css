@@ -180,6 +180,8 @@
   }
 
   .cinder-event-timeline__cluster[data-cinder-open] {
+    /* cinder-z-index-local: an open cluster must paint above sibling clusters
+       and edge items positioned later in source order on the same lane. */
     z-index: 2;
   }
 
@@ -196,7 +198,7 @@
     min-inline-size: 2.25rem;
     min-block-size: 1.75rem;
     padding: 0.125rem 0.375rem;
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     color: var(--cinder-text);
     background: var(--cinder-surface-raised);
