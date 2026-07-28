@@ -316,15 +316,50 @@ describe('EventTimeline', () => {
     const original = globalThis.getComputedStyle;
     globalThis.getComputedStyle = (() =>
       ({
+        backdropFilter: '',
         contain: '',
         filter: '',
+        perspective: '',
         rotate: undefined,
         scale: undefined,
         transform: '',
         translate: undefined,
+        willChange: 'auto',
       }) as unknown as CSSStyleDeclaration) as typeof getComputedStyle;
     try {
       expect(hasFixedPositionContainingBlock(element)).toBe(false);
+    } finally {
+      globalThis.getComputedStyle = original;
+    }
+  });
+
+  test('treats perspective, backdrop-filter, and transform-related will-change as containing blocks', () => {
+    const element = document.createElement('div');
+    const original = globalThis.getComputedStyle;
+    const cases: Array<Partial<CSSStyleDeclaration>> = [
+      { perspective: '400px' },
+      { backdropFilter: 'blur(4px)' },
+      { willChange: 'transform' },
+      { willChange: 'perspective' },
+      { willChange: 'filter' },
+    ];
+    try {
+      for (const overrides of cases) {
+        globalThis.getComputedStyle = (() =>
+          ({
+            backdropFilter: '',
+            contain: '',
+            filter: '',
+            perspective: '',
+            rotate: undefined,
+            scale: undefined,
+            transform: '',
+            translate: undefined,
+            willChange: 'auto',
+            ...overrides,
+          }) as unknown as CSSStyleDeclaration) as typeof getComputedStyle;
+        expect(hasFixedPositionContainingBlock(element)).toBe(true);
+      }
     } finally {
       globalThis.getComputedStyle = original;
     }

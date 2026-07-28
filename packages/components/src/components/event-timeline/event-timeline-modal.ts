@@ -23,6 +23,13 @@ function createsContainingBlock(value: string | undefined): boolean {
   return value !== undefined && value !== '' && value !== 'none';
 }
 
+const CONTAINING_BLOCK_WILL_CHANGE_VALUES = ['transform', 'perspective', 'filter'];
+
+function willChangeCreatesContainingBlock(willChange: string | undefined): boolean {
+  if (!willChange) return false;
+  return CONTAINING_BLOCK_WILL_CHANGE_VALUES.some((value) => willChange.includes(value));
+}
+
 function hasContainingBlockStyle(style: CSSStyleDeclaration): boolean {
   return (
     createsContainingBlock(style.transform) ||
@@ -30,7 +37,10 @@ function hasContainingBlockStyle(style: CSSStyleDeclaration): boolean {
     createsContainingBlock(style.scale) ||
     createsContainingBlock(style.rotate) ||
     createsContainingBlock(style.filter) ||
-    createsContainingBlock(style.contain)
+    createsContainingBlock(style.contain) ||
+    createsContainingBlock(style.perspective) ||
+    createsContainingBlock(style.backdropFilter) ||
+    willChangeCreatesContainingBlock(style.willChange)
   );
 }
 
