@@ -728,6 +728,67 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('canceling the composer before a closing keyboard resize keeps the popover open', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Cancelled draft' } });
+
+    try {
+      // The soft keyboard opens while the composer is expanded and focused.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Cancel collapses the composer and moves focus away synchronously,
+      // before the keyboard's asynchronous closing resize arrives.
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('textbox', { name: 'Comment text' })).toBeNull();
+
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+    }
+  });
+
   test.each([
     { focusState: 'focused', blurBeforeClose: false },
     { focusState: 'just blurred', blurBeforeClose: true },

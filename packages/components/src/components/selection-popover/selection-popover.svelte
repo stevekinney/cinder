@@ -231,7 +231,21 @@
       };
       settle(2);
     };
-    const readVirtualKeyboardTransition = (source: 'window' | 'visual-viewport') => {
+    // Latches "the composer owned this keyboard transition" across the async
+    // close burst. A cancel/submit collapses the composer (and clears
+    // commentBody) synchronously, before the keyboard's closing resize
+    // arrives, so deriving ownership from the *current* expanded/commentBody
+    // state at event time would read false and let the collapse-triggered
+    // resize fall through to closeForMovement() — dismissing the popover the
+    // cancel was meant to leave open. Instead we remember ownership from the
+    // moment the keyboard was last seen visible and only forget it once the
+    // transition settles (mirrors the virtualKeyboardWasVisible bookkeeping).
+    const virtualKeyboardOwnedByComposer: Partial<Record<'window' | 'visual-viewport', boolean>> =
+      {};
+    const readVirtualKeyboardTransition = (
+      source: 'window' | 'visual-viewport',
+      composerOwnsKeyboardNow: boolean,
+    ) => {
       const isVisible = isVirtualKeyboardResize(source);
       if (isVisible) {
         const pendingFrame = virtualKeyboardTransitionFrames[source];
@@ -240,15 +254,21 @@
           delete virtualKeyboardTransitionFrames[source];
         }
         virtualKeyboardWasVisible[source] = true;
-        return { active: true, isVisible };
+        virtualKeyboardOwnedByComposer[source] = composerOwnsKeyboardNow;
+        return { active: true, isVisible, ownedByComposer: composerOwnsKeyboardNow };
       }
-      if (!virtualKeyboardWasVisible[source]) return { active: false, isVisible };
+      if (!virtualKeyboardWasVisible[source])
+        return { active: false, isVisible, ownedByComposer: composerOwnsKeyboardNow };
+
+      if (composerOwnsKeyboardNow) virtualKeyboardOwnedByComposer[source] = true;
+      const ownedByComposer = virtualKeyboardOwnedByComposer[source] ?? composerOwnsKeyboardNow;
 
       virtualKeyboardTransitionFrames[source] ??= window.requestAnimationFrame(() => {
         virtualKeyboardWasVisible[source] = false;
         delete virtualKeyboardTransitionFrames[source];
+        delete virtualKeyboardOwnedByComposer[source];
       });
-      return { active: true, isVisible };
+      return { active: true, isVisible, ownedByComposer };
     };
     const closeForMovement = () => {
       requestClose(true);
@@ -271,8 +291,11 @@
         const composerHasFocus =
           document.activeElement instanceof Node &&
           popoverElement?.contains(document.activeElement);
-        const virtualKeyboardTransition = readVirtualKeyboardTransition('window');
-        const composerOwnedKeyboard = expanded || commentBody.trim().length > 0;
+        const composerOwnedKeyboardNow = expanded || commentBody.trim().length > 0;
+        const virtualKeyboardTransition = readVirtualKeyboardTransition(
+          'window',
+          composerOwnedKeyboardNow,
+        );
         if (virtualKeyboardTransition.active && !virtualKeyboardTransition.isVisible)
           markLayoutKeyboardResize();
         const layoutKeyboardResize =
@@ -303,7 +326,7 @@
           (composerHasFocus ||
             (virtualKeyboardTransition.active &&
               !virtualKeyboardTransition.isVisible &&
-              composerOwnedKeyboard))
+              virtualKeyboardTransition.ownedByComposer))
         ) {
           return;
         }
@@ -313,11 +336,11 @@
     const dismissVisualViewport = (event: Event) => {
       const composerHasFocus =
         document.activeElement instanceof Node && popoverElement?.contains(document.activeElement);
-      const composerOwnedKeyboard = expanded || commentBody.trim().length > 0;
+      const composerOwnedKeyboardNow = expanded || commentBody.trim().length > 0;
       const virtualKeyboardTransition =
         visualViewport?.scale === 1
-          ? readVirtualKeyboardTransition('visual-viewport')
-          : { active: false, isVisible: false };
+          ? readVirtualKeyboardTransition('visual-viewport', composerOwnedKeyboardNow)
+          : { active: false, isVisible: false, ownedByComposer: composerOwnedKeyboardNow };
       if ((event.type === 'resize' || event.type === 'scroll') && layoutKeyboardResizeActive) {
         if (event.type === 'scroll' && layoutKeyboardScrollsSeen < 2) {
           layoutKeyboardScrollsSeen += 1;
@@ -329,16 +352,35 @@
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
         virtualKeyboardTransition.active &&
-        (composerHasFocus || (!virtualKeyboardTransition.isVisible && composerOwnedKeyboard))
+        (composerHasFocus ||
+          (!virtualKeyboardTransition.isVisible && virtualKeyboardTransition.ownedByComposer))
       ) {
         return;
       }
       closeForMovement();
     };
+    // A cancel/submit that only returns focus to the pre-open owner (or drops
+    // it entirely) still leaves the composer "in charge" of the in-flight
+    // keyboard close, so the latch above should survive it. But once focus
+    // lands on something outside this popover entirely, the interaction has
+    // genuinely moved on — drop the latch so a later keyboard-close resize is
+    // free to dismiss (see "an external visual-viewport keyboard close
+    // dismisses a collapsed popover").
+    const forgetComposerKeyboardOwnershipOnExternalFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
+      // document.body is where the platform (and our own restoreFocus() calls)
+      // parks focus when the previously-focused element is removed or isn't
+      // focusable — it is never a real destination the user chose, so it
+      // isn't evidence the interaction moved on.
+      if (event.target === document.body) return;
+      delete virtualKeyboardOwnedByComposer.window;
+      delete virtualKeyboardOwnedByComposer['visual-viewport'];
+    };
     const windowScrollOptions: AddEventListenerOptions = { capture: true, passive: true };
     const visualViewportScrollOptions: AddEventListenerOptions = { passive: true };
     window.addEventListener('scroll', dismiss, windowScrollOptions);
     window.addEventListener('resize', dismiss);
+    window.addEventListener('focusin', forgetComposerKeyboardOwnershipOnExternalFocus);
     visualViewport?.addEventListener('scroll', dismissVisualViewport, visualViewportScrollOptions);
     visualViewport?.addEventListener('resize', dismissVisualViewport);
     return () => {
@@ -348,6 +390,7 @@
       for (const frame of layoutKeyboardSettleFrames) window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', dismiss, windowScrollOptions);
       window.removeEventListener('resize', dismiss);
+      window.removeEventListener('focusin', forgetComposerKeyboardOwnershipOnExternalFocus);
       visualViewport?.removeEventListener(
         'scroll',
         dismissVisualViewport,
