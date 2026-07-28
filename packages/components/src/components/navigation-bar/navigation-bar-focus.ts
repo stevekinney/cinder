@@ -1,3 +1,5 @@
+import { composedFocusScopes } from '../../utilities/focus.ts';
+
 const focusCandidateSelector =
   'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
 
@@ -56,16 +58,6 @@ export function findFocusTargetBeforeNavigationItems(
   );
 }
 
-// A root node can come from a different realm (another window/iframe, or —
-// as happy-dom's test Document demonstrates — a host whose `document` is not
-// an `instanceof` of the ambient `Document` constructor at all), where an
-// `instanceof Document` check fails even though the node is a genuine
-// searchable document-like root. Duck-type on `querySelectorAll` instead,
-// which every real Document and ShadowRoot exposes.
-function isSearchableRoot(node: Node): node is Document | ShadowRoot {
-  return 'querySelectorAll' in node;
-}
-
 export function findFocusTargetAfterNavigationItems(
   navigationBar: HTMLElement | null,
   itemsRegion: HTMLElement | null,
@@ -83,24 +75,14 @@ export function findFocusTargetAfterNavigationItems(
   // querySelectorAll` cannot see into shadow roots, so a NavigationBar
   // rendered inside one with no `actions` target would otherwise skip every
   // sibling that lives in that same shadow root.
-  let referenceNode: Element = navigationBar;
-  let rootNode: Node = navigationBar.getRootNode();
-
-  while (isSearchableRoot(rootNode)) {
-    const searchRoot = rootNode;
-    const followingCandidates = getSequentialFocusTargets(searchRoot).filter(
+  for (const { root, anchor } of composedFocusScopes(navigationBar)) {
+    const followingCandidates = getSequentialFocusTargets(root).filter(
       (candidate) =>
         !navigationBar.contains(candidate) &&
         !itemsRegion?.contains(candidate) &&
-        Boolean(
-          referenceNode.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING,
-        ),
+        Boolean(anchor.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING),
     );
     if (followingCandidates.length > 0) return followingCandidates[0] ?? null;
-
-    if (!(searchRoot instanceof ShadowRoot)) return null;
-    referenceNode = searchRoot.host;
-    rootNode = referenceNode.getRootNode();
   }
   return null;
 }

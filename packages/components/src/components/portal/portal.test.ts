@@ -7,12 +7,13 @@ import { renderThenHydrate } from '../../test/hydrate.ts';
 
 setupHappyDom();
 
-const { render, cleanup } = await import('@testing-library/svelte');
+const { render, cleanup, waitFor } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
 const {
   copyInheritedPortalAttributes,
   findNearestOpenTopLayer,
   getInheritedPortalStyle,
+  observePortalSourceAvailability,
   redispatchPortaledEvent,
 } = await import('./portal.utilities.svelte.ts');
 
@@ -101,6 +102,36 @@ describe('Portal', () => {
     dialog.append(host);
     document.body.append(dialog);
     expect(findNearestOpenTopLayer(source, (element) => element === dialog)).toBe(dialog);
+  });
+
+  test('observePortalSourceAvailability crosses a shadow host for hidden/inert/aria-hidden', async () => {
+    // `closest('[hidden], [inert], [aria-hidden="true"]')` cannot see past a
+    // shadow boundary. The computed-style walk this helper also runs does
+    // cross shadow hosts, but none of these three attributes affect
+    // display/visibility on their own, so the source must still be reported
+    // unavailable when its enclosing shadow HOST carries one of them.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const source = document.createElement('button');
+    shadow.append(source);
+    document.body.append(host);
+
+    const states: boolean[] = [];
+    const stop = observePortalSourceAvailability(source, (unavailable) => {
+      states.push(unavailable);
+    });
+    expect(states.at(-1)).toBe(false);
+
+    host.setAttribute('inert', '');
+    await waitFor(() => expect(states.at(-1)).toBe(true));
+
+    host.removeAttribute('inert');
+    await waitFor(() => expect(states.at(-1)).toBe(false));
+
+    host.setAttribute('aria-hidden', 'true');
+    await waitFor(() => expect(states.at(-1)).toBe(true));
+
+    stop();
   });
 
   test('preserves event propagation flags when redispatching', () => {

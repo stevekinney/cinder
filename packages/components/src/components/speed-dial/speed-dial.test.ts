@@ -346,6 +346,34 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(precedingButton);
   });
 
+  test('reverse Tab finds a preceding sibling inside the same shadow root', async () => {
+    // A document-only query cannot see into a shadow root, so a SpeedDial
+    // rendered inside one previously fell straight through to the trigger
+    // instead of a focusable sibling that shares its shadow root.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    const precedingButton = document.createElement('button');
+    precedingButton.textContent = 'Before SpeedDial';
+    shadow.append(precedingButton);
+    const mountPoint = document.createElement('div');
+    shadow.append(mountPoint);
+
+    render(SpeedDialFixture, { target: mountPoint });
+    const trigger = shadow.querySelector<HTMLButtonElement>('[aria-label="Quick actions"]')!;
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = shadow.querySelector<HTMLButtonElement>('[aria-label="Create"]')!;
+
+    create.focus();
+    await fireEvent.keyDown(create, { key: 'Tab', shiftKey: true });
+    // Focus lives inside an open shadow root, so the outer `document.
+    // activeElement` only reports the shadow host — read the real focus
+    // target via the shadow root's own `activeElement`.
+    expect(shadow.activeElement).toBe(precedingButton);
+  });
+
   test('skips CSS-hidden controls when reversing from the first action', async () => {
     const hiddenButton = document.createElement('button');
     hiddenButton.style.display = 'none';

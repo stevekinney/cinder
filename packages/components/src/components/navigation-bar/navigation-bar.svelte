@@ -494,7 +494,7 @@
 
   <div
     {@attach itemsPortalScope}
-    class={classNames('cinder-navigation-bar__portal-scope', className)}
+    class={classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)}
     style={`display: ${isMobileLayout && mobileMenuOpen ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
   >
     <div

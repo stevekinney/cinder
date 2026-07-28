@@ -23,6 +23,7 @@
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { composedFocusScopes } from '../../utilities/focus.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
@@ -158,22 +159,29 @@
     const speedDialRoot = rootElement;
     if (!speedDialRoot || typeof document === 'undefined') return null;
 
-    return (
-      Array.from(document.querySelectorAll<HTMLElement>(documentFocusSelector))
-        .filter(
-          (candidate) =>
-            !hasNegativeTabIndex(candidate) &&
-            !candidate.matches(':disabled') &&
-            !speedDialRoot.contains(candidate) &&
-            !actionsElement?.contains(candidate) &&
-            !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
-            isRenderedCandidate(candidate) &&
-            Boolean(
-              candidate.compareDocumentPosition(speedDialRoot) & Node.DOCUMENT_POSITION_FOLLOWING,
-            ),
-        )
-        .at(-1) ?? null
-    );
+    // Search the composed focus scope outward: the SpeedDial's own root
+    // (its ShadowRoot, if it is rendered inside one) first, then each
+    // enclosing shadow host's root in turn. A plain `document.
+    // querySelectorAll` cannot see into shadow roots, so a SpeedDial
+    // rendered inside one would otherwise skip a preceding sibling that
+    // lives in that same shadow root.
+    for (const { root, anchor } of composedFocusScopes(speedDialRoot)) {
+      const preceding =
+        Array.from(root.querySelectorAll<HTMLElement>(documentFocusSelector))
+          .filter(
+            (candidate) =>
+              !hasNegativeTabIndex(candidate) &&
+              !candidate.matches(':disabled') &&
+              !speedDialRoot.contains(candidate) &&
+              !actionsElement?.contains(candidate) &&
+              !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+              isRenderedCandidate(candidate) &&
+              Boolean(candidate.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING),
+          )
+          .at(-1) ?? null;
+      if (preceding) return preceding;
+    }
+    return null;
   }
 
   function isRenderedCandidate(candidate: HTMLElement): boolean {

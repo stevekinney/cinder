@@ -395,7 +395,13 @@ function isEffectivelyDisabled(source: HTMLElement): boolean {
 
 function isEffectivelyUnavailable(source: HTMLElement): boolean {
   if (isEffectivelyDisabled(source)) return true;
-  if (source.closest<HTMLElement>('[hidden], [inert], [aria-hidden="true"]')) return true;
+  // Plain `closest()` cannot see past a shadow boundary, so a source whose
+  // enclosing shadow HOST gains `[hidden]`/`[inert]`/`aria-hidden="true"`
+  // would otherwise still report itself as available: the computed-style
+  // walk below crosses shadow hosts, but none of these three attributes
+  // change `display`/`visibility` on their own, so this check needs the
+  // same cross-shadow reach.
+  if (closestAcrossShadow(source, '[hidden], [inert], [aria-hidden="true"]')) return true;
   if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return false;
   let ancestor: HTMLElement | null = source;
   while (ancestor) {

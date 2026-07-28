@@ -298,7 +298,7 @@ describe('NavigationBar', () => {
       "isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined",
     );
     expect(navigationBarSource).toContain(
-      "classNames('cinder-navigation-bar__portal-scope', className)",
+      "classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)",
     );
     expect(navigationBarSource).toContain("window.addEventListener('resize'");
   });
@@ -691,6 +691,28 @@ describe('NavigationBar', () => {
       expect(nav.contains(itemsRegion)).toBe(false);
       expect(itemsRegion.parentElement?.parentElement).toBe(document.body);
       expect(itemsRegion.getAttribute('data-cinder-mobile-panel')).toBe('true');
+    });
+  });
+
+  test('mirrors the root and custom classes onto the portaled items scope', async () => {
+    // A root-scoped consumer override like `.cinder-navigation-bar.compact
+    // .cinder-navigation-item` must keep matching while the mobile items are
+    // portaled, so the portal scope needs both `cinder-navigation-bar` and
+    // any custom class — not just its own `__portal-scope` marker.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+        class: 'compact',
+      });
+
+      const nav = await openCollapsedMobileMenu(container);
+      const portalScope = getItemsRegion(container).parentElement;
+
+      expect(nav.contains(portalScope)).toBe(false);
+      expect(portalScope?.classList.contains('cinder-navigation-bar__portal-scope')).toBe(true);
+      expect(portalScope?.classList.contains('cinder-navigation-bar')).toBe(true);
+      expect(portalScope?.classList.contains('compact')).toBe(true);
     });
   });
 
