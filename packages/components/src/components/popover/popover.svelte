@@ -152,7 +152,17 @@
       capture: true,
       // Use the open-time snapshot so a swapped/removed trigger does not cause
       // unexpected close when the user mouses down on the original opener.
-      ignoreRefs: [() => resolvedAnchorAtOpen ?? null, ...outsideClickIgnoreRefs],
+      // Also treat the portal scope itself as inside: a descendant overlay
+      // (nested Popover, SpeedDial, or collapsed NavigationBar) that resolves
+      // its own portal target to this panel's `${panelId}-scope` becomes a
+      // *sibling* of `panelElement` under that scope container, not a
+      // descendant of it, so a mousedown inside the descendant surface must
+      // be excluded here too or it would close this panel first.
+      ignoreRefs: [
+        () => resolvedAnchorAtOpen ?? null,
+        () => portalScopeElement ?? null,
+        ...outsideClickIgnoreRefs,
+      ],
     }),
   );
 

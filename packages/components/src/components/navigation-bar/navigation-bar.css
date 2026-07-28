@@ -159,6 +159,12 @@
     border-bottom: 1px solid var(--cinder-border-muted);
     z-index: var(--cinder-z-dropdown);
 
+    /* The shared floating-surface base rule only turns on scrolling for
+       role="listbox"/"menu"; this panel is neither, so without this it
+       inherits `overflow: visible` and a tall item list simply paints past
+       the fixed panel's capped block-size with no way to reach the rest. */
+    overflow: auto;
+
     /* Open → visible, slide in */
     transition:
       transform 200ms ease,

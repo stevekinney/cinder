@@ -1509,6 +1509,15 @@ describe('NavigationBar responsive CSS', () => {
     );
   });
 
+  test('mobile panel scrolls its own overflow instead of painting past the fixed panel', () => {
+    // The shared floating-surface base rule only enables scrolling for
+    // role="listbox"/"menu"; this panel is neither, so it needs its own
+    // overflow: auto or a tall item list clips with no way to reach the rest.
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\s*\{[\s\S]*?overflow:\s*auto;/,
+    );
+  });
+
   test('collapsed menu toggle stays with trailing actions instead of centering between brand and actions', () => {
     expect(navigationBarCss).toMatch(
       /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\]\[data-cinder-menu-toggle-placement='after-brand'\][\s\S]*?\.cinder-navigation-bar__menu-toggle\s*\{[\s\S]*?margin-inline-start:\s*auto;/,

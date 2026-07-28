@@ -843,6 +843,28 @@ describe('Popover — outside mousedown', () => {
     await fireEvent.mouseDown(panel);
     expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('open');
   });
+
+  test('mousedown inside a descendant portal (nested overlay) does not close', async () => {
+    // A descendant Popover/SpeedDial/collapsed NavigationBar resolves its own
+    // portal target to this panel's `${panelId}-scope` container, so it lands
+    // as a *sibling* of the panel element under that scope — not inside the
+    // panel itself. Simulate that by appending a node directly to the portal
+    // scope container, outside `panel`, and confirm it still counts as inside.
+    const { container } = render(BindableFixture, { props: { initialOpen: true } });
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+    const panel = queryPopoverPanel()!;
+    const portalScope = panel.parentElement!;
+    expect(portalScope.classList.contains('cinder-popover__portal-scope')).toBe(true);
+
+    const descendantOverlay = document.createElement('div');
+    descendantOverlay.textContent = 'nested overlay content';
+    portalScope.appendChild(descendantOverlay);
+
+    await fireEvent.mouseDown(descendantOverlay);
+    expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('open');
+  });
 });
 
 // ---------------------------------------------------------------------------
