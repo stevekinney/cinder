@@ -54,6 +54,12 @@ describe('cinder/z-index-scale', () => {
     expect(result[0]?.text).toContain('must not have a fallback');
   });
 
+  test('rejects a layer token fallback hidden behind a CSS comment', async () => {
+    const result = warnings(await lint('.fixture { z-index: var(--cinder-z-popover/**/, 1100); }'));
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('must not have a fallback');
+  });
+
   test('rejects an undeclared token even with a local reason', async () => {
     const result = warnings(
       await lint(

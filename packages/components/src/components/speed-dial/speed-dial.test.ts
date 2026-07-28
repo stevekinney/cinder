@@ -374,6 +374,30 @@ describe('SpeedDial', () => {
     expect(shadow.activeElement).toBe(precedingButton);
   });
 
+  test('reverse Tab from an untabbable first action still returns before the SpeedDial', async () => {
+    // A consumer can forward `tabindex="-1"` to a SpeedDialAction to keep it
+    // out of sequential Tab order while remaining reachable by arrow keys.
+    // The Tab boundary must be the first SEQUENTIALLY TABBABLE action, not
+    // the raw first enabled action, or reverse Tab from it escapes to
+    // whatever the portal target happens to precede in the DOM instead of
+    // back before the SpeedDial.
+    const precedingButton = document.createElement('button');
+    precedingButton.textContent = 'Before SpeedDial';
+    document.body.append(precedingButton);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.setAttribute('tabindex', '-1');
+    const share = screen.getByRole('button', { name: 'Share' });
+
+    share.focus();
+    await fireEvent.keyDown(share, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(precedingButton);
+  });
+
   test('skips CSS-hidden controls when reversing from the first action', async () => {
     const hiddenButton = document.createElement('button');
     hiddenButton.style.display = 'none';

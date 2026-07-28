@@ -150,6 +150,16 @@
     return actionButtons.filter((button) => !button.disabled && isRenderedCandidate(button));
   }
 
+  // A consumer can forward `tabindex="-1"` to a SpeedDialAction to keep it
+  // clickable and reachable by arrow keys while excluding it from sequential
+  // Tab navigation. Boundary detection (which button ends the Tab sequence in
+  // either direction) must use only sequentially tabbable buttons, or a
+  // tabindex="-1" first/last action gets treated as the Tab boundary even
+  // though native Tab would skip over it.
+  function getSequentiallyTabbableActionButtons(): HTMLButtonElement[] {
+    return getEnabledActionButtons().filter((button) => !hasNegativeTabIndex(button));
+  }
+
   function getKeyboardNavigationButtons(): HTMLButtonElement[] {
     const enabledButtons = getEnabledActionButtons();
     return resolvedDirection === 'up' || resolvedDirection === 'left'
@@ -256,7 +266,7 @@
     const target = event.target instanceof HTMLButtonElement ? event.target : null;
     if (!target) return;
 
-    const tabOrderButtons = getEnabledActionButtons();
+    const tabOrderButtons = getSequentiallyTabbableActionButtons();
     if (event.key === 'Tab' && event.shiftKey && target === tabOrderButtons[0]) {
       const previousTarget = getFocusTargetBeforeSpeedDial();
       event.preventDefault();

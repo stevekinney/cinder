@@ -48,6 +48,15 @@ const meta = {
   url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index-layers',
 };
 
+// Postcss keeps `/* ... */` comments embedded inside a raw declaration value
+// instead of tokenizing them out, so `var(--cinder-z-popover/**/, 1100)` is a
+// valid way to slip a forbidden fallback past a regex that only expects
+// whitespace between the token and the comma. Strip comments before any
+// pattern match runs so a CSS comment can never mask a fallback value.
+function stripComments(value) {
+  return value.replaceAll(/\/\*[\s\S]*?\*\//g, ' ');
+}
+
 function hasAdjacentLocalReason(declaration) {
   const previous = declaration.prev();
   if (previous?.type !== 'comment') return false;
@@ -188,7 +197,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
 
     root.walkDecls((declaration) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
-      const value = declaration.value.trim();
+      const value = stripComments(declaration.value.trim()).trim();
       const tokenMatch = layerTokenPattern.exec(value);
       if (allowedLocalValues.has(value)) return;
       if (tokenMatch) {

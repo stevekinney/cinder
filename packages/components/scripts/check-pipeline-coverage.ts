@@ -70,6 +70,7 @@ export const LAYERS = [
 export const STYLELINT_RULE_COVERAGE = {
   'cinder/no-surface-on-form-control': ['unit-tests', 'main-green'],
   'cinder/interior-border-weight': ['unit-tests', 'main-green'],
+  'cinder/z-index-scale': ['unit-tests', 'main-green'],
 } as const satisfies Record<string, readonly Layer[]>;
 
 export type Layer = (typeof LAYERS)[number];

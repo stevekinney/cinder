@@ -567,11 +567,30 @@ describe('Combobox filtering', () => {
       const panel = emptyState?.closest('.cinder-popover') as HTMLElement | null;
       expect(emptyState?.textContent?.trim()).toBe('No results');
       expect(emptyState?.closest('[role="listbox"]')?.id).toBe('fruit-listbox');
-      expect(emptyState?.closest('.cinder-combobox')).toBeNull();
+      // The portaled empty panel preserves the `.cinder-combobox` root-scoped
+      // styling hook (AGENTS.md § Conventions), so a consumer override such as
+      // `.cinder-combobox.compact .cinder-combobox__empty` keeps matching even
+      // though the panel is rendered outside the component's own DOM subtree.
+      expect(emptyState?.closest('.cinder-combobox')).not.toBeNull();
       expect(panel?.parentElement?.style.getPropertyValue('--cinder-surface')).toBe('hotpink');
       expect(panel?.parentElement?.style.colorScheme).toBe('dark');
       expect(input.getAttribute('aria-expanded')).toBe('true');
       expect(input.getAttribute('aria-controls')).toBe('fruit-listbox');
+    });
+  });
+
+  test('a custom instance class survives on the portaled empty panel', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
+    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitFor(() => {
+      const emptyState = container.querySelector('.cinder-combobox__empty');
+      // Documents the AGENTS.md override hook: `.cinder-combobox.compact
+      // .cinder-combobox__empty` must keep matching after the empty panel is
+      // portaled, so both classes need to land on the same ancestor.
+      const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
+      expect(scopedAncestor).not.toBeNull();
     });
   });
 
