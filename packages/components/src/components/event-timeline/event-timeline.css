@@ -196,7 +196,7 @@
     min-inline-size: 2.25rem;
     min-block-size: 1.75rem;
     padding: 0.125rem 0.375rem;
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     color: var(--cinder-text);
     background: var(--cinder-surface-raised);
