@@ -66,4 +66,35 @@ describe('findFocusTargetAfterNavigationItems', () => {
 
     expect(findFocusTargetAfterNavigationItems(navigationBar, null)).toBeNull();
   });
+
+  test('excludes a following candidate whose shadow HOST (not an ancestor inside the shadow root) is display:none', () => {
+    // A plain `parentElement`-only walk stops climbing at the ShadowRoot
+    // (its `parentElement` is null) and never inspects the host itself, so a
+    // host hidden from outside the shadow tree would otherwise still be
+    // reported as rendered.
+    const host = document.createElement('div');
+    host.style.display = 'none';
+    const shadow = host.attachShadow({ mode: 'open' });
+    const navigationBar = document.createElement('nav');
+    const following = document.createElement('button');
+    shadow.append(navigationBar, following);
+    attachScratch(host);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, null)).toBeNull();
+  });
+
+  test('excludes a following candidate whose shadow HOST is inert', () => {
+    // Plain `closest('[inert]')` cannot see past the shadow boundary, so an
+    // `inert` shadow host would otherwise not disqualify a candidate that
+    // lives inside it.
+    const host = document.createElement('div');
+    host.setAttribute('inert', '');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const navigationBar = document.createElement('nav');
+    const following = document.createElement('button');
+    shadow.append(navigationBar, following);
+    attachScratch(host);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, null)).toBeNull();
+  });
 });
