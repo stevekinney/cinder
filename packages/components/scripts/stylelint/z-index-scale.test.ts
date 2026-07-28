@@ -92,6 +92,19 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test('rejects a statically-negative calc() layer even with a local reason', async () => {
+    // `Number('calc(-1)')` is `NaN`, not `-1` — a naive `Number(value) < 0`
+    // check never sees this, so a negative value wrapped in `calc()` could
+    // otherwise slip past the rule's prohibition on negative local layers.
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this layer must stay behind its stacking context. */
+        z-index: calc(-1);
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test('accepts a reasoned component-local expression but never the historical 9999 escape hatch', async () => {
     const localExpression = await lint(`
       .fixture {

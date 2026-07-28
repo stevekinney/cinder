@@ -57,6 +57,17 @@ function hasAdjacentLocalReason(declaration) {
   return text.slice(localReasonPrefix.length).trim().length > 0;
 }
 
+// `Number('calc(-1)')` is `NaN`, not `-1` — a plain `Number(value) < 0` check
+// never sees a negative value wrapped in `calc()`, so a declaration with a
+// `cinder-z-index-local:` reason and a statically-negative calc() literal
+// would otherwise slip past the rule's prohibition on negative local
+// stacking levels. Unwrap a single `calc(...)` layer before parsing.
+function isStaticallyNegative(value) {
+  const calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(value);
+  const numeric = Number(calcMatch ? calcMatch[1] : value);
+  return Number.isFinite(numeric) && numeric < 0;
+}
+
 const plugin = stylelint.createPlugin(ruleName, (primary) => {
   return (root, result) => {
     const validOptions = stylelint.utils.validateOptions(result, ruleName, {
@@ -106,7 +117,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }
-      if (Number.isFinite(Number(value)) && Number(value) < 0) {
+      if (isStaticallyNegative(value)) {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }

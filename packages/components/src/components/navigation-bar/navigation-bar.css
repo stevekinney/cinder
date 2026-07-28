@@ -36,6 +36,17 @@
     padding-inline: 0;
     background: none;
     border-bottom: none;
+
+    /* No `@container cinder-navigation-bar` rule currently reaches a
+       descendant of this scope without also requiring `[data-collapsible]`
+       on the same named-container element (which this scope never carries),
+       so this is inert today — but the mirrored class alone would otherwise
+       make a `display: block` portal target (at document.body's width) a
+       second, wrongly-sized "cinder-navigation-bar" query container. Turn
+       containment off here so a future selector change can't accidentally
+       resolve against it. */
+    container-type: normal;
+    container-name: none;
   }
 
   .cinder-navigation-bar[data-cinder-placement='bottom'] {

@@ -1551,6 +1551,17 @@ describe('NavigationBar responsive CSS', () => {
     );
   });
 
+  test('portaled scope is not a named container while it is a display:block portal target', () => {
+    // The mirrored class also mirrors the root's `container-name:
+    // cinder-navigation-bar`. A `display: block` portal target sized to
+    // document.body would otherwise be a same-named query container that a
+    // future `@container cinder-navigation-bar` rule could resolve against
+    // instead of the actual nav bar.
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar__portal-scope\.cinder-navigation-bar\s*\{[\s\S]*?container-type:\s*normal;[\s\S]*?container-name:\s*none;/,
+    );
+  });
+
   test('collapsed menu toggle stays with trailing actions instead of centering between brand and actions', () => {
     expect(navigationBarCss).toMatch(
       /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\]\[data-cinder-menu-toggle-placement='after-brand'\][\s\S]*?\.cinder-navigation-bar__menu-toggle\s*\{[\s\S]*?margin-inline-start:\s*auto;/,
