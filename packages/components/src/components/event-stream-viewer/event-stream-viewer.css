@@ -20,7 +20,7 @@
     flex-direction: column;
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     overflow: hidden;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
@@ -89,7 +89,7 @@
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     color: var(--cinder-text);
     font-size: var(--cinder-text-xs);
     font-family: inherit;
@@ -148,7 +148,7 @@
   .cinder-event-stream-viewer__truncation-notice {
     padding: var(--cinder-space-1) var(--cinder-space-3);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
     font-size: var(--cinder-text-xs);
     font-family: var(--cinder-font-sans);
     border-block-end: 1px solid var(--cinder-border-muted);
@@ -279,7 +279,7 @@
   }
 
   .cinder-event-stream-viewer__sequence-gap-marker .cinder-event-stream-viewer__marker-content {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-event-stream-viewer__marker-time {
@@ -308,7 +308,7 @@
 
   @media (hover: hover) {
     .cinder-event-stream-viewer__event:hover {
-      background: var(--cinder-surface-hover);
+      background: var(--cinder-surface-raised-hover);
     }
   }
 
@@ -338,7 +338,7 @@
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='warning'] {
-    --cinder-event-stream-viewer-severity-color: var(--cinder-warning);
+    --cinder-event-stream-viewer-severity-color: var(--cinder-color-warning-fg);
   }
 
   .cinder-event-stream-viewer__event[data-cinder-severity='error'] {

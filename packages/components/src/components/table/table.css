@@ -83,7 +83,7 @@
     text-align: left;
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
-    border-bottom: 1px solid var(--cinder-border);
+    border-bottom: 1px solid var(--cinder-border-muted);
     text-wrap: balance;
   }
 
@@ -221,7 +221,7 @@
   .cinder-table__cell {
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-3);
-    border-bottom: 1px solid var(--cinder-border);
+    border-bottom: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-table__cell[data-cinder-align='center'] {

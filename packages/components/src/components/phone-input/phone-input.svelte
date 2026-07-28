@@ -27,6 +27,8 @@
     PhoneInputCountryOption,
     PhoneInputProps,
   } from './phone-input.types.ts';
+  import Input from '@lostgradient/cinder/input';
+  import Select from '@lostgradient/cinder/select';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   import {
@@ -67,6 +69,9 @@
     onchange,
   }: PhoneInputProps = $props();
 
+  const initialCountry = country;
+  const initialValue = value;
+
   const context = getFormFieldContext();
   const localeContext = getLocaleContext();
 
@@ -102,6 +107,9 @@
         label: `${displayName} +${callingCode}`,
       };
     }),
+  );
+  const selectOptions = $derived(
+    countryOptions.map((option) => ({ value: option.code, label: option.label })),
   );
 
   function isAllowed(code: PhoneInputCountryCode): boolean {
@@ -143,6 +151,7 @@
   let knownValue: string | null = null;
   let knownCountry: PhoneInputCountryCode | null = null;
   let knownAllowList: readonly PhoneInputCountryCode[] = [];
+  let fieldRoot = $state<HTMLElement>();
 
   /**
    * Synchronise to external `value` changes. Covers initial hydration too
@@ -340,11 +349,75 @@
     });
   }
 
+  function handleFormReset(event: Event): void {
+    const valueAtReset = value;
+    const countryAtReset = country;
+    queueMicrotask(() =>
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        if (value !== valueAtReset || country !== countryAtReset) return;
+        const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
+        if (!rawCountry || !isCountryCode(rawCountry)) return;
+        const initialParsed = parseE164Value(initialValue);
+        const initialParsedCountryAllowed =
+          initialParsed !== null && isAllowed(initialParsed.country);
+        const resetCountry = initialParsed
+          ? initialParsedCountryAllowed
+            ? initialParsed.country
+            : fallbackCountry()
+          : isCountryCode(initialCountry)
+            ? initialCountry
+            : rawCountry;
+        country = resetCountry;
+        knownCountry = resetCountry;
+        value = initialValue;
+        knownValue = initialValue;
+        const countrySelect = fieldRoot?.querySelector<HTMLSelectElement>('select');
+        if (countrySelect && countrySelect.value !== resetCountry)
+          countrySelect.value = resetCountry;
+        const resetDisplay = initialParsedCountryAllowed
+          ? initialParsed.formatted
+          : initialParsed
+            ? initialValue
+            : initialValue === digitsOnly(initialValue)
+              ? formatNationalAsYouType(resetCountry, initialValue)
+              : initialValue;
+        nationalDisplay = resetDisplay;
+        const nationalInput = fieldRoot?.querySelector<HTMLInputElement>(
+          'input:not([type="hidden"])',
+        );
+        if (nationalInput && nationalInput.value !== resetDisplay)
+          nationalInput.value = resetDisplay;
+      }),
+    );
+  }
+
+  $effect(() => {
+    const form = fieldRoot?.closest('form');
+    if (!form) return;
+    const handleReset = (event: Event) => handleFormReset(event);
+    form.addEventListener('reset', handleReset);
+    return () => form.removeEventListener('reset', handleReset);
+  });
+
   const groupLabelId = $derived(label ? `${id}-label` : undefined);
   const countrySelectId = $derived(`${id}-country`);
   const countryLabelId = $derived(`${id}-country-label`);
   const nationalInputId = $derived(id);
   const nationalLabelId = $derived(`${id}-national-label`);
+  const selectedCountryOption = $derived(
+    countryOptions.find((option) => option.code === country) ?? countryOptions[0],
+  );
+  const countryAccessibleLabel = $derived(
+    selectedCountryOption
+      ? `Country: ${selectedCountryOption.displayName}, +${selectedCountryOption.callingCode}`
+      : 'Country',
+  );
+  const countrySummary = $derived(
+    selectedCountryOption
+      ? `${selectedCountryOption.code} +${selectedCountryOption.callingCode}`
+      : country,
+  );
 
   const defaultDescriptionId = $derived(describeId(id, !!description));
   const defaultErrorId = $derived(buildErrorId(id, !!error));
@@ -362,32 +435,38 @@
   const resolvedAriaInvalid = $derived(error ? ariaInvalid(true) : context?.invalid);
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
+  const resolvedAriaLabel = $derived(
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel : undefined,
+  );
+  const resolvedAriaLabelledBy = $derived(
+    typeof ariaLabelledBy === 'string' && ariaLabelledBy.trim().length > 0
+      ? ariaLabelledBy
+      : undefined,
+  );
 
   const resolvedGroupLabelledBy = $derived.by(() => {
     if (groupLabelId) return groupLabelId;
     if (context?.labelId) return context.labelId;
-    if (ariaLabelledBy) return ariaLabelledBy;
+    if (resolvedAriaLabelledBy) return resolvedAriaLabelledBy;
     return undefined;
   });
 
   const groupAriaLabel = $derived(
-    !resolvedGroupLabelledBy && !ariaLabelledBy ? ariaLabel : undefined,
+    !resolvedGroupLabelledBy && !resolvedAriaLabelledBy ? resolvedAriaLabel : undefined,
   );
 
-  /**
-   * Compose the per-control accessible-name reference. Prefix the group label
-   * (when present) so screen readers announce the consumer's "Phone number"
-   * alongside the inner control's role-specific label ("Country code",
-   * "Phone number").
-   */
-  function controlLabelledBy(controlLabelId: string): string {
+  function controlLabelledBy(controlLabelId: string): string | undefined {
     if (resolvedGroupLabelledBy) return `${resolvedGroupLabelledBy} ${controlLabelId}`;
-    if (ariaLabelledBy) return `${ariaLabelledBy} ${controlLabelId}`;
+    if (groupAriaLabel) return undefined;
     return controlLabelId;
   }
 
+  function controlAriaLabel(controlLabel: string): string | undefined {
+    return groupAriaLabel ? `${groupAriaLabel} ${controlLabel}` : undefined;
+  }
+
   const hasGroupAccessibleName = $derived(
-    !!label || !!context?.labelId || !!ariaLabelledBy || !!ariaLabel,
+    !!label || !!context?.labelId || !!resolvedAriaLabelledBy || !!resolvedAriaLabel,
   );
 
   $effect(() => {
@@ -421,6 +500,7 @@
 </script>
 
 <div
+  bind:this={fieldRoot}
   class={classNames('cinder-phone-input-field', className)}
   data-cinder-disabled={resolvedDisabled || undefined}
 >
@@ -455,36 +535,40 @@
     aria-required={resolvedRequired || undefined}
     aria-disabled={resolvedDisabled || undefined}
   >
-    <span id={countryLabelId} class="cinder-sr-only">Country code</span>
-    <select
-      id={countrySelectId}
-      class="cinder-phone-input__country"
-      aria-labelledby={controlLabelledBy(countryLabelId)}
-      aria-describedby={describedBy}
-      aria-invalid={resolvedAriaInvalid}
-      disabled={resolvedDisabled}
-      value={country}
-      onchange={handleCountryChange}
-    >
-      {#each countryOptions as option (option.code)}
-        <option value={option.code}>{option.label}</option>
-      {/each}
-    </select>
+    <div class="cinder-phone-input__country" data-disabled={resolvedDisabled || undefined}>
+      <span id={countryLabelId} class="cinder-sr-only">{countryAccessibleLabel}</span>
+      <Select
+        id={countrySelectId}
+        options={selectOptions}
+        value={isAllowed(country) ? country : fallbackCountry()}
+        aria-label={controlAriaLabel(countryAccessibleLabel)}
+        aria-labelledby={controlLabelledBy(countryLabelId)}
+        aria-describedby={describedBy}
+        aria-invalid={resolvedAriaInvalid}
+        disabled={resolvedDisabled}
+        required={resolvedRequired}
+        onchange={handleCountryChange}
+      />
+      <span class="cinder-phone-input__country-summary" aria-hidden="true">
+        {countrySummary}
+      </span>
+    </div>
 
     <span id={nationalLabelId} class="cinder-sr-only">Phone number</span>
-    <input
+    <Input
       id={nationalInputId}
       class="cinder-phone-input__national"
       type="tel"
       inputmode="tel"
       autocomplete="tel-national"
+      value={nationalDisplay}
+      aria-label={controlAriaLabel('Phone number')}
       aria-labelledby={controlLabelledBy(nationalLabelId)}
       aria-describedby={describedBy}
       aria-invalid={resolvedAriaInvalid}
       aria-required={resolvedRequired || undefined}
       disabled={resolvedDisabled}
       required={resolvedRequired}
-      value={nationalDisplay}
       oninput={handleNationalInput}
     />
   </div>

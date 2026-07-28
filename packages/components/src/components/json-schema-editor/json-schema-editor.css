@@ -24,7 +24,7 @@
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
   }
 
   .cinder-jse-toolbar__left,
@@ -46,7 +46,7 @@
   .cinder-jse-property-editor[data-cinder-jse-depth='0'] {
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
   }
 
   /* Sections are divided by a top border. The first section drops it so the
@@ -156,7 +156,7 @@
 
   @media (hover: hover) {
     .cinder-jse-collapsed:hover {
-      background: var(--cinder-surface-raised);
+      background: var(--cinder-surface-raised-hover);
     }
   }
 

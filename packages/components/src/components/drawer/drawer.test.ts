@@ -699,6 +699,20 @@ describe('Drawer', () => {
     }
   });
 
+  test('overflow fade overlays content without masking the drawer surface', async () => {
+    const css = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
+    const overflowFadeBlock =
+      css.match(/\.cinder-drawer__body\[data-cinder-overflows\]::after\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(overflowFadeBlock).toContain('position: sticky');
+    expect(overflowFadeBlock).toContain(
+      'background: linear-gradient(to bottom, transparent, var(--cinder-surface))',
+    );
+    expect(css).not.toMatch(
+      /\.cinder-drawer__body\[data-cinder-overflows\]\s*\{[^}]*(?:-webkit-)?mask-/,
+    );
+  });
+
   // ---- Additional: close button has correct aria-label ----
   test('close button has aria-label="Close drawer"', () => {
     const { container } = render(Drawer, {
