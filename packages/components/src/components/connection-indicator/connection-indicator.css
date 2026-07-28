@@ -110,7 +110,7 @@
  * ---------------------------------------- */
 
   .cinder-connection-indicator[data-cinder-status='connecting'] {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-connection-indicator[data-cinder-status='live'] {
@@ -118,7 +118,7 @@
   }
 
   .cinder-connection-indicator[data-cinder-status='reconnecting'] {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-connection-indicator[data-cinder-status='polling'] {

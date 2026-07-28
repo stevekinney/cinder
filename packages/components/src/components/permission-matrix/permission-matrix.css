@@ -47,7 +47,7 @@
     color: var(--cinder-text-muted);
     font-weight: var(--cinder-font-medium);
     text-align: left;
-    border-block-end: 1px solid var(--cinder-border);
+    border-block-end: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-permission-matrix__corner,
@@ -82,13 +82,13 @@
     padding-block: var(--cinder-space-2);
     padding-inline: var(--cinder-space-3);
     white-space: nowrap;
-    border-inline-end: 1px solid var(--cinder-border);
+    border-inline-end: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-permission-matrix__cell {
     padding: 0;
-    border-block-end: 1px solid var(--cinder-border);
-    border-inline-end: 1px solid var(--cinder-border);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    border-inline-end: 1px solid var(--cinder-border-muted);
     text-align: center;
     background: var(--cinder-surface);
   }

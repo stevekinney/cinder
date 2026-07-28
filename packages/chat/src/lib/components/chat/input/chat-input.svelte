@@ -715,7 +715,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-2);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
     padding: var(--cinder-space-3);

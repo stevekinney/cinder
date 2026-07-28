@@ -34,6 +34,27 @@ function trigger(container: HTMLElement): HTMLButtonElement {
   return container.querySelector('.cinder-collapsible__trigger') as HTMLButtonElement;
 }
 
+test('expanded trigger clears its bottom radii at the panel seam', async () => {
+  const css = await Bun.file(new URL('./collapsible.css', import.meta.url)).text();
+  const expandedTriggerBlock =
+    css.match(
+      /\.cinder-collapsible\[data-cinder-expanded\]\s+\.cinder-collapsible__trigger\s*\{[^}]*\}/,
+    )?.[0] ?? '';
+
+  expect(expandedTriggerBlock).toContain('border-end-start-radius: 0');
+  expect(expandedTriggerBlock).toContain('border-end-end-radius: 0');
+});
+
+test('rounded panel preserves overflow from public children', async () => {
+  const css = await Bun.file(new URL('./collapsible.css', import.meta.url)).text();
+  const rootBlock = css.match(/\.cinder-collapsible\s*\{[^}]*\}/)?.[0] ?? '';
+  const panelInnerBlock = css.match(/\.cinder-collapsible__panel-inner\s*\{[^}]*\}/)?.[0] ?? '';
+
+  expect(rootBlock).not.toContain('overflow: hidden');
+  expect(panelInnerBlock).toContain('border-end-start-radius: var(--cinder-radius-md)');
+  expect(panelInnerBlock).toContain('border-end-end-radius: var(--cinder-radius-md)');
+});
+
 function panel(container: HTMLElement): HTMLElement | null {
   return container.querySelector('.cinder-collapsible__panel');
 }

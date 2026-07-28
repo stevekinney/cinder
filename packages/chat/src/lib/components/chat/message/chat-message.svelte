@@ -930,7 +930,7 @@
     font-size: var(--cinder-text-base);
     line-height: 1.6;
     color: var(--cinder-text);
-    background: var(--cinder-surface);
+    background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-accent);
     border-radius: var(--cinder-radius-md);
     resize: vertical;

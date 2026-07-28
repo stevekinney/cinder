@@ -34,12 +34,12 @@
 
   .cinder-_option-row[data-cinder-active],
   .cinder-_option-row[aria-selected='true'] {
-    background: var(--cinder-surface-hover);
+    background: var(--cinder-surface-raised-hover);
   }
 
   /*
    * The keyboard cursor (`data-cinder-active`) gets a geometric ring on top of
-   * the background tint. The `--cinder-surface-hover` fill is intentionally a
+   * the background tint. The `--cinder-surface-raised-hover` fill is intentionally a
    * subtle ~1.1:1 step against the panel's `--cinder-surface-raised` — fine for
    * pointer hover, but on its own it fails WCAG 1.4.11 (3:1 non-text contrast)
    * for the *sole* keyboard-position indicator. `--cinder-ring-color` is the

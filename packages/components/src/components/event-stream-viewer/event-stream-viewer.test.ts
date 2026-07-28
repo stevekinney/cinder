@@ -1154,5 +1154,14 @@ describe('EventStreamViewer', () => {
       );
       expect(css).toContain('padding: 0 var(--cinder-space-3) 0 0;');
     });
+
+    test('event row hover uses the raised surface ramp', () => {
+      const { readFileSync } = require('node:fs');
+      const css = readFileSync(
+        new URL('./event-stream-viewer.css', import.meta.url).pathname,
+        'utf8',
+      );
+      expect(css).toContain('background: var(--cinder-surface-raised-hover);');
+    });
   });
 });

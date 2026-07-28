@@ -189,3 +189,7 @@ it knows about, by design (it is not an exhaustive "every script must be
 declared" gate, which would make routine dev-only scripts a maintenance
 burden). Add the row when the command graduates into being a real validation
 gate, not before.
+
+The repository-wide stylelint gate also loads `cinder/no-surface-on-form-control`
+and `cinder/interior-border-weight`. These rules keep form controls on the raised
+surface and reserve the strongest border token for component outer edges.

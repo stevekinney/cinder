@@ -80,7 +80,7 @@
     background: var(--cinder-surface-raised);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border-radius: var(--cinder-radius-sm);
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     white-space: pre-wrap;
     word-break: break-all;
   }
@@ -96,7 +96,7 @@
     padding: var(--cinder-space-3);
     background: var(--cinder-surface-raised);
     border-radius: var(--cinder-radius-sm);
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
   }

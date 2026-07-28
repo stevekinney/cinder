@@ -118,7 +118,7 @@
   }
 
   .cinder-combobox__option[data-cinder-active] {
-    background: var(--cinder-surface-hover);
+    background: var(--cinder-surface-raised-hover);
   }
 
   .cinder-combobox__option[aria-selected='true'] {

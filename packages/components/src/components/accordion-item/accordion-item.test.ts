@@ -363,6 +363,12 @@ describe('AccordionItem', () => {
     expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');
     expect(css).toContain('var(--cinder-accordion-item-trigger-padding-block,');
     expect(css).toContain('font-size: var(--cinder-accordion-item-trigger-font-size,');
+    expect(css).toContain(
+      '--cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold)',
+    );
+    expect(css).toContain(
+      'font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-semibold))',
+    );
     expect(css).toContain('--cinder-accordion-item-panel-inner-padding-block-start,');
     expect(css).toContain('font-size: var(--cinder-accordion-item-panel-font-size,');
   });

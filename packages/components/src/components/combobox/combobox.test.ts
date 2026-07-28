@@ -94,6 +94,12 @@ function render(...args: Parameters<typeof renderIntoContainer>) {
 }
 
 describe('Combobox', () => {
+  test('active options derive their fill from the raised surface', () => {
+    const styles = readComboboxStyles();
+    expect(styles).toContain('.cinder-combobox__option[data-cinder-active]');
+    expect(styles).toContain('background: var(--cinder-surface-raised-hover);');
+  });
+
   test('select via mousedown closes the listbox and sets the input value', async () => {
     const { container } = render(Combobox, { id: 'editable-fruit', options: fruits });
     const input = container.querySelector('#editable-fruit') as HTMLInputElement;

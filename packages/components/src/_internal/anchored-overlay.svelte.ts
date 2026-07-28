@@ -14,6 +14,7 @@ export type AnchoredOverlayOptions = {
   arrowPadding?: () => number;
   arrowVisible?: () => boolean;
   widthMode?: () => AnchoredOverlayWidthMode;
+  strategy?: () => 'fixed' | 'absolute';
 };
 
 const DEFAULT_PLACEMENT: Placement = 'bottom-start';
@@ -115,6 +116,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const arrow = options.arrow?.();
     const arrowVisible = options.arrowVisible?.() ?? Boolean(arrow);
     const widthMode = options.widthMode?.() ?? 'content';
+    const strategy = options.strategy?.() ?? 'fixed';
     let cancelled = false;
     let generation = 0;
     let stopAutoUpdate: (() => void) | undefined;
