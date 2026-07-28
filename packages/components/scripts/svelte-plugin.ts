@@ -1,7 +1,7 @@
 import type { BunPlugin } from 'bun';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { compile, compileModule } from 'svelte/compiler';
+import { compile, compileModule, parse } from 'svelte/compiler';
 import ts from 'typescript';
 
 type GenerationTarget = 'client' | 'server';
@@ -64,7 +64,7 @@ export function publishedSvelteCompileFilename(filePath: string): string {
   return filePath;
 }
 
-function allowsStyleBlock(path: string): boolean {
+export function allowsStyleBlock(path: string): boolean {
   const normalizedPath = path.replaceAll('\\', '/');
 
   // Playground chrome is not part of the design-system cascade — the no-style
@@ -72,12 +72,26 @@ function allowsStyleBlock(path: string): boolean {
   // Files under packages/playground/ are dev-only scaffolding and may co-locate
   // their styles with their markup.
   if (normalizedPath.includes('/packages/playground/')) return true;
+  // Test fixtures are not published package components or part of the public
+  // cascade. Allow them to keep scoped styles local to the fixture.
+  if (normalizedPath.includes('/packages/components/src/test/fixtures/')) return true;
 
   const componentPathMatch = normalizedPath.match(
     /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,
   );
   const componentName = componentPathMatch?.[1];
   return componentName !== undefined && DOMAIN_SUITE_STYLE_COMPONENTS.has(componentName);
+}
+
+export function hasAuthoredStyleBlock(source: string): boolean {
+  const ast = parse(source, { modern: true });
+  return isNodeStyleSheet(ast.css);
+}
+
+function isNodeStyleSheet(value: unknown): boolean {
+  return Boolean(
+    value && typeof value === 'object' && (value as { type?: unknown }).type === 'StyleSheet',
+  );
 }
 
 function hasModifier(
@@ -245,7 +259,12 @@ export function sveltePlugin(
           // runs so production builds and test/dev loads stay in sync.
           dev,
         });
-        if (!isPlaygroundFile && compileResult.css?.code?.trim() && !allowsStyleBlock(path)) {
+        if (
+          !isPlaygroundFile &&
+          hasAuthoredStyleBlock(source) &&
+          compileResult.css?.code?.trim() &&
+          !allowsStyleBlock(path)
+        ) {
           throw new Error(
             `[svelte-plugin] <style> block in ${path} — not allowed. Put styles in src/styles/.`,
           );

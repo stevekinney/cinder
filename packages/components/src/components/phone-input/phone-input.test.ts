@@ -1,12 +1,18 @@
 /// <reference lib="dom" />
-import { describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { PhoneInputChange } from './phone-input.types.ts';
 
 setupHappyDom();
 
-const { render, fireEvent } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: PhoneInput } = await import('./phone-input.svelte');
+const { default: FormFieldPhoneInputFixture } =
+  await import('../../test/fixtures/form-field-phone-input-fixture.svelte');
+
+afterEach(cleanup);
 
 function nationalInput(container: Element): HTMLInputElement {
   return container.querySelector<HTMLInputElement>('input[type="tel"]')!;
@@ -29,14 +35,61 @@ describe('PhoneInput rendering', () => {
     expect(group.getAttribute('aria-labelledby')).toBe('p-label');
   });
 
-  test('country select and national input compose the group label with their per-control label', () => {
+  test('country select accessible name includes the full selected country', () => {
+    const { getByRole } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
+    expect(getByRole('combobox', { name: 'Phone Country: United States, +1' })).not.toBeNull();
+  });
+
+  test('ignores whitespace-only ARIA names and preserves control fallbacks', () => {
+    const { container, getByRole } = render(PhoneInput, {
+      props: { id: 'p', 'aria-label': '   ', 'aria-labelledby': '\t' },
+    });
+    const group = container.querySelector('[role="group"]')!;
+
+    expect(group.hasAttribute('aria-label')).toBe(false);
+    expect(group.hasAttribute('aria-labelledby')).toBe(false);
+    expect(getByRole('combobox', { name: 'Country: United States, +1' })).not.toBeNull();
+    expect(getByRole('textbox', { name: 'Phone number' })).not.toBeNull();
+  });
+
+  test('visible country summary stays compact while options retain full names', () => {
+    const { container } = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', country: 'AE', countries: ['US', 'AE'] },
+    });
+
+    expect(container.querySelector('.cinder-phone-input__country-summary')?.textContent).toBe(
+      'AE +971',
+    );
+    expect(Array.from(countrySelect(container).options, (option) => option.textContent)).toContain(
+      'United Arab Emirates +971',
+    );
+  });
+
+  test('multiple instances prefix child controls with their field label', () => {
+    const home = render(PhoneInput, { props: { id: 'home', label: 'Home phone' } });
+    const work = render(PhoneInput, { props: { id: 'work', label: 'Work phone' } });
+
+    expect(
+      home.getByRole('combobox', { name: 'Home phone Country: United States, +1' }),
+    ).not.toBeNull();
+    expect(home.getByRole('textbox', { name: 'Home phone Phone number' })).not.toBeNull();
+    expect(
+      work.getByRole('combobox', { name: 'Work phone Country: United States, +1' }),
+    ).not.toBeNull();
+    expect(work.getByRole('textbox', { name: 'Work phone Phone number' })).not.toBeNull();
+  });
+
+  test('loads the shared Input and Select styled entries without painting another chevron', () => {
+    const source = readFileSync(new URL('./phone-input.svelte', import.meta.url), 'utf8');
+    const styles = readFileSync(new URL('./phone-input.css', import.meta.url), 'utf8');
     const { container } = render(PhoneInput, { props: { id: 'p', label: 'Phone' } });
-    const select = countrySelect(container);
-    const input = nationalInput(container);
-    expect(select.getAttribute('aria-labelledby')).toBe('p-label p-country-label');
-    expect(input.getAttribute('aria-labelledby')).toBe('p-label p-national-label');
-    expect(container.querySelector('#p-country-label')?.textContent).toBe('Country code');
-    expect(container.querySelector('#p-national-label')?.textContent).toBe('Phone number');
+
+    expect(source).toContain("from '@lostgradient/cinder/input'");
+    expect(source).toContain("from '@lostgradient/cinder/select'");
+    expect(styles).not.toContain('background-image');
+    expect(styles).toContain('.cinder-phone-input__country .cinder-select option');
+    expect(styles).toContain('text-indent: 0;');
+    expect(container.querySelectorAll('.cinder-select-field__chevron')).toHaveLength(1);
   });
 
   test('country defaults to US', () => {
@@ -337,6 +390,21 @@ describe('PhoneInput error / disabled / required', () => {
       props: { id: 'p', label: 'Phone', required: true },
     });
     expect(nationalInput(container).required).toBe(true);
+    expect(countrySelect(container).required).toBe(true);
+  });
+
+  test('explicit required=false overrides required FormField context for both controls', () => {
+    const { container } = render(FormFieldPhoneInputFixture, {
+      props: {
+        fieldId: 'phone',
+        fieldLabel: 'Phone',
+        fieldRequired: true,
+        phoneRequired: false,
+      },
+    });
+
+    expect(countrySelect(container).required).toBe(false);
+    expect(nationalInput(container).required).toBe(false);
   });
 });
 
@@ -362,6 +430,192 @@ describe('PhoneInput allow-list expansion', () => {
     });
     expect(countrySelect(container).value).toBe('GB');
     expect(nationalInput(container).value).toContain('020');
+  });
+});
+
+describe('PhoneInput form reset', () => {
+  test('preserves newer external value and country updates after reset dispatch', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      props: { id: 'p', label: 'Phone', name: 'phone', value: '+14155552671', country: 'US' },
+      target: form,
+    });
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await rendered.rerender({
+      id: 'p',
+      label: 'Phone',
+      name: 'phone',
+      value: '+442079460958',
+      country: 'GB',
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(countrySelect(rendered.container).value).toBe('GB');
+    expect(rendered.container.querySelector('input[type="hidden"]')?.getAttribute('value')).toBe(
+      '+442079460958',
+    );
+    rendered.unmount();
+    form.remove();
+  });
+  test('restores the initial national formatting on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        country: 'US',
+        value: '4155550132',
+      },
+    });
+    const input = nationalInput(rendered.container);
+
+    await waitFor(() => expect(input.value).toBe('(415) 555-0132'));
+    await fireEvent.input(input, { target: { value: '2025550123' } });
+    expect(input.value).toBe('(202) 555-0123');
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(countrySelect(rendered.container).value).toBe('US');
+    expect(input.value).toBe('(415) 555-0132');
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('preserves invalid initial text on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: { id: 'p', label: 'Phone', value: 'invalid' },
+    });
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(nationalInput(rendered.container).value).toBe('invalid');
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('resynchronizes an untouched non-first initial country on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: { id: 'p', label: 'Phone', countries: ['US', 'GB'], country: 'GB' },
+    });
+    expect(countrySelect(rendered.container).value).toBe('GB');
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(countrySelect(rendered.container).value).toBe('GB');
+    expect(
+      rendered.container.querySelector('.cinder-phone-input__country-summary')?.textContent,
+    ).toContain('GB');
+    rendered.unmount();
+    form.remove();
+  });
+  test('resynchronizes an untouched initial national display on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: { id: 'p', label: 'Phone', country: 'US', value: '+14155550132' },
+    });
+    const input = nationalInput(rendered.container);
+    await waitFor(() => expect(input.value).toContain('415'));
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(input.value).toContain('415');
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('does not reset when the reset event is canceled', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US', 'GB'],
+        value: '+14155550132',
+      },
+    });
+    const input = nationalInput(rendered.container);
+    await fireEvent.input(input, { target: { value: '2025550123' } });
+    const editedDisplay = input.value;
+    let resetCanceled = false;
+    form.addEventListener('reset', (event) => {
+      event.preventDefault();
+      resetCanceled = event.defaultPrevented;
+    });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(resetCanceled).toBe(true);
+    expect(input.value).toBe(editedDisplay);
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('preserves a disallowed initial E.164 value literally on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const changes: PhoneInputChange[] = [];
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US'],
+        value: '+442079460958',
+        onchange: (change: PhoneInputChange) => changes.push(change),
+      },
+    });
+    const input = nationalInput(rendered.container);
+    await fireEvent.input(input, { target: { value: '2025550123' } });
+
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(countrySelect(rendered.container).value).toBe('US');
+    expect(input.value).toBe('+442079460958');
+
+    await fireEvent.input(input, { target: { value: '4155550132' } });
+    expect(changes.at(-1)?.country).toBe('US');
+    rendered.unmount();
+    form.remove();
+  });
+
+  test('restores the rendered fallback country for a disallowed initial E.164 value', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(PhoneInput, {
+      target: form,
+      props: {
+        id: 'p',
+        label: 'Phone',
+        countries: ['US', 'CA'],
+        country: 'CA',
+        value: '+442079460958',
+      },
+    });
+    const input = nationalInput(rendered.container);
+
+    await waitFor(() => expect(countrySelect(rendered.container).value).toBe('US'));
+    await fireEvent.input(input, { target: { value: '4165550123' } });
+    form.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(countrySelect(rendered.container).value).toBe('US');
+    expect(input.value).toBe('+442079460958');
+    rendered.unmount();
+    form.remove();
   });
 });
 

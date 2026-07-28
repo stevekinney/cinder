@@ -220,6 +220,7 @@ describe('pipeline contract: package script composition (source-based: reads pac
     'check:consumer-boundaries',
     'check:no-bare-console-warn',
     'check:no-inline-match-media',
+    'check:no-static-style-attributes',
     'check:svelte-ts-runtime-types',
     'check:data-cinder-boolean-attributes',
     'check:test-cleanup',

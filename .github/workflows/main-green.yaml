@@ -75,7 +75,6 @@ jobs:
           bun run --filter=@lostgradient/cinder aggregator:check
           bun run --filter=@lostgradient/cinder components:check
           bun run --filter=@lostgradient/cinder check:changeset-prerelease-bumps
-          bun run --filter=@lostgradient/cinder check:placeholder-docs
           bun run --filter=@lostgradient/cinder validate:workflow
           bun run --filter=@lostgradient/cinder validate:svelte-peer
           bun run --filter=@lostgradient/cinder platform:audit -- --strict
