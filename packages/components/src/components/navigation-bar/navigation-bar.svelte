@@ -31,8 +31,10 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
+    closestAcrossShadow,
     createInheritedPortalStyle,
     findNearestOpenTopLayer,
+    getShadowHost,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -258,13 +260,14 @@
 
   function isEnabledNavigationItem(item: HTMLElement): boolean {
     if (item.getAttribute('aria-disabled') === 'true' || item.matches(':disabled')) return false;
-    if (item.hidden || item.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
+    if (item.hidden || closestAcrossShadow(item, '[hidden], [inert], [aria-hidden="true"]'))
+      return false;
     if (typeof getComputedStyle === 'function') {
       let current: HTMLElement | null = item;
       while (current) {
         const style = getComputedStyle(current);
         if (style.display === 'none' || style.visibility === 'hidden') return false;
-        current = current.parentElement;
+        current = current.parentElement ?? getShadowHost(current);
       }
     }
     return true;

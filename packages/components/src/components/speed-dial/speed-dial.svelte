@@ -28,8 +28,10 @@
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
+    closestAcrossShadow,
     createInheritedPortalStyle,
     findNearestOpenTopLayer,
+    getShadowHost,
     isRedispatchedPortaledEvent,
     observePortalSourceAvailability,
     redispatchPortaledEvent,
@@ -174,7 +176,7 @@
               !candidate.matches(':disabled') &&
               !speedDialRoot.contains(candidate) &&
               !actionsElement?.contains(candidate) &&
-              !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+              !closestAcrossShadow(candidate, '[hidden], [inert], [aria-hidden="true"]') &&
               isRenderedCandidate(candidate) &&
               Boolean(candidate.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING),
           )
@@ -186,7 +188,11 @@
 
   function isRenderedCandidate(candidate: HTMLElement): boolean {
     if (typeof window === 'undefined') return true;
-    for (let current: HTMLElement | null = candidate; current; current = current.parentElement) {
+    for (
+      let current: HTMLElement | null = candidate;
+      current;
+      current = current.parentElement ?? getShadowHost(current)
+    ) {
       const styles = getComputedStyle(current);
       if (styles.display === 'none' || styles.visibility === 'hidden') return false;
     }

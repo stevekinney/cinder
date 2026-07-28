@@ -1,4 +1,5 @@
 import { composedFocusScopes } from '../../utilities/focus.ts';
+import { closestAcrossShadow, getShadowHost } from '../portal/portal.utilities.svelte.ts';
 
 const focusCandidateSelector =
   'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
@@ -10,7 +11,7 @@ function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
       !hasNegativeTabIndex(candidate) &&
       !candidate.matches(':disabled') &&
       !(candidate instanceof HTMLInputElement && candidate.type === 'hidden') &&
-      !candidate.closest('[hidden], [inert], [aria-hidden="true"]') &&
+      !closestAcrossShadow(candidate, '[hidden], [inert], [aria-hidden="true"]') &&
       isRendered(candidate),
   );
 }
@@ -21,7 +22,7 @@ function isRendered(element: HTMLElement): boolean {
   while (candidate) {
     const style = getComputedStyle(candidate);
     if (style.display === 'none' || style.visibility === 'hidden') return false;
-    candidate = candidate.parentElement;
+    candidate = candidate.parentElement ?? getShadowHost(candidate);
   }
   return true;
 }
