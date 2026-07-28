@@ -61,6 +61,25 @@ describe(ruleName, () => {
     ).toEqual([]);
   });
 
+  test('checks the published Chat message edit textarea', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.chat-message-edit-textarea { background: var(--cinder-surface); }',
+          '/workspace/packages/chat/src/lib/components/chat/message/chat-message.svelte',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.chat-message-edit-textarea { background: var(--cinder-surface-raised); }',
+          '/workspace/packages/chat/src/lib/components/chat/message/chat-message.svelte',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves local aliases and fallbacks', async () => {
     expect(
       warnings(

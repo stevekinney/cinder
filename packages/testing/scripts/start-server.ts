@@ -838,6 +838,19 @@ async function main(): Promise<void> {
     }
 
     if (!serverReady) {
+      // The loop above can exit right at the deadline without ever probing
+      // the server's final state — a slow-but-healthy playground would then
+      // be torn down as a false timeout. Give it one last chance.
+      const selectedPort =
+        (await readPlaygroundPortFile(playgroundPortFile)) ?? reportedPlaygroundPort;
+      const respondingUrl = await respondingPlaygroundUrl(selectedPort, targetPlaygroundUrl, ping);
+      if (respondingUrl !== null) {
+        targetPlaygroundUrl = respondingUrl;
+        serverReady = true;
+      }
+    }
+
+    if (!serverReady) {
       console.error(
         `Playground server did not become ready within ${Math.round(
           PLAYGROUND_READY_TIMEOUT_MS / 1000,
