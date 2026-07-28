@@ -160,6 +160,39 @@ describe(ruleName, () => {
     ).toHaveLength(1);
   });
 
+  test('recognizes Chat hyphenated interior headers that do not follow BEM naming', async () => {
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.artifact-panel-header { border-bottom: 1px solid var(--cinder-border); }',
+          codeFilename:
+            '/workspace/packages/chat/src/lib/components/chat/artifact/artifact-panel.svelte',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.chat-search-bar { border-bottom: 1px solid var(--cinder-border); }',
+          codeFilename:
+            '/workspace/packages/chat/src/lib/components/chat/container/chat-search-bar.svelte',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.artifact-panel-header { border-bottom: 1px solid var(--cinder-border-muted); }',
+          codeFilename:
+            '/workspace/packages/chat/src/lib/components/chat/artifact/artifact-panel.svelte',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves aliases in the declaration scope instead of later variants', async () => {
     expect(
       warnings(

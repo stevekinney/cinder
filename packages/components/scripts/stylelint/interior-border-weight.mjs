@@ -22,7 +22,7 @@ function isCinderComponentSource(root) {
 
 function isInteriorDivider(selector, property) {
   if (property === 'border') return false;
-  return /(?:__(?:header|row-header|column-header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|[+~])/i.test(
+  return /(?:__(?:header|row-header|column-header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|\.artifact-panel-header|\.chat-search-bar|[+~])/i.test(
     selector,
   );
 }

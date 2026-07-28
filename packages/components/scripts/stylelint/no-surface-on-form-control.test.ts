@@ -80,6 +80,25 @@ describe(ruleName, () => {
     ).toEqual([]);
   });
 
+  test('checks the published Editor comment composer textarea', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.comment-composer-textarea { background: var(--cinder-surface); }',
+          '/workspace/packages/editor/src/lib/components/review-editor/comment-composer.svelte',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.comment-composer-textarea { background: var(--cinder-surface-raised); }',
+          '/workspace/packages/editor/src/lib/components/review-editor/comment-composer.svelte',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves local aliases and fallbacks', async () => {
     expect(
       warnings(
