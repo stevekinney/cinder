@@ -116,7 +116,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const arrow = options.arrow?.();
     const arrowVisible = options.arrowVisible?.() ?? Boolean(arrow);
     const widthMode = options.widthMode?.() ?? 'content';
-    const strategy = options.strategy?.() ?? 'fixed';
+    const strategyOverride = options.strategy?.();
     let cancelled = false;
     let generation = 0;
     let stopAutoUpdate: (() => void) | undefined;
@@ -146,7 +146,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         if (cancelled) return;
         const currentGeneration = ++generation;
         let result: Awaited<ReturnType<typeof computePosition>>;
-        const strategy = panel.closest('dialog') ? 'absolute' : 'fixed';
+        const strategy = strategyOverride ?? (panel.closest('dialog') ? 'absolute' : 'fixed');
         try {
           result = await computePosition(anchor, panel, {
             placement,
