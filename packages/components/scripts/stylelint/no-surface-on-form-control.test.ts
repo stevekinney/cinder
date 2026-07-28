@@ -150,4 +150,16 @@ describe(ruleName, () => {
       ).toHaveLength(1);
     }
   });
+
+  test('recognizes controls wrapped in functional pseudo-classes', async () => {
+    for (const selector of [
+      ':is(input, textarea)',
+      ':where(.cinder-input)',
+      ':global(.cinder-input)',
+    ]) {
+      expect(
+        warnings(await lint(`${selector} { background: var(--cinder-surface); }`)),
+      ).toHaveLength(1);
+    }
+  });
 });
