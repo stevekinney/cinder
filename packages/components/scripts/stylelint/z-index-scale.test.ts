@@ -138,6 +138,21 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(magicNumber)).toHaveLength(1);
   });
 
+  test.each(['calc(9999)', 'calc(10000 - 1)', 'calc(9998 + 1)'])(
+    'rejects the calculated magic-number variant %s even with a local reason',
+    async (value) => {
+      // A plain string comparison against '9999' only catches the literal,
+      // not an arithmetic expression that evaluates to the same number.
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: this is still not a scale. */
+          z-index: ${value};
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
   test('rejects an empty or detached local-layer justification', async () => {
     const empty = await lint(`
       .fixture {

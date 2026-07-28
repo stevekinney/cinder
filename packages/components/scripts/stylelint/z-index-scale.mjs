@@ -144,13 +144,28 @@ function evaluateConstantArithmetic(expression) {
 // shape would otherwise slip past the rule's prohibition on negative local
 // stacking levels. Unwrap a single `calc(...)` layer, then fall back to a
 // constant-arithmetic evaluator for expressions `Number()` can't parse.
-function isStaticallyNegative(value) {
+// Returns `null` when the value can't be statically resolved to a number at
+// all (e.g. it references a custom property).
+function resolveStaticNumber(value) {
   const calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(value);
   const expression = calcMatch ? calcMatch[1] : value;
   const direct = Number(expression);
-  if (Number.isFinite(direct)) return direct < 0;
-  const evaluated = evaluateConstantArithmetic(expression);
-  return evaluated !== null && evaluated < 0;
+  if (Number.isFinite(direct)) return direct;
+  return evaluateConstantArithmetic(expression);
+}
+
+function isStaticallyNegative(value) {
+  const resolved = resolveStaticNumber(value);
+  return resolved !== null && resolved < 0;
+}
+
+// The historical `9999` escape hatch must stay banned even when wrapped in
+// arithmetic that evaluates to the same number (`calc(9999)`,
+// `calc(10000 - 1)`) — a plain string comparison against `'9999'` only
+// catches the literal, not a calculated equivalent.
+function isStaticallyMagicNumber(value) {
+  const resolved = resolveStaticNumber(value);
+  return resolved !== null && resolved === 9999;
 }
 
 const plugin = stylelint.createPlugin(ruleName, (primary) => {
@@ -206,7 +221,12 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }
-      if (value !== '9999' && hasAdjacentLocalReason(declaration)) return;
+      if (
+        value !== '9999' &&
+        !isStaticallyMagicNumber(value) &&
+        hasAdjacentLocalReason(declaration)
+      )
+        return;
 
       stylelint.utils.report({
         ruleName,
