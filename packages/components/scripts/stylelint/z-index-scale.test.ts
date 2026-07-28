@@ -126,6 +126,20 @@ describe('cinder/z-index-scale', () => {
     },
   );
 
+  test('rejects an arithmetic negative layer using tabs and newlines as whitespace', async () => {
+    // The evaluator's `skipSpace()` previously only recognized U+0020, so an
+    // operator separated by a tab or newline (both valid CSS whitespace)
+    // made the arithmetic parse fail and return `null`, silently skipping
+    // the negative-layer check entirely.
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this layer must stay behind its stacking context. */
+        z-index: calc(0\t-\n1);
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test('accepts a reasoned component-local expression but never the historical 9999 escape hatch', async () => {
     const localExpression = await lint(`
       .fixture {

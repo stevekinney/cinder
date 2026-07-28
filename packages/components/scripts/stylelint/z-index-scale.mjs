@@ -80,7 +80,7 @@ function evaluateConstantArithmetic(expression) {
   }
 
   function skipSpace() {
-    while (peek() === ' ') index += 1;
+    while (index < expression.length && /\s/.test(expression[index])) index += 1;
   }
 
   function parseNumber() {
