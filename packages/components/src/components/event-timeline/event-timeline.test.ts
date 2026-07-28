@@ -804,8 +804,18 @@ describe('EventTimeline', () => {
     expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__leader');
     expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__cluster-trigger');
     expect(EVENT_TIMELINE_CSS).toContain(':focus-visible');
-    expect(EVENT_TIMELINE_CSS).not.toMatch(
-      /:dir\(rtl\).*data-cinder-edge='(?:start|end)'\][^{]*\{[^}]*justify-items:/s,
+  });
+
+  test('anchors edge dots to their physical position under RTL', () => {
+    // `justify-items: start/end` is direction-aware and flips under `dir="rtl"`, but
+    // edge items are positioned with a physical `left` percentage that never flips.
+    // Without a matching RTL override, a wide RTL label would pull the dot away from
+    // its timestamp. Force the opposite logical value so the dot stays physically put.
+    expect(EVENT_TIMELINE_CSS).toMatch(
+      /:dir\(rtl\)\s*\.cinder-event-timeline__item\[data-cinder-edge='start'\]\s*\{[^}]*justify-items:\s*end;/s,
+    );
+    expect(EVENT_TIMELINE_CSS).toMatch(
+      /:dir\(rtl\)\s*\.cinder-event-timeline__item\[data-cinder-edge='end'\]\s*\{[^}]*justify-items:\s*start;/s,
     );
   });
 });
