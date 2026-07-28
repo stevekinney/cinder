@@ -1,157 +1,50 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from 'svelte';
-  import { MediaQuery } from 'svelte/reactivity';
+  /*
+   * The landing page (`/`).
+   *
+   * This used to be a second, parallel chrome: its own top bar with a Light/Dark
+   * segmented control, its own sidebar markup with Title Case labels, its own
+   * layout. Component pages had a different top bar, a different theme toggle,
+   * different label casing, and no filter. Two chromes on one site.
+   *
+   * It is now a thin wrapper around the SAME component every documentation page
+   * renders, in landing mode — so `/` and `/page/<name>` are one layout with
+   * different content. The only thing this adds is the colour-token panel, which
+   * lives here because it pulls ColorPicker/Popover/Input/Button: this is one
+   * bundle, whereas the documentation page compiles once per component (170
+   * bundles), where that graph made each build ~4x slower.
+   */
+  import { Button } from '@lostgradient/cinder/button';
+  import Palette from 'lucide-svelte/icons/palette';
 
-  import Announcer from './announcer.svelte';
-  import { Announcer as AnnouncerStore, setAnnouncer } from './announcer.svelte.ts';
-  import { createEventSource } from './event-source.svelte.ts';
-  import { applyThemeToDocument, PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
-  import { buildComponentHref, readToolbarStateFromSearch } from './routing.ts';
+  import ComponentPage from '../component-page.svelte';
   import ColorTokenPanel from './color-token-panel.svelte';
-  import LandingPage from './landing-page.svelte';
-  import Sidebar, { type SidebarHandle } from './sidebar.svelte';
-  import TopBar from './top-bar.svelte';
+  import { PreviewStore, setPreviewStore } from './preview-store.svelte.ts';
 
   type Props = {
-    initialComponent: string;
     components: string[];
     readmeHtml: string;
-    initialSearch: string;
   };
 
-  let { initialComponent, components, readmeHtml, initialSearch }: Props = $props();
+  let { components, readmeHtml }: Props = $props();
 
-  // Bound to the Sidebar instance so the `/` shortcut can focus its filter.
-  let sidebar = $state<SidebarHandle | null>(null);
-
-  // Seed the hydration tree exclusively from shareable, server-known URL state.
-  const initialSearchValue = untrack(() => initialSearch);
-  const initialUrlState = readToolbarStateFromSearch(new URLSearchParams(initialSearchValue));
-  const initialComponentName = untrack(() => initialComponent);
-  const store = new PreviewStore(initialComponentName, {
-    ...initialUrlState,
-  });
+  const store = new PreviewStore('');
   setPreviewStore(store);
 
-  // Server rendering cannot read localStorage. Keep the hydration tree seeded
-  // exclusively from request data, then restore the persisted preference once
-  // hydration has completed so the server and client markup stay identical.
-  onMount(() => {
-    store.enableBrowserThemeResolution();
-    if (initialUrlState.theme === null) store.syncFromUrl();
-  });
+  /** Accessible name of the panel trigger; also the focus-restoration hook. */
+  const COLOR_PANEL_LABEL = 'Color token panel';
 
-  // Single shared polite live region for the shell. The top bar pushes toolbar
-  // feedback through it. One instance keeps exactly one live region in the
-  // document (two would double-read every message).
-  const announcer = new AnnouncerStore();
-  setAnnouncer(announcer);
-
-  // Clear any pending live-region announcement if the shell is ever torn down,
-  // so a queued setTimeout never fires into a detached component tree. The
-  // shell lives for the page lifetime in practice, but cancelling on teardown
-  // keeps the announcer leak-free and prevents flaky timer carryover in tests.
-  // onDestroy (not a teardown-only $effect) states the intent directly: this is
-  // pure lifecycle cleanup that never tracks reactive state.
-  onDestroy(() => announcer.cancel());
-
-  // `<main>` is bound so the narrow sidebar can make background content inert.
-  let mainEl = $state<HTMLElement | null>(null);
-
-  // True below the responsive breakpoint, where the sidebar is a modal-style
-  // off-canvas drawer rather than a static column. Used to gate the drawer's
-  // focus-trap / inert behavior so the wide-viewport sidebar (always visible)
-  // never makes the rest of the shell inert. Mirrors the 720px CSS breakpoint.
-  const isNarrow = new MediaQuery('(max-width: 720px)');
-
-  // When the viewport grows past the breakpoint, the drawer is no longer a
-  // drawer — it's the static sidebar. Drop the open state so it doesn't linger
-  // as a hidden-but-"open" drawer that would (a) re-appear if the viewport
-  // narrows again, (b) make Escape close a phantom drawer before exiting focus
-  // mode, and (c) leave an orphaned scrim. Closing here also means the
-  // focus/inert effect below tears down while the hamburger is still visible,
-  // so focus restoration targets a focusable element.
-  $effect(() => {
-    if (!isNarrow.current && store.isSidebarOpen) store.isSidebarOpen = false;
-  });
-
-  // Modal semantics for the narrow-viewport drawer. When it opens we move focus
-  // into the drawer's filter and mark the content behind the scrim `inert` so a
-  // keyboard / screen-reader user can't tab "behind" the dimmed backdrop. When
-  // it closes, the cleanup CLEARS inert *before* restoring focus — order
-  // matters: the opener (the hamburger) lives inside `header.top-bar`, so
-  // focusing it while the header is still inert would be silently dropped. On
-  // wide viewports none of this runs.
-  function setShellInert(value: boolean): void {
-    const header = document.querySelector<HTMLElement>('header.top-bar');
-    if (mainEl) mainEl.inert = value;
-    if (header) header.inert = value;
-  }
+  let isColorPanelOpen = $state(false);
 
   $effect(() => {
-    const drawerIsModal = store.isSidebarOpen && isNarrow.current;
-
-    if (!drawerIsModal) {
-      // Not modal (closed, or wide viewport): the content behind it must be
-      // reachable. Idempotent — safe to run on every non-modal pass.
-      setShellInert(false);
-      return;
-    }
-
-    setShellInert(true);
-    // Capture the opener (the hamburger) before moving focus into the drawer.
-    const opener = document.activeElement;
-    sidebar?.focusFilter();
-    return () => {
-      // Clear inert FIRST so the opener is no longer in an inert subtree, then
-      // restore focus — but only if the opener is still connected AND focusable
-      // (`.focus()` on a display:none element, e.g. the hamburger after a resize
-      // to wide, silently strands focus, so skip it then).
-      setShellInert(false);
-      if (opener instanceof HTMLElement && opener.isConnected && opener.offsetParent !== null) {
-        opener.focus();
-      }
-    };
-  });
-
-  // Apply the theme to the shell document. The inline pre-paint script in
-  // render-shell.ts handles the first paint; this effect keeps later toolbar
-  // changes and OS theme changes in sync without also running for token drags.
-  $effect(() => {
-    if (typeof document === 'undefined') return;
-    applyThemeToDocument(document, store.themeOverride, store.theme);
-  });
-
-  // Apply active-theme color overrides independently so continuous picker edits
-  // update only custom properties rather than rewriting the root theme signals.
-  $effect(() => {
-    if (typeof document === 'undefined') return;
     store.applyActiveColorTokenOverridesToDocument(document);
   });
 
-  function selectComponent(name: string): void {
-    // Selecting from the off-canvas drawer (narrow viewports) should always
-    // dismiss it so the preview is visible — including when the user taps the
-    // already-active component, which short-circuits below. Harmless on wide
-    // viewports where the drawer is the static sidebar.
-    store.isSidebarOpen = false;
-    if (name === store.currentComponent) return;
-    const { search, hash } = window.location;
-    window.location.assign(`${buildComponentHref(name)}${search}${hash}`);
-  }
-
   /**
-   * True when the keystroke originated from somewhere the user is actively
-   * typing — a text field, textarea, or contenteditable region. Used to keep
-   * the `/` shortcut from hijacking a literal slash the user is typing.
+   * True when an open colour-picker popover should absorb this Escape — either a
+   * token trigger is expanded, or the event came from inside the popover. The
+   * first press dismisses the picker, a later one closes the panel.
    */
-  function isTypingTarget(target: EventTarget | null): boolean {
-    if (!(target instanceof HTMLElement)) return false;
-    if (target.isContentEditable) return true;
-    const tag = target.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-  }
-
   function isColorTokenPickerEscape(event: KeyboardEvent): boolean {
     if (document.querySelector('.token-color-trigger[aria-expanded="true"]') !== null) return true;
     return event
@@ -162,230 +55,55 @@
       );
   }
 
-  function restoreColorTokenToggleFocus(): void {
+  $effect(() => {
+    if (!isColorPanelOpen) return;
+
+    const onKeydown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      if (isColorTokenPickerEscape(event)) return;
+      closeColorPanel();
+    };
+
+    window.addEventListener('keydown', onKeydown);
+    return () => window.removeEventListener('keydown', onKeydown);
+  });
+
+  function closeColorPanel(): void {
+    isColorPanelOpen = false;
+    /*
+     * Selected by its accessible name, not by `data-testid`. Focus restoration
+     * is runtime behaviour; keying it off a testing affordance means renaming
+     * that attribute silently breaks keyboard focus when the panel closes.
+     */
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>('button[aria-controls="color-token-panel"]')?.focus();
+      document.querySelector<HTMLElement>(`button[aria-label="${COLOR_PANEL_LABEL}"]`)?.focus();
     });
-  }
-
-  function closeColorTokenPanel(): void {
-    store.isColorTokenPanelOpen = false;
-    restoreColorTokenToggleFocus();
-  }
-
-  function handleKeydown(event: KeyboardEvent): void {
-    // Escape precedence: close the drawer first, then any shell side panel, then
-    // focus mode. A single key never does more than one of those shell-level
-    // actions. Nested overlays like the color picker popover get first claim via
-    // the shared overlay Escape stack, so keep the panel open while that popover
-    // is still mounted.
-    if (event.key === 'Escape') {
-      if (store.isSidebarOpen) {
-        store.isSidebarOpen = false;
-        return;
-      }
-      if (store.isColorTokenPanelOpen) {
-        if (isColorTokenPickerEscape(event)) return;
-        closeColorTokenPanel();
-        return;
-      }
-      if (store.isFocusMode) {
-        store.isFocusMode = false;
-        return;
-      }
-    }
-    // `/` focuses the sidebar filter, but only when the user isn't already
-    // typing somewhere (so a literal slash in a field is untouched) and isn't
-    // holding a modifier (so browser shortcuts like ⌘/ are untouched).
-    if (
-      event.key === '/' &&
-      !event.metaKey &&
-      !event.ctrlKey &&
-      !event.altKey &&
-      // Focus mode hides the sidebar entirely; opening the narrow-viewport drawer
-      // here would render an orphaned scrim over a display:none drawer, so the
-      // filter shortcut is inert while focus mode is active.
-      !store.isFocusMode &&
-      !isTypingTarget(event.target)
-    ) {
-      event.preventDefault();
-      // On narrow viewports the sidebar is an off-canvas drawer — open it first
-      // so the filter is visible before moving focus into it.
-      if (isNarrow.current) store.isSidebarOpen = true;
-      sidebar?.focusFilter();
-    }
-  }
-
-  // The dev server exposes a server-sent-events stream at `/events` for live
-  // reload. In SSR (no window), keep the URL null so the EventSource is never
-  // constructed.
-  const streamUrl = typeof window === 'undefined' ? null : '/events';
-
-  function handleReloadEvent(): void {
-    // The shell now only renders the landing page; component documentation is
-    // its own route. A content edit therefore means a full reload.
-    window.location.reload();
-  }
-
-  function handleShellReloadEvent(): void {
-    window.location.reload();
   }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
-
-<!--
-  Layout overview
-  ───────────────
-  The top bar is fixed and spans the full viewport width. Its height lives
-  in the --cinder-top-bar-height custom property (52px), declared once on
-  :root by render-shell.ts. Both the sidebar and the main content area push
-  their top edge down by that amount so nothing slides behind the bar.
-
-  Focus mode hides both the top bar and the sidebar so the preview fills
-  the entire viewport (Escape restores the layout).
--->
-<div
-  class="shell"
-  class:focus-mode={store.isFocusMode}
-  {@attach createEventSource(() => streamUrl, {
-    events: { reload: handleReloadEvent, 'shell-reload': handleShellReloadEvent },
-  })}
+<ComponentPage
+  {readmeHtml}
+  sidebarComponents={components}
+  onThemeChange={(next) => store.adoptTheme(next)}
 >
-  <TopBar />
-  <Sidebar
-    bind:this={sidebar}
-    {components}
-    currentComponent={store.currentComponent}
-    onSelect={selectComponent}
-    isOpen={store.isSidebarOpen}
-    onClose={() => (store.isSidebarOpen = false)}
-  />
-  <!--
-    Scrim behind the off-canvas drawer (narrow viewports only — kept
-    display:none on wide ones via CSS). Clicking it dismisses the drawer. It is
-    aria-hidden and not a Tab stop; Escape (handled at the window level) is the
-    keyboard path to close.
-  -->
-  {#if store.isSidebarOpen}
-    <div
-      class="sidebar-backdrop"
-      aria-hidden="true"
-      onclick={() => (store.isSidebarOpen = false)}
-    ></div>
-  {/if}
-  {#if store.isColorTokenPanelOpen && !store.isFocusMode}
-    <ColorTokenPanel onClose={closeColorTokenPanel} />
-  {/if}
-  <!--
-    tabindex="-1" makes <main> programmatically focusable so client-side
-    navigation can move keyboard focus to the new content without adding it to
-    the Tab order. bind:this gives selectComponent a handle to call .focus().
-  -->
-  <main bind:this={mainEl} tabindex="-1">
-    {#if store.currentComponent === ''}
-      <LandingPage
-        {readmeHtml}
-        firstComponent={components[0] ?? ''}
-        onBrowseComponent={selectComponent}
-      />
+  {#snippet toolbarActions()}
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      aria-label={COLOR_PANEL_LABEL}
+      {...isColorPanelOpen ? { 'aria-controls': 'color-token-panel' } : {}}
+      aria-expanded={isColorPanelOpen}
+      data-testid="color-token-panel-toggle"
+      onclick={() => (isColorPanelOpen = !isColorPanelOpen)}
+    >
+      <Palette size={17} strokeWidth={1.5} aria-hidden="true" />
+    </Button>
+  {/snippet}
+
+  {#snippet overlays()}
+    {#if isColorPanelOpen}
+      <ColorTokenPanel onClose={closeColorPanel} />
     {/if}
-  </main>
-  <Announcer />
-</div>
-
-<style>
-  /*
-   * --cinder-top-bar-height is declared once on :root by render-shell.ts
-   * (the shell scaffold's <head> \3c style>). We just read it here for layout
-   * math — no local declaration or fallback needed since :root always wins
-   * the cascade for an inherited custom property.
-   */
-  .shell {
-    display: flex;
-    height: 100vh;
-    font-family: var(--cinder-font-sans);
-    font-size: var(--cinder-text-base);
-    background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
-  }
-
-  main {
-    /*
-     * The sidebar is physically anchored at left: 0 with a fixed width of
-     * 220px. Push main content past both the sidebar and the fixed top bar.
-     * Physical margin-left keeps in sync with the sidebar's physical left
-     * anchor — do not convert to logical margin-inline-start.
-     */
-    /* stylelint-disable-next-line csstools/use-logical */
-    margin-left: 220px;
-    margin-top: var(--cinder-top-bar-height);
-    flex: 1;
-    height: calc(100vh - var(--cinder-top-bar-height));
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    /*
-     * <main> is focused programmatically after client-side navigation (it has
-     * tabindex="-1" but is never in the Tab order), so a visible focus ring on
-     * the whole region would be noise. Suppress it — sighted keyboard users
-     * still see focus rings on the interactive controls inside.
-     */
-    outline: none;
-  }
-
-  /* Focus mode: collapse both the fixed top bar and the sidebar */
-  .shell.focus-mode :global(header.top-bar) {
-    display: none;
-  }
-
-  /*
-   * Hide the entire fixed sidebar column — not just its <nav> — so the
-   * sticky filter input and the column's right border also disappear. The
-   * filter lives in .sidebar-chrome above the nav, so hiding only the nav
-   * would leave an orphaned 220px search box overlaying the fullscreen
-   * preview.
-   */
-  .shell.focus-mode :global(.sidebar-chrome) {
-    display: none;
-  }
-
-  .shell.focus-mode main {
-    /* stylelint-disable-next-line csstools/use-logical */
-    margin-left: 0;
-    margin-top: 0;
-    height: 100vh;
-  }
-
-  /*
-   * Scrim behind the off-canvas sidebar drawer. Only meaningful at narrow
-   * widths — the {#if store.isSidebarOpen} guard means it's never in the DOM on
-   * wide viewports anyway, but the breakpoint keeps it from ever dimming the
-   * full desktop layout if the drawer state is somehow set there.
-   */
-  .sidebar-backdrop {
-    display: none;
-  }
-
-  /*
-   * Narrow viewports: the sidebar is an off-canvas drawer, so the main content
-   * column reclaims the full width (no 220px gutter). The drawer floats above
-   * via its own fixed positioning + transform.
-   */
-  @media (max-width: 720px) {
-    main {
-      /* stylelint-disable-next-line csstools/use-logical */
-      margin-left: 0;
-    }
-
-    .sidebar-backdrop {
-      display: block;
-      position: fixed;
-      inset: 0;
-      z-index: 15;
-      background: rgb(0 0 0 / 45%);
-      /* Suppress the mobile-browser tap delay on the dismiss-by-tap scrim. */
-      touch-action: manipulation;
-    }
-  }
-</style>
+  {/snippet}
+</ComponentPage>
