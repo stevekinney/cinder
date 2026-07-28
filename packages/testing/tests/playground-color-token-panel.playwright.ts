@@ -55,14 +55,16 @@ type ColorTokenRowLayoutState = {
 };
 
 /**
- * Put the shell into a specific theme via its Light/Dark radio group.
+ * Put the page into a specific theme.
  *
- * The panel still lives on the shell at `/`: it pulls ColorPicker/Popover/Input/
- * Button, and the documentation page compiles once per component, where that
- * graph made every bundle ~4x slower to build.
+ * The landing page now uses the same chrome as every documentation page, which
+ * carries a single icon toggle rather than the old shell's Light/Dark radio
+ * group. Read the current theme and click only when a change is needed.
  */
 async function selectTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
-  await page.getByRole('radio', { name: theme === 'light' ? 'Light' : 'Dark' }).click();
+  const current = await page.evaluate(() => document.documentElement.dataset['cinderTheme']);
+  if (current === theme) return;
+  await page.getByRole('button', { name: `Preview theme: switch to ${theme}` }).click();
   await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', theme);
 }
 
