@@ -42,13 +42,19 @@ async function computedMetrics(locator: Locator): Promise<ComputedMetrics> {
  * longer has a surface anywhere. What remains to verify here is the shell's
  * OWN cinder-component chrome: the side navigation and its filter input.
  */
+/*
+ * The landing page now renders the SAME chrome as every documentation page —
+ * one `nav.dx-nav` with a filter input, one top bar, one theme control. It used
+ * to be a separate shell built from Cinder's SideNavigation and Input, with its
+ * own theme segmented control and its own label casing.
+ */
 async function waitForShellLayout(page: Page): Promise<void> {
-  await page.waitForSelector('#sidebar-filter.cinder-input', { state: 'visible' });
-  await page.waitForSelector('.cinder-side-navigation__list', { state: 'visible' });
+  await page.waitForSelector('#sidebar-filter', { state: 'visible' });
+  await page.waitForSelector('.dx-nav__list', { state: 'visible' });
   await page.waitForFunction(() => {
-    const sidebarList = document.querySelector('.cinder-side-navigation__list');
-    const filter = document.querySelector('#sidebar-filter.cinder-input');
-    return [sidebarList, filter].every(
+    const navList = document.querySelector('.dx-nav__list');
+    const filter = document.querySelector('#sidebar-filter');
+    return [navList, filter].every(
       (element) => element instanceof HTMLElement && element.getBoundingClientRect().height > 0,
     );
   });
@@ -59,8 +65,8 @@ test.describe('playground shell styles', () => {
     await page.goto('/', { waitUntil: 'load' });
     await waitForShellLayout(page);
 
-    const sidebarList = page.locator('.cinder-side-navigation__list');
-    const filterInput = page.locator('#sidebar-filter.cinder-input');
+    const sidebarList = page.locator('.dx-nav__list');
+    const filterInput = page.locator('#sidebar-filter');
 
     const sidebarMetrics = await computedMetrics(sidebarList);
     expect(sidebarMetrics.display).toBe('flex');
@@ -75,7 +81,7 @@ test.describe('playground shell styles', () => {
 
     // The landing shell renders README prose, not component documentation —
     // that surface moved to `/page/<name>` in full.
-    await expect(page.locator('.landing-page__readme')).toBeVisible();
+    await expect(page.locator('.dx-content--landing .readme-content')).toBeVisible();
     /*
      * The iframe preview and the viewport/custom-width controls are gone: the
      * shell no longer renders component documentation, and the documentation
@@ -85,67 +91,55 @@ test.describe('playground shell styles', () => {
      */
   });
 
-  test('narrow viewport: the sidebar is an off-canvas drawer with working open/close/scrim/inert', async ({
-    page,
-  }) => {
-    // Phone-width viewport so the @media (max-width: 720px) drawer rules engage.
+  test('narrow viewport: the component nav stacks above the content', async ({ page }) => {
+    /*
+     * The nav is no longer an off-canvas drawer. The landing page and the
+     * documentation pages share one chrome, and below the 720px breakpoint that
+     * chrome turns the fixed column into a bounded, scrollable block above the
+     * content — so the page scrolls as one document rather than trapping focus
+     * behind a scrim.
+     */
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/', { waitUntil: 'load' });
-    await page.waitForSelector('#sidebar-drawer', { state: 'attached' });
+    await waitForShellLayout(page);
 
-    const toggle = page.getByRole('button', { name: 'Toggle component list' });
-    const drawer = page.locator('#sidebar-drawer');
-    const main = page.locator('main');
+    const nav = page.locator('nav.dx-nav');
+    await expect(nav).toBeVisible();
 
-    // Closed: the hamburger is visible, the drawer is hidden from the a11y tree
-    // and Tab order via visibility:hidden, and main is reachable (not inert).
-    await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(drawer).toHaveCSS('visibility', 'hidden');
-    await expect(main).not.toHaveAttribute('inert', /.*/);
+    const metrics = await nav.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        position: style.position,
+        maxHeight: Number.parseFloat(style.maxHeight),
+        viewportHeight: window.innerHeight,
+      };
+    });
 
-    // Open: the drawer slides in (visibility:visible), the scrim appears, the
-    // toggle reports expanded, and the content behind the scrim goes inert so
-    // keyboard users can't tab behind it.
-    await toggle.click();
-    await expect(drawer).toHaveCSS('visibility', 'visible');
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(page.locator('.sidebar-backdrop')).toBeVisible();
-    await expect(main).toHaveAttribute('inert', /.*/);
+    // Static (not fixed) so it participates in normal document flow, and bounded
+    // so it cannot push the documentation entirely below the fold.
+    expect(metrics.position).toBe('static');
+    expect(metrics.maxHeight).toBeLessThan(metrics.viewportHeight);
 
-    // Close via the in-drawer ✕ button: drawer hides again, scrim is gone, inert
-    // is cleared.
-    await page.getByRole('button', { name: 'Close component list' }).click();
-    await expect(drawer).toHaveCSS('visibility', 'hidden');
-    await expect(page.locator('.sidebar-backdrop')).toHaveCount(0);
-    await expect(main).not.toHaveAttribute('inert', /.*/);
+    // The filter still works at this width.
+    await page.locator('#sidebar-filter').fill('badge');
+    await expect(page.locator('.dx-nav__link')).toHaveCount(1);
+  });
 
-    // Reopen, then dismiss by clicking the backdrop scrim. The drawer (≤280px)
-    // covers the inline-start edge, so click the uncovered right side of the
-    // 375px-wide viewport — clicking over the drawer would hit the drawer, not
-    // the scrim.
-    await toggle.click();
-    await expect(drawer).toHaveCSS('visibility', 'visible');
-    await page.locator('.sidebar-backdrop').click({ position: { x: 350, y: 400 } });
-    await expect(drawer).toHaveCSS('visibility', 'hidden');
+  test('the nav filter survives a full document navigation', async ({ page }) => {
+    /*
+     * Selecting a component is a full page load, not client-side routing, so an
+     * unpersisted filter would reset the moment you used it.
+     */
+    await page.goto('/', { waitUntil: 'load' });
+    await waitForShellLayout(page);
 
-    // Reopen, then dismiss with Escape.
-    await toggle.click();
-    await expect(drawer).toHaveCSS('visibility', 'visible');
-    await page.keyboard.press('Escape');
-    await expect(drawer).toHaveCSS('visibility', 'hidden');
+    await page.locator('#sidebar-filter').fill('badge');
+    await expect(page.locator('.dx-nav__link')).toHaveCount(1);
 
-    // Growing back to a wide viewport drops the drawer state entirely: the
-    // sidebar is the static column again (toggle hidden, main never inert).
-    await toggle.click();
-    await expect(drawer).toHaveCSS('visibility', 'visible');
-    await page.setViewportSize({ width: 1280, height: 800 });
-    // Query by class, not role: at wide width the toggle is display:none and
-    // therefore absent from the accessibility tree, so getByRole can't see it.
-    await expect(page.locator('.sidebar-toggle')).toHaveCSS('display', 'none');
-    await expect(main).not.toHaveAttribute('inert', /.*/);
-    // The drawer is now the static in-flow sidebar (visible, no off-canvas
-    // transform), confirming the open state was dropped on widen.
-    await expect(drawer).toHaveCSS('visibility', 'visible');
+    await page.locator('.dx-nav__link').first().click();
+    await expect(page).toHaveURL(/\/page\/badge/);
+
+    await expect(page.locator('#sidebar-filter')).toHaveValue('badge');
+    await expect(page.locator('.dx-nav__link')).toHaveCount(1);
   });
 });

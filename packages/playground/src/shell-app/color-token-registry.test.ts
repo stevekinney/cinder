@@ -153,7 +153,7 @@ const TOKENS_BASE_PATH = join(
 
 describe('color token registry', () => {
   test('contains the expected global color-token inventory', () => {
-    expect(COLOR_TOKEN_NAMES).toHaveLength(61);
+    expect(COLOR_TOKEN_NAMES).toHaveLength(63);
     expect(COLOR_TOKEN_GROUPS.map((group) => group.id)).toEqual([
       'accent',
       'status-solid',

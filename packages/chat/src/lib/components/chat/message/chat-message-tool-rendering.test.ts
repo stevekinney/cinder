@@ -9,6 +9,8 @@
 
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
@@ -43,6 +45,13 @@ async function clickAndFlush(element: HTMLElement): Promise<void> {
 }
 
 describe('ChatMessage — tool-call rendering', () => {
+  test('uses the warning foreground token for action-required status text', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
+    expect(source).toMatch(
+      /\.tool-call-group\[data-status=['"]action-required['"]\]\s+\.tool-call-status\s*\{\s*color:\s*var\(--cinder-color-warning-fg\);/u,
+    );
+  });
+
   test('renders the ToolCallGroup card when a resolved pair is supplied', () => {
     const message = toolCallMessage();
     const { container } = render(ChatMessage, {

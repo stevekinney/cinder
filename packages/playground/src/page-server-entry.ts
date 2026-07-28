@@ -33,6 +33,12 @@ export type ComponentPageServerProps = {
   sidebarComponents: string[];
 };
 
+/** Landing page (`/`) — same chrome, README instead of documentation. */
+export type LandingServerProps = {
+  readmeHtml: string;
+  sidebarComponents: string[];
+};
+
 export type RenderedComponentPage = {
   body: string;
   head: string;
@@ -47,6 +53,25 @@ export type RenderedComponentPage = {
  * omitted — the live playground mount is a client-only concern, and the stage
  * reserves its box during SSR so hydration adds no layout shift.
  */
+/**
+ * Render the landing page through the SAME component as every documentation
+ * page, so `/` and `/page/<name>` share one chrome. Before this the landing
+ * page ran a separate shell with its own theme control, its own sidebar markup
+ * and its own label casing.
+ */
+export function renderLandingBody(props: LandingServerProps): RenderedComponentPage {
+  const rendered = render(ComponentPage, {
+    props: {
+      componentName: '',
+      readmeHtml: props.readmeHtml,
+      sidebarComponents: props.sidebarComponents,
+      snapshotMode: false,
+    },
+  });
+
+  return { body: rendered.body, head: rendered.head };
+}
+
 export function renderComponentPageBody(props: ComponentPageServerProps): RenderedComponentPage {
   const rendered = render(ComponentPage, {
     props: {
