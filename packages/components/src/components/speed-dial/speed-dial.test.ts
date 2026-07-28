@@ -399,7 +399,7 @@ describe('SpeedDial', () => {
     expect(speedDialSource).toContain("if (side === 'top') return 'up';");
     expect(speedDialSource).toContain("if (side === 'bottom') return 'down';");
     expect(speedDialSource).toContain('bind:this={spacingProbeElement}');
-    expect(speedDialSource).toContain('inline-size: var(--cinder-space-3)');
+    expect(speedDialSource).toContain('class="cinder-speed-dial__spacing-probe"');
     expect(speedDialSource).toContain('spacingProbeElement?.getBoundingClientRect().width');
     expect(speedDialSource).toContain('pixels >= 0');
     expect(speedDialSource).toContain('cinder-_floating-surface cinder-speed-dial__actions');

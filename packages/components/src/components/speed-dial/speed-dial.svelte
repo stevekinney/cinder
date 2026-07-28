@@ -396,8 +396,8 @@
   >
     <span
       bind:this={spacingProbeElement}
+      class="cinder-speed-dial__spacing-probe"
       aria-hidden="true"
-      style="position: absolute; visibility: hidden; pointer-events: none; inline-size: var(--cinder-space-3); block-size: 0;"
     ></span>
     {@render children?.()}
   </div>

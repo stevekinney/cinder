@@ -102,4 +102,12 @@
       transition: none;
     }
   }
+
+  .cinder-speed-dial__spacing-probe {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+    inline-size: var(--cinder-space-3);
+    block-size: 0;
+  }
 }
