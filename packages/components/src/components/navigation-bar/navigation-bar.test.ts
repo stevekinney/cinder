@@ -1540,6 +1540,17 @@ describe('NavigationBar responsive CSS', () => {
     );
   });
 
+  test('portaled scope keeps the mirrored root class selector-only, not box-producing', () => {
+    // The portal scope mirrors `cinder-navigation-bar` purely so root-scoped
+    // consumer overrides keep matching while portaled — it must not also
+    // pick up the root rule's height/padding/background/border, or the
+    // portal target grows a blank second nav bar while the mobile menu is
+    // open.
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar__portal-scope\.cinder-navigation-bar\s*\{[\s\S]*?height:\s*auto;[\s\S]*?padding-inline:\s*0;[\s\S]*?background:\s*none;[\s\S]*?border-bottom:\s*none;/,
+    );
+  });
+
   test('collapsed menu toggle stays with trailing actions instead of centering between brand and actions', () => {
     expect(navigationBarCss).toMatch(
       /@container cinder-navigation-bar \(max-width: 47\.99rem\)[\s\S]*?\.cinder-navigation-bar\[data-collapsible='true'\]\[data-cinder-menu-toggle-placement='after-brand'\][\s\S]*?\.cinder-navigation-bar__menu-toggle\s*\{[\s\S]*?margin-inline-start:\s*auto;/,

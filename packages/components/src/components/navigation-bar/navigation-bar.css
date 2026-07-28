@@ -21,6 +21,23 @@
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
+  /* The portaled mobile-menu scope mirrors the `cinder-navigation-bar` class
+     purely as a selector hook for root-scoped consumer overrides (e.g.
+     `.cinder-navigation-bar.compact .cinder-navigation-item`) — it must not
+     also inherit the root's own box model, or the portal target grows an
+     empty second nav bar with its own height, padding, background, and
+     border while the mobile menu is open. */
+  .cinder-navigation-bar__portal-scope.cinder-navigation-bar {
+    /* `display` is driven by an inline style on this element (block while
+       the mobile menu is open, contents otherwise) and always wins over
+       this class rule, so it is intentionally left untouched here. */
+    position: static;
+    height: auto;
+    padding-inline: 0;
+    background: none;
+    border-bottom: none;
+  }
+
   .cinder-navigation-bar[data-cinder-placement='bottom'] {
     justify-content: center;
     min-height: 4rem;
