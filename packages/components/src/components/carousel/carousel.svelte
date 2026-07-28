@@ -352,15 +352,30 @@
           programmaticTarget = null;
           settledIndex = nextIndex;
           isAutoplayTransitioning = false;
+          if (deferredExternalIndex === nextIndex) deferredExternalIndex = null;
         }
         return;
       }
       if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
         if (deferredExternalIndex !== null) return;
+        transferFocusFromOutgoingSlide();
         internalActiveIndexUpdate = nextIndex;
         activeIndex = nextIndex;
       }
     });
+  }
+
+  function transferFocusFromOutgoingSlide(): void {
+    if (typeof document === 'undefined') return;
+    const activeElement = document.activeElement;
+    const outgoingSlide = viewportElement?.children[currentIndex];
+    if (
+      activeElement instanceof Node &&
+      outgoingSlide instanceof HTMLElement &&
+      outgoingSlide.contains(activeElement)
+    ) {
+      viewportElement?.focus();
+    }
   }
 
   $effect(() => {

@@ -384,6 +384,45 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 32 });
   });
 
+  test('resumes native-scroll reconciliation after a deferred external update settles', async () => {
+    const { container, rerender } = render(Carousel, { slides, activeIndex: 0 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: jest.fn() });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    function alignSlide(alignedIndex: number): void {
+      slideElements.forEach((slide, index) => {
+        Object.defineProperty(slide, 'getBoundingClientRect', {
+          configurable: true,
+          value: () => ({ left: index === alignedIndex ? 0 : 100, width: 100 }),
+        });
+        Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+      });
+    }
+
+    // An external activeIndex update arrives mid-interaction, deferring reconciliation.
+    alignSlide(0);
+    await fireEvent.pointerDown(viewport, { pointerId: 41 });
+    await rerender({ slides, activeIndex: 2 });
+    await fireEvent.pointerUp(window, { pointerId: 41 });
+
+    // The deferred programmatic realignment settles on the requested slide.
+    alignSlide(2);
+    await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
+    expectActiveSlide(container, 2);
+
+    // A later, independent native-scroll gesture must still update the index —
+    // the settled deferral must not permanently suppress reconciliation.
+    alignSlide(1);
+    await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
+    expectActiveSlide(container, 1);
+  });
+
   test('waits for native scrolling to settle before realigning', async () => {
     const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
@@ -438,6 +477,34 @@ describe('Carousel', () => {
     await fireEvent.keyDown(link, { key: 'ArrowRight' });
 
     expect(document.activeElement).toBe(root);
+    expectActiveSlide(container, 1);
+  });
+
+  test('transfers focus off the outgoing slide before native scrolling makes it inert', async () => {
+    const { container } = render(Carousel, {
+      slides: [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)],
+    });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const link = container.querySelector('.cinder-carousel__link') as HTMLAnchorElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 1 ? 0 : 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+    link.focus();
+    expect(document.activeElement).toBe(link);
+
+    await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
+
+    expect(document.activeElement).toBe(viewport);
     expectActiveSlide(container, 1);
   });
 
