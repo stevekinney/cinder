@@ -57,15 +57,100 @@ function hasAdjacentLocalReason(declaration) {
   return text.slice(localReasonPrefix.length).trim().length > 0;
 }
 
+// A tiny recursive-descent evaluator for +, -, *, /, unary minus, and
+// parens over numeric literals — just enough to statically evaluate a
+// `calc()` expression that contains no `var()` references (e.g. `0 - 1`,
+// `-1 * 1`). Returns `null` if the expression isn't purely this grammar
+// (in particular, anything referencing a custom property, which can't be
+// evaluated without knowing its runtime value).
+function evaluateConstantArithmetic(expression) {
+  let index = 0;
+
+  function peek() {
+    return expression[index];
+  }
+
+  function skipSpace() {
+    while (peek() === ' ') index += 1;
+  }
+
+  function parseNumber() {
+    skipSpace();
+    const start = index;
+    if (peek() === '-') index += 1;
+    let sawDigit = false;
+    while (/[\d.]/.test(peek() ?? '')) {
+      sawDigit = true;
+      index += 1;
+    }
+    if (!sawDigit) throw new Error('expected a number');
+    return Number(expression.slice(start, index));
+  }
+
+  function parseAtom() {
+    skipSpace();
+    if (peek() === '(') {
+      index += 1;
+      const value = parseExpression();
+      skipSpace();
+      if (peek() !== ')') throw new Error('expected )');
+      index += 1;
+      return value;
+    }
+    if (peek() === '-') {
+      index += 1;
+      return -parseAtom();
+    }
+    return parseNumber();
+  }
+
+  function parseTerm() {
+    let value = parseAtom();
+    for (;;) {
+      skipSpace();
+      const operator = peek();
+      if (operator !== '*' && operator !== '/') return value;
+      index += 1;
+      const rhs = parseAtom();
+      value = operator === '*' ? value * rhs : value / rhs;
+    }
+  }
+
+  function parseExpression() {
+    let value = parseTerm();
+    for (;;) {
+      skipSpace();
+      const operator = peek();
+      if (operator !== '+' && operator !== '-') return value;
+      index += 1;
+      const rhs = parseTerm();
+      value = operator === '+' ? value + rhs : value - rhs;
+    }
+  }
+
+  try {
+    const result = parseExpression();
+    skipSpace();
+    return index === expression.length && Number.isFinite(result) ? result : null;
+  } catch {
+    return null;
+  }
+}
+
 // `Number('calc(-1)')` is `NaN`, not `-1` — a plain `Number(value) < 0` check
-// never sees a negative value wrapped in `calc()`, so a declaration with a
-// `cinder-z-index-local:` reason and a statically-negative calc() literal
-// would otherwise slip past the rule's prohibition on negative local
-// stacking levels. Unwrap a single `calc(...)` layer before parsing.
+// never sees a negative value wrapped in `calc()`, and arithmetic like
+// `calc(0 - 1)` is statically negative without being a bare numeric literal
+// either. A declaration with a `cinder-z-index-local:` reason and either
+// shape would otherwise slip past the rule's prohibition on negative local
+// stacking levels. Unwrap a single `calc(...)` layer, then fall back to a
+// constant-arithmetic evaluator for expressions `Number()` can't parse.
 function isStaticallyNegative(value) {
   const calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(value);
-  const numeric = Number(calcMatch ? calcMatch[1] : value);
-  return Number.isFinite(numeric) && numeric < 0;
+  const expression = calcMatch ? calcMatch[1] : value;
+  const direct = Number(expression);
+  if (Number.isFinite(direct)) return direct < 0;
+  const evaluated = evaluateConstantArithmetic(expression);
+  return evaluated !== null && evaluated < 0;
 }
 
 const plugin = stylelint.createPlugin(ruleName, (primary) => {

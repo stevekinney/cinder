@@ -105,6 +105,21 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test.each(['calc(0 - 1)', 'calc(-1 * 1)', 'calc(1 - 2)', 'calc((0 - 1) * 1)'])(
+    'rejects the arithmetic negative layer %s even with a local reason',
+    async (value) => {
+      // Arithmetic like `0 - 1` is statically negative without being a bare
+      // numeric literal `Number()` can parse directly either.
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: this layer must stay behind its stacking context. */
+          z-index: ${value};
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
   test('accepts a reasoned component-local expression but never the historical 9999 escape hatch', async () => {
     const localExpression = await lint(`
       .fixture {
