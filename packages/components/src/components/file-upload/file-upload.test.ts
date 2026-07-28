@@ -364,6 +364,14 @@ describe('FileUpload drag state and accessibility', () => {
 });
 
 describe('FileUpload file list rendering', () => {
+  test('file rows keep the full-strength outer border', async () => {
+    const css = await Bun.file(new URL('./file-upload.css', import.meta.url)).text();
+    const rowBlock = css.match(/\.cinder-file-upload__row\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(rowBlock).toContain('border: 1px solid var(--cinder-border)');
+    expect(rowBlock).not.toContain('var(--cinder-border-muted)');
+  });
+
   test('uploading entry renders a progressbar with aria-valuenow', () => {
     const file = createFile('report.csv', 'text/csv', 1800);
     const { container } = render(FileUpload, {

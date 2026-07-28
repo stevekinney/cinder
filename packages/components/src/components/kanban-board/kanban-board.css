@@ -48,7 +48,7 @@
     gap: var(--cinder-space-3);
     min-block-size: 8rem;
     padding: var(--cinder-space-3);
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-kanban-column-background);
     box-shadow: var(--cinder-shadow-sm);

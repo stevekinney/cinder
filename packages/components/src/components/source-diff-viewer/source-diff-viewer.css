@@ -30,7 +30,7 @@
   }
 
   .cinder-source-diff-viewer__file + .cinder-source-diff-viewer__file {
-    border-top: 1px solid var(--cinder-border);
+    border-top: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-source-diff-viewer__file-header {

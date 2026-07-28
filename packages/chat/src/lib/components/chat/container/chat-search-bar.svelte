@@ -166,7 +166,7 @@
     gap: var(--cinder-space-1);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     background: var(--cinder-surface-raised);
-    border-bottom: 1px solid var(--cinder-border);
+    border-bottom: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
   }
 

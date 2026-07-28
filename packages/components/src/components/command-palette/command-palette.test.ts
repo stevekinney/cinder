@@ -721,7 +721,7 @@ describe('CommandPalette — visual contract', () => {
     // The search row reserves a 2px bottom border AT REST so focusing only changes
     // its color (no width change → no layout shift of the option list below).
     expect(css).toMatch(
-      /\.cinder-command-palette__search\s*\{[\s\S]*?border-block-end:\s*2px solid var\(--cinder-border\);/,
+      /\.cinder-command-palette__search\s*\{[\s\S]*?border-block-end:\s*2px solid var\(--cinder-border-muted\);/,
     );
     // :focus-within recolors that border to the ring color — the focus indicator.
     expect(css).toMatch(
@@ -730,6 +730,9 @@ describe('CommandPalette — visual contract', () => {
     // forced-colors fallback maps the same border to the system Highlight color.
     expect(css).toMatch(
       /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?border-block-end-color:\s*Highlight;/,
+    );
+    expect(css).toMatch(
+      /\.cinder-command-palette__search\s*\{[\s\S]*?background:\s*var\(--cinder-surface-raised\);/,
     );
   });
 

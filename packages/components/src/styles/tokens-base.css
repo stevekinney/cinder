@@ -5,16 +5,16 @@
  *
  *   --cinder-surface-raised  →  the OUTER background of a card / container
  *   --cinder-surface         →  a card BODY (primary content area)
- *   --cinder-surface-inset   →  an inset region inside a card body
- *                                (input backgrounds, code blocks, sub-cards)
+ *   --cinder-surface-inset   →  a sunken region inside a card body
+ *                                (code blocks, wells, recessed sub-regions)
  *
- * The rule: a card root sets ONE background. Every region inside the card
- * should INHERIT (do not redeclare). Children that need contrast (an input
- * field, a code block) opt into `--cinder-surface-inset` explicitly.
+ * The rule: a card root sets one background. Nested regions inherit it unless
+ * the component deliberately changes tiers: primary bodies may use
+ * `--cinder-surface`, controls or elevated regions may use
+ * `--cinder-surface-raised`, and sunken regions use `--cinder-surface-inset`.
  *
- * If a region declares its own background AND the parent already set one,
- * you create a visible color band. That is the failure mode the rule
- * prevents.
+ * Repeating the same tier on a child creates accidental visible banding.
+ * Declare a nested background only for an intentional tier change.
  * ============================================================ */
 
 :root {
@@ -191,10 +191,10 @@
   color-scheme: light dark;
 
   /* Backgrounds / surfaces */
-  --cinder-bg: light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245));
-  --cinder-surface: light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245));
-  --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245));
-  --cinder-surface-inset: light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245));
+  --cinder-bg: light-dark(oklch(95% 0.01 245), oklch(15% 0.035 245));
+  --cinder-surface: light-dark(oklch(98% 0.008 245), oklch(21% 0.04 245));
+  --cinder-surface-raised: light-dark(oklch(100% 0.006 245), oklch(28% 0.045 245));
+  --cinder-surface-inset: light-dark(oklch(94% 0.01 245), oklch(11% 0.03 245));
 
   /* Upcoming step marker background — keeps the inset treatment in light mode
      (surface-inset is visibly recessed vs surface), but lifts to surface in dark
@@ -223,6 +223,16 @@
   --cinder-surface-pressed: color-mix(
     in oklch,
     var(--cinder-surface),
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
+  );
+  --cinder-surface-raised-hover: color-mix(
+    in oklch,
+    var(--cinder-surface-raised),
+    light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%
+  );
+  --cinder-surface-raised-pressed: color-mix(
+    in oklch,
+    var(--cinder-surface-raised),
     light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%
   );
 
@@ -480,8 +490,8 @@
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.45), 0 4px 6px -4px oklch(0% 0 0 / 0.32);
   --cinder-bg: oklch(15% 0.035 245);
-  --cinder-surface: oklch(20% 0.04 245);
-  --cinder-surface-raised: oklch(26% 0.045 245);
+  --cinder-surface: oklch(21% 0.04 245);
+  --cinder-surface-raised: oklch(28% 0.045 245);
   --cinder-surface-inset: oklch(11% 0.03 245);
   --cinder-surface-upcoming-marker: var(--cinder-surface);
   --cinder-surface-inverse: var(--cinder-surface-raised);
@@ -489,6 +499,16 @@
   --cinder-border-inverse: var(--cinder-border-strong);
   --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 3%);
   --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 8%);
+  --cinder-surface-raised-hover: color-mix(
+    in oklch,
+    var(--cinder-surface-raised),
+    oklch(100% 0 0) 3%
+  );
+  --cinder-surface-raised-pressed: color-mix(
+    in oklch,
+    var(--cinder-surface-raised),
+    oklch(100% 0 0) 8%
+  );
   --cinder-text: oklch(92% 0.02 245);
   --cinder-text-muted: oklch(82% 0.02 245);
   --cinder-text-subtle: oklch(72% 0.02 245);
@@ -557,16 +577,26 @@
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
-  --cinder-bg: oklch(96% 0.01 245);
-  --cinder-surface: oklch(98.5% 0.008 245);
+  --cinder-bg: oklch(95% 0.01 245);
+  --cinder-surface: oklch(98% 0.008 245);
   --cinder-surface-raised: oklch(100% 0.006 245);
-  --cinder-surface-inset: oklch(95.5% 0.01 245);
+  --cinder-surface-inset: oklch(94% 0.01 245);
   --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
   --cinder-surface-inverse: var(--cinder-text);
   --cinder-text-inverse: var(--cinder-surface);
   --cinder-border-inverse: transparent;
   --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 3%);
   --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 8%);
+  --cinder-surface-raised-hover: color-mix(
+    in oklch,
+    var(--cinder-surface-raised),
+    oklch(0% 0 0) 3%
+  );
+  --cinder-surface-raised-pressed: color-mix(
+    in oklch,
+    var(--cinder-surface-raised),
+    oklch(0% 0 0) 8%
+  );
   --cinder-text: oklch(20% 0.018 245);
   --cinder-text-muted: oklch(32% 0.014 245);
   --cinder-text-subtle: oklch(42% 0.012 245);

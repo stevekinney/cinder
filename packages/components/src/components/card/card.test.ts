@@ -316,6 +316,11 @@ describe('Card', () => {
 });
 
 describe('Card CSS contract', () => {
+  test('default body uses the panel surface', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-card__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s);
+  });
+
   test('padding="none" targets only the body', async () => {
     const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
 
@@ -328,6 +333,19 @@ describe('Card CSS contract', () => {
     const titleBlock = css.match(/\.cinder-card__title\s*\{[^}]*\}/)?.[0] ?? '';
     expect(titleBlock).toContain('color: var(--cinder-text)');
     expect(titleBlock).not.toContain('color: var(--cinder-text-muted)');
+  });
+
+  test('well footer preserves an explicit muted tone', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+
+    expect(css).toContain(".cinder-card__footer:not([data-cinder-tone='muted'])");
+  });
+
+  test('danger cards preserve explicit muted body and footer tones', async () => {
+    const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
+
+    expect(css).toContain(".cinder-card__body:not([data-cinder-tone='muted'])");
+    expect(css).toContain(".cinder-card__footer:not([data-cinder-tone='muted'])");
   });
 
   test('danger tone paints the container surface, border, and icon', async () => {

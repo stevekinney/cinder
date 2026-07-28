@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   checkPipelineCoverage,
+  checkStylelintRuleCoverage,
   DECLARATION_TABLE,
   extractRunStepBodies,
   loadParsedSources,
@@ -38,6 +39,47 @@ describe('resolveScriptChain', () => {
     expect(chain.has('test')).toBe(true);
     expect(chain.has('test:changed')).toBe(false);
     expect(chain.has('test:coverage')).toBe(false);
+  });
+});
+
+describe('checkStylelintRuleCoverage', () => {
+  it('requires each declared rule, plugin, and pipeline layer', () => {
+    expect(
+      checkStylelintRuleCoverage(
+        {
+          plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+          rules: {
+            'cinder/no-surface-on-form-control': true,
+            'cinder/interior-border-weight': true,
+          },
+        },
+        { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
+      ),
+    ).toEqual([]);
+  });
+
+  it('fails when configuration or a declared layer drifts', () => {
+    const violations = checkStylelintRuleCoverage(
+      { plugins: [], rules: {} },
+      { stylelint: { layers: ['unit-tests'], reason: 'test' } },
+    );
+    expect(violations).toHaveLength(6);
+    expect(violations.some((violation) => violation.layer === 'main-green')).toBe(true);
+  });
+
+  it('rejects covered rules that are present but disabled', () => {
+    const violations = checkStylelintRuleCoverage(
+      {
+        plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+        rules: {
+          'cinder/no-surface-on-form-control': true,
+          'cinder/interior-border-weight': false,
+        },
+      },
+      { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.command).toBe('stylelint:cinder/interior-border-weight');
   });
 });
 

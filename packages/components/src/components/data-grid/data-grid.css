@@ -95,8 +95,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border-block-end: 1px solid var(--cinder-border);
-    border-inline-end: 1px solid var(--cinder-border);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    border-inline-end: 1px solid var(--cinder-border-muted);
     background: inherit;
     box-shadow: var(--_cinder-data-grid-pin-shadow);
   }
