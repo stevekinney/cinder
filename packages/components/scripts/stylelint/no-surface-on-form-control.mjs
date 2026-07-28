@@ -51,7 +51,13 @@ function isCinderComponentSource(root) {
 }
 
 function isFormControl(selector) {
-  return /(?:^|[\s,>+~(])(?:input|textarea|select|\.chat-input|\.chat-message-edit-textarea|\.comment-composer-textarea|\.cinder-(?:input|textarea|select|checkbox|radio)|\.cinder-_input-frame|\.cinder-(?:pin-input__segment|phone-input__(?:country|national)|invocation-rule-builder__(?:rule-label-input|condition-(?:select|value)|action-select)))(?=[.#:[\s,)]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
+  // The `\.[\w-]*-(?:textarea|input|select)` branch catches hand-rolled
+  // controls that end their class name in `-textarea`/`-input`/`-select`
+  // (chat-message-edit-textarea, comment-composer-textarea,
+  // comment-edit-textarea, …) without needing an entry per component —
+  // these keep recurring because Chat and Editor don't follow the BEM
+  // `__textarea` convention the other branch below relies on.
+  return /(?:^|[\s,>+~(])(?:input|textarea|select|\.[\w-]*-(?:textarea|input|select)|\.cinder-(?:input|textarea|select|checkbox|radio)|\.cinder-_input-frame|\.cinder-(?:pin-input__segment|phone-input__(?:country|national)|invocation-rule-builder__(?:rule-label-input|condition-(?:select|value)|action-select)))(?=[.#:[\s,)]|$)|\[role\s*=\s*["'](?:textbox|combobox|spinbutton)["']\]|(?:__input|__textarea|__select)(?:\b|[-_:])/i.test(
     selector,
   );
 }

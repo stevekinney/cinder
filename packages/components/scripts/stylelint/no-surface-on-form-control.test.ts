@@ -99,6 +99,39 @@ describe(ruleName, () => {
     ).toEqual([]);
   });
 
+  test('checks the published Editor comment edit textarea', async () => {
+    expect(
+      warnings(
+        await lint(
+          '.comment-edit-textarea { background: var(--cinder-surface); }',
+          '/workspace/packages/editor/src/lib/components/review-editor/comment-list.svelte',
+        ),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await lint(
+          '.comment-edit-textarea { background: var(--cinder-surface-raised); }',
+          '/workspace/packages/editor/src/lib/components/review-editor/comment-list.svelte',
+        ),
+      ),
+    ).toEqual([]);
+  });
+
+  test('recognizes any hyphenated -textarea/-input/-select class suffix', async () => {
+    for (const selector of ['.some-widget-textarea', '.some-widget-input', '.some-widget-select']) {
+      expect(
+        warnings(await lint(`${selector} { background: var(--cinder-surface); }`)),
+      ).toHaveLength(1);
+    }
+    // A suffix that merely CONTAINS one of those words, rather than ending in
+    // it, must not match — this is the same guard the compound-class-name
+    // test above already covers for `.chat-input-area`.
+    expect(warnings(await lint('.some-input-area { background: var(--cinder-surface); }'))).toEqual(
+      [],
+    );
+  });
+
   test('resolves local aliases and fallbacks', async () => {
     expect(
       warnings(

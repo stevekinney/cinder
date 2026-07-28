@@ -14,7 +14,7 @@ function isCinderComponentSource(root) {
   return (
     file === undefined ||
     file.startsWith('<') ||
-    /packages[\\/](?:components[\\/]src[\\/](?:components|styles[\\/]components)|chat[\\/]src[\\/])/.test(
+    /packages[\\/](?:components[\\/]src[\\/](?:components|styles[\\/]components)|(?:chat|editor)[\\/]src[\\/])/.test(
       file,
     )
   );
@@ -22,7 +22,7 @@ function isCinderComponentSource(root) {
 
 function isInteriorDivider(selector, property) {
   if (property === 'border') return false;
-  return /(?:__(?:header|row-header|column-header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|\.artifact-panel-header|\.chat-search-bar|[+~])/i.test(
+  return /(?:__(?:header|row-header|column-header|footer|search|section|body|trigger|cell|stepper)(?![\w-])|\.artifact-panel-header|\.chat-search-bar|\.diff-toolbar|[+~])/i.test(
     selector,
   );
 }

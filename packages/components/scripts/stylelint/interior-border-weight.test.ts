@@ -193,6 +193,29 @@ describe(ruleName, () => {
     ).toEqual([]);
   });
 
+  test('checks Editor sources and recognizes its non-BEM interior toolbar divider', async () => {
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.diff-toolbar { border-bottom: 1px solid var(--cinder-border); }',
+          codeFilename:
+            '/workspace/packages/editor/src/lib/components/diff-viewer/diff-toolbar.svelte',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toHaveLength(1);
+    expect(
+      warnings(
+        await stylelint.lint({
+          code: '.diff-toolbar { border-bottom: 1px solid var(--cinder-border-muted); }',
+          codeFilename:
+            '/workspace/packages/editor/src/lib/components/diff-viewer/diff-toolbar.svelte',
+          config: { plugins: [pluginPath], rules: { [ruleName]: true } },
+        }),
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves aliases in the declaration scope instead of later variants', async () => {
     expect(
       warnings(
