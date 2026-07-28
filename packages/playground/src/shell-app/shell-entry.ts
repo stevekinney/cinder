@@ -52,10 +52,7 @@ if (target === null) {
 hydrate(Shell, {
   target,
   props: {
-    initialComponent: initial.component,
     components: initial.components,
     readmeHtml: initial.readmeHtml,
-    documentation: initial.documentation,
-    initialSearch: initial.initialSearch,
   },
 });
