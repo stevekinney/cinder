@@ -48,6 +48,37 @@ test('overlapping event labels occupy non-intersecting layout boxes', async ({ p
   }
 });
 
+test('re-resolves the cluster surface strategy when an owner ancestor gains a containing block', async ({
+  page,
+}) => {
+  await page.goto(EVENT_TIMELINE_ROUTE, { waitUntil: 'load' });
+  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+  const timeline = page.getByRole('list', { name: 'Dense incident timeline' });
+
+  // Wrap the timeline in an element `portalOwner()` recognizes as an overlay
+  // owner, without a transform, so the cluster surface opens `position: fixed`.
+  await timeline.evaluate((element) => {
+    const panel = document.createElement('div');
+    panel.className = 'cinder-modal__panel';
+    element.parentElement?.insertBefore(panel, element);
+    panel.append(element);
+  });
+
+  const trigger = timeline.locator('.cinder-event-timeline__cluster-trigger').first();
+  await trigger.click();
+  const surface = page.locator('.cinder-event-timeline__cluster-surface');
+  await expect(surface).toBeVisible();
+  await expect(surface).toHaveCSS('position', 'fixed');
+
+  // Simulate an ancestor starting a transform-driven animation while the
+  // cluster stays open, without closing and reopening it.
+  await page.locator('.cinder-modal__panel').evaluate((panel) => {
+    (panel as HTMLElement).style.transform = 'scale(0.98)';
+  });
+
+  await expect(surface).toHaveCSS('position', 'absolute');
+});
+
 test('cluster trigger supports tab entry, Escape dismissal, and focus return', async ({ page }) => {
   await page.goto(EVENT_TIMELINE_ROUTE, { waitUntil: 'load' });
   await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });

@@ -98,6 +98,7 @@
   let itemsElement = $state<HTMLDivElement | null>(null);
   let portalOwnerWidth = $state(0);
   let isRtl = $state(false);
+  let clusterStrategy = $state<'fixed' | 'absolute'>('fixed');
   const instanceId = $props.id();
   function portalOwner(): HTMLElement | null {
     const trigger = clusterTrigger;
@@ -153,11 +154,22 @@
     placement: () => 'bottom-start',
     offset: () => 8,
     shiftPadding: () => 8,
-    strategy: () => {
-      const owner = portalOwner();
-      if (!owner) return 'fixed';
-      return hasFixedPositionContainingBlock(owner) ? 'absolute' : 'fixed';
-    },
+    // Read from state (kept fresh below) rather than recomputing here: `strategy`
+    // is captured once when the anchored overlay's autoUpdate session starts, so
+    // it must be reactive for the session to notice a containing block appearing
+    // on an owner ancestor (e.g. an app-level animation) while the cluster stays open.
+    strategy: () => clusterStrategy,
+  });
+
+  $effect(() => {
+    if (openClusterKey === null) return;
+    const owner = portalOwner();
+    if (!owner) return;
+    const update = () => {
+      clusterStrategy = hasFixedPositionContainingBlock(owner) ? 'absolute' : 'fixed';
+    };
+    update();
+    return observeEventTimelineDirection(owner, update);
   });
 
   function toTimestamp(value: EventTimelineDate | undefined): number | undefined {
