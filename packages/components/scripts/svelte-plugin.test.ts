@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 
 import {
+  allowsStyleBlock,
   findOneArgumentServerComponentBoundaries,
+  hasAuthoredStyleBlock,
   preserveServerComponentIdentity,
   publishedSvelteCompileFilename,
 } from './svelte-plugin.ts';
@@ -38,6 +40,31 @@ describe('publishedSvelteCompileFilename', () => {
   it('leaves components outside the published package unchanged', () => {
     const playgroundPath = '/checkout/packages/playground/src/app.svelte';
     expect(publishedSvelteCompileFilename(playgroundPath)).toBe(playgroundPath);
+  });
+});
+
+describe('hasAuthoredStyleBlock', () => {
+  it('distinguishes authored style blocks from style directives', () => {
+    expect(hasAuthoredStyleBlock('<div style:height={height}></div>')).toBe(false);
+    expect(hasAuthoredStyleBlock('<style>.card { color: red; }</style>')).toBe(true);
+  });
+
+  it('ignores style markup inside scripts and comments', () => {
+    expect(
+      hasAuthoredStyleBlock(
+        `<!-- <style>.fake { color: red; }</style> --><script>const example = '<style>.fake {}</style>';</script><div style:height={height}></div>`,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('allowsStyleBlock', () => {
+  it('allows component test fixtures to keep scoped styles local', () => {
+    expect(
+      allowsStyleBlock(
+        '/checkout/packages/components/src/test/fixtures/virtualizer-live-fixture.svelte',
+      ),
+    ).toBe(true);
   });
 });
 

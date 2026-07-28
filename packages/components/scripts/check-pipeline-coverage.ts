@@ -150,6 +150,10 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
+  'check:no-static-style-attributes': {
+    layers: ['unit-tests', 'main-green'],
+    reason: 'Member of lint:invariants — strict CSP static-style guard.',
+  },
   'check:svelte-ts-runtime-types': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',

@@ -65,7 +65,7 @@ async function typeAndBlur(input: HTMLInputElement, text: string): Promise<void>
 describe('ColorField — decorative swatch', () => {
   test('stays hidden from assistive technology and ignores pointer interaction', () => {
     const { container } = render(ColorField, { id: 'color', name: 'color' });
-    const swatch = q<HTMLElement>(container, '.cinder-color-field__swatch');
+    const swatch = q(container, '.cinder-color-field__swatch');
 
     expect(swatch.tagName).toBe('SPAN');
     expect(swatch.getAttribute('aria-hidden')).toBe('true');
