@@ -98,7 +98,7 @@
     restoreFocusElement = activeElement instanceof HTMLElement ? activeElement : null;
   }
 
-  function restoreFocus(preventScroll = false): void {
+  function restoreFocus(preventScroll = true): void {
     restoreFocusElement?.focus({ preventScroll });
     restoreFocusElement = null;
   }

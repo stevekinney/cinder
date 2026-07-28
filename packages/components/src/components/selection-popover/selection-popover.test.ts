@@ -98,6 +98,70 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('cancelling the composer restores focus without scrolling and stays open', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusOptions: FocusOptions | undefined;
+    trigger.focus = (options?: FocusOptions) => {
+      focusOptions = options;
+    };
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(focusOptions).toEqual({ preventScroll: true });
+      expect(screen.getByRole('toolbar', { name: 'Selection actions' })).not.toBeNull();
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  test('submitting the composer restores focus without scrolling and stays open', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusOptions: FocusOptions | undefined;
+    trigger.focus = (options?: FocusOptions) => {
+      focusOptions = options;
+    };
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onCommentSubmit: () => {},
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await fireEvent.input(screen.getByRole('textbox', { name: 'Comment text' }), {
+        target: { value: 'Looks good.' },
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Submit comment' }));
+
+      expect(focusOptions).toEqual({ preventScroll: true });
+      expect(screen.getByRole('toolbar', { name: 'Selection actions' })).not.toBeNull();
+    } finally {
+      trigger.remove();
+    }
+  });
+
   test('Escape closes when collapsed and cancels when expanded', async () => {
     let closed = false;
     let canceled = false;
