@@ -336,7 +336,7 @@ describe('EventTimeline', () => {
   test('treats perspective, backdrop-filter, and transform-related will-change as containing blocks', () => {
     const element = document.createElement('div');
     const original = globalThis.getComputedStyle;
-    const cases: Array<Partial<CSSStyleDeclaration>> = [
+    const cases: Array<Record<string, string>> = [
       { perspective: '400px' },
       { backdropFilter: 'blur(4px)' },
       { willChange: 'transform' },
