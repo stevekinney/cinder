@@ -184,8 +184,8 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       '`.changeset/**` from its path filters by design).',
   },
   'check:placeholder-docs': {
-    layers: ['main-green'],
-    reason: 'Source audit owned by main-green; release validates only the publish artifact.',
+    layers: ['unit-tests', 'main-green'],
+    reason: 'Source audit runs through components:check in both unit-tests and main-green.',
   },
   'platform:audit': {
     layers: ['main-green'],

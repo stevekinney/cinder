@@ -1,6 +1,6 @@
 ---
 name: cinder-component-authoring
-description: Use this skill when creating or substantially changing a Cinder component so the component composes existing primitives and follows the shared API, styling, icon, disclosure, and testing conventions.
+description: Use this skill when creating or substantially changing a Cinder component so it composes existing primitives, follows shared conventions, and completes required human design and accessibility review.
 ---
 
 # Cinder component authoring
@@ -17,7 +17,14 @@ links generated READMEs back to the live package guidance.
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
+- [ ] Get a design review for every new component; record its nearest neighbours, why it exists, and the review outcome in `*.a11y.md`. (#968)
+- [ ] For a novel interaction model, get an accessibility review covering focus management, the keyboard matrix, and assistive-technology announcements; record the outcome in `*.a11y.md`. (#968)
 <!-- component-authoring-checklist:end -->
+
+These human reviews are required because tooling cannot decide whether a
+component is drab, bulbous, ugly, poorly laid out, or built around the wrong
+interaction model. Keep the durable outcome in the component's `*.a11y.md`;
+pull-request discussion alone is not the record.
 
 Scaffold with
 `bun run --filter=@lostgradient/cinder components:create <name>` and follow its
@@ -36,5 +43,6 @@ Cross-referenced epics: [#919](https://github.com/stevekinney/cinder/issues/919)
 [#922](https://github.com/stevekinney/cinder/issues/922),
 [#923](https://github.com/stevekinney/cinder/issues/923),
 [#929](https://github.com/stevekinney/cinder/issues/929),
-[#931](https://github.com/stevekinney/cinder/issues/931), and
-[#957](https://github.com/stevekinney/cinder/issues/957).
+[#931](https://github.com/stevekinney/cinder/issues/931),
+[#957](https://github.com/stevekinney/cinder/issues/957), and
+[#968](https://github.com/stevekinney/cinder/issues/968).
