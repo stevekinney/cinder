@@ -55,6 +55,12 @@
   .cinder-mega-menu__indicator {
     position: absolute;
     inset-block: 0;
+    /* Physical `left`, not `inset-inline-start`: the JS-computed offset
+       (mega-menu.svelte) is `triggerRect.left - navRect.left` from
+       getBoundingClientRect(), always a physical measurement, applied via
+       `transform: translateX()`. A logical anchor would move to the
+       opposite physical edge under RTL while the translateX offset stayed
+       physical, moving the indicator in the wrong direction. */
     left: 0;
     inline-size: 0;
     background: var(--cinder-accent);
