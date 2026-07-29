@@ -133,6 +133,12 @@ from the layer it needs to run in.
   `show*`/`allow*`/`use*` boolean prefixes, `defaultValue`, banned
   abbreviations, `component` where `as` is meant, or duplicate vocabulary such
   as `filterItem`.
+- **Primitive composition guard** (`packages/components/scripts/check-primitive-composition.ts`,
+  wired into `lint:invariants`) — scans component source for new raw form controls,
+  hand-rolled grid layouts, layered floating surfaces, and label/description/error
+  wrappers. Its explicit allow-list is the migration tracker for issue #919: each
+  known offender remains listed until its dedicated migration pull request lands,
+  while newly introduced copies fail immediately.
 - **Memory canary** (`packages/components/scripts/memory-canary.ts`,
   `test:memory-canary`, wired as a non-blocking step in `main-green.yaml`) —
   runs a fixed representative slice of component suites and reports peak RSS.
