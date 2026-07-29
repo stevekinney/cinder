@@ -277,7 +277,7 @@
     left: calc(var(--preview-left, 0px) + var(--preview-dx, 0px));
     width: var(--preview-width, auto);
     height: var(--preview-height, auto);
-    z-index: var(--cinder-z-drag-preview, 9999);
+    z-index: var(--cinder-z-drag-preview);
     pointer-events: none;
     box-shadow: var(--cinder-shadow-md);
     border-radius: var(--cinder-radius-md, 4px);

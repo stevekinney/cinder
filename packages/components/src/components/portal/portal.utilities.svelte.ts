@@ -1,8 +1,10 @@
+import { untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 
 import { devWarn } from '../../utilities/dev-warn.ts';
 
 import { readOption } from '../../utilities/read-option.ts';
+import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
 
 export type PortalTargetInput = HTMLElement | string | null | undefined;
 
@@ -20,7 +22,7 @@ export type PortalAttachmentOptions = {
    */
   disabled?: boolean | (() => boolean);
   /**
-   * When true (default), inherit `dir`, `data-theme`, and `data-cinder-theme` from the nearest
+   * When true (default), inherit `dir`, `lang`, `data-theme`, and `data-cinder-theme` from the nearest
    * matching ancestor of `source` while mounted. Explicit attributes on the portal wrapper win over
    * inherited values.
    */
@@ -32,11 +34,13 @@ export type PortalAttachmentOptions = {
   explicitAttributes?:
     | {
         dir?: string | null | undefined;
+        lang?: string | null | undefined;
         dataTheme?: string | null | undefined;
         theme?: string | null | undefined;
       }
     | (() => {
         dir?: string | null | undefined;
+        lang?: string | null | undefined;
         dataTheme?: string | null | undefined;
         theme?: string | null | undefined;
       });
@@ -74,19 +78,170 @@ export function resolvePortalTarget(target: PortalTargetInput): ResolvedPortalTa
   }
 }
 
+export function findNearestOpenPopover(source: HTMLElement): HTMLElement | null {
+  let candidate = source.closest<HTMLElement>('[popover]');
+  while (candidate) {
+    try {
+      if (candidate.matches(':popover-open')) return candidate;
+    } catch {
+      // Unsupported pseudo-classes are treated as closed.
+    }
+    candidate = candidate.parentElement?.closest<HTMLElement>('[popover]') ?? null;
+  }
+  return null;
+}
+
+export function findNearestOpenTopLayer(
+  source: HTMLElement,
+  isModalDialog: (element: HTMLElement) => boolean = (element) => element.matches(':modal'),
+): HTMLElement | null {
+  // Skip the nearest `.cinder-popover__trigger` itself: that marker is always the source's own
+  // (not-yet-existing) scope, not a genuinely enclosing owner. Continuing the search from its
+  // parent finds the next marker up the tree, which — by construction — belongs to a different,
+  // truly enclosing popover/top-layer instance (see the nested-popover-in-trigger follow-up).
+  const ownerLookupSource = source.closest('.cinder-popover__trigger')?.parentElement ?? source;
+  const ownerId = ownerLookupSource.closest<HTMLElement>('[data-cinder-portal-owner]')?.dataset[
+    'cinderPortalOwner'
+  ];
+  if (ownerId) {
+    const owner = document.getElementById(ownerId);
+    if (owner instanceof HTMLElement) return owner;
+  }
+  let candidate: HTMLElement | null = source;
+  while (candidate) {
+    try {
+      if (
+        (candidate.matches('dialog') && isModalDialog(candidate)) ||
+        (candidate.matches('[popover]') && candidate.matches(':popover-open'))
+      )
+        return candidate;
+    } catch {
+      // Unsupported pseudo-classes are treated as closed.
+    }
+    const rootNode = candidate.getRootNode();
+    const shadowHost: Element | null = rootNode instanceof ShadowRoot ? rootNode.host : null;
+    candidate = candidate.parentElement ?? (shadowHost instanceof HTMLElement ? shadowHost : null);
+  }
+  return null;
+}
+
+export function getInheritedPortalStyle(source: HTMLElement | null | undefined): string {
+  if (!source || typeof window === 'undefined') return '';
+
+  const computed = getComputedStyle(source);
+  const hasDirectTypography =
+    source.tagName === 'NAV' ||
+    (source.parentElement === null &&
+      ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing'].some(
+        (property) => source.style.getPropertyValue(property) !== '',
+      ));
+  const typographySource = hasDirectTypography ? source : (source.parentElement ?? source);
+  const typography = getComputedStyle(typographySource);
+  const inherited = document.createElement('div').style;
+  const customPropertyNames = new Set<string>();
+  let customPropertySource: HTMLElement | null = source;
+  while (customPropertySource) {
+    for (const property of Array.from(customPropertySource.style)) {
+      if (property.startsWith('--cinder-')) customPropertyNames.add(property);
+    }
+    customPropertySource =
+      customPropertySource.parentElement ?? getShadowHost(customPropertySource);
+  }
+  for (let index = 0; index < computed.length; index += 1) {
+    const property = computed.item(index);
+    if (property.startsWith('--cinder-')) customPropertyNames.add(property);
+  }
+  for (const property of customPropertyNames) {
+    const value = computed.getPropertyValue(property);
+    if (value) inherited.setProperty(property, value);
+  }
+
+  const colorScheme = computed.colorScheme || source.style.colorScheme;
+  if (colorScheme) {
+    inherited.setProperty('color-scheme', colorScheme);
+  }
+  if (!source.hasAttribute('dir') && computed.direction) {
+    inherited.setProperty('direction', computed.direction);
+  }
+  for (const property of [
+    'font-family',
+    'font-size',
+    'font-weight',
+    'line-height',
+    'letter-spacing',
+  ]) {
+    const value = typography.getPropertyValue(property);
+    if (value) inherited.setProperty(property, value);
+  }
+  for (const property of Array.from(source.style)) {
+    if (!property.startsWith('--cinder-')) continue;
+    const rawValue = source.style.getPropertyValue(property);
+    if (!rawValue.includes('var(')) inherited.setProperty(property, rawValue);
+  }
+  if (source.style.colorScheme) inherited.setProperty('color-scheme', source.style.colorScheme);
+
+  return inherited.cssText;
+}
+
+export function createInheritedPortalStyle(
+  source: () => HTMLElement | null | undefined,
+  active: () => boolean,
+): { readonly style: string } {
+  let style = $state('');
+  const reducedMotion = useReducedMotion();
+
+  $effect(() => {
+    void reducedMotion.current;
+    if (!active()) {
+      style = '';
+      return;
+    }
+    const inheritanceSource = source();
+    const syncStyle = () => {
+      style = getInheritedPortalStyle(inheritanceSource);
+    };
+    syncStyle();
+    const stopObserving = observeInheritedPortalAttributes(inheritanceSource, true, syncStyle);
+    if (typeof window === 'undefined') return stopObserving ?? undefined;
+    const mediaQueries = [
+      '(prefers-color-scheme: dark)',
+      '(prefers-contrast: more)',
+      '(forced-colors: active)',
+    ].map((query) => window.matchMedia(query));
+    const onMediaChange = () => syncStyle();
+    for (const mediaQuery of mediaQueries) mediaQuery.addEventListener('change', onMediaChange);
+    window.addEventListener('resize', onMediaChange);
+    return () => {
+      stopObserving?.();
+      for (const mediaQuery of mediaQueries)
+        mediaQuery.removeEventListener('change', onMediaChange);
+      window.removeEventListener('resize', onMediaChange);
+    };
+  });
+
+  return {
+    get style() {
+      return style;
+    },
+  };
+}
+
 export function copyInheritedPortalAttributes(
   element: HTMLElement,
   source: HTMLElement | null | undefined,
   inheritAttributes: boolean,
   fallbackAttributes: {
     dir: string | null;
+    lang?: string | null;
     dataTheme: string | null;
     theme: string | null;
     preserveDirection?: boolean;
+    preserveLanguage?: boolean;
     preserveDataTheme?: boolean;
     preserveTheme?: boolean;
   } = {
     dir: element.getAttribute('dir'),
+    lang: element.getAttribute('lang'),
     dataTheme: element.getAttribute('data-theme'),
     theme: element.getAttribute('data-cinder-theme'),
   },
@@ -95,7 +250,7 @@ export function copyInheritedPortalAttributes(
     fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
   const inheritedDir =
     inheritAttributes && source && !preservesExplicitDirection
-      ? source.closest<HTMLElement>('[dir]')?.getAttribute('dir')
+      ? closestAcrossShadow(source, '[dir]')?.getAttribute('dir')
       : null;
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
   if (nextDir) {
@@ -104,13 +259,26 @@ export function copyInheritedPortalAttributes(
     element.removeAttribute('dir');
   }
 
+  const preservesExplicitLanguage =
+    fallbackAttributes.preserveLanguage ?? fallbackAttributes.lang !== null;
+  const inheritedLanguage =
+    inheritAttributes && source && !preservesExplicitLanguage
+      ? closestAcrossShadow(source, '[lang]')?.getAttribute('lang')
+      : null;
+  const nextLanguage = inheritedLanguage ?? fallbackAttributes.lang;
+  if (nextLanguage !== null && nextLanguage !== undefined) {
+    element.setAttribute('lang', nextLanguage);
+  } else {
+    element.removeAttribute('lang');
+  }
+
   const preservesExplicitDataTheme = fallbackAttributes.preserveDataTheme === true;
   const inheritedDataTheme =
     inheritAttributes &&
     source &&
     !preservesExplicitDataTheme &&
     fallbackAttributes.dataTheme === null
-      ? source.closest<HTMLElement>('[data-theme]')?.getAttribute('data-theme')
+      ? closestAcrossShadow(source, '[data-theme]')?.getAttribute('data-theme')
       : null;
   const nextDataTheme = inheritedDataTheme ?? fallbackAttributes.dataTheme;
   if (nextDataTheme) {
@@ -122,7 +290,7 @@ export function copyInheritedPortalAttributes(
   const preservesExplicitTheme = fallbackAttributes.preserveTheme === true;
   const inheritedTheme =
     inheritAttributes && source && !preservesExplicitTheme && fallbackAttributes.theme === null
-      ? source.closest<HTMLElement>('[data-cinder-theme]')?.getAttribute('data-cinder-theme')
+      ? closestAcrossShadow(source, '[data-cinder-theme]')?.getAttribute('data-cinder-theme')
       : null;
   const nextTheme = inheritedTheme ?? fallbackAttributes.theme;
   if (nextTheme) {
@@ -133,8 +301,157 @@ export function copyInheritedPortalAttributes(
 
   return {
     dir: inheritedDir ?? null,
+    lang: inheritedLanguage ?? null,
     dataTheme: inheritedDataTheme ?? null,
     theme: inheritedTheme ?? null,
+  };
+}
+
+export function redispatchPortaledEvent(
+  event: Event,
+  sourceTarget: HTMLElement | null | undefined,
+): boolean {
+  if (!sourceTarget) return false;
+
+  const originalTarget = event.target;
+  const eventInit: EventInit & { [property: string]: unknown } = {
+    bubbles: event.bubbles,
+    cancelable: event.cancelable,
+    composed: event.composed,
+  };
+  for (const property of [
+    'key',
+    'code',
+    'location',
+    'repeat',
+    'isComposing',
+    'button',
+    'buttons',
+    'clientX',
+    'clientY',
+    'screenX',
+    'screenY',
+    'ctrlKey',
+    'shiftKey',
+    'altKey',
+    'metaKey',
+    'relatedTarget',
+    'pointerId',
+    'pointerType',
+    'isPrimary',
+    'detail',
+    'data',
+    'inputType',
+    'dataTransfer',
+    'pressure',
+    'tiltX',
+    'tiltY',
+    'twist',
+    'tangentialPressure',
+  ]) {
+    if (property in event) eventInit[property] = Reflect.get(event, property);
+  }
+  const bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  redispatchedPortalEvents.add(bridgedEvent);
+  Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
+  if (event.defaultPrevented) bridgedEvent.preventDefault();
+
+  event.stopPropagation();
+  if (!sourceTarget.dispatchEvent(bridgedEvent)) {
+    event.preventDefault();
+  }
+  return true;
+}
+
+const redispatchedPortalEvents = new WeakSet<Event>();
+
+/** Returns the host element of `element`'s enclosing shadow root, or `null` if it is not in one. */
+export function getShadowHost(element: HTMLElement): HTMLElement | null {
+  const root = element.getRootNode();
+  return root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null;
+}
+
+/**
+ * Like `Element.prototype.closest`, but continues the search from the
+ * enclosing shadow host once `element`'s own tree is exhausted, so a
+ * selector matching an ancestor *outside* an intervening shadow boundary
+ * (e.g. `[hidden]`, `[inert]`, `aria-hidden="true"` set on a shadow host)
+ * is still found. Plain `closest()` cannot see past a shadow root.
+ */
+export function closestAcrossShadow(element: HTMLElement, selector: string): HTMLElement | null {
+  let current: HTMLElement | null = element;
+  while (current) {
+    const match = current.closest<HTMLElement>(selector);
+    if (match) return match;
+    current = getShadowHost(current);
+  }
+  return null;
+}
+
+export function isRedispatchedPortaledEvent(event: Event): boolean {
+  return redispatchedPortalEvents.has(event);
+}
+
+function isEffectivelyDisabled(source: HTMLElement): boolean {
+  if (source.matches(':disabled')) return true;
+
+  const disabledFieldset = source.closest<HTMLFieldSetElement>('fieldset[disabled]');
+  if (!disabledFieldset) return false;
+  const firstLegend = disabledFieldset.querySelector(':scope > legend');
+  return !firstLegend?.contains(source);
+}
+
+function isEffectivelyUnavailable(source: HTMLElement): boolean {
+  if (isEffectivelyDisabled(source)) return true;
+  // Plain `closest()` cannot see past a shadow boundary, so a source whose
+  // enclosing shadow HOST gains `[hidden]`/`[inert]`/`aria-hidden="true"`
+  // would otherwise still report itself as available: the computed-style
+  // walk below crosses shadow hosts, but none of these three attributes
+  // change `display`/`visibility` on their own, so this check needs the
+  // same cross-shadow reach.
+  if (closestAcrossShadow(source, '[hidden], [inert], [aria-hidden="true"]')) return true;
+  if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return false;
+  let ancestor: HTMLElement | null = source;
+  while (ancestor) {
+    const computed = getComputedStyle(ancestor);
+    if (computed.display === 'none' || computed.visibility === 'hidden') return true;
+    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
+  }
+  return false;
+}
+
+export function observePortalSourceAvailability(
+  source: HTMLElement | null | undefined,
+  onChange: (unavailable: boolean) => void,
+): () => void {
+  if (!source) return () => {};
+
+  const syncAvailability = () => {
+    onChange(isEffectivelyUnavailable(source));
+  };
+  if (typeof MutationObserver === 'undefined') {
+    syncAvailability();
+    return () => {};
+  }
+
+  const observer = new MutationObserver(syncAvailability);
+  let ancestor: HTMLElement | null = source;
+  while (ancestor) {
+    observer.observe(ancestor, {
+      attributes: true,
+      attributeFilter: ['hidden', 'inert', 'aria-hidden', 'disabled', 'class', 'style'],
+    });
+    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
+  }
+  syncAvailability();
+
+  const resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncAvailability);
+  resizeObserver?.observe(source);
+
+  return () => {
+    observer.disconnect();
+    resizeObserver?.disconnect();
   };
 }
 
@@ -153,7 +470,7 @@ function observeInheritedPortalAttributes(
     observedElements.push(elementToObserve);
     observer.observe(elementToObserve, {
       attributes: true,
-      attributeFilter: ['dir', 'data-theme', 'data-cinder-theme'],
+      attributeFilter: ['class', 'style', 'dir', 'lang', 'data-theme', 'data-cinder-theme'],
     });
   }
   const observedElements: HTMLElement[] = [];
@@ -161,30 +478,38 @@ function observeInheritedPortalAttributes(
   let ancestor: HTMLElement | null = source;
   while (ancestor) {
     observe(ancestor);
-    ancestor = ancestor.parentElement;
+    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
   }
   observe(document.documentElement);
 
-  return () => observer.disconnect();
+  const resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncAttributes);
+  resizeObserver?.observe(source);
+
+  return () => {
+    observer.disconnect();
+    resizeObserver?.disconnect();
+  };
 }
 
 export function createPortalAttachment(
   options: PortalAttachmentOptions = {},
 ): Attachment<HTMLElement> {
   let lastWarnedUnresolvedKey: string | null = null;
-
   return (element) => {
     // Capture the *original* parentElement once, before any mounting moves the wrapper. After
     // `appendChild`, `element.parentElement` becomes the portal target — which would defeat the
-    // "inherit dir/data-theme/data-cinder-theme from the trigger subtree" contract.
+    // "inherit dir/lang/data-theme/data-cinder-theme from the trigger subtree" contract.
     const initialParent = element.parentElement;
     const initialAttributes = {
       dir: element.getAttribute('dir'),
+      lang: element.getAttribute('lang'),
       dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
     const managedAttributes = {
       dir: null as string | null,
+      lang: null as string | null,
       dataTheme: null as string | null,
       theme: null as string | null,
     };
@@ -192,9 +517,11 @@ export function createPortalAttachment(
     function currentFallbackAttributes() {
       const explicitAttributes = readOption(options.explicitAttributes ?? {});
       const explicitDirection = explicitAttributes.dir;
+      const explicitLanguage = explicitAttributes.lang;
       const explicitDataTheme = explicitAttributes.dataTheme;
       const explicitTheme = explicitAttributes.theme;
       const direction = element.getAttribute('dir');
+      const language = element.getAttribute('lang');
       const dataTheme = element.getAttribute('data-theme');
       const theme = element.getAttribute('data-cinder-theme');
 
@@ -206,6 +533,13 @@ export function createPortalAttachment(
               ? direction
               : initialAttributes.dir,
         preserveDirection: explicitDirection !== undefined,
+        lang:
+          explicitLanguage !== undefined
+            ? explicitLanguage
+            : language !== managedAttributes.lang
+              ? language
+              : null,
+        preserveLanguage: explicitLanguage !== undefined,
         dataTheme:
           explicitDataTheme !== undefined
             ? explicitDataTheme
@@ -234,6 +568,7 @@ export function createPortalAttachment(
         currentFallbackAttributes(),
       );
       managedAttributes.dir = nextManagedAttributes.dir;
+      managedAttributes.lang = nextManagedAttributes.lang;
       managedAttributes.dataTheme = nextManagedAttributes.dataTheme;
       managedAttributes.theme = nextManagedAttributes.theme;
     }
@@ -256,6 +591,17 @@ export function createPortalAttachment(
       anchor.parentNode.insertBefore(element, anchor.nextSibling);
     }
 
+    let activeAttributeSource: HTMLElement | null = null;
+    let activeInheritAttributes = false;
+
+    // Attribute props can update without changing where the portal is mounted. Keep those updates
+    // in a child effect so changing language or theme never runs the mount effect's teardown and
+    // detaches focused content.
+    $effect(() => {
+      readOption(options.explicitAttributes ?? {});
+      untrack(() => syncInheritedAttributes(activeAttributeSource, activeInheritAttributes));
+    });
+
     // Nest the reads inside `$effect` so getter-based options are tracked reactively. Each rerun
     // detaches the previous mount before re-resolving — this guards against the wrapper being
     // stranded in the old target when `target` changes or `disabled` flips true.
@@ -265,22 +611,37 @@ export function createPortalAttachment(
       const inheritAttributes = readOption(options.inheritAttributes ?? true);
       const targetValue = readOption(options.target ?? null);
       const attributeSource = readOption(options.source ?? initialParent) ?? initialParent;
-      const resolved = disabled ? null : resolvePortalTarget(targetValue);
+      const rawResolved = disabled ? null : resolvePortalTarget(targetValue);
+      // A resolved target that is the wrapper itself (or nests inside it) is never valid — most
+      // often this means an ownership lookup (e.g. findNearestOpenTopLayer) fed its own scope
+      // element back as the target. Treat it the same as "unresolved" rather than attempting the
+      // append, which would throw (a node cannot become its own child).
+      const resolved =
+        rawResolved?.kind === 'resolved' &&
+        (rawResolved.target === element || element.contains(rawResolved.target))
+          ? ({ kind: 'unresolved', key: 'own-wrapper' } as const)
+          : rawResolved;
 
       if (!disabled && resolved?.kind === 'resolved') {
-        syncInheritedAttributes(attributeSource, inheritAttributes);
+        activeAttributeSource = attributeSource;
+        activeInheritAttributes = inheritAttributes;
+        untrack(() => syncInheritedAttributes(attributeSource, inheritAttributes));
         stopObservingInheritedAttributes = observeInheritedPortalAttributes(
           attributeSource,
           inheritAttributes,
           () => syncInheritedAttributes(attributeSource, inheritAttributes),
         );
-        resolved.target.appendChild(element);
+        if (element.parentElement !== resolved.target) {
+          resolved.target.appendChild(element);
+        }
         lastWarnedUnresolvedKey = null;
       } else if (!disabled && resolved?.kind === 'unresolved') {
         // Target unresolved: keep the wrapper inline at the anchor so children remain rendered
         // (with a dev warning) instead of vanishing from the DOM entirely.
         restoreInline();
-        syncInheritedAttributes(null, false);
+        activeAttributeSource = null;
+        activeInheritAttributes = false;
+        untrack(() => syncInheritedAttributes(null, false));
         if (lastWarnedUnresolvedKey !== resolved.key) {
           devWarn(
             `[cinder/portal] could not resolve portal target ${JSON.stringify(resolved.key)}.`,
@@ -291,21 +652,25 @@ export function createPortalAttachment(
         // Disabled path: wrapper must stay in (or return to) its original position, not be left
         // detached. The Portal component's template still renders children in this mode.
         restoreInline();
-        syncInheritedAttributes(null, false);
+        activeAttributeSource = null;
+        activeInheritAttributes = false;
+        untrack(() => syncInheritedAttributes(null, false));
         lastWarnedUnresolvedKey = null;
       }
 
       return () => {
         stopObservingInheritedAttributes?.();
-        // Idempotent: only remove if still connected somewhere. Tolerates external removal of the
-        // wrapper between mount and cleanup. The anchor stays put so the next re-run can reinsert.
-        if (element.isConnected) {
-          element.remove();
-        }
+        // The next effect run moves the existing wrapper directly between its old and new
+        // locations. Removing it here would blur focused descendants even when the resolved target
+        // did not change.
       };
     });
 
     return () => {
+      // The wrapper may have been moved out of Svelte's original render tree. Remove it from
+      // whichever target currently owns it so unmounting a portaled surface cannot leak it into
+      // the next render or test.
+      element.remove();
       // Final cleanup: also remove the anchor so we don't leave orphan comment nodes behind.
       if (anchor && anchor.parentNode) {
         anchor.parentNode.removeChild(anchor);
