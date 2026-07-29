@@ -18,7 +18,6 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['multi-select/multi-select.svelte', 2],
   ['number-input/number-input.svelte', 1],
   ['pin-input/pin-input.svelte', 1],
-  ['phone-input/phone-input.svelte', 2],
   ['search-field/search-field.svelte', 1],
   ['select/select.svelte', 2],
   ['selection-popover/selection-popover.svelte', 1],
@@ -111,14 +110,15 @@ export const allowedFloatingCounts = new Map<string, number>(
     'area-chart/area-chart.css',
     'backdrop/backdrop.css',
     'bar-chart/bar-chart.css',
-    'combobox/combobox.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
+    'event-timeline/event-timeline.css',
     'kanban-board/kanban-board.css',
     'line-chart/line-chart.css',
     'marquee/marquee.css',
     'matrix-chart/matrix-chart.css',
     'navigation-bar/navigation-bar.css',
+    'phone-input/phone-input.css',
     'run-step-timeline/run-step-timeline.css',
     'select/select.css',
     'selection-popover/selection-popover.css',
@@ -135,6 +135,14 @@ export const allowedFloatingCounts = new Map<string, number>(
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
+// event-timeline's cluster wrapper is a lane marker positioned absolutely along
+// the timeline track; its z-index bump on `[data-cinder-open]` (see the
+// `cinder-z-index-local` comment in event-timeline.css) only resolves stacking
+// order between sibling clusters. The actual popover content already composes
+// `cinder-_floating-surface` directly. Not a hand-rolled floating panel.
+// phone-input's country-summary is a decorative absolutely-positioned label
+// painted over a transparent native <select> (the select itself supplies the
+// interactive surface); it is not a layered floating panel.
 
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [
