@@ -61,16 +61,40 @@ one lock:
 
 `main` has required status checks configured via the GitHub branch-protection
 API (not a workflow file): **`unit-tests`**, **`typecheck`**, **`playwright`**,
-and **`Pre-1.0 changeset bump guard`**. `strict` is deliberately `false` — PRs
-are **not** required to be up to date with `main` before merging. Requiring
-strict-mode would reserialize merges behind a single up-to-date branch, which
-is exactly the concurrency problem this change removes from pre-push, just
-moved to the merge queue instead of the push path. The accepted residual risk
-is a stale-base merge landing a real conflict-of-behavior on `main`; that
-class of bug is caught post-hoc by `main-green` (the authoritative, unscoped
-source gate), and `release.yaml` waits for a same-SHA `main-green` run before
-publishing, so it cannot ship un-caught. No human review is required — agents
+and **`Pre-1.0 changeset bump guard`**. No human review is required — agents
 self-merge by design in this repository once their own PR's checks are green.
+
+`strict` was deliberately `false` for a time, on the reasoning that requiring
+branches to be up to date would reserialize merges and that a stale-base merge
+was an acceptable residual risk because `main-green` catches it post-hoc.
+
+**That risk materialized on 2026-07-28.** #972 added the
+`cinder/interior-border-weight` stylelint rule; #1011 added CSS violating it.
+Both were green — #1011's `unit-tests` finished at 14:18:25Z and #972 merged at
+14:32:12Z, so the rule did not exist when #1011 was validated. Nothing forced a
+re-run, both merged 30 seconds apart, and `main` went red (fixed by #1047).
+
+The lesson is that the failing check was never missing. `unit-tests` has always
+run `turbo run lint` and the full `stylelint` sweep unconditionally. It ran
+against a tree that no longer existed by merge time. **A repo-wide guard — a
+stylelint rule, a `check-*.ts` script, `component-conventions.ts` — applies to
+files its own pull request never touches, so no amount of per-PR file-scoping
+can see the conflict.** Only validating the merged result can.
+
+The fix is the **merge queue**, which builds each candidate on top of the real
+`main` and runs the required checks against that. All four required checks
+therefore carry a `merge_group:` trigger, and every scoping job in them fails
+safe on non-`pull_request` events — a queue run is fully unscoped by design.
+This gets the correctness of strict-mode without its serialization: the queue
+batches and tests entries together rather than forcing each PR to be manually
+updated in turn.
+
+`strict: true` is set as an interim stopgap while the queue is being validated,
+and should be dropped once the queue is confirmed working — leaving both on
+imposes the serialization cost the queue exists to avoid.
+
+`release.yaml` still waits for a same-SHA `main-green` run before publishing, so
+nothing ships un-caught even if something slips past the queue.
 
 Required status checks have a sharp edge with path-filtered workflows: a PR
 whose changed files match none of a required check's trigger paths leaves
