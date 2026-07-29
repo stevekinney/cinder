@@ -2,7 +2,9 @@
 
 Cinder component props use one public vocabulary. Mechanically checkable naming
 rules are enforced by `packages/components/scripts/check-prop-conventions.ts`;
-the composition rules also define the review standard for public APIs.
+the composition rules define the review standard for public APIs, while
+cross-cutting visual policies are documented alongside them and require
+component-level review.
 
 ## Handlers
 
@@ -64,3 +66,22 @@ Do not abbreviate public prop or component names. Current banned forms:
 - `FloatingActionButton` → `FloatingAction`
 - `Stat` / `StatGroup` / `StatsSection` → `Statistic` / `StatisticGroup` /
   `StatisticsSection`
+
+## Icons
+
+Use the shared Lucide icon vocabulary for interactive affordances. Disclosures
+that render an indicator use a rotating chevron; nested submenus use
+direction-aware lateral chevrons, while intentionally text-only disclosures
+remain icon-free. Directional transfer uses single or double chevrons; do not
+use `+`, `-`, `−`, `<`, or `>` text glyphs in their place. See [Icon
+vocabulary](./icon-vocabulary.md) for sizing utilities, accessible-name
+guidance, and the current audit.
+
+## Surfaces and controls
+
+Form controls sit on `--cinder-surface-raised` in both themes.
+`--cinder-surface` is a page or panel surface and must never be used as an
+input fill. Use `--cinder-border-muted` for interior dividers and reserve
+`--cinder-border` for a component's outer edge. The repository stylelint rules
+`cinder/no-surface-on-form-control` and `cinder/interior-border-weight` enforce
+these contracts.

@@ -24,9 +24,26 @@
 </script>
 
 <script lang="ts">
+  import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import { BROWSER as browser } from 'esm-env';
+  import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { createPortalAttachment } from '../portal/index.ts';
+  import {
+    closestAcrossShadow,
+    createInheritedPortalStyle,
+    findNearestOpenTopLayer,
+    getShadowHost,
+    isRedispatchedPortaledEvent,
+    observePortalSourceAvailability,
+    redispatchPortaledEvent,
+  } from '../portal/portal.utilities.svelte.ts';
+  import {
+    findFocusTargetAfterNavigationItems,
+    findFocusTargetBeforeNavigationItems,
+    getNavigationBarBrandFocusTargets,
+  } from './navigation-bar-focus.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
   const FALLBACK_ROOT_FONT_SIZE_PX = 16;
@@ -54,8 +71,6 @@
     ...rest
   }: NavigationBarProps = $props();
   const navigationItemSelector = '[data-cinder-navigation-item]';
-  const toggleFocusSelector =
-    '.cinder-navigation-bar__menu-toggle button, .cinder-navigation-bar__menu-toggle [href], .cinder-navigation-bar__menu-toggle input, .cinder-navigation-bar__menu-toggle select, .cinder-navigation-bar__menu-toggle textarea, .cinder-navigation-bar__menu-toggle [tabindex]:not([tabindex="-1"])';
 
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
@@ -71,7 +86,47 @@
   // Stores the toggle element for focus return after Escape-close.
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
+  let pendingTabFocus = false;
   let itemsRegionElement: HTMLDivElement | null = null;
+  let sourceSubtreeUnavailable = $state(false);
+  const itemsPortalScope = createPortalAttachment({
+    disabled: () => !isMobileLayout || !mobileMenuOpen || sourceSubtreeUnavailable,
+    source: () => navigationBarElement,
+    target: () => {
+      const source = navigationBarElement;
+      if (!source) return null;
+      return findNearestOpenTopLayer(source);
+    },
+  });
+  const anchoredItems = createAnchoredOverlay({
+    open: () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+    anchor: () => navigationBarElement,
+    panel: () => itemsRegionElement,
+    placement: () => 'bottom-start' as Placement,
+    offset: () => 0,
+    widthMode: () => 'match-anchor',
+  });
+  const inheritedPortalStyle = createInheritedPortalStyle(
+    () => navigationBarElement,
+    () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+  );
+
+  $effect(() => {
+    if (!mobileMenuOpen || !isMobileLayout) pendingTabFocus = false;
+    if (!pendingTabFocus || !anchoredItems.positionReady) return;
+    pendingTabFocus = false;
+    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
+    firstItem?.focus();
+  });
+
+  $effect(() => {
+    if (!isCollapsible) return;
+
+    return observePortalSourceAvailability(navigationBarElement, (unavailable) => {
+      sourceSubtreeUnavailable = unavailable;
+      if (unavailable) mobileMenuOpen = false;
+    });
+  });
 
   function getCollapsibleMaxWidthPx(): number {
     if (typeof window === 'undefined') {
@@ -101,7 +156,10 @@
       // Fallback: use border-box width if ResizeObserver unavailable
       const initialWidth = navigationBarElement.getBoundingClientRect().width;
       updateMobileLayout(initialWidth);
-      return;
+      const handleResize = () =>
+        updateMobileLayout(navigationBarElement?.getBoundingClientRect().width ?? 0);
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
     }
 
     // Use ResizeObserver to track content-box width, which aligns with CSS container queries.
@@ -148,14 +206,71 @@
     toggleElement = event.currentTarget as HTMLElement | null;
   }
 
+  function handleToggleKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
+    if (!anchoredItems.positionReady) {
+      pendingTabFocus = true;
+      event.preventDefault();
+      return;
+    }
+    const brandTarget =
+      menuTogglePlacement === 'before-brand'
+        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
+        : null;
+    if (brandTarget) {
+      event.preventDefault();
+      brandTarget.focus();
+      return;
+    }
+    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
+    if (!firstItem) return;
+    event.preventDefault();
+    firstItem.focus();
+  }
+
   function getNavigationItems(): HTMLElement[] {
     if (!itemsRegionElement) return [];
 
     return Array.from(itemsRegionElement.querySelectorAll<HTMLElement>(navigationItemSelector));
   }
 
+  function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
+    if (
+      event.key !== 'Tab' ||
+      event.shiftKey ||
+      menuTogglePlacement !== 'before-brand' ||
+      !isMobileLayout ||
+      !mobileMenuOpen ||
+      !anchoredItems.positionReady ||
+      !(event.target instanceof HTMLElement)
+    ) {
+      return false;
+    }
+
+    const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
+    if (event.target !== brandTargets.at(-1)) return false;
+
+    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
+    if (!firstItem) return false;
+
+    event.preventDefault();
+    firstItem.focus();
+    return true;
+  }
+
   function isEnabledNavigationItem(item: HTMLElement): boolean {
-    return item.getAttribute('aria-disabled') !== 'true' && !item.hasAttribute('disabled');
+    if (item.getAttribute('aria-disabled') === 'true' || item.matches(':disabled')) return false;
+    if (item.hidden || closestAcrossShadow(item, '[hidden], [inert], [aria-hidden="true"]'))
+      return false;
+    if (typeof getComputedStyle === 'function') {
+      let current: HTMLElement | null = item;
+      while (current) {
+        const style = getComputedStyle(current);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        current = current.parentElement ?? getShadowHost(current);
+      }
+    }
+    return true;
   }
 
   function getEventNavigationItem(event: Event): HTMLElement | null {
@@ -197,23 +312,65 @@
 
     const activeElement = document.activeElement;
     if (activeElement instanceof Element && itemsRegionElement.contains(activeElement)) {
-      focusMenuToggle();
+      // Closing changes the items snippet from mobile to horizontal and moves
+      // the portaled region back inline. Restore focus after that DOM move so
+      // the browser cannot discard the focus request with the old subtree.
+      queueMicrotask(focusMenuToggle);
     }
   }
 
   function focusMenuToggle(): void {
-    const focusTarget =
-      toggleElement ?? navigationBarElement?.querySelector<HTMLElement>(toggleFocusSelector);
+    const focusTarget = findFocusTargetBeforeNavigationItems(
+      navigationBarElement,
+      toggleElement,
+      false,
+    );
     focusTarget?.focus();
+  }
+
+  function getFocusTargetBeforeItems(): HTMLElement | null {
+    return findFocusTargetBeforeNavigationItems(
+      navigationBarElement,
+      toggleElement,
+      menuTogglePlacement === 'before-brand',
+    );
+  }
+
+  function getFocusTargetAfterItems(): HTMLElement | null {
+    return findFocusTargetAfterNavigationItems(navigationBarElement, itemsRegionElement);
+  }
+
+  function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
+    if (!anchoredItems.positionReady) return false;
+
+    const enabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    if (enabledItems.length === 0) return false;
+
+    if (event.shiftKey && navigationItem === enabledItems[0]) {
+      const previousTarget = getFocusTargetBeforeItems();
+      if (!previousTarget) return false;
+      event.preventDefault();
+      previousTarget.focus();
+      return true;
+    }
+
+    if (!event.shiftKey && navigationItem === enabledItems.at(-1)) {
+      const nextTarget = getFocusTargetAfterItems();
+      if (!nextTarget) return false;
+      event.preventDefault();
+      nextTarget.focus();
+      return true;
+    }
+
+    return false;
   }
 
   function handleClick(event: MouseEvent): void {
     if (consumerOnClick) {
-      const currentTarget =
-        event.currentTarget instanceof HTMLElement ? event.currentTarget : navigationBarElement;
+      const consumerEvent = withNavigationCurrentTarget(event);
       (consumerOnClick as (this: HTMLElement | null, e: MouseEvent) => void).call(
-        currentTarget,
-        event,
+        navigationBarElement,
+        consumerEvent,
       );
     }
     if (event.defaultPrevented) return;
@@ -223,6 +380,11 @@
 
     moveFocusBeforeClosingItemsRegion();
     mobileMenuOpen = false;
+  }
+
+  function bridgePortaledEvent(event: Event): void {
+    if (isRedispatchedPortaledEvent(event)) return;
+    redispatchPortaledEvent(event, navigationBarElement);
   }
 
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
@@ -245,9 +407,11 @@
   function handleKeyDown(event: KeyboardEvent): void {
     // Consumer handler runs first; if it cancels, skip the internal close.
     if (consumerOnKeyDown) {
-      (consumerOnKeyDown as (e: KeyboardEvent) => void)(event);
+      (consumerOnKeyDown as (e: KeyboardEvent) => void)(withNavigationCurrentTarget(event));
     }
     if (event.defaultPrevented) return;
+
+    if (bridgeBrandTabToPortaledPanel(event)) return;
 
     if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
       mobileMenuOpen = false;
@@ -257,6 +421,8 @@
 
     const navigationItem = getEventNavigationItem(event);
     if (!navigationItem || navigationItem !== event.target) return;
+
+    if (event.key === 'Tab' && bridgePortaledPanelTab(event, navigationItem)) return;
 
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
@@ -268,8 +434,22 @@
       event.preventDefault();
       if (isEnabledNavigationItem(navigationItem)) {
         navigationItem.click();
+        if (!mobileMenuOpen) queueMicrotask(focusMenuToggle);
       }
     }
+  }
+
+  function withNavigationCurrentTarget<T extends Event>(event: T): T {
+    return new Proxy(event, {
+      get(target, property) {
+        if (property === 'currentTarget') return navigationBarElement;
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      },
+      set(target, property, value) {
+        return Reflect.set(target, property, value, target);
+      },
+    });
   }
 </script>
 
@@ -290,7 +470,7 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: handleToggle,
+        ...(browser ? { onclick: handleToggle, onkeydown: handleToggleKeyDown } : {}),
       })}
     </div>
   {/if}
@@ -306,19 +486,43 @@
       {@render menuToggle({
         'aria-expanded': (mobileMenuOpen ? 'true' : 'false') as 'true' | 'false',
         'aria-controls': regionId,
-        onclick: handleToggle,
+        ...(browser ? { onclick: handleToggle, onkeydown: handleToggleKeyDown } : {}),
       })}
     </div>
   {/if}
 
+  {#if isMobileLayout && mobileMenuOpen}
+    <div class="cinder-navigation-bar__items-owner" aria-owns={regionId}></div>
+  {/if}
+
   <div
-    bind:this={itemsRegionElement}
-    id={regionId}
-    class="cinder-navigation-bar__items"
-    data-open={mobileMenuOpen ? 'true' : 'false'}
-    inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
+    {@attach itemsPortalScope}
+    class={classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)}
+    style={`display: ${isMobileLayout && mobileMenuOpen ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
   >
-    {@render items({ variant, placement, labelsVisible })}
+    <div
+      bind:this={itemsRegionElement}
+      id={regionId}
+      class={classNames(
+        'cinder-navigation-bar__items',
+        isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined,
+      )}
+      data-open={mobileMenuOpen ? 'true' : 'false'}
+      data-cinder-mobile-panel={isMobileLayout || undefined}
+      data-cinder-position-ready={anchoredItems.positionReady || undefined}
+      style={anchoredItems.positionStyle}
+      inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
+      onclick={isMobileLayout ? bridgePortaledEvent : undefined}
+      onkeydown={isMobileLayout ? bridgePortaledEvent : undefined}
+      onfocusin={isMobileLayout ? bridgePortaledEvent : undefined}
+      onfocusout={isMobileLayout ? bridgePortaledEvent : undefined}
+      onpointerdown={isMobileLayout ? bridgePortaledEvent : undefined}
+      onpointerup={isMobileLayout ? bridgePortaledEvent : undefined}
+      oninput={isMobileLayout ? bridgePortaledEvent : undefined}
+      onchange={isMobileLayout ? bridgePortaledEvent : undefined}
+    >
+      {@render items({ variant, placement, labelsVisible })}
+    </div>
   </div>
 
   {#if actions}

@@ -241,6 +241,49 @@ test('selected text popover and composer anchor without overlapping the selectio
   expectBoxInsideViewport(expandedBox, desktopViewport);
 });
 
+test('selection popover dismisses when the viewport scrolls', async ({ componentPage }) => {
+  const page = await openPage(componentPage);
+  await selectTextInExample(page, 'appears near highlighted text');
+  const popover = page.locator('#basic-selection-popover');
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  const initialScrollY = await page.evaluate(() => window.scrollY);
+  await page.mouse.wheel(0, 300);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(initialScrollY);
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'false');
+});
+
+test('selection popover dismisses when a nested scroll container scrolls', async ({
+  componentPage,
+}) => {
+  const page = await openPage(componentPage);
+  await page.evaluate(() => {
+    const article = document.querySelector<HTMLElement>('article');
+    if (!article?.parentElement) {
+      throw new Error('Selection popover example must render an article.');
+    }
+
+    const scrollContainer = document.createElement('div');
+    scrollContainer.dataset['testid'] = 'nested-selection-scroll-container';
+    scrollContainer.style.height = '8rem';
+    scrollContainer.style.overflow = 'auto';
+    article.style.minHeight = '30rem';
+    article.parentElement.insertBefore(scrollContainer, article);
+    scrollContainer.append(article);
+  });
+
+  await selectTextInExample(page, 'appears near highlighted text');
+  const popover = page.locator('#basic-selection-popover');
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  const scrollContainer = page.getByTestId('nested-selection-scroll-container');
+  await scrollContainer.evaluate((element) => element.scrollBy(0, 100));
+  await expect
+    .poll(() => scrollContainer.evaluate((element) => element.scrollTop))
+    .toBeGreaterThan(0);
+  await expect(popover).toHaveAttribute('data-cinder-position-ready', 'false');
+});
+
 test('multi-line selections anchor to the first visual client rect', async ({ componentPage }) => {
   const page = await openPage(componentPage);
   const selection = await selectTextInExample(

@@ -428,4 +428,14 @@ describe('HoverCard CSS — spacing token regression', () => {
     expect(declaration).toBeDefined();
     expect(declaration!.value).toBe('var(--cinder-space-4)');
   });
+
+  test('arrow edges use the full-strength border token', () => {
+    const cssSource = readFileSync(
+      fileURLToPath(new URL('./hover-card.css', import.meta.url)),
+      'utf8',
+    );
+    const arrowBlock = /\.cinder-hover-card__arrow\s*\{([\s\S]*?)\}/.exec(cssSource)?.[1];
+    expect(arrowBlock).toContain('border-inline-start: 1px solid var(--cinder-border);');
+    expect(arrowBlock).toContain('border-block-start: 1px solid var(--cinder-border);');
+  });
 });

@@ -311,7 +311,7 @@ describe('StatusDot CSS contract', () => {
     expect(css).toContain("data-cinder-state='connected']");
     expect(css).toContain('color: var(--cinder-success)');
     expect(css).toContain("data-cinder-state='connecting']");
-    expect(css).toContain('color: var(--cinder-warning)');
+    expect(css).toContain('color: var(--cinder-color-warning-fg)');
     expect(css).toContain("data-cinder-state='disconnected']");
     expect(css).toContain('color: var(--cinder-text-muted)');
     expect(css).toContain("data-cinder-state='error']");

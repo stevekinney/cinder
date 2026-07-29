@@ -73,7 +73,7 @@
     margin-block-start: auto;
     padding-block: var(--cinder-space-3);
     padding-inline: var(--cinder-space-3);
-    border-block-start: 1px solid var(--cinder-border);
+    border-block-start: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
   }
 

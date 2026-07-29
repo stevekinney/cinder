@@ -16,6 +16,7 @@ This directory holds long-form documentation that does not live inside a compone
 - [Visual-regression inventory](./visual-regression/phase-0-inventory.md): read-only discovery behind the visual-regression rollout.
 - [Design debt](./design-debt.md): resolved design decisions retained so future work does not reopen the same product questions.
 - [Validation topology](./validation-topology.md): what commit/push/PR CI/main-green/release each run, why the boundaries sit where they do, and the guardrails that keep them honest.
+- [Icon vocabulary](./icon-vocabulary.md): Lucide affordance meanings, sizing, and the text-glyph audit.
 
 ## Decisions
 

@@ -66,8 +66,8 @@ describe('scoped theme tokens', () => {
     expectDeclarations(darkBlock, {
       'color-scheme': 'dark',
       '--cinder-bg': 'oklch(15% 0.035 245)',
-      '--cinder-surface': 'oklch(20% 0.04 245)',
-      '--cinder-surface-raised': 'oklch(26% 0.045 245)',
+      '--cinder-surface': 'oklch(21% 0.04 245)',
+      '--cinder-surface-raised': 'oklch(28% 0.045 245)',
       '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 3%)',
       '--cinder-text': 'oklch(92% 0.02 245)',
       '--cinder-text-muted': 'oklch(82% 0.02 245)',
@@ -111,8 +111,8 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
-      '--cinder-bg': 'oklch(96% 0.01 245)',
-      '--cinder-surface': 'oklch(98.5% 0.008 245)',
+      '--cinder-bg': 'oklch(95% 0.01 245)',
+      '--cinder-surface': 'oklch(98% 0.008 245)',
       '--cinder-surface-raised': 'oklch(100% 0.006 245)',
       '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(0% 0 0) 3%)',
       '--cinder-text': 'oklch(20% 0.018 245)',
@@ -155,7 +155,7 @@ describe('scoped theme tokens', () => {
 
     expect(sidebarCss).toContain('background: var(--cinder-surface);');
     expect(sidebarCss).toContain('border-inline-end: 1px solid var(--cinder-border);');
-    expect(sidebarCss).toContain('border-block-start: 1px solid var(--cinder-border);');
+    expect(sidebarCss).toContain('border-block-start: 1px solid var(--cinder-border-muted);');
     expect(navigationItemCss).toContain('color: var(--cinder-text-muted);');
     expect(navigationItemCss).toContain('color: var(--cinder-text);');
     expect(navigationItemCss).toContain('background-color: var(--cinder-surface-hover);');
@@ -173,8 +173,8 @@ describe('scoped theme tokens', () => {
     expect(drawerCss).toContain('background: var(--cinder-surface-raised);');
     expect(drawerCss).toContain('border-inline-start: 1px solid var(--cinder-border);');
     expect(drawerCss).toContain('border-inline-end: 1px solid var(--cinder-border);');
-    expect(drawerCss).toContain('border-block-end: 1px solid var(--cinder-border);');
-    expect(drawerCss).toContain('border-block-start: 1px solid var(--cinder-border);');
+    expect(drawerCss).toContain('border-block-end: 1px solid var(--cinder-border-muted);');
+    expect(drawerCss).toContain('border-block-start: 1px solid var(--cinder-border-muted);');
     expect(drawerCss).toContain('color: var(--cinder-text);');
     expect(drawerCss).toContain('color: var(--cinder-text-muted);');
     expect(buttonCss).toContain('background: var(--cinder-accent);');

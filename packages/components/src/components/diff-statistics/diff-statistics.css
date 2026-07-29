@@ -47,7 +47,7 @@
   }
 
   .cinder-diff-statistics__stat--modified {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-diff-statistics__stat--none {
