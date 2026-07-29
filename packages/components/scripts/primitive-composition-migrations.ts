@@ -118,7 +118,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'marquee/marquee.css',
     'matrix-chart/matrix-chart.css',
     'navigation-bar/navigation-bar.css',
-    'phone-input/phone-input.css',
     'run-step-timeline/run-step-timeline.css',
     'select/select.css',
     'selection-popover/selection-popover.css',
@@ -140,9 +139,10 @@ allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
 // `cinder-z-index-local` comment in event-timeline.css) only resolves stacking
 // order between sibling clusters. The actual popover content already composes
 // `cinder-_floating-surface` directly. Not a hand-rolled floating panel.
-// phone-input's country-summary is a decorative absolutely-positioned label
-// painted over a transparent native <select> (the select itself supplies the
-// interactive surface); it is not a layered floating panel.
+// phone-input's country-summary is excluded at detection time (see the
+// `summary` addition to isInternalLayerTarget() in primitive-composition-css.ts):
+// it is a decorative absolutely-positioned label painted over a transparent
+// native <select>, not a layered floating panel.
 
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [

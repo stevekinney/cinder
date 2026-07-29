@@ -502,6 +502,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('ignores a positioned summary overlay stacked above a transparent native control', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.field__summary { position: absolute; z-index: 1; }',
+        'new-control/new-control.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('allows a floating surface composed on the matching rendered element', () => {
     expect(
       findPrimitiveCompositionViolations(
