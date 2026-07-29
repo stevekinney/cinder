@@ -21,18 +21,23 @@ a column of submenu triggers on one axis, and a detail panel on the other.
   top-level trigger/panel relationship rather than inventing a new pattern.
 - Focus management: entering a submenu panel moves focus to its first
   focusable descendant (falling back to the panel itself when empty);
-  returning from the panel restores focus to the controlling trigger, never
-  to the top-level trigger or document body.
+  returning from the panel restores focus to the submenu trigger that
+  controls it, never to the top-level trigger or document body directly.
 - Keyboard matrix (submenu trigger column):
   - `ArrowDown` / `ArrowUp` traverse triggers, wrapping at the ends
   - `Home` / `End` jump to first/last trigger
   - direction-aware "enter" arrow (`ArrowRight` in LTR, `ArrowLeft` in RTL) or
     `Enter` / `Space` opens the detail panel and moves focus into it
   - direction-aware "return" arrow (`ArrowLeft` in LTR, `ArrowRight` in RTL)
-    from either the trigger column or an open detail panel returns focus to
-    the top-level trigger
-  - `Escape` from the trigger column or detail panel closes the whole menu
-    and restores focus to the top-level trigger
+    returns focus to the top-level trigger
+  - `Escape` closes the whole menu and restores focus to the top-level
+    trigger
+- Keyboard matrix (open detail panel):
+  - the direction-aware "return" arrow returns focus to the submenu trigger
+    that controls the panel (not the top-level trigger — reaching the
+    top-level trigger takes a second "return" press from the trigger column)
+  - `Escape` closes the whole menu and restores focus to the top-level
+    trigger
   - Modified arrow keys (Alt/Ctrl/Meta) and modified Home/End are left
     unhandled so browser/OS shortcuts using those chords are not shadowed.
 - Direction awareness: `resolvedDirection` (see `_internal/text-direction.ts`)

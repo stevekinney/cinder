@@ -709,6 +709,39 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('evaluates every comparison in a conjunctive range query', () => {
+    // `(width >= 20rem) and (width <= 40rem)` has two range comparisons;
+    // a container above the upper bound must be treated as inactive even
+    // though the first (lower-bound) comparison alone would match.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 700 }) });
+    const element = document.createElement('div');
+    element.className = 'conjunctive-range-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.conjunctive-range-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (width >= 20rem) and (width <= 40rem) { .conjunctive-range-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(width >= 20rem) and (width <= 40rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('evaluates inline-size range queries against the content box', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');

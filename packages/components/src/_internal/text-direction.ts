@@ -380,15 +380,8 @@ function isContainerQueryActive(
     Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
   const matches =
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
-  const range = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  if (range) {
-    const threshold = Number(range[2]) * (range[3]!.toLowerCase() === 'rem' ? remSize : 1);
-    if (range[1] === '>=' && width < threshold) return false;
-    if (range[1] === '>' && width <= threshold) return false;
-    if (range[1] === '<=' && width > threshold) return false;
-    if (range[1] === '<' && width >= threshold) return false;
-    return !/^\s*not\b/i.test(conditionText);
-  }
+  const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
+  if (rangeResult !== undefined) return rangeResult;
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
 }
 
@@ -400,6 +393,30 @@ function hasUnsupportedSizeUnit(conditionText: string): boolean {
     conditionText,
   );
   return match !== null && !/^(?:px|rem)$/i.test(match[1]!);
+}
+
+// A conjunctive range condition — e.g. `(width >= 20rem) and (width <= 40rem)`
+// — has more than one range comparison to satisfy. Evaluate every one
+// (`matchAll`, not a single `exec()`) and require all of them to hold.
+// Returns undefined when the condition contains no range comparison at all.
+function evaluateRangeComparisons(
+  conditionText: string,
+  width: number,
+  remSize: number,
+): boolean | undefined {
+  const rangePattern = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/gi;
+  const comparisons = [...conditionText.matchAll(rangePattern)];
+  if (comparisons.length === 0) return undefined;
+  const satisfiesAll = comparisons.every((comparison) => {
+    const operator = comparison[1]!;
+    const threshold =
+      Number(comparison[2]) * (comparison[3]!.toLowerCase() === 'rem' ? remSize : 1);
+    if (operator === '>=') return width >= threshold;
+    if (operator === '>') return width > threshold;
+    if (operator === '<=') return width <= threshold;
+    return width < threshold;
+  });
+  return /^\s*not\b/i.test(conditionText) ? !satisfiesAll : satisfiesAll;
 }
 
 function evaluateContainerSizeCondition(
@@ -414,14 +431,9 @@ function evaluateContainerSizeCondition(
     Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
   const matches =
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
-  const range = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  if (!range) return /^\s*not\b/i.test(conditionText) ? !matches : matches;
-  const threshold = Number(range[2]) * (range[3]!.toLowerCase() === 'rem' ? remSize : 1);
-  if (range[1] === '>=' && width < threshold) return false;
-  if (range[1] === '>' && width <= threshold) return false;
-  if (range[1] === '<=' && width > threshold) return false;
-  if (range[1] === '<' && width >= threshold) return false;
-  return !/^\s*not\b/i.test(conditionText);
+  const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
+  if (rangeResult !== undefined) return rangeResult;
+  return /^\s*not\b/i.test(conditionText) ? !matches : matches;
 }
 
 export function isContainerRule(rule: CSSRule): boolean {
