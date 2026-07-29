@@ -70,9 +70,16 @@ was an acceptable residual risk because `main-green` catches it post-hoc.
 
 **That risk materialized on 2026-07-28.** #972 added the
 `cinder/interior-border-weight` stylelint rule; #1011 added CSS violating it.
-Both were green — #1011's `unit-tests` finished at 14:18:25Z and #972 merged at
-14:32:12Z, so the rule did not exist when #1011 was validated. Nothing forced a
-re-run, both merged 30 seconds apart, and `main` went red (fixed by #1047).
+Both were green. The chronology:
+
+| Time (UTC) | Event                                                             |
+| ---------- | ----------------------------------------------------------------- |
+| 14:18:25Z  | #1011's `unit-tests` finishes green — the rule does not exist yet |
+| 14:32:12Z  | #972 merges, introducing the rule                                 |
+| 14:32:42Z  | #1011 merges, still validated against the pre-rule tree           |
+
+Nothing forced a re-run in that 14-minute window, and `main` went red on the
+second merge (fixed by #1047).
 
 The lesson is that the failing check was never missing. `unit-tests` has always
 run `turbo run lint` and the full `stylelint` sweep unconditionally. It ran

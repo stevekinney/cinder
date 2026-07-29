@@ -18,10 +18,11 @@ on:
   pull_request: {}
 
   # `merge_group` runs `typecheck` and `playwright` against the merge queue's
-  # candidate ref — the tree that is actually about to become `main` — rather
-  # than against whatever `main` looked like when the pull request was opened.
-  # See the same block in unit-tests.yaml for the `main` breakage that motivated
-  # this.
+  # candidate ref — the tree that is actually about to become `main`. A
+  # `pull_request` run tests the merge ref as it stood when that run was
+  # TRIGGERED, which goes stale the moment anything else lands on `main`; the
+  # queue's candidate is rebuilt on the real tip instead. See the same block in
+  # unit-tests.yaml for the `main` breakage that motivated this.
   #
   # Both the `scope` job's `relevant` output and its matrix decision fail safe
   # on non-`pull_request` events (`relevant=true`, full matrix), so a queue run

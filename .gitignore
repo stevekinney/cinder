@@ -127,6 +127,12 @@ packages/playground/.tmp/
 # Hydration-test temporary SSR-compiled component files
 **/.cinder-ssr-*.mjs
 
+# Temporary build entrypoint: packages/components/scripts/build.ts writes this
+# from src/index.ts, feeds it to Bun.build, then unconditionally removes it. If
+# it is ever tracked, every successful build deletes a tracked source file and
+# leaves the worktree dirty.
+packages/components/src/index.browser.ts
+
 **/.claude/worktrees/**
 .claude/scheduled_tasks.lock
 
