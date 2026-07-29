@@ -1024,6 +1024,81 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('focus genuinely returning to the composer lets it reclaim keyboard ownership', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      await fireEvent.input(textarea, { target: { value: 'Reclaimed draft' } });
+      textarea.focus();
+
+      // The soft keyboard opens while the composer is expanded and focused.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Focus briefly moves to an external control (e.g. an autofill
+      // suggestion) and then genuinely returns to the composer, all while
+      // the keyboard stays visible.
+      externalInput.focus();
+      textarea.focus();
+
+      // A further event while still visible lets the composer re-establish
+      // ownership now that it has focus again.
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Cancel collapses the composer before the keyboard reports itself
+      // hidden — ownership must have survived the earlier round trip for
+      // this to still work.
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      externalInput.remove();
+    }
+  });
+
   test('tabbing to a real destination outside the popover keeps focus there through a later movement dismissal', async () => {
     let closed = false;
 

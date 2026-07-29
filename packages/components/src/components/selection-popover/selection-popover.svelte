@@ -402,7 +402,16 @@
     // dismisses a collapsed popover").
     const forgetComposerKeyboardOwnershipOnExternalFocus = (event: FocusEvent) => {
       if (isRestoringFocus) return;
-      if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
+      if (event.target instanceof Node && popoverElement?.contains(event.target)) {
+        // Focus genuinely returned to the composer (e.g. the user tapped
+        // away and back while the keyboard stayed up). A keyboard
+        // interaction it triggers from here should be able to establish
+        // ownership again, rather than staying forgotten until the whole
+        // transition settles.
+        keyboardOwnershipForgotten.delete('window');
+        keyboardOwnershipForgotten.delete('visual-viewport');
+        return;
+      }
       // document.body is where the platform (and our own restoreFocus() calls)
       // parks focus when the previously-focused element is removed or isn't
       // focusable — it is never a real destination the user chose, so it
