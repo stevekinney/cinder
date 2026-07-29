@@ -10,6 +10,8 @@ export type NavigationBarToggleAttributes = {
   'aria-controls': string;
   /** Client-only click handler. Omitted during SSR to avoid forwarding function props in server markup. */
   onclick?: (event: MouseEvent) => void;
+  /** Bridges keyboard focus into the portaled menu after positioning is ready. */
+  onkeydown?: (event: KeyboardEvent) => void;
 };
 /** Context passed to the items snippet so items can adapt their layout. */
 export type NavigationBarItemsContext = {

@@ -164,6 +164,7 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
     /* Lift above sticky thead stacking context only while focused */
+    /* cinder-z-index-local: focused cell ring paints above the table's sticky header. */
     z-index: 2;
   }
 

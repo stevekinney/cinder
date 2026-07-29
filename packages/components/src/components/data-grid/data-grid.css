@@ -54,6 +54,7 @@
   .cinder-data-grid[data-cinder-sticky-header] .cinder-data-grid__header-row {
     position: sticky;
     inset-block-start: 0;
+    /* cinder-z-index-local: sticky header stays above scrolling grid rows. */
     z-index: 3;
   }
 
@@ -204,10 +205,12 @@
   .cinder-data-grid__header-cell[data-cinder-pin],
   .cinder-data-grid__cell[data-cinder-pin] {
     position: sticky;
+    /* cinder-z-index-local: pinned cells stay above unpinned cells in this grid. */
     z-index: 2;
   }
 
   .cinder-data-grid__header-cell[data-cinder-pin] {
+    /* cinder-z-index-local: pinned header is the intersection of two local sticky axes. */
     z-index: 4;
   }
 

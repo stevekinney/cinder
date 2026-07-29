@@ -32,6 +32,10 @@
   import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { createPortalAttachment } from '../portal/index.ts';
+  import {
+    createInheritedPortalStyle,
+    findNearestOpenTopLayer,
+  } from '../portal/portal.utilities.svelte.ts';
 
   let {
     id: panelIdProp,
@@ -68,6 +72,7 @@
   }
 
   let triggerWrapper: HTMLDivElement | undefined = $state();
+  let portalScopeElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
   let arrowElement: HTMLSpanElement | undefined = $state();
 
@@ -100,11 +105,27 @@
     isDestroyed = true;
   });
 
-  const portalAttachment = createPortalAttachment({
-    target: () => document.body,
+  const portalScopeAttachment = createPortalAttachment({
+    target: () => {
+      if (!anchorElement) return document.body;
+      try {
+        return findNearestOpenTopLayer(anchorElement) ?? document.body;
+      } catch {
+        return document.body;
+      }
+    },
     inheritAttributes: true,
     source: () => anchorElement ?? null,
   });
+  const panelPortalAttachment = createPortalAttachment({
+    disabled: () => !portalScopeElement,
+    target: () => portalScopeElement,
+    inheritAttributes: false,
+  });
+  const inheritedPortalStyle = createInheritedPortalStyle(
+    () => anchorElement,
+    () => mounted && open,
+  );
 
   const anchoredOverlay = createAnchoredOverlay({
     open: () => open,
@@ -131,7 +152,17 @@
       capture: true,
       // Use the open-time snapshot so a swapped/removed trigger does not cause
       // unexpected close when the user mouses down on the original opener.
-      ignoreRefs: [() => resolvedAnchorAtOpen ?? null, ...outsideClickIgnoreRefs],
+      // Also treat the portal scope itself as inside: a descendant overlay
+      // (nested Popover, SpeedDial, or collapsed NavigationBar) that resolves
+      // its own portal target to this panel's `${panelId}-scope` becomes a
+      // *sibling* of `panelElement` under that scope container, not a
+      // descendant of it, so a mousedown inside the descendant surface must
+      // be excluded here too or it would close this panel first.
+      ignoreRefs: [
+        () => resolvedAnchorAtOpen ?? null,
+        () => portalScopeElement ?? null,
+        ...outsideClickIgnoreRefs,
+      ],
     }),
   );
 
@@ -284,15 +315,26 @@
 </script>
 
 {#if trigger}
-  <div bind:this={triggerWrapper} class="cinder-popover__trigger">
+  <div
+    bind:this={triggerWrapper}
+    class="cinder-popover__trigger"
+    data-cinder-portal-owner={open ? `${panelId}-scope` : undefined}
+  >
     {@render trigger()}
   </div>
 {/if}
 
 {#if mounted && open && anchorElement}
   <div
+    bind:this={portalScopeElement}
+    {@attach portalScopeAttachment}
+    id={`${panelId}-scope`}
+    class="cinder-popover__portal-scope"
+    style={`display: contents;${inheritedPortalStyle.style}`}
+  ></div>
+  <div
     bind:this={panelElement}
-    {@attach portalAttachment}
+    {@attach panelPortalAttachment}
     {@attach dismissOnOutsideMousedown}
     id={panelId}
     {role}
@@ -300,6 +342,7 @@
     aria-labelledby={ariaLabelledby}
     aria-hidden={anchoredOverlay.positionReady ? undefined : 'true'}
     class={classNames('cinder-_floating-surface', 'cinder-popover', className)}
+    data-cinder-portal-owner={`${panelId}-scope`}
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
     style={anchoredOverlay.positionStyle}

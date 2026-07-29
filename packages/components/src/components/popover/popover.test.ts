@@ -40,14 +40,18 @@ const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
 const shiftSpy = mock((opts: unknown) => ({ name: 'shift', options: opts, fn: () => ({}) }));
 const offsetSpy = mock((v: unknown) => ({ name: 'offset', options: v, fn: () => ({}) }));
 
-mock.module('@floating-ui/dom', () => ({
-  computePosition: computePositionSpy,
-  autoUpdate: autoUpdateSpy,
-  arrow: arrowSpy,
-  flip: flipSpy,
-  shift: shiftSpy,
-  offset: offsetSpy,
-}));
+function registerPopoverFloatingUiMock(): void {
+  mock.module('@floating-ui/dom', () => ({
+    computePosition: computePositionSpy,
+    autoUpdate: autoUpdateSpy,
+    arrow: arrowSpy,
+    flip: flipSpy,
+    shift: shiftSpy,
+    offset: offsetSpy,
+  }));
+}
+
+registerPopoverFloatingUiMock();
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Popover } = await import('./popover.svelte');
@@ -97,6 +101,10 @@ const KNOWN_POPOVER_WARNINGS = [
 let warnSpy: ReturnType<typeof spyOn<typeof console, 'warn'>>;
 
 beforeEach(() => {
+  // Bun module mocks are process-global. Re-register this fixture before each
+  // test so another floating-surface test file cannot replace the exports
+  // used by Popover when the scoped suite runs in one serial process.
+  registerPopoverFloatingUiMock();
   deferComputePosition = false;
   deferredResolvers = [];
   computePositionResult = {
@@ -114,6 +122,10 @@ afterEach(() => {
     if (node.isConnected) node.remove();
   }
   scratchNodes = [];
+  // Portaled panels can outlive Testing Library's render container when an
+  // attachment teardown is scheduled after the test settles. Clear the body
+  // so a later file in a scoped serial run cannot select a stale panel.
+  document.body.replaceChildren();
   computePositionSpy.mockClear();
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
@@ -322,8 +334,57 @@ describe('Popover — portal and arrow', () => {
 
     const panel = queryPopoverPanel()!;
     expect(document.body.contains(panel)).toBe(true);
-    expect(panel.parentElement).toBe(document.body);
+    expect(panel.parentElement?.parentElement).toBe(document.body);
     expect(container.contains(panel)).toBe(false);
+  });
+
+  test('keeps a panel inside the nearest open native dialog', async () => {
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    const nativeMatches = dialog.matches.bind(dialog);
+    dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    dialog.append(triggerButton);
+    attachScratch(dialog);
+
+    render(Popover, {
+      props: {
+        open: true,
+        triggerRef: triggerButton,
+        children: textSnippet('dialog content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(dialog.querySelector('.cinder-popover')).not.toBeNull();
+    });
+    expect(dialog.querySelector('.cinder-popover')?.parentElement?.parentElement).toBe(dialog);
+  });
+
+  test('inherited portal tokens remain inherited so panel classes can override them', async () => {
+    render(Popover, {
+      props: {
+        open: true,
+        class: 'consumer-popover',
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+      },
+    });
+    const trigger = document.querySelector<HTMLElement>('.cinder-popover__trigger button')!;
+    trigger.style.setProperty('--cinder-surface-raised', 'hotpink');
+
+    await waitFor(() => {
+      const portalScope = queryPopoverPanel()?.parentElement;
+      expect(portalScope?.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    });
+
+    const panel = queryPopoverPanel()!;
+    const portalScope = panel.parentElement!;
+    expect(portalScope.classList.contains('cinder-popover__portal-scope')).toBe(true);
+    expect(portalScope.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    expect(panel.style.getPropertyValue('--cinder-surface-raised')).toBe('');
+    expect(panel.classList.contains('consumer-popover')).toBe(true);
   });
 
   test('copies inherited dir and theme attributes before portaling', async () => {
@@ -350,10 +411,10 @@ describe('Popover — portal and arrow', () => {
       expect(queryPopoverPanel()).not.toBeNull();
     });
 
-    const panel = queryPopoverPanel()!;
-    expect(panel.getAttribute('dir')).toBe('rtl');
-    expect(panel.getAttribute('data-theme')).toBe('dark');
-    expect(panel.getAttribute('data-cinder-theme')).toBe('midnight');
+    const portalScope = queryPopoverPanel()!.parentElement!;
+    expect(portalScope.getAttribute('dir')).toBe('rtl');
+    expect(portalScope.getAttribute('data-theme')).toBe('dark');
+    expect(portalScope.getAttribute('data-cinder-theme')).toBe('midnight');
   });
 
   test('renders an arrow inside a placed panel when arrowVisible=true', async () => {
@@ -782,6 +843,28 @@ describe('Popover — outside mousedown', () => {
     await fireEvent.mouseDown(panel);
     expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('open');
   });
+
+  test('mousedown inside a descendant portal (nested overlay) does not close', async () => {
+    // A descendant Popover/SpeedDial/collapsed NavigationBar resolves its own
+    // portal target to this panel's `${panelId}-scope` container, so it lands
+    // as a *sibling* of the panel element under that scope — not inside the
+    // panel itself. Simulate that by appending a node directly to the portal
+    // scope container, outside `panel`, and confirm it still counts as inside.
+    const { container } = render(BindableFixture, { props: { initialOpen: true } });
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+    const panel = queryPopoverPanel()!;
+    const portalScope = panel.parentElement!;
+    expect(portalScope.classList.contains('cinder-popover__portal-scope')).toBe(true);
+
+    const descendantOverlay = document.createElement('div');
+    descendantOverlay.textContent = 'nested overlay content';
+    portalScope.appendChild(descendantOverlay);
+
+    await fireEvent.mouseDown(descendantOverlay);
+    expect(container.querySelector('[data-testid="open-state"]')?.textContent).toBe('open');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -813,9 +896,8 @@ describe('Popover — floating-ui wiring', () => {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
+      expect(autoUpdateSpy).toHaveBeenCalled();
     });
-    expect(autoUpdateSpy).toHaveBeenCalled();
     const call = autoUpdateSpy.mock.calls[0]!;
     expect(call[0]).toBeInstanceOf(HTMLElement);
     expect(call[1]).toBeInstanceOf(HTMLElement);
@@ -832,9 +914,8 @@ describe('Popover — floating-ui wiring', () => {
       },
     });
     await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
+      expect(offsetSpy).toHaveBeenCalledWith(16);
     });
-    expect(offsetSpy).toHaveBeenCalledWith(16);
   });
 
   test('arrow middleware is NOT called when arrowVisible=false', async () => {
@@ -868,7 +949,7 @@ describe('Popover — floating-ui wiring', () => {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
     });
     await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
+      expect(autoUpdateSpy).toHaveBeenCalled();
     });
     autoUpdateTeardown.mockClear();
     await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
