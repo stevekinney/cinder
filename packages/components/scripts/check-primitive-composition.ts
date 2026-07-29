@@ -161,28 +161,60 @@ function bindingPatternIncludesName(pattern: unknown, bindingName: string): bool
   return false;
 }
 
-function declaresBindingWithinFunctionScope(node: unknown, bindingName: string): boolean {
+// `var` is function-scoped: a `var tag` anywhere inside a function (including
+// nested blocks) shadows the whole function body, regardless of which block
+// it lexically sits in. Nested function/arrow bodies are separate scopes with
+// their own shadowing handled independently by the caller's recursion; don't
+// descend into them here or a same-named local in a nested function would
+// falsely shadow the outer binding.
+function declaresVarBindingWithinFunctionScope(node: unknown, bindingName: string): boolean {
   if (!isRecord(node)) return false;
-  // Nested function/arrow bodies are separate scopes with their own shadowing
-  // handled independently by the caller's recursion; don't descend into them
-  // here or a same-named local in a nested function would falsely shadow the
-  // outer binding.
   if (
     node['type'] === 'FunctionDeclaration' ||
     node['type'] === 'FunctionExpression' ||
     node['type'] === 'ArrowFunctionExpression'
   )
     return false;
-  if (node['type'] === 'VariableDeclarator' && bindingPatternIncludesName(node['id'], bindingName))
+  if (
+    node['type'] === 'VariableDeclaration' &&
+    node['kind'] === 'var' &&
+    Array.isArray(node['declarations']) &&
+    node['declarations'].some(
+      (declarator) =>
+        isRecord(declarator) && bindingPatternIncludesName(declarator['id'], bindingName),
+    )
+  )
     return true;
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) {
-      if (value.some((item) => declaresBindingWithinFunctionScope(item, bindingName))) return true;
-    } else if (isRecord(value) && declaresBindingWithinFunctionScope(value, bindingName)) {
+      if (value.some((item) => declaresVarBindingWithinFunctionScope(item, bindingName)))
+        return true;
+    } else if (isRecord(value) && declaresVarBindingWithinFunctionScope(value, bindingName)) {
       return true;
     }
   }
   return false;
+}
+
+// `let`/`const` are block-scoped: only a direct child of THIS block that
+// declares the binding shadows references within this block. A block nested
+// deeper inside (an `if`/`for`/bare `{}`) has its own, independently
+// evaluated scope and must not leak its shadowing back out to sibling
+// statements once that block ends.
+function declaresLexicalBindingDirectlyInBlock(block: UnknownRecord, bindingName: string): boolean {
+  const body = block['body'];
+  if (!Array.isArray(body)) return false;
+  return body.some(
+    (statement) =>
+      isRecord(statement) &&
+      statement['type'] === 'VariableDeclaration' &&
+      (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+      Array.isArray(statement['declarations']) &&
+      statement['declarations'].some(
+        (declarator) =>
+          isRecord(declarator) && bindingPatternIncludesName(declarator['id'], bindingName),
+      ),
+  );
 }
 
 function possibleMutableControlNames(source: string, expression: unknown): Set<string> {
@@ -194,8 +226,12 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     return new Set();
   const bindingName = expression['name'];
   const root: unknown = parseSvelte(source, { modern: true });
-  if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
-    return new Set();
+  if (!isRecord(root)) return new Set();
+  const instanceContent =
+    isRecord(root['instance']) && isRecord(root['instance']['content'])
+      ? root['instance']['content']
+      : undefined;
+  if (instanceContent === undefined && !isRecord(root['fragment'])) return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
   const walkTopLevel = (current: unknown, shadowed = false): void => {
@@ -212,8 +248,10 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
           current['params'].some((parameter) =>
             bindingPatternIncludesName(parameter, bindingName),
           )) ||
-        declaresBindingWithinFunctionScope(current['body'], bindingName);
+        declaresVarBindingWithinFunctionScope(current['body'], bindingName);
       currentShadowed ||= declaresBinding;
+    } else if (type === 'BlockStatement') {
+      currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
     }
     const node = current;
     let candidate: unknown;
@@ -247,7 +285,16 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       else if (isRecord(child)) walkTopLevel(child, currentShadowed);
     }
   };
-  walkTopLevel(root['instance']['content']);
+  if (instanceContent !== undefined) walkTopLevel(instanceContent);
+  // Assignments can also live inline in the template — an event handler like
+  // `onclick={() => (tag = 'input')}` never appears in the instance script,
+  // so scan every template expression (handlers, bindings, interpolations)
+  // as its own top-level closure over the instance scope.
+  if (isRecord(root['fragment']))
+    walkAst(root['fragment'], (node) => {
+      if (node['type'] === 'ExpressionTag' && isRecord(node['expression']))
+        walkTopLevel(node['expression']);
+    });
   return possibleControls;
 }
 
@@ -279,6 +326,21 @@ function attributeValueWithDynamics(
     .join('');
 }
 
+function staticPropertyName(property: UnknownRecord): string | undefined {
+  if (property['type'] !== 'Property' || property['computed'] === true) return undefined;
+  const key = property['key'];
+  if (!isRecord(key)) return undefined;
+  if (key['type'] === 'Identifier' && typeof key['name'] === 'string') return key['name'];
+  if (key['type'] === 'Literal' && typeof key['value'] === 'string') return key['value'];
+  return undefined;
+}
+
+// Resolves the *last* statically-known value for `hidden` and (on a solo
+// `<input>`) `type`, walking attributes — including object-spread properties
+// — in source order. A later attribute or spread must be able to override an
+// earlier one, matching how Svelte applies attributes; a naive `.some()` over
+// unordered evidence would let a trailing `{...{ type: 'text' }}` remain
+// masked by an earlier `type="hidden"`.
 function hasStaticHiddenAttribute(
   element: UnknownRecord,
   elementNames: ReadonlySet<string>,
@@ -286,37 +348,36 @@ function hasStaticHiddenAttribute(
 ): boolean {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
-  return attributes.some((attribute) => {
-    if (!isRecord(attribute)) return false;
+  const soloInput = elementNames.size === 1 && elementNames.has('input');
+  let hiddenState: boolean | undefined;
+  let typeIsHidden: boolean | undefined;
+
+  for (const attribute of attributes) {
+    if (!isRecord(attribute)) continue;
     if (attribute['type'] === 'SpreadAttribute' && isRecord(attribute['expression'])) {
       const expression = attribute['expression'];
       if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties']))
-        return false;
-      return expression['properties'].some((property) => {
-        if (!isRecord(property) || property['type'] !== 'Property' || property['computed'] === true)
-          return false;
-        const key = property['key'];
-        const name = isRecord(key)
-          ? key['type'] === 'Identifier' && typeof key['name'] === 'string'
-            ? key['name']
-            : key['type'] === 'Literal' && typeof key['value'] === 'string'
-              ? key['value']
-              : undefined
-          : undefined;
-        if (
-          name !== 'hidden' &&
-          !(elementNames.size === 1 && elementNames.has('input') && name === 'type')
-        )
-          return false;
-        const value = property['value'];
+        continue;
+      for (const property of expression['properties']) {
+        if (!isRecord(property)) continue;
+        const name = staticPropertyName(property);
         if (name === 'hidden')
-          return isRecord(value) && value['type'] === 'Literal' && value['value'] === true;
-        return staticStringFromExpression(value, bindings)?.toLowerCase() === 'hidden';
-      });
+          hiddenState =
+            isRecord(property['value']) &&
+            property['value']['type'] === 'Literal' &&
+            property['value']['value'] === true;
+        else if (soloInput && name === 'type')
+          typeIsHidden =
+            staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
+      }
+      continue;
     }
-    if (attribute['type'] !== 'Attribute') return false;
+    if (attribute['type'] !== 'Attribute') continue;
     if (attribute['name'] === 'hidden') {
-      if (attribute['value'] === true || staticAttributeValue(attribute) !== undefined) return true;
+      if (attribute['value'] === true || staticAttributeValue(attribute) !== undefined) {
+        hiddenState = true;
+        continue;
+      }
       const value = attribute['value'];
       const expressionTag = isRecord(value)
         ? value
@@ -324,22 +385,23 @@ function hasStaticHiddenAttribute(
           ? value[0]
           : undefined;
       const expression = expressionTag?.['expression'];
-      return (
-        expressionTag?.['type'] === 'ExpressionTag' &&
-        isRecord(expression) &&
-        ((expression['type'] === 'Literal' && expression['value'] === true) ||
-          (expression['type'] === 'Identifier' &&
-            typeof expression['name'] === 'string' &&
-            bindings.get(expression['name']) === 'true'))
-      );
+      if (expressionTag?.['type'] !== 'ExpressionTag' || !isRecord(expression)) continue;
+      if (expression['type'] === 'Literal' && typeof expression['value'] === 'boolean') {
+        hiddenState = expression['value'];
+        continue;
+      }
+      if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+        const bound = bindings.get(expression['name']);
+        if (bound === 'true' || bound === 'false') hiddenState = bound === 'true';
+      }
+      continue;
     }
-    return (
-      elementNames.size === 1 &&
-      elementNames.has('input') &&
-      attribute['name'] === 'type' &&
-      attributeValueWithDynamics(attribute, bindings)?.toLowerCase() === 'hidden'
-    );
-  });
+    if (soloInput && attribute['name'] === 'type') {
+      const resolved = attributeValueWithDynamics(attribute, bindings)?.toLowerCase();
+      if (resolved !== undefined) typeIsHidden = resolved === 'hidden';
+    }
+  }
+  return hiddenState === true || typeIsHidden === true;
 }
 
 export function visibleControlCount(source: string): number {

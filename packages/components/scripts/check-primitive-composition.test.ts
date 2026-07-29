@@ -65,6 +65,24 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('applies a later spread over an earlier static hidden type', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input type="hidden" {...{ type: \'text\' }} />',
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('applies a later static hidden type over an earlier visible spread', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input {...{ type: \'text\' }} type="hidden" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('ignores expression-backed static hidden input types', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -164,6 +182,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let tag = 'div'; tag = 'input';</script><svelte:element this={tag} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('detects a polymorphic tag assignment made from an inline template handler', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = $state('div');</script><button onclick={() => tag = 'input'}>x</button><svelte:element this={tag} />",
         'new-control/new-control.svelte',
       ),
     ).toHaveLength(1);
@@ -429,6 +456,24 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; layout = { display: 'block' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('resolves a write to a mutable style-object binding made inside a handler', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function enable() { layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout} onclick={enable}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('does not attribute a handler-local shadowed binding write to the outer style object', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function enable() { let layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout} onclick={enable}></div>",
         'new-grid/new-grid.svelte',
       ),
     ).toEqual([]);
@@ -776,6 +821,24 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('respects block scope: a nested block-local declaration does not shadow a sibling write', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function outer(condition) { if (condition) { let tag = 'span'; } tag = 'input'; }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('respects block scope: a write inside the declaring block stays shadowed', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function outer(condition) { if (condition) { let tag = 'span'; tag = 'input'; } }</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('counts literal HtmlTag field composition', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -1081,6 +1144,24 @@ describe('primitive composition guard', () => {
         'new-field/new-field.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('still inspects a FormField child snippet for a hand-rolled wrapper', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<FormField>{#snippet children()}<label>Name</label><p>Help</p><p>Error</p>{/snippet}</FormField>',
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('does not mistake a canonical FormField’s own props for hand-rolled evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<FormField label="Name" description="Help text" error="Required"><Input /></FormField>',
+        'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('does not treat wrapper component props as rendered field evidence', () => {

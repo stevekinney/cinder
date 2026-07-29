@@ -122,7 +122,7 @@ function qualifyingFieldLabels(
   source: string,
   bindings: ReadonlyMap<string, string>,
 ): FieldEvidence {
-  if (!isRecord(node) || isCanonicalFieldComponent(node))
+  if (!isRecord(node))
     return {
       count: 0,
       isolatedMessages: false,
@@ -130,6 +130,11 @@ function qualifyingFieldLabels(
       rootLabelCount: 0,
       terms: '',
     };
+  // A canonical `<FormField>`'s own props (label/description/error) aren't
+  // hand-rolled evidence — but its rendered children (a child snippet can
+  // still hand-roll a label/description/error wrapper) must keep being
+  // inspected below, via the general recursion's `attributes` key skip for
+  // Component nodes. Only its own local markup evidence is suppressed here.
   if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
     const html = staticStringFromExpression(node['expression'], bindings);
     if (html !== undefined) {
