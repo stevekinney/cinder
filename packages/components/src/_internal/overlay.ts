@@ -30,6 +30,7 @@ export const Z_LAYERS = {
   modal: 1200,
   sheet: 1200,
   toast: 1300,
+  dragPreview: 1400,
 } as const;
 
 export type OverlayLayer = keyof typeof Z_LAYERS;

@@ -85,6 +85,15 @@ describe('light-mode surface ladder parity floor', () => {
     expect(bg.L).toBeLessThan(surface.L);
     expect(surface.L).toBeLessThan(raised.L);
   });
+
+  test('raised interaction states derive from the raised surface', () => {
+    expect(tokensCss).toMatch(
+      /--cinder-surface-raised-hover:\s*color-mix\([\s\S]*?var\(--cinder-surface-raised\)/,
+    );
+    expect(tokensCss).toMatch(
+      /--cinder-surface-raised-pressed:\s*color-mix\([\s\S]*?var\(--cinder-surface-raised\)/,
+    );
+  });
 });
 
 describe('light-mode border parity floor', () => {

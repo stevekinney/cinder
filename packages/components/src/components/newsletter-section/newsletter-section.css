@@ -7,7 +7,7 @@
   }
 
   .cinder-newsletter-section__inner {
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     background: var(--cinder-surface-raised);
     border-radius: var(--cinder-radius-lg);
     padding: var(--cinder-space-6);

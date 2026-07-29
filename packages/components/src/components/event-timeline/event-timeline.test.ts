@@ -2,16 +2,85 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { describe, expect, test } from 'bun:test';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: EventTimeline } = await import('./event-timeline.svelte');
+const {
+  hasFixedPositionContainingBlock,
+  resetEventTimelineModalPredicate: __resetEventTimelineModalPredicate,
+  setEventTimelineModalPredicate: __setEventTimelineModalPredicate,
+} = await import('./event-timeline-modal.ts');
+const { tick } = await import('svelte');
 
 const EVENT_TIMELINE_CSS = readFileSync(join(import.meta.dir, 'event-timeline.css'), 'utf8');
+const EVENT_TIMELINE_SOURCE = readFileSync(join(import.meta.dir, 'event-timeline.svelte'), 'utf8');
+const EVENT_TIMELINE_MODAL_SOURCE = readFileSync(
+  join(import.meta.dir, 'event-timeline-modal.ts'),
+  'utf8',
+);
+
+class TestResizeObserver implements ResizeObserver {
+  static instances: TestResizeObserver[] = [];
+  readonly callback: ResizeObserverCallback;
+  observed: Element | undefined;
+
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback;
+    TestResizeObserver.instances.push(this);
+  }
+
+  observe(target: Element): void {
+    this.observed = target;
+  }
+
+  unobserve(): void {}
+
+  disconnect(): void {}
+
+  trigger(width: number): void {
+    this.callback(
+      [
+        {
+          borderBoxSize: [{ inlineSize: width }],
+          contentRect: { width },
+          target: this.observed,
+        } as unknown as ResizeObserverEntry,
+      ],
+      this as unknown as ResizeObserver,
+    );
+  }
+}
+
+const originalResizeObserver = globalThis.ResizeObserver;
+
+beforeAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: TestResizeObserver,
+    writable: true,
+  });
+});
+
+beforeEach(() => {
+  TestResizeObserver.instances = [];
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+afterAll(() => {
+  Object.defineProperty(globalThis, 'ResizeObserver', {
+    configurable: true,
+    value: originalResizeObserver,
+    writable: true,
+  });
+});
 
 describe('EventTimeline', () => {
   const start = '2026-07-03T00:00:00.000Z';
@@ -63,6 +132,544 @@ describe('EventTimeline', () => {
     const items = [...container.querySelectorAll('[role="listitem"]')];
     expect(items.map((item) => item.getAttribute('data-cinder-lane'))).toEqual(['0', '1', '2']);
     expect(items[2]?.getAttribute('data-cinder-state')).toBe('failed');
+  });
+
+  test('uses a narrow-screen-safe fallback before width measurement', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [20, 32, 44, 56, 68].map((position, index) => ({
+        at: new Date(Date.parse(start) + (position / 100) * (Date.parse(end) - Date.parse(start))),
+        label: `Fallback ${index}`,
+      })),
+    });
+
+    expect(container.querySelector('.cinder-event-timeline__cluster-trigger')).not.toBeNull();
+  });
+
+  test('uses the measured pixel width to determine label collisions', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T06:00:00.000Z', label: 'A' },
+        { at: '2026-07-03T10:48:00.000Z', label: 'B' },
+      ],
+    });
+
+    await tick();
+    const observer = TestResizeObserver.instances[0];
+    observer?.trigger(400);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '1']);
+
+    observer?.trigger(1200);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '0']);
+  });
+
+  test('accounts for transformed labels when reusing lanes across edge boundaries', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T02:24:00.000Z', label: 'Edge event' },
+        { at: '2026-07-03T05:16:48.000Z', label: 'Middle event' },
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '1']);
+  });
+
+  test('moves near-edge labels to edge alignment before their offset can overflow', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T02:38:24.000Z', label: 'Near start' }],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(container.querySelector('[role="listitem"]')?.getAttribute('data-cinder-edge')).toBe(
+      'start',
+    );
+  });
+
+  test('keeps centered labels centered when narrow timelines overlap edge zones', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T12:00:00.000Z', label: 'Centered event' }],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(200);
+    await tick();
+    expect(container.querySelector('[role="listitem"]')?.getAttribute('data-cinder-edge')).toBe(
+      'middle',
+    );
+    expect(EVENT_TIMELINE_CSS).toContain('[data-cinder-centered] .cinder-event-timeline__leader');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      ':dir(rtl) .cinder-event-timeline__item[data-cinder-centered]',
+    );
+  });
+
+  test('keeps event dots at proportional timestamps while offsetting labels', () => {
+    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(-50%);');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      'transform: translateX(var(--_cinder-event-timeline-label-offset, 0px));',
+    );
+  });
+
+  test('points collision leaders toward their offset labels', () => {
+    expect(EVENT_TIMELINE_CSS).toContain(
+      "[data-cinder-lane-parity='even'] .cinder-event-timeline__leader {\n    inset-inline-end: 50%;",
+    );
+    expect(EVENT_TIMELINE_CSS).toContain(
+      "[data-cinder-lane-parity='odd'] .cinder-event-timeline__leader {\n    inset-inline-start: 50%;",
+    );
+  });
+
+  test('keeps centered fallback bounds out of parity-offset lanes', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T09:36:00.000Z', label: 'Centered fallback with a long label' },
+        { at: '2026-07-03T20:24:00.000Z', label: 'Edge label with a long label' },
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(280);
+    await tick();
+    const items = [...container.querySelectorAll('[role="listitem"]')];
+    expect(items[0]?.getAttribute('data-cinder-centered')).toBe('');
+    expect(items.map((item) => item.getAttribute('data-cinder-lane'))).toEqual(['0', '1']);
+  });
+
+  test('uses the occupied lane count while retaining the CSS minimum height', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [{ at: '2026-07-03T12:00:00.000Z', label: 'Single event' }],
+    });
+
+    expect(container.querySelector('[role="list"]')?.getAttribute('style')).toContain(
+      '--_cinder-event-timeline-lane-count: 1',
+    );
+    expect(EVENT_TIMELINE_CSS).toContain('block-size: max(');
+  });
+
+  test('reserves lanes for physical RTL bounds', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      dir: 'rtl',
+      items: [
+        { at: '2026-07-03T19:12:00.000Z', label: 'RTL first' },
+        { at: '2026-07-03T21:36:00.000Z', label: 'RTL second' },
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(
+      [...container.querySelectorAll('[role="listitem"]')].map((item) =>
+        item.getAttribute('data-cinder-lane'),
+      ),
+    ).toEqual(['0', '1']);
+  });
+
+  test('keeps adjacent dense parity lanes separated and raises open clusters', () => {
+    expect(EVENT_TIMELINE_CSS).toContain('.cinder-event-timeline__cluster[data-cinder-open]');
+    expect(EVENT_TIMELINE_CSS).toContain('z-index: 2;');
+    expect(EVENT_TIMELINE_CSS).toContain('.cinder-event-timeline:dir(rtl)');
+    expect(EVENT_TIMELINE_SOURCE).toContain('createPortalAttachment');
+  });
+
+  test('inspects containing-block ancestors and only observes direction ancestors', () => {
+    expect(EVENT_TIMELINE_MODAL_SOURCE).toContain('current = current.parentElement');
+    expect(EVENT_TIMELINE_MODAL_SOURCE).toContain("attributeFilter: ['class', 'dir', 'style']");
+    expect(EVENT_TIMELINE_MODAL_SOURCE).not.toContain('subtree: true');
+  });
+
+  test('does not treat missing individual transform properties as containing blocks', () => {
+    const element = document.createElement('div');
+    const original = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = (() =>
+      ({
+        backdropFilter: '',
+        contain: '',
+        filter: '',
+        perspective: '',
+        rotate: undefined,
+        scale: undefined,
+        transform: '',
+        translate: undefined,
+        willChange: 'auto',
+      }) as unknown as CSSStyleDeclaration) as typeof getComputedStyle;
+    try {
+      expect(hasFixedPositionContainingBlock(element)).toBe(false);
+    } finally {
+      globalThis.getComputedStyle = original;
+    }
+  });
+
+  test('treats perspective, backdrop-filter, and transform-related will-change as containing blocks', () => {
+    const element = document.createElement('div');
+    const original = globalThis.getComputedStyle;
+    const cases: Array<Record<string, string>> = [
+      { perspective: '400px' },
+      { backdropFilter: 'blur(4px)' },
+      { willChange: 'transform' },
+      { willChange: 'perspective' },
+      { willChange: 'filter' },
+    ];
+    try {
+      for (const overrides of cases) {
+        globalThis.getComputedStyle = (() =>
+          ({
+            backdropFilter: '',
+            contain: '',
+            filter: '',
+            perspective: '',
+            rotate: undefined,
+            scale: undefined,
+            transform: '',
+            translate: undefined,
+            willChange: 'auto',
+            ...overrides,
+          }) as unknown as CSSStyleDeclaration) as typeof getComputedStyle;
+        expect(hasFixedPositionContainingBlock(element)).toBe(true);
+      }
+    } finally {
+      globalThis.getComputedStyle = original;
+    }
+  });
+
+  test('offsets colliding lanes and renders hidden leader lines', () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        { at: '2026-07-03T06:00:00.000Z', label: 'A' },
+        { at: '2026-07-03T06:15:00.000Z', label: 'B' },
+      ],
+    });
+
+    const items = [...container.querySelectorAll('[role="listitem"]')];
+    expect(items[0]?.getAttribute('data-cinder-lane-parity')).toBe('even');
+    expect(items[1]?.getAttribute('data-cinder-lane-parity')).toBe('odd');
+    expect(container.querySelectorAll('.cinder-event-timeline__leader')).toHaveLength(2);
+    expect(
+      [...container.querySelectorAll('.cinder-event-timeline__leader')].every(
+        (leader) => leader.getAttribute('aria-hidden') === 'true',
+      ),
+    ).toBe(true);
+  });
+
+  test('collapses excess lanes into an accessible cluster button', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [0, 1, 2, 3, 4].map((index) => ({
+        at: `2026-07-03T06:0${index}:00.000Z`,
+        label: `Event ${index + 1}`,
+      })),
+    });
+
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    );
+    expect(cluster?.textContent).toBe('+1');
+    expect(cluster?.getAttribute('aria-label')).toBe(
+      '1 event between 2026-07-03T06:04:00.000Z and 2026-07-03T06:04:00.000Z',
+    );
+    expect(cluster?.hasAttribute('tabindex')).toBe(false);
+    expect(cluster?.getAttribute('aria-haspopup')).toBe('dialog');
+
+    cluster?.focus();
+    await fireEvent.click(cluster!);
+    expect(EVENT_TIMELINE_CSS).toContain(
+      ".cinder-event-timeline__cluster-surface[data-cinder-position-ready='false']",
+    );
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    expect(cluster?.getAttribute('aria-controls')).toBe(dialog?.id);
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+    expect(dialog?.textContent).toContain('Upcoming');
+    expect(dialog?.querySelector('time')?.getAttribute('datetime')).toBe(
+      '2026-07-03T06:04:00.000Z',
+    );
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(cluster));
+  });
+
+  test('restores focus to the timeline before removing an open stale cluster', async () => {
+    const denseItems = [0, 1, 2, 3, 4].map((index) => ({
+      at: `2026-07-03T06:0${index}:00.000Z`,
+      label: `Event ${index + 1}`,
+    }));
+    const { container, rerender } = render(EventTimeline, {
+      start,
+      end,
+      items: denseItems,
+    });
+
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    )!;
+    await fireEvent.click(cluster);
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+
+    await rerender({
+      start,
+      end,
+      items: denseItems.slice(0, 1),
+    });
+
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(container.querySelector('[role="list"]'));
+  });
+
+  test('keeps cluster surfaces inside a Cinder popover panel', async () => {
+    const popover = document.createElement('div');
+    popover.className = 'cinder-popover';
+    Object.defineProperty(popover, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ width: 320 }),
+    });
+    document.body.append(popover);
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      popover.append(container.firstElementChild!);
+      await fireEvent.click(popover.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      await waitFor(() =>
+        expect(popover.querySelector('[role="dialog"]')?.parentElement).toBe(popover),
+      );
+      expect(popover.querySelector<HTMLElement>('[role="dialog"]')?.style.maxInlineSize).toContain(
+        '304px',
+      );
+      TestResizeObserver.instances
+        .filter((observer) => observer.observed === popover)
+        .forEach((observer) => observer.trigger(200));
+      await tick();
+      expect(popover.querySelector<HTMLElement>('[role="dialog"]')?.style.maxInlineSize).toContain(
+        '184px',
+      );
+    } finally {
+      popover.remove();
+    }
+  });
+
+  test('positions cluster surfaces inside transformed native dialogs', async () => {
+    const dialog = document.createElement('dialog');
+    const panel = document.createElement('div');
+    panel.className = 'cinder-modal__panel';
+    dialog.append(panel);
+    dialog.open = true;
+    document.body.append(dialog);
+    __setEventTimelineModalPredicate((element) => element === dialog);
+    const original = globalThis.getComputedStyle;
+    globalThis.getComputedStyle = ((element: Element) => {
+      const style = original(element);
+      if (element !== dialog) return style;
+      const transformedStyle = Object.create(style) as CSSStyleDeclaration;
+      Object.defineProperty(transformedStyle, 'transform', { value: 'none' });
+      Object.defineProperty(transformedStyle, 'scale', { value: '0.98' });
+      return transformedStyle;
+    }) as typeof getComputedStyle;
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      panel.append(container.firstElementChild!);
+      await fireEvent.click(panel.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      await waitFor(() => {
+        const surface = panel.querySelector<HTMLElement>('[role="dialog"]');
+        expect(surface).not.toBeNull();
+        expect(surface?.parentElement).toBe(panel);
+        expect(surface?.style.position).toBe('absolute');
+      });
+      await waitFor(() =>
+        expect(document.activeElement).toBe(panel.querySelector('[role="dialog"]')),
+      );
+    } finally {
+      __resetEventTimelineModalPredicate();
+      globalThis.getComputedStyle = original;
+      dialog.remove();
+    }
+  });
+
+  test('keeps cluster surfaces inside a modal focus-trap panel', async () => {
+    const dialog = document.createElement('dialog');
+    const panel = document.createElement('div');
+    panel.className = 'cinder-modal__panel';
+    dialog.append(panel);
+    dialog.open = true;
+    document.body.append(dialog);
+    __setEventTimelineModalPredicate((element) => element === dialog);
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      panel.append(container.firstElementChild!);
+      await fireEvent.click(panel.querySelector('.cinder-event-timeline__cluster-trigger')!);
+      await waitFor(() =>
+        expect(panel.querySelector('[role="dialog"]')?.parentElement).toBe(panel),
+      );
+    } finally {
+      __resetEventTimelineModalPredicate();
+      dialog.remove();
+    }
+  });
+
+  test('keeps cluster surfaces inside the nearest open native popover owner', async () => {
+    const originalCSS = globalThis.CSS;
+    Object.defineProperty(globalThis, 'CSS', {
+      configurable: true,
+      value: { supports: () => true },
+    });
+    const modalPanel = document.createElement('div');
+    modalPanel.className = 'cinder-modal__panel';
+    const nativePopover = document.createElement('div');
+    nativePopover.setAttribute('popover', 'auto');
+    const originalMatches = nativePopover.matches.bind(nativePopover);
+    Object.defineProperty(nativePopover, 'matches', {
+      configurable: true,
+      value: (selector: string) =>
+        selector === ':popover-open' ? true : originalMatches(selector),
+    });
+    modalPanel.append(nativePopover);
+    document.body.append(modalPanel);
+    try {
+      const { container } = render(EventTimeline, {
+        start,
+        end,
+        items: [0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Event ${index + 1}`,
+        })),
+      });
+      nativePopover.append(container.firstElementChild!);
+      await fireEvent.click(
+        nativePopover.querySelector('.cinder-event-timeline__cluster-trigger')!,
+      );
+      await waitFor(() =>
+        expect(nativePopover.querySelector('[role="dialog"]')?.parentElement).toBe(nativePopover),
+      );
+    } finally {
+      modalPanel.remove();
+      Object.defineProperty(globalThis, 'CSS', { configurable: true, value: originalCSS });
+    }
+  });
+
+  test('outside pointer dismissal does not refocus the cluster trigger', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [0, 1, 2, 3, 4].map((index) => ({
+        at: `2026-07-03T06:0${index}:00.000Z`,
+        label: `Event ${index + 1}`,
+      })),
+    });
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    );
+    cluster?.focus();
+    await fireEvent.click(cluster!);
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    outside.focus();
+    await fireEvent.pointerDown(outside);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(outside);
+  });
+
+  test('does not steal focus after the user tabs away while positioning', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [0, 1, 2, 3, 4].map((index) => ({
+        at: `2026-07-03T06:0${index}:00.000Z`,
+        label: `Event ${index + 1}`,
+      })),
+    });
+    const cluster = container.querySelector<HTMLButtonElement>(
+      '.cinder-event-timeline__cluster-trigger',
+    );
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    await fireEvent.click(cluster!);
+    outside.focus();
+    await tick();
+    await tick();
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+  });
+
+  test('creates one cluster marker per separated dense region', async () => {
+    const { container } = render(EventTimeline, {
+      start,
+      end,
+      items: [
+        ...[0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T06:0${index}:00.000Z`,
+          label: `Morning ${index + 1}`,
+        })),
+        ...[0, 1, 2, 3, 4].map((index) => ({
+          at: `2026-07-03T18:0${index}:00.000Z`,
+          label: `Evening ${index + 1}`,
+        })),
+      ],
+    });
+
+    await tick();
+    TestResizeObserver.instances[0]?.trigger(1200);
+    await tick();
+    expect(container.querySelectorAll('.cinder-event-timeline__cluster-trigger')).toHaveLength(2);
+  });
+
+  test('derives stable cluster identity from its items, not array order', () => {
+    expect(EVENT_TIMELINE_SOURCE).not.toContain('cluster-${groupIndex}-');
+    expect(EVENT_TIMELINE_SOURCE).toContain('cluster-${startTime}-${endTime}-');
   });
 
   test('allocates additional lanes for dense clusters without reusing the final lane', () => {
@@ -221,9 +828,29 @@ describe('EventTimeline', () => {
     expect(EVENT_TIMELINE_CSS).toContain('6rem,');
     expect(EVENT_TIMELINE_CSS).toContain('--_cinder-event-timeline-lane-count');
     expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='start'");
-    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(0);');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      'translateX(var(--_cinder-event-timeline-label-offset, 0px))',
+    );
     expect(EVENT_TIMELINE_CSS).toContain("data-cinder-edge='end'");
-    expect(EVENT_TIMELINE_CSS).toContain('transform: translateX(-100%);');
+    expect(EVENT_TIMELINE_CSS).toContain(
+      'translateX(calc(-100% + var(--_cinder-event-timeline-label-offset, 0px)))',
+    );
     expect(EVENT_TIMELINE_CSS).toContain('5.25rem,');
+    expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__leader');
+    expect(EVENT_TIMELINE_CSS).toContain('cinder-event-timeline__cluster-trigger');
+    expect(EVENT_TIMELINE_CSS).toContain(':focus-visible');
+  });
+
+  test('anchors edge dots to their physical position under RTL', () => {
+    // `justify-items: start/end` is direction-aware and flips under `dir="rtl"`, but
+    // edge items are positioned with a physical `left` percentage that never flips.
+    // Without a matching RTL override, a wide RTL label would pull the dot away from
+    // its timestamp. Force the opposite logical value so the dot stays physically put.
+    expect(EVENT_TIMELINE_CSS).toMatch(
+      /:dir\(rtl\)\s*\.cinder-event-timeline__item\[data-cinder-edge='start'\]\s*\{[^}]*justify-items:\s*end;/s,
+    );
+    expect(EVENT_TIMELINE_CSS).toMatch(
+      /:dir\(rtl\)\s*\.cinder-event-timeline__item\[data-cinder-edge='end'\]\s*\{[^}]*justify-items:\s*start;/s,
+    );
   });
 });

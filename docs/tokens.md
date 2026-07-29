@@ -133,22 +133,26 @@ Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinde
 
 ## Surfaces
 
-Background and surface tokens for the three core elevations — page background, default surface, and raised surface — plus an inset variant for sunken regions and `hover`/`pressed` derivatives that lift or darken via `color-mix`.
+Background and surface tokens for the three core elevations — page background, default surface, and raised surface — plus an inset variant for sunken regions and `hover`/`pressed` derivatives that lift or darken via `color-mix`. The light and dark ramps intentionally leave enough lightness separation for panels and their children to communicate hierarchy without relying on decorative hairlines.
 
-| Token                              | Default                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------- |
-| `--cinder-bg`                      | `light-dark(oklch(96% 0.01 245), oklch(15% 0.035 245))`                                     |
-| `--cinder-surface`                 | `light-dark(oklch(98.5% 0.008 245), oklch(20% 0.04 245))`                                   |
-| `--cinder-surface-raised`          | `light-dark(oklch(100% 0.006 245), oklch(26% 0.045 245))`                                   |
-| `--cinder-surface-inset`           | `light-dark(oklch(95.5% 0.01 245), oklch(11% 0.03 245))`                                    |
-| `--cinder-surface-hover`           | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
-| `--cinder-surface-pressed`         | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
-| `--cinder-surface-upcoming-marker` | `light-dark(var(--cinder-surface-inset), var(--cinder-surface))`                            |
-| `--cinder-surface-inverse`         | `light-dark(var(--cinder-text), var(--cinder-surface-raised))`                              |
-| `--cinder-text-inverse`            | `light-dark(var(--cinder-surface), var(--cinder-text))`                                     |
-| `--cinder-border-inverse`          | `light-dark(transparent, var(--cinder-border-strong))`                                      |
+| Token                              | Default                                                                                            |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `--cinder-bg`                      | `light-dark(oklch(95% 0.01 245), oklch(15% 0.035 245))`                                            |
+| `--cinder-surface`                 | `light-dark(oklch(98% 0.008 245), oklch(21% 0.04 245))`                                            |
+| `--cinder-surface-raised`          | `light-dark(oklch(100% 0.006 245), oklch(28% 0.045 245))`                                          |
+| `--cinder-surface-inset`           | `light-dark(oklch(94% 0.01 245), oklch(11% 0.03 245))`                                             |
+| `--cinder-surface-hover`           | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)`        |
+| `--cinder-surface-pressed`         | `color-mix(in oklch, var(--cinder-surface), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)`        |
+| `--cinder-surface-raised-hover`    | `color-mix(in oklch, var(--cinder-surface-raised), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 3%)` |
+| `--cinder-surface-raised-pressed`  | `color-mix(in oklch, var(--cinder-surface-raised), light-dark(oklch(0% 0 0), oklch(100% 0 0)) 8%)` |
+| `--cinder-surface-upcoming-marker` | `light-dark(var(--cinder-surface-inset), var(--cinder-surface))`                                   |
+| `--cinder-surface-inverse`         | `light-dark(var(--cinder-text), var(--cinder-surface-raised))`                                     |
+| `--cinder-text-inverse`            | `light-dark(var(--cinder-surface), var(--cinder-text))`                                            |
+| `--cinder-border-inverse`          | `light-dark(transparent, var(--cinder-border-strong))`                                             |
 
 `--cinder-surface-upcoming-marker` is the background for Steps component upcoming-state markers. In light mode it resolves to `--cinder-surface-inset` (visibly recessed); in dark mode it lifts to `--cinder-surface` so the marker is visible against the dark stage. `--cinder-surface-inverse`, `--cinder-text-inverse`, and `--cinder-border-inverse` form the dark-overlay triple used by Tooltip — both arms render a dark overlay with legible light text (no theme inversion occurs in dark mode).
+
+Form controls sit on `--cinder-surface-raised` in both themes. `--cinder-surface` is a page or panel surface and must never be used as an input fill. Interior component dividers use `--cinder-border-muted`; reserve `--cinder-border` for the component's outer edge. Forced-colors styles may restore system-color hairlines where background separation is unavailable.
 
 ## Text colors
 
@@ -296,17 +300,26 @@ The ring tokens drive the focus-visible outline used across interactive primitiv
 
 ## Z-index layers
 
-Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open. Override these only if you are integrating cinder into an app with its own established stacking contract.
+Stacking order is fixed: tooltip < dropdown ≈ popover < backdrop < modal ≈ sheet < toast < focused affordance < drag preview. The standalone `Backdrop` scrim sits just below modal and sheet so it can dim popover-layer chrome while staying beneath dialog surfaces (Modal, Sheet, and Drawer are built on the native `<dialog>` element and render their own scrim via `::backdrop` rather than this layer). Toast sits above modal so confirmations and warnings still reach the user when a modal is open, while the active drag preview remains attached to the pointer above every surface. Override these only if you are integrating cinder into an app with its own established stacking contract.
 
-| Token                 | Default |
-| --------------------- | ------- |
-| `--cinder-z-tooltip`  | `1000`  |
-| `--cinder-z-dropdown` | `1100`  |
-| `--cinder-z-popover`  | `1100`  |
-| `--cinder-z-backdrop` | `1150`  |
-| `--cinder-z-modal`    | `1200`  |
-| `--cinder-z-sheet`    | `1200`  |
-| `--cinder-z-toast`    | `1300`  |
+The token table is the single source of truth. A `z-index` reference must use
+`var(--cinder-z-*)` without an inline fallback; otherwise a partial stylesheet
+can silently put two components that name the same layer at different heights.
+Component-local stacking may use `auto`, `0`, or `1`. A higher local relationship needs
+an adjacent `cinder-z-index-local:` reason so Stylelint can distinguish it from
+a new global layer.
+
+| Token                           | Default |
+| ------------------------------- | ------- |
+| `--cinder-z-tooltip`            | `1000`  |
+| `--cinder-z-dropdown`           | `1100`  |
+| `--cinder-z-popover`            | `1100`  |
+| `--cinder-z-backdrop`           | `1150`  |
+| `--cinder-z-modal`              | `1200`  |
+| `--cinder-z-sheet`              | `1200`  |
+| `--cinder-z-toast`              | `1300`  |
+| `--cinder-z-focused-affordance` | `1350`  |
+| `--cinder-z-drag-preview`       | `1400`  |
 
 ## Overlay surfaces
 

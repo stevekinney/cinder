@@ -31,6 +31,17 @@ describe('StatisticGroup', () => {
     expect(css).toContain("@import '../statistic/statistic.css';");
   });
 
+  test('cards use a full-strength outer border', async () => {
+    const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
+    const cardsBlock =
+      css.match(
+        /\.cinder-statistic-group\[data-cinder-variant='cards'\]\s*>\s*\.cinder-statistic\s*\{[^}]*\}/,
+      )?.[0] ?? '';
+
+    expect(cardsBlock).toContain('border: 1px solid var(--cinder-border)');
+    expect(cardsBlock).not.toContain('var(--cinder-border-muted)');
+  });
+
   test('renders .cinder-statistic-group wrapping its children', () => {
     const { container } = render(StatisticGroup, {
       children: textSnippet('stat content'),

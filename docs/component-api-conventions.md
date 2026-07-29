@@ -76,3 +76,12 @@ remain icon-free. Directional transfer uses single or double chevrons; do not
 use `+`, `-`, `−`, `<`, or `>` text glyphs in their place. See [Icon
 vocabulary](./icon-vocabulary.md) for sizing utilities, accessible-name
 guidance, and the current audit.
+
+## Surfaces and controls
+
+Form controls sit on `--cinder-surface-raised` in both themes.
+`--cinder-surface` is a page or panel surface and must never be used as an
+input fill. Use `--cinder-border-muted` for interior dividers and reserve
+`--cinder-border` for a component's outer edge. The repository stylelint rules
+`cinder/no-surface-on-form-control` and `cinder/interior-border-weight` enforce
+these contracts.

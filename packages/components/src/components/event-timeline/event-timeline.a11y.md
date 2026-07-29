@@ -15,14 +15,15 @@ Purpose: Proportional schedule strip with fired and upcoming event states, a vis
 
 - Presenting a vertical activity history or audit log — use timeline.
 - Showing step-by-step run execution — use run-step-timeline.
+- Showing a dense event stream that cannot fit within the supported label lanes — use timeline.
 
 ## Keyboard and focus
 
-EventTimeline is non-interactive and does not enter the tab order by default. Do not make timeline dots clickable unless the composition uses native controls or links with visible focus indicators and clear accessible names.
+EventTimeline is non-interactive and does not enter the tab order by default. Timeline dots and labels are decorative list content, not controls. When density exceeds the supported label lanes, the component exposes a native `+N` cluster button. The button enters the tab order, has an accessible count-and-range name, opens the hidden events in a floating surface, and closes on Escape while returning focus to the button.
 
 ## Names, roles, and state
 
-EventTimeline renders a named `role="list"` and one `role="listitem"` per valid event. Event labels are rendered with `time` elements; the visual now marker is hidden from assistive technologies because it is decorative unless the surrounding content explains current time.
+EventTimeline renders a named `role="list"` containing one `role="listitem"` for each visible event and aggregate cluster item. Dense regions replace hidden events with a cluster list item, so the list count is the visible event count plus any cluster summaries. Event labels are rendered with `time` elements; the visual now marker is hidden from assistive technologies because it is decorative unless the surrounding content explains current time.
 
 State color is supplemental. Keep labels and sublabels descriptive enough that users do not need color to understand the event.
 

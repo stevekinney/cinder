@@ -40,3 +40,43 @@ export function restoreFocusTo(target: HTMLElement | null): boolean {
   }
   return true;
 }
+
+/**
+ * A composed-tree root to search for a sequential focus candidate, paired
+ * with the element to measure `compareDocumentPosition` against at that
+ * level. The first yielded scope is `anchor`'s own root (its ShadowRoot, if
+ * it is rendered inside one); each subsequent scope escapes one shadow
+ * boundary further out, pairing the enclosing shadow host as the new
+ * anchor, until a plain Document is reached.
+ */
+export type ComposedFocusScope = { root: Document | ShadowRoot; anchor: Element };
+
+// Duck-type on `querySelectorAll` rather than `instanceof Document`: a root
+// node can come from a different realm (another window/iframe, or a host
+// whose `document` is not an `instanceof` of the ambient `Document`
+// constructor at all — happy-dom's test Document does exactly this), where
+// the constructor identity check fails even though the node is a genuine
+// searchable document-like root.
+function isSearchableRoot(node: Node): node is Document | ShadowRoot {
+  return 'querySelectorAll' in node;
+}
+
+/**
+ * Walk the composed focus scope outward from `anchor`: its own root first,
+ * then each enclosing shadow host's root in turn. A plain
+ * `document.querySelectorAll` cannot see into shadow roots, so a component
+ * rendered inside one needs this to find a sequential focus target that
+ * lives in the same shadow root as itself, falling back to scopes further
+ * out only once the nearer one is exhausted.
+ */
+export function* composedFocusScopes(anchor: Element): Generator<ComposedFocusScope> {
+  let referenceNode: Element = anchor;
+  let rootNode: Node = anchor.getRootNode();
+
+  while (isSearchableRoot(rootNode)) {
+    yield { root: rootNode, anchor: referenceNode };
+    if (!(rootNode instanceof ShadowRoot)) return;
+    referenceNode = rootNode.host;
+    rootNode = referenceNode.getRootNode();
+  }
+}

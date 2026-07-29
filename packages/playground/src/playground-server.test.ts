@@ -76,32 +76,24 @@ beforeAll(async () => {
 });
 
 const temporaryServers: ReturnType<typeof Bun.serve>[] = [];
+/*
+ * The shell now renders the landing page only, through the same component every
+ * documentation page uses. It no longer takes a component, documentation
+ * payload, or toolbar search state — `/` and `/page/<name>` are one chrome with
+ * different content.
+ */
 const testShellServerRenderer: NonNullable<
   Parameters<typeof setPreparedShellServerRenderer>[0]
-> = ({ initialComponent, documentation, initialSearch }) => {
-  const search = new URLSearchParams(initialSearch);
-  const focusClass = search.get('focus') === '1' ? 'shell focus-mode' : 'shell';
-  const viewportWidth = search.get('w') ?? '';
-  const documentationBody =
-    documentation === null
-      ? ''
-      : `<article class="documentation" data-canonical-documentation>
-          <h1>${documentation.component.name}</h1>
-          <h2>Overview</h2>
-          ${documentation.readme.html}
-          <h2>Props</h2>
-          <iframe src="/page/${initialComponent}?preview=1"></iframe>
-          <a href="/page/${initialComponent}">Open documentation</a>
-        </article>`;
-
-  return {
-    body: `<div id="shell-root"><div class="${focusClass}">
-      <input id="viewport-width-input" value="${viewportWidth}" />
-      ${documentationBody}
+> = ({ components, readmeHtml }) => ({
+  body: `<div id="shell-root"><div class="dx-shell">
+      <nav class="dx-nav" aria-label="Components">
+        <input id="sidebar-filter" type="search" />
+        ${components.map((name) => `<a href="/page/${name}">${name}</a>`).join('')}
+      </nav>
+      <main class="dx-content dx-content--landing">${readmeHtml}</main>
     </div></div>`,
-    head: '<style>.documentation { display: block; }</style>',
-  };
-};
+  head: '<style>.dx-shell { display: contents; }</style>',
+});
 
 beforeEach(() => {
   setPreparedShellServerRenderer(testShellServerRenderer);

@@ -1,4 +1,5 @@
 import { Glob } from 'bun';
+import { randomUUID } from 'node:crypto';
 import {
   existsSync,
   readFileSync,
@@ -1504,6 +1505,8 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
       },
     });
 
+    let bodyError: unknown;
+    let bodyFailed = false;
     try {
       await waitForUrl(`http://127.0.0.1:${httpPort}/`, 10_000, fixtureServer);
 
@@ -1642,10 +1645,20 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
         '/a-la-carte',
         'explicit `@lostgradient/cinder/button/styles` import',
       );
-    } finally {
-      fixtureServer.kill();
-      await fixtureServer.exited;
+    } catch (error) {
+      bodyError = error;
+      bodyFailed = true;
     }
+    const teardownError = await stopConsumerFixtureServer(fixtureServer).catch((error) => error);
+    if (bodyFailed) {
+      if (teardownError !== undefined) {
+        process.stderr.write(
+          `[validate-consumers] sveltekit-consumer fixture teardown failed after assertion failure: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}\n`,
+        );
+      }
+      throw bodyError;
+    }
+    if (teardownError !== undefined) throw teardownError;
   } finally {
     restoreManifest();
   }
@@ -1662,13 +1675,86 @@ type SvelteKitHydrationRoute = '/subpath' | '/chat-layout' | '/dev-ssr';
  * `/dev/shm` is not constrained), so the crash first surfaced as a blocked
  * release rather than in PR CI. Writing shared memory under `/tmp` avoids it.
  */
-async function launchHydrationChromium() {
+type HydrationBrowser = { browser: Browser; processToken: string };
+
+/**
+ * Extracted from the `ps` call so the "unreadable process table" branch can be
+ * pinned by a test without shelling out. Throws rather than returning `[]` on a
+ * failed listing: an empty list means "provably gone" and drives the
+ * reclamation verdict, so collapsing the two would report every resource as
+ * reclaimed and turn the gate permanently green.
+ */
+export function parseHydrationBrowserProcessIds(
+  listing: { exitCode: number; stdout: string; stderr: string },
+  processToken: string,
+  selfPid: number,
+): number[] {
+  if (listing.exitCode !== 0) {
+    throw new Error(
+      `ps failed while inspecting Chromium process state (exit ${listing.exitCode}): ${listing.stderr}`,
+    );
+  }
+  return listing.stdout.split('\n').flatMap((line) => {
+    if (!line.includes(processToken)) return [];
+    const match = /^\s*(\d+)\s+/.exec(line);
+    if (!match) return [];
+    const pid = Number(match[1]);
+    return pid === selfPid ? [] : [pid];
+  });
+}
+
+function hydrationBrowserProcessIds(processToken: string): number[] {
+  // `-axww` disables ps's column truncation, and stderr is piped so a failed
+  // listing can report why. Chromium's long argv includes our unique token;
+  // without the width flag, CI's non-TTY ps output can silently drop it.
+  const listing = Bun.spawnSync(['ps', '-axww', '-o', 'pid=,command='], {
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  return parseHydrationBrowserProcessIds(
+    {
+      exitCode: listing.exitCode,
+      stdout: listing.stdout.toString(),
+      stderr: listing.stderr.toString(),
+    },
+    processToken,
+    process.pid,
+  );
+}
+
+function forceKillHydrationBrowser(processToken: string): void {
+  for (const pid of hydrationBrowserProcessIds(processToken)) {
+    try {
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      // The process may have exited between `ps` and `kill`; the next state
+      // snapshot records whether any matching process remains.
+    }
+  }
+}
+
+async function waitForHydrationBrowserExit(processToken: string): Promise<void> {
+  const deadline = Date.now() + HYDRATION_TEARDOWN_TIMEOUT_MS;
+  while (hydrationBrowserProcessIds(processToken).length > 0 && Date.now() < deadline) {
+    await Bun.sleep(50);
+  }
+  const remaining = hydrationBrowserProcessIds(processToken);
+  if (remaining.length > 0) {
+    throw new Error(`Chromium process still running after SIGKILL: ${remaining.join(', ')}`);
+  }
+}
+
+async function launchHydrationChromium(): Promise<HydrationBrowser> {
   const { chromium } = await import('@playwright/test');
-  return promiseWithTimeout(
-    chromium.launch({ args: ['--disable-dev-shm-usage'] }),
+  const processToken = `cinder-hydration-${randomUUID()}`;
+  const browser = await promiseWithTimeout(
+    chromium.launch({
+      args: ['--disable-dev-shm-usage', `--cinder-hydration-token=${processToken}`],
+    }),
     15_000,
     'launching Chromium for SvelteKit hydration validation',
   );
+  return { browser, processToken };
 }
 
 /**
@@ -1690,11 +1776,139 @@ function isBrowserCrashError(error: unknown): boolean {
  * distinct type: the retry wrapper surfaces it immediately rather than
  * re-running routes that already succeeded.
  */
-class HydrationTeardownError extends Error {
+class ConsumerTeardownError extends Error {
   constructor(cause: unknown) {
     super(cause instanceof Error ? cause.message : String(cause));
-    this.name = 'HydrationTeardownError';
+    this.name = 'ConsumerTeardownError';
     this.cause = cause;
+  }
+}
+
+const HYDRATION_TEARDOWN_TIMEOUT_MS = 5_000;
+
+type TeardownStep = {
+  phase: string;
+  close: () => Promise<void>;
+  forceClose?: () => Promise<void> | void;
+  state: () => string;
+  /**
+   * Whether the resource this step owns is provably gone. Evaluated only once
+   * the WHOLE teardown sequence has finished, so a wider later step can reclaim
+   * what a narrower earlier one failed to close. Omit for a resource nothing
+   * else can subsume (the fixture server) — an omitted signal is never clean.
+   */
+  reclaimed?: () => boolean | 'unavailable';
+};
+
+type TeardownStepFailure = {
+  phase: string;
+  error: unknown;
+  state: string;
+  reclaimed: () => boolean | 'unavailable';
+};
+
+/** Nothing wider will reclaim this resource, so its failure always counts. */
+const NEVER_RECLAIMED = (): boolean => false;
+
+/**
+ * The authoritative reclamation signal for the whole browser chain: the token
+ * stamped into Chromium's argv at launch is gone from the process table, so the
+ * process hosting every context and page is gone with it. `isConnected()` alone
+ * would only describe the client's view of the pipe.
+ */
+function isHydrationBrowserGone(processToken: string): boolean {
+  try {
+    // The process table is consulted FIRST and on its own. A closed client pipe
+    // (`isConnected() === false`) says Playwright lost its connection, which is
+    // not proof the process died — a Chromium wedged badly enough to drop the
+    // pipe while still running is exactly the orphan this gate must catch.
+    return hydrationBrowserProcessIds(processToken).length === 0;
+  } catch {
+    // Unreadable process table: nothing here is proof, so nothing is reclaimed.
+    return false;
+  }
+}
+
+export async function runBoundedHydrationTeardown(
+  steps: readonly TeardownStep[],
+  timeoutMs = HYDRATION_TEARDOWN_TIMEOUT_MS,
+): Promise<TeardownStepFailure[]> {
+  const failures: TeardownStepFailure[] = [];
+  for (const step of steps) {
+    const reclaimed = step.reclaimed ?? NEVER_RECLAIMED;
+    try {
+      await promiseWithTimeout(step.close(), timeoutMs, `teardown phase=${step.phase}`);
+    } catch (error) {
+      let state: string;
+      try {
+        state = step.state();
+      } catch (stateError) {
+        state = `state-error=${stateError instanceof Error ? stateError.message : String(stateError)}`;
+      }
+      failures.push({ phase: step.phase, error, state, reclaimed });
+      try {
+        if (step.forceClose) {
+          await promiseWithTimeout(
+            Promise.resolve(step.forceClose()),
+            timeoutMs,
+            `teardown phase=${step.phase}.force`,
+          );
+        }
+      } catch (forceError) {
+        failures.push({ phase: `${step.phase}.force`, error: forceError, state, reclaimed });
+      }
+    }
+  }
+  return failures;
+}
+
+/**
+ * The teardown contract is **resource reclamation, not per-call success**.
+ *
+ * A `page.close()` that never settles inside its deadline is not by itself a
+ * failure: if the following `browser.close()` (or its SIGKILL escalation) leaves
+ * no Chromium process behind, that page and its renderer are provably gone, so
+ * nothing leaked. Only a step whose resource is STILL unreclaimed once every
+ * step has run should fail the gate.
+ *
+ * This is what makes the smoke deterministic. Throwing the moment `page.close()`
+ * blew its deadline is why an identical commit went red or green purely on how
+ * contended the runner was when Chromium acknowledged `Target.closeTarget` —
+ * run 30174454297 failed and run 30198964154 passed on the same SHA (#900).
+ */
+export function unreclaimedTeardownFailures(
+  failures: readonly TeardownStepFailure[],
+): TeardownStepFailure[] {
+  return failures.filter((failure) => failure.reclaimed() !== true);
+}
+
+async function stopConsumerFixtureServer(server: Bun.Subprocess): Promise<void> {
+  const failures = await runBoundedHydrationTeardown([
+    {
+      phase: 'fixture-server.exited',
+      close: async () => {
+        server.kill();
+        await server.exited;
+      },
+      forceClose: async () => {
+        server.kill('SIGKILL');
+        await server.exited;
+      },
+      state: () => `fixtureServerExitCode=${server.exitCode ?? 'running'}`,
+      reclaimed: () => server.exitCode !== null,
+    },
+  ]);
+  // A successful force-close reclaims the fixture even when the initial
+  // graceful stop missed its deadline. Report only a terminal failure whose
+  // subprocess is still alive after the escalation.
+  const failure = unreclaimedTeardownFailures(failures).at(-1);
+  if (failure !== undefined) {
+    throw new ConsumerTeardownError(
+      new Error(
+        `teardown phase=${failure.phase} ${failure.state}: ${failure.error instanceof Error ? failure.error.message : String(failure.error)}`,
+        { cause: failure.error },
+      ),
+    );
   }
 }
 
@@ -1703,15 +1917,30 @@ async function runSvelteKitHydrationRoutesOnce(
   label: string,
   routePaths: SvelteKitHydrationRoute[],
 ): Promise<void> {
-  const browser = await launchHydrationChromium();
+  const browserHandle = await launchHydrationChromium();
+  const { browser, processToken } = browserHandle;
   let context: BrowserContext | undefined;
   let bodyError: unknown;
   let bodyFailed = false;
+  const browserEvents: string[] = [];
+  // Every phase — per-route page closes included — reports into one ledger so
+  // the reclamation verdict can be taken once, after the widest close has run.
+  const teardownFailures: TeardownStepFailure[] = [];
+  browser.on('disconnected', () => browserEvents.push('browser:disconnected'));
 
   try {
     context = await browser.newContext();
     for (const routePath of routePaths) {
-      await assertSvelteKitHydrationRoute(browser, context, httpPort, label, routePath);
+      await assertSvelteKitHydrationRoute(
+        browser,
+        context,
+        httpPort,
+        label,
+        routePath,
+        browserEvents,
+        processToken,
+        teardownFailures,
+      );
     }
   } catch (error) {
     bodyError = error;
@@ -1723,40 +1952,58 @@ async function runSvelteKitHydrationRoutesOnce(
   // passing run never leaks a Chromium process/handle that would hang a later
   // validate:consumer run; collect rather than throw inline so `browser.close()`
   // still runs if `context.close()` fails.
-  const closeErrors: unknown[] = [];
-  if (context !== undefined) {
-    await promiseWithTimeout(
-      context.close(),
-      5_000,
-      `closing SvelteKit hydration context after ${routePaths.join(', ')}`,
-    ).catch((error: unknown) =>
-      closeErrors.push(
-        new Error(
-          `teardown phase=context.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error },
-        ),
-      ),
-    );
-  }
-  await promiseWithTimeout(
-    browser.close(),
-    5_000,
-    `closing Chromium after SvelteKit hydration routes ${routePaths.join(', ')}`,
-  ).catch((error: unknown) =>
-    closeErrors.push(
-      new Error(
-        `teardown phase=browser.close routes=${routePaths.join(',')} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
-        { cause: error },
-      ),
-    ),
+  teardownFailures.push(
+    ...(await runBoundedHydrationTeardown([
+      ...(context === undefined
+        ? []
+        : [
+            {
+              phase: 'context.close',
+              close: () => context.close(),
+              state: () => `contextPages=${context.pages().length}`,
+              reclaimed: () => isHydrationBrowserGone(processToken),
+            },
+          ]),
+      {
+        phase: 'browser.close',
+        close: () => browser.close(),
+        forceClose: async () => {
+          forceKillHydrationBrowser(processToken);
+          await waitForHydrationBrowserExit(processToken);
+        },
+        state: () =>
+          `browserConnected=${browser.isConnected()} processRunning=${hydrationBrowserProcessIds(processToken).length > 0}`,
+        reclaimed: () => isHydrationBrowserGone(processToken),
+      },
+    ])),
   );
 
   // A body failure wins: its error is what the retry decision needs (a crashed
-  // browser makes both closes throw too — those are swallowed). But when every
-  // route assertion PASSED and teardown still failed, surface it: a browser
-  // dying during close is a real problem, not noise to hide behind a green run.
-  if (bodyFailed) throw bodyError;
-  if (closeErrors.length > 0) throw new HydrationTeardownError(closeErrors[0]);
+  // browser makes every close throw too — those are swallowed). Otherwise the
+  // verdict is taken ONCE, here, against the state after every step has run:
+  // an abandoned `page.close()` that a later `browser.close()` (or its SIGKILL
+  // escalation) reclaimed leaked nothing and must not fail the gate.
+  if (bodyFailed) {
+    const unreclaimed = unreclaimedTeardownFailures(teardownFailures);
+    const secondaryTeardown = unreclaimed[unreclaimed.length - 1];
+    if (secondaryTeardown !== undefined) {
+      process.stderr.write(
+        `[validate-consumers] hydration teardown failed after assertion failure: phase=${secondaryTeardown.phase} ${secondaryTeardown.state}: ${secondaryTeardown.error instanceof Error ? secondaryTeardown.error.message : String(secondaryTeardown.error)}\n`,
+      );
+    }
+    throw bodyError;
+  }
+
+  const unreclaimed = unreclaimedTeardownFailures(teardownFailures);
+  const widest = unreclaimed[unreclaimed.length - 1];
+  if (widest !== undefined) {
+    throw new ConsumerTeardownError(
+      new Error(
+        `teardown phase=${widest.phase} routes=${routePaths.join(',')} ${widest.state} events=${browserEvents.join('|') || 'none'}: ${widest.error instanceof Error ? widest.error.message : String(widest.error)}`,
+        { cause: widest.error },
+      ),
+    );
+  }
 }
 
 async function assertSvelteKitClientRoutesHydrate(
@@ -1768,10 +2015,10 @@ async function assertSvelteKitClientRoutesHydrate(
     await runSvelteKitHydrationRoutesOnce(httpPort, label, routePaths);
   } catch (error) {
     // Only a crash DURING route assertions is retried. A teardown failure
-    // after passing assertions (HydrationTeardownError) is surfaced as-is —
+    // after passing assertions (ConsumerTeardownError) is surfaced as-is —
     // re-running routes that already succeeded would be wasted work — and any
     // non-crash failure (a real hydration/content assertion) is rethrown too.
-    if (error instanceof HydrationTeardownError || !isBrowserCrashError(error)) throw error;
+    if (error instanceof ConsumerTeardownError || !isBrowserCrashError(error)) throw error;
     process.stderr.write(
       `[validate-consumers] Chromium crashed during ${label} hydration ` +
         `(${routePaths.join(', ')}); relaunching once: ` +
@@ -1787,9 +2034,16 @@ async function assertSvelteKitHydrationRoute(
   httpPort: number,
   label: string,
   routePath: SvelteKitHydrationRoute,
+  browserEvents: string[],
+  processToken: string,
+  teardownFailures: TeardownStepFailure[],
 ): Promise<void> {
   const page = await context.newPage();
   const errors: string[] = [];
+  page.on('crash', () => browserEvents.push(`page:crash route=${routePath}`));
+  page.on('requestfailed', (request) =>
+    browserEvents.push(`requestfailed route=${routePath} url=${request.url()}`),
+  );
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     const text = message.text();
@@ -1801,6 +2055,8 @@ async function assertSvelteKitHydrationRoute(
     }
   });
 
+  let bodyError: unknown;
+  let bodyFailed = false;
   try {
     await page.goto(`http://127.0.0.1:${httpPort}${routePath}`, {
       waitUntil: 'domcontentloaded',
@@ -1813,20 +2069,26 @@ async function assertSvelteKitHydrationRoute(
         `sveltekit-consumer ${label} ${routePath} emitted client hydration/runtime errors:\n${errors.map((error) => `  ${error}`).join('\n')}`,
       );
     }
-  } finally {
-    await promiseWithTimeout(
-      page.close(),
-      5_000,
-      `closing SvelteKit hydration page for ${routePath}`,
-    ).catch((error: unknown) => {
-      throw new HydrationTeardownError(
-        new Error(
-          `teardown phase=page.close route=${routePath} browserConnected=${browser.isConnected()}: ${error instanceof Error ? error.message : String(error)}`,
-          { cause: error },
-        ),
-      );
-    });
+  } catch (error) {
+    bodyError = error;
+    bodyFailed = true;
   }
+  // Record, never throw. Throwing here would abandon the context and browser
+  // closes that are the only things able to reclaim this page once its own
+  // close has stopped responding — and would replace a real hydration or
+  // content assertion with a teardown message.
+  teardownFailures.push(
+    ...(await runBoundedHydrationTeardown([
+      {
+        phase: `page.close route=${routePath}`,
+        close: () => page.close(),
+        state: () => `pageClosed=${page.isClosed()} browserConnected=${browser.isConnected()}`,
+        reclaimed: () => page.isClosed() || isHydrationBrowserGone(processToken),
+      },
+    ])),
+  );
+
+  if (bodyFailed) throw bodyError;
 }
 
 async function assertSvelteKitHydrationRouteContent(
@@ -1875,6 +2137,10 @@ async function promiseWithTimeout<T>(
   timeoutMs: number,
   description: string,
 ): Promise<T> {
+  // A timeout intentionally abandons the underlying close operation. Mark its
+  // eventual rejection handled so a late browser/fixture error cannot become
+  // an unhandled rejection after teardown has moved on.
+  void promise.catch(() => undefined);
   return await Promise.race([
     promise,
     Bun.sleep(timeoutMs).then(() => fail(`${description} timed out after ${timeoutMs}ms`)),
@@ -2340,6 +2606,8 @@ async function runExamplesConsumerFixture(): Promise<void> {
       },
     });
 
+    let bodyError: unknown;
+    let bodyFailed = false;
     try {
       // Poll a static build asset so readiness checks do not repeatedly start
       // the intentionally expensive all-examples SSR render and abort it after
@@ -2393,10 +2661,20 @@ async function runExamplesConsumerFixture(): Promise<void> {
       process.stdout.write(
         `[validate-consumers] examples-consumer OK — ${expected.entryCount} example entries each rendered exactly once.\n`,
       );
-    } finally {
-      fixtureServer.kill();
-      await fixtureServer.exited;
+    } catch (error) {
+      bodyError = error;
+      bodyFailed = true;
     }
+    const teardownError = await stopConsumerFixtureServer(fixtureServer).catch((error) => error);
+    if (bodyFailed) {
+      if (teardownError !== undefined) {
+        process.stderr.write(
+          `[validate-consumers] examples-consumer fixture teardown failed after assertion failure: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}\n`,
+        );
+      }
+      throw bodyError;
+    }
+    if (teardownError !== undefined) throw teardownError;
   } finally {
     restoreManifest();
   }

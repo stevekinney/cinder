@@ -6,12 +6,12 @@
 
   .cinder-hover-card {
     position: fixed;
-    z-index: var(--cinder-z-popover, 1000);
+    z-index: var(--cinder-z-popover);
     max-width: min(20rem, calc(100vw - 2rem));
     /* --cinder-space-4 (1rem) gives a card-like inset — one step above popover's
        --cinder-space-3 (0.75rem) to reflect the richer preview-card surface. */
     padding: var(--cinder-space-4);
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
     color: var(--cinder-text);
@@ -45,8 +45,8 @@
     height: 0.625rem;
     rotate: 45deg;
     background: inherit;
-    border-inline-start: 1px solid var(--cinder-border-muted);
-    border-block-start: 1px solid var(--cinder-border-muted);
+    border-inline-start: 1px solid var(--cinder-border);
+    border-block-start: 1px solid var(--cinder-border);
   }
 
   @media (prefers-reduced-motion: reduce) {

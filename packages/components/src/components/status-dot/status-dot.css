@@ -37,7 +37,7 @@
   }
 
   .cinder-status-dot[data-cinder-state='connecting'] {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .cinder-status-dot[data-cinder-state='disconnected'] {

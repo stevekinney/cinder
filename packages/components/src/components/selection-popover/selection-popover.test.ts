@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SelectionPopover } = await import('./selection-popover.svelte');
 
 afterEach(() => cleanup());
@@ -70,6 +70,96 @@ describe('SelectionPopover', () => {
 
     expect(submitted).toEqual(['Please clarify this.']);
     expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+  });
+
+  test('expanding focuses the composer without scrolling the page', async () => {
+    const originalFocus = HTMLTextAreaElement.prototype.focus;
+    let focusOptions: FocusOptions | undefined;
+    HTMLTextAreaElement.prototype.focus = function (options?: FocusOptions): void {
+      focusOptions = options;
+      originalFocus.call(this, options);
+    };
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('textbox')));
+
+      expect(focusOptions).toEqual({ preventScroll: true });
+    } finally {
+      HTMLTextAreaElement.prototype.focus = originalFocus;
+    }
+  });
+
+  test('cancelling the composer restores focus without scrolling and stays open', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusOptions: FocusOptions | undefined;
+    trigger.focus = (options?: FocusOptions) => {
+      focusOptions = options;
+    };
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      expect(focusOptions).toEqual({ preventScroll: true });
+      expect(screen.getByRole('toolbar', { name: 'Selection actions' })).not.toBeNull();
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  test('submitting the composer restores focus without scrolling and stays open', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusOptions: FocusOptions | undefined;
+    trigger.focus = (options?: FocusOptions) => {
+      focusOptions = options;
+    };
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onCommentSubmit: () => {},
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      await fireEvent.input(screen.getByRole('textbox', { name: 'Comment text' }), {
+        target: { value: 'Looks good.' },
+      });
+      await fireEvent.click(screen.getByRole('button', { name: 'Submit comment' }));
+
+      expect(focusOptions).toEqual({ preventScroll: true });
+      expect(screen.getByRole('toolbar', { name: 'Selection actions' })).not.toBeNull();
+    } finally {
+      trigger.remove();
+    }
   });
 
   test('Escape closes when collapsed and cancels when expanded', async () => {
@@ -349,5 +439,1097 @@ describe('SelectionPopover', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(closed).toBe(false);
+  });
+
+  test('scrolling the expanded comment field preserves the draft and keeps the popover open', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Draft comment' } });
+    textarea.dispatchEvent(new Event('scroll'));
+
+    expect(closed).toBe(false);
+    expect((textarea as HTMLTextAreaElement).value).toBe('Draft comment');
+  });
+
+  test('a viewport resize while the composer is focused preserves its draft', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Mobile draft' } });
+    textarea.focus();
+    await fireEvent(window, new Event('resize'));
+
+    expect(closed).toBe(false);
+    expect((textarea as HTMLTextAreaElement).value).toBe('Mobile draft');
+    expect(document.activeElement).toBe(textarea);
+  });
+
+  test('a focused height-only resize preserves the soft-keyboard draft', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = originalInnerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      visualViewport.height = originalInnerHeight - 100;
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
+
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      visualViewport.height = originalInnerHeight;
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard draft');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVisualViewport)
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+      if (originalVirtualKeyboard) {
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      } else {
+        Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      }
+    }
+  });
+
+  test('a layout-keyboard height resize preserves the draft without the virtual keyboard API', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = originalInnerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Layout keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      visualViewport.height = originalInnerHeight - 100;
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Layout keyboard draft');
+
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      visualViewport.height = originalInnerHeight;
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVisualViewport)
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+    }
+  });
+
+  test('paired window and visual viewport keyboard resizes preserve the draft', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = originalInnerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Paired keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      visualViewport.height = originalInnerHeight - 100;
+      await fireEvent(window, new Event('resize'));
+      await fireEvent.scroll(window);
+      visualViewport.dispatchEvent(new Event('resize'));
+      visualViewport.dispatchEvent(new Event('scroll'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Paired keyboard draft');
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await fireEvent.scroll(window);
+      expect(closed).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    }
+  });
+
+  test('a closing window keyboard resize preserves a draft after blur', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Blurred keyboard draft' } });
+    textarea.focus();
+
+    try {
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      textarea.blur();
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Blurred keyboard draft');
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+    }
+  });
+
+  test('canceling the composer before a closing keyboard resize keeps the popover open', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    await fireEvent.input(textarea, { target: { value: 'Cancelled draft' } });
+
+    try {
+      // The soft keyboard opens while the composer is expanded and focused.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Cancel collapses the composer and moves focus away synchronously,
+      // before the keyboard's asynchronous closing resize arrives.
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByRole('textbox', { name: 'Comment text' })).toBeNull();
+
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+      expect(screen.getByRole('button', { name: 'Add comment' })).not.toBeNull();
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+    }
+  });
+
+  test('canceling and restoring focus to a real prior owner preserves keyboard ownership', async () => {
+    const priorFocusOwner = document.createElement('button');
+    priorFocusOwner.textContent = 'Prior focus owner';
+    document.body.append(priorFocusOwner);
+    priorFocusOwner.focus();
+
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: false,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      // The false -> true transition captures `priorFocusOwner` — a real
+      // element outside the popover, unlike document.body — as the element
+      // to restore focus to on close.
+      await rerender({
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      await fireEvent.input(textarea, { target: { value: 'Cancelled draft' } });
+
+      // The soft keyboard opens while the composer is expanded and focused.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Cancel restores focus to the real pre-open owner, outside the
+      // popover. Before the fix, the window `focusin` this produces was
+      // mistaken for the user moving on, clearing keyboard ownership.
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(document.activeElement).toBe(priorFocusOwner);
+
+      // The keyboard's asynchronous closing resize should still be
+      // recognized as owned by the composer's in-flight keyboard close.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      priorFocusOwner.remove();
+    }
+  });
+
+  test('a controlled consumer declining a close still allows a later dismissal', async () => {
+    let closeCount = 0;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closeCount += 1;
+          // The consumer intentionally declines the close (e.g. shows a
+          // confirmation) — `open` never transitions to false.
+        },
+      },
+    });
+
+    await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
+      key: 'Escape',
+    });
+    expect(closeCount).toBe(1);
+
+    // Let the microtask queue flush so the latch releases.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
+      key: 'Escape',
+    });
+    expect(closeCount).toBe(2);
+  });
+
+  test('an intervening event while the keyboard is still visible does not clear composer ownership', async () => {
+    let closed = false;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+    const originalInnerHeight = window.innerHeight;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      // The soft keyboard opens while the composer is expanded and focused,
+      // latching ownership to true.
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Cancel collapses the composer before the keyboard reports itself
+      // hidden.
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      // An intervening resize arrives while the keyboard is still (falsely)
+      // reported visible, with the composer already collapsed. This must
+      // not downgrade the latched ownership back to false.
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // The keyboard's actual closing resize should still be recognized as
+      // owned by the composer.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+    }
+  });
+
+  test('moving focus to a real external destination is not re-owned by a stale expanded composer', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      textarea.focus();
+
+      // The soft keyboard opens while the composer is expanded and focused,
+      // latching ownership to true.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Keyboard navigation moves focus to a real external control WITHOUT
+      // canceling the composer — `expanded` stays true, so ownership must
+      // not simply be re-derived from that stale state.
+      externalInput.focus();
+
+      // A later resize while the keyboard is still reported visible must
+      // not be re-claimed as composer-owned just because `expanded` is
+      // still true; it belongs to whatever the user tabbed to.
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      externalInput.remove();
+    }
+  });
+
+  test('focus genuinely returning to the composer lets it reclaim keyboard ownership', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      await fireEvent.input(textarea, { target: { value: 'Reclaimed draft' } });
+      textarea.focus();
+
+      // The soft keyboard opens while the composer is expanded and focused.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Focus briefly moves to an external control (e.g. an autofill
+      // suggestion) and then genuinely returns to the composer, all while
+      // the keyboard stays visible.
+      externalInput.focus();
+      textarea.focus();
+
+      // A further event while still visible lets the composer re-establish
+      // ownership now that it has focus again.
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Cancel collapses the composer before the keyboard reports itself
+      // hidden — ownership must have survived the earlier round trip for
+      // this to still work.
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 0 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(false);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      externalInput.remove();
+    }
+  });
+
+  test('tabbing to a real destination outside the popover keeps focus there through a later movement dismissal', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Somewhere else';
+    document.body.append(outside);
+
+    try {
+      // The user tabs out of the toolbar to a real destination outside the
+      // popover.
+      outside.focus();
+      expect(document.activeElement).toBe(outside);
+
+      // A later scroll dismisses the popover, but must not steal focus back
+      // to wherever it was before the popover opened.
+      await fireEvent.scroll(window);
+
+      expect(closed).toBe(true);
+      expect(document.activeElement).toBe(outside);
+    } finally {
+      outside.remove();
+    }
+  });
+
+  test.each([
+    { focusState: 'focused', blurBeforeClose: false },
+    { focusState: 'just blurred', blurBeforeClose: true },
+  ])(
+    'closing the visual-viewport keyboard preserves a $focusState draft',
+    async ({ blurBeforeClose }) => {
+      let closed = false;
+      const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+      const visualViewport = new EventTarget() as EventTarget & {
+        height: number;
+        scale: number;
+      };
+      visualViewport.height = window.innerHeight;
+      visualViewport.scale = 1;
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: visualViewport,
+      });
+
+      try {
+        render(SelectionPopover, {
+          props: {
+            id: 'selection-comment',
+            open: true,
+            position: { x: 120, y: 80 },
+            onClose: () => {
+              closed = true;
+            },
+          },
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+        const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+        await fireEvent.input(textarea, { target: { value: 'Visual viewport draft' } });
+        textarea.focus();
+
+        visualViewport.height = window.innerHeight - 300;
+        visualViewport.dispatchEvent(new Event('resize'));
+        expect(closed).toBe(false);
+
+        if (blurBeforeClose) textarea.blur();
+        visualViewport.height = window.innerHeight;
+        visualViewport.dispatchEvent(new Event('resize'));
+        visualViewport.dispatchEvent(new Event('scroll'));
+
+        expect(closed).toBe(false);
+        expect((textarea as HTMLTextAreaElement).value).toBe('Visual viewport draft');
+      } finally {
+        cleanup();
+        if (originalVisualViewport) {
+          Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+        } else {
+          Reflect.deleteProperty(window, 'visualViewport');
+        }
+      }
+    },
+  );
+
+  test('an external visual-viewport keyboard close dismisses a collapsed popover', async () => {
+    let closed = false;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+    const visualViewport = new EventTarget() as EventTarget & {
+      height: number;
+      scale: number;
+    };
+    visualViewport.height = window.innerHeight;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewport,
+    });
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      textarea.focus();
+      visualViewport.height = window.innerHeight - 300;
+      visualViewport.dispatchEvent(new Event('resize'));
+      expect(closed).toBe(false);
+
+      await fireEvent.keyDown(textarea, { key: 'Escape' });
+      externalInput.focus();
+      visualViewport.height = window.innerHeight;
+      visualViewport.dispatchEvent(new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      cleanup();
+      externalInput.remove();
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    }
+  });
+
+  test('a desktop height-only resize dismisses while the composer is focused', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    textarea.focus();
+    try {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight + 100,
+      });
+
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+    }
+  });
+
+  test('a genuine window resize dismisses while the composer is focused', async () => {
+    let closed = false;
+    const originalInnerWidth = window.innerWidth;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    textarea.focus();
+    try {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalInnerWidth + 100,
+      });
+
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', {
+        configurable: true,
+        value: originalInnerWidth,
+      });
+    }
+  });
+
+  test('an external scroll dismisses even while the composer is focused', async () => {
+    let closed = false;
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+    const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+    textarea.focus();
+    await fireEvent.scroll(window);
+
+    expect(closed).toBe(true);
+  });
+
+  test.each(['scroll', 'resize'])(
+    'a visual viewport %s dismisses a focused composer',
+    async (eventType) => {
+      let closed = false;
+      const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+      const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+      const visualViewport = new EventTarget();
+      Object.defineProperties(visualViewport, {
+        height: { value: window.innerHeight - 100 },
+        scale: { value: 2 },
+      });
+      Object.defineProperty(window, 'visualViewport', {
+        configurable: true,
+        value: visualViewport,
+      });
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+
+      try {
+        render(SelectionPopover, {
+          props: {
+            id: 'selection-comment',
+            open: true,
+            position: { x: 120, y: 80 },
+            onClose: () => {
+              closed = true;
+            },
+          },
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+        visualViewport.dispatchEvent(new Event(eventType));
+
+        expect(closed).toBe(true);
+      } finally {
+        cleanup();
+        if (originalVisualViewport) {
+          Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+        } else {
+          Reflect.deleteProperty(window, 'visualViewport');
+        }
+        if (originalVirtualKeyboard) {
+          Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+        } else {
+          Reflect.deleteProperty(navigator, 'virtualKeyboard');
+        }
+      }
+    },
+  );
+
+  test('a keyboard-driven visual viewport scroll preserves the focused draft', async () => {
+    let closed = false;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & {
+      height: number;
+      scale: number;
+    };
+    visualViewport.height = window.innerHeight - 300;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewport,
+    });
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      await fireEvent.input(textarea, { target: { value: 'Keyboard pan draft' } });
+      textarea.focus();
+
+      visualViewport.dispatchEvent(new Event('scroll'));
+
+      expect(closed).toBe(false);
+      expect((textarea as HTMLTextAreaElement).value).toBe('Keyboard pan draft');
+    } finally {
+      cleanup();
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    }
+  });
+
+  test('paired visual viewport movement events dismiss only once', async () => {
+    let closeCount = 0;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const visualViewport = new EventTarget() as EventTarget & {
+      height: number;
+      scale: number;
+    };
+    visualViewport.height = window.innerHeight - 100;
+    visualViewport.scale = 2;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewport,
+    });
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closeCount += 1;
+          },
+        },
+      });
+
+      visualViewport.dispatchEvent(new Event('resize'));
+      visualViewport.dispatchEvent(new Event('scroll'));
+
+      expect(closeCount).toBe(1);
+    } finally {
+      cleanup();
+      if (originalVisualViewport) {
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      } else {
+        Reflect.deleteProperty(window, 'visualViewport');
+      }
+    }
+  });
+
+  test('focus-restoration scrolling does not request a second close', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let closeCount = 0;
+    trigger.focus = () => {
+      window.dispatchEvent(new Event('scroll'));
+    };
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: false,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closeCount += 1;
+        },
+      },
+    });
+
+    try {
+      await rerender({ open: true, position: { x: 120, y: 80 } });
+      await fireEvent.keyDown(screen.getByRole('toolbar', { name: 'Selection actions' }), {
+        key: 'Escape',
+      });
+
+      expect(closeCount).toBe(1);
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  test('movement dismissal restores focus without scrolling the prior focus owner', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open selection actions';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let focusOptions: FocusOptions | undefined;
+    trigger.focus = (options?: FocusOptions) => {
+      focusOptions = options;
+    };
+
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: false,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    await rerender({ open: true, position: { x: 120, y: 80 } });
+    await fireEvent.scroll(window);
+
+    expect(focusOptions).toEqual({ preventScroll: true });
+    trigger.remove();
   });
 });
