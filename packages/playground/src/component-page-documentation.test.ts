@@ -140,18 +140,38 @@ function installDocumentationDataIsland(fixture: ComponentDocumentationPayload):
   if (existing === null) document.body.append(node);
 }
 
+// These fixtures render the canonical (non-snapshot) page, which attaches a
+// live-reload `EventSource` (see `component-page.svelte` / `event-source.svelte.ts`).
+// happy-dom does not implement `EventSource`, so without a stub the attachment's
+// `new EventSource(url)` throws `ReferenceError: EventSource is not defined`.
+// This stub only needs to exist and stay inert — these tests assert on layout,
+// not on live-reload behavior (that's covered by `event-source.test.ts`).
+class NoopEventSource {
+  addEventListener(): void {}
+  removeEventListener(): void {}
+  close(): void {}
+}
+
+const originalEventSource = Reflect.get(globalThis, 'EventSource') as unknown;
+
 beforeEach(() => {
   resetLedgers();
   const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
   happyWindow.happyDOM.setURL('http://localhost/page/button');
   Reflect.set(window, '__CINDER_EXAMPLES__', []);
   Reflect.set(window, '__CINDER_SCENARIOS__', {});
+  Reflect.set(globalThis, 'EventSource', NoopEventSource);
   installDocumentationDataIsland(baseFixture());
 });
 
 afterEach(() => {
   resetLedgers();
   document.body.innerHTML = '';
+  if (originalEventSource === undefined) {
+    Reflect.deleteProperty(globalThis, 'EventSource');
+  } else {
+    Reflect.set(globalThis, 'EventSource', originalEventSource);
+  }
 });
 
 describe('component-page single-scroll layout', () => {

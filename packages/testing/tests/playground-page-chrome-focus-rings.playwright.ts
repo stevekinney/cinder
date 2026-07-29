@@ -156,10 +156,15 @@ function expectInsetFocusPaint(paint: FocusPaint, label: string): void {
 
 async function openButtonDocumentationPage(page: Page): Promise<Frame> {
   await page.goto('/page/button', { waitUntil: 'load' });
-  await page.waitForLoadState('networkidle');
 
-  // The single-scroll page renders every section at once; the hero heading is a
-  // stable readiness signal that the documentation payload has hydrated.
+  // `networkidle` is NOT used here: this is the one test in the suite that
+  // hits the canonical page without `?snapshot=1`, so it opens a live-reload
+  // EventSource (see `component-page.svelte`). That connection is
+  // intentionally long-lived, which means the network never goes idle and
+  // `waitForLoadState('networkidle')` would hang until timeout. The hero
+  // heading below is the stable readiness signal instead: the single-scroll
+  // page renders every section at once, so its presence means the
+  // documentation payload has hydrated.
   await expect(page.getByRole('heading', { level: 1, name: 'Button' })).toBeVisible();
   return page.mainFrame();
 }
