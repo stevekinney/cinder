@@ -23,14 +23,17 @@ review covers the resulting focus, keyboard, and announcement behavior.
   originated inside the outgoing slide, keeping the roving `tabindex="0"` on
   the region consistent with the WAI-ARIA Carousel pattern. Native scroll
   input never traps or redirects focus that is outside the outgoing slide.
-- **Keyboard matrix.** Unchanged by this pass: `ArrowLeft`/`ArrowRight` move
-  one slide, `Home`/`End` jump to the first/last slide, all handled on the
-  carousel region and all calling `event.preventDefault()` so the native
-  scroller never double-handles arrow-key scrolling. Tab order is: carousel
-  region → viewport (only reachable via pointer/scroll, not part of the Tab
-  sequence since it is skipped once a keyboard interaction has focused the
-  region) → the active slide's interactive content → prev/next buttons → dot
-  picker.
+- **Keyboard matrix.** `ArrowLeft`/`ArrowRight` move one slide, `Home`/`End`
+  jump to the first/last slide; the keydown handler on the carousel region
+  calls `event.preventDefault()` on all four so the native scroller never
+  double-handles arrow-key scrolling, and the handler fires regardless of
+  which descendant has focus because `keydown` bubbles. Tab order is:
+  carousel region → viewport (`tabindex="0"`) → the active slide's
+  interactive content → prev/next buttons → dot picker. The viewport is a
+  genuine, intentional stop — its own `tabindex="0"` lets a keyboard user
+  land directly on the scrollable track and use Arrow/Home/End there without
+  first tabbing into slide content, matching the existing "region owns
+  navigation" carousel pattern.
 - **Assistive-technology announcements.** The existing `polite` live region
   announcing `"Slide N of M: <label>"` is the single source of truth for
   index changes regardless of how the index changed (keyboard, dot click,
