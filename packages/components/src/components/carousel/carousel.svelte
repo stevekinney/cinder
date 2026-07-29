@@ -314,7 +314,9 @@
   }
 
   function onWheel(event: WheelEvent): void {
-    if (Math.abs(event.deltaX) > 0 || (event.shiftKey && Math.abs(event.deltaY) > 0)) {
+    const isHorizontallyDominant = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    const isShiftScroll = event.shiftKey && Math.abs(event.deltaY) > 0;
+    if (isHorizontallyDominant || isShiftScroll) {
       programmaticTarget = null;
       isAutoplayTransitioning = false;
       scheduleNativeScrollEnd();

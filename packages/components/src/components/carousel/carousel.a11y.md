@@ -44,11 +44,12 @@ announcement behavior.
   duration of any autoplay-driven transition so unattended auto-advance does
   not interrupt a screen reader; user-initiated scrolling (including a wheel
   gesture that cancels an in-flight autoplay/programmatic scroll) always
-  restores `polite` before the next announcement. Only a horizontal wheel
-  gesture (`deltaX`, or `deltaY` with Shift) is treated as carousel input;
-  an incidental vertical wheel pass over the viewport does not cancel a
-  pending programmatic or autoplay transition or otherwise affect
-  announcements.
+  restores `polite` before the next announcement. Only a wheel gesture whose
+  horizontal component dominates (`|deltaX| > |deltaY|`), or a Shift-modified
+  vertical scroll, is treated as carousel input; an ordinary vertical wheel
+  or trackpad pass — including one with a small incidental `deltaX` — does
+  not cancel a pending programmatic or autoplay transition or otherwise
+  affect announcements.
 - **Reordering while resting.** If the `slides` array's identity order
   changes while the carousel isn't mid-interaction, the settled position is
   re-derived from the DOM (the slide nearest the viewport's leading edge)
