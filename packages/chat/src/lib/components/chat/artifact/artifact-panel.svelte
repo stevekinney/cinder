@@ -64,7 +64,7 @@
     align-items: center;
     justify-content: space-between;
     padding: var(--cinder-space-3) var(--cinder-space-4);
-    border-bottom: 1px solid var(--cinder-border);
+    border-bottom: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;
     gap: var(--cinder-space-2);
   }

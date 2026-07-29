@@ -9,13 +9,14 @@
     --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
     --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
     --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
-    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-medium);
+    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
     --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
     --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
     --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
     --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
     --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
-    border-block-end: 1px solid var(--cinder-border);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
   }
 
   /* Remove the trailing divider from the last item so it doesn't
@@ -47,12 +48,12 @@
       var(--cinder-accordion-item-trigger-padding-inline, var(--cinder-space-5));
 
     font-size: var(--cinder-accordion-item-trigger-font-size, var(--cinder-text-base));
-    font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-medium));
+    font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-semibold));
     line-height: var(--cinder-leading-snug);
     color: var(--cinder-text);
     text-align: start;
 
-    background: transparent;
+    background: var(--cinder-surface-raised);
     border: none;
     cursor: pointer;
 
@@ -64,12 +65,12 @@
   /* Sticky-hover suppression on touch. */
   @media (hover: hover) {
     .cinder-accordion-item__trigger:hover:not(:disabled) {
-      background: var(--cinder-surface-hover);
+      background: var(--cinder-surface-raised-hover);
     }
   }
 
   .cinder-accordion-item__trigger:active:not(:disabled) {
-    background: var(--cinder-surface-pressed);
+    background: var(--cinder-surface-raised-pressed);
   }
 
   .cinder-accordion-item__trigger:focus-visible {
@@ -154,6 +155,7 @@
 
   .cinder-accordion-item__panel {
     border-block-start: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
   }
 
   .cinder-accordion-item__panel-inner {

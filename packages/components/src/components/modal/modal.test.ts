@@ -58,6 +58,11 @@ afterEach(() => {
 });
 
 describe('Modal', () => {
+  test('body uses the panel surface beneath header and footer', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-modal__body\s*\{[^}]*background:\s*var\(--cinder-surface\)/s);
+  });
+
   test('dialog is in the DOM but has no open attribute when open=false (client-side)', () => {
     // In a browser context $effect runs, setting mounted=true, so the <dialog> is always
     // present client-side. The dialog is closed (no 'open' attribute) but not torn down,
@@ -310,6 +315,14 @@ describe('Modal', () => {
     } finally {
       cleanupOverflowFade();
     }
+  });
+
+  test('overflow fade uses a surface-colored overlay instead of masking the body', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-overflows\]::after\s*\{[^}]*background:\s*linear-gradient\(to bottom, transparent, var\(--cinder-surface\)\)/s,
+    );
+    expect(css).not.toContain('mask-image:');
   });
 
   test('autofocus DOM property on arbitrary child prevents body fallback focus', () => {

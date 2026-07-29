@@ -256,6 +256,20 @@ export class PreviewStore {
   }
 
   /**
+   * Point the store at a theme that something else already applied.
+   *
+   * The landing page owns the theme control now, and colour-token overrides are
+   * stored per theme — a stale store would leak light edits into dark. This
+   * syncs the key WITHOUT re-applying the theme, re-persisting it, or rewriting
+   * the URL, all of which the page has already done (and the URL rewrite would
+   * leave `?theme=` on an otherwise clean landing URL).
+   */
+  adoptTheme(value: ThemeChoice): void {
+    if (!THEME_VALUES.has(value)) return;
+    this.#override = value;
+  }
+
+  /**
    * Re-seed every toolbar cell from the current URL. Called after hydration so
    * a persisted theme can be restored without changing the server-known
    * initial tree. The theme override falls back to localStorage when the URL

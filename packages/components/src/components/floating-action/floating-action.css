@@ -177,7 +177,7 @@
     .cinder-floating-action[data-cinder-variant='secondary']:hover:not(:disabled):not(
         [aria-disabled='true']
       ) {
-      background: var(--cinder-surface-hover);
+      background: var(--cinder-surface-raised-hover);
     }
 
     .cinder-floating-action[data-cinder-variant='surface']:hover:not(:disabled):not(
@@ -199,7 +199,7 @@
   .cinder-floating-action[data-cinder-variant='secondary']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: var(--cinder-surface-pressed);
+    background: var(--cinder-surface-raised-pressed);
   }
 
   .cinder-floating-action[data-cinder-variant='surface']:active:not(:disabled):not(

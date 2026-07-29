@@ -54,6 +54,7 @@
   .cinder-data-grid[data-cinder-sticky-header] .cinder-data-grid__header-row {
     position: sticky;
     inset-block-start: 0;
+    /* cinder-z-index-local: sticky header stays above scrolling grid rows. */
     z-index: 3;
   }
 
@@ -95,8 +96,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    border-block-end: 1px solid var(--cinder-border);
-    border-inline-end: 1px solid var(--cinder-border);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    border-inline-end: 1px solid var(--cinder-border-muted);
     background: inherit;
     box-shadow: var(--_cinder-data-grid-pin-shadow);
   }
@@ -204,10 +205,12 @@
   .cinder-data-grid__header-cell[data-cinder-pin],
   .cinder-data-grid__cell[data-cinder-pin] {
     position: sticky;
+    /* cinder-z-index-local: pinned cells stay above unpinned cells in this grid. */
     z-index: 2;
   }
 
   .cinder-data-grid__header-cell[data-cinder-pin] {
+    /* cinder-z-index-local: pinned header is the intersection of two local sticky axes. */
     z-index: 4;
   }
 

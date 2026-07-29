@@ -75,7 +75,7 @@
     min-inline-size: 12rem;
     max-inline-size: min(24rem, calc(100vw - var(--cinder-space-6)));
     overflow: visible;
-    z-index: var(--cinder-z-dropdown, 1100);
+    z-index: var(--cinder-z-dropdown);
   }
 
   .cinder-menu-bar__dropdown-scroll {
@@ -98,7 +98,7 @@
     max-inline-size: min(24rem, calc(100vw - var(--cinder-space-6)));
     max-block-size: min(28rem, calc(100vh - var(--cinder-space-6)));
     overflow: auto;
-    z-index: var(--cinder-z-dropdown, 1100);
+    z-index: var(--cinder-z-dropdown);
   }
 
   .cinder-menu-bar__item-label {

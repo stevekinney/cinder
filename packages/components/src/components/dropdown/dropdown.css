@@ -98,7 +98,7 @@
 
   .cinder-dropdown__menu {
     position: absolute;
-    z-index: var(--cinder-z-dropdown, 40);
+    z-index: var(--cinder-z-dropdown);
     min-width: 12rem;
     padding: var(--cinder-space-1) 0;
     overflow: hidden;

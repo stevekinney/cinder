@@ -14,6 +14,7 @@ export type AnchoredOverlayOptions = {
   arrowPadding?: () => number;
   arrowVisible?: () => boolean;
   widthMode?: () => AnchoredOverlayWidthMode;
+  strategy?: () => 'fixed' | 'absolute';
 };
 
 const DEFAULT_PLACEMENT: Placement = 'bottom-start';
@@ -115,6 +116,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const arrow = options.arrow?.();
     const arrowVisible = options.arrowVisible?.() ?? Boolean(arrow);
     const widthMode = options.widthMode?.() ?? 'content';
+    const strategyOverride = options.strategy?.();
     let cancelled = false;
     let generation = 0;
     let stopAutoUpdate: (() => void) | undefined;
@@ -144,11 +146,12 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         if (cancelled) return;
         const currentGeneration = ++generation;
         let result: Awaited<ReturnType<typeof computePosition>>;
+        const strategy = strategyOverride ?? (panel.closest('dialog') ? 'absolute' : 'fixed');
         try {
           result = await computePosition(anchor, panel, {
             placement,
             middleware,
-            strategy: 'fixed',
+            strategy,
           });
         } catch {
           if (cancelled || currentGeneration !== generation) return;
@@ -162,7 +165,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
 
         const widthStyle = getAnchoredOverlayWidthStyle(widthMode, anchor.getBoundingClientRect());
         positionStyle = [
-          'position: fixed;',
+          `position: ${strategy};`,
           `left: ${result.x}px;`,
           `top: ${result.y}px;`,
           widthStyle,

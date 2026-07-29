@@ -78,6 +78,8 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-bg', label: 'Page background' },
       { name: '--cinder-surface', label: 'Surface' },
       { name: '--cinder-surface-raised', label: 'Raised surface' },
+      { name: '--cinder-surface-raised-hover', label: 'Raised surface hover' },
+      { name: '--cinder-surface-raised-pressed', label: 'Raised surface pressed' },
       { name: '--cinder-surface-inset', label: 'Inset surface' },
       { name: '--cinder-surface-hover', label: 'Surface hover' },
       { name: '--cinder-surface-pressed', label: 'Surface pressed' },

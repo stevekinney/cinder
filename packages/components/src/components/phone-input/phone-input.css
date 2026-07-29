@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
+@import '../select/select.css';
 @layer cinder.components {
   /* ========================================
  * PHONE INPUT
@@ -30,7 +32,7 @@
 
   .cinder-phone-input {
     display: grid;
-    grid-template-columns: minmax(7rem, max-content) 1fr;
+    grid-template-columns: minmax(7rem, 10rem) minmax(0, 1fr);
     gap: var(--cinder-space-2);
     align-items: stretch;
   }
@@ -41,75 +43,54 @@
     }
   }
 
-  .cinder-phone-input__country,
-  .cinder-phone-input__national {
-    min-height: 2.25rem;
-    padding: var(--cinder-space-1-5) var(--cinder-space-3);
-    font-family: inherit;
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
-    background: var(--cinder-surface-raised);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
-    appearance: none;
-
-    transition:
-      border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
-      box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
   .cinder-phone-input__country {
-    cursor: pointer;
-    padding-inline-end: var(--cinder-space-6);
-    background-image:
-      linear-gradient(45deg, transparent 50%, currentColor 50%),
-      linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position:
-      calc(100% - 18px) 50%,
-      calc(100% - 12px) 50%;
-    background-size:
-      6px 6px,
-      6px 6px;
-    background-repeat: no-repeat;
+    position: relative;
+    min-inline-size: 0;
   }
 
-  .cinder-phone-input__country::-ms-expand {
-    display: none;
+  .cinder-phone-input__country .cinder-select-field {
+    inline-size: 100%;
   }
 
-  @media (hover: hover) {
-    .cinder-phone-input__country:hover:not(:disabled),
-    .cinder-phone-input__national:hover:not(:disabled) {
-      border-color: var(--cinder-border-strong);
-    }
+  .cinder-phone-input__country .cinder-select {
+    color: transparent;
   }
 
-  .cinder-phone-input__country:focus-visible,
-  .cinder-phone-input__national:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-    border-color: var(--cinder-border-strong);
+  .cinder-phone-input__country .cinder-select option {
+    color: var(--cinder-text);
   }
 
-  .cinder-phone-input__country[aria-invalid='true'],
-  .cinder-phone-input__national[aria-invalid='true'],
-  .cinder-phone-input[aria-invalid='true'] .cinder-phone-input__country,
-  .cinder-phone-input[aria-invalid='true'] .cinder-phone-input__national {
-    border-color: var(--cinder-danger);
+  .cinder-phone-input__country-summary {
+    position: absolute;
+    z-index: 1;
+    inset-block-start: 50%;
+    inset-inline-start: var(--cinder-space-3);
+    max-inline-size: calc(100% - var(--cinder-space-10));
+    overflow: hidden;
+    color: var(--cinder-text);
+    font-size: var(--cinder-text-sm);
+    line-height: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateY(-50%);
   }
 
-  .cinder-phone-input__country:disabled,
-  .cinder-phone-input__national:disabled {
-    cursor: not-allowed;
+  .cinder-phone-input__country[data-disabled] .cinder-phone-input__country-summary {
     color: var(--cinder-text-disabled);
-    background-color: var(--cinder-surface-inset);
+  }
+
+  .cinder-phone-input__country[data-disabled] .cinder-select:disabled {
+    color: transparent;
   }
 
   @media (forced-colors: active) {
-    .cinder-phone-input__country:focus-visible,
-    .cinder-phone-input__national:focus-visible {
-      outline: var(--cinder-ring-width) solid Highlight;
+    .cinder-phone-input__country .cinder-select {
+      text-indent: -9999px;
+    }
+
+    .cinder-phone-input__country .cinder-select option {
+      text-indent: 0;
     }
   }
 
