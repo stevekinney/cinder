@@ -6,3 +6,40 @@
 - Auto-advance pauses while hovered or focus is inside the carousel.
 - Auto-advance is disabled when `prefers-reduced-motion: reduce` is active.
 - A live region announces the active slide label and position; it is `polite` for user-driven navigation and switches to `off` while autoplay is advancing.
+
+## Native scrolling review (#957)
+
+The viewport (`role="group"`, labelled `"<label> slides"`) is a native horizontal
+scroller with mandatory CSS scroll-snap, so touch swipe, trackpad/wheel scroll,
+and click-drag all move the track without any custom gesture recognizer. This
+review covers the resulting focus, keyboard, and announcement behavior.
+
+- **Focus management.** Arrow/Home/End keyboard navigation and pointer/touch
+  scrolling share one focus rule: if focus is inside the slide being
+  scrolled away from, focus moves to the viewport (`tabindex="0"`) before the
+  index changes, so focus never gets silently orphaned inside a slide that is
+  `inert`d out from under it (`transferFocusFromOutgoingSlide`). Keyboard
+  navigation additionally refocuses the carousel region itself when the event
+  originated inside the outgoing slide, keeping the roving `tabindex="0"` on
+  the region consistent with the WAI-ARIA Carousel pattern. Native scroll
+  input never traps or redirects focus that is outside the outgoing slide.
+- **Keyboard matrix.** Unchanged by this pass: `ArrowLeft`/`ArrowRight` move
+  one slide, `Home`/`End` jump to the first/last slide, all handled on the
+  carousel region and all calling `event.preventDefault()` so the native
+  scroller never double-handles arrow-key scrolling. Tab order is: carousel
+  region → viewport (only reachable via pointer/scroll, not part of the Tab
+  sequence since it is skipped once a keyboard interaction has focused the
+  region) → the active slide's interactive content → prev/next buttons → dot
+  picker.
+- **Assistive-technology announcements.** The existing `polite` live region
+  announcing `"Slide N of M: <label>"` is the single source of truth for
+  index changes regardless of how the index changed (keyboard, dot click,
+  drag, swipe, or native scroll settling). It is forced to `off` for the
+  duration of any autoplay-driven transition so unattended auto-advance does
+  not interrupt a screen reader; user-initiated scrolling (including a wheel
+  gesture that cancels an in-flight autoplay/programmatic scroll) always
+  restores `polite` before the next announcement. Only a horizontal wheel
+  gesture (`deltaX`, or `deltaY` with Shift) is treated as carousel input;
+  an incidental vertical wheel pass over the viewport does not cancel a
+  pending programmatic or autoplay transition or otherwise affect
+  announcements.

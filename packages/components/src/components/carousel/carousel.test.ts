@@ -810,6 +810,32 @@ describe('Carousel', () => {
     expectActiveSlide(container, 0);
   });
 
+  test('ignores an ordinary vertical wheel event while a programmatic scroll is pending', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const liveRegion = container.querySelector('[aria-live]');
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: jest.fn() });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    [...viewport.children].forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index === 1 ? 100 : 0, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    jest.advanceTimersByTime(10);
+    expect(liveRegion?.getAttribute('aria-live')).toBe('off');
+
+    await fireEvent.wheel(viewport, { deltaY: 40 });
+
+    expect(liveRegion?.getAttribute('aria-live')).toBe('off');
+  });
+
   test('clears autoplay ownership when a pointer takes over', async () => {
     jest.useFakeTimers();
     const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });

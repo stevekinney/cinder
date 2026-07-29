@@ -313,10 +313,11 @@
   }
 
   function onWheel(event: WheelEvent): void {
-    programmaticTarget = null;
-    isAutoplayTransitioning = false;
-    if (Math.abs(event.deltaX) > 0 || (event.shiftKey && Math.abs(event.deltaY) > 0))
+    if (Math.abs(event.deltaX) > 0 || (event.shiftKey && Math.abs(event.deltaY) > 0)) {
+      programmaticTarget = null;
+      isAutoplayTransitioning = false;
       scheduleNativeScrollEnd();
+    }
   }
 
   function onWindowBlur(): void {
