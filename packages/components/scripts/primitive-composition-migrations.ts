@@ -110,7 +110,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'area-chart/area-chart.css',
     'backdrop/backdrop.css',
     'bar-chart/bar-chart.css',
-    'combobox/combobox.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
     // The `__cluster` wrapper itself only needs `position: absolute` for
