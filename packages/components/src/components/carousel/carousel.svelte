@@ -25,8 +25,12 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy, untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
+
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
+  import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type { CarouselProps } from './carousel.types.ts';
 
   const reducedMotion = useReducedMotion();
@@ -47,12 +51,40 @@
   let isHovered = $state(false);
   let hasFocusWithin = $state(false);
   let userPaused = $state(false);
+  let isInteracting = $state(false);
+  let isNativeScrolling = $state(false);
+  let isAutoplayTransitioning = $state(false);
+  let settledIndex = $state(
+    untrack(() => (slides.length < 1 ? 0 : Math.max(0, Math.min(slides.length - 1, activeIndex)))),
+  );
+  let viewportElement = $state<HTMLElement | null>(null);
+  let programmaticTarget: number | null = null;
+  const activePointerIds = new SvelteSet<number>();
+  let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+  let scrollFrame: number | null = null;
+  let cachedViewportInlineSize = 0;
 
   const clampedLength = $derived(slides.length);
+  const initialSlideId = untrack(
+    () => slides[Math.max(0, Math.min(slides.length - 1, activeIndex))]?.id ?? slides[0]?.id,
+  );
+  const initialSlideIndex = $derived(
+    slides.length < 1
+      ? 0
+      : Math.max(
+          0,
+          slides.findIndex((slide) => slide.id === initialSlideId),
+        ),
+  );
   const currentIndex = $derived.by(() => {
     if (clampedLength < 1) return 0;
     return Math.max(0, Math.min(clampedLength - 1, activeIndex));
   });
+  let deferredExternalIndex: number | null = null;
+  let observedActiveIndex = currentIndex;
+  let internalActiveIndexUpdate: number | null = null;
+  const slideIdentity = $derived(slides.map((slide) => slide.id).join('\u0000'));
+  let previousSlideIdentity = untrack(() => slideIdentity);
 
   $effect(() => {
     if (clampedLength < 1) {
@@ -70,6 +102,8 @@
       !reducedMotion.current &&
       !isHovered &&
       !hasFocusWithin &&
+      !isInteracting &&
+      !isNativeScrolling &&
       !userPaused,
   );
   const liveAnnouncement = $derived.by(() => {
@@ -81,44 +115,80 @@
     if (!shouldAutoplay) return;
     const timer = setInterval(() => {
       if (clampedLength < 2) return;
-      activeIndex = (currentIndex + 1) % clampedLength;
+      isAutoplayTransitioning = true;
+      goNext(true);
+      if (programmaticTarget === null) isAutoplayTransitioning = false;
     }, autoplayInterval);
     return () => clearInterval(timer);
   });
 
-  function goTo(index: number) {
+  function goTo(index: number, immediate = false, fromAutoplay = false) {
     if (clampedLength < 1) return;
-    activeIndex = ((index % clampedLength) + clampedLength) % clampedLength;
+    if (!fromAutoplay) isAutoplayTransitioning = false;
+    const nextIndex = ((index % clampedLength) + clampedLength) % clampedLength;
+    if (programmaticTarget !== null && viewportElement !== null) {
+      settledIndex = nearestVisibleSlideIndex(viewportElement);
+    }
+    activeIndex = nextIndex;
+    scrollToActiveSlide(immediate ? 'auto' : undefined);
   }
 
   function goPrevious() {
-    goTo(currentIndex - 1);
+    const nextIndex = (currentIndex - 1 + clampedLength) % clampedLength;
+    const physicalDistance = Math.abs(
+      initialSlideOrder(nextIndex) - initialSlideOrder(currentIndex),
+    );
+    goTo(currentIndex - 1, clampedLength > 2 && physicalDistance > 1);
   }
 
-  function goNext() {
-    goTo(currentIndex + 1);
+  function goNext(fromAutoplay = false) {
+    const nextIndex = (currentIndex + 1) % clampedLength;
+    const physicalDistance = Math.abs(
+      initialSlideOrder(nextIndex) - initialSlideOrder(currentIndex),
+    );
+    goTo(currentIndex + 1, clampedLength > 2 && physicalDistance > 1, fromAutoplay);
   }
 
   function onKeydown(event: KeyboardEvent) {
     if (clampedLength < 2) return;
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goPrevious();
       return;
     }
     if (event.key === 'ArrowRight') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goNext();
       return;
     }
     if (event.key === 'Home') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goTo(0);
       return;
     }
     if (event.key === 'End') {
       event.preventDefault();
+      focusCarouselRoot(event);
       goTo(clampedLength - 1);
+    }
+  }
+
+  function focusCarouselRoot(event: KeyboardEvent): void {
+    const root = event.currentTarget;
+    const target = event.target;
+    const activeSlide = viewportElement?.children[currentIndex];
+    if (
+      root instanceof HTMLElement &&
+      target !== root &&
+      target instanceof Node &&
+      root.contains(target) &&
+      activeSlide instanceof HTMLElement &&
+      activeSlide.contains(target)
+    ) {
+      root.focus();
     }
   }
 
@@ -129,12 +199,257 @@
     }
     hasFocusWithin = false;
   }
+
+  function initialSlideOrder(index: number): number {
+    if (slides.length < 1) return 0;
+    return (index - initialSlideIndex + slides.length) % slides.length;
+  }
+
+  function isInteractionLayoutSlide(index: number): boolean {
+    if (index === currentIndex || index === settledIndex) return true;
+    // Widen the layout window only once a pan or programmatic transition is
+    // actually moving the track (isNativeScrolling / programmaticTarget), not
+    // merely because a touch/pen pointer is down. A tap that never causes a
+    // scroll event — including tapping the active slide's own link — must
+    // not pop a taller neighbor's height in and back out.
+    if (!(isNativeScrolling || programmaticTarget !== null)) return false;
+    const currentOrder = initialSlideOrder(currentIndex);
+    const settledOrder = initialSlideOrder(settledIndex);
+    const lowerBound = Math.max(0, Math.min(currentOrder, settledOrder) - 1);
+    const upperBound = Math.min(clampedLength - 1, Math.max(currentOrder, settledOrder) + 1);
+    const slideOrder = initialSlideOrder(index);
+    return slideOrder >= lowerBound && slideOrder <= upperBound;
+  }
+
+  function scrollToActiveSlide(behavior?: ScrollBehavior): void {
+    const viewport = viewportElement;
+    if (viewport === null) return;
+    const slide = viewport?.children[currentIndex];
+    if (!(slide instanceof HTMLElement)) return;
+    const viewportRect = viewport.getBoundingClientRect();
+    const slideRect = slide.getBoundingClientRect();
+    if (viewportRect.width === 0 || slideRect.width === 0) return;
+    if (Math.abs(slideRect.left - viewportRect.left) <= 1) {
+      programmaticTarget = null;
+      settledIndex = currentIndex;
+      deferredExternalIndex = null;
+      isAutoplayTransitioning = false;
+      return;
+    }
+    programmaticTarget = currentIndex;
+    const direction =
+      typeof window !== 'undefined' ? window.getComputedStyle(viewport).direction : 'ltr';
+    const destination =
+      direction === 'rtl'
+        ? viewport.scrollLeft + slideRect.left - viewportRect.left
+        : slide.offsetLeft;
+    if (typeof viewport.scrollTo === 'function') {
+      viewport.scrollTo({
+        left: destination,
+        behavior: behavior ?? (reducedMotion.current ? 'auto' : 'smooth'),
+      });
+    } else {
+      viewport.scrollLeft = destination;
+    }
+  }
+
+  function nearestVisibleSlideIndex(viewport: HTMLElement): number {
+    const viewportLeft = viewport.getBoundingClientRect().left;
+    return [...viewport.children].reduce((nearestIndex, slide, index) => {
+      const nearest = viewport.children[nearestIndex];
+      if (!nearest) return index;
+      return Math.abs(slide.getBoundingClientRect().left - viewportLeft) <
+        Math.abs(nearest.getBoundingClientRect().left - viewportLeft)
+        ? index
+        : nearestIndex;
+    }, 0);
+  }
+
+  const observeViewport = useResizeObserver((entries) => {
+    const entry = entries[0];
+    if (!entry) return;
+    const borderBoxSize = Array.isArray(entry.borderBoxSize)
+      ? entry.borderBoxSize[0]
+      : entry.borderBoxSize;
+    const inlineSize = borderBoxSize?.inlineSize ?? entry.contentRect.width;
+    if (inlineSize <= 0) {
+      cachedViewportInlineSize = inlineSize;
+      return;
+    }
+    if (inlineSize === cachedViewportInlineSize) return;
+    cachedViewportInlineSize = inlineSize;
+    if (!isInteracting && !isNativeScrolling) {
+      scrollToActiveSlide('auto');
+    }
+  });
+
+  function removePointerEndListeners(): void {
+    if (typeof window === 'undefined') return;
+    window.removeEventListener('pointerup', finishPointerInteraction);
+    window.removeEventListener('pointercancel', finishPointerInteraction);
+  }
+
+  function finishPointerInteraction(event: PointerEvent): void {
+    if (event.type === 'pointercancel') scheduleNativeScrollEnd();
+    activePointerIds.delete(event.pointerId);
+    if (activePointerIds.size > 0) return;
+    isInteracting = false;
+    removePointerEndListeners();
+  }
+
+  function scheduleNativeScrollEnd(): void {
+    isNativeScrolling = true;
+    if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
+    nativeScrollEndTimer = setTimeout(() => {
+      nativeScrollEndTimer = null;
+      isNativeScrolling = false;
+      settledIndex = viewportElement ? nearestVisibleSlideIndex(viewportElement) : currentIndex;
+      if (programmaticTarget === null) isAutoplayTransitioning = false;
+    }, 100);
+  }
+
+  function onPointerDown(event: PointerEvent): void {
+    // Only touch and pen pointers can pan the native scroller. A mouse press
+    // on slide content (e.g. a link) has no drag recognizer behind it, so
+    // treating it as an interaction would needlessly widen the
+    // interaction-layout window and jump the viewport to a neighbor's
+    // height for the duration of an ordinary click.
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+
+    programmaticTarget = null;
+    isAutoplayTransitioning = false;
+    isInteracting = true;
+    activePointerIds.add(event.pointerId);
+    removePointerEndListeners();
+    window.addEventListener('pointerup', finishPointerInteraction);
+    window.addEventListener('pointercancel', finishPointerInteraction);
+  }
+
+  function onWheel(event: WheelEvent): void {
+    const isHorizontallyDominant = Math.abs(event.deltaX) > Math.abs(event.deltaY);
+    const isShiftScroll = event.shiftKey && Math.abs(event.deltaY) > 0;
+    if (isHorizontallyDominant || isShiftScroll) {
+      programmaticTarget = null;
+      isAutoplayTransitioning = false;
+      scheduleNativeScrollEnd();
+    }
+  }
+
+  function onWindowBlur(): void {
+    const wasInteracting = isInteracting;
+    activePointerIds.clear();
+    isInteracting = false;
+    removePointerEndListeners();
+    // Only relinquish programmatic/autoplay ownership if blur is actually
+    // ending a tracked pointer interaction. An unrelated blur (e.g. focusing
+    // browser chrome while a dot or autoplay transition is animating) must
+    // not cancel that in-flight destination, or a subsequent intermediate
+    // scroll event gets misread as native input and overwrites activeIndex.
+    if (wasInteracting) {
+      programmaticTarget = null;
+      isAutoplayTransitioning = false;
+    }
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    window.addEventListener('blur', onWindowBlur);
+    return () => window.removeEventListener('blur', onWindowBlur);
+  });
+
+  onDestroy(() => {
+    removePointerEndListeners();
+    if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
+    if (scrollFrame !== null) cancelAnimationFrame(scrollFrame);
+  });
+
+  function onViewportScroll(): void {
+    const viewport = viewportElement;
+    if (clampedLength < 2 || viewport === null) return;
+    scheduleNativeScrollEnd();
+    if (scrollFrame !== null) return;
+    scrollFrame = requestAnimationFrame(() => {
+      scrollFrame = null;
+      const nextIndex = nearestVisibleSlideIndex(viewport);
+      if (programmaticTarget !== null) {
+        if (nextIndex === programmaticTarget) {
+          programmaticTarget = null;
+          settledIndex = nextIndex;
+          isAutoplayTransitioning = false;
+          if (deferredExternalIndex === nextIndex) deferredExternalIndex = null;
+        }
+        return;
+      }
+      if (nextIndex !== currentIndex && nextIndex >= 0 && nextIndex < clampedLength) {
+        if (deferredExternalIndex !== null) return;
+        transferFocusFromOutgoingSlide();
+        internalActiveIndexUpdate = nextIndex;
+        activeIndex = nextIndex;
+      }
+    });
+  }
+
+  function transferFocusFromOutgoingSlide(): void {
+    if (typeof document === 'undefined') return;
+    const activeElement = document.activeElement;
+    const outgoingSlide = viewportElement?.children[currentIndex];
+    if (
+      activeElement instanceof Node &&
+      outgoingSlide instanceof HTMLElement &&
+      outgoingSlide.contains(activeElement)
+    ) {
+      viewportElement?.focus();
+    }
+  }
+
+  $effect(() => {
+    if (viewportElement === null || clampedLength < 1) return;
+    if (isInteracting || isNativeScrolling) return;
+    const identityChanged = slideIdentity !== previousSlideIdentity;
+    previousSlideIdentity = slideIdentity;
+    if (identityChanged) {
+      // The slide at `settledIndex` may no longer be the slide that was
+      // physically visible before the reorder, so re-anchor from the DOM
+      // instead of trusting the stale numeric index, and jump immediately
+      // rather than animating from a now-meaningless "settled" position.
+      settledIndex = nearestVisibleSlideIndex(viewportElement);
+      scrollToActiveSlide('auto');
+      return;
+    }
+    scrollToActiveSlide();
+  });
+
+  $effect(() => {
+    const index = currentIndex;
+    if (index === observedActiveIndex) return;
+    const isInternalUpdate = internalActiveIndexUpdate === index;
+    internalActiveIndexUpdate = null;
+    observedActiveIndex = index;
+    if (!isInternalUpdate && (isInteracting || isNativeScrolling)) {
+      deferredExternalIndex = index;
+    }
+  });
+
+  $effect(() => {
+    const viewport = viewportElement;
+    if (viewport === null || typeof MutationObserver === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      if (isInteracting || isNativeScrolling) return;
+      scrollToActiveSlide('auto');
+    });
+    let ancestor: HTMLElement | null = viewport;
+    while (ancestor !== null) {
+      observer.observe(ancestor, { attributes: true, attributeFilter: ['dir'] });
+      ancestor = ancestor.parentElement;
+    }
+    return () => observer.disconnect();
+  });
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <section
   {...rest}
   class={classNames('cinder-carousel', className)}
-  role="region"
   aria-roledescription="carousel"
   aria-label={label}
   aria-describedby={description ? descriptionId : undefined}
@@ -150,47 +465,44 @@
   {/if}
   <p
     class="cinder-carousel__sr-only"
-    aria-live={shouldAutoplay ? 'off' : 'polite'}
+    aria-live={shouldAutoplay || isAutoplayTransitioning ? 'off' : 'polite'}
     aria-atomic="true"
   >
     {liveAnnouncement}
   </p>
 
-  <div class="cinder-carousel__viewport">
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <div
+    class="cinder-carousel__viewport"
+    role="group"
+    aria-label={`${label} slides`}
+    tabindex="0"
+    bind:this={viewportElement}
+    {@attach observeViewport}
+    onscroll={onViewportScroll}
+    onpointerdown={onPointerDown}
+    onwheel={onWheel}
+  >
     {#if slides.length > 0}
       {#each slides as slide, index (slide.id)}
-        {#if index === currentIndex}
-          <article
-            class="cinder-carousel__slide"
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
-          >
-            {#if slide.href}
-              <a class="cinder-carousel__link" href={slide.href}>
-                {#if slide.imageSrc}
-                  <img
-                    class="cinder-carousel__image"
-                    src={slide.imageSrc}
-                    alt={slide.imageAlt ?? slide.title ?? slide.label}
-                  />
-                {/if}
-                {#if slide.title}
-                  <h3 class="cinder-carousel__title">{slide.title}</h3>
-                {/if}
-                {#if slide.description}
-                  <p class="cinder-carousel__description">{slide.description}</p>
-                {/if}
-                {#if !slide.imageSrc && !slide.title && !slide.description}
-                  <p class="cinder-carousel__description">{slide.label}</p>
-                {/if}
-              </a>
-            {:else}
+        <article
+          class="cinder-carousel__slide"
+          role="group"
+          aria-roledescription="slide"
+          aria-label={`${index + 1} of ${slides.length}: ${slide.label}`}
+          aria-hidden={index === currentIndex ? undefined : 'true'}
+          inert={index !== currentIndex}
+          data-cinder-collapsed={!isInteractionLayoutSlide(index) ? '' : undefined}
+          style:order={initialSlideOrder(index)}
+        >
+          {#if slide.href}
+            <a class="cinder-carousel__link" href={slide.href}>
               {#if slide.imageSrc}
                 <img
                   class="cinder-carousel__image"
                   src={slide.imageSrc}
                   alt={slide.imageAlt ?? slide.title ?? slide.label}
+                  loading={index === currentIndex ? 'eager' : 'lazy'}
                 />
               {/if}
               {#if slide.title}
@@ -202,15 +514,33 @@
               {#if !slide.imageSrc && !slide.title && !slide.description}
                 <p class="cinder-carousel__description">{slide.label}</p>
               {/if}
+            </a>
+          {:else}
+            {#if slide.imageSrc}
+              <img
+                class="cinder-carousel__image"
+                src={slide.imageSrc}
+                alt={slide.imageAlt ?? slide.title ?? slide.label}
+                loading={index === currentIndex ? 'eager' : 'lazy'}
+              />
             {/if}
-          </article>
-        {/if}
+            {#if slide.title}
+              <h3 class="cinder-carousel__title">{slide.title}</h3>
+            {/if}
+            {#if slide.description}
+              <p class="cinder-carousel__description">{slide.description}</p>
+            {/if}
+            {#if !slide.imageSrc && !slide.title && !slide.description}
+              <p class="cinder-carousel__description">{slide.label}</p>
+            {/if}
+          {/if}
+        </article>
       {/each}
     {/if}
   </div>
 
-  <div class="cinder-carousel__controls">
-    <div class="cinder-carousel__nav">
+  <div class="cinder-carousel__controls" role="group" aria-label={`${label} controls`}>
+    <div class="cinder-carousel__nav" role="group" aria-label={`${label} navigation`}>
       <button
         type="button"
         class="cinder-carousel__control"
@@ -222,7 +552,7 @@
       <button
         type="button"
         class="cinder-carousel__control"
-        onclick={goNext}
+        onclick={() => goNext()}
         disabled={slides.length < 2}
       >
         {controlLabels?.next ?? 'Next'}
