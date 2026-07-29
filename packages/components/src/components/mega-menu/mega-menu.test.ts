@@ -462,6 +462,24 @@ describe('MegaMenu', () => {
     ancestor.remove();
   });
 
+  test('traverses in the explicit direction when an rtl ancestor exists at mount time', async () => {
+    // With the ancestor present *before* mount (rather than reparented in
+    // afterward, which never triggers the MutationObserver and leaves
+    // `resolvedDirection` at its stale mount-time value either way), this
+    // discriminates: with 3 items, forward (LTR) and backward-wrap (RTL)
+    // from index 0 land on different items ("Resources" vs "Company").
+    const ancestor = document.createElement('div');
+    ancestor.dir = 'rtl';
+    document.body.append(ancestor);
+    const { container } = render(MegaMenu, { target: ancestor, props: { items, dir: 'ltr' } });
+    const first = getTriggerByLabel(container, 'Products');
+    const second = getTriggerByLabel(container, 'Resources');
+    first.focus();
+    await fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(second);
+    ancestor.remove();
+  });
+
   test('uses effective CSS direction when an explicit dir prop is overridden', async () => {
     const { container } = render(MegaMenu, { items, dir: 'rtl', style: 'direction: ltr' });
     const first = getTriggerByLabel(container, 'Products');

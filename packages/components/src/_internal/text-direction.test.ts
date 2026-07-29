@@ -683,6 +683,102 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('rejects an equality container query outside its exact width', () => {
+    // `(width: 20rem)` has no min-/max- prefix and no comparison operator,
+    // so neither the minimum/maximum captures nor evaluateRangeComparisons()
+    // recognize it. Without explicit equality handling `matches` silently
+    // defaults to true at every width; a 400px container must not match.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'equality-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.equality-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container (width: 20rem) { .equality-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('matches an equality container query at its exact width', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 320, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'equality-exact-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.equality-exact-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container (width: 20rem) { .equality-exact-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('ignores direction rules in a disabled stylesheet', () => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = '.disabled-sheet-ltr { direction: ltr; }';
+    document.head.append(styleElement);
+    (styleElement.sheet as CSSStyleSheet).disabled = true;
+    const element = document.createElement('div');
+    element.className = 'disabled-sheet-ltr';
+    document.body.appendChild(element);
+
+    expect(resolveTextDirection(element, 'rtl')).toBe('rtl');
+    styleElement.remove();
+  });
+
+  test('ignores direction rules in a stylesheet whose media does not match', () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    globalThis.matchMedia = ((query: string) =>
+      ({ matches: false, media: query }) as MediaQueryList) as typeof matchMedia;
+    try {
+      const nestedRule = createStyleRule({ selectorText: '.print-only-ltr', direction: 'ltr' });
+      const element = document.createElement('div');
+      element.className = 'print-only-ltr';
+      document.body.appendChild(element);
+
+      expect(
+        withDocumentStyleSheets(
+          [{ disabled: false, media: { mediaText: 'print' }, cssRules: [nestedRule] }],
+          () => resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
   test('uses CSSContainerRule.containerName for named size queries', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');

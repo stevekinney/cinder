@@ -1,5 +1,25 @@
 import type { TextDirection } from './locale-context.ts';
 
+// Returns the direction implied by an inline style or CSS rule targeting
+// this exact element — ignoring the element's own `dir` attribute and any
+// ancestor entirely (no inheritance walk). For a component that renders its
+// own resolved direction as a generated `dir` attribute but takes an
+// explicit `direction` prop, this is the right check for "did the consumer
+// deliberately override it with CSS on this element" — unlike
+// `resolveTextDirection(el, fallback, { ignoreElementDirectionAttribute: true })`,
+// which also walks ancestors and would let an ancestor's `dir` attribute
+// incorrectly outrank the explicit prop.
+export function elementDirectionStyleOverride(
+  element: HTMLElement | null | undefined,
+): TextDirection | undefined {
+  if (!element) return undefined;
+  if (element.style.direction === 'rtl' || element.style.direction === 'ltr') {
+    return element.style.direction;
+  }
+  if (!matchesDirectionStyleRuleCached(element)) return undefined;
+  return readComputedTextDirection(element);
+}
+
 export function resolveTextDirection(
   element: HTMLElement | null | undefined,
   fallback?: TextDirection,
@@ -123,6 +143,7 @@ function hasDirectionStylingHint(
 
 function matchesDirectionStyleRule(element: HTMLElement): boolean {
   for (const sheet of Array.from(element.ownerDocument.styleSheets)) {
+    if (!isActiveStyleSheet(sheet)) continue;
     let rules: CSSRuleList;
     try {
       rules = sheet.cssRules;
@@ -132,6 +153,17 @@ function matchesDirectionStyleRule(element: HTMLElement): boolean {
     if (matchesDirectionStyleRuleList(element, rules)) return true;
   }
   return false;
+}
+
+// A disabled stylesheet, or one whose sheet-level `media` doesn't currently
+// match, contributes no active styling — its rules must not be used as
+// direction-styling hints even though they're still present in the CSSOM.
+function isActiveStyleSheet(sheet: CSSStyleSheet): boolean {
+  if (sheet.disabled) return false;
+  const mediaText = sheet.media?.mediaText;
+  if (!mediaText) return true;
+  if (typeof matchMedia !== 'function') return true;
+  return matchMedia(mediaText).matches;
 }
 
 function matchesDirectionStyleRuleCached(
@@ -388,6 +420,8 @@ function isContainerQueryActive(
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
   const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
   if (rangeResult !== undefined) return rangeResult;
+  const equalityResult = evaluateEqualityComparison(conditionText, width, remSize);
+  if (equalityResult !== undefined) return equalityResult;
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
 }
 
@@ -430,6 +464,27 @@ function evaluateRangeComparisons(
   return /^\s*not\b/i.test(conditionText) ? !satisfiesAll : satisfiesAll;
 }
 
+// The equality form — e.g. `(width: 20rem)` — has no `min-`/`max-` prefix
+// and no comparison operator, so neither `minimum`/`maximum` nor
+// evaluateRangeComparisons() recognizes it; without this, `matches`
+// silently defaults to true regardless of the container's actual size.
+// Returns undefined when the condition contains no bare equality term.
+function evaluateEqualityComparison(
+  conditionText: string,
+  width: number,
+  remSize: number,
+): boolean | undefined {
+  const equalityPattern = /(?:^|[\s(])(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/gi;
+  const comparisons = [...conditionText.matchAll(equalityPattern)];
+  if (comparisons.length === 0) return undefined;
+  const satisfiesAll = comparisons.every((comparison) => {
+    const threshold =
+      Number(comparison[1]) * (comparison[2]!.toLowerCase() === 'rem' ? remSize : 1);
+    return width === threshold;
+  });
+  return /^\s*not\b/i.test(conditionText) ? !satisfiesAll : satisfiesAll;
+}
+
 function evaluateContainerSizeCondition(
   conditionText: string,
   width: number,
@@ -444,6 +499,8 @@ function evaluateContainerSizeCondition(
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
   const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
   if (rangeResult !== undefined) return rangeResult;
+  const equalityResult = evaluateEqualityComparison(conditionText, width, remSize);
+  if (equalityResult !== undefined) return equalityResult;
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
 }
 

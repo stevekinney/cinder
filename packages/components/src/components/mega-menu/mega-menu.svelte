@@ -29,7 +29,11 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
+  import {
+    elementDirectionStyleOverride,
+    observeTextDirection,
+    resolveTextDirection,
+  } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
 
@@ -62,11 +66,13 @@
   const resolvedDirection = $derived.by(() => {
     directionRevision;
     if (providedDirection === 'rtl' || providedDirection === 'ltr') {
-      return navElement
-        ? (resolveTextDirection(navElement, providedDirection, {
-            ignoreElementDirectionAttribute: true,
-          }) ?? providedDirection)
-        : providedDirection;
+      // An explicit direction prop takes precedence over ANY ancestor —
+      // resolveTextDirection()'s ignoreElementDirectionAttribute mode still
+      // walks ancestors when this element has no styling hint of its own,
+      // which would let an ancestor's `dir` attribute incorrectly outrank
+      // an explicit prop. Only a genuine CSS override on this exact element
+      // (inline style or a matching rule) should be able to override it.
+      return elementDirectionStyleOverride(navElement) ?? providedDirection;
     }
     if (providedDirection === 'auto') {
       return resolveTextDirection(navElement, localeContext?.direction);
