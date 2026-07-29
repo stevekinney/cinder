@@ -47,6 +47,7 @@
   let restoreFocusElement: HTMLElement | null = null;
   let wasOpen = false;
   let closeRequested = false;
+  let isRestoringFocus = false;
 
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
     if (!position) return null;
@@ -99,8 +100,16 @@
   }
 
   function restoreFocus(preventScroll = true): void {
-    restoreFocusElement?.focus({ preventScroll });
+    const target = restoreFocusElement;
     restoreFocusElement = null;
+    if (!target) return;
+    // .focus() dispatches `focusin` synchronously, and the window-level
+    // ownership-tracking listener below can't otherwise tell this
+    // component-driven restoration apart from the user genuinely moving on
+    // to something outside the popover. Flag it so that listener exempts it.
+    isRestoringFocus = true;
+    target.focus({ preventScroll });
+    isRestoringFocus = false;
   }
 
   function requestClose(preventScroll = false): void {
@@ -108,6 +117,15 @@
     closeRequested = true;
     onClose?.();
     restoreFocus(preventScroll);
+    // The latch only needs to survive the current synchronous burst of
+    // scroll/resize events (so a coalesced movement dismisses once, not
+    // once per event). Release it on a microtask so a controlled consumer
+    // that declines the close (keeps `open` true, e.g. to let re-expansion
+    // happen) doesn't leave every later Escape/outside-click/scroll/resize
+    // dismissal permanently swallowed.
+    queueMicrotask(() => {
+      closeRequested = false;
+    });
   }
 
   function closePopover(): void {
@@ -367,6 +385,7 @@
     // free to dismiss (see "an external visual-viewport keyboard close
     // dismisses a collapsed popover").
     const forgetComposerKeyboardOwnershipOnExternalFocus = (event: FocusEvent) => {
+      if (isRestoringFocus) return;
       if (event.target instanceof Node && popoverElement?.contains(event.target)) return;
       // document.body is where the platform (and our own restoreFocus() calls)
       // parks focus when the previously-focused element is removed or isn't
