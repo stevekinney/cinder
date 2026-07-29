@@ -21,6 +21,34 @@
     border-bottom: 1px solid var(--cinder-border-muted);
   }
 
+  /* The portaled mobile-menu scope mirrors the `cinder-navigation-bar` class
+     purely as a selector hook for root-scoped consumer overrides (e.g.
+     `.cinder-navigation-bar.compact .cinder-navigation-item`) — it must not
+     also inherit the root's own box model, or the portal target grows an
+     empty second nav bar with its own height, padding, background, and
+     border while the mobile menu is open. */
+  .cinder-navigation-bar__portal-scope.cinder-navigation-bar {
+    /* `display` is driven by an inline style on this element (block while
+       the mobile menu is open, contents otherwise) and always wins over
+       this class rule, so it is intentionally left untouched here. */
+    position: static;
+    height: auto;
+    padding-inline: 0;
+    background: none;
+    border-bottom: none;
+
+    /* No `@container cinder-navigation-bar` rule currently reaches a
+       descendant of this scope without also requiring `[data-collapsible]`
+       on the same named-container element (which this scope never carries),
+       so this is inert today — but the mirrored class alone would otherwise
+       make a `display: block` portal target (at document.body's width) a
+       second, wrongly-sized "cinder-navigation-bar" query container. Turn
+       containment off here so a future selector change can't accidentally
+       resolve against it. */
+    container-type: normal;
+    container-name: none;
+  }
+
   .cinder-navigation-bar[data-cinder-placement='bottom'] {
     justify-content: center;
     min-height: 4rem;
@@ -51,6 +79,12 @@
     gap: var(--cinder-space-1);
     flex: 1 1 auto;
     min-width: 0;
+  }
+
+  .cinder-navigation-bar__items-owner {
+    position: absolute;
+    inline-size: 0;
+    block-size: 0;
   }
 
   .cinder-navigation-bar[data-cinder-placement='bottom'] .cinder-navigation-bar__items {
@@ -138,57 +172,68 @@
       margin-inline-start: auto;
     }
 
-    .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
-      position: absolute;
-      inset-inline: 0;
-      top: 100%;
-      flex-direction: column;
-      align-items: stretch;
-      padding: var(--cinder-space-2);
-      background: var(--cinder-surface);
-      border-bottom: 1px solid var(--cinder-border-muted);
-      z-index: var(--cinder-z-dropdown, 1100);
-
-      /* Open → visible, slide in */
-      transition:
-        transform 200ms ease,
-        opacity 200ms ease;
-    }
-
-    /* Closed: remove from focus/AT trees immediately via visibility. */
     .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='false'] {
-      visibility: hidden;
-      transform: translateY(-0.5rem);
-      opacity: 0;
-      pointer-events: none;
+      .cinder-navigation-bar__items:not([data-cinder-mobile-panel]) {
+      display: none;
     }
+  }
 
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='true'] {
-      visibility: visible;
-      transform: none;
-      opacity: 1;
-    }
+  .cinder-navigation-bar__items[data-cinder-mobile-panel] {
+    position: fixed;
+    flex-direction: column;
+    align-items: stretch;
+    padding: var(--cinder-space-2);
+    background: var(--cinder-surface);
+    border-bottom: 1px solid var(--cinder-border-muted);
+    z-index: var(--cinder-z-dropdown);
 
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='true']
-      .cinder-navigation-item[data-variant='mobile'] {
-      display: flex;
-      inline-size: 100%;
-      justify-content: flex-start;
-      padding-block: var(--cinder-space-3);
-      border-bottom: none;
-      border-inline-start: 2px solid transparent;
-      border-radius: var(--cinder-radius-sm);
-    }
+    /* The shared floating-surface base rule only turns on scrolling for
+       role="listbox"/"menu"; this panel is neither, so without this it
+       inherits `overflow: visible` and a tall item list simply paints past
+       the fixed panel's capped block-size with no way to reach the rest. */
+    overflow: auto;
 
-    .cinder-navigation-bar[data-collapsible='true']
-      .cinder-navigation-bar__items[data-open='true']
-      .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
-      border-inline-start-color: var(--cinder-accent);
-      background-color: var(--cinder-surface-inset);
-    }
+    /* Open → visible, slide in */
+    transition:
+      transform 200ms ease,
+      opacity 200ms ease;
+  }
+
+  /* Closed: remove from focus/AT trees immediately via visibility. */
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='false'] {
+    visibility: hidden;
+    transform: translateY(-0.5rem);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true'] {
+    visibility: visible;
+    transform: none;
+    opacity: 1;
+  }
+
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']:not(
+      [data-cinder-position-ready]
+    ) {
+    visibility: hidden;
+  }
+
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']
+    .cinder-navigation-item[data-variant='mobile'] {
+    display: flex;
+    inline-size: 100%;
+    justify-content: flex-start;
+    padding-block: var(--cinder-space-3);
+    border-bottom: none;
+    border-inline-start: 2px solid transparent;
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  .cinder-navigation-bar__items[data-cinder-mobile-panel][data-open='true']
+    .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
+    border-inline-start-color: var(--cinder-accent);
+    background-color: var(--cinder-surface-inset);
   }
 
   /* ----------------------------------------
@@ -196,7 +241,7 @@
  * ---------------------------------------- */
 
   @media (prefers-reduced-motion: reduce) {
-    .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    .cinder-navigation-bar__items[data-cinder-mobile-panel] {
       transition: none;
     }
   }
@@ -206,7 +251,7 @@
  * ---------------------------------------- */
 
   @media (forced-colors: active) {
-    .cinder-navigation-bar[data-collapsible='true'] .cinder-navigation-bar__items {
+    .cinder-navigation-bar__items[data-cinder-mobile-panel] {
       border-bottom-color: CanvasText;
     }
 

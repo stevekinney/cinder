@@ -17,7 +17,7 @@
     position: fixed;
     left: 0;
     top: 0;
-    z-index: var(--cinder-z-tooltip, 50);
+    z-index: var(--cinder-z-tooltip);
 
     max-width: 16rem;
     padding: var(--cinder-space-1-5) var(--cinder-space-2-5);

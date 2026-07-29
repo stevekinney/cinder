@@ -102,11 +102,13 @@
  * so that when the two values coincide, the active one remains the click
  * target. */
   .cinder-slider__thumb[data-cinder-active] {
+    /* cinder-z-index-local: active thumb remains the target when range thumbs overlap. */
     z-index: 2;
   }
 
   .cinder-slider__thumb:active {
     cursor: grabbing;
+    /* cinder-z-index-local: dragged thumb remains the target when range thumbs overlap. */
     z-index: 2;
   }
 

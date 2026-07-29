@@ -189,6 +189,7 @@
   });
 
   const listboxVisible = $derived(open && filteredOptions.length > 0);
+  const emptyVisible = $derived(open && filteredOptions.length === 0);
   const activeOptionId = $derived(
     listboxVisible && activeIndex >= 0 && activeIndex < filteredOptions.length
       ? `${id}-option-${activeIndex}`
@@ -396,8 +397,8 @@
       value={textInputValue}
       aria-autocomplete="list"
       aria-label={ariaLabel?.trim() || undefined}
-      aria-expanded={listboxVisible}
-      aria-controls={listboxVisible ? listboxId : undefined}
+      aria-expanded={open}
+      aria-controls={open ? listboxId : undefined}
       aria-activedescendant={activeOptionId}
       aria-invalid={field.ariaInvalid}
       aria-required={resolvedRequired || undefined}
@@ -471,14 +472,30 @@
     </Popover>
   {/if}
 
-  <!-- Always in DOM so screen readers hear "No results" when text is injected.
-       Freshly-mounted role="status" nodes are not reliably announced by NVDA/JAWS. -->
-  <div
-    class="cinder-combobox__empty"
-    role="status"
-    data-cinder-active={(open && filteredOptions.length === 0) || undefined}
-  >
-    {open && filteredOptions.length === 0 ? 'No results' : ''}
+  {#if emptyVisible}
+    <Popover
+      bind:open
+      id={listboxId}
+      triggerRef={inputElement}
+      role="listbox"
+      focusManagement="preserve"
+      wireTriggerAria={false}
+      closeOnEscape={false}
+      widthMode="match-anchor"
+      class="cinder-combobox__empty-panel"
+    >
+      <div class={classNames('cinder-combobox', className)}>
+        <div class="cinder-combobox__empty" role="option" aria-disabled="true" data-cinder-active>
+          No results
+        </div>
+      </div>
+    </Popover>
+  {/if}
+
+  <!-- Keep the live region mounted while the visible empty-state surface uses
+       the same portal and Floating UI path as the options panel. -->
+  <div class="cinder-combobox__empty-status" role="status">
+    {emptyVisible ? 'No results' : ''}
   </div>
 
   {#if description}

@@ -47,10 +47,15 @@ describe('checkStylelintRuleCoverage', () => {
     expect(
       checkStylelintRuleCoverage(
         {
-          plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+          plugins: [
+            './no-surface-on-form-control.mjs',
+            './interior-border-weight.mjs',
+            './z-index-scale.mjs',
+          ],
           rules: {
             'cinder/no-surface-on-form-control': true,
             'cinder/interior-border-weight': true,
+            'cinder/z-index-scale': true,
           },
         },
         { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
@@ -63,17 +68,22 @@ describe('checkStylelintRuleCoverage', () => {
       { plugins: [], rules: {} },
       { stylelint: { layers: ['unit-tests'], reason: 'test' } },
     );
-    expect(violations).toHaveLength(6);
+    expect(violations).toHaveLength(9);
     expect(violations.some((violation) => violation.layer === 'main-green')).toBe(true);
   });
 
   it('rejects covered rules that are present but disabled', () => {
     const violations = checkStylelintRuleCoverage(
       {
-        plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+        plugins: [
+          './no-surface-on-form-control.mjs',
+          './interior-border-weight.mjs',
+          './z-index-scale.mjs',
+        ],
         rules: {
           'cinder/no-surface-on-form-control': true,
           'cinder/interior-border-weight': false,
+          'cinder/z-index-scale': true,
         },
       },
       { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
