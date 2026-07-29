@@ -56,3 +56,10 @@ announcement behavior.
   resulting realignment jumps immediately instead of animating. This keeps
   the previously-visible slide from being mislabeled outside the
   in-transition layout window and collapsed to zero height.
+- **Unrelated window blur.** Losing window focus while no pointer
+  interaction is tracked (for example, focusing browser chrome while a dot
+  or autoplay transition is animating) clears only pointer-tracking state.
+  It does not cancel a pending programmatic destination, so an intermediate
+  scroll event from the still-running animation cannot be misread as native
+  input and silently redirect the announced destination back to a
+  mid-transition slide.

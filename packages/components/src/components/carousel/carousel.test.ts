@@ -865,6 +865,46 @@ describe('Carousel', () => {
     expect(liveRegion?.getAttribute('aria-live')).toBe('polite');
   });
 
+  test('preserves a pending programmatic destination across an unrelated window blur', async () => {
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const slideElements = [...viewport.children] as HTMLElement[];
+    const scrollTo = jest.fn();
+    Object.defineProperty(viewport, 'scrollTo', { configurable: true, value: scrollTo });
+    Object.defineProperty(viewport, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 100 }),
+    });
+    slideElements.forEach((slide, index) => {
+      Object.defineProperty(slide, 'getBoundingClientRect', {
+        configurable: true,
+        value: () => ({ left: index * 100, width: 100 }),
+      });
+      Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
+    });
+
+    await fireEvent.click(container.querySelectorAll('.cinder-carousel__control')[1]!);
+    await waitFor(() => expect(scrollTo).toHaveBeenCalled());
+    expectActiveSlide(container, 1);
+
+    // A blur with no pointer interaction in progress — e.g. the user
+    // focused browser chrome while the smooth transition above is still
+    // animating — must not cancel the pending destination.
+    window.dispatchEvent(new Event('blur'));
+
+    // An intermediate scroll frame mid-animation, not yet at the
+    // destination slide, must not be treated as native input that
+    // overwrites the requested destination.
+    Object.defineProperty(slideElements[0]!, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: -40, width: 100 }),
+    });
+    await fireEvent.scroll(viewport);
+    await flushAnimationFrame();
+
+    expectActiveSlide(container, 1);
+  });
+
   test('hover and focus pause autoplay until interaction ends', async () => {
     jest.useFakeTimers();
     const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 100 });

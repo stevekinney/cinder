@@ -322,11 +322,19 @@
   }
 
   function onWindowBlur(): void {
+    const wasInteracting = isInteracting;
     activePointerIds.clear();
     isInteracting = false;
-    programmaticTarget = null;
-    isAutoplayTransitioning = false;
     removePointerEndListeners();
+    // Only relinquish programmatic/autoplay ownership if blur is actually
+    // ending a tracked pointer interaction. An unrelated blur (e.g. focusing
+    // browser chrome while a dot or autoplay transition is animating) must
+    // not cancel that in-flight destination, or a subsequent intermediate
+    // scroll event gets misread as native input and overwrites activeIndex.
+    if (wasInteracting) {
+      programmaticTarget = null;
+      isAutoplayTransitioning = false;
+    }
   }
 
   $effect(() => {
