@@ -349,7 +349,7 @@ function isContainerQueryActive(
     if (range[1] === '>' && width <= threshold) return false;
     if (range[1] === '<=' && width > threshold) return false;
     if (range[1] === '<' && width >= threshold) return false;
-    return /^\s*not\b/i.test(conditionText) ? false : true;
+    return !/^\s*not\b/i.test(conditionText);
   }
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
 }
