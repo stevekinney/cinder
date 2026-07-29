@@ -91,6 +91,24 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 71 });
   });
 
+  test('does not widen the interaction-layout window for a touch tap that never scrolls', async () => {
+    const linkedSlides = [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)];
+    const { container } = render(Carousel, { slides: linkedSlides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const link = container.querySelector('.cinder-carousel__link') as HTMLAnchorElement;
+    const neighbor = viewport.children[1] as HTMLElement;
+
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+
+    // While the touch pointer is held down but hasn't caused any scroll
+    // yet, the layout window must stay collapsed — it should only widen
+    // once a pan actually starts moving the track.
+    await fireEvent.pointerDown(link, { pointerId: 72, pointerType: 'touch' });
+
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+    await fireEvent.pointerUp(window, { pointerId: 72 });
+  });
+
   test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {
     const css = await Bun.file(new URL('./carousel.css', import.meta.url)).text();
     expect(css).not.toContain('scroll-snap-stop: always');

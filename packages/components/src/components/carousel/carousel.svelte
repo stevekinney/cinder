@@ -207,7 +207,12 @@
 
   function isInteractionLayoutSlide(index: number): boolean {
     if (index === currentIndex || index === settledIndex) return true;
-    if (!(isInteracting || isNativeScrolling || programmaticTarget !== null)) return false;
+    // Widen the layout window only once a pan or programmatic transition is
+    // actually moving the track (isNativeScrolling / programmaticTarget), not
+    // merely because a touch/pen pointer is down. A tap that never causes a
+    // scroll event — including tapping the active slide's own link — must
+    // not pop a taller neighbor's height in and back out.
+    if (!(isNativeScrolling || programmaticTarget !== null)) return false;
     const currentOrder = initialSlideOrder(currentIndex);
     const settledOrder = initialSlideOrder(settledIndex);
     const lowerBound = Math.max(0, Math.min(currentOrder, settledOrder) - 1);
