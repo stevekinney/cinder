@@ -32,11 +32,12 @@ announcement behavior.
   double-handles arrow-key scrolling, and the handler fires regardless of
   which descendant has focus because `keydown` bubbles. Tab order is:
   carousel region → viewport (`tabindex="0"`) → the active slide's
-  interactive content → prev/next buttons → dot picker. The viewport is a
-  genuine, intentional stop — its own `tabindex="0"` lets a keyboard user
-  land directly on the scrollable track and use Arrow/Home/End there without
-  first tabbing into slide content, matching the existing "region owns
-  navigation" carousel pattern.
+  interactive content → prev/next buttons → the autoplay pause/play toggle
+  (only rendered when `autoplay` is on and reduced motion is off) → dot
+  picker. The viewport is a genuine, intentional stop — its own
+  `tabindex="0"` lets a keyboard user land directly on the scrollable track
+  and use Arrow/Home/End there without first tabbing into slide content,
+  matching the existing "region owns navigation" carousel pattern.
 - **Assistive-technology announcements.** The existing `polite` live region
   announcing `"Slide N of M: <label>"` is the single source of truth for
   index changes regardless of how the index changed (keyboard, dot click,
