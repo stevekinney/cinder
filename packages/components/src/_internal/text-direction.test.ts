@@ -514,13 +514,9 @@ describe('resolveTextDirection', () => {
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
-    Object.defineProperty(container, 'getBoundingClientRect', {
-      value: () => ({ width: 400 }),
-    });
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
     const wrapper = document.createElement('div');
-    Object.defineProperty(wrapper, 'getBoundingClientRect', {
-      value: () => ({ width: 100 }),
-    });
+    Object.defineProperty(wrapper, 'offsetWidth', { value: 100, configurable: true });
     const element = document.createElement('div');
     element.className = 'container-ltr-reset';
     wrapper.appendChild(element);
@@ -558,9 +554,7 @@ describe('resolveTextDirection', () => {
     container.style.setProperty('container-type', 'inline-size');
     container.style.paddingInlineStart = '20px';
     container.style.paddingInlineEnd = '20px';
-    Object.defineProperty(container, 'getBoundingClientRect', {
-      value: () => ({ width: 340 }),
-    });
+    Object.defineProperty(container, 'offsetWidth', { value: 340, configurable: true });
     const element = document.createElement('div');
     element.className = 'content-box-container-ltr';
     container.appendChild(element);
@@ -592,9 +586,7 @@ describe('resolveTextDirection', () => {
     // defaulting to "matches" when neither `minimum` nor `maximum` parses.
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
-    Object.defineProperty(container, 'getBoundingClientRect', {
-      value: () => ({ width: 400 }),
-    });
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
     const element = document.createElement('div');
     element.className = 'unsupported-unit-container-ltr';
     container.appendChild(element);
@@ -621,14 +613,84 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('treats a container size query with an unimplemented feature as inactive', () => {
+    // `height` (and block-size, aspect-ratio, orientation) are not
+    // implemented by this evaluator at all — neither regex captures them, so
+    // it must fail closed rather than default to "matches" regardless of
+    // the container's actual height.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'size');
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
+    Object.defineProperty(container, 'offsetHeight', { value: 100, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'unsupported-feature-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.unsupported-feature-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-height: 40rem) { .unsupported-feature-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-height: 40rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('evaluates a disjunctive inline-size query', () => {
+    // Disjunction handling previously only triggered for physical `width`
+    // queries; an `inline-size` disjunction fell through to the AND-only
+    // fallback and combined the min/max terms incorrectly.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'disjunctive-inline-size-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.disjunctive-inline-size-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (max-inline-size: 10rem) or (min-inline-size: 20rem) { .disjunctive-inline-size-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(max-inline-size: 10rem) or (min-inline-size: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      // 400px satisfies the second clause (>= 20rem / 320px), so the
+      // disjunction as a whole is active even though it fails the first.
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('uses CSSContainerRule.containerName for named size queries', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
     container.style.setProperty('container-name', 'sidebar');
-    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 400 }) });
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
     const wrapper = document.createElement('div');
     wrapper.style.setProperty('container-type', 'inline-size');
-    Object.defineProperty(wrapper, 'getBoundingClientRect', { value: () => ({ width: 100 }) });
+    Object.defineProperty(wrapper, 'offsetWidth', { value: 100, configurable: true });
     const element = document.createElement('div');
     element.className = 'named-container-ltr';
     wrapper.appendChild(element);
@@ -686,7 +748,7 @@ describe('resolveTextDirection', () => {
   test('evaluates range-syntax size queries', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
-    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 400 }) });
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
     const element = document.createElement('div');
     element.className = 'range-container-ltr';
     container.appendChild(element);
@@ -715,7 +777,7 @@ describe('resolveTextDirection', () => {
     // though the first (lower-bound) comparison alone would match.
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
-    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 700 }) });
+    Object.defineProperty(container, 'offsetWidth', { value: 700, configurable: true });
     const element = document.createElement('div');
     element.className = 'conjunctive-range-container-ltr';
     container.appendChild(element);
@@ -747,7 +809,7 @@ describe('resolveTextDirection', () => {
     container.style.setProperty('container-type', 'inline-size');
     container.style.paddingInlineStart = '20px';
     container.style.paddingInlineEnd = '20px';
-    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 340 }) });
+    Object.defineProperty(container, 'offsetWidth', { value: 340, configurable: true });
     const element = document.createElement('div');
     element.className = 'inline-size-container-ltr';
     container.appendChild(element);
@@ -780,9 +842,8 @@ describe('resolveTextDirection', () => {
     container.style.setProperty('writing-mode', 'vertical-rl');
     container.style.paddingBlockStart = '20px';
     container.style.paddingBlockEnd = '20px';
-    Object.defineProperty(container, 'getBoundingClientRect', {
-      value: () => ({ width: 100, height: 500 }),
-    });
+    Object.defineProperty(container, 'offsetWidth', { value: 100, configurable: true });
+    Object.defineProperty(container, 'offsetHeight', { value: 500, configurable: true });
     const element = document.createElement('div');
     element.className = 'vertical-inline-size-container-ltr';
     container.appendChild(element);
@@ -819,9 +880,8 @@ describe('resolveTextDirection', () => {
     container.style.setProperty('writing-mode', 'vertical-rl');
     container.style.paddingLeft = '20px';
     container.style.paddingRight = '20px';
-    Object.defineProperty(container, 'getBoundingClientRect', {
-      value: () => ({ width: 340, height: 500 }),
-    });
+    Object.defineProperty(container, 'offsetWidth', { value: 340, configurable: true });
+    Object.defineProperty(container, 'offsetHeight', { value: 500, configurable: true });
     const element = document.createElement('div');
     element.className = 'vertical-physical-width-container-ltr';
     container.appendChild(element);
@@ -856,7 +916,7 @@ describe('resolveTextDirection', () => {
     root.style.fontSize = '20px';
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
-    Object.defineProperty(container, 'getBoundingClientRect', { value: () => ({ width: 350 }) });
+    Object.defineProperty(container, 'offsetWidth', { value: 350, configurable: true });
     const element = document.createElement('div');
     element.className = 'rem-container-ltr';
     container.appendChild(element);
@@ -876,6 +936,45 @@ describe('resolveTextDirection', () => {
       ).toBe('rtl');
     } finally {
       root.style.fontSize = previousFontSize;
+      container.remove();
+    }
+  });
+
+  test('measures the container against its pre-transform layout size, not the post-transform rect', () => {
+    // `getBoundingClientRect()` reports the box after a CSS `transform` is
+    // applied; container size queries measure the pre-transform layout
+    // content box instead. A 200px container scaled 2x would incorrectly
+    // "satisfy" `min-width: 300px` if the post-transform rect were used —
+    // `offsetWidth` (unaffected by `transform`) must be read instead.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.transform = 'scale(2)';
+    Object.defineProperty(container, 'offsetWidth', { value: 200, configurable: true });
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({ width: 400 }),
+      configurable: true,
+    });
+    const element = document.createElement('div');
+    element.className = 'transformed-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.transformed-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container (min-width: 300px) { .transformed-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 300px)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
       container.remove();
     }
   });

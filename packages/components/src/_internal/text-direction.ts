@@ -325,8 +325,12 @@ function isContainerQueryActive(
   const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(conditionText);
   const isVerticalWritingMode = /^(?:vertical|sideways)-/i.test(writingMode);
   const verticalInlineAxis = usesInlineSize && isVerticalWritingMode;
-  const box = container.getBoundingClientRect();
-  const borderBoxSize = verticalInlineAxis ? box.height : box.width;
+  // `offsetWidth`/`offsetHeight` report the border-box size from layout,
+  // unaffected by a CSS `transform` on the container. `getBoundingClientRect()`
+  // reports the post-transform box, which container size queries never use —
+  // a `scale(2)` container would otherwise look twice as large as the layout
+  // engine (and any real `@container` query) considers it to be.
+  const borderBoxSize = verticalInlineAxis ? container.offsetHeight : container.offsetWidth;
   // A physical `width` query is always a horizontal measurement. Under a
   // vertical writing mode the logical inline insets resolve to top/bottom,
   // not left/right, so a physical query must subtract physical left/right
@@ -363,13 +367,15 @@ function isContainerQueryActive(
   const queryUsesPhysicalWidth = /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(
     conditionText,
   );
-  // This evaluator only understands `px`/`rem` length units. A condition
-  // using any other CSS length unit (`em`, `vw`, `%`, ...) cannot be
-  // decided here — fail closed instead of silently defaulting to "matches"
-  // (an inactive rule at the current size would otherwise be treated as an
-  // active styling hint).
-  if (hasUnsupportedSizeUnit(conditionText)) return false;
-  if (queryUsesPhysicalWidth && /\bor\b/i.test(conditionText)) {
+  // This evaluator only understands `px`/`rem` length units and the
+  // width/inline-size features. A condition using any other CSS length unit
+  // (`em`, `vw`, `%`, ...), or a size feature it doesn't implement (`height`,
+  // `block-size`, `aspect-ratio`, `orientation`, ...), cannot be decided here
+  // — fail closed instead of silently defaulting to "matches" (an inactive
+  // rule at the current size would otherwise be treated as an active
+  // styling hint).
+  if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
+  if ((queryUsesPhysicalWidth || usesInlineSize) && /\bor\b/i.test(conditionText)) {
     return conditionText
       .split(/\s+or\s+/i)
       .some((clause) => evaluateContainerSizeCondition(clause, width, remSize));
@@ -387,12 +393,17 @@ function isContainerQueryActive(
 
 // True when the condition references a width/inline-size comparison whose
 // unit is not `px` or `rem` — the only units this evaluator can resolve to
-// pixels. Callers should fail closed rather than guess.
-function hasUnsupportedSizeUnit(conditionText: string): boolean {
-  const match = /(?:min-|max-)?(?:width|inline-size)\s*(?:>=|>|<=|<|:)\s*[\d.]+([a-z%]+)/i.exec(
+// pixels — or references a size feature this evaluator doesn't implement at
+// all (`height`, `block-size`, `aspect-ratio`, `orientation`, ...). Callers
+// should fail closed rather than guess.
+function hasUnsupportedContainerSizeQuery(conditionText: string): boolean {
+  if (/(?:min-|max-)?(?:height|block-size)\b/i.test(conditionText)) return true;
+  if (/\baspect-ratio\b/i.test(conditionText)) return true;
+  if (/\borientation\s*:/i.test(conditionText)) return true;
+  const unitMatch = /(?:min-|max-)?(?:width|inline-size)\s*(?:>=|>|<=|<|:)\s*[\d.]+([a-z%]+)/i.exec(
     conditionText,
   );
-  return match !== null && !/^(?:px|rem)$/i.test(match[1]!);
+  return unitMatch !== null && !/^(?:px|rem)$/i.test(unitMatch[1]!);
 }
 
 // A conjunctive range condition — e.g. `(width >= 20rem) and (width <= 40rem)`
@@ -424,7 +435,7 @@ function evaluateContainerSizeCondition(
   width: number,
   remSize: number,
 ): boolean {
-  if (hasUnsupportedSizeUnit(conditionText)) return false;
+  if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
   const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const toPixels = (value: RegExpExecArray) =>
