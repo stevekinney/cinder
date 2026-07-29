@@ -56,7 +56,8 @@
     padding-block: var(--cinder-space-4);
     padding-inline-start: var(--cinder-space-5);
     padding-inline-end: calc(var(--cinder-space-5) + 2rem);
-    border-block-end: 1px solid var(--cinder-border);
+    border-block-end: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
     flex-shrink: 0;
   }
 
@@ -137,6 +138,7 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--cinder-space-6);
+    background: var(--cinder-surface);
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
     /* The body container is focused on open (tabindex=-1) when the dialog has
@@ -145,13 +147,15 @@
     outline: none;
   }
 
-  .cinder-modal__body[data-cinder-overflows] {
-    mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
-    mask-size: 100% 100%;
-    mask-repeat: no-repeat;
-    -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 1.5rem), transparent);
-    -webkit-mask-size: 100% 100%;
-    -webkit-mask-repeat: no-repeat;
+  .cinder-modal__body[data-cinder-overflows]::after {
+    content: '';
+    position: sticky;
+    inset-block-end: 0;
+    display: block;
+    height: 1.5rem;
+    margin-block-start: -1.5rem;
+    background: linear-gradient(to bottom, transparent, var(--cinder-surface));
+    pointer-events: none;
   }
 
   /* ----------------------------------------
@@ -164,7 +168,8 @@
     justify-content: flex-end;
     gap: var(--cinder-space-3);
     padding: var(--cinder-space-3) var(--cinder-space-5);
-    border-block-start: 1px solid var(--cinder-border);
+    border-block-start: 1px solid var(--cinder-border-muted);
+    background: var(--cinder-surface);
     flex-shrink: 0;
   }
 

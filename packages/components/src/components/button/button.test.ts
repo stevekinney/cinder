@@ -495,6 +495,18 @@ describe('Button icon-only ghost CSS contract', () => {
   });
 });
 
+describe('Button secondary surface states', () => {
+  test('derives hover and pressed feedback from the raised resting fill', () => {
+    const source = readButtonSource();
+    expect(source).toMatch(
+      /data-cinder-variant='secondary'\]:hover[\s\S]*?background:\s*var\(--cinder-surface-raised-hover\)/,
+    );
+    expect(source).toMatch(
+      /data-cinder-variant='secondary'\]:active[\s\S]*?background:\s*var\(--cinder-surface-raised-pressed\)/,
+    );
+  });
+});
+
 describe('Button dev warnings', () => {
   let warnMessages: string[] = [];
 

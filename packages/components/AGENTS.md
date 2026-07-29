@@ -20,12 +20,19 @@ Before creating a component, load the repository-local
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
 - [ ] Use the rotating chevron for disclosure controls and icons from the lucide-svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
+- [ ] Get a design review for every new component; record its nearest neighbours, why it exists, and the review outcome in `*.a11y.md`. (#968)
+- [ ] For a novel interaction model, get an accessibility review covering focus management, the keyboard matrix, and assistive-technology announcements; record the outcome in `*.a11y.md`. (#968)
 <!-- component-authoring-checklist:end -->
 
 `packages/components/scripts/component-conventions.ts` is the machine-readable
 source of truth. `bun run --filter=@lostgradient/cinder components:create
 <name>` links the scaffold README back to this live checklist, so update that
 module first when the authoring contract changes.
+
+The human review items are required because tooling cannot decide whether a
+component is drab, bulbous, ugly, poorly laid out, or built around the wrong
+interaction model. Record the durable review outcome beside the component;
+pull-request discussion alone is not the record.
 
 ---
 

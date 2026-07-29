@@ -4,11 +4,11 @@
 
 - The outer container is a `role="group"` that owns the component's group accessible name. The accessible name source is, in order: the `label` prop, a wrapping `<FormField>` label, `aria-labelledby`, then `aria-label`. Development builds warn when none of these are present.
 - The component renders **two** native controls with their own accessible names:
-  - a `<select>` with the accessible name `Country code` (sourced from a visually hidden span via `aria-labelledby`)
-  - an `<input type="tel">` with the accessible name `Phone number` (also via a visually hidden span)
+  - a `<select>` whose name combines the group label with the selected country and calling code, such as `Phone Country: United States, +1`
+  - an `<input type="tel">` whose name combines the group label with `Phone number`, such as `Phone Phone number`
 - Both controls share the same `aria-describedby` value so the same description or error follows whichever control has focus.
 - `error` sets `aria-invalid="true"` on both controls and the group; CSS uses the attribute to draw the invalid border so the state is communicated by both attribute and color.
-- `required` is announced via `aria-required="true"` on the group and on the national-number input.
+- `required` is announced on the group and is applied to both the country select and national-number input.
 
 ## Keyboard Interactions
 

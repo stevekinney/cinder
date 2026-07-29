@@ -198,11 +198,6 @@ const recipes: Array<{
     selector: '.cinder-json-viewer__toggle:focus-visible',
   },
   {
-    name: 'collapsible trigger',
-    css: collapsibleCss,
-    selector: '.cinder-collapsible__trigger:focus-visible',
-  },
-  {
     name: 'toast action',
     css: toastRegionCss,
     selector: '.cinder-toast__action:focus-visible',
@@ -621,6 +616,11 @@ describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
       name: 'accordion trigger',
       css: accordionItemCss,
       selector: '.cinder-accordion-item__trigger:focus-visible',
+    },
+    {
+      name: 'collapsible trigger',
+      css: collapsibleCss,
+      selector: '.cinder-collapsible__trigger:focus-visible',
     },
     { name: 'modal close', css: modalCss, selector: '.cinder-modal__close:focus-visible' },
     { name: 'drawer close', css: drawerCss, selector: '.cinder-drawer__close:focus-visible' },

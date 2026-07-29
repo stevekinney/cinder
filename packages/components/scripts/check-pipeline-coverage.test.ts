@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 
 import {
   checkPipelineCoverage,
+  checkStylelintRuleCoverage,
   DECLARATION_TABLE,
   extractRunStepBodies,
   loadParsedSources,
@@ -41,6 +42,47 @@ describe('resolveScriptChain', () => {
   });
 });
 
+describe('checkStylelintRuleCoverage', () => {
+  it('requires each declared rule, plugin, and pipeline layer', () => {
+    expect(
+      checkStylelintRuleCoverage(
+        {
+          plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+          rules: {
+            'cinder/no-surface-on-form-control': true,
+            'cinder/interior-border-weight': true,
+          },
+        },
+        { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
+      ),
+    ).toEqual([]);
+  });
+
+  it('fails when configuration or a declared layer drifts', () => {
+    const violations = checkStylelintRuleCoverage(
+      { plugins: [], rules: {} },
+      { stylelint: { layers: ['unit-tests'], reason: 'test' } },
+    );
+    expect(violations).toHaveLength(6);
+    expect(violations.some((violation) => violation.layer === 'main-green')).toBe(true);
+  });
+
+  it('rejects covered rules that are present but disabled', () => {
+    const violations = checkStylelintRuleCoverage(
+      {
+        plugins: ['./no-surface-on-form-control.mjs', './interior-border-weight.mjs'],
+        rules: {
+          'cinder/no-surface-on-form-control': true,
+          'cinder/interior-border-weight': false,
+        },
+      },
+      { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.command).toBe('stylelint:cinder/interior-border-weight');
+  });
+});
+
 describe('extractRunStepBodies', () => {
   it('extracts only run: step bodies, excluding comments and job/step metadata', () => {
     const workflowYaml = [
@@ -77,6 +119,30 @@ describe('checkPipelineCoverage', () => {
     lint: 'oxlint',
     'components:check': 'bun run scripts/generate-component-artifacts.ts --check',
   };
+
+  it('resolves check-placeholder-docs through components:check in both CI layers', () => {
+    const result = checkPipelineCoverage(
+      {
+        'check:placeholder-docs': { layers: ['unit-tests', 'main-green'], reason: 'test fixture' },
+      },
+      {
+        packageScripts: {
+          'components:check': 'bun run check:placeholder-docs',
+          'check:placeholder-docs': 'bun run scripts/check-placeholder-docs.ts',
+        },
+        rootScripts: {},
+        workflowText: {
+          'unit-tests': 'bun run --filter=@lostgradient/cinder components:check',
+          'browser-tests': '',
+          'main-green': 'bun run --filter=@lostgradient/cinder components:check',
+          release: '',
+          'changeset-guard': '',
+        },
+        hookText: {},
+      },
+    );
+    expect(result.violations).toEqual([]);
+  });
 
   it('detects an undeclared duplicate: a command runs in a layer the table does not declare', () => {
     const table: Record<string, DeclarationRow> = {

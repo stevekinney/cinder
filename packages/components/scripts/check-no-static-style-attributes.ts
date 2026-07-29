@@ -1,0 +1,228 @@
+/**
+ * Strict CSP guard for Svelte markup.
+ *
+ * Fully static `style="..."` attributes survive server rendering as inline
+ * style attributes, so browsers reject them under `style-src 'self'`. Dynamic
+ * values are allowed, while static `style:property="..."` directives and
+ * constant style spreads are rejected because they still emit inline styles.
+ */
+
+import { Glob } from 'bun';
+import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parse } from 'svelte/compiler';
+
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const sourceRoot = resolve(scriptDirectory, '..', 'src');
+
+type SvelteNode = {
+  type?: string;
+  name?: string;
+  value?: SvelteNode | SvelteNode[];
+  name_loc?: {
+    start: {
+      line: number;
+      column: number;
+    };
+  };
+  [key: string]: unknown;
+};
+
+export type StaticStyleAttributeViolation = {
+  line: number;
+  column: number;
+};
+
+function isNode(value: unknown): value is SvelteNode {
+  return typeof value === 'object' && value !== null;
+}
+
+function isStaticValue(value: unknown): boolean {
+  if (Array.isArray(value))
+    return (
+      value.length > 0 &&
+      value.every(
+        (part) =>
+          isNode(part) &&
+          (part.type === 'Text' ||
+            (part.type === 'ExpressionTag' && isStaticExpression(part['expression']))),
+      )
+    );
+  if (!isNode(value)) return false;
+  if (value.type !== 'ExpressionTag') return false;
+  const expression = value['expression'];
+  if (!isNode(expression)) return false;
+  if (
+    expression.type === 'UnaryExpression' &&
+    (expression['operator'] === '-' || expression['operator'] === '+') &&
+    isNode(expression['argument']) &&
+    expression['argument'].type === 'Literal' &&
+    typeof expression['argument']['value'] === 'number'
+  )
+    return true;
+  return (
+    (expression.type === 'Literal' &&
+      (typeof expression['value'] === 'string' || typeof expression['value'] === 'number')) ||
+    (expression.type === 'TemplateLiteral' &&
+      Array.isArray(expression['expressions']) &&
+      expression['expressions'].every(isStaticExpression)) ||
+    (expression.type === 'ObjectExpression' && isStaticExpression(expression)) ||
+    (expression.type === 'BinaryExpression' &&
+      isStaticExpression(expression['left']) &&
+      isStaticExpression(expression['right']))
+  );
+}
+
+function isStaticExpression(expression: unknown): boolean {
+  if (!isNode(expression)) return false;
+  if (expression.type === 'Literal')
+    return typeof expression['value'] === 'string' || typeof expression['value'] === 'number';
+  if (expression.type === 'TemplateLiteral')
+    return (
+      Array.isArray(expression['expressions']) &&
+      expression['expressions'].every(isStaticExpression)
+    );
+  if (expression.type === 'UnaryExpression')
+    return (
+      (expression['operator'] === '-' || expression['operator'] === '+') &&
+      isStaticExpression(expression['argument'])
+    );
+  if (expression.type === 'ObjectExpression') {
+    const properties = expression['properties'];
+    return (
+      Array.isArray(properties) &&
+      properties.every(
+        (property) =>
+          isNode(property) &&
+          property.type === 'Property' &&
+          (!property['computed'] || isStaticExpression(property['key'])) &&
+          isStaticExpression(property['value']),
+      )
+    );
+  }
+  return (
+    expression.type === 'BinaryExpression' &&
+    isStaticExpression(expression['left']) &&
+    isStaticExpression(expression['right'])
+  );
+}
+
+export function findStaticStyleAttributes(source: string): StaticStyleAttributeViolation[] {
+  const violations: StaticStyleAttributeViolation[] = [];
+  const ast = parse(source, { modern: true });
+  const locationAt = (offset: unknown): { line: number; column: number } => {
+    if (typeof offset !== 'number') return { line: 1, column: 1 };
+    const prefix = source.slice(0, offset);
+    const lineBreaks = prefix.match(/\n/g)?.length ?? 0;
+    const lastBreak = prefix.lastIndexOf('\n');
+    return { line: lineBreaks + 1, column: offset - lastBreak };
+  };
+
+  function visit(value: unknown, domElement = false): void {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const itemIsDomElement =
+          isNode(item) && (item.type === 'RegularElement' || item.type === 'Element');
+        visit(item, domElement || itemIsDomElement);
+      }
+      return;
+    }
+
+    if (!isNode(value)) return;
+
+    if (
+      ((value.type === 'Attribute' && value.name === 'style' && domElement) ||
+        (value.type === 'StyleDirective' && domElement)) &&
+      isStaticValue(value.value)
+    ) {
+      violations.push({
+        line: value.name_loc?.start.line ?? 1,
+        column: (value.name_loc?.start.column ?? 0) + 1,
+      });
+    }
+    if (domElement && (value.type === 'Spread' || value.type === 'SpreadAttribute')) {
+      const expression = value['expression'];
+      const properties =
+        isNode(expression) && expression.type === 'ObjectExpression'
+          ? expression['properties']
+          : undefined;
+      if (
+        Array.isArray(properties) &&
+        properties.some(
+          (property) =>
+            isNode(property) &&
+            property.type === 'Property' &&
+            isNode(property['key']) &&
+            property['key'].type === 'Identifier' &&
+            property['key']['name'] === 'style' &&
+            isStaticExpression(property['value']),
+        )
+      ) {
+        const location = locationAt(value['start']);
+        violations.push({
+          line: location.line,
+          column: location.column,
+        });
+      }
+    }
+
+    const isDomElementNode = value.type === 'RegularElement' || value.type === 'Element';
+    for (const [key, child] of Object.entries(value)) {
+      if (key !== 'metadata') {
+        const childIsDomElement =
+          isNode(child) && (child.type === 'RegularElement' || child.type === 'Element');
+        // Only an element's direct attributes inherit its DOM context. Do not
+        // propagate that context through descendants, or a nested component's
+        // `style` prop would be mistaken for an inline DOM style.
+        visit(child, (isDomElementNode && key === 'attributes') || childIsDomElement);
+      }
+    }
+  }
+
+  visit(ast['fragment']);
+  return violations;
+}
+
+async function scan(): Promise<Array<StaticStyleAttributeViolation & { filePath: string }>> {
+  const violations: Array<StaticStyleAttributeViolation & { filePath: string }> = [];
+  const glob = new Glob('**/*.svelte');
+
+  for await (const relativePath of glob.scan({ cwd: sourceRoot })) {
+    const absolutePath = resolve(sourceRoot, relativePath);
+    const source = await Bun.file(absolutePath).text();
+
+    for (const violation of findStaticStyleAttributes(source)) {
+      violations.push({
+        filePath: relative(resolve(sourceRoot, '..', '..', '..'), absolutePath),
+        ...violation,
+      });
+    }
+  }
+
+  return violations;
+}
+
+async function main(): Promise<void> {
+  const violations = await scan();
+  if (violations.length === 0) {
+    process.stdout.write(
+      'check-no-static-style-attributes — OK (Svelte source emits no static inline styles).\n',
+    );
+    return;
+  }
+
+  process.stderr.write(
+    'check-no-static-style-attributes — static style attributes violate strict style-src CSP. Move static declarations to CSS; use a style: directive only for genuinely dynamic values.\n\n',
+  );
+  for (const violation of violations) {
+    process.stderr.write(`  ${violation.filePath}:${violation.line}:${violation.column}\n`);
+  }
+  process.exit(1);
+}
+
+if (import.meta.main) {
+  main().catch((error: unknown) => {
+    console.error('check-no-static-style-attributes failed:', error);
+    process.exit(1);
+  });
+}

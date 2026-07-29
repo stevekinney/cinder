@@ -237,7 +237,7 @@
   }
 
   .tool-call-group[data-status='action-required'] .tool-call-status {
-    color: var(--cinder-warning);
+    color: var(--cinder-color-warning-fg);
   }
 
   .tool-call-chevron {

@@ -379,7 +379,7 @@
     .cinder-button[data-cinder-variant='secondary']:hover:not(:disabled):not(
         [aria-disabled='true']
       ) {
-      background: var(--cinder-surface-hover);
+      background: var(--cinder-surface-raised-hover);
     }
 
     .cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
@@ -438,7 +438,7 @@
   .cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: var(--cinder-surface-pressed);
+    background: var(--cinder-surface-raised-pressed);
   }
 
   .cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {

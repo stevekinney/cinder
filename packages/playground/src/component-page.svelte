@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { mount, unmount } from 'svelte';
+  import { mount, unmount, type Snippet } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -99,6 +99,24 @@
      * bundle. Empty means no sidebar (snapshot and preview surfaces).
      */
     sidebarComponents?: string[];
+    /**
+     * Landing mode. When set, the page renders this README in the prose column
+     * instead of component documentation — same nav, same top bar, same theme
+     * control. The site had two different chromes before this; now `/` and
+     * `/page/<name>` are the same layout with different content.
+     */
+    readmeHtml?: string;
+    /** Extra top-bar actions, e.g. the landing page's colour-token trigger. */
+    toolbarActions?: Snippet;
+    /** Page-level overlays rendered inside the shell wrapper. */
+    overlays?: Snippet;
+    /**
+     * Notified whenever the page's theme control changes the active theme. The
+     * landing page uses this to keep the colour-token panel's store pointed at
+     * the theme the reader is actually looking at — overrides are stored per
+     * theme, so a stale store leaks light edits into dark.
+     */
+    onThemeChange?: (theme: 'light' | 'dark') => void;
   };
 
   let {
@@ -110,7 +128,14 @@
     documentation: documentationProp,
     documentationError: documentationErrorProp,
     sidebarComponents = [],
+    readmeHtml,
+    toolbarActions,
+    overlays,
+    onThemeChange,
   }: Props = $props();
+
+  /** True on `/`, which renders the README through this same chrome. */
+  const isLanding = $derived(readmeHtml !== undefined);
 
   // Height of the sticky top bar, in pixels — used for scroll-spy activation
   // and smooth-scroll offset so anchored sections clear the bar.
@@ -194,7 +219,10 @@
    */
   $effect(() => {
     theme = readInitialTheme();
+    onThemeChange?.(theme);
     isHydrated = true;
+    navFilter = readStoredNavFilter();
+    navFilterRestored = true;
     // Adopted after hydration, not during init: the server cannot read the URL's
     // toolbar state without the two trees disagreeing.
     previewWidth = readInitialPreviewWidth();
@@ -230,6 +258,52 @@
   let isFocusMode = $state(false);
 
   /*
+   * Component-nav filter. Matches against both the raw kebab id and the
+   * humanized label, so typing either "alert-dialog" or "Alert dialog" works.
+   */
+  const NAV_FILTER_STORAGE_KEY = 'cinder-playground-nav-filter';
+
+  /*
+   * Persisted across navigation. Selecting a component is a full document load,
+   * so without this a filtered list resets the moment you use it.
+   */
+  function readStoredNavFilter(): string {
+    if (typeof sessionStorage === 'undefined') return '';
+    try {
+      return sessionStorage.getItem(NAV_FILTER_STORAGE_KEY) ?? '';
+    } catch {
+      return '';
+    }
+  }
+
+  let navFilter = $state('');
+
+  /*
+   * Writes are held until the stored value has been restored. Without the guard
+   * this effect fires on the initial empty `navFilter` and clobbers the stored
+   * filter before the mount effect can read it back — the persistence would
+   * silently never work.
+   */
+  let navFilterRestored = $state(false);
+
+  $effect(() => {
+    if (!navFilterRestored) return;
+    try {
+      sessionStorage.setItem(NAV_FILTER_STORAGE_KEY, navFilter);
+    } catch {
+      // Private mode / disabled storage — filtering still works in-session.
+    }
+  });
+
+  const visibleComponents = $derived.by(() => {
+    const query = navFilter.trim().toLowerCase();
+    if (query === '') return sidebarComponents;
+    return sidebarComponents.filter(
+      (name) => name.includes(query) || humanizeId(name).toLowerCase().includes(query),
+    );
+  });
+
+  /*
    * Escape exits focus mode.
    *
    * Registered through an effect rather than `<svelte:window>`: that tag has to
@@ -256,6 +330,7 @@
 
   function toggleTheme(): void {
     theme = theme === 'dark' ? 'light' : 'dark';
+    onThemeChange?.(theme);
     document.documentElement.style.colorScheme = theme;
     document.documentElement.dataset['cinderTheme'] = theme;
     try {
@@ -737,6 +812,7 @@
   <!-- One wrapper so this branch has a single root. Two siblings here (nav +
        page) trip happy-dom's fragment handling in the documentation tests. -->
   <div class="dx-shell">
+    {@render overlays?.()}
     <div
       class={[
         'dx',
@@ -750,7 +826,14 @@
         <div class="dx-topbar__inner">
           <nav class="dx-crumbs" aria-label="Breadcrumb">
             <span class="dx-crumbs__mark">CINDER</span>
-            <span class="dx-crumbs__sep" aria-hidden="true">/</span>
+            <!-- The separator only renders when a crumb follows it. A bare
+                 "CINDER /" reads as a truncated trail to a screen reader. -->
+            {#if isLanding}
+              <span class="dx-crumbs__sep" aria-hidden="true">/</span>
+              <span class="dx-crumbs__current" aria-current="page">Overview</span>
+            {:else if documentation !== null}
+              <span class="dx-crumbs__sep" aria-hidden="true">/</span>
+            {/if}
             {#if documentation !== null}
               <span>{documentation.component.categoryLabel}</span>
               <span class="dx-crumbs__sep" aria-hidden="true">/</span>
@@ -785,11 +868,41 @@
                 {/if}
               </button>
             </Tooltip>
+            {@render toolbarActions?.()}
           </div>
         </div>
       </header>
 
-      {#if documentationError !== null}
+      {#if isLanding}
+        <!-- Landing: the README in the prose column, same chrome as every
+             component page. No hero, TOC, or preview pane — there is no
+             component to describe or mount. -->
+        <div class="dx-hero">
+          <div class="dx__inner">
+            <div class="dx-eyebrow">
+              <span class="dx-eyebrow__index">Design system</span>
+              <span class="dx-eyebrow__rule" aria-hidden="true"></span>
+            </div>
+            <h1 id="landing-title">cinder</h1>
+            <p class="dx-hero__lede">
+              Components for product interfaces. Browse runnable examples, inspect component
+              contracts, and use the README as the starting point for installing and shipping
+              Cinder.
+            </p>
+            <p class="dx-hero__meta">
+              <a class="dx-landing-cta" href={buildComponentHref(sidebarComponents[0] ?? 'button')}>
+                Browse components
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <div class="dx__inner">
+          <main class="dx-content dx-content--landing">
+            <div class="dx-prose readme-content">{@html readmeHtml}</div>
+          </main>
+        </div>
+      {:else if documentationError !== null}
         <div class="dx__inner dx-error-region">
           <Alert variant="danger">
             Could not load documentation: {documentationError}
@@ -1557,8 +1670,19 @@
 -->
       <nav class="dx-nav" aria-label="Components" {@attach persistScrollPosition}>
         <a class="dx-nav__brand" href="/">CINDER</a>
+        <div class="dx-nav__filter">
+          <label class="cinder-sr-only" for="sidebar-filter">Filter components</label>
+          <input
+            id="sidebar-filter"
+            class="dx-nav__filter-input"
+            type="search"
+            autocomplete="off"
+            placeholder="Filter components…"
+            bind:value={navFilter}
+          />
+        </div>
         <ul class="dx-nav__list">
-          {#each sidebarComponents as name (name)}
+          {#each visibleComponents as name (name)}
             <li>
               <a
                 class="dx-nav__link"
@@ -1569,6 +1693,9 @@
               </a>
             </li>
           {/each}
+          {#if visibleComponents.length === 0}
+            <li class="dx-nav__empty">No components match “{navFilter}”.</li>
+          {/if}
         </ul>
       </nav>
     {/if}
@@ -1632,7 +1759,47 @@
     text-transform: uppercase;
   }
 
+  .dx-nav__filter {
+    padding: 0 var(--cinder-space-4) var(--cinder-space-3);
+  }
+
+  .dx-nav__filter-input {
+    appearance: none;
+    width: 100%;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-bg);
+    color: var(--cinder-text);
+    font-family: inherit;
+    font-size: var(--cinder-text-sm);
+  }
+
+  .dx-nav__filter-input::placeholder {
+    color: var(--cinder-text-subtle);
+  }
+
+  .dx-nav__filter-input:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .dx-nav__filter-input:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      box-shadow: none;
+    }
+  }
+
+  .dx-nav__empty {
+    padding: var(--cinder-space-2) var(--cinder-space-5);
+    color: var(--cinder-text-subtle);
+    font-size: var(--cinder-text-sm);
+  }
+
   .dx-nav__list {
+    display: flex;
+    flex-direction: column;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -1986,6 +2153,61 @@
   }
   .dx-content {
     grid-area: docs;
+  }
+
+  .dx-landing-cta {
+    display: inline-block;
+    padding: var(--cinder-space-2) var(--cinder-space-4);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-accent);
+    color: var(--cinder-accent-contrast);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+    text-decoration: none;
+  }
+
+  .dx-landing-cta:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .dx-landing-cta:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      box-shadow: none;
+    }
+  }
+
+  /*
+   * The landing README is raw rendered markdown — it has no `codeBlocks`
+   * payload, so its fences cannot go through `CodeBlock` the way a component
+   * README's do. Give them the same surface treatment so the two pages read the
+   * same.
+   */
+  .dx-content--landing :global(pre) {
+    padding: var(--cinder-space-4);
+    overflow-x: auto;
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface-raised);
+  }
+
+  .dx-content--landing :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .dx-content--landing :global(pre code) {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+  }
+
+  /* Landing has no preview column, so the prose gets the full width. */
+  .dx-content--landing {
+    grid-column: 1 / -1;
+    padding-block: clamp(2rem, 4vw, 3.25rem) 5rem;
+    max-width: 78rem;
+    margin-inline: auto;
   }
   .dx-preview {
     grid-area: preview;

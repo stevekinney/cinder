@@ -472,4 +472,18 @@ describe('BarChart', () => {
     const cssText = await Bun.file(new URL('./bar-chart.css', import.meta.url)).text();
     expect(cssText).toContain('.cinder-bar-chart__bar[data-cinder-active]');
   });
+
+  test('chart legend buttons keep full-strength outer borders', async () => {
+    const chartStylesheets = await Promise.all(
+      ['../area-chart/area-chart.css', './bar-chart.css', '../line-chart/line-chart.css'].map(
+        (path) => Bun.file(new URL(path, import.meta.url)).text(),
+      ),
+    );
+
+    for (const stylesheet of chartStylesheets) {
+      const legendButtonBlock = stylesheet.match(/__legend button\s*\{[^}]*\}/)?.[0] ?? '';
+      expect(legendButtonBlock).toContain('border: 1px solid var(--cinder-border)');
+      expect(legendButtonBlock).not.toContain('var(--cinder-border-muted)');
+    }
+  });
 });

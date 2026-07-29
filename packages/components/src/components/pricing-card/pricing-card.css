@@ -12,7 +12,7 @@
     inline-size: 100%;
     border-radius: var(--cinder-radius-lg);
     background: var(--cinder-surface-raised);
-    border: 1px solid var(--cinder-border-muted);
+    border: 1px solid var(--cinder-border);
     color: var(--cinder-text);
     box-shadow: var(--cinder-shadow-sm);
     overflow: hidden;
