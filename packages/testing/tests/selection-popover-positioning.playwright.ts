@@ -404,6 +404,39 @@ test('selection flush to viewport top places popover below the selection without
   // the target is 0 — no scroll was needed).
   await page.waitForFunction((expected) => Math.abs(window.scrollY - expected) <= 1, targetScrollY);
 
+  // `scrollY` reaching its target is NOT the same as the browser having finished
+  // dispatching `scroll` events — the event fires asynchronously after the
+  // position updates, so one can still land after the wait above resolves.
+  // SelectionPopover dismisses on `scroll` by design, so a single late event
+  // arriving after Step 2 opens the popover closes it again, and
+  // `data-cinder-position-ready` never flips to 'true'. That raced at roughly a
+  // 40% failure rate locally.
+  //
+  // Wait for scroll QUIESCENCE — no scroll event for two consecutive animation
+  // frames' worth of idle — rather than for the final offset.
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      let lastScrollAt = performance.now();
+      const recordScroll = () => {
+        lastScrollAt = performance.now();
+      };
+
+      window.addEventListener('scroll', recordScroll, { passive: true });
+
+      const checkQuiescence = () => {
+        if (performance.now() - lastScrollAt >= 100) {
+          window.removeEventListener('scroll', recordScroll);
+          resolve();
+          return;
+        }
+
+        requestAnimationFrame(checkQuiescence);
+      };
+
+      requestAnimationFrame(checkQuiescence);
+    });
+  });
+
   // Step 2: now that the frame has settled, create the selection and capture
   // post-scroll geometry. The anchorBox.y must be near 0 because the text is
   // flush with the viewport top.
