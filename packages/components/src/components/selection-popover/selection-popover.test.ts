@@ -965,6 +965,65 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('moving focus to a real external destination is not re-owned by a stale expanded composer', async () => {
+    let closed = false;
+    const originalInnerHeight = window.innerHeight;
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onClose: () => {
+          closed = true;
+        },
+      },
+    });
+
+    try {
+      await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
+      const textarea = screen.getByRole('textbox', { name: 'Comment text' });
+      textarea.focus();
+
+      // The soft keyboard opens while the composer is expanded and focused,
+      // latching ownership to true.
+      Object.defineProperty(navigator, 'virtualKeyboard', {
+        configurable: true,
+        value: { boundingRect: { height: 300 } },
+      });
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight - 100,
+      });
+      await fireEvent(window, new Event('resize'));
+      expect(closed).toBe(false);
+
+      // Keyboard navigation moves focus to a real external control WITHOUT
+      // canceling the composer — `expanded` stays true, so ownership must
+      // not simply be re-derived from that stale state.
+      externalInput.focus();
+
+      // A later resize while the keyboard is still reported visible must
+      // not be re-claimed as composer-owned just because `expanded` is
+      // still true; it belongs to whatever the user tabbed to.
+      await fireEvent(window, new Event('resize'));
+
+      expect(closed).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'innerHeight', {
+        configurable: true,
+        value: originalInnerHeight,
+      });
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+      externalInput.remove();
+    }
+  });
+
   test('tabbing to a real destination outside the popover keeps focus there through a later movement dismissal', async () => {
     let closed = false;
 

@@ -260,6 +260,12 @@
     // transition settles (mirrors the virtualKeyboardWasVisible bookkeeping).
     const virtualKeyboardOwnedByComposer: Partial<Record<'window' | 'visual-viewport', boolean>> =
       {};
+    // Once focus genuinely moves outside the popover, ownership is forgotten
+    // for the rest of this keyboard-visible transition — even if `expanded`
+    // or a draft still reads true — so a real external keyboard (belonging
+    // to whatever the user tabbed to) can't be re-claimed by the composer's
+    // now-stale state on the very next event.
+    const keyboardOwnershipForgotten = new Set<'window' | 'visual-viewport'>();
     const readVirtualKeyboardTransition = (
       source: 'window' | 'visual-viewport',
       composerOwnsKeyboardNow: boolean,
@@ -277,22 +283,27 @@
         // composer (composerOwnsKeyboardNow -> false) before the keyboard
         // reports itself hidden, and an intervening event while it's still
         // visible would otherwise overwrite the ownership this latch exists
-        // to preserve across that gap.
-        const ownedByComposer =
-          (virtualKeyboardOwnedByComposer[source] ?? false) || composerOwnsKeyboardNow;
+        // to preserve across that gap. A forgotten latch stays forgotten
+        // until the transition settles, so it can't be immediately
+        // re-claimed by stale composer state either.
+        const ownedByComposer = keyboardOwnershipForgotten.has(source)
+          ? false
+          : (virtualKeyboardOwnedByComposer[source] ?? false) || composerOwnsKeyboardNow;
         virtualKeyboardOwnedByComposer[source] = ownedByComposer;
         return { active: true, isVisible, ownedByComposer };
       }
       if (!virtualKeyboardWasVisible[source])
         return { active: false, isVisible, ownedByComposer: composerOwnsKeyboardNow };
 
-      if (composerOwnsKeyboardNow) virtualKeyboardOwnedByComposer[source] = true;
+      if (composerOwnsKeyboardNow && !keyboardOwnershipForgotten.has(source))
+        virtualKeyboardOwnedByComposer[source] = true;
       const ownedByComposer = virtualKeyboardOwnedByComposer[source] ?? composerOwnsKeyboardNow;
 
       virtualKeyboardTransitionFrames[source] ??= window.requestAnimationFrame(() => {
         virtualKeyboardWasVisible[source] = false;
         delete virtualKeyboardTransitionFrames[source];
         delete virtualKeyboardOwnedByComposer[source];
+        keyboardOwnershipForgotten.delete(source);
       });
       return { active: true, isVisible, ownedByComposer };
     };
@@ -401,9 +412,14 @@
       // the popover (e.g. tabbing out to another control). A later movement
       // dismissal's restoreFocus() must not steal focus back from it, so
       // drop the saved restoration target along with the keyboard latches.
+      // Mark ownership forgotten (not just clear it) so `expanded` or a
+      // leftover draft can't immediately re-claim it as composer-owned on
+      // the very next event while the keyboard is still visible.
       restoreFocusElement = null;
       delete virtualKeyboardOwnedByComposer.window;
       delete virtualKeyboardOwnedByComposer['visual-viewport'];
+      keyboardOwnershipForgotten.add('window');
+      keyboardOwnershipForgotten.add('visual-viewport');
     };
     const windowScrollOptions: AddEventListenerOptions = { capture: true, passive: true };
     const visualViewportScrollOptions: AddEventListenerOptions = { passive: true };
