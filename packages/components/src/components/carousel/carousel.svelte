@@ -304,6 +304,13 @@
   }
 
   function onPointerDown(event: PointerEvent): void {
+    // Only touch and pen pointers can pan the native scroller. A mouse press
+    // on slide content (e.g. a link) has no drag recognizer behind it, so
+    // treating it as an interaction would needlessly widen the
+    // interaction-layout window and jump the viewport to a neighbor's
+    // height for the duration of an ordinary click.
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+
     programmaticTarget = null;
     isAutoplayTransitioning = false;
     isInteracting = true;

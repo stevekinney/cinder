@@ -73,6 +73,24 @@ describe('Carousel', () => {
     expect(setPointerCapture).not.toHaveBeenCalled();
   });
 
+  test('does not widen the interaction-layout window for a mouse press', async () => {
+    const linkedSlides = [{ ...slides[0]!, href: '/details' }, ...slides.slice(1)];
+    const { container } = render(Carousel, { slides: linkedSlides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const link = container.querySelector('.cinder-carousel__link') as HTMLAnchorElement;
+    const neighbor = viewport.children[1] as HTMLElement;
+
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+
+    // A mouse press on the active slide's link bubbles a pointerdown to the
+    // viewport, but mice have no drag recognizer here — it must not widen
+    // the layout window and pop the neighbor's height in for the click.
+    await fireEvent.pointerDown(link, { pointerId: 71, pointerType: 'mouse' });
+
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+    await fireEvent.pointerUp(window, { pointerId: 71 });
+  });
+
   test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {
     const css = await Bun.file(new URL('./carousel.css', import.meta.url)).text();
     expect(css).not.toContain('scroll-snap-stop: always');
@@ -134,7 +152,7 @@ describe('Carousel', () => {
     const { container } = render(Carousel, { slides, activeIndex: 2 });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
 
-    await fireEvent.pointerDown(viewport, { pointerId: 21 });
+    await fireEvent.pointerDown(viewport, { pointerId: 21, pointerType: 'touch' });
     await fireEvent.scroll(viewport);
 
     expect(viewport.children[0]?.hasAttribute('data-cinder-collapsed')).toBe(false);
@@ -229,8 +247,8 @@ describe('Carousel', () => {
     jest.useFakeTimers();
     const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
-    await fireEvent.pointerDown(viewport, { pointerId: 1 });
-    await fireEvent.pointerDown(viewport, { pointerId: 2 });
+    await fireEvent.pointerDown(viewport, { pointerId: 1, pointerType: 'touch' });
+    await fireEvent.pointerDown(viewport, { pointerId: 2, pointerType: 'touch' });
     await fireEvent.pointerUp(window, { pointerId: 2 });
     jest.advanceTimersByTime(50);
     expectActiveSlide(container, 0);
@@ -255,7 +273,7 @@ describe('Carousel', () => {
       Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
     });
 
-    await fireEvent.pointerDown(viewport, { pointerId: 31 });
+    await fireEvent.pointerDown(viewport, { pointerId: 31, pointerType: 'touch' });
     await fireEvent.pointerCancel(window, { pointerId: 31 });
     expect(scrollTo).not.toHaveBeenCalled();
   });
@@ -342,7 +360,7 @@ describe('Carousel', () => {
       configurable: true,
       value: () => ({ left: 30, width: 100 }),
     });
-    await fireEvent.pointerDown(viewport);
+    await fireEvent.pointerDown(viewport, { pointerType: 'touch' });
     await fireEvent.scroll(viewport);
     await flushAnimationFrame();
 
@@ -368,7 +386,7 @@ describe('Carousel', () => {
       Object.defineProperty(slide, 'offsetLeft', { configurable: true, value: index * 100 });
     });
 
-    await fireEvent.pointerDown(viewport, { pointerId: 12 });
+    await fireEvent.pointerDown(viewport, { pointerId: 12, pointerType: 'touch' });
     await fireEvent.scroll(viewport);
     await flushAnimationFrame();
 
@@ -392,7 +410,7 @@ describe('Carousel', () => {
       value: () => ({ left: 0, width: 100 }),
     });
 
-    await fireEvent.pointerDown(viewport, { pointerId: 32 });
+    await fireEvent.pointerDown(viewport, { pointerId: 32, pointerType: 'touch' });
     await rerender({ slides, activeIndex: 2 });
     await fireEvent.scroll(viewport);
     await flushAnimationFrame();
@@ -422,7 +440,7 @@ describe('Carousel', () => {
 
     // An external activeIndex update arrives mid-interaction, deferring reconciliation.
     alignSlide(0);
-    await fireEvent.pointerDown(viewport, { pointerId: 41 });
+    await fireEvent.pointerDown(viewport, { pointerId: 41, pointerType: 'touch' });
     await rerender({ slides, activeIndex: 2 });
     await fireEvent.pointerUp(window, { pointerId: 41 });
 
@@ -665,7 +683,7 @@ describe('Carousel', () => {
     const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
     const incoming = viewport.children[1] as HTMLElement;
-    await fireEvent.pointerDown(viewport, { pointerId: 4 });
+    await fireEvent.pointerDown(viewport, { pointerId: 4, pointerType: 'touch' });
     await fireEvent.scroll(viewport);
     expect(incoming.hasAttribute('data-cinder-collapsed')).toBe(false);
     expect(incoming.getAttribute('aria-hidden')).toBe('true');
@@ -689,7 +707,7 @@ describe('Carousel', () => {
     const distantTall = viewport.children[4] as HTMLElement;
 
     expect(distantTall.hasAttribute('data-cinder-collapsed')).toBe(true);
-    await fireEvent.pointerDown(viewport, { pointerId: 8 });
+    await fireEvent.pointerDown(viewport, { pointerId: 8, pointerType: 'touch' });
     await fireEvent.scroll(viewport);
 
     expect(distantTall.hasAttribute('data-cinder-collapsed')).toBe(true);

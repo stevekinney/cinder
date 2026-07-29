@@ -64,3 +64,10 @@ announcement behavior.
   scroll event from the still-running animation cannot be misread as native
   input and silently redirect the announced destination back to a
   mid-transition slide.
+- **Mouse presses don't start an interaction.** `pointerdown` only marks an
+  interaction (and widens the in-transition layout window that keeps
+  physical neighbors laid out) for `touch` and `pen` pointers, which can
+  actually pan the native scroller. A mouse press bubbling up from a link or
+  button inside the active slide no longer flags an interaction, so it can't
+  momentarily pop a taller neighbor's height in and back out for an
+  ordinary click.
