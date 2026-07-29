@@ -480,6 +480,35 @@ describe('resolveTextDirection', () => {
     ).toBe('ltr');
   });
 
+  test('treats a compound style()-and-size container query as inactive', () => {
+    // The style() term alone would match here, but the compound condition
+    // also requires a size threshold this evaluator does not check against
+    // the style()-query's own ancestor walk. Fail closed rather than acting
+    // on the style() clause in isolation.
+    const wrapper = document.createElement('section');
+    wrapper.style.setProperty('--example', 'true');
+    const element = document.createElement('div');
+    wrapper.appendChild(element);
+    document.body.appendChild(wrapper);
+    const nestedRule = createStyleRule({
+      selectorText: '.compound-container-ltr',
+      direction: 'ltr',
+    });
+    element.className = 'compound-container-ltr';
+    const outerRule = {
+      cssText:
+        '@container style(--example: true) and (min-width: 40rem) { .compound-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'style(--example: true) and (min-width: 40rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('rtl');
+  });
+
   test('evaluates size queries against the nearest eligible query container', () => {
     const originalGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -544,6 +573,41 @@ describe('resolveTextDirection', () => {
       cssText: '@container (min-width: 20rem) { .content-box-container-ltr { direction: ltr; } }',
       type: 0,
       conditionText: '(min-width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('treats a container size query with an unsupported length unit as inactive', () => {
+    // The evaluator only resolves `px`/`rem`. A query written in `em` (or any
+    // other unit) cannot be decided here, so it must fail closed instead of
+    // defaulting to "matches" when neither `minimum` nor `maximum` parses.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({ width: 400 }),
+    });
+    const element = document.createElement('div');
+    element.className = 'unsupported-unit-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.unsupported-unit-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-width: 30em) { .unsupported-unit-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 30em)',
       cssRules: [nestedRule],
     } as unknown as CSSRule;
     try {
@@ -707,6 +771,47 @@ describe('resolveTextDirection', () => {
           resolveTextDirection(element, 'rtl'),
         ),
       ).toBe('ltr');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('measures a physical width query along the physical horizontal axis under vertical writing mode', () => {
+    // Physical `width` always measures the horizontal axis. Under a vertical
+    // writing mode, the logical inline insets resolve to top/bottom, so
+    // subtracting them here (instead of the physical left/right insets)
+    // would measure against the wrong axis entirely.
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    container.style.setProperty('writing-mode', 'vertical-rl');
+    container.style.paddingLeft = '20px';
+    container.style.paddingRight = '20px';
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({ width: 340, height: 500 }),
+    });
+    const element = document.createElement('div');
+    element.className = 'vertical-physical-width-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.vertical-physical-width-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-width: 20rem) { .vertical-physical-width-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      // Content width is 340 - 20 - 20 = 300px, below the 320px (20rem)
+      // threshold, so the rule is inactive and the provider fallback holds.
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
     } finally {
       container.remove();
     }
@@ -1073,6 +1178,27 @@ describe('resolveTextDirection', () => {
     });
 
     wrapper.dir = 'rtl';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    disconnect?.();
+
+    expect(changes).toBeGreaterThan(0);
+  });
+
+  test('observes ancestor attribute changes beyond dir, class, and style', async () => {
+    // A selector can key its `direction` styling off any ancestor attribute
+    // (e.g. `[data-flow='rtl']`), not only `dir`, `class`, or `style`, so the
+    // observer must not filter those out.
+    const wrapper = document.createElement('section');
+    const element = document.createElement('div');
+    wrapper.appendChild(element);
+    document.body.appendChild(wrapper);
+
+    let changes = 0;
+    const disconnect = observeTextDirection(element, () => {
+      changes += 1;
+    });
+
+    wrapper.setAttribute('data-flow', 'rtl');
     await new Promise((resolve) => setTimeout(resolve, 0));
     disconnect?.();
 

@@ -232,6 +232,19 @@ function isContainerQueryActive(
   if (typeof getComputedStyle !== 'function') return false;
   const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^)]+)\)/i.exec(conditionText);
   if (styleQuery) {
+    const remainder = (
+      conditionText.slice(0, styleQuery.index) +
+      conditionText.slice(styleQuery.index + styleQuery[0].length)
+    )
+      .replace(/^\s*(?:and|or|not)\b/i, '')
+      .replace(/^\(|\)$/g, '')
+      .trim();
+    // A compound condition — e.g. `style(--x: y) and (min-width: 40rem)` —
+    // is not fully evaluated below: only the style() clause is checked
+    // against ancestors. Fail closed rather than deciding solely from the
+    // style() term, which would wrongly treat an inactive compound rule as
+    // an active styling hint.
+    if (remainder) return false;
     const containerName = Reflect.get(rule, 'containerName');
     let ancestor = element.parentElement;
     while (ancestor) {
@@ -310,19 +323,38 @@ function isContainerQueryActive(
     container.style.writingMode ||
     container.style.getPropertyValue('writing-mode');
   const usesInlineSize = /(?:inline-size|min-inline-size|max-inline-size)/i.test(conditionText);
-  const verticalInlineAxis = usesInlineSize && /^(?:vertical|sideways)-/i.test(writingMode);
+  const isVerticalWritingMode = /^(?:vertical|sideways)-/i.test(writingMode);
+  const verticalInlineAxis = usesInlineSize && isVerticalWritingMode;
   const box = container.getBoundingClientRect();
   const borderBoxSize = verticalInlineAxis ? box.height : box.width;
+  // A physical `width` query is always a horizontal measurement. Under a
+  // vertical writing mode the logical inline insets resolve to top/bottom,
+  // not left/right, so a physical query must subtract physical left/right
+  // insets instead — falling back to the logical inline name only under a
+  // horizontal writing mode, where the two resolve to the same value (some
+  // environments only resolve the property name that was actually set).
   const firstInset = verticalInlineAxis
     ? readInset('padding-block-start', 'padding-top') +
       readInset('border-block-start-width', 'border-top-width')
-    : readInset('padding-inline-start', 'padding-left') +
-      readInset('border-inline-start-width', 'border-left-width');
+    : usesInlineSize
+      ? readInset('padding-inline-start', 'padding-left') +
+        readInset('border-inline-start-width', 'border-left-width')
+      : readInset('padding-left', isVerticalWritingMode ? 'padding-left' : 'padding-inline-start') +
+        readInset(
+          'border-left-width',
+          isVerticalWritingMode ? 'border-left-width' : 'border-inline-start-width',
+        );
   const secondInset = verticalInlineAxis
     ? readInset('padding-block-end', 'padding-bottom') +
       readInset('border-block-end-width', 'border-bottom-width')
-    : readInset('padding-inline-end', 'padding-right') +
-      readInset('border-inline-end-width', 'border-right-width');
+    : usesInlineSize
+      ? readInset('padding-inline-end', 'padding-right') +
+        readInset('border-inline-end-width', 'border-right-width')
+      : readInset('padding-right', isVerticalWritingMode ? 'padding-right' : 'padding-inline-end') +
+        readInset(
+          'border-right-width',
+          isVerticalWritingMode ? 'border-right-width' : 'border-inline-end-width',
+        );
   const width = Math.max(0, borderBoxSize - firstInset - secondInset);
   const rootFontSize = Number.parseFloat(
     getComputedStyle(element.ownerDocument.documentElement).fontSize,
@@ -331,6 +363,12 @@ function isContainerQueryActive(
   const queryUsesPhysicalWidth = /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(
     conditionText,
   );
+  // This evaluator only understands `px`/`rem` length units. A condition
+  // using any other CSS length unit (`em`, `vw`, `%`, ...) cannot be
+  // decided here — fail closed instead of silently defaulting to "matches"
+  // (an inactive rule at the current size would otherwise be treated as an
+  // active styling hint).
+  if (hasUnsupportedSizeUnit(conditionText)) return false;
   if (queryUsesPhysicalWidth && /\bor\b/i.test(conditionText)) {
     return conditionText
       .split(/\s+or\s+/i)
@@ -354,11 +392,22 @@ function isContainerQueryActive(
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
 }
 
+// True when the condition references a width/inline-size comparison whose
+// unit is not `px` or `rem` — the only units this evaluator can resolve to
+// pixels. Callers should fail closed rather than guess.
+function hasUnsupportedSizeUnit(conditionText: string): boolean {
+  const match = /(?:min-|max-)?(?:width|inline-size)\s*(?:>=|>|<=|<|:)\s*[\d.]+([a-z%]+)/i.exec(
+    conditionText,
+  );
+  return match !== null && !/^(?:px|rem)$/i.test(match[1]!);
+}
+
 function evaluateContainerSizeCondition(
   conditionText: string,
   width: number,
   remSize: number,
 ): boolean {
+  if (hasUnsupportedSizeUnit(conditionText)) return false;
   const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const toPixels = (value: RegExpExecArray) =>
@@ -416,9 +465,12 @@ export function observeTextDirection(
     let currentElement: HTMLElement | null = observedElement;
     while (currentElement) {
       const isAutoDirection = currentElement.getAttribute('dir')?.toLowerCase() === 'auto';
+      // No `attributeFilter`: a selector can key its `direction` styling off
+      // any ancestor attribute (e.g. `[data-flow='rtl']`), not just `dir`,
+      // `class`, or `style`, so every attribute mutation must be observed to
+      // catch a direction change driven by one of those selectors.
       observer.observe(currentElement, {
         attributes: true,
-        attributeFilter: ['dir', 'style', 'class'],
         childList: isAutoDirection,
         characterData: isAutoDirection,
         subtree: isAutoDirection,
