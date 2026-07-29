@@ -272,8 +272,16 @@
           delete virtualKeyboardTransitionFrames[source];
         }
         virtualKeyboardWasVisible[source] = true;
-        virtualKeyboardOwnedByComposer[source] = composerOwnsKeyboardNow;
-        return { active: true, isVisible, ownedByComposer: composerOwnsKeyboardNow };
+        // Only ever latch ownership to true here, never downgrade an
+        // already-true latch back to false. A Cancel/submit collapses the
+        // composer (composerOwnsKeyboardNow -> false) before the keyboard
+        // reports itself hidden, and an intervening event while it's still
+        // visible would otherwise overwrite the ownership this latch exists
+        // to preserve across that gap.
+        const ownedByComposer =
+          (virtualKeyboardOwnedByComposer[source] ?? false) || composerOwnsKeyboardNow;
+        virtualKeyboardOwnedByComposer[source] = ownedByComposer;
+        return { active: true, isVisible, ownedByComposer };
       }
       if (!virtualKeyboardWasVisible[source])
         return { active: false, isVisible, ownedByComposer: composerOwnsKeyboardNow };
@@ -342,9 +350,7 @@
             layoutKeyboardResize ||
             closingLayoutKeyboard) &&
           (composerHasFocus ||
-            (virtualKeyboardTransition.active &&
-              !virtualKeyboardTransition.isVisible &&
-              virtualKeyboardTransition.ownedByComposer))
+            (virtualKeyboardTransition.active && virtualKeyboardTransition.ownedByComposer))
         ) {
           return;
         }
@@ -370,8 +376,7 @@
       if (
         (event.type === 'resize' || event.type === 'scroll') &&
         virtualKeyboardTransition.active &&
-        (composerHasFocus ||
-          (!virtualKeyboardTransition.isVisible && virtualKeyboardTransition.ownedByComposer))
+        (composerHasFocus || virtualKeyboardTransition.ownedByComposer)
       ) {
         return;
       }
@@ -392,6 +397,11 @@
       // focusable — it is never a real destination the user chose, so it
       // isn't evidence the interaction moved on.
       if (event.target === document.body) return;
+      // The user has deliberately moved focus to a real destination outside
+      // the popover (e.g. tabbing out to another control). A later movement
+      // dismissal's restoreFocus() must not steal focus back from it, so
+      // drop the saved restoration target along with the keyboard latches.
+      restoreFocusElement = null;
       delete virtualKeyboardOwnedByComposer.window;
       delete virtualKeyboardOwnedByComposer['visual-viewport'];
     };
