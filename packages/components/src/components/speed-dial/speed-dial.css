@@ -18,6 +18,12 @@
     gap: var(--cinder-space-3);
     pointer-events: none;
     z-index: var(--cinder-z-popover);
+    /* `_floating-surface.css` only enables scrolling for `role="listbox"` and
+       `role="menu"` — this toolbar's own block size is capped by the shared
+       `max-block-size`, so it needs its own overflow behavior or a vertical
+       SpeedDial with enough actions to exceed that cap has no way to reach
+       the actions that overflow past the viewport. */
+    overflow-y: auto;
   }
 
   .cinder-speed-dial__actions[data-cinder-direction='up'] {
