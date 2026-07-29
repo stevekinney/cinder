@@ -112,11 +112,6 @@ export const allowedFloatingCounts = new Map<string, number>(
     'bar-chart/bar-chart.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
-    // The `__cluster` wrapper itself only needs `position: absolute` for
-    // timeline placement; its `[data-cinder-open]` z-index boost lifts the
-    // wrapper's stacking context so the child `__cluster-surface` (which
-    // already composes `cinder-_floating-surface`) isn't clipped by sibling
-    // cluster wrappers. It is not an independent hand-rolled floating panel.
     'event-timeline/event-timeline.css',
     'kanban-board/kanban-board.css',
     'line-chart/line-chart.css',
@@ -139,6 +134,15 @@ export const allowedFloatingCounts = new Map<string, number>(
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
+// event-timeline's cluster wrapper is a lane marker positioned absolutely along
+// the timeline track; its z-index bump on `[data-cinder-open]` (see the
+// `cinder-z-index-local` comment in event-timeline.css) only resolves stacking
+// order between sibling clusters. The actual popover content already composes
+// `cinder-_floating-surface` directly. Not a hand-rolled floating panel.
+// phone-input's country-summary is excluded at detection time (see the
+// `summary` addition to isInternalLayerTarget() in primitive-composition-css.ts):
+// it is a decorative absolutely-positioned label painted over a transparent
+// native <select>, not a layered floating panel.
 
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [
