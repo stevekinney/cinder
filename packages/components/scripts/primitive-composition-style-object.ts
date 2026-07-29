@@ -20,7 +20,7 @@ function cssPropertyName(propertyName: string): string {
 
 function staticValue(
   rawExpression: unknown,
-  bindings: ReadonlyMap<string, unknown>,
+  bindings: ReadonlyMap<string, readonly unknown[]>,
 ): string | undefined {
   const expression = unwrapTypeExpression(rawExpression);
   if (!isRecord(expression)) return undefined;
@@ -30,7 +30,13 @@ function staticValue(
   )
     return String(expression['value']);
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
-    const binding = bindings.get(expression['name']);
+    const candidates = bindings.get(expression['name']) ?? [];
+    // A reassignable binding with more than one reachable static value (an
+    // initializer plus a later handler write, say) can't be flattened to a
+    // single scalar — treat it the same as an unresolved dynamic value
+    // rather than arbitrarily picking one candidate.
+    if (candidates.length !== 1) return undefined;
+    const binding = candidates[0];
     return typeof binding === 'string' || typeof binding === 'number' ? String(binding) : undefined;
   }
   return undefined;
@@ -56,12 +62,18 @@ function mergeDeclarations(
 
 function collectObjectDeclarationBranches(
   rawExpression: unknown,
-  bindings: ReadonlyMap<string, unknown>,
+  bindings: ReadonlyMap<string, readonly unknown[]>,
 ): Map<string, string>[] {
   const expression = unwrapTypeExpression(rawExpression);
   if (!isRecord(expression)) return [new Map()];
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
-    return collectObjectDeclarationBranches(bindings.get(expression['name']), bindings);
+    const candidates = bindings.get(expression['name']);
+    if (candidates === undefined) return [new Map()];
+    // Every reachable static value for this binding — e.g. its initializer
+    // *and* a later handler reassignment — is a possible render state and
+    // must be checked independently, the same way a ConditionalExpression's
+    // branches are.
+    return candidates.flatMap((candidate) => collectObjectDeclarationBranches(candidate, bindings));
   }
   if (
     expression['type'] === 'ConditionalExpression' ||
@@ -164,8 +176,8 @@ function resolvedAssignmentValue(
   return { set: false };
 }
 
-function staticBindings(instance: unknown): Map<string, unknown> {
-  const bindings = new Map<string, unknown>();
+function staticBindings(instance: unknown): Map<string, unknown[]> {
+  const bindings = new Map<string, unknown[]>();
   const mutableBindings = new Set<string>();
   if (!isRecord(instance) || !isRecord(instance['content'])) return bindings;
   const body = instance['content']['body'];
@@ -191,26 +203,36 @@ function staticBindings(instance: unknown): Map<string, unknown> {
       const name = declaration['id']['name'];
       if (statement['kind'] !== 'const') mutableBindings.add(name);
       const resolved = resolvedAssignmentValue(declaration['init']);
-      if (resolved.set) bindings.set(name, resolved.value);
+      if (resolved.set) bindings.set(name, [resolved.value]);
       else bindings.delete(name);
     }
   }
   if (mutableBindings.size === 0) return bindings;
 
-  // Pass 2: apply every reassignment of a tracked mutable binding in source
-  // order, including writes made inside function bodies — a click handler
-  // reassigning a shared mutable style object must not evade detection just
-  // because the write isn't a top-level statement — but not writes inside a
-  // function that locally shadows the same name (its own param or a nested
+  // Pass 2: apply every reassignment of a tracked mutable binding, including
+  // writes made inside function bodies — a click handler reassigning a
+  // shared mutable style object must not evade detection just because the
+  // write isn't a top-level statement — but not writes inside a function
+  // that locally shadows the same name (its own param or a nested
   // `let`/`const`/`var` declaration).
-  const walk = (node: unknown, shadowed: ReadonlySet<string>): void => {
+  //
+  // A top-level (synchronous, pre-render) reassignment overwrites the prior
+  // value, since only the last one is ever actually rendered. A write made
+  // inside a function body happens at some indeterminate *later* time (if
+  // the handler ever runs) and does not retroactively change what the
+  // initial render looked like, so it's recorded as an *additional*
+  // reachable value rather than replacing the existing one — the same way a
+  // ConditionalExpression's branches are both kept.
+  const walk = (node: unknown, shadowed: ReadonlySet<string>, insideFunction: boolean): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
+    let currentInsideFunction = insideFunction;
     if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||
       node['type'] === 'ArrowFunctionExpression'
     ) {
+      currentInsideFunction = true;
       const localNames = new Set<string>();
       if (Array.isArray(node['params']))
         for (const parameter of node['params']) declaredNamesInPattern(parameter, localNames);
@@ -233,15 +255,21 @@ function staticBindings(instance: unknown): Map<string, unknown> {
     ) {
       const name = node['left']['name'];
       const resolved = resolvedAssignmentValue(node['right']);
-      if (resolved.set) bindings.set(name, resolved.value);
-      else bindings.delete(name);
+      if (currentInsideFunction) {
+        if (resolved.set) bindings.set(name, [...(bindings.get(name) ?? []), resolved.value]);
+      } else if (resolved.set) {
+        bindings.set(name, [resolved.value]);
+      } else {
+        bindings.delete(name);
+      }
     }
     for (const value of Object.values(node)) {
-      if (Array.isArray(value)) for (const item of value) walk(item, currentShadowed);
-      else if (isRecord(value)) walk(value, currentShadowed);
+      if (Array.isArray(value))
+        for (const item of value) walk(item, currentShadowed, currentInsideFunction);
+      else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
     }
   };
-  for (const statement of body) walk(statement, new Set());
+  for (const statement of body) walk(statement, new Set(), false);
 
   return bindings;
 }
@@ -251,6 +279,6 @@ export function styleObjectDeclarationBranches(
   source: string,
 ): Map<string, string>[] {
   const root: unknown = parseSvelte(source, { modern: true });
-  const bindings = isRecord(root) ? staticBindings(root['instance']) : new Map<string, unknown>();
+  const bindings = isRecord(root) ? staticBindings(root['instance']) : new Map<string, unknown[]>();
   return collectObjectDeclarationBranches(expression, bindings);
 }

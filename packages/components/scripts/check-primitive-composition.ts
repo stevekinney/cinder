@@ -356,8 +356,15 @@ function hasStaticHiddenAttribute(
     if (!isRecord(attribute)) continue;
     if (attribute['type'] === 'SpreadAttribute' && isRecord(attribute['expression'])) {
       const expression = attribute['expression'];
-      if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties']))
+      if (expression['type'] !== 'ObjectExpression' || !Array.isArray(expression['properties'])) {
+        // An unresolvable spread (spreading an identifier we can't see the
+        // shape of) might overwrite `hidden`/`type` with something visible —
+        // we can't prove it doesn't, so invalidate any prior hidden proof. A
+        // later static attribute can still re-establish it.
+        hiddenState = undefined;
+        typeIsHidden = undefined;
         continue;
+      }
       for (const property of expression['properties']) {
         if (!isRecord(property)) continue;
         const name = staticPropertyName(property);
@@ -665,14 +672,27 @@ function inlineStylePrimitiveCounts(source: string): CssPrimitiveCounts {
         const allLayeringValues =
           normalizedValues.length > 0 &&
           normalizedValues.every((candidate) => candidate === 'absolute' || candidate === 'fixed');
-        for (const declarations of declarationBranches)
-          declarations.set(
-            attribute['name'].toLowerCase(),
-            allLayeringValues
-              ? 'absolute'
-              : (attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
-                  'var(--cinder-dynamic-value)'),
+        const directiveName = attribute['name'].toLowerCase();
+        if (allLayeringValues) {
+          for (const declarations of declarationBranches)
+            declarations.set(directiveName, 'absolute');
+        } else if (normalizedValues.length > 0) {
+          // A conditional/logical directive value (`style:display={active ?
+          // 'grid' : 'block'}`) has multiple reachable static outcomes, each
+          // a distinct possible render — keep every one as its own branch
+          // instead of collapsing to a single dynamic placeholder, the same
+          // way a style OBJECT's conditional branches are preserved above.
+          declarationBranches = declarationBranches.flatMap((declarations) =>
+            normalizedValues.map(
+              (candidate) => new Map([...declarations, [directiveName, candidate]]),
+            ),
           );
+        } else {
+          const fallback =
+            attributeValueWithDynamics(attribute, bindings)?.toLowerCase() ??
+            'var(--cinder-dynamic-value)';
+          for (const declarations of declarationBranches) declarations.set(directiveName, fallback);
+        }
       }
     }
     if (

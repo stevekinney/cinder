@@ -32,9 +32,16 @@ export function declarationMap(rule: Rule): Map<string, string> {
 }
 
 function isInternalLayerTarget(target: SelectorTarget): boolean {
-  return [...target.classes].some((className) =>
-    /(?:indicator|track|fill|thumb|handle|icon|caret|separator|progress|summary)/i.test(className),
-  );
+  return [...target.classes].some((className) => {
+    if (/(?:indicator|track|fill|thumb|handle|icon|caret|separator|progress)/i.test(className))
+      return true;
+    // `summary` is restricted to the class name's final BEM segment (e.g.
+    // `phone-input__country-summary`) rather than a bare substring match —
+    // a panel-like class such as `order-summary-panel` legitimately needs
+    // the shared floating-surface primitive and must not be exempted just
+    // because it contains the word "summary".
+    return /(?:^|[-_])summary$/i.test(className);
+  });
 }
 
 type AttributeConstraint = {

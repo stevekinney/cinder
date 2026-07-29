@@ -83,6 +83,24 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('invalidates prior hidden proof after an unresolvable dynamic spread', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input type="hidden" {...attrs} />',
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('allows a later static hidden type to re-establish proof after a dynamic spread', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<input {...attrs} type="hidden" />',
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('ignores expression-backed static hidden input types', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -440,6 +458,21 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('preserves each reachable branch of a conditional style directive value', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let active = false;</script><div style:display={active ? 'grid' : 'block'} style:grid-template-columns=\"1fr\"></div>",
+        'new-layout/new-layout.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let active = false;</script><div style:display={active ? 'block' : 'inline-block'} style:grid-template-columns=\"1fr\"></div>",
+        'new-layout/new-layout.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves top-level writes to mutable style-object bindings', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -474,6 +507,24 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'block' }; function enable() { let layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout} onclick={enable}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('keeps the initializer reachable when a handler later resets a mutable style object', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; function reset() { layout = { display: 'block' }; }</script><div style={layout} onclick={reset}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('still applies last-write-wins for purely sequential top-level reassignment', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; layout = { display: 'block' };</script><div style={layout}></div>",
         'new-grid/new-grid.svelte',
       ),
     ).toEqual([]);
@@ -554,6 +605,15 @@ describe('primitive composition guard', () => {
         'new-control/new-control.css',
       ),
     ).toEqual([]);
+  });
+
+  test('does not exempt a panel-like class that merely contains the word "summary"', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.cinder-order-summary-panel { position: absolute; z-index: 1; }',
+        'new-panel/new-panel.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('allows a floating surface composed on the matching rendered element', () => {
@@ -871,6 +931,15 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         `<script lang="ts">const tag = 'input' as const;</script><svelte:element this={tag} />`,
         'polymorphic/polymorphic.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('resolves a TypeScript-asserted polymorphic label tag for field-wrapper evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        `<script lang="ts">const tag = 'label' as const;</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>`,
+        'new-field/new-field.svelte',
       ),
     ).toHaveLength(1);
   });

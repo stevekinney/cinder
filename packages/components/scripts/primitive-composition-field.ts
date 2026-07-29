@@ -20,10 +20,22 @@ function parseSvelteFragment(source: string): UnknownRecord | undefined {
   return root['fragment'];
 }
 
+function unwrapTypeExpression(expression: unknown): unknown {
+  if (!isRecord(expression)) return expression;
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return unwrapTypeExpression(expression['expression']);
+  return expression;
+}
+
 function staticStringFromExpression(
-  expression: unknown,
+  rawExpression: unknown,
   bindings: ReadonlyMap<string, string>,
 ): string | undefined {
+  const expression = unwrapTypeExpression(rawExpression);
   if (!isRecord(expression)) return undefined;
   if (expression['type'] === 'Literal' && typeof expression['value'] === 'string')
     return expression['value'];
