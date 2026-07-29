@@ -278,7 +278,7 @@ describe('Carousel', () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
-  test('realigns after the ordered slide identities change', async () => {
+  test('realigns immediately, without collapsing the visible slide, after the ordered slide identities change', async () => {
     const { container, rerender: rerenderCarousel } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
     const scrollTo = jest.fn();
@@ -296,7 +296,24 @@ describe('Carousel', () => {
     });
     scrollTo.mockClear();
     await rerenderCarousel({ slides: [slides[1]!, slides[0]!, slides[2]!] });
-    await waitFor(() => expect(scrollTo).toHaveBeenCalled());
+
+    // The reorder leaves `activeIndex` pointing at a slide with new geometry
+    // (unaligned with the viewport), so a realignment scroll is expected —
+    // but it must jump immediately (no in-flight animation window) rather
+    // than the smooth transition used for ordinary navigation.
+    await waitFor(() =>
+      expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' })),
+    );
+
+    // The slide nearest the viewport's leading edge right now (the one a
+    // stale `settledIndex` would otherwise miscategorize) must stay laid
+    // out, not collapsed to zero block size.
+    const articles = [...container.querySelectorAll('article.cinder-carousel__slide')];
+    const nearestIndex = articles.findIndex(
+      (article) => (article as HTMLElement).getBoundingClientRect().left === 0,
+    );
+    expect(nearestIndex).toBeGreaterThanOrEqual(0);
+    expect(articles[nearestIndex]?.hasAttribute('data-cinder-collapsed')).toBe(false);
   });
 
   test('reconciles the active slide when a pointer takes over a pending scroll', async () => {

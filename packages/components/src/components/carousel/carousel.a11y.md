@@ -10,9 +10,12 @@
 ## Native scrolling review (#957)
 
 The viewport (`role="group"`, labelled `"<label> slides"`) is a native horizontal
-scroller with mandatory CSS scroll-snap, so touch swipe, trackpad/wheel scroll,
-and click-drag all move the track without any custom gesture recognizer. This
-review covers the resulting focus, keyboard, and announcement behavior.
+scroller with mandatory CSS scroll-snap, so touch swipe and trackpad/wheel
+scroll both move the track without any custom gesture recognizer. There is no
+pointermove-based drag recognizer, so an ordinary mouse click-drag does not
+scroll the track — mouse users navigate via keyboard, the prev/next buttons,
+or the dot picker. This review covers the resulting focus, keyboard, and
+announcement behavior.
 
 - **Focus management.** Arrow/Home/End keyboard navigation and pointer/touch
   scrolling share one focus rule: if focus is inside the slide being
@@ -37,7 +40,7 @@ review covers the resulting focus, keyboard, and announcement behavior.
 - **Assistive-technology announcements.** The existing `polite` live region
   announcing `"Slide N of M: <label>"` is the single source of truth for
   index changes regardless of how the index changed (keyboard, dot click,
-  drag, swipe, or native scroll settling). It is forced to `off` for the
+  touch swipe, wheel scroll, or native scroll settling). It is forced to `off` for the
   duration of any autoplay-driven transition so unattended auto-advance does
   not interrupt a screen reader; user-initiated scrolling (including a wheel
   gesture that cancels an in-flight autoplay/programmatic scroll) always
@@ -46,3 +49,10 @@ review covers the resulting focus, keyboard, and announcement behavior.
   an incidental vertical wheel pass over the viewport does not cancel a
   pending programmatic or autoplay transition or otherwise affect
   announcements.
+- **Reordering while resting.** If the `slides` array's identity order
+  changes while the carousel isn't mid-interaction, the settled position is
+  re-derived from the DOM (the slide nearest the viewport's leading edge)
+  rather than trusting the previous numeric `settledIndex`, and any
+  resulting realignment jumps immediately instead of animating. This keeps
+  the previously-visible slide from being mislabeled outside the
+  in-transition layout window and collapsed to zero height.

@@ -84,6 +84,7 @@
   let observedActiveIndex = currentIndex;
   let internalActiveIndexUpdate: number | null = null;
   const slideIdentity = $derived(slides.map((slide) => slide.id).join('\u0000'));
+  let previousSlideIdentity = untrack(() => slideIdentity);
 
   $effect(() => {
     if (clampedLength < 1) {
@@ -382,7 +383,17 @@
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
     if (isInteracting || isNativeScrolling) return;
-    slideIdentity;
+    const identityChanged = slideIdentity !== previousSlideIdentity;
+    previousSlideIdentity = slideIdentity;
+    if (identityChanged) {
+      // The slide at `settledIndex` may no longer be the slide that was
+      // physically visible before the reorder, so re-anchor from the DOM
+      // instead of trusting the stale numeric index, and jump immediately
+      // rather than animating from a now-meaningless "settled" position.
+      settledIndex = nearestVisibleSlideIndex(viewportElement);
+      scrollToActiveSlide('auto');
+      return;
+    }
     scrollToActiveSlide();
   });
 
