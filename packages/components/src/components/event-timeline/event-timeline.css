@@ -180,6 +180,8 @@
   }
 
   .cinder-event-timeline__cluster[data-cinder-open] {
+    /* cinder-z-index-local: an open cluster must paint above sibling clusters
+       and edge items positioned later in source order on the same lane. */
     z-index: 2;
   }
 

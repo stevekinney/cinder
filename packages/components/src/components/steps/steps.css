@@ -65,6 +65,7 @@
        is opaque (--cinder-surface-hover), so at equal z-index it would occlude
        the marker on hover. z-index: 2 keeps the marker on top in every state. */
     position: relative;
+    /* cinder-z-index-local: marker paints above the overlapping body and connector. */
     z-index: 2;
   }
 

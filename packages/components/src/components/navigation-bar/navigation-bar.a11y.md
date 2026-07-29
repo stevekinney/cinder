@@ -15,6 +15,7 @@ type NavigationBarToggleAttributes = {
   'aria-expanded': 'true' | 'false';
   'aria-controls': string; // the id of the collapsible items region
   onclick?: (event: MouseEvent) => void; // omitted during SSR
+  onkeydown?: (event: KeyboardEvent) => void;
 };
 ```
 

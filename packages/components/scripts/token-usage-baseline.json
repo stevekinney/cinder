@@ -10,23 +10,8 @@
     "allowedCount": 1
   },
   {
-    "filePath": "src/components/kanban-board/kanban-board.css",
-    "name": "--cinder-z-drag-preview",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/markdown-editor/markdown-editor.svelte",
-    "name": "--cinder-surface-active",
-    "allowedCount": 2
-  },
-  {
     "filePath": "src/components/select/select.css",
     "name": "--cinder-control-height",
-    "allowedCount": 1
-  },
-  {
-    "filePath": "src/components/sortable-list/sortable-list.css",
-    "name": "--cinder-z-drag-preview",
     "allowedCount": 1
   },
   {

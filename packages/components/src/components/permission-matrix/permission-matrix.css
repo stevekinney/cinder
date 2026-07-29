@@ -54,18 +54,21 @@
   .cinder-permission-matrix__row-header {
     position: sticky;
     inset-inline-start: 0;
+    /* cinder-z-index-local: row header stays above scrolling matrix cells. */
     z-index: 2;
     inline-size: 12rem;
     max-inline-size: 16rem;
   }
 
   .cinder-permission-matrix__corner {
+    /* cinder-z-index-local: corner is the intersection of both sticky header axes. */
     z-index: 4;
   }
 
   .cinder-permission-matrix__column-header {
     position: sticky;
     top: 0;
+    /* cinder-z-index-local: column header stays above row headers while scrolling. */
     z-index: 3;
     min-inline-size: 7rem;
     max-inline-size: 10rem;

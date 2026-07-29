@@ -37,7 +37,7 @@ describe('findStaticStyleAttributes', () => {
   });
 
   test('flags constant template interpolations and ignores component props', () => {
-    expect(findStaticStyleAttributes(`<div style={\`color: ${'red'}\`}></div>`)).toEqual([
+    expect(findStaticStyleAttributes(`<div style={\`color: red\`}></div>`)).toEqual([
       { line: 1, column: 6 },
     ]);
     expect(findStaticStyleAttributes('<Widget style="compact" />')).toEqual([]);

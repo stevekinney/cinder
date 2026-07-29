@@ -38,22 +38,21 @@
   const resolvedTarget = $derived(!disabled ? resolvePortalTarget(target) : null);
 
   const shouldRenderChildren = $derived(disabled || (hasHydrated && resolvedTarget !== null));
-</script>
 
-<div
-  {@attach createPortalAttachment({
+  const portalAttachment = createPortalAttachment({
     target: () => target,
     disabled: () => disabled,
     inheritAttributes: () => inheritAttributes,
     explicitAttributes: () => ({
       dir: rest.dir,
+      lang: rest.lang,
       dataTheme: rest['data-theme'],
       theme: rest['data-cinder-theme'],
     }),
-  })}
-  class={classNames(className)}
-  {...rest}
->
+  });
+</script>
+
+<div {@attach portalAttachment} class={classNames(className)} {...rest}>
   {#if shouldRenderChildren}
     {@render children()}
   {/if}
