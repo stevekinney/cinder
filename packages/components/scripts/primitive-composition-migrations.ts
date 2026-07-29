@@ -18,7 +18,6 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['multi-select/multi-select.svelte', 2],
   ['number-input/number-input.svelte', 1],
   ['pin-input/pin-input.svelte', 1],
-  ['phone-input/phone-input.svelte', 2],
   ['search-field/search-field.svelte', 1],
   ['select/select.svelte', 2],
   ['selection-popover/selection-popover.svelte', 1],
@@ -114,6 +113,12 @@ export const allowedFloatingCounts = new Map<string, number>(
     'combobox/combobox.css',
     'drawer/drawer.css',
     'dropdown/dropdown.css',
+    // The `__cluster` wrapper itself only needs `position: absolute` for
+    // timeline placement; its `[data-cinder-open]` z-index boost lifts the
+    // wrapper's stacking context so the child `__cluster-surface` (which
+    // already composes `cinder-_floating-surface`) isn't clipped by sibling
+    // cluster wrappers. It is not an independent hand-rolled floating panel.
+    'event-timeline/event-timeline.css',
     'kanban-board/kanban-board.css',
     'line-chart/line-chart.css',
     'marquee/marquee.css',

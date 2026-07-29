@@ -33,7 +33,7 @@ export function declarationMap(rule: Rule): Map<string, string> {
 
 function isInternalLayerTarget(target: SelectorTarget): boolean {
   return [...target.classes].some((className) =>
-    /(?:indicator|track|fill|thumb|handle|icon|caret|separator|progress)/i.test(className),
+    /(?:indicator|track|fill|thumb|handle|icon|caret|separator|progress|summary)/i.test(className),
   );
 }
 
