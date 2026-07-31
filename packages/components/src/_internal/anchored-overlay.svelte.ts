@@ -18,6 +18,8 @@ export type AnchoredOverlayOptions = {
   sizeMaxBlockSize?: () => string;
   widthMode?: () => AnchoredOverlayWidthMode;
   strategy?: () => 'fixed' | 'absolute';
+  /** Constrain collision calculations to the nearest owning overlay. */
+  boundary?: () => Element | null | undefined;
 };
 
 const DEFAULT_PLACEMENT: Placement = 'bottom-start';
@@ -154,6 +156,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const sizeMaxBlockSize = options.sizeMaxBlockSize?.() ?? '100%';
     const widthMode = options.widthMode?.() ?? 'content';
     const strategyOverride = options.strategy?.();
+    const boundary = options.boundary?.() ?? undefined;
     let cancelled = false;
     let generation = 0;
     let stopAutoUpdate: (() => void) | undefined;
@@ -174,10 +177,14 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       stopAutoUpdate = autoUpdate(anchor, panel, async () => {
         if (cancelled) return;
         const currentGeneration = ++generation;
-        const middleware: Middleware[] = [offsetMiddleware(offset), flip()];
+        const middleware: Middleware[] = [
+          offsetMiddleware(offset),
+          flip(boundary ? { boundary } : undefined),
+        ];
         if (sizeEnabled) {
           middleware.push(
             sizeMiddleware({
+              ...(boundary ? { boundary } : {}),
               padding: shiftPadding,
               apply({ availableHeight }) {
                 if (!isAnchoredOverlayWriteCurrent(currentGeneration, generation, cancelled))
@@ -191,7 +198,13 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
             }),
           );
         }
-        middleware.push(shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }));
+        middleware.push(
+          shift({
+            ...(boundary ? { boundary } : {}),
+            padding: shiftPadding,
+            crossAxis: shiftCrossAxis,
+          }),
+        );
         if (arrowVisible && arrow) {
           middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
         }
