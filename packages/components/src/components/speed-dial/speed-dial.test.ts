@@ -384,7 +384,9 @@ describe('SpeedDial', () => {
 
   test('reverse Tab from the first portaled action returns before the SpeedDial', async () => {
     const precedingButton = document.createElement('button');
+    precedingButton.setAttribute('tabindex', '0');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -407,6 +409,7 @@ describe('SpeedDial', () => {
     document.body.append(host);
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     shadow.append(precedingButton);
     const mountPoint = document.createElement('div');
     shadow.append(mountPoint);
@@ -435,6 +438,7 @@ describe('SpeedDial', () => {
     // back before the SpeedDial.
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -453,6 +457,7 @@ describe('SpeedDial', () => {
   test('reverse Tab from an arrow-focused untabbable first action returns before the SpeedDial', async () => {
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
@@ -496,6 +501,7 @@ describe('SpeedDial', () => {
   test('leaves reverse Tab native when every action is untabbable', async () => {
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
+    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });

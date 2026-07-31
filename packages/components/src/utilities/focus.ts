@@ -54,7 +54,7 @@ const sequentialFocusCandidateSelector = [
   'video[controls]',
   'embed',
   'object',
-  '[contenteditable]:not([contenteditable="false"])',
+  '[contenteditable]',
   '[tabindex]',
 ].join(', ');
 
@@ -111,16 +111,26 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
   const rawTabIndex = candidate.getAttribute('tabindex');
   if (
     (rawTabIndex !== null && rawTabIndex.trim() !== '' && !Number.isFinite(Number(rawTabIndex))) ||
-    (rawTabIndex !== null && candidate.tabIndex < 0) ||
+    (candidate.tabIndex < 0 && (rawTabIndex !== null || !hasNativeSequentialDefault(candidate))) ||
     candidate.matches(':disabled') ||
     closestComposed(candidate, '[hidden], [inert], [aria-hidden="true"]') !== null ||
     !isRendered(candidate)
   )
     return false;
+  if (candidate.getAttribute('contenteditable')?.toLowerCase() === 'false') return false;
   if (candidate.matches('summary'))
     return isFirstDetailsSummary(candidate) && !isInsideClosedDetails(candidate);
   if (isInsideClosedDetails(candidate)) return false;
   return true;
+}
+
+function hasNativeSequentialDefault(element: HTMLElement): boolean {
+  return (
+    element.matches('button, a[href], area[href], select, textarea, summary, iframe') ||
+    element.matches('audio[controls], video[controls], embed[src], object') ||
+    (element.hasAttribute('contenteditable') &&
+      element.getAttribute('contenteditable')?.toLowerCase() !== 'false')
+  );
 }
 
 function isRadio(element: HTMLElement): boolean {

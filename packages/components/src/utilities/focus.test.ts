@@ -73,15 +73,26 @@ describe('getSequentialFocusTargets', () => {
     const region = document.createElement('div');
     const details = document.createElement('details');
     const summary = document.createElement('summary');
+    summary.setAttribute('tabindex', '0');
     details.append(summary);
     const iframe = document.createElement('iframe');
+    iframe.setAttribute('tabindex', '0');
     const audio = document.createElement('audio');
     audio.setAttribute('controls', '');
     const video = document.createElement('video');
     video.setAttribute('controls', '');
+    video.setAttribute('tabindex', '0');
     const embed = document.createElement('embed');
+    embed.setAttribute('src', 'test.swf');
+    embed.setAttribute('tabindex', '0');
     const object = document.createElement('object');
-    region.append(details, iframe, audio, video, embed, object);
+    object.setAttribute('tabindex', '0');
+    const editable = document.createElement('div');
+    editable.setAttribute('contenteditable', 'true');
+    editable.setAttribute('tabindex', '0');
+    const notEditable = document.createElement('div');
+    notEditable.setAttribute('contenteditable', 'FALSE');
+    region.append(details, iframe, audio, video, embed, object, editable, notEditable);
     document.body.append(region);
 
     const targets = getSequentialFocusTargets(region);
@@ -90,12 +101,25 @@ describe('getSequentialFocusTargets', () => {
     expect(targets).toContain(video);
     expect(targets).toContain(embed);
     expect(targets).toContain(object);
+    expect(targets).toContain(editable);
+    expect(targets).not.toContain(notEditable);
+    region.remove();
+  });
+
+  test('excludes an embed without a source when its native tabIndex is negative', () => {
+    const region = document.createElement('div');
+    const embed = document.createElement('embed');
+    region.append(embed);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(embed);
     region.remove();
   });
 
   test('orders positive tabindex values before default controls and rejects invalid tabindex', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');
+    defaultButton.setAttribute('tabindex', '0');
     const positiveTwo = document.createElement('button');
     positiveTwo.setAttribute('tabindex', '2');
     const positiveOne = document.createElement('button');
@@ -118,6 +142,7 @@ describe('getSequentialFocusTargets', () => {
     const region = document.createElement('div');
     const details = document.createElement('details');
     const first = document.createElement('summary');
+    first.setAttribute('tabindex', '0');
     const second = document.createElement('summary');
     const standalone = document.createElement('summary');
     details.append(first, second);
@@ -134,7 +159,9 @@ describe('getSequentialFocusTargets', () => {
     const region = document.createElement('div');
     const details = document.createElement('details');
     const summary = document.createElement('summary');
+    summary.setAttribute('tabindex', '0');
     const button = document.createElement('button');
+    button.setAttribute('tabindex', '0');
     details.append(summary, button);
     region.append(details);
     document.body.append(region);
@@ -150,8 +177,10 @@ describe('getSequentialFocusTargets', () => {
     const region = document.createElement('div');
     const outer = document.createElement('details');
     const outerSummary = document.createElement('summary');
+    outerSummary.setAttribute('tabindex', '0');
     const inner = document.createElement('details');
     const innerSummary = document.createElement('summary');
+    innerSummary.setAttribute('tabindex', '0');
     const button = document.createElement('button');
     inner.append(innerSummary, button);
     outer.append(outerSummary, inner);
@@ -169,13 +198,16 @@ describe('getSequentialFocusTargets', () => {
     const first = document.createElement('input');
     first.type = 'radio';
     first.name = 'choice';
+    first.setAttribute('tabindex', '0');
     const checked = document.createElement('input');
     checked.type = 'radio';
     checked.name = 'choice';
     checked.checked = true;
+    checked.setAttribute('tabindex', '0');
     const other = document.createElement('input');
     other.type = 'radio';
     other.name = 'other';
+    other.setAttribute('tabindex', '0');
     region.append(first, checked, other);
     document.body.append(region);
 
@@ -190,8 +222,10 @@ describe('getSequentialFocusTargets', () => {
     const region = document.createElement('div');
     const first = document.createElement('input');
     first.type = 'radio';
+    first.setAttribute('tabindex', '0');
     const second = document.createElement('input');
     second.type = 'radio';
+    second.setAttribute('tabindex', '0');
     region.append(first, second);
     document.body.append(region);
 
@@ -215,7 +249,7 @@ describe('getSequentialFocusTargets', () => {
 
   test('recognizes a radio from a foreign document without instanceof checks', () => {
     const foreignDocument = new DOMParser().parseFromString(
-      '<input type="radio" name="foreign">',
+      '<input type="radio" name="foreign" tabindex="0">',
       'text/html',
     );
     const foreignRadio = foreignDocument.querySelector('input') as HTMLElement;
@@ -225,6 +259,7 @@ describe('getSequentialFocusTargets', () => {
   test('excludes hidden, inert, disabled, and negative-tabindex candidates', () => {
     const region = document.createElement('div');
     const visible = document.createElement('button');
+    visible.setAttribute('tabindex', '0');
     const hidden = document.createElement('button');
     hidden.hidden = true;
     const inert = document.createElement('button');
