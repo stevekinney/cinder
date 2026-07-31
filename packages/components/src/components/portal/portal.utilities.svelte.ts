@@ -556,6 +556,7 @@ function invalidateComputedDirections() {
 
 /** Notify mounted portals after a CSSOM rule edit (`insertRule`, `replace`, or `replaceSync`). */
 export function invalidatePortalDirection() {
+  refreshMediaQueryObservers();
   invalidateComputedDirections();
 }
 
@@ -697,6 +698,12 @@ function startDirectionInvalidationObservers() {
 }
 
 function isStylesheetMutation(mutation: MutationRecord): boolean {
+  if (mutation.type === 'attributes') {
+    return (
+      (mutation.target instanceof HTMLStyleElement || mutation.target instanceof HTMLLinkElement) &&
+      (mutation.attributeName === 'media' || mutation.attributeName === 'disabled')
+    );
+  }
   if (mutation.type !== 'childList') return false;
   if (mutation.target instanceof HTMLStyleElement) return true;
   return [...mutation.addedNodes, ...mutation.removedNodes].some(
@@ -715,7 +722,10 @@ function observeDirectionShadowRoots(source: HTMLElement) {
       const existing = directionInvalidationRoots.get(root);
       if (existing) existing.count += 1;
       else {
-        const observer = new MutationObserver(() => invalidateComputedDirections());
+        const observer = new MutationObserver((mutations) => {
+          if (mutations.some(isStylesheetMutation)) refreshMediaQueryObservers();
+          invalidateComputedDirections();
+        });
         observer.observe(root, { attributes: true, childList: true, subtree: true });
         directionInvalidationRoots.set(root, { observer, count: 1 });
       }

@@ -391,6 +391,44 @@ describe('Portal', () => {
     }
   });
 
+  test('refreshes media listeners when the CSSOM invalidation hook changes rules', async () => {
+    const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    Object.defineProperty(document, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(min-width: 1px)' }, cssRules: [] }],
+    });
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+    const mountPoint = document.createElement('div');
+    document.body.append(mountPoint);
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    Object.defineProperty(document, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(max-width: 1px)' }, cssRules: [] }],
+    });
+    invalidatePortalDirection();
+    expect(observedQueries).toContain('(max-width: 1px)');
+
+    window.matchMedia = originalMatchMedia;
+    if (originalStyleSheets) Object.defineProperty(document, 'styleSheets', originalStyleSheets);
+    else Reflect.deleteProperty(document, 'styleSheets');
+  });
+
   test('observes direction invalidations inside a shadow root', async () => {
     const host = document.createElement('div');
     const shadow = host.attachShadow({ mode: 'open' });
