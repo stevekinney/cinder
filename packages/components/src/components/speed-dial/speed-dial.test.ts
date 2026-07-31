@@ -57,8 +57,9 @@ describe('SpeedDial', () => {
     expect(speedDialStyles).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
     );
+    expect(speedDialStyles).toMatch(/\.cinder-speed-dial-action\s*\{[^}]*opacity:\s*0;/s);
     expect(speedDialStyles).toMatch(
-      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)[\s\S]*?\.cinder-speed-dial-action\s*\{[^}]*opacity:\s*0;/s,
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\) \.cinder-speed-dial-action\s*\{[^}]*pointer-events:\s*none;/s,
     );
   });
 
