@@ -2686,6 +2686,14 @@ export function warmupInstabilityReasons(
   return reasons;
 }
 
+type WarmupRetryPhase = 'eager-prebuild' | 'shell-renderer';
+type WarmupRetryAction = 'full-prebuild' | 'renderer-only';
+
+/** Page bundles are rebuilt only when the eager pre-build phase itself is invalidated. */
+export function warmupRetryAction(phase: WarmupRetryPhase): WarmupRetryAction {
+  return phase === 'eager-prebuild' ? 'full-prebuild' : 'renderer-only';
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   startupReady = false;
@@ -2795,8 +2803,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       );
       preparedShellServerRenderer = null;
       invalidateCachesForChange({ kind: 'components' });
-      prebuild = await eagerPrebuildAll();
-      if (!prebuild.shellSucceeded) break;
+      if (warmupRetryAction('shell-renderer') === 'full-prebuild') {
+        prebuild = await eagerPrebuildAll();
+        if (!prebuild.shellSucceeded) break;
+      }
     }
   }
   if (!rendererPrepared) {

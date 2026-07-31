@@ -45,6 +45,7 @@ import {
   shellBuildSucceeded,
   triggerReload,
   warmupInstabilityReasons,
+  warmupRetryAction,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import {
@@ -286,6 +287,11 @@ describe('startup warmup stability', () => {
       'rebuild debounce is pending',
     ]);
     expect(warmupInstabilityReasons(4, 4, 100, 100)).toEqual([]);
+  });
+
+  it('does not repeat the full page pre-build after renderer invalidation', () => {
+    expect(warmupRetryAction('eager-prebuild')).toBe('full-prebuild');
+    expect(warmupRetryAction('shell-renderer')).toBe('renderer-only');
   });
 });
 
