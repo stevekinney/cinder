@@ -43,6 +43,7 @@
   let expanded = $state(false);
   let commentBody = $state('');
   let textareaElement = $state<HTMLTextAreaElement | null>(null);
+  let composerFormElement = $state<HTMLDivElement | null>(null);
   let popoverElement = $state<HTMLDivElement | null>(null);
   let restoreFocusElement: HTMLElement | null = null;
   let wasOpen = false;
@@ -325,7 +326,8 @@
         const previousViewportHeight = viewportHeight;
         viewportWidth = window.innerWidth;
         viewportHeight = window.innerHeight;
-        const composerHasFocus = document.activeElement === textareaElement;
+        const composerHasFocus =
+          document.activeElement instanceof Node && composerFormElement?.contains(document.activeElement);
         const composerOwnedKeyboardNow = expanded || commentBody.trim().length > 0;
         const virtualKeyboardTransition = readVirtualKeyboardTransition(
           'window',
@@ -367,7 +369,8 @@
       closeForMovement();
     };
     const dismissVisualViewport = (event: Event) => {
-      const composerHasFocus = document.activeElement === textareaElement;
+      const composerHasFocus =
+        document.activeElement instanceof Node && composerFormElement?.contains(document.activeElement);
       const composerOwnedKeyboardNow = expanded || commentBody.trim().length > 0;
       const virtualKeyboardTransition =
         visualViewport?.scale === 1
@@ -497,7 +500,7 @@
   {...rest}
 >
   {#if expanded}
-    <div class="cinder-selection-popover__form">
+    <div bind:this={composerFormElement} class="cinder-selection-popover__form">
       <textarea
         bind:this={textareaElement}
         bind:value={commentBody}

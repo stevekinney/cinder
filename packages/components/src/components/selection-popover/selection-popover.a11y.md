@@ -21,12 +21,12 @@ Purpose: Floating toolbar anchored to a text selection that exposes a comment-on
 The trigger should remain reachable by keyboard, and the open layer should provide a clear Escape, close, or outside-interaction path consistent with the component documentation.
 
 When the inline composer is expanded, virtual-keyboard movement is treated as an
-internal interaction while the textarea owns focus or while a transition
+internal interaction while a control in the expanded composer form owns focus or while a transition
 latched ownership to the composer before its asynchronous close settles. The
 collapsed “Add comment” control is not the composer and does not independently
 preserve movement for a keyboard owned by another field. This keeps keyboard
 navigation from preserving a stale selection layer while still preserving
-drafts during genuine textarea-focused keyboard pan/resize and its close burst.
+drafts during genuine composer-focused keyboard pan/resize and its close burst.
 
 Keep focus indicators visible. If you wrap or restyle SelectionPopover, verify the focused element remains visually apparent in default and forced-colors modes.
 
