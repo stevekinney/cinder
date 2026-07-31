@@ -210,6 +210,7 @@ describe('MegaMenu', () => {
       products.focus();
       await fireEvent.keyDown(products, { key: 'ArrowDown' });
       const uiKit = shadow.querySelector<HTMLAnchorElement>('a[href="/ui"]');
+      if (!uiKit) throw new Error('Missing panel link.');
       expect(shadow.activeElement).toBe(uiKit);
 
       const frontend = Array.from(
@@ -226,9 +227,9 @@ describe('MegaMenu', () => {
 
       await fireEvent.keyDown(backend, { key: 'ArrowRight' });
       const apis = shadow.querySelector<HTMLAnchorElement>('a[href="/apis"]');
+      if (!apis) throw new Error('Missing nested submenu link.');
       expect(shadow.activeElement).toBe(apis);
 
-      if (!apis) throw new Error('Missing nested submenu link.');
       await fireEvent.keyDown(apis, { key: 'ArrowLeft' });
       expect(shadow.activeElement).toBe(backend);
 
