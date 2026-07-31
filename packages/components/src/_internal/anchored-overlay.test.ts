@@ -7,7 +7,7 @@ import {
   getAnchoredOverlayAvailableHeightStyle,
   getAnchoredOverlayMaxBlockSizeStyle,
   getAnchoredOverlayWidthStyle,
-  isAnchoredOverlayGenerationCurrent,
+  isAnchoredOverlayWriteCurrent,
 } from './anchored-overlay.svelte.ts';
 
 describe('anchored overlay width styles', () => {
@@ -61,9 +61,10 @@ describe('anchored overlay width styles', () => {
     expect(panel.style.maxBlockSize).toBe('');
   });
 
-  test('rejects stale concurrent positioning generations before DOM writes', () => {
-    expect(isAnchoredOverlayGenerationCurrent(3, 3)).toBe(true);
-    expect(isAnchoredOverlayGenerationCurrent(2, 3)).toBe(false);
+  test('rejects stale or cancelled positioning sessions before DOM writes', () => {
+    expect(isAnchoredOverlayWriteCurrent(3, 3, false)).toBe(true);
+    expect(isAnchoredOverlayWriteCurrent(2, 3, false)).toBe(false);
+    expect(isAnchoredOverlayWriteCurrent(3, 3, true)).toBe(false);
   });
 
   test('server compilation omits Floating UI runtime imports', async () => {

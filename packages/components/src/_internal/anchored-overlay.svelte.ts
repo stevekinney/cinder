@@ -77,11 +77,12 @@ export function applyAnchoredOverlayMaxBlockSize(
   return value;
 }
 
-export function isAnchoredOverlayGenerationCurrent(
+export function isAnchoredOverlayWriteCurrent(
   positioningGeneration: number,
   latestGeneration: number,
+  cancelled: boolean,
 ): boolean {
-  return positioningGeneration === latestGeneration;
+  return !cancelled && positioningGeneration === latestGeneration;
 }
 
 function getArrowStyle(placement: Placement, data: { x?: number; y?: number } | undefined) {
@@ -179,7 +180,8 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
             sizeMiddleware({
               padding: shiftPadding,
               apply({ availableHeight }) {
-                if (!isAnchoredOverlayGenerationCurrent(currentGeneration, generation)) return;
+                if (!isAnchoredOverlayWriteCurrent(currentGeneration, generation, cancelled))
+                  return;
                 availableHeightStyle = applyAnchoredOverlayMaxBlockSize(
                   panel,
                   availableHeight,
