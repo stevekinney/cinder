@@ -251,6 +251,17 @@ function negativeFinalNavigationSnippet() {
   }));
 }
 
+function allExcludedNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item aria-disabled="true">Disabled</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item tabindex="-1">Excluded</button>
+      </div>
+    `,
+  }));
+}
+
 function keyboardNavigationSnippet(clicks: Record<string, number>) {
   return createRawSnippet(() => ({
     render: () => `
@@ -1016,6 +1027,26 @@ describe('NavigationBar', () => {
       await fireEvent.keyDown(enabledItem, { key: 'ArrowRight' });
       expect(document.activeElement).toBe(skippedItem);
       await fireEvent.keyDown(skippedItem, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('pending toggle Tab advances to actions when no navigation item is sequentially focusable', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: allExcludedNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      await waitForMobilePanelPosition(container);
+      await tick();
       expect(document.activeElement).toBe(accountAction);
     });
   });

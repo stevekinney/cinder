@@ -122,7 +122,10 @@
     pendingTabFocus = false;
     const pendingTarget = pendingTabFocusTarget;
     pendingTabFocusTarget = null;
-    queueMicrotask(() => (pendingTarget ?? getToggleTabTarget())?.focus());
+    queueMicrotask(() => {
+      const target = pendingTarget ?? getToggleTabTarget() ?? getFocusTargetAfterItems();
+      target?.focus();
+    });
   });
 
   $effect(() => {
