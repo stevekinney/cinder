@@ -28,8 +28,6 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
-  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
-  import ChevronRight from 'lucide-svelte/icons/chevron-right';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import {
     elementDirectionStyleOverride,
@@ -38,7 +36,8 @@
     resolveTextDirection,
   } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
+  import type { MegaMenuProps } from './mega-menu.types.ts';
+  import MegaMenuContent from './mega-menu-content.svelte';
 
   let {
     id: providedId,
@@ -59,7 +58,6 @@
   const generatedId = $props.id();
   let openItemId = $state<string | null>(null);
   let previousOpenIndex = $state<number | null>(null);
-  let openSubmenuId = $state<string | null>(null);
   let indicatorStyle = $state('');
   // Tracks the id of the item that hover-opened; cleared once the click path runs,
   // preventing the immediately-following synthesised click from closing what hover opened.
@@ -129,13 +127,6 @@
       resolvedDirection === 'rtl' ? openIndex < previousOpenIndex : openIndex > previousOpenIndex;
     return movingTowardEnd ? 'from-end' : 'from-start';
   });
-  const openSubmenu = $derived.by(() => {
-    if (!openItem?.submenu?.length || !openSubmenuId) return openItem?.submenu?.[0] ?? null;
-    return (
-      openItem.submenu.find((entry) => entry.id === openSubmenuId) ?? openItem.submenu[0] ?? null
-    );
-  });
-
   $effect(() => {
     if (!openItemId) return;
     if (items.some((item) => item.id === openItemId)) return;
@@ -205,7 +196,6 @@
     if (!next) return;
     if (openIndex >= 0) previousOpenIndex = openIndex;
     openItemId = next.id;
-    openSubmenuId = next.submenu?.[0]?.id ?? null;
   }
 
   function closeMenu(restoreFocus = false) {
@@ -217,7 +207,6 @@
       navElement?.contains(document.activeElement);
 
     openItemId = null;
-    openSubmenuId = null;
     previousOpenIndex = null;
 
     if (shouldRestoreFocus && currentItemId) {
@@ -315,121 +304,6 @@
     }
   }
 
-  function focusSubmenuTriggerAt(index: number) {
-    if (!openItem?.submenu?.length || typeof document === 'undefined') return;
-    const bounded =
-      ((index % openItem.submenu.length) + openItem.submenu.length) % openItem.submenu.length;
-    const target = openItem.submenu[bounded];
-    if (!target) return;
-    openSubmenuId = target.id;
-    document.getElementById(submenuTriggerId(openItem.id, target.id))?.focus();
-  }
-
-  async function focusSubmenuPanel(itemId: string, submenuId: string) {
-    if (typeof document === 'undefined') return;
-    await tick();
-    const panel = document.getElementById(submenuPanelId(itemId, submenuId));
-    if (!(panel instanceof HTMLElement)) return;
-    const firstFocusable = panel.querySelector<HTMLElement>('a[href], button:not([disabled])');
-    (firstFocusable ?? panel).focus();
-  }
-
-  function submenuHorizontalKeys(): {
-    enter: 'ArrowLeft' | 'ArrowRight';
-    return: 'ArrowLeft' | 'ArrowRight';
-  } {
-    const isRightToLeft = resolvedDirection === 'rtl';
-    return isRightToLeft
-      ? { enter: 'ArrowLeft', return: 'ArrowRight' }
-      : { enter: 'ArrowRight', return: 'ArrowLeft' };
-  }
-
-  function isModifiedHorizontalArrow(event: KeyboardEvent): boolean {
-    return (
-      (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
-      (event.altKey || event.ctrlKey || event.metaKey)
-    );
-  }
-
-  function onSubmenuTriggerKeydown(event: KeyboardEvent, index: number) {
-    if (isModifiedHorizontalArrow(event)) return;
-    if (
-      (event.key === 'Home' || event.key === 'End') &&
-      (event.altKey || event.ctrlKey || event.metaKey)
-    )
-      return;
-    const horizontalKeys = submenuHorizontalKeys();
-    if (event.key === horizontalKeys.enter) {
-      event.preventDefault();
-      if (openItem?.submenu?.[index]) {
-        const submenuId = openItem.submenu[index].id;
-        openSubmenuId = submenuId;
-        void focusSubmenuPanel(openItem.id, submenuId);
-      }
-      return;
-    }
-    if (event.key === horizontalKeys.return) {
-      event.preventDefault();
-      if (openItem) document.getElementById(triggerId(openItem.id))?.focus();
-      return;
-    }
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        focusSubmenuTriggerAt(index + 1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        focusSubmenuTriggerAt(index - 1);
-        break;
-      case 'Home':
-        event.preventDefault();
-        focusSubmenuTriggerAt(0);
-        break;
-      case 'End':
-        event.preventDefault();
-        if (openItem?.submenu) focusSubmenuTriggerAt(openItem.submenu.length - 1);
-        break;
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        if (openItem?.submenu?.[index]) {
-          const submenuId = openItem.submenu[index].id;
-          openSubmenuId = submenuId;
-          void focusSubmenuPanel(openItem.id, submenuId);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        closeMenu(true);
-        break;
-      default:
-        break;
-    }
-  }
-
-  function onSubmenuPanelKeydown(event: KeyboardEvent) {
-    if (isModifiedHorizontalArrow(event)) return;
-    if (event.key === submenuHorizontalKeys().return && openItem && openSubmenu) {
-      event.preventDefault();
-      event.stopPropagation();
-      document.getElementById(submenuTriggerId(openItem.id, openSubmenu.id))?.focus();
-      return;
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      closeMenu(true);
-    }
-  }
-
-  function onContentKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    closeMenu(true);
-  }
-
   function onRootFocusOut(event: FocusEvent) {
     if (!navElement) return;
     if (event.relatedTarget instanceof Node && navElement.contains(event.relatedTarget)) return;
@@ -501,10 +375,6 @@
       document.removeEventListener('touchstart', closeOnOutsidePointer as EventListener, true);
     };
   });
-
-  function sections(item: MegaMenuItem | null) {
-    return item?.sections ?? [];
-  }
 </script>
 
 <nav
@@ -543,106 +413,18 @@
 
   {#if openItem}
     <div class={viewportVisible ? 'cinder-mega-menu__viewport' : undefined}>
-      <!-- Keyboard events are delegated from focusable descendants, with tabindex as the empty-panel fallback. -->
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-      <section
-        id={contentId(openItem.id)}
-        class="cinder-mega-menu__content"
-        role="group"
-        aria-labelledby={triggerId(openItem.id)}
-        tabindex="-1"
-        data-motion={motionDirection}
-        onkeydown={onContentKeydown}
-      >
-        <div class="cinder-mega-menu__sections">
-          {#each sections(openItem) as section (section.id)}
-            <section>
-              {#if section.title}
-                <h3 class="cinder-mega-menu__section-title">{section.title}</h3>
-              {/if}
-              <ul class="cinder-mega-menu__links">
-                {#each section.links as link (link.id)}
-                  <li>
-                    <a class="cinder-mega-menu__link" href={link.href}>
-                      <span>{link.label}</span>
-                      {#if link.description}
-                        <span class="cinder-mega-menu__link-description">{link.description}</span>
-                      {/if}
-                    </a>
-                  </li>
-                {/each}
-              </ul>
-            </section>
-          {/each}
-        </div>
-
-        {#if openItem.submenu && openItem.submenu.length > 0}
-          <section class="cinder-mega-menu__sub" aria-label={`${openItem.label} submenu`}>
-            <ul class="cinder-mega-menu__submenu-list">
-              {#each openItem.submenu as sub, subIndex (sub.id)}
-                <li>
-                  <button
-                    id={submenuTriggerId(openItem.id, sub.id)}
-                    type="button"
-                    class="cinder-mega-menu__submenu-trigger"
-                    aria-controls={openSubmenu?.id === sub.id
-                      ? submenuPanelId(openItem.id, sub.id)
-                      : undefined}
-                    aria-expanded={openSubmenu?.id === sub.id ? 'true' : 'false'}
-                    data-active={openSubmenu?.id === sub.id ? 'true' : 'false'}
-                    onmouseenter={() => (openSubmenuId = sub.id)}
-                    onclick={() => (openSubmenuId = sub.id)}
-                    onfocus={() => (openSubmenuId = sub.id)}
-                    onkeydown={(event) => onSubmenuTriggerKeydown(event, subIndex)}
-                  >
-                    {sub.label}
-                    {#if resolvedDirection === 'rtl'}
-                      <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
-                    {:else}
-                      <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
-                    {/if}
-                  </button>
-                </li>
-              {/each}
-            </ul>
-
-            {#if openSubmenu}
-              <!-- Keyboard events are delegated from links, with tabindex as the empty-panel fallback. -->
-              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-              <div
-                id={submenuPanelId(openItem.id, openSubmenu.id)}
-                class="cinder-mega-menu__sections cinder-mega-menu__submenu-panel"
-                role="group"
-                aria-labelledby={submenuTriggerId(openItem.id, openSubmenu.id)}
-                tabindex="-1"
-                onkeydown={onSubmenuPanelKeydown}
-              >
-                {#each sections(openSubmenu) as section (section.id)}
-                  <section>
-                    {#if section.title && section.title !== openSubmenu.label}
-                      <h4 class="cinder-mega-menu__section-title">{section.title}</h4>
-                    {/if}
-                    <ul class="cinder-mega-menu__links">
-                      {#each section.links as link (link.id)}
-                        <li>
-                          <a class="cinder-mega-menu__link" href={link.href}>
-                            <span>{link.label}</span>
-                            {#if link.description}
-                              <span class="cinder-mega-menu__link-description"
-                                >{link.description}</span
-                              >
-                            {/if}
-                          </a>
-                        </li>
-                      {/each}
-                    </ul>
-                  </section>
-                {/each}
-              </div>
-            {/if}
-          </section>
-        {/if}
-      </section>
+      {#key openItem.id}
+        <MegaMenuContent
+          item={openItem}
+          {motionDirection}
+          {resolvedDirection}
+          {contentId}
+          {triggerId}
+          {submenuTriggerId}
+          {submenuPanelId}
+          {closeMenu}
+        />
+      {/key}
     </div>
   {/if}
 </nav>
