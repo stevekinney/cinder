@@ -291,6 +291,18 @@ describe('startup warmup stability', () => {
     expect(getRebuildGeneration()).toBe(generationAtStart + 1);
   });
 
+  it('captures the settled generation as a stable prebuild baseline', async () => {
+    const generationBeforeDebounce = getRebuildGeneration();
+    scheduleRebuild({ kind: 'components' });
+
+    await waitForPendingRebuild();
+    const generationAtStart = getRebuildGeneration();
+
+    expect(generationAtStart).toBe(generationBeforeDebounce + 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(isWarmupStable(generationAtStart, getRebuildGeneration(), 100, 100)).toBe(true);
+  });
+
   it('rejects a warmup when source changes before watcher validation', () => {
     expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
     expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
