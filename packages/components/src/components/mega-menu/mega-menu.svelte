@@ -442,6 +442,7 @@
   });
 
   $effect(() => {
+    directionRevision;
     if (!navElement || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
       directionRevision += 1;

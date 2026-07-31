@@ -150,6 +150,17 @@
     align-items: start;
   }
 
+  @media (max-width: 36rem) {
+    .cinder-mega-menu__sub {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .cinder-mega-menu__sub .cinder-mega-menu__sections {
+      border-inline-start: 0;
+      padding-inline-start: 0;
+    }
+  }
+
   .cinder-mega-menu__submenu-trigger {
     appearance: none;
     display: inline-flex;

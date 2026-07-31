@@ -44,7 +44,9 @@ export function resolveTextDirection(
   }
 
   let currentElement: HTMLElement | null = ignoreElementDirectionAttribute
-    ? (element?.parentElement ?? null)
+    ? element
+      ? composedParentElement(element)
+      : null
     : (element ?? null);
   let documentDirection: TextDirection | undefined;
   let styledDirectionElement: HTMLElement | null = null;
@@ -78,7 +80,7 @@ export function resolveTextDirection(
     if (!styledDirectionElement && (styledDirection === 'rtl' || styledDirection === 'ltr')) {
       styledDirectionElement = currentElement;
     }
-    currentElement = currentElement.parentElement;
+    currentElement = composedParentElement(currentElement);
   }
 
   if (typeof getComputedStyle === 'function' && styledDirectionElement) {
@@ -130,11 +132,11 @@ function hasDirectionStylingHint(
   includeElement = false,
   cache?: WeakMap<HTMLElement, boolean>,
 ): boolean {
-  let currentElement = includeElement ? element : element?.parentElement;
+  let currentElement = includeElement ? element : element ? composedParentElement(element) : null;
   while (currentElement && currentElement !== currentElement.ownerDocument.documentElement) {
     if (currentElement.style.direction) return true;
     if (matchesDirectionStyleRuleCached(currentElement, cache)) return true;
-    currentElement = currentElement.parentElement;
+    currentElement = composedParentElement(currentElement);
   }
   return false;
 }
@@ -192,6 +194,22 @@ function matchesDirectionStyleRuleList(
   rules: CSSRuleList | Iterable<CSSRule>,
 ): boolean {
   for (const rule of Array.from(rules)) {
+    if (Reflect.get(rule, 'type') === 3) {
+      const imported = Reflect.get(rule, 'styleSheet');
+      if (imported) {
+        try {
+          const importedRules = Reflect.get(imported, 'cssRules');
+          if (
+            isCssRuleCollection(importedRules) &&
+            matchesDirectionStyleRuleList(element, importedRules)
+          )
+            return true;
+        } catch {
+          // Cross-origin imports may deny CSSOM access.
+        }
+      }
+      continue;
+    }
     if (isCssStyleRule(rule)) {
       if (!rule.style.direction) {
         const nestedRules = readNestedCssRules(rule);
@@ -287,7 +305,7 @@ function isContainerQueryActive(
     // an active styling hint.
     if (remainder) return false;
     const containerName = Reflect.get(rule, 'containerName');
-    let ancestor = element.parentElement;
+    let ancestor = composedParentElement(element);
     while (ancestor) {
       if (typeof containerName === 'string' && containerName) {
         const computedStyle = getComputedStyle(ancestor);
@@ -304,16 +322,17 @@ function isContainerQueryActive(
       const value =
         getComputedStyle(ancestor).getPropertyValue(styleQuery[1]!).trim() ||
         ancestor.style.getPropertyValue(styleQuery[1]!).trim();
-      if (value) return value === styleQuery[2]!.trim();
-      ancestor = ancestor.parentElement;
+      return /^\s*not\b/i.test(conditionText)
+        ? value !== styleQuery[2]!.trim()
+        : value === styleQuery[2]!.trim();
     }
     return false;
   }
   const containerName = Reflect.get(rule, 'containerName');
-  const queriesPhysicalWidth = /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(
-    conditionText,
-  );
-  let container = element.parentElement;
+  const queriesPhysicalWidth =
+    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(conditionText) ||
+    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(conditionText);
+  let container = composedParentElement(element);
   while (container) {
     const computedStyle = getComputedStyle(container);
     const type =
@@ -345,14 +364,22 @@ function isContainerQueryActive(
     ) {
       break;
     }
-    container = container.parentElement;
+    container = composedParentElement(container);
   }
   if (!container) return false;
   const computedContainerStyle = getComputedStyle(container);
   const readInset = (property: string, fallbackProperty: string): number => {
+    const camel = property.replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
+    const fallbackCamel = fallbackProperty.replace(/-([a-z])/g, (_, character: string) =>
+      character.toUpperCase(),
+    );
     const value =
+      Reflect.get(computedContainerStyle, camel) ||
+      Reflect.get(container.style, camel) ||
       computedContainerStyle.getPropertyValue(property).trim() ||
       container.style.getPropertyValue(property).trim() ||
+      Reflect.get(computedContainerStyle, fallbackCamel) ||
+      Reflect.get(container.style, fallbackCamel) ||
       computedContainerStyle.getPropertyValue(fallbackProperty).trim() ||
       container.style.getPropertyValue(fallbackProperty).trim();
     const parsed = Number.parseFloat(value);
@@ -371,43 +398,49 @@ function isContainerQueryActive(
   // reports the post-transform box, which container size queries never use —
   // a `scale(2)` container would otherwise look twice as large as the layout
   // engine (and any real `@container` query) considers it to be.
-  const borderBoxSize = verticalInlineAxis ? container.offsetHeight : container.offsetWidth;
   // A physical `width` query is always a horizontal measurement. Under a
   // vertical writing mode the logical inline insets resolve to top/bottom,
   // not left/right, so a physical query must subtract physical left/right
   // insets instead — falling back to the logical inline name only under a
   // horizontal writing mode, where the two resolve to the same value (some
   // environments only resolve the property name that was actually set).
-  const firstInset = verticalInlineAxis
-    ? readInset('padding-inline-start', 'padding-top') +
-      readInset('border-inline-start-width', 'border-top-width')
-    : usesInlineSize
-      ? readInset('padding-inline-start', 'padding-left') +
-        readInset('border-inline-start-width', 'border-left-width')
-      : readInset('padding-left', isVerticalWritingMode ? 'padding-left' : 'padding-inline-start') +
-        readInset(
-          'border-left-width',
-          isVerticalWritingMode ? 'border-left-width' : 'border-inline-start-width',
-        );
-  const secondInset = verticalInlineAxis
-    ? readInset('padding-inline-end', 'padding-bottom') +
-      readInset('border-inline-end-width', 'border-bottom-width')
-    : usesInlineSize
-      ? readInset('padding-inline-end', 'padding-right') +
-        readInset('border-inline-end-width', 'border-right-width')
-      : readInset('padding-right', isVerticalWritingMode ? 'padding-right' : 'padding-inline-end') +
-        readInset(
-          'border-right-width',
-          isVerticalWritingMode ? 'border-right-width' : 'border-inline-end-width',
-        );
-  const width = Math.max(0, borderBoxSize - firstInset - secondInset);
+  const physicalInsets =
+    readInset('padding-left', 'padding-inline-start') +
+    readInset('padding-right', 'padding-inline-end');
+  const physicalBorders =
+    readInset('border-left-width', 'border-inline-start-width') +
+    readInset('border-right-width', 'border-inline-end-width');
+  const inlineInsets = verticalInlineAxis
+    ? readInset('padding-block-start', 'padding-top') +
+      readInset('padding-block-end', 'padding-bottom')
+    : physicalInsets;
+  const inlineBorders = verticalInlineAxis
+    ? readInset('border-block-start-width', 'border-top-width') +
+      readInset('border-block-end-width', 'border-bottom-width')
+    : physicalBorders;
+  const physicalClientSize = container.clientWidth;
+  const inlineClientSize = verticalInlineAxis ? container.clientHeight : physicalClientSize;
+  const width = Math.max(
+    0,
+    physicalClientSize > 0
+      ? physicalClientSize - physicalInsets
+      : container.offsetWidth - physicalBorders - physicalInsets,
+  );
+  const inlineSize = Math.max(
+    0,
+    inlineClientSize > 0
+      ? inlineClientSize - inlineInsets
+      : (verticalInlineAxis ? container.offsetHeight : container.offsetWidth) -
+          inlineBorders -
+          inlineInsets,
+  );
   const rootFontSize = Number.parseFloat(
     getComputedStyle(element.ownerDocument.documentElement).fontSize,
   );
   const remSize = Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
-  const queryUsesPhysicalWidth = /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(
-    conditionText,
-  );
+  const queryUsesPhysicalWidth =
+    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(conditionText) ||
+    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(conditionText);
   // This evaluator only understands `px`/`rem` length units and the
   // width/inline-size features. A condition using any other CSS length unit
   // (`em`, `vw`, `%`, ...), or a size feature it doesn't implement (`height`,
@@ -419,9 +452,17 @@ function isContainerQueryActive(
   if ((queryUsesPhysicalWidth || usesInlineSize) && /\bor\b/i.test(conditionText)) {
     return conditionText
       .split(/\s+or\s+/i)
-      .some((clause) => evaluateContainerSizeCondition(clause, width, remSize));
+      .some((clause) => evaluateContainerSizeCondition(clause, width, remSize, inlineSize));
   }
-  return evaluateContainerSizeConstraints(conditionText, width, remSize);
+  return evaluateContainerSizeConstraints(conditionText, width, remSize, inlineSize);
+}
+
+function composedParentElement(element: HTMLElement): HTMLElement | null {
+  if (element.parentElement) return element.parentElement;
+  const root = element.getRootNode();
+  return typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot
+    ? (root.host as HTMLElement)
+    : null;
 }
 
 // True when the condition references a width/inline-size comparison whose
@@ -449,7 +490,7 @@ function evaluateRangeComparisons(
   remSize: number,
 ): boolean | undefined {
   const featureFirstPattern = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/gi;
-  const valueFirstPattern = /([\d.]+)(px|rem)\s*(<=|<)\s*(?:width|inline-size)/gi;
+  const valueFirstPattern = /([\d.]+)(px|rem)\s*(<=|<|>=|>)\s*(width|inline-size)/gi;
   const comparisons: { operator: string; threshold: string; unit: string }[] = [];
   for (const comparison of conditionText.matchAll(featureFirstPattern)) {
     const operator = comparison[1];
@@ -460,7 +501,14 @@ function evaluateRangeComparisons(
   for (const comparison of conditionText.matchAll(valueFirstPattern)) {
     const threshold = comparison[1];
     const unit = comparison[2];
-    const operator = comparison[3] === '<=' ? '>=' : '>';
+    const operator =
+      comparison[3] === '<='
+        ? '>='
+        : comparison[3] === '<'
+          ? '>'
+          : comparison[3] === '>='
+            ? '<='
+            : '<';
     if (threshold && unit) comparisons.push({ operator, threshold, unit });
   }
   if (comparisons.length === 0) return undefined;
@@ -501,19 +549,41 @@ function evaluateContainerSizeConstraints(
   conditionText: string,
   width: number,
   remSize: number,
+  inlineSize = width,
 ): boolean {
+  const measuredSize =
+    /\binline-size\b/i.test(conditionText) && !/\bwidth\b/i.test(conditionText)
+      ? inlineSize
+      : width;
+  if (
+    /\bwidth\b/i.test(conditionText) &&
+    /\binline-size\b/i.test(conditionText) &&
+    /\band\b/i.test(conditionText)
+  ) {
+    return conditionText
+      .split(/\s+and\s+/i)
+      .every((clause) =>
+        evaluateContainerSizeConstraints(
+          clause,
+          /\binline-size\b/i.test(clause) ? inlineSize : width,
+          remSize,
+          inlineSize,
+        ),
+      );
+  }
   const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const toPixels = (value: RegExpExecArray) =>
     Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
   const legacyMatches =
-    (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
-  const rangeMatches = evaluateRangeComparisons(conditionText, width, remSize) ?? true;
-  const equalityMatches = evaluateEqualityComparison(conditionText, width, remSize) ?? true;
+    (!minimum || measuredSize >= toPixels(minimum)) &&
+    (!maximum || measuredSize <= toPixels(maximum));
+  const rangeMatches = evaluateRangeComparisons(conditionText, measuredSize, remSize) ?? true;
+  const equalityMatches = evaluateEqualityComparison(conditionText, measuredSize, remSize) ?? true;
   const hasSizeFeature = /\b(?:width|inline-size)\b/i.test(conditionText);
   const hasRecognizedRange =
     /(?:width|inline-size)\s*(?:>=|>|<=|<)\s*[\d.]+(?:px|rem)/i.test(conditionText) ||
-    /[\d.]+(?:px|rem)\s*(?:<=|<)\s*(?:width|inline-size)/i.test(conditionText);
+    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*(?:width|inline-size)/i.test(conditionText);
   const hasRecognizedEquality = /(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem)/i.test(conditionText);
   if (hasSizeFeature && !minimum && !maximum && !hasRecognizedRange && !hasRecognizedEquality)
     return false;
@@ -525,9 +595,10 @@ function evaluateContainerSizeCondition(
   conditionText: string,
   width: number,
   remSize: number,
+  inlineSize = width,
 ): boolean {
   if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
-  return evaluateContainerSizeConstraints(conditionText, width, remSize);
+  return evaluateContainerSizeConstraints(conditionText, width, remSize, inlineSize);
 }
 
 export function isContainerRule(rule: CSSRule): boolean {
@@ -583,7 +654,7 @@ export function observeTextDirection(
         characterData: isAutoDirection,
         subtree: isAutoDirection,
       });
-      currentElement = currentElement.parentElement;
+      currentElement = composedParentElement(currentElement);
     }
   }
 
