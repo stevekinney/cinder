@@ -87,8 +87,8 @@
   // Stores the toggle element for focus return after Escape-close.
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
-  let pendingTabFocus = false;
-  let pendingTabFocusTarget: HTMLElement | null = null;
+  let pendingTabFocus = $state(false);
+  let pendingTabFocusTarget = $state<HTMLElement | null>(null);
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
   const itemsPortalScope = createPortalAttachment({
@@ -359,9 +359,13 @@
     if (!anchoredItems.positionReady) return false;
 
     const enabledItems = getSequentialNavigationItems();
-    if (enabledItems.length === 0) return false;
+    const logicalEnabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    if (enabledItems.length === 0 && logicalEnabledItems.length === 0) return false;
 
-    if (event.shiftKey && navigationItem === enabledItems[0]) {
+    if (
+      event.shiftKey &&
+      (navigationItem === enabledItems[0] || navigationItem === logicalEnabledItems[0])
+    ) {
       const previousTarget = getFocusTargetBeforeItems();
       if (!previousTarget) return false;
       event.preventDefault();
@@ -369,7 +373,10 @@
       return true;
     }
 
-    if (!event.shiftKey && navigationItem === enabledItems.at(-1)) {
+    if (
+      !event.shiftKey &&
+      (navigationItem === enabledItems.at(-1) || navigationItem === logicalEnabledItems.at(-1))
+    ) {
       const nextTarget = getFocusTargetAfterItems();
       if (!nextTarget) return false;
       event.preventDefault();

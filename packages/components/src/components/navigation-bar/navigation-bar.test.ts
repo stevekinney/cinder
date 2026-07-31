@@ -977,6 +977,49 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('reverse Tab bridges from an arrow-focused leading item with tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const skippedItem = itemsRegion.querySelector('[data-key="skipped"]') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(skippedItem);
+      await fireEvent.keyDown(skippedItem, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(toggle);
+    });
+  });
+
+  test('forward Tab bridges from an arrow-focused trailing item with tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFinalNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const skippedItem = itemsRegion.querySelector('[data-key="skipped"]') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(skippedItem);
+      await fireEvent.keyDown(skippedItem, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
   test('toggle Tab skips disabled navigation items', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
