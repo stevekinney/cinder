@@ -262,9 +262,11 @@ export function copyInheritedPortalAttributes(
         inheritedDir = matchingDirection.getAttribute('dir');
         break;
       }
-      inheritedDir =
-        typeof getComputedStyle === 'function' ? getComputedStyle(source).direction : null;
-      break;
+      if (typeof getComputedStyle === 'function') {
+        inheritedDir = getComputedStyle(source).direction;
+        break;
+      }
+      directionSource = matchingDirection.parentElement ?? getShadowHost(matchingDirection);
     }
     if (inheritedDir === null && typeof getComputedStyle === 'function') {
       inheritedDir = getComputedStyle(source).direction;
@@ -525,11 +527,16 @@ type ComputedDirectionObservation = {
   source: HTMLElement;
   direction: string;
   sync: () => void;
+  roots: ShadowRoot[];
+  resizeObserver: ResizeObserver | null;
 };
 
 const computedDirectionObservations = new Set<ComputedDirectionObservation>();
 const observedMediaQueries = new Map<string, MediaQueryList>();
-const directionInvalidationRoots = new Set<Node>();
+const directionInvalidationRoots = new Map<
+  ShadowRoot,
+  { observer: MutationObserver; count: number }
+>();
 let directionInvalidationObserver: MutationObserver | null = null;
 let directionInvalidationFrame: number | null = null;
 let directionInvalidationDocument: Document | null = null;
@@ -553,6 +560,7 @@ export function invalidatePortalDirection() {
 }
 
 function syncComputedDirections() {
+  if (typeof getComputedStyle !== 'function') return;
   for (const current of computedDirectionObservations) {
     const direction = getComputedStyle(current.source).direction;
     if (direction === current.direction) continue;
@@ -567,6 +575,21 @@ function collectMediaQueries(rules: CSSRuleList | Iterable<CSSRule>, queries: Se
     const media = Reflect.get(rule, 'media');
     if (typeof conditionText === 'string' && media && typeof media === 'object') {
       queries.add(conditionText);
+    }
+    const mediaText = media && Reflect.get(media, 'mediaText');
+    if (typeof mediaText === 'string' && mediaText) queries.add(mediaText);
+    const importedStylesheet = Reflect.get(rule, 'styleSheet');
+    if (importedStylesheet) {
+      try {
+        const importedMedia = Reflect.get(importedStylesheet, 'media');
+        const importedMediaText = importedMedia && Reflect.get(importedMedia, 'mediaText');
+        if (typeof importedMediaText === 'string' && importedMediaText)
+          queries.add(importedMediaText);
+        const importedRules = Reflect.get(importedStylesheet, 'cssRules');
+        if (isCssRuleCollection(importedRules)) collectMediaQueries(importedRules, queries);
+      } catch {
+        // Cross-origin imported stylesheets are not script-readable.
+      }
     }
     const nestedRules = Reflect.get(rule, 'cssRules');
     if (isCssRuleCollection(nestedRules)) {
@@ -603,13 +626,24 @@ function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CS
 function refreshMediaQueryObservers() {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
   const queries = new Set<string>();
-  for (const stylesheet of Array.from(document.styleSheets)) {
-    try {
-      const mediaText = stylesheet.media?.mediaText;
-      if (mediaText) queries.add(mediaText);
-      collectMediaQueries(stylesheet.cssRules, queries);
-    } catch {
-      // Cross-origin stylesheets are not script-readable.
+  const roots = new Set<Document | ShadowRoot>([document]);
+  for (const current of computedDirectionObservations) {
+    const root = current.source.getRootNode();
+    if (root instanceof ShadowRoot) roots.add(root);
+  }
+  for (const root of roots) {
+    const stylesheets = [
+      ...Array.from(root.styleSheets ?? []),
+      ...Array.from(root.adoptedStyleSheets ?? []),
+    ];
+    for (const stylesheet of stylesheets) {
+      try {
+        const mediaText = stylesheet.media?.mediaText;
+        if (mediaText) queries.add(mediaText);
+        collectMediaQueries(stylesheet.cssRules, queries);
+      } catch {
+        // Cross-origin stylesheets are not script-readable.
+      }
     }
   }
   for (const [query, mediaQuery] of observedMediaQueries) {
@@ -644,8 +678,21 @@ function startDirectionInvalidationObservers() {
     subtree: true,
   });
   document.addEventListener('load', handleStylesheetLoad, true);
-  window.addEventListener('resize', invalidateComputedDirections);
-  window.addEventListener('orientationchange', invalidateComputedDirections);
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('resize', invalidateComputedDirections);
+    window.addEventListener('orientationchange', invalidateComputedDirections);
+    for (const event of [
+      'focusin',
+      'focusout',
+      'pointerover',
+      'pointerout',
+      'input',
+      'change',
+      'toggle',
+    ]) {
+      document.addEventListener(event, invalidateComputedDirections, true);
+    }
+  }
   refreshMediaQueryObservers();
 }
 
@@ -658,20 +705,24 @@ function isStylesheetMutation(mutation: MutationRecord): boolean {
 }
 
 function observeDirectionShadowRoots(source: HTMLElement) {
-  if (!directionInvalidationObserver) return;
+  if (!directionInvalidationObserver) return [];
+  const roots: ShadowRoot[] = [];
   let current: HTMLElement | null = source;
   while (current) {
     const root = current.getRootNode();
-    if (root instanceof ShadowRoot && !directionInvalidationRoots.has(root)) {
-      directionInvalidationRoots.add(root);
-      directionInvalidationObserver.observe(root, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
+    if (root instanceof ShadowRoot) {
+      roots.push(root);
+      const existing = directionInvalidationRoots.get(root);
+      if (existing) existing.count += 1;
+      else {
+        const observer = new MutationObserver(() => invalidateComputedDirections());
+        observer.observe(root, { attributes: true, childList: true, subtree: true });
+        directionInvalidationRoots.set(root, { observer, count: 1 });
+      }
     }
     current = getShadowHost(current);
   }
+  return roots;
 }
 
 function stopDirectionInvalidationObservers() {
@@ -680,15 +731,29 @@ function stopDirectionInvalidationObservers() {
   directionInvalidationObserver?.disconnect();
   directionInvalidationObserver = null;
   directionInvalidationDocument?.removeEventListener('load', handleStylesheetLoad, true);
-  window.removeEventListener('resize', invalidateComputedDirections);
-  window.removeEventListener('orientationchange', invalidateComputedDirections);
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', invalidateComputedDirections);
+    window.removeEventListener('orientationchange', invalidateComputedDirections);
+  }
+  for (const event of [
+    'focusin',
+    'focusout',
+    'pointerover',
+    'pointerout',
+    'input',
+    'change',
+    'toggle',
+  ]) {
+    directionInvalidationDocument?.removeEventListener(event, invalidateComputedDirections, true);
+  }
   for (const mediaQuery of observedMediaQueries.values()) {
     removeMediaQueryListener(mediaQuery);
   }
   observedMediaQueries.clear();
+  for (const { observer } of directionInvalidationRoots.values()) observer.disconnect();
   directionInvalidationRoots.clear();
   if (directionInvalidationFrame !== null) {
-    window.cancelAnimationFrame(directionInvalidationFrame);
+    if (typeof window !== 'undefined') window.cancelAnimationFrame(directionInvalidationFrame);
     directionInvalidationFrame = null;
   }
   directionInvalidationDocument = null;
@@ -714,13 +779,34 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
     source,
     direction: getComputedStyle(source).direction,
     sync,
+    roots: [],
+    resizeObserver: null,
   };
   computedDirectionObservations.add(observation);
   startDirectionInvalidationObservers();
-  observeDirectionShadowRoots(source);
+  observation.roots = observeDirectionShadowRoots(source);
+  if (typeof ResizeObserver !== 'undefined') {
+    const resizeObserver = new ResizeObserver(invalidateComputedDirections);
+    let ancestor: HTMLElement | null = source;
+    while (ancestor) {
+      resizeObserver.observe(ancestor);
+      ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
+    }
+    observation.resizeObserver = resizeObserver;
+  }
 
   return () => {
     computedDirectionObservations.delete(observation);
+    observation.resizeObserver?.disconnect();
+    for (const root of observation.roots) {
+      const existing = directionInvalidationRoots.get(root);
+      if (!existing) continue;
+      existing.count -= 1;
+      if (existing.count === 0) {
+        existing.observer.disconnect();
+        directionInvalidationRoots.delete(root);
+      }
+    }
     stopDirectionInvalidationObservers();
   };
 }
