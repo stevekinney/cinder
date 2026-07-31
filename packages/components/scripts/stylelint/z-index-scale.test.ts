@@ -165,6 +165,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(0 - 1))',
     'var(--item-layer, calc(calc(10000 - 1)))',
     'v\\61r(--item-layer, -1)',
+    'var(--item-layer, calc(calc(10000 - 1) + 0))',
+    'var(--item-layer, calc(1e4 - 1))',
   ])('rejects a banned literal in an unresolved custom-property fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -198,6 +200,30 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toEqual([]);
+  });
+
+  test('handles escaped commas and invalid Unicode escapes without throwing', async () => {
+    const escapedComma = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this is a valid custom property name. */
+        z-index: var(--foo\\,bar, 9999);
+      }
+    `);
+    expect(warnings(escapedComma)).toHaveLength(1);
+
+    const invalidUnicode = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this property name contains an invalid escape. */
+        z-index: var(--foo\\110000, 1);
+      }
+    `);
+    expect(warnings(invalidUnicode)).toEqual([]);
+  });
+
+  test('rejects escaped layer-token fallbacks', async () => {
+    const result = await lint(`.fixture { z-index: v\\61r(--cinder-z-popover, 1100); }`);
+    expect(warnings(result)).toHaveLength(1);
+    expect(warnings(result)[0]?.text).toContain('must not have a fallback');
   });
 
   test.each([

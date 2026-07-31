@@ -93,6 +93,13 @@ function evaluateConstantArithmetic(expression) {
       sawDigit = true;
       index += 1;
     }
+    if (/e/i.test(peek() ?? '')) {
+      index += 1;
+      if (peek() === '+' || peek() === '-') index += 1;
+      const exponentStart = index;
+      while (/\d/.test(peek() ?? '')) index += 1;
+      if (index === exponentStart) throw new Error('expected exponent');
+    }
     if (!sawDigit) throw new Error('expected a number');
     return Number(expression.slice(start, index));
   }
@@ -157,12 +164,7 @@ function evaluateConstantArithmetic(expression) {
 // Returns `null` when the value can't be statically resolved to a number at
 // all (e.g. it references a custom property).
 function resolveStaticNumber(value) {
-  let expression = value;
-  let calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(expression);
-  while (calcMatch) {
-    expression = calcMatch[1];
-    calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(expression);
-  }
+  const expression = flattenCalcFunctions(value);
   const direct = Number(expression);
   if (Number.isFinite(direct)) return direct;
   return evaluateConstantArithmetic(expression);
@@ -170,10 +172,36 @@ function resolveStaticNumber(value) {
 
 function decodeCssEscapes(value) {
   return value
-    .replaceAll(/\\([0-9a-f]{1,6})(?:\s)?/gi, (_, codePoint) =>
-      String.fromCodePoint(Number.parseInt(codePoint, 16)),
-    )
+    .replaceAll(/\\([0-9a-f]{1,6})(?:\s)?/gi, (_, codePoint) => {
+      const codePointValue = Number.parseInt(codePoint, 16);
+      return codePointValue > 0x10ffff ? '\ufffd' : String.fromCodePoint(codePointValue);
+    })
     .replaceAll(/\\(.)/g, '$1');
+}
+
+function flattenCalcFunctions(value) {
+  let output = '';
+  for (let index = 0; index < value.length; index += 1) {
+    if (!/^calc\s*\(/i.test(value.slice(index))) {
+      output += value[index];
+      continue;
+    }
+    const openIndex = value.indexOf('(', index);
+    let depth = 1;
+    let closeIndex = openIndex + 1;
+    while (closeIndex < value.length && depth > 0) {
+      if (value[closeIndex] === '(') depth += 1;
+      if (value[closeIndex] === ')') depth -= 1;
+      closeIndex += 1;
+    }
+    if (depth !== 0) {
+      output += value.slice(index);
+      break;
+    }
+    output += `(${flattenCalcFunctions(value.slice(openIndex + 1, closeIndex - 1))})`;
+    index = closeIndex - 1;
+  }
+  return output;
 }
 
 function isStaticallyNegative(value) {
@@ -238,7 +266,8 @@ function customPropertyFallbacks(value) {
 }
 
 function bannedFallback(value) {
-  return customPropertyFallbacks(decodeCssEscapes(value)).find(
+  const protectedValue = value.replaceAll(/\\,/g, '\uE000');
+  return customPropertyFallbacks(decodeCssEscapes(protectedValue)).find(
     (fallback) => isStaticallyNegative(fallback) || isStaticallyMagicNumber(fallback),
   );
 }
@@ -263,7 +292,8 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
 
     root.walkDecls((declaration) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
-      const value = stripComments(declaration.value.trim()).trim();
+      const rawValue = stripComments(declaration.value.trim()).trim();
+      const value = decodeCssEscapes(rawValue.replaceAll(/\\,/g, '\uE000'));
       const tokenMatch = layerTokenPattern.exec(value);
       if (allowedLocalValues.has(value)) return;
       if (tokenMatch) {
