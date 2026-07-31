@@ -118,6 +118,30 @@ function evaluateConstantArithmetic(expression) {
       index += 1;
       return -parseAtom();
     }
+    const functionStart = index;
+    while (/[a-z-]/i.test(peek() ?? '')) index += 1;
+    if (index !== functionStart) {
+      const functionName = expression.slice(functionStart, index).toLowerCase();
+      skipSpace();
+      if (peek() !== '(') throw new Error('expected function arguments');
+      index += 1;
+      const arguments_ = [];
+      for (;;) {
+        arguments_.push(parseExpression());
+        skipSpace();
+        if (peek() === ')') {
+          index += 1;
+          break;
+        }
+        if (peek() !== ',') throw new Error('expected comma');
+        index += 1;
+      }
+      if (functionName === 'min' && arguments_.length > 0) return Math.min(...arguments_);
+      if (functionName === 'max' && arguments_.length > 0) return Math.max(...arguments_);
+      if (functionName === 'clamp' && arguments_.length === 3)
+        return Math.min(arguments_[2], Math.max(arguments_[0], arguments_[1]));
+      throw new Error('unsupported function');
+    }
     return parseNumber();
   }
 
@@ -178,6 +202,14 @@ function decodeCssEscapes(value) {
       return codePointValue > 0x10ffff ? '\ufffd' : String.fromCodePoint(codePointValue);
     })
     .replaceAll(/\\(.)/g, '$1');
+}
+
+function protectCssSyntaxEscapes(value) {
+  return value
+    .replaceAll(/\\(?:0*2c)(?=\s|$|[^0-9a-f])\s?/gi, '\uE000')
+    .replaceAll(/\\([(),])/g, (_, character) =>
+      character === ',' ? '\uE000' : character === '(' ? '\uE001' : '\uE002',
+    );
 }
 
 function flattenCalcFunctions(value) {
@@ -273,7 +305,7 @@ function customPropertyFallbacks(value) {
 }
 
 function bannedFallback(value) {
-  const protectedValue = value.replaceAll(/\\,/g, '\uE000');
+  const protectedValue = protectCssSyntaxEscapes(value);
   return customPropertyFallbacks(decodeCssEscapes(protectedValue)).find(
     (fallback) => isStaticallyNegative(fallback) || isStaticallyMagicNumber(fallback),
   );
@@ -300,7 +332,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
     root.walkDecls((declaration) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
       const rawValue = stripComments(declaration.value.trim()).trim();
-      const value = decodeCssEscapes(rawValue.replaceAll(/\\,/g, '\uE000'));
+      const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
       const tokenMatch = layerTokenPattern.exec(value);
       if (allowedLocalValues.has(value)) return;
       if (tokenMatch) {
