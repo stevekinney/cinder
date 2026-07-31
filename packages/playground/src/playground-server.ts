@@ -2737,6 +2737,14 @@ async function eagerPrebuildAll(): Promise<{
   };
 }
 
+async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildAll> {
+  const prebuild = await eagerPrebuildAll();
+  await getManifests().catch((error: unknown) => {
+    console.error('[playground] manifest pre-warm failed:', error);
+  });
+  return prebuild;
+}
+
 export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
   let disposePromise: Promise<void> | null = null;
   return () => {
@@ -2787,14 +2795,16 @@ export async function runGenerationCheckedWarmup<T>(
   work: () => Promise<T>,
 ): Promise<{ value: T; instabilityReasons: string[] }> {
   const generationAtStart = await waitForPendingRebuild();
+  const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
   const value = await work();
+  const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
   return {
     value,
     instabilityReasons: warmupInstabilityReasons(
       generationAtStart,
       rebuildGeneration,
-      null,
-      null,
+      sourceMtimeAtStart,
+      sourceMtimeAtEnd,
       rebuildDebounceTimer !== null,
     ),
   };
@@ -2843,13 +2853,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
-    const prebuildAttempt = await runGenerationCheckedWarmup(async () => {
-      const result = await eagerPrebuildAll();
-      await getManifests().catch((error: unknown) => {
-        console.error('[playground] manifest pre-warm failed:', error);
-      });
-      return result;
-    });
+    const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAndWarmManifests);
     prebuild = prebuildAttempt.value;
     const { instabilityReasons } = prebuildAttempt;
     if (instabilityReasons.length === 0) {
@@ -2880,7 +2884,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   let bundlesNeedPrebuild = false;
   for (let attempt = 0; attempt < 5 && !rendererPrepared; attempt += 1) {
     if (bundlesNeedPrebuild) {
-      const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAll);
+      const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAndWarmManifests);
       prebuild = prebuildAttempt.value;
       if (!prebuild.shellSucceeded) {
         await dispose();

@@ -19,7 +19,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { rm, writeFile } from 'node:fs/promises';
+import { rm, utimes, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import {
@@ -327,6 +327,29 @@ describe('startup warmup stability', () => {
     expect(attempt.value).toBe('prebuilt');
     expect(attempt.instabilityReasons).toEqual(['rebuild debounce is pending']);
     await waitForPendingRebuild();
+  });
+
+  it('rejects retry work when source changes before watcher invalidation starts', async () => {
+    const temporarySourcePath = join(import.meta.dirname, '.warmup-source-mtime.test-fixture.ts');
+    await rm(temporarySourcePath, { force: true });
+
+    try {
+      const attempt = await runGenerationCheckedWarmup(async () => {
+        await writeFile(temporarySourcePath, 'export {};\n');
+        const futureMtime = new Date(Date.now() + 5_000);
+        await utimes(temporarySourcePath, futureMtime, futureMtime);
+        return 'prebuilt';
+      });
+
+      expect(attempt.value).toBe('prebuilt');
+      expect(
+        attempt.instabilityReasons.some((reason) =>
+          reason.startsWith('newest source mtime changed'),
+        ),
+      ).toBe(true);
+    } finally {
+      await rm(temporarySourcePath, { force: true });
+    }
   });
 
   it('rejects a warmup when source changes before watcher validation', () => {
