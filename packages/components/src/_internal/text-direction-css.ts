@@ -146,15 +146,50 @@ function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
 function resolveNestedSelector(rule: CSSStyleRule): string | undefined {
   let selector = rule.selectorText.trim();
   let parentRule = Reflect.get(rule, 'parentRule');
-  while (parentRule && isCssStyleRule(parentRule)) {
-    const parentSelector = parentRule.selectorText.trim();
-    if (!parentSelector) return undefined;
-    selector = selector.includes('&')
-      ? selector.replaceAll('&', parentSelector)
-      : `${parentSelector} ${selector}`;
+  while (parentRule) {
+    if (isCssStyleRule(parentRule)) {
+      const parentSelector = parentRule.selectorText.trim();
+      if (!parentSelector) return undefined;
+      selector = combineNestedSelectors(parentSelector, selector);
+      if (!selector) return undefined;
+    }
     parentRule = Reflect.get(parentRule, 'parentRule');
   }
   return selector;
+}
+
+function combineNestedSelectors(parentSelector: string, nestedSelector: string): string {
+  const parents = splitSelectorList(parentSelector);
+  const nestedSelectors = splitSelectorList(nestedSelector);
+  return nestedSelectors
+    .flatMap((child) =>
+      parents.map((parent) =>
+        child.includes('&') ? child.replaceAll('&', parent) : `${parent} ${child}`,
+      ),
+    )
+    .join(', ');
+}
+
+function splitSelectorList(selectorText: string): string[] {
+  const selectors: string[] = [];
+  let parenthesesDepth = 0;
+  let bracketDepth = 0;
+  let start = 0;
+  for (let index = 0; index < selectorText.length; index += 1) {
+    const character = selectorText[index];
+    if (character === '(') parenthesesDepth += 1;
+    if (character === ')') parenthesesDepth = Math.max(0, parenthesesDepth - 1);
+    if (character === '[') bracketDepth += 1;
+    if (character === ']') bracketDepth = Math.max(0, bracketDepth - 1);
+    if (character === ',' && parenthesesDepth === 0 && bracketDepth === 0) {
+      const selector = selectorText.slice(start, index).trim();
+      if (selector) selectors.push(selector);
+      start = index + 1;
+    }
+  }
+  const selector = selectorText.slice(start).trim();
+  if (selector) selectors.push(selector);
+  return selectors;
 }
 
 function isConditionalRuleActive(

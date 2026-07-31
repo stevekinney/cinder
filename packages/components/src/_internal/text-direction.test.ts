@@ -458,7 +458,7 @@ describe('resolveTextDirection', () => {
 
       expect(
         withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
-          resolveTextDirection(element, 'rtl'),
+          elementDirectionStyleOverride(element),
         ),
       ).toBe('ltr');
     } finally {
@@ -503,7 +503,95 @@ describe('resolveTextDirection', () => {
 
       expect(
         withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
-          resolveTextDirection(element, 'rtl'),
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('walks through conditional rules to the nearest nested style parent', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'conditional-nested-shell';
+      const element = document.createElement('div');
+      element.className = 'conditional-nested-menu';
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({
+        selectorText: '& .conditional-nested-menu',
+        direction: 'ltr',
+      });
+      const mediaRule = {
+        cssText: '@media all {}',
+        type: 4,
+        conditionText: 'all',
+        media: {},
+        cssRules: [nestedRule],
+      } as unknown as CSSRule;
+      const outerRule = createStyleRule({
+        selectorText: '.conditional-nested-shell',
+        cssRules: [mediaRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: mediaRule });
+      Object.defineProperty(mediaRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('preserves parent selector-list grouping when resolving nesting', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'selector-list-first';
+      const element = document.createElement('div');
+      element.className = 'selector-list-menu';
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({
+        selectorText: '& .selector-list-menu',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.selector-list-first, .selector-list-second',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
         ),
       ).toBe('ltr');
     } finally {
