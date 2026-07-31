@@ -74,27 +74,32 @@ test('Accessibility shortcut alternatives wrap without overflowing', async ({ co
   const accessibility = page.locator('#accessibility');
   const keyList = accessibility.locator('.dx-keys__key-list');
   await expect(keyList.locator('.cinder-kbd')).toHaveCount(6);
-  const alternatives = keyList.locator('.dx-keys__alternative');
-  await expect(alternatives).toHaveCount(5);
-  await expect(keyList.locator(':scope > .dx-keys__separator')).toHaveCount(0);
-
-  const ungroupedSeparators = await alternatives.evaluateAll((groups) =>
-    groups.some((group) => {
+  const shortcutLayout = await keyList.evaluate((list) => {
+    const alternatives = Array.from(list.querySelectorAll('.dx-keys__alternative'));
+    const ungroupedSeparators = alternatives.some((group) => {
       const separator = group.querySelector('.dx-keys__separator');
       const key = group.querySelector('.cinder-kbd');
       return !separator || !key || separator.parentElement !== group || key.parentElement !== group;
-    }),
-  );
-  expect(ungroupedSeparators).toBe(false);
-
-  const overflows = await keyList.locator('.cinder-kbd').evaluateAll((keys) =>
-    keys.some((key) => {
+    });
+    const keys = Array.from(list.querySelectorAll<HTMLElement>('.cinder-kbd'));
+    const overflows = keys.some((key) => {
       return key.scrollHeight > key.clientHeight || key.scrollWidth > key.clientWidth;
-    }),
-  );
-  expect(overflows).toBe(false);
+    });
+    list.closest('#accessibility')?.scrollIntoView({ block: 'start' });
+    return {
+      alternativeCount: alternatives.length,
+      directSeparatorCount: list.querySelectorAll(':scope > .dx-keys__separator').length,
+      ungroupedSeparators,
+      overflows,
+    };
+  });
+  expect(shortcutLayout).toEqual({
+    alternativeCount: 5,
+    directSeparatorCount: 0,
+    ungroupedSeparators: false,
+    overflows: false,
+  });
 
-  await accessibility.scrollIntoViewIfNeeded();
   await captureScreenshot(page, {
     slug: 'mega-menu',
     theme: 'light',
