@@ -967,6 +967,42 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('evaluates value-first range syntax below, inside, and above the range', () => {
+    const nestedRule = createStyleRule({
+      selectorText: '.value-first-range-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (20rem <= width <= 40rem) { .value-first-range-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(20rem <= width <= 40rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    for (const [offsetWidth, expected] of [
+      [240, 'rtl'],
+      [480, 'ltr'],
+      [700, 'rtl'],
+    ] as const) {
+      const container = document.createElement('section');
+      container.style.setProperty('container-type', 'inline-size');
+      Object.defineProperty(container, 'offsetWidth', { value: offsetWidth, configurable: true });
+      const element = document.createElement('div');
+      element.className = 'value-first-range-ltr';
+      container.appendChild(element);
+      document.body.appendChild(container);
+      try {
+        expect(
+          withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+            resolveTextDirection(element, 'rtl'),
+          ),
+        ).toBe(expected);
+      } finally {
+        container.remove();
+      }
+    }
+  });
+
   test('includes adopted stylesheets in direction rule scans', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -989,6 +1025,45 @@ describe('resolveTextDirection', () => {
           withDocumentAdoptedStyleSheets([sheet], () => resolveTextDirection(element, 'rtl')),
         ),
       ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('includes shadow-root style and adopted stylesheets in direction rule scans', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    try {
+      const host = document.createElement('div');
+      const shadowRoot = host.attachShadow({ mode: 'open' });
+      const styleElement = document.createElement('style');
+      const styleSheet = {
+        cssRules: [createStyleRule({ selectorText: '.shadow-ltr', direction: 'ltr' })],
+      };
+      Object.defineProperty(styleElement, 'sheet', { configurable: true, value: styleSheet });
+      shadowRoot.append(styleElement);
+      const element = document.createElement('div');
+      element.className = 'shadow-ltr';
+      shadowRoot.append(element);
+      document.body.append(host);
+      const adoptedSheet = {
+        cssRules: [createStyleRule({ selectorText: '.adopted-shadow-ltr', direction: 'ltr' })],
+      };
+      Object.defineProperty(shadowRoot, 'adoptedStyleSheets', {
+        configurable: true,
+        value: [adoptedSheet],
+      });
+      expect(elementDirectionStyleOverride(element)).toBe('ltr');
+      element.className = 'adopted-shadow-ltr';
+      expect(elementDirectionStyleOverride(element)).toBe('ltr');
     } finally {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;

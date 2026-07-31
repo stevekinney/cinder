@@ -140,10 +140,24 @@ function hasDirectionStylingHint(
 }
 
 function matchesDirectionStyleRule(element: HTMLElement): boolean {
-  const styleSheets = [
+  const styleSheets = new Set<CSSStyleSheet>([
     ...Array.from(element.ownerDocument.styleSheets),
     ...Array.from(element.ownerDocument.adoptedStyleSheets ?? []),
-  ];
+  ]);
+  const root = element.getRootNode();
+  if (root !== element.ownerDocument) {
+    const adoptedStyleSheets = Reflect.get(root, 'adoptedStyleSheets');
+    if (Array.isArray(adoptedStyleSheets)) {
+      for (const sheet of adoptedStyleSheets) styleSheets.add(sheet as CSSStyleSheet);
+    }
+    const querySelectorAll = Reflect.get(root, 'querySelectorAll');
+    if (typeof querySelectorAll === 'function') {
+      for (const styleElement of querySelectorAll.call(root, 'style')) {
+        const sheet = Reflect.get(styleElement, 'sheet');
+        if (sheet) styleSheets.add(sheet as CSSStyleSheet);
+      }
+    }
+  }
   for (const sheet of styleSheets) {
     if (!isActiveStyleSheet(sheet)) continue;
     let rules: CSSRuleList;
@@ -441,8 +455,20 @@ function evaluateRangeComparisons(
   width: number,
   remSize: number,
 ): boolean | undefined {
-  const rangePattern = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/gi;
-  const comparisons = [...conditionText.matchAll(rangePattern)];
+  const featureFirstPattern = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/gi;
+  const valueFirstPattern = /([\d.]+)(px|rem)\s*(<=|<)\s*(?:width|inline-size)/gi;
+  const comparisons = [
+    ...conditionText.matchAll(featureFirstPattern),
+    ...[...conditionText.matchAll(valueFirstPattern)].map(
+      (comparison) =>
+        [
+          comparison[0],
+          comparison[3] === '<=' ? '>=' : '>',
+          comparison[1],
+          comparison[2],
+        ] as unknown as RegExpMatchArray,
+    ),
+  ];
   if (comparisons.length === 0) return undefined;
   const satisfiesAll = comparisons.every((comparison) => {
     const operator = comparison[1]!;
@@ -490,6 +516,13 @@ function evaluateContainerSizeConstraints(
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
   const rangeMatches = evaluateRangeComparisons(conditionText, width, remSize) ?? true;
   const equalityMatches = evaluateEqualityComparison(conditionText, width, remSize) ?? true;
+  const hasSizeFeature = /\b(?:width|inline-size)\b/i.test(conditionText);
+  const hasRecognizedRange =
+    /(?:width|inline-size)\s*(?:>=|>|<=|<)\s*[\d.]+(?:px|rem)/i.test(conditionText) ||
+    /[\d.]+(?:px|rem)\s*(?:<=|<)\s*(?:width|inline-size)/i.test(conditionText);
+  const hasRecognizedEquality = /(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem)/i.test(conditionText);
+  if (hasSizeFeature && !minimum && !maximum && !hasRecognizedRange && !hasRecognizedEquality)
+    return false;
   const combinedMatches = legacyMatches && rangeMatches && equalityMatches;
   return /^\s*not\b/i.test(conditionText) ? !combinedMatches : combinedMatches;
 }
