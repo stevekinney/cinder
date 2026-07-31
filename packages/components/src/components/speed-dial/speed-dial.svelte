@@ -147,7 +147,12 @@
   }
 
   function getEnabledActionButtons(): HTMLButtonElement[] {
-    return actionButtons.filter((button) => !button.disabled && isRenderedCandidate(button));
+    const buttons = actionsElement
+      ? Array.from(
+          actionsElement.querySelectorAll<HTMLButtonElement>('button.cinder-floating-action'),
+        )
+      : actionButtons;
+    return buttons.filter((button) => !button.disabled && isRenderedCandidate(button));
   }
 
   // A consumer can forward `tabindex="-1"` to a SpeedDialAction to keep it
@@ -160,8 +165,7 @@
     return getEnabledActionButtons().filter((button) => !hasNegativeTabIndex(button));
   }
 
-  function getKeyboardNavigationButtons(): HTMLButtonElement[] {
-    const enabledButtons = getEnabledActionButtons();
+  function getKeyboardNavigationButtons(enabledButtons: HTMLButtonElement[]): HTMLButtonElement[] {
     return resolvedDirection === 'up' || resolvedDirection === 'left'
       ? [...enabledButtons].reverse()
       : enabledButtons;
@@ -244,11 +248,12 @@
 
     if (open && event.key === 'Tab' && event.shiftKey) {
       const sequentialButtons = getSequentiallyTabbableActionButtons();
-      const lastButton = sequentialButtons.at(-1) ?? getEnabledActionButtons().at(-1);
-      if (lastButton) {
-        event.preventDefault();
-        lastButton.focus();
-      }
+      if (!actionsElement || !anchoredActions.positionReady || actionsElement.hasAttribute('inert'))
+        return;
+      const lastButton = sequentialButtons.at(-1);
+      if (!lastButton) return;
+      event.preventDefault();
+      lastButton.focus();
       return;
     }
 
@@ -276,13 +281,14 @@
     const target = event.target instanceof HTMLButtonElement ? event.target : null;
     if (!target) return;
 
-    const tabOrderButtons = getSequentiallyTabbableActionButtons();
-    const targetIndex = getEnabledActionButtons().indexOf(target);
+    const enabledButtons = getEnabledActionButtons();
+    const tabOrderButtons = enabledButtons.filter((button) => !hasNegativeTabIndex(button));
+    const targetIndex = enabledButtons.indexOf(target);
     const firstTabOrderIndex = tabOrderButtons.length
-      ? getEnabledActionButtons().indexOf(tabOrderButtons[0]!)
+      ? enabledButtons.indexOf(tabOrderButtons[0]!)
       : -1;
     const lastTabOrderIndex = tabOrderButtons.length
-      ? getEnabledActionButtons().indexOf(tabOrderButtons.at(-1)!)
+      ? enabledButtons.indexOf(tabOrderButtons.at(-1)!)
       : -1;
     if (
       event.key === 'Tab' &&
@@ -306,18 +312,18 @@
       return;
     }
 
-    const enabledButtons = getKeyboardNavigationButtons();
-    const currentIndex = enabledButtons.indexOf(target);
+    const keyboardButtons = getKeyboardNavigationButtons(enabledButtons);
+    const currentIndex = keyboardButtons.indexOf(target);
     if (currentIndex === -1) return;
 
-    const nextIndex = handleRovingKeydown(event, currentIndex, enabledButtons.length, {
+    const nextIndex = handleRovingKeydown(event, currentIndex, keyboardButtons.length, {
       horizontal: orientation === 'horizontal',
       vertical: orientation === 'vertical',
     });
     if (nextIndex === null) return;
 
     event.preventDefault();
-    enabledButtons[nextIndex]?.focus();
+    keyboardButtons[nextIndex]?.focus();
   }
 
   function bridgePortaledEvent(event: Event): void {
