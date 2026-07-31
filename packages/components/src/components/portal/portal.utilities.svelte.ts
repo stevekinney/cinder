@@ -670,6 +670,13 @@ function handleStylesheetLoad(event: Event) {
 }
 
 function observeComputedDirection(source: HTMLElement, sync: () => void): () => void {
+  if (
+    typeof getComputedStyle !== 'function' ||
+    typeof window === 'undefined' ||
+    typeof document === 'undefined'
+  ) {
+    return () => {};
+  }
   const observation: ComputedDirectionObservation = {
     source,
     direction: getComputedStyle(source).direction,

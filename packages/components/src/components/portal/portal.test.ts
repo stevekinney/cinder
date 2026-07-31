@@ -326,6 +326,18 @@ describe('Portal', () => {
     });
   });
 
+  test('mounts without computed-style observation when getComputedStyle is unavailable', async () => {
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: undefined,
+    });
+
+    render(Portal, { props: { children: childSnippet } });
+    await tick();
+
+    expect(document.body.querySelector('[data-testid="portal-child"]')).not.toBeNull();
+  });
+
   test('moves children into a custom target', async () => {
     const host = document.createElement('div');
     host.id = 'portal-host';
