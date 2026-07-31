@@ -525,6 +525,9 @@ type ComputedDirectionObservation = {
 const computedDirectionObservations = new Set<ComputedDirectionObservation>();
 let computedDirectionFrame: number | null = null;
 
+// CSSOM and media-query changes do not reliably produce DOM mutations. A single shared frame loop
+// samples only currently mounted portal sources, rather than scheduling one timer per attachment,
+// and is canceled as soon as the last portal unmounts.
 function observeComputedDirection(source: HTMLElement, sync: () => void): () => void {
   if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
     return () => {};
