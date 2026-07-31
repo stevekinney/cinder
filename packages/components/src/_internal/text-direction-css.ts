@@ -176,11 +176,14 @@ function isScopeActive(rule: CSSRule, element: HTMLElement): boolean {
   try {
     const prelude = parseScopePrelude(cssText);
     if (!prelude) return false;
-    const scopeRoot = findScopeMatch(element, prelude.rootSelectors);
-    if (prelude.rootSelectors.length > 0 && !scopeRoot) return false;
-    const scopeLimit = findScopeMatch(element, prelude.limitSelectors ?? []);
-    if (scopeLimit && (!scopeRoot || scopeRoot.contains(scopeLimit))) return false;
-    return true;
+    const scopeRoots = findScopeMatches(element, prelude.rootSelectors);
+    if (prelude.rootSelectors.length > 0 && scopeRoots.length === 0) return false;
+    if (!prelude.limitSelectors) return true;
+    const scopeLimits = findScopeMatches(element, prelude.limitSelectors);
+    if (scopeRoots.length === 0) return scopeLimits.length === 0;
+    return scopeRoots.some((scopeRoot) =>
+      scopeLimits.every((scopeLimit) => !scopeRoot.contains(scopeLimit)),
+    );
   } catch {
     return false;
   }
@@ -321,12 +324,17 @@ function findScopeGroupEnd(value: string): number {
   return -1;
 }
 
-function findScopeMatch(element: HTMLElement, selectors: string[]): Element | null {
-  for (const selector of selectors) {
-    const match = element.matches(selector) ? element : element.closest(selector);
-    if (match) return match;
+function findScopeMatches(element: HTMLElement, selectors: string[]): Element[] {
+  if (selectors.length === 0) return [];
+  const matches: Element[] = [];
+  let current: Element | null = element;
+  while (current) {
+    const currentElement: Element = current;
+    if (selectors.some((selector) => currentElement.matches(selector)))
+      matches.push(currentElement);
+    current = currentElement.parentElement;
   }
-  return null;
+  return matches;
 }
 
 function splitScopeSelectors(value: string): string[] {

@@ -557,6 +557,89 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('keeps a scope active when a later root candidate is not limited', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const outer = document.createElement('section');
+    outer.className = 'outer';
+    const limit = document.createElement('div');
+    limit.className = 'limit';
+    const inner = document.createElement('div');
+    inner.className = 'inner';
+    const element = document.createElement('div');
+    element.className = 'shell';
+    inner.append(element);
+    limit.append(inner);
+    outer.append(limit);
+    document.body.append(outer);
+    const styleRule = createStyleRule({ selectorText: '.shell', direction: 'ltr' });
+    const scopeRules = ['.inner, .outer', '.outer, .inner'].map((roots) => ({
+      type: 0,
+      cssText: `@scope (${roots}) to (.limit) {}`,
+      cssRules: [styleRule],
+    })) as unknown as CSSRule[];
+    try {
+      for (const scopeRule of scopeRules) {
+        expect(
+          withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+            resolveTextDirection(element, 'rtl'),
+          ),
+        ).toBe('ltr');
+      }
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('evaluates scope limits independently of selector-list order', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const above = document.createElement('div');
+    above.className = 'above';
+    const root = document.createElement('div');
+    root.className = 'root';
+    const element = document.createElement('div');
+    element.className = 'shell';
+    root.append(element);
+    above.append(root);
+    document.body.append(above);
+    const styleRule = createStyleRule({ selectorText: '.shell', direction: 'ltr' });
+    const scopeRules = ['.above, .root', '.root, .above'].flatMap((roots) =>
+      ['.above, .missing', '.missing, .above'].map((limits) => ({
+        type: 0,
+        cssText: `@scope (${roots}) to (${limits}) {}`,
+        cssRules: [styleRule],
+      })),
+    ) as unknown as CSSRule[];
+    try {
+      for (const scopeRule of scopeRules) {
+        expect(
+          withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+            resolveTextDirection(element, 'rtl'),
+          ),
+        ).toBe('ltr');
+      }
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('keeps commas inside scope selector syntax intact', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
