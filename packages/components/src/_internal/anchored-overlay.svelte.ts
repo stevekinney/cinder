@@ -13,6 +13,8 @@ export type AnchoredOverlayOptions = {
   shiftCrossAxis?: () => boolean;
   arrowPadding?: () => number;
   arrowVisible?: () => boolean;
+  /** Constrain the floating panel to the available block space on its resolved side. */
+  size?: () => boolean;
   widthMode?: () => AnchoredOverlayWidthMode;
   strategy?: () => 'fixed' | 'absolute';
 };
@@ -115,6 +117,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const arrowPadding = options.arrowPadding?.() ?? DEFAULT_ARROW_PADDING;
     const arrow = options.arrow?.();
     const arrowVisible = options.arrowVisible?.() ?? Boolean(arrow);
+    const sizeEnabled = options.size?.() ?? false;
     const widthMode = options.widthMode?.() ?? 'content';
     const strategyOverride = options.strategy?.();
     let cancelled = false;
@@ -128,6 +131,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         computePosition,
         flip,
         offset: offsetMiddleware,
+        size: sizeMiddleware,
         shift,
       } = await import('@floating-ui/dom');
 
@@ -140,6 +144,15 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       ];
       if (arrowVisible && arrow) {
         middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
+      }
+      if (sizeEnabled) {
+        middleware.push(
+          sizeMiddleware({
+            apply({ availableHeight, elements }) {
+              elements.floating.style.maxBlockSize = `${Math.max(0, availableHeight)}px`;
+            },
+          }),
+        );
       }
 
       stopAutoUpdate = autoUpdate(anchor, panel, async () => {

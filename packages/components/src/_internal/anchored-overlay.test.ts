@@ -32,6 +32,13 @@ describe('anchored overlay width styles', () => {
     expect(getAnchoredOverlayWidthStyle('none', { width: 320 })).toBe('');
   });
 
+  test('opt-in sizing middleware constrains the floating panel to available height', async () => {
+    const source = await Bun.file(`${import.meta.dir}/anchored-overlay.svelte.ts`).text();
+
+    expect(source).toContain('sizeMiddleware({');
+    expect(source).toContain('elements.floating.style.maxBlockSize');
+  });
+
   test('server compilation omits Floating UI runtime imports', async () => {
     const sourcePath = `${import.meta.dir}/anchored-overlay.svelte.ts`;
     const source = await Bun.file(sourcePath).text();
