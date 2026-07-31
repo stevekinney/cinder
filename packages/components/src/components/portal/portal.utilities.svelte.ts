@@ -253,7 +253,7 @@ export function copyInheritedPortalAttributes(
   if (inheritAttributes && source && !preservesExplicitDirection) {
     let directionSource: HTMLElement | null = source;
     while (directionSource) {
-      const matchingDirection: HTMLElement | null = directionSource.closest<HTMLElement>('[dir]');
+      const matchingDirection = closestAcrossShadow(directionSource, '[dir]');
       if (!matchingDirection) {
         directionSource = getShadowHost(directionSource);
         continue;
@@ -262,11 +262,10 @@ export function copyInheritedPortalAttributes(
         inheritedDir = matchingDirection.getAttribute('dir');
         break;
       }
-      if (typeof getComputedStyle === 'function') {
-        inheritedDir = getComputedStyle(source).direction;
-        break;
-      }
-      directionSource = matchingDirection.parentElement ?? getShadowHost(matchingDirection);
+      directionSource =
+        matchingDirection.getRootNode() === document
+          ? null
+          : (matchingDirection.parentElement ?? getShadowHost(matchingDirection));
     }
     if (inheritedDir === null && typeof getComputedStyle === 'function') {
       inheritedDir = getComputedStyle(source).direction;
@@ -795,6 +794,7 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
   computedDirectionObservations.add(observation);
   startDirectionInvalidationObservers();
   observation.roots = observeDirectionShadowRoots(source);
+  refreshMediaQueryObservers();
   if (typeof ResizeObserver !== 'undefined') {
     const resizeObserver = new ResizeObserver(invalidateComputedDirections);
     let ancestor: HTMLElement | null = source;

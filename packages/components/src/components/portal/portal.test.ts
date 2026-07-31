@@ -259,6 +259,24 @@ describe('Portal', () => {
     expect(element.getAttribute('dir')).toBe('rtl');
   });
 
+  test('inherits an explicit direction across a shadow host', () => {
+    const host = document.createElement('div');
+    host.setAttribute('dir', 'auto');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const generatedWrapper = document.createElement('div');
+    generatedWrapper.setAttribute('dir', 'ltr');
+    generatedWrapper.setAttribute('data-cinder-portal-inherited-direction', 'true');
+    const source = document.createElement('div');
+    const element = document.createElement('div');
+    generatedWrapper.append(source);
+    shadow.append(generatedWrapper);
+    document.body.append(host, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('auto');
+  });
+
   test('does not let a generated outer portal direction mask inner computed direction', () => {
     document.documentElement.setAttribute('dir', 'ltr');
     const outerWrapper = document.createElement('div');
@@ -389,6 +407,45 @@ describe('Portal', () => {
     } else {
       Reflect.deleteProperty(document, 'styleSheets');
     }
+  });
+
+  test('refreshes media listeners when a later portal registers a shadow root', async () => {
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+
+    const firstMountPoint = document.createElement('div');
+    document.body.append(firstMountPoint);
+    render(Portal, { target: firstMountPoint, props: { children: childSnippet } });
+    await tick();
+
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    Object.defineProperty(shadow, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(prefers-color-scheme: dark)' }, cssRules: [] }],
+    });
+    const secondMountPoint = document.createElement('div');
+    shadow.append(secondMountPoint);
+    document.body.append(host);
+
+    render(Portal, { target: secondMountPoint, props: { children: childSnippet } });
+    await tick();
+
+    expect(observedQueries).toContain('(prefers-color-scheme: dark)');
+    window.matchMedia = originalMatchMedia;
   });
 
   test('refreshes media listeners when the CSSOM invalidation hook changes rules', async () => {
