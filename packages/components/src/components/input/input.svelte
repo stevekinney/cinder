@@ -36,6 +36,7 @@
     disabled,
     required,
     type = 'text',
+    inputAttachment,
     class: className,
     leading,
     trailing,
@@ -146,6 +147,7 @@
 {#snippet inputElement()}
   <input
     bind:this={inputNode}
+    {@attach inputAttachment}
     {id}
     {type}
     {...rest}

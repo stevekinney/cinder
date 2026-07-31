@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { Attachment } from 'svelte/attachments';
 import type { HTMLInputAttributes } from 'svelte/elements';
 
 export type InputType =
@@ -60,5 +61,7 @@ export type InputProps = HTMLInputAttributes &
     required?: boolean;
     /** Input type controlling the browser's built-in validation and keyboard. Default `"text"`. */
     type?: InputType;
+    /** Attachment for native input access and lifecycle-scoped listeners. */
+    inputAttachment?: Attachment<HTMLInputElement>;
     class?: string;
   };

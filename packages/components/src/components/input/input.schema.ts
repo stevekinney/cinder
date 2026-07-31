@@ -60,6 +60,11 @@ const schema = {
         reason: 'unknown-shape',
       },
       {
+        name: 'inputAttachment',
+        reason: 'function-or-snippet',
+        description: 'Attachment for native input access and lifecycle-scoped listeners.',
+      },
+      {
         name: 'leading',
         reason: 'function-or-snippet',
       },
