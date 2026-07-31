@@ -36,6 +36,7 @@ import {
   createSharedDisposer,
   fallbackToLastGood,
   formatBuildLogs,
+  getRebuildGeneration,
   handleRequest,
   isPageServerRenderers,
   isShellServerRendererModule,
@@ -47,9 +48,11 @@ import {
   resolvePreferredPort,
   resolveRendererLoad,
   rewriteRepositoryRelativeReadmeLinks,
+  scheduleRebuild,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
   triggerReload,
+  waitForPendingRebuild,
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
@@ -278,6 +281,16 @@ describe('shared disposer', () => {
 });
 
 describe('startup warmup stability', () => {
+  it('settles a pending rebuild before a retry can pre-build bundles', async () => {
+    const generationAtStart = getRebuildGeneration();
+    scheduleRebuild({ kind: 'components' });
+
+    expect(getRebuildGeneration()).toBe(generationAtStart);
+    await waitForPendingRebuild();
+
+    expect(getRebuildGeneration()).toBe(generationAtStart + 1);
+  });
+
   it('rejects a warmup when source changes before watcher validation', () => {
     expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
     expect(isWarmupStable(4, 5, 100, 100)).toBe(false);

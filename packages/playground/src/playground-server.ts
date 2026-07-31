@@ -374,6 +374,8 @@ let rebuildGeneration = 0;
 
 /** Debounce timer for the watcher. */
 let rebuildDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let rebuildDebouncePromise: Promise<void> | null = null;
+let settleRebuildDebounce: (() => void) | null = null;
 /** Whether any change in the current debounce window touched shell sources. */
 let pendingShellChanged = false;
 /** Whether any change in the current debounce window touched components-package source. */
@@ -411,12 +413,15 @@ type ChangeScope =
  * (OR the booleans, union the example names) so the final invalidation
  * reflects everything touched during the window, not just the last call.
  */
-function scheduleRebuild(scope: ChangeScope): void {
+export function scheduleRebuild(scope: ChangeScope): void {
   if (scope.kind === 'shell') pendingShellChanged = true;
   else if (scope.kind === 'components') pendingComponentsChanged = true;
   else for (const name of scope.names) pendingExampleNames.add(name);
 
   if (rebuildDebounceTimer !== null) clearTimeout(rebuildDebounceTimer);
+  rebuildDebouncePromise ??= new Promise<void>((resolve) => {
+    settleRebuildDebounce = resolve;
+  });
   rebuildDebounceTimer = setTimeout(() => {
     rebuildDebounceTimer = null;
     const shellChanged = pendingShellChanged;
@@ -431,7 +436,20 @@ function scheduleRebuild(scope: ChangeScope): void {
     else if (exampleNames.size > 0) {
       invalidateCachesForChange({ kind: 'examples', names: exampleNames });
     }
+    settleRebuildDebounce?.();
+    settleRebuildDebounce = null;
+    rebuildDebouncePromise = null;
   }, 100);
+}
+
+/** Wait until the current watcher debounce has applied its cache invalidation. */
+export async function waitForPendingRebuild(): Promise<void> {
+  await rebuildDebouncePromise;
+}
+
+/** Exposed for behavioral tests that verify debounce ordering. */
+export function getRebuildGeneration(): number {
+  return rebuildGeneration;
 }
 
 /**
@@ -2806,6 +2824,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
+    await waitForPendingRebuild();
     prebuild = await eagerPrebuildAll();
     await getManifests().catch((error: unknown) => {
       console.error('[playground] manifest pre-warm failed:', error);
@@ -2882,11 +2901,12 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       if (needsPrebuild) {
         // Any source change can make the eager browser bundles stale. Restore
         // the bundle guarantee before advertising readiness.
+        await waitForPendingRebuild();
         if (
           rendererWarmupNeedsCacheInvalidation(
             generationAtStart !== rebuildGeneration,
             sourceMtimeAtStart !== sourceMtimeAtEnd,
-            rebuildDebounceTimer !== null,
+            false,
           )
         ) {
           invalidateCachesForChange({ kind: 'components' });
