@@ -1350,9 +1350,10 @@ function resetShellRendererWarmupState(): void {
 
 export function rendererWarmupNeedsPrebuild(
   generationChanged: boolean,
+  sourceChanged: boolean,
   hasPendingRebuild: boolean,
 ): boolean {
-  return generationChanged || hasPendingRebuild;
+  return generationChanged || sourceChanged || hasPendingRebuild;
 }
 
 /**
@@ -2811,18 +2812,15 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       );
       const needsPrebuild = rendererWarmupNeedsPrebuild(
         generationAtStart !== rebuildGeneration,
+        sourceMtimeAtStart !== sourceMtimeAtEnd,
         rebuildDebounceTimer !== null,
       );
       resetShellRendererWarmupState();
       if (needsPrebuild) {
-        // A watcher invalidation cleared the page pointers; restore the eager
-        // browser-bundle guarantee before advertising readiness.
+        // Any source change can make the eager browser bundles stale. Restore
+        // the bundle guarantee before advertising readiness.
         prebuild = await eagerPrebuildAll();
         if (!prebuild.shellSucceeded) break;
-      } else {
-        // A source-mtime-only change does not invalidate page bundles. Reset
-        // only the renderer promise so the already-warmed browser bundles stay
-        // available for the first request.
       }
     }
   }

@@ -290,9 +290,10 @@ describe('startup warmup stability', () => {
   });
 
   it('keeps renderer retries free of a second full page pre-build', async () => {
-    expect(rendererWarmupNeedsPrebuild(false, false)).toBe(false);
-    expect(rendererWarmupNeedsPrebuild(true, false)).toBe(true);
-    expect(rendererWarmupNeedsPrebuild(false, true)).toBe(true);
+    expect(rendererWarmupNeedsPrebuild(false, false, false)).toBe(false);
+    expect(rendererWarmupNeedsPrebuild(true, false, false)).toBe(true);
+    expect(rendererWarmupNeedsPrebuild(false, true, false)).toBe(true);
+    expect(rendererWarmupNeedsPrebuild(false, false, true)).toBe(true);
     const source = await readFile(new URL('./playground-server.ts', import.meta.url), 'utf8');
     const rendererWarmup = source.slice(
       source.indexOf('  // Prepare the SSR shell renderer'),
