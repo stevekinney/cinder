@@ -460,8 +460,11 @@ function isContainerQueryActive(
 function composedParentElement(element: HTMLElement): HTMLElement | null {
   if (element.parentElement) return element.parentElement;
   const root = element.getRootNode();
-  return typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot
-    ? (root.host as HTMLElement)
+  return typeof ShadowRoot !== 'undefined' &&
+    typeof HTMLElement !== 'undefined' &&
+    root instanceof ShadowRoot &&
+    root.host instanceof HTMLElement
+    ? root.host
     : null;
 }
 
