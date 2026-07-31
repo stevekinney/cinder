@@ -765,7 +765,7 @@ describe('resolveTextDirection', () => {
     const outerRule = {
       cssText: '@container ((max-width: 30rem) or (width > 50rem)) and (width > 40rem) {}',
       type: 0,
-      conditionText: '((max-width: 30rem) or (width > 50rem)) and (width > 40rem)',
+      conditionText: '((max-width: 30rem) OR (width > 50rem)) AND (width > 40rem)',
       cssRules: [nestedRule],
     } as unknown as CSSRule;
     expect(

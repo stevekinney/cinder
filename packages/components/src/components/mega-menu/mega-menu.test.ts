@@ -442,11 +442,14 @@ describe('MegaMenu', () => {
     }
   });
 
-  test('subscribes to media-query changes and cleans up on unmount', async () => {
+  test('re-resolves direction on media-query changes and cleans up on unmount', async () => {
     const originalMatchMedia = globalThis.matchMedia;
     const listeners = new Set<EventListener>();
+    let matches = false;
     const mediaQuery = {
-      matches: false,
+      get matches() {
+        return matches;
+      },
       media: '(prefers-color-scheme: dark)',
       addEventListener: (_type: string, listener: EventListener) => listeners.add(listener),
       removeEventListener: (_type: string, listener: EventListener) => listeners.delete(listener),
@@ -454,12 +457,23 @@ describe('MegaMenu', () => {
     globalThis.matchMedia = (() => mediaQuery) as typeof matchMedia;
     const style = document.createElement('style');
     style.textContent =
-      '@media (prefers-color-scheme: dark) { .media-direction { direction: ltr; } }';
+      '@media (prefers-color-scheme: dark) { .cinder-mega-menu { direction: ltr; } }';
     document.head.append(style);
     const view = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
     try {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(listeners.size).toBeGreaterThan(0);
+      const products = getTriggerByLabel(view.container, 'Products');
+      const resources = getTriggerByLabel(view.container, 'Resources');
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowLeft' });
+      expect(document.activeElement).toBe(resources);
+      matches = true;
+      for (const listener of listeners) listener(new Event('change'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(resources);
     } finally {
       view.unmount();
       expect(listeners.size).toBe(0);

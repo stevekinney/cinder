@@ -493,7 +493,7 @@ function splitTopLevel(conditionText: string, operator: 'and' | 'or'): string[] 
     }
     if (
       depth === 0 &&
-      conditionText.slice(index, index + operator.length) === operator &&
+      conditionText.slice(index, index + operator.length).toLowerCase() === operator &&
       /\s/.test(conditionText[index - 1] ?? '') &&
       /\s/.test(conditionText[index + operator.length] ?? '')
     ) {
