@@ -1099,6 +1099,60 @@ describe('SelectionPopover', () => {
     }
   });
 
+  test('external keyboard movement dismisses after focus lands on collapsed action', async () => {
+    let closed = false;
+    const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
+    const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
+    const visualViewport = new EventTarget() as EventTarget & { height: number; scale: number };
+    visualViewport.height = window.innerHeight - 300;
+    visualViewport.scale = 1;
+    Object.defineProperty(window, 'visualViewport', {
+      configurable: true,
+      value: visualViewport,
+    });
+    Object.defineProperty(navigator, 'virtualKeyboard', {
+      configurable: true,
+      value: { boundingRect: { height: 300 } },
+    });
+
+    const externalInput = document.createElement('input');
+    document.body.append(externalInput);
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      // An external input owns a keyboard that is already visible.
+      externalInput.focus();
+      visualViewport.dispatchEvent(new Event('resize'));
+
+      // Switch navigation lands on the collapsed action inside the popover.
+      // That control is not the composer and must not preserve external
+      // keyboard movement as if the textarea still owned focus.
+      screen.getByRole('button', { name: 'Add comment' }).focus();
+      visualViewport.dispatchEvent(new Event('scroll'));
+
+      expect(closed).toBe(true);
+    } finally {
+      cleanup();
+      externalInput.remove();
+      if (originalVisualViewport)
+        Object.defineProperty(window, 'visualViewport', originalVisualViewport);
+      else Reflect.deleteProperty(window, 'visualViewport');
+      if (originalVirtualKeyboard)
+        Object.defineProperty(navigator, 'virtualKeyboard', originalVirtualKeyboard);
+      else Reflect.deleteProperty(navigator, 'virtualKeyboard');
+    }
+  });
+
   test('tabbing to a real destination outside the popover keeps focus there through a later movement dismissal', async () => {
     let closed = false;
 
