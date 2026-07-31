@@ -541,13 +541,7 @@ export function cssPrimitiveCounts(
               );
               const sharedPair =
                 matchingTargets.length > 0 &&
-                sharedTargets
-                  .filter(
-                    (target) =>
-                      targetMatchesSharedFloatingElement(positionTarget, target) &&
-                      targetMatchesSharedFloatingElement(zIndexTarget, target),
-                  )
-                  .every((target) => target.shared !== false);
+                matchingTargets.every((target) => target.shared !== false);
               const bothExplicitlyShared =
                 positionTarget.classes.has('cinder-_floating-surface') &&
                 zIndexTarget.classes.has('cinder-_floating-surface');
