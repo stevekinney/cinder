@@ -158,6 +158,50 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(magicNumber)).toHaveLength(1);
   });
 
+  test.each([
+    'var(--item-layer, 9999)',
+    'var(--item-layer, calc(9999))',
+    'calc(var(--item-layer, 10000 - 1) + 1)',
+    'var(--item-layer, calc(0 - 1))',
+  ])('rejects a banned literal in an unresolved custom-property fallback: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this relationship is intentionally local. */
+        z-index: ${value};
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+    expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
+  test('rejects a banned literal in a nested custom-property fallback chain', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this relationship is intentionally local. */
+        z-index: var(--item-layer, var(--inner-layer, calc(10000 - 1)));
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+    expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
+  test.each([
+    'var(--item-layer)',
+    'var(--item-layer, var(--cinder-z-popover))',
+    'calc(var(--item-layer, var(--cinder-z-popover)) + 1)',
+  ])('accepts an unresolved property with a valid design-token fallback: %s', async (value) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: this relationship is intentionally local. */
+            z-index: ${value};
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
   test.each(['calc(9999)', 'calc(10000 - 1)', 'calc(9998 + 1)'])(
     'rejects the calculated magic-number variant %s even with a local reason',
     async (value) => {
