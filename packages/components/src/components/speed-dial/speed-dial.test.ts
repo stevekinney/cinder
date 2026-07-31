@@ -9,6 +9,7 @@ setupHappyDom();
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
+const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
@@ -35,6 +36,50 @@ describe('SpeedDial', () => {
     expect(container.querySelector('.cinder-speed-dial')?.hasAttribute('data-cinder-open')).toBe(
       false,
     );
+  });
+
+  test('closed toolbar keeps its exit surface mounted but has no visible floating chrome', () => {
+    const { container } = render(SpeedDialFixture);
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+
+    expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+    expect(toolbar.hasAttribute('inert')).toBe(true);
+    expect(toolbar.getAttribute('aria-hidden')).toBe('true');
+    expect(speedDialStyles).toMatch(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{[^}]*background:\s*transparent;[^}]*border-color:\s*transparent;[^}]*box-shadow:\s*none;/s,
+    );
+  });
+
+  test('open and reduced-motion styles preserve the same closed resting reset', () => {
+    expect(speedDialStyles).toMatch(
+      /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{[^}]*pointer-events:\s*auto;/s,
+    );
+    expect(speedDialStyles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
+    );
+    expect(speedDialStyles).toMatch(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)[\s\S]*?\.cinder-speed-dial-action\s*\{[^}]*opacity:\s*0;/s,
+    );
+  });
+
+  test('open and post-close settled states keep the surface mounted and unavailable when closed', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(true);
+    expect(toolbar.hasAttribute('inert')).toBe(false);
+    expect(toolbar.hasAttribute('aria-hidden')).toBe(false);
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    expect(screen.getByRole('toolbar', { name: 'Actions', hidden: true })).toBe(toolbar);
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+    expect(toolbar.hasAttribute('inert')).toBe(true);
+    expect(toolbar.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('empty aria-label falls back to the default accessible name', () => {

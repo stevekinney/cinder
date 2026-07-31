@@ -26,6 +26,18 @@
     overflow-y: auto;
   }
 
+  /*
+   * Keep the action surface mounted while its children play their exit
+   * transition, but remove the shared floating-surface chrome from the
+   * settled closed state. The surface remains inert and aria-hidden in the
+   * component markup, so this is purely a visual reset.
+   */
+  .cinder-speed-dial__actions:not([data-cinder-open]) {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+  }
+
   .cinder-speed-dial__actions[data-cinder-direction='up'] {
     flex-direction: column-reverse;
   }
