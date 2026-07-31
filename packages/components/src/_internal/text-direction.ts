@@ -478,17 +478,31 @@ function splitTopLevel(conditionText: string, operator: 'and' | 'or'): string[] 
   const parts: string[] = [];
   let depth = 0;
   let start = 0;
-  const pattern = new RegExp(`\\s+${operator}\\s+`, 'gi');
-  for (const match of conditionText.matchAll(pattern)) {
-    const index = match.index ?? 0;
-    for (const character of conditionText.slice(start, index)) {
-      if (character === '(') depth += 1;
-      if (character === ')') depth -= 1;
+  let index = 0;
+  while (index < conditionText.length) {
+    const character = conditionText[index];
+    if (character === '(') {
+      depth += 1;
+      index += 1;
+      continue;
     }
-    if (depth === 0) {
+    if (character === ')') {
+      depth = Math.max(0, depth - 1);
+      index += 1;
+      continue;
+    }
+    if (
+      depth === 0 &&
+      conditionText.slice(index, index + operator.length) === operator &&
+      /\s/.test(conditionText[index - 1] ?? '') &&
+      /\s/.test(conditionText[index + operator.length] ?? '')
+    ) {
       parts.push(conditionText.slice(start, index));
-      start = index + match[0].length;
+      index += operator.length;
+      start = index;
+      continue;
     }
+    index += 1;
   }
   parts.push(conditionText.slice(start));
   return parts;

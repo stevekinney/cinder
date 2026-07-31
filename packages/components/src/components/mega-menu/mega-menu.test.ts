@@ -417,6 +417,57 @@ describe('MegaMenu', () => {
     expect(document.activeElement).toBe(resources);
   });
 
+  test('does not recreate ResizeObserver after its initial delivery', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    class StubResizeObserver {
+      static instances: StubResizeObserver[] = [];
+      constructor(private readonly callback: ResizeObserverCallback) {
+        StubResizeObserver.instances.push(this);
+      }
+      observe() {}
+      disconnect() {}
+      deliver() {
+        this.callback([], this as unknown as ResizeObserver);
+      }
+    }
+    globalThis.ResizeObserver = StubResizeObserver as unknown as typeof ResizeObserver;
+    try {
+      render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+      const observer = StubResizeObserver.instances[0];
+      observer?.deliver();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(StubResizeObserver.instances).toHaveLength(1);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('subscribes to media-query changes and cleans up on unmount', async () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    const mediaQuery = {
+      matches: false,
+      media: '(prefers-color-scheme: dark)',
+      addEventListener: (_type: string, listener: EventListener) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: EventListener) => listeners.delete(listener),
+    } as unknown as MediaQueryList;
+    globalThis.matchMedia = (() => mediaQuery) as typeof matchMedia;
+    const style = document.createElement('style');
+    style.textContent =
+      '@media (prefers-color-scheme: dark) { .media-direction { direction: ltr; } }';
+    document.head.append(style);
+    const view = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(listeners.size).toBeGreaterThan(0);
+    } finally {
+      view.unmount();
+      expect(listeners.size).toBe(0);
+      style.remove();
+      globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
   test('restamps inherited direction after an ancestor mutation', async () => {
     const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
     const nav = container.querySelector('nav');

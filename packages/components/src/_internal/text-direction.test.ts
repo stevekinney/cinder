@@ -750,6 +750,73 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('preserves grouped OR precedence under an outer AND', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 320, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'grouped-or-container-ltr';
+    container.append(element);
+    document.body.append(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.grouped-or-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container ((max-width: 30rem) or (width > 50rem)) and (width > 40rem) {}',
+      type: 0,
+      conditionText: '((max-width: 30rem) or (width > 50rem)) and (width > 40rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('rtl');
+  });
+
+  test('matches balanced function values in style queries', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('--swatch', 'rgb(0 0 0)');
+    const element = document.createElement('div');
+    element.className = 'balanced-style-container-ltr';
+    container.append(element);
+    document.body.append(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.balanced-style-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container style(--swatch: rgb(0 0 0)) {}',
+      type: 0,
+      conditionText: 'style(--swatch: rgb(0 0 0))',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('scans same-origin linked stylesheets inside a shadow root', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    Object.defineProperty(link, 'sheet', {
+      configurable: true,
+      value: {
+        cssRules: [createStyleRule({ selectorText: '.shadow-linked-ltr', direction: 'ltr' })],
+      },
+    });
+    const element = document.createElement('div');
+    element.className = 'shadow-linked-ltr';
+    shadow.append(link, element);
+    document.body.append(host);
+    expect(withDocumentStyleSheets([], () => resolveTextDirection(element, 'rtl'))).toBe('ltr');
+  });
+
   test('rejects an equality container query outside its exact width', () => {
     // `(width: 20rem)` has no min-/max- prefix and no comparison operator,
     // so neither the minimum/maximum captures nor evaluateRangeComparisons()
