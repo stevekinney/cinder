@@ -65,7 +65,7 @@ function staticStringBindings(source: string): Map<string, string> {
     if (
       !isRecord(statement) ||
       statement['type'] !== 'VariableDeclaration' ||
-      statement['kind'] !== 'const'
+      !['const', 'let', 'var'].includes(String(statement['kind']))
     )
       continue;
     const declarations = statement['declarations'];

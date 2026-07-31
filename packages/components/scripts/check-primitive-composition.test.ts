@@ -92,6 +92,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('invalidates prior hidden proof after a nested unresolvable object spread', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<input {...{ type: 'hidden', ...attrs }} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('allows a later static hidden type to re-establish proof after a dynamic spread', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -339,6 +348,12 @@ describe('primitive composition guard', () => {
       expect(cssPrimitiveCounts(source).grid).toBe(1);
   });
 
+  test('pairs selectors that can overlap through a tag and a class anchor', () => {
+    expect(
+      cssPrimitiveCounts('.layout { display: grid; } section { grid-template-columns: 1fr; }').grid,
+    ).toBe(1);
+  });
+
   test('recognizes row, area, auto-column, and grid shorthand layouts', () => {
     for (const property of [
       'grid-template-rows',
@@ -530,6 +545,24 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('keeps a top-level conditional style write reachable with its initializer', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; if (compact) layout = { display: 'block' };</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('resolves style-object aliases through mutable bindings', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; let layout = gridStyle;</script><div style={layout}></div>",
+        'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('resolves a conditional/logical expression assigned to a mutable style-object binding', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -641,6 +674,26 @@ describe('primitive composition guard', () => {
         `<script>import { classNames } from '../../utilities/class-names.ts'; let className;</script><div class={classNames('cinder-_floating-surface', 'menu', className)}></div>`,
       ),
     ).toEqual([]);
+  });
+
+  test('retains dynamic attributes when matching shared floating targets', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu[data-open] { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        '<script>let open = true;</script><div class="menu cinder-_floating-surface" data-open={open}></div>',
+      ),
+    ).toEqual([]);
+  });
+
+  test('does not exempt a shared selector when an uncomposed sibling also matches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.menu { position: absolute; z-index: 1; }',
+        'new-menu/new-menu.css',
+        '<div class="menu cinder-_floating-surface"></div><div class="menu"></div>',
+      ),
+    ).toHaveLength(1);
   });
 
   test('scopes the floating-surface exemption to the matching rendered element', () => {
@@ -803,6 +856,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('evaluates compound polymorphic tag assignments', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'custom-'; tag += 'input';</script><svelte:element this={tag} />",
+        'polymorphic/polymorphic.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('keeps grid style branches independent', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -939,6 +1001,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         `<script lang="ts">const tag = 'label' as const;</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>`,
+        'new-field/new-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('resolves mutable polymorphic label bindings for field-wrapper evidence', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'label';</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
         'new-field/new-field.svelte',
       ),
     ).toHaveLength(1);

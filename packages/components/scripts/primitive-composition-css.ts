@@ -11,6 +11,7 @@ export type SharedFloatingTarget = {
   id?: string;
   classes: ReadonlySet<string>;
   attributes: ReadonlyMap<string, string | true>;
+  shared?: boolean;
 };
 
 export const gridDefinitionProperties = [
@@ -217,8 +218,13 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
       kind === 'any' &&
       alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right)),
   );
+  const tagCrossAnchor =
+    (left.tag !== undefined &&
+      (right.id !== undefined || right.classes.size > 0 || right.attributes.size > 0)) ||
+    (right.tag !== undefined &&
+      (left.id !== undefined || left.classes.size > 0 || left.attributes.size > 0));
   return (
-    (shareAnchor || functionalAnchor) &&
+    (shareAnchor || tagCrossAnchor || functionalAnchor) &&
     !hasConflictingAttribute &&
     (left.id === undefined || right.id === undefined || left.id === right.id) &&
     (left.tag === undefined || right.tag === undefined || left.tag === right.tag)
@@ -528,11 +534,20 @@ export function cssPrimitiveCounts(
             ([positionTarget, zIndexTarget]) => {
               if (isInternalLayerTarget(positionTarget) || isInternalLayerTarget(zIndexTarget))
                 return false;
-              const sharedPair = sharedTargets.some(
+              const matchingTargets = sharedTargets.filter(
                 (sharedTarget) =>
                   targetMatchesSharedFloatingElement(positionTarget, sharedTarget) &&
                   targetMatchesSharedFloatingElement(zIndexTarget, sharedTarget),
               );
+              const sharedPair =
+                matchingTargets.length > 0 &&
+                sharedTargets
+                  .filter(
+                    (target) =>
+                      targetMatchesSharedFloatingElement(positionTarget, target) &&
+                      targetMatchesSharedFloatingElement(zIndexTarget, target),
+                  )
+                  .every((target) => target.shared !== false);
               const bothExplicitlyShared =
                 positionTarget.classes.has('cinder-_floating-surface') &&
                 zIndexTarget.classes.has('cinder-_floating-surface');

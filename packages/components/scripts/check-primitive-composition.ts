@@ -234,6 +234,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
   if (instanceContent === undefined && !isRecord(root['fragment'])) return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
+  const mutableValues = new Map<string, Set<string>>();
   const walkTopLevel = (current: unknown, shadowed = false): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
@@ -271,6 +272,50 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       node['left']['name'] === bindingName
     )
       candidate = node['right'];
+    if (
+      !currentShadowed &&
+      node['type'] === 'AssignmentExpression' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      node['left']['name'] === bindingName &&
+      node['operator'] !== '=' &&
+      node['operator'] === '+='
+    ) {
+      const rightValues = possibleStaticStringsFromExpression(node['right'], bindings);
+      const previousValues = mutableValues.get(bindingName) ?? new Set<string>();
+      const combined = new Set<string>();
+      for (const previous of previousValues)
+        for (const right of rightValues) combined.add(previous + right);
+      candidate = undefined;
+      mutableValues.set(bindingName, combined);
+      for (const value of combined) {
+        const normalizedValue = value.toLowerCase();
+        if (
+          normalizedValue === 'input' ||
+          normalizedValue === 'select' ||
+          normalizedValue === 'textarea'
+        )
+          possibleControls.add(normalizedValue);
+      }
+    }
+    if (
+      !currentShadowed &&
+      node['type'] === 'VariableDeclarator' &&
+      isRecord(node['id']) &&
+      node['id']['type'] === 'Identifier' &&
+      node['id']['name'] === bindingName
+    ) {
+      mutableValues.set(bindingName, possibleStaticStringsFromExpression(node['init'], bindings));
+    } else if (
+      !currentShadowed &&
+      node['type'] === 'AssignmentExpression' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      node['left']['name'] === bindingName &&
+      node['operator'] === '='
+    ) {
+      mutableValues.set(bindingName, possibleStaticStringsFromExpression(node['right'], bindings));
+    }
     for (const candidateValue of possibleStaticStringsFromExpression(candidate, bindings)) {
       const normalizedValue = candidateValue.toLowerCase();
       if (
@@ -365,18 +410,35 @@ function hasStaticHiddenAttribute(
         typeIsHidden = undefined;
         continue;
       }
-      for (const property of expression['properties']) {
-        if (!isRecord(property)) continue;
-        const name = staticPropertyName(property);
-        if (name === 'hidden')
-          hiddenState =
-            isRecord(property['value']) &&
-            property['value']['type'] === 'Literal' &&
-            property['value']['value'] === true;
-        else if (soloInput && name === 'type')
-          typeIsHidden =
-            staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
-      }
+      const applyObjectProperties = (properties: unknown[]): void => {
+        for (const property of properties) {
+          if (!isRecord(property)) continue;
+          if (property['type'] === 'SpreadElement') {
+            const nested = property['argument'];
+            if (
+              isRecord(nested) &&
+              nested['type'] === 'ObjectExpression' &&
+              Array.isArray(nested['properties'])
+            )
+              applyObjectProperties(nested['properties']);
+            else {
+              hiddenState = undefined;
+              typeIsHidden = undefined;
+            }
+            continue;
+          }
+          const name = staticPropertyName(property);
+          if (name === 'hidden')
+            hiddenState =
+              isRecord(property['value']) &&
+              property['value']['type'] === 'Literal' &&
+              property['value']['value'] === true;
+          else if (soloInput && name === 'type')
+            typeIsHidden =
+              staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
+        }
+      };
+      applyObjectProperties(expression['properties']);
       continue;
     }
     if (attribute['type'] !== 'Attribute') continue;
@@ -563,7 +625,7 @@ function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement' && node['type'] !== 'SvelteElement') return;
     const classes = elementClassSet(node, bindings);
-    if (!classes.has('cinder-_floating-surface')) return;
+    const shared = classes.has('cinder-_floating-surface');
     const attributes = new Map<string, string | true>();
     let id: string | undefined;
     if (Array.isArray(node['attributes']))
@@ -575,8 +637,8 @@ function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
           attribute['name'] === 'class'
         )
           continue;
-        const value = attribute['value'] === true ? true : staticAttributeValue(attribute);
-        if (value === undefined) continue;
+        const value =
+          attribute['value'] === true ? true : (staticAttributeValue(attribute) ?? true);
         attributes.set(attribute['name'].toLowerCase(), value);
         if (attribute['name'] === 'id' && typeof value === 'string') id = value;
       }
@@ -592,6 +654,7 @@ function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
         ...(id === undefined ? {} : { id }),
         classes,
         attributes,
+        shared,
       });
   });
   return targets;

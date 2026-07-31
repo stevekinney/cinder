@@ -163,6 +163,7 @@ function declaresNameWithinFunctionScope(node: unknown, name: string): boolean {
 
 function resolvedAssignmentValue(
   rawValue: unknown,
+  bindings: ReadonlyMap<string, unknown[]> = new Map(),
 ): { set: true; value: unknown } | { set: false } {
   const value = unwrapTypeExpression(rawValue);
   if (
@@ -173,6 +174,10 @@ function resolvedAssignmentValue(
   )
     return { set: true, value };
   if (isRecord(value) && value['type'] === 'Literal') return { set: true, value: value['value'] };
+  if (isRecord(value) && value['type'] === 'Identifier' && typeof value['name'] === 'string') {
+    const candidates = bindings.get(value['name']);
+    if (candidates?.length === 1) return { set: true, value: candidates[0] };
+  }
   return { set: false };
 }
 
@@ -202,7 +207,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         continue;
       const name = declaration['id']['name'];
       if (statement['kind'] !== 'const') mutableBindings.add(name);
-      const resolved = resolvedAssignmentValue(declaration['init']);
+      const resolved = resolvedAssignmentValue(declaration['init'], bindings);
       if (resolved.set) bindings.set(name, [resolved.value]);
       else bindings.delete(name);
     }
@@ -223,10 +228,28 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   // initial render looked like, so it's recorded as an *additional*
   // reachable value rather than replacing the existing one — the same way a
   // ConditionalExpression's branches are both kept.
-  const walk = (node: unknown, shadowed: ReadonlySet<string>, insideFunction: boolean): void => {
+  const walk = (
+    node: unknown,
+    shadowed: ReadonlySet<string>,
+    insideFunction: boolean,
+    conditional: boolean,
+  ): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
     let currentInsideFunction = insideFunction;
+    let currentConditional = conditional;
+    if (
+      [
+        'IfStatement',
+        'SwitchStatement',
+        'ForStatement',
+        'ForInStatement',
+        'ForOfStatement',
+        'WhileStatement',
+        'DoWhileStatement',
+      ].includes(String(node['type']))
+    )
+      currentConditional = true;
     if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||
@@ -254,8 +277,8 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       !currentShadowed.has(node['left']['name'])
     ) {
       const name = node['left']['name'];
-      const resolved = resolvedAssignmentValue(node['right']);
-      if (currentInsideFunction) {
+      const resolved = resolvedAssignmentValue(node['right'], bindings);
+      if (currentInsideFunction || currentConditional) {
         if (resolved.set) bindings.set(name, [...(bindings.get(name) ?? []), resolved.value]);
       } else if (resolved.set) {
         bindings.set(name, [resolved.value]);
@@ -265,11 +288,13 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     }
     for (const value of Object.values(node)) {
       if (Array.isArray(value))
-        for (const item of value) walk(item, currentShadowed, currentInsideFunction);
-      else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
+        for (const item of value)
+          walk(item, currentShadowed, currentInsideFunction, currentConditional);
+      else if (isRecord(value))
+        walk(value, currentShadowed, currentInsideFunction, currentConditional);
     }
   };
-  for (const statement of body) walk(statement, new Set(), false);
+  for (const statement of body) walk(statement, new Set(), false, false);
 
   return bindings;
 }
