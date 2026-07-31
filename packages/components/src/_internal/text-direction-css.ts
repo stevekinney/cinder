@@ -195,7 +195,7 @@ function isContainerQueryActive(
           ancestor.style.containerName ||
           ancestor.style.getPropertyValue('container-name');
         if (!name.split(/\s+/).includes(containerName)) {
-          ancestor = ancestor.parentElement;
+          ancestor = getParentElement(ancestor);
           continue;
         }
       }
@@ -291,28 +291,49 @@ function isContainerQueryActive(
     readInset('border-left-width', 'border-inline-start-width') +
     readInset('border-right-width', 'border-inline-end-width');
   const inlineInsets = verticalInlineAxis
-    ? readInset('padding-block-start', 'padding-top') +
-      readInset('padding-block-end', 'padding-bottom')
+    ? readInset('padding-top', 'padding-block-start') +
+      readInset('padding-bottom', 'padding-block-end')
     : physicalInsets;
   const inlineBorders = verticalInlineAxis
-    ? readInset('border-block-start-width', 'border-top-width') +
-      readInset('border-block-end-width', 'border-bottom-width')
+    ? readInset('border-top-width', 'border-block-start-width') +
+      readInset('border-bottom-width', 'border-block-end-width')
     : physicalBorders;
+  const readUsedContentSize = (
+    axis: 'width' | 'height',
+    fallback: number,
+    insets: number,
+    borders: number,
+  ) => {
+    const parsed = Number.parseFloat(computedContainerStyle[axis]);
+    if (!Number.isFinite(parsed)) return fallback;
+    const boxSizing = computedContainerStyle.boxSizing || container.style.boxSizing;
+    return boxSizing === 'border-box' ? Math.max(0, parsed - insets - borders) : parsed;
+  };
   const physicalClientSize = container.clientWidth;
   const inlineClientSize = verticalInlineAxis ? container.clientHeight : physicalClientSize;
   const width = Math.max(
     0,
     physicalClientSize > 0
       ? physicalClientSize - physicalInsets
-      : container.offsetWidth - physicalBorders - physicalInsets,
+      : readUsedContentSize(
+          'width',
+          container.offsetWidth - physicalBorders - physicalInsets,
+          physicalInsets,
+          physicalBorders,
+        ),
   );
   const inlineSize = Math.max(
     0,
     inlineClientSize > 0
       ? inlineClientSize - inlineInsets
-      : (verticalInlineAxis ? container.offsetHeight : container.offsetWidth) -
-          inlineBorders -
+      : readUsedContentSize(
+          verticalInlineAxis ? 'height' : 'width',
+          (verticalInlineAxis ? container.offsetHeight : container.offsetWidth) -
+            inlineBorders -
+            inlineInsets,
           inlineInsets,
+          inlineBorders,
+        ),
   );
   const rootFontSize = Number.parseFloat(
     getComputedStyle(element.ownerDocument.documentElement).fontSize,

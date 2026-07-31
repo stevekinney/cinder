@@ -150,7 +150,7 @@ function hasDirectionStylingHint(
   return false;
 }
 
-function composedParentElement(element: HTMLElement): HTMLElement | null {
+export function composedParentElement(element: HTMLElement): HTMLElement | null {
   if (element.parentElement) return element.parentElement;
   const root = element.getRootNode();
   return typeof ShadowRoot !== 'undefined' &&

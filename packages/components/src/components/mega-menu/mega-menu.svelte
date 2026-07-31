@@ -31,6 +31,7 @@
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import {
     elementDirectionStyleOverride,
+    composedParentElement,
     observeTextDirectionMediaQueries,
     observeTextDirection,
     resolveTextDirection,
@@ -326,6 +327,20 @@
   });
 
   $effect(() => {
+    if (!navElement) return;
+    const refresh = () => {
+      directionRevision += 1;
+      updateIndicator();
+    };
+    navElement.addEventListener('focusin', refresh);
+    navElement.addEventListener('focusout', refresh);
+    return () => {
+      navElement?.removeEventListener('focusin', refresh);
+      navElement?.removeEventListener('focusout', refresh);
+    };
+  });
+
+  $effect(() => {
     directionChainRevision;
     if (!navElement || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
@@ -335,7 +350,7 @@
     let current: HTMLElement | null = navElement;
     while (current) {
       observer.observe(current);
-      current = current.parentElement;
+      current = composedParentElement(current);
     }
     return () => observer.disconnect();
   });
