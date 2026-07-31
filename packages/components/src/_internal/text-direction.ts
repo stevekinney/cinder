@@ -13,9 +13,7 @@ export function elementDirectionStyleOverride(
   element: HTMLElement | null | undefined,
 ): TextDirection | undefined {
   if (!element) return undefined;
-  if (element.style.direction === 'rtl' || element.style.direction === 'ltr') {
-    return element.style.direction;
-  }
+  if (element.style.direction) return readComputedTextDirection(element);
   if (!matchesDirectionStyleRuleCached(element)) return undefined;
   return readComputedTextDirection(element);
 }
@@ -142,7 +140,11 @@ function hasDirectionStylingHint(
 }
 
 function matchesDirectionStyleRule(element: HTMLElement): boolean {
-  for (const sheet of Array.from(element.ownerDocument.styleSheets)) {
+  const styleSheets = [
+    ...Array.from(element.ownerDocument.styleSheets),
+    ...Array.from(element.ownerDocument.adoptedStyleSheets ?? []),
+  ];
+  for (const sheet of styleSheets) {
     if (!isActiveStyleSheet(sheet)) continue;
     let rules: CSSRuleList;
     try {
@@ -419,7 +421,10 @@ function isContainerQueryActive(
   const matches =
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
   const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
-  if (rangeResult !== undefined) return rangeResult;
+  if (rangeResult !== undefined) {
+    const negated = /^\s*not\b/i.test(conditionText);
+    return negated ? !(matches && !rangeResult) : matches && rangeResult;
+  }
   const equalityResult = evaluateEqualityComparison(conditionText, width, remSize);
   if (equalityResult !== undefined) return equalityResult;
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;
@@ -498,7 +503,10 @@ function evaluateContainerSizeCondition(
   const matches =
     (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
   const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
-  if (rangeResult !== undefined) return rangeResult;
+  if (rangeResult !== undefined) {
+    const negated = /^\s*not\b/i.test(conditionText);
+    return negated ? !(matches && !rangeResult) : matches && rangeResult;
+  }
   const equalityResult = evaluateEqualityComparison(conditionText, width, remSize);
   if (equalityResult !== undefined) return equalityResult;
   return /^\s*not\b/i.test(conditionText) ? !matches : matches;

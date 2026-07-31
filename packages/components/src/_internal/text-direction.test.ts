@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 import {
+  elementDirectionStyleOverride,
   isContainerRule,
   isRightToLeftElement,
   observeTextDirection,
@@ -30,6 +31,21 @@ function withDocumentStyleSheets<T>(styleSheets: unknown[], callback: () => T): 
     } else {
       Reflect.deleteProperty(document, 'styleSheets');
     }
+  }
+}
+
+function withDocumentAdoptedStyleSheets<T>(styleSheets: unknown[], callback: () => T): T {
+  const originalDescriptor = Object.getOwnPropertyDescriptor(document, 'adoptedStyleSheets');
+  Object.defineProperty(document, 'adoptedStyleSheets', {
+    configurable: true,
+    value: styleSheets,
+  });
+  try {
+    return callback();
+  } finally {
+    if (originalDescriptor)
+      Object.defineProperty(document, 'adoptedStyleSheets', originalDescriptor);
+    else Reflect.deleteProperty(document, 'adoptedStyleSheets');
   }
 }
 
@@ -122,6 +138,27 @@ describe('resolveTextDirection', () => {
         ignoreElementDirectionAttribute: true,
       }),
     ).toBe('ltr');
+  });
+
+  test('resolves non-literal inline direction declarations through computed style', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    try {
+      const element = document.createElement('div');
+      element.style.direction = 'var(--flow)';
+      document.body.append(element);
+      expect(elementDirectionStyleOverride(element)).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
   });
 
   test('can ignore a generated element direction while preserving its class style', () => {
@@ -897,6 +934,64 @@ describe('resolveTextDirection', () => {
       ).toBe('rtl');
     } finally {
       container.remove();
+    }
+  });
+
+  test('combines legacy min-width with conjunctive range constraints', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 240, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'mixed-constraint-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.mixed-constraint-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-width: 20rem) and (width <= 40rem) { .mixed-constraint-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20rem) and (width <= 40rem)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
+  test('includes adopted stylesheets in direction rule scans', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    try {
+      const element = document.createElement('div');
+      element.className = 'adopted-ltr';
+      document.body.append(element);
+      const sheet = {
+        cssRules: [createStyleRule({ selectorText: '.adopted-ltr', direction: 'ltr' })],
+      };
+      expect(
+        withDocumentStyleSheets([], () =>
+          withDocumentAdoptedStyleSheets([sheet], () => resolveTextDirection(element, 'rtl')),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
     }
   });
 
