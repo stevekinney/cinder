@@ -109,7 +109,7 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 72 });
   });
 
-  test('keeps a cancelled native gesture active until its pointer is released', async () => {
+  test('settles a cancelled native gesture after the scroll-end debounce', async () => {
     jest.useFakeTimers();
     const { container } = render(Carousel, { slides });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
@@ -118,15 +118,26 @@ describe('Carousel', () => {
     await fireEvent.pointerDown(viewport, { pointerId: 73, pointerType: 'touch' });
     await fireEvent.pointerCancel(window, { pointerId: 73 });
 
-    // The browser can cancel pointer events while the finger remains down.
-    // The cancelled gesture must retain native-scroll ownership past the
-    // debounce window, or the alignment effect can snap the track mid-pan.
-    jest.advanceTimersByTime(100);
-    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(false);
-
-    await fireEvent.pointerUp(window, { pointerId: 73 });
+    // pointercancel terminates the browser pointer stream, so native-scroll
+    // ownership must settle from the scroll-end debounce rather than waiting
+    // for a pointerup that will never arrive.
     jest.advanceTimersByTime(100);
     expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+  });
+
+  test('keeps interaction active while another pointer remains down', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const liveRegion = container.querySelector('[aria-live]');
+
+    await fireEvent.pointerDown(viewport, { pointerId: 74, pointerType: 'touch' });
+    await fireEvent.pointerDown(viewport, { pointerId: 75, pointerType: 'touch' });
+    await fireEvent.pointerUp(window, { pointerId: 74 });
+    jest.advanceTimersByTime(100);
+
+    expect(liveRegion?.getAttribute('aria-live')).toBe('polite');
+    await fireEvent.pointerUp(window, { pointerId: 75 });
   });
 
   test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {

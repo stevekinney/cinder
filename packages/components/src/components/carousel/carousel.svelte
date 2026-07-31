@@ -60,7 +60,6 @@
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
   const activePointerIds = new SvelteSet<number>();
-  const cancelledPointerIds = new SvelteSet<number>();
   let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
   let scrollFrame: number | null = null;
   let cachedViewportInlineSize = 0;
@@ -291,19 +290,12 @@
   }
 
   function finishPointerInteraction(event: PointerEvent): void {
-    isInteracting = false;
     if (event.type === 'pointercancel') {
-      // A browser takeover cancels pointer events before the user's finger
-      // necessarily leaves the surface. Keep the pointer tracked until the
-      // matching pointerup so the resting alignment effect cannot run while
-      // the cancelled gesture is still physically held.
-      cancelledPointerIds.add(event.pointerId);
       scheduleNativeScrollEnd();
-      return;
     }
     activePointerIds.delete(event.pointerId);
-    cancelledPointerIds.delete(event.pointerId);
     if (activePointerIds.size > 0) return;
+    isInteracting = false;
     removePointerEndListeners();
     if (isNativeScrolling) scheduleNativeScrollEnd();
   }
@@ -328,8 +320,6 @@
     // height for the duration of an ordinary click.
     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
 
-    for (const pointerId of cancelledPointerIds) activePointerIds.delete(pointerId);
-    cancelledPointerIds.clear();
     programmaticTarget = null;
     isAutoplayTransitioning = false;
     isInteracting = true;
@@ -352,7 +342,6 @@
   function onWindowBlur(): void {
     const wasInteracting = isInteracting;
     activePointerIds.clear();
-    cancelledPointerIds.clear();
     isInteracting = false;
     removePointerEndListeners();
     // Only relinquish programmatic/autoplay ownership if blur is actually
