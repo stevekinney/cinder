@@ -152,6 +152,42 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('keeps unnamed radios as independent tab stops', () => {
+    const region = document.createElement('div');
+    const first = document.createElement('input');
+    first.type = 'radio';
+    const second = document.createElement('input');
+    second.type = 'radio';
+    region.append(first, second);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(first);
+    expect(targets).toContain(second);
+    region.remove();
+  });
+
+  test('keeps a tabindex div with a disabled attribute in the sequential order', () => {
+    const region = document.createElement('div');
+    const candidate = document.createElement('div');
+    candidate.setAttribute('tabindex', '0');
+    candidate.setAttribute('disabled', '');
+    region.append(candidate);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(candidate);
+    region.remove();
+  });
+
+  test('recognizes a radio from a foreign document without instanceof checks', () => {
+    const foreignDocument = new DOMParser().parseFromString(
+      '<input type="radio" name="foreign">',
+      'text/html',
+    );
+    const foreignRadio = foreignDocument.querySelector('input') as HTMLElement;
+    expect(getSequentialFocusTargets(foreignDocument)).toContain(foreignRadio);
+  });
+
   test('excludes hidden, inert, disabled, and negative-tabindex candidates', () => {
     const region = document.createElement('div');
     const visible = document.createElement('button');

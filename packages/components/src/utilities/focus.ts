@@ -66,38 +66,37 @@ export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[
   ).filter(isSequentialCandidate);
   const radios: {
     root: Node;
-    form: HTMLFormElement | null;
+    form: HTMLElement | null;
     name: string;
-    members: HTMLInputElement[];
+    members: HTMLElement[];
   }[] = [];
   for (const candidate of candidates) {
-    if (!(candidate instanceof HTMLInputElement) || candidate.type !== 'radio') continue;
+    if (!isRadio(candidate)) continue;
     const rootNode = candidate.getRootNode();
+    const name = candidate.getAttribute('name') ?? '';
+    if (name === '') continue;
+    const formValue = 'form' in candidate ? (candidate as { form?: unknown }).form : null;
+    const form = isElementNode(formValue) ? formValue : null;
     const group = radios.find(
-      (entry) =>
-        entry.root === rootNode && entry.form === candidate.form && entry.name === candidate.name,
+      (entry) => entry.root === rootNode && entry.form === form && entry.name === name,
     );
     if (group) group.members.push(candidate);
     else
       radios.push({
         root: rootNode,
-        form: candidate.form,
-        name: candidate.name,
+        form,
+        name,
         members: [candidate],
       });
   }
   const radioRepresentatives = new Set(
-    radios.flatMap(({ members }) => [members.find((radio) => radio.checked) ?? members[0]]),
+    radios.flatMap(({ members }) => [
+      members.find((radio) => 'checked' in radio && radio.checked) ?? members[0],
+    ]),
   );
+  const groupedRadios = new Set(radios.flatMap(({ members }) => members));
   return candidates
-    .filter(
-      (candidate) =>
-        !(
-          candidate instanceof HTMLInputElement &&
-          candidate.type === 'radio' &&
-          !radioRepresentatives.has(candidate)
-        ),
-    )
+    .filter((candidate) => !(groupedRadios.has(candidate) && !radioRepresentatives.has(candidate)))
     .sort((left, right) => {
       const leftTabIndex = explicitTabIndex(left);
       const rightTabIndex = explicitTabIndex(right);
@@ -113,7 +112,6 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
   if (
     (rawTabIndex !== null && rawTabIndex.trim() !== '' && !Number.isFinite(Number(rawTabIndex))) ||
     (rawTabIndex !== null && candidate.tabIndex < 0) ||
-    candidate.hasAttribute('disabled') ||
     candidate.matches(':disabled') ||
     closestComposed(candidate, '[hidden], [inert], [aria-hidden="true"]') !== null ||
     !isRendered(candidate)
@@ -121,6 +119,10 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
     return false;
   if (candidate.matches('summary')) return isFirstDetailsSummary(candidate);
   return true;
+}
+
+function isRadio(element: HTMLElement): boolean {
+  return element.localName === 'input' && element.getAttribute('type')?.toLowerCase() === 'radio';
 }
 
 function explicitTabIndex(element: HTMLElement): number {
