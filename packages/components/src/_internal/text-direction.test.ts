@@ -1273,8 +1273,10 @@ describe('resolveTextDirection', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
     container.style.setProperty('writing-mode', 'vertical-rl');
-    container.style.paddingBlockStart = '20px';
-    container.style.paddingBlockEnd = '20px';
+    container.style.paddingInlineStart = '100px';
+    container.style.paddingInlineEnd = '100px';
+    container.style.borderInlineStartWidth = '1px';
+    container.style.borderInlineEndWidth = '1px';
     Object.defineProperty(container, 'offsetWidth', { value: 100, configurable: true });
     Object.defineProperty(container, 'offsetHeight', { value: 500, configurable: true });
     const element = document.createElement('div');
@@ -1297,7 +1299,7 @@ describe('resolveTextDirection', () => {
         withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
           resolveTextDirection(element, 'rtl'),
         ),
-      ).toBe('ltr');
+      ).toBe('rtl');
     } finally {
       container.remove();
     }

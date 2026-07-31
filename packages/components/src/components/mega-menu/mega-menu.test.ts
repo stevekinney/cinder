@@ -473,22 +473,37 @@ describe('MegaMenu', () => {
   });
 
   test('focus state changes re-resolve direction for keyboard navigation', async () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    let focused = false;
     const style = document.createElement('style');
-    style.textContent = '.cinder-mega-menu:focus-within { direction: ltr; }';
+    style.textContent = '.cinder-mega-menu { direction: ltr; }';
     document.head.append(style);
+    const getComputedStyleOverride = ((target: Element) => {
+      const computed = originalWindowGetComputedStyle(target);
+      if (target.matches('nav'))
+        Object.defineProperty(computed, 'direction', {
+          value: focused ? 'ltr' : 'rtl',
+          configurable: true,
+        });
+      return computed;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
     try {
       const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
       const products = getTriggerByLabel(container, 'Products');
       const resources = getTriggerByLabel(container, 'Resources');
-      const nav = container.querySelector('nav');
-      nav?.addEventListener('focusin', () => nav.style.setProperty('direction', 'ltr'), {
-        once: true,
-      });
       products.focus();
+      focused = true;
+      await fireEvent.focusIn(products);
+      await new Promise((resolve) => setTimeout(resolve, 0));
       await fireEvent.keyDown(products, { key: 'ArrowRight' });
       expect(document.activeElement).toBe(resources);
     } finally {
       style.remove();
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
     }
   });
 
