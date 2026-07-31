@@ -2789,7 +2789,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         console.warn(
           `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: renderer fallback was used`,
         );
-        preparedShellServerRenderer = null;
+        resetShellRendererWarmupState();
         continue;
       }
     } catch (error) {
@@ -2819,6 +2819,9 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       if (needsPrebuild) {
         // Any source change can make the eager browser bundles stale. Restore
         // the bundle guarantee before advertising readiness.
+        if (generationAtStart === rebuildGeneration) {
+          invalidateCachesForChange({ kind: 'components' });
+        }
         prebuild = await eagerPrebuildAll();
         if (!prebuild.shellSucceeded) break;
       }

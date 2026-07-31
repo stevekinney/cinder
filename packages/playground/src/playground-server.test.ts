@@ -302,9 +302,14 @@ describe('startup warmup stability', () => {
     expect(rendererWarmup).toContain('rendererWarmupNeedsPrebuild(');
     expect(rendererWarmup).toContain('if (needsPrebuild)');
     expect(rendererWarmup).toContain('prebuild = await eagerPrebuildAll()');
+    expect(rendererWarmup).toContain('if (generationAtStart === rebuildGeneration)');
+    expect(rendererWarmup).toContain('resetShellRendererWarmupState();\n        continue;');
     expect(rendererWarmup.indexOf('resetShellRendererWarmupState()')).toBeLessThan(
       rendererWarmup.indexOf('if (needsPrebuild)'),
     );
+    expect(
+      rendererWarmup.indexOf("invalidateCachesForChange({ kind: 'components' })"),
+    ).toBeLessThan(rendererWarmup.indexOf('prebuild = await eagerPrebuildAll()'));
   });
 });
 
