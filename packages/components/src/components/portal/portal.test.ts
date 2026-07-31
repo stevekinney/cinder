@@ -259,6 +259,7 @@ describe('Portal', () => {
   });
 
   test('does not let a generated outer portal direction mask inner computed direction', () => {
+    document.documentElement.setAttribute('dir', 'ltr');
     const outerWrapper = document.createElement('div');
     outerWrapper.setAttribute('dir', 'ltr');
     outerWrapper.setAttribute('data-cinder-portal-inherited-direction', 'true');

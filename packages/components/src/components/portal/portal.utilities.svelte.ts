@@ -254,12 +254,17 @@ export function copyInheritedPortalAttributes(
     let directionSource: HTMLElement | null = source;
     while (directionSource) {
       const matchingDirection: HTMLElement | null = directionSource.closest<HTMLElement>('[dir]');
-      if (!matchingDirection) break;
+      if (!matchingDirection) {
+        directionSource = getShadowHost(directionSource);
+        continue;
+      }
       if (!matchingDirection.hasAttribute(inheritedDirectionAttribute)) {
         inheritedDir = matchingDirection.getAttribute('dir');
         break;
       }
-      directionSource = matchingDirection.parentElement ?? getShadowHost(matchingDirection);
+      inheritedDir =
+        typeof getComputedStyle === 'function' ? getComputedStyle(source).direction : null;
+      break;
     }
     if (inheritedDir === null && typeof getComputedStyle === 'function') {
       inheritedDir = getComputedStyle(source).direction;
@@ -523,43 +528,146 @@ type ComputedDirectionObservation = {
 };
 
 const computedDirectionObservations = new Set<ComputedDirectionObservation>();
-let computedDirectionFrame: number | null = null;
+const observedMediaQueries = new Map<string, MediaQueryList>();
+let directionInvalidationObserver: MutationObserver | null = null;
+let directionInvalidationFrame: number | null = null;
+let directionInvalidationDocument: Document | null = null;
+let directionInvalidationStarted = false;
 
-// CSSOM and media-query changes do not reliably produce DOM mutations. A single shared frame loop
-// samples only currently mounted portal sources, rather than scheduling one timer per attachment,
-// and is canceled as soon as the last portal unmounts.
-function observeComputedDirection(source: HTMLElement, sync: () => void): () => void {
-  if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
-    return () => {};
+function invalidateComputedDirections() {
+  if (directionInvalidationFrame !== null || typeof window === 'undefined') return;
+  if (typeof window.requestAnimationFrame !== 'function') {
+    syncComputedDirections();
+    return;
   }
+  directionInvalidationFrame = window.requestAnimationFrame(() => {
+    directionInvalidationFrame = null;
+    syncComputedDirections();
+  });
+}
 
+function syncComputedDirections() {
+  for (const current of computedDirectionObservations) {
+    const direction = getComputedStyle(current.source).direction;
+    if (direction === current.direction) continue;
+    current.direction = direction;
+    current.sync();
+  }
+}
+
+function collectMediaQueries(rules: CSSRuleList | Iterable<CSSRule>, queries: Set<string>) {
+  for (const rule of Array.from(rules)) {
+    const conditionText = Reflect.get(rule, 'conditionText');
+    const media = Reflect.get(rule, 'media');
+    if (typeof conditionText === 'string' && media && typeof media === 'object') {
+      queries.add(conditionText);
+    }
+    const nestedRules = Reflect.get(rule, 'cssRules');
+    if (isCssRuleCollection(nestedRules)) {
+      try {
+        collectMediaQueries(nestedRules, queries);
+      } catch {
+        // Cross-origin stylesheets and inaccessible CSS rule lists are ignored.
+      }
+    }
+  }
+}
+
+function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
+  if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
+  return typeof value === 'object' && value !== null && Symbol.iterator in value;
+}
+
+function refreshMediaQueryObservers() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+  const queries = new Set<string>();
+  for (const stylesheet of Array.from(document.styleSheets)) {
+    try {
+      collectMediaQueries(stylesheet.cssRules, queries);
+    } catch {
+      // Cross-origin stylesheets are not script-readable.
+    }
+  }
+  for (const [query, mediaQuery] of observedMediaQueries) {
+    if (queries.has(query)) continue;
+    mediaQuery.removeEventListener?.('change', invalidateComputedDirections);
+    mediaQuery.removeListener?.(invalidateComputedDirections);
+    observedMediaQueries.delete(query);
+  }
+  for (const query of queries) {
+    if (observedMediaQueries.has(query)) continue;
+    const mediaQuery = window.matchMedia(query);
+    mediaQuery.addEventListener?.('change', invalidateComputedDirections);
+    mediaQuery.addListener?.(invalidateComputedDirections);
+    observedMediaQueries.set(query, mediaQuery);
+  }
+}
+
+function startDirectionInvalidationObservers() {
+  if (directionInvalidationStarted || typeof document === 'undefined') return;
+  directionInvalidationStarted = true;
+  directionInvalidationDocument = document;
+  directionInvalidationObserver =
+    typeof MutationObserver === 'undefined'
+      ? null
+      : new MutationObserver((mutations) => {
+          if (mutations.some((mutation) => mutation.type === 'childList')) {
+            refreshMediaQueryObservers();
+          }
+          invalidateComputedDirections();
+        });
+  directionInvalidationObserver?.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'style', 'dir'],
+    childList: true,
+    subtree: true,
+  });
+  document.addEventListener('load', handleStylesheetLoad, true);
+  window.addEventListener('resize', invalidateComputedDirections);
+  window.addEventListener('orientationchange', invalidateComputedDirections);
+  refreshMediaQueryObservers();
+}
+
+function stopDirectionInvalidationObservers() {
+  if (computedDirectionObservations.size > 0) return;
+  directionInvalidationStarted = false;
+  directionInvalidationObserver?.disconnect();
+  directionInvalidationObserver = null;
+  directionInvalidationDocument?.removeEventListener('load', handleStylesheetLoad, true);
+  window.removeEventListener('resize', invalidateComputedDirections);
+  window.removeEventListener('orientationchange', invalidateComputedDirections);
+  for (const mediaQuery of observedMediaQueries.values()) {
+    mediaQuery.removeEventListener?.('change', invalidateComputedDirections);
+    mediaQuery.removeListener?.(invalidateComputedDirections);
+  }
+  observedMediaQueries.clear();
+  if (directionInvalidationFrame !== null) {
+    window.cancelAnimationFrame(directionInvalidationFrame);
+    directionInvalidationFrame = null;
+  }
+  directionInvalidationDocument = null;
+}
+
+function handleStylesheetLoad(event: Event) {
+  const target = event.target;
+  if (target instanceof HTMLLinkElement || target instanceof HTMLStyleElement) {
+    refreshMediaQueryObservers();
+    invalidateComputedDirections();
+  }
+}
+
+function observeComputedDirection(source: HTMLElement, sync: () => void): () => void {
   const observation: ComputedDirectionObservation = {
     source,
     direction: getComputedStyle(source).direction,
     sync,
   };
   computedDirectionObservations.add(observation);
-
-  const observeNextFrame = () => {
-    computedDirectionFrame = window.requestAnimationFrame(() => {
-      computedDirectionFrame = null;
-      for (const current of computedDirectionObservations) {
-        const direction = getComputedStyle(current.source).direction;
-        if (direction === current.direction) continue;
-        current.direction = direction;
-        current.sync();
-      }
-      if (computedDirectionObservations.size > 0) observeNextFrame();
-    });
-  };
-  if (computedDirectionFrame === null) observeNextFrame();
+  startDirectionInvalidationObservers();
 
   return () => {
     computedDirectionObservations.delete(observation);
-    if (computedDirectionObservations.size === 0 && computedDirectionFrame !== null) {
-      window.cancelAnimationFrame(computedDirectionFrame);
-      computedDirectionFrame = null;
-    }
+    stopDirectionInvalidationObservers();
   };
 }
 
