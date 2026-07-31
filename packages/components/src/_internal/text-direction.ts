@@ -56,8 +56,7 @@ export function resolveTextDirection(
     if (
       !styledDirectionElement &&
       currentElement !== currentElement.ownerDocument.documentElement &&
-      (currentElement.style.direction === 'rtl' ||
-        currentElement.style.direction === 'ltr' ||
+      (Boolean(currentElement.style.direction) ||
         matchesDirectionStyleRuleCached(
           currentElement,
           directionStyleRuleCache,

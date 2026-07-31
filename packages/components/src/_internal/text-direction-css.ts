@@ -371,6 +371,7 @@ export function observeTextDirectionMediaQueries(
 ): (() => void) | undefined {
   if (!element || typeof matchMedia !== 'function') return undefined;
   const sheets = new Set<CSSStyleSheet>(Array.from(element.ownerDocument.styleSheets));
+  for (const sheet of element.ownerDocument.adoptedStyleSheets ?? []) sheets.add(sheet);
   const root = element.getRootNode();
   if (typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot) {
     for (const sheet of root.adoptedStyleSheets) sheets.add(sheet);

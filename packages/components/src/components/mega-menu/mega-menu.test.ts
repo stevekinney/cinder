@@ -128,6 +128,15 @@ describe('MegaMenu', () => {
     expect(styles).toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\bleft:\s*0;/s);
     expect(styles).not.toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\binset-inline-start:/s);
     expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));');
+    expect(styles).toContain(
+      'grid-template-columns: minmax(min(10rem, 42%), 14rem) minmax(0, 1fr);',
+    );
+    expect(styles).toContain(
+      'grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));',
+    );
+    expect(styles).not.toMatch(
+      /@media\s*\(max-width:\s*36rem\)[\s\S]*?\.cinder-mega-menu__sub\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    );
   });
 
   test('keeps submenu trigger IDs unique for non-BMP labels', async () => {

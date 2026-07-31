@@ -110,7 +110,7 @@
   }
 
   .cinder-mega-menu__sub .cinder-mega-menu__sections {
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
     border-inline-start: 1px solid var(--cinder-border-muted);
     padding-inline-start: var(--cinder-space-4);
   }
@@ -146,19 +146,8 @@
   .cinder-mega-menu__sub {
     display: grid;
     gap: var(--cinder-space-4);
-    grid-template-columns: minmax(10rem, 14rem) minmax(0, 1fr);
+    grid-template-columns: minmax(min(10rem, 42%), 14rem) minmax(0, 1fr);
     align-items: start;
-  }
-
-  @media (max-width: 36rem) {
-    .cinder-mega-menu__sub {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .cinder-mega-menu__sub .cinder-mega-menu__sections {
-      border-inline-start: 0;
-      padding-inline-start: 0;
-    }
   }
 
   .cinder-mega-menu__submenu-trigger {

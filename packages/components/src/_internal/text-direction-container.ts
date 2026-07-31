@@ -86,10 +86,15 @@ export function hasUnsupportedContainerSizeQuery(conditionText: string): boolean
   if (/(?:min-|max-)?(?:height|block-size)\b/i.test(conditionText)) return true;
   if (/\baspect-ratio\b/i.test(conditionText)) return true;
   if (/\borientation\s*:/i.test(conditionText)) return true;
-  const unitMatches = conditionText.matchAll(
+  const featureFirstUnitMatches = conditionText.matchAll(
     /(?:min-|max-)?(?:width|inline-size)\s*(?:>=|>|<=|<|:)\s*[\d.]+([a-z%]+)/gi,
   );
-  return [...unitMatches].some((match) => !/^(?:px|rem)$/i.test(match[1]!));
+  const valueFirstUnitMatches = conditionText.matchAll(
+    /[\d.]+([a-z%]+)\s*(?:>=|>|<=|<)\s*(?:width|inline-size)/gi,
+  );
+  return [...featureFirstUnitMatches, ...valueFirstUnitMatches].some(
+    (match) => !/^(?:px|rem)$/i.test(match[1]!),
+  );
 }
 
 // A conjunctive range condition — e.g. `(width >= 20rem) and (width <= 40rem)`

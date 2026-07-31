@@ -3,6 +3,7 @@ import { loadManifest, VIEWPORTS } from '../src/helpers/manifest.ts';
 import { captureScreenshot } from '../src/helpers/screenshot.ts';
 
 const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop');
+const mobile = VIEWPORTS.find((viewport) => viewport.name === 'mobile');
 const megaMenuEntry = loadManifest().find((entry) => entry.slug === 'mega-menu');
 
 if (!megaMenuEntry) {
@@ -11,6 +12,10 @@ if (!megaMenuEntry) {
 
 if (!desktop) {
   throw new Error('Desktop viewport fixture is missing.');
+}
+
+if (!mobile) {
+  throw new Error('Mobile viewport fixture is missing.');
 }
 
 test('nested submenu keyboard navigation enters, traverses, and exits', async ({
@@ -58,6 +63,39 @@ test('nested submenu keyboard navigation enters, traverses, and exits', async ({
   await backend.press('Escape');
   await expect(products).toBeFocused();
   await expect(page.locator('.cinder-mega-menu__content')).toHaveCount(0);
+});
+
+test('mobile submenu layout preserves lateral navigation without overflowing', async ({
+  componentPage,
+}) => {
+  const page = await componentPage.open({
+    entry: megaMenuEntry,
+    theme: 'light',
+    viewport: mobile,
+  });
+
+  await page.getByRole('button', { name: 'Products' }).click();
+  const frontend = page.getByRole('button', { name: 'Frontend' });
+  await frontend.focus();
+  await frontend.press('ArrowDown');
+  const backend = page.getByRole('button', { name: 'Backend' });
+  await expect(backend).toBeFocused();
+  await backend.press('ArrowRight');
+  await expect(page.getByRole('link', { name: 'APIs' })).toBeFocused();
+
+  const layout = await page.locator('.cinder-mega-menu__sub').evaluate((submenu) => {
+    const list = submenu.querySelector('.cinder-mega-menu__submenu-list')?.getBoundingClientRect();
+    const panel = submenu
+      .querySelector('.cinder-mega-menu__submenu-panel')
+      ?.getBoundingClientRect();
+    if (!list || !panel) throw new Error('Missing nested submenu layout regions.');
+    return {
+      panelIsLateral: panel.left >= list.right,
+      viewportOverflows:
+        document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    };
+  });
+  expect(layout).toEqual({ panelIsLateral: true, viewportOverflows: false });
 });
 
 test('Accessibility shortcut alternatives wrap without overflowing', async ({ componentPage }) => {

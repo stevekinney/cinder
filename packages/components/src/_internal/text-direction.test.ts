@@ -7,6 +7,7 @@ import {
   isContainerRule,
   isRightToLeftElement,
   observeTextDirection,
+  observeTextDirectionMediaQueries,
   resolveTextDirection,
 } from './text-direction.ts';
 
@@ -678,6 +679,32 @@ describe('resolveTextDirection', () => {
     } finally {
       container.remove();
     }
+  });
+
+  test('treats a value-first unsupported unit as inactive', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 800, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'value-first-unsupported-unit-ltr';
+    container.append(element);
+    document.body.append(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.value-first-unsupported-unit-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container (40em >= width >= 20px) {}',
+      type: 0,
+      conditionText: '(40em >= width >= 20px)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('rtl');
   });
 
   test('treats a container size query with an unimplemented feature as inactive', () => {
@@ -1711,6 +1738,79 @@ describe('resolveTextDirection', () => {
     document.body.appendChild(outer);
 
     expect(resolveTextDirection(element)).toBe('ltr');
+  });
+
+  test('prefers a non-literal ancestor inline direction over a provider fallback', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const wrapper = document.createElement('section');
+    wrapper.style.direction = 'var(--flow)';
+    const element = document.createElement('div');
+    element.dir = 'rtl';
+    wrapper.append(element);
+    document.body.append(wrapper);
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      if (target === wrapper)
+        Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      expect(resolveTextDirection(element, 'rtl', { ignoreElementDirectionAttribute: true })).toBe(
+        'ltr',
+      );
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('observes media queries in document-adopted stylesheets', () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    const mediaRule = {
+      media: {},
+      conditionText: '(prefers-color-scheme: dark)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    globalThis.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+        },
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+    const element = document.createElement('div');
+    document.body.append(element);
+    let changes = 0;
+
+    try {
+      const disconnect = withDocumentStyleSheets([], () =>
+        withDocumentAdoptedStyleSheets([{ cssRules: [mediaRule] }], () =>
+          observeTextDirectionMediaQueries(element, () => {
+            changes += 1;
+          }),
+        ),
+      );
+      expect(listeners.size).toBe(1);
+      for (const listener of listeners) listener(new Event('change'));
+      expect(changes).toBe(1);
+      disconnect?.();
+      expect(listeners.size).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+    }
   });
 
   test('observes text mutations under auto direction sources', async () => {
