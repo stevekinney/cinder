@@ -2782,6 +2782,24 @@ export function warmupInstabilityReasons(
   return reasons;
 }
 
+/** Run warmup work after pending invalidation settles and validate its generation boundary. */
+export async function runGenerationCheckedWarmup<T>(
+  work: () => Promise<T>,
+): Promise<{ value: T; instabilityReasons: string[] }> {
+  const generationAtStart = await waitForPendingRebuild();
+  const value = await work();
+  return {
+    value,
+    instabilityReasons: warmupInstabilityReasons(
+      generationAtStart,
+      rebuildGeneration,
+      null,
+      null,
+      rebuildDebounceTimer !== null,
+    ),
+  };
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   startupReady = false;
@@ -2825,18 +2843,15 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
-    const generationAtStart = await waitForPendingRebuild();
-    prebuild = await eagerPrebuildAll();
-    await getManifests().catch((error: unknown) => {
-      console.error('[playground] manifest pre-warm failed:', error);
+    const prebuildAttempt = await runGenerationCheckedWarmup(async () => {
+      const result = await eagerPrebuildAll();
+      await getManifests().catch((error: unknown) => {
+        console.error('[playground] manifest pre-warm failed:', error);
+      });
+      return result;
     });
-    const instabilityReasons = warmupInstabilityReasons(
-      generationAtStart,
-      rebuildGeneration,
-      null,
-      null,
-      rebuildDebounceTimer !== null,
-    );
+    prebuild = prebuildAttempt.value;
+    const { instabilityReasons } = prebuildAttempt;
     if (instabilityReasons.length === 0) {
       stable = true;
       break;
@@ -2862,7 +2877,27 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   // Prepare the SSR shell renderer before advertising readiness. Requests must
   // never pay the cold Svelte server compilation cost on the first navigation.
   let rendererPrepared = false;
+  let bundlesNeedPrebuild = false;
   for (let attempt = 0; attempt < 5 && !rendererPrepared; attempt += 1) {
+    if (bundlesNeedPrebuild) {
+      const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAll);
+      prebuild = prebuildAttempt.value;
+      if (!prebuild.shellSucceeded) {
+        await dispose();
+        throw new Error(
+          '[playground] shell bundle failed to build during renderer retry — see logs above',
+        );
+      }
+      if (prebuildAttempt.instabilityReasons.length > 0) {
+        console.warn(
+          `[playground] renderer retry pre-build invalidated on attempt ${attempt + 1}/5: ${prebuildAttempt.instabilityReasons.join('; ')}`,
+        );
+        invalidateCachesForChange({ kind: 'components' });
+        continue;
+      }
+      bundlesNeedPrebuild = false;
+    }
+
     const generationAtStart = rebuildGeneration;
     const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
     try {
@@ -2901,7 +2936,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       resetShellRendererWarmupState();
       if (needsPrebuild) {
         // Any source change can make the eager browser bundles stale. Restore
-        // the bundle guarantee before advertising readiness.
+        // the bundle guarantee before advertising readiness. The next attempt
+        // validates the generation around that prebuild before loading another
+        // renderer, so an edit during the build cannot leave a partially cold
+        // cache behind a stable renderer result.
         await waitForPendingRebuild();
         if (
           rendererWarmupNeedsCacheInvalidation(
@@ -2912,8 +2950,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         ) {
           invalidateCachesForChange({ kind: 'components' });
         }
-        prebuild = await eagerPrebuildAll();
-        if (!prebuild.shellSucceeded) break;
+        bundlesNeedPrebuild = true;
       }
     }
   }

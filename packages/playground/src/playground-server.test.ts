@@ -19,7 +19,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { readFile, rm, writeFile } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import {
@@ -48,6 +48,7 @@ import {
   resolvePreferredPort,
   resolveRendererLoad,
   rewriteRepositoryRelativeReadmeLinks,
+  runGenerationCheckedWarmup,
   scheduleRebuild,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
@@ -303,6 +304,31 @@ describe('startup warmup stability', () => {
     expect(isWarmupStable(generationAtStart, getRebuildGeneration(), 100, 100)).toBe(true);
   });
 
+  it('rejects retry work when a rebuild settles before the work completes', async () => {
+    const generationBeforeWork = getRebuildGeneration();
+    const attempt = await runGenerationCheckedWarmup(async () => {
+      scheduleRebuild({ kind: 'components' });
+      await waitForPendingRebuild();
+      return 'prebuilt';
+    });
+
+    expect(attempt.value).toBe('prebuilt');
+    expect(attempt.instabilityReasons).toEqual([
+      `rebuild generation changed (${generationBeforeWork} -> ${generationBeforeWork + 1})`,
+    ]);
+  });
+
+  it('rejects retry work while rebuild invalidation is still pending', async () => {
+    const attempt = await runGenerationCheckedWarmup(async () => {
+      scheduleRebuild({ kind: 'components' });
+      return 'prebuilt';
+    });
+
+    expect(attempt.value).toBe('prebuilt');
+    expect(attempt.instabilityReasons).toEqual(['rebuild debounce is pending']);
+    await waitForPendingRebuild();
+  });
+
   it('rejects a warmup when source changes before watcher validation', () => {
     expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
     expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
@@ -319,7 +345,7 @@ describe('startup warmup stability', () => {
     expect(warmupInstabilityReasons(4, 4, 100, 100)).toEqual([]);
   });
 
-  it('only retries the full page pre-build after invalidation or a source change', async () => {
+  it('only requires a full page pre-build after invalidation or a source change', () => {
     expect(rendererWarmupNeedsPrebuild(false, false, false)).toBe(false);
     expect(rendererWarmupNeedsPrebuild(true, false, false)).toBe(true);
     expect(rendererWarmupNeedsPrebuild(false, true, false)).toBe(true);
@@ -328,22 +354,6 @@ describe('startup warmup stability', () => {
     expect(rendererWarmupNeedsCacheInvalidation(true, true, false)).toBe(true);
     expect(rendererWarmupNeedsCacheInvalidation(true, false, false)).toBe(false);
     expect(rendererWarmupNeedsCacheInvalidation(false, false, true)).toBe(true);
-    const source = await readFile(new URL('./playground-server.ts', import.meta.url), 'utf8');
-    const rendererWarmup = source.slice(
-      source.indexOf('  // Prepare the SSR shell renderer'),
-      source.indexOf('  if (!rendererPrepared)') + 1,
-    );
-    expect(rendererWarmup).toContain('rendererWarmupNeedsPrebuild(');
-    expect(rendererWarmup).toContain('if (needsPrebuild)');
-    expect(rendererWarmup).toContain('prebuild = await eagerPrebuildAll()');
-    expect(rendererWarmup).toContain('rendererWarmupNeedsCacheInvalidation(');
-    expect(rendererWarmup).toContain('resetShellRendererWarmupState();\n        continue;');
-    expect(rendererWarmup.indexOf('resetShellRendererWarmupState()')).toBeLessThan(
-      rendererWarmup.indexOf('if (needsPrebuild)'),
-    );
-    expect(
-      rendererWarmup.indexOf("invalidateCachesForChange({ kind: 'components' })"),
-    ).toBeLessThan(rendererWarmup.indexOf('prebuild = await eagerPrebuildAll()'));
   });
 });
 
