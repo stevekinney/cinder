@@ -414,20 +414,7 @@ function isContainerQueryActive(
       .split(/\s+or\s+/i)
       .some((clause) => evaluateContainerSizeCondition(clause, width, remSize));
   }
-  const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  const toPixels = (value: RegExpExecArray) =>
-    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
-  const matches =
-    (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
-  const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
-  if (rangeResult !== undefined) {
-    const negated = /^\s*not\b/i.test(conditionText);
-    return negated ? !(matches && !rangeResult) : matches && rangeResult;
-  }
-  const equalityResult = evaluateEqualityComparison(conditionText, width, remSize);
-  if (equalityResult !== undefined) return equalityResult;
-  return /^\s*not\b/i.test(conditionText) ? !matches : matches;
+  return evaluateContainerSizeConstraints(conditionText, width, remSize);
 }
 
 // True when the condition references a width/inline-size comparison whose
@@ -466,7 +453,7 @@ function evaluateRangeComparisons(
     if (operator === '<=') return width <= threshold;
     return width < threshold;
   });
-  return /^\s*not\b/i.test(conditionText) ? !satisfiesAll : satisfiesAll;
+  return satisfiesAll;
 }
 
 // The equality form — e.g. `(width: 20rem)` — has no `min-`/`max-` prefix
@@ -487,7 +474,24 @@ function evaluateEqualityComparison(
       Number(comparison[1]) * (comparison[2]!.toLowerCase() === 'rem' ? remSize : 1);
     return width === threshold;
   });
-  return /^\s*not\b/i.test(conditionText) ? !satisfiesAll : satisfiesAll;
+  return satisfiesAll;
+}
+
+function evaluateContainerSizeConstraints(
+  conditionText: string,
+  width: number,
+  remSize: number,
+): boolean {
+  const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
+  const toPixels = (value: RegExpExecArray) =>
+    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
+  const legacyMatches =
+    (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
+  const rangeMatches = evaluateRangeComparisons(conditionText, width, remSize) ?? true;
+  const equalityMatches = evaluateEqualityComparison(conditionText, width, remSize) ?? true;
+  const combinedMatches = legacyMatches && rangeMatches && equalityMatches;
+  return /^\s*not\b/i.test(conditionText) ? !combinedMatches : combinedMatches;
 }
 
 function evaluateContainerSizeCondition(
@@ -496,20 +500,7 @@ function evaluateContainerSizeCondition(
   remSize: number,
 ): boolean {
   if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
-  const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
-  const toPixels = (value: RegExpExecArray) =>
-    Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
-  const matches =
-    (!minimum || width >= toPixels(minimum)) && (!maximum || width <= toPixels(maximum));
-  const rangeResult = evaluateRangeComparisons(conditionText, width, remSize);
-  if (rangeResult !== undefined) {
-    const negated = /^\s*not\b/i.test(conditionText);
-    return negated ? !(matches && !rangeResult) : matches && rangeResult;
-  }
-  const equalityResult = evaluateEqualityComparison(conditionText, width, remSize);
-  if (equalityResult !== undefined) return equalityResult;
-  return /^\s*not\b/i.test(conditionText) ? !matches : matches;
+  return evaluateContainerSizeConstraints(conditionText, width, remSize);
 }
 
 export function isContainerRule(rule: CSSRule): boolean {
