@@ -62,21 +62,41 @@ export function evaluateLogicalContainerCondition(
   inlineSize: number,
 ): boolean {
   if (!isFullyParsedContainerCondition(conditionText)) return false;
+  return evaluateParsedLogicalContainerCondition(conditionText, width, remSize, inlineSize);
+}
+
+function evaluateParsedLogicalContainerCondition(
+  conditionText: string,
+  width: number,
+  remSize: number,
+  inlineSize: number,
+): boolean {
   const orParts = splitTopLevel(conditionText, 'or');
   if (orParts.length > 1)
     return orParts.some((part) =>
-      evaluateLogicalContainerCondition(part, width, remSize, inlineSize),
+      evaluateParsedLogicalContainerCondition(part, width, remSize, inlineSize),
     );
   const andParts = splitTopLevel(conditionText, 'and');
   if (andParts.length > 1)
     return andParts.every((part) =>
-      evaluateLogicalContainerCondition(part, width, remSize, inlineSize),
+      evaluateParsedLogicalContainerCondition(part, width, remSize, inlineSize),
     );
   const trimmed = conditionText.trim();
   if (trimmed.startsWith('(') && trimmed.endsWith(')'))
-    return evaluateLogicalContainerCondition(trimmed.slice(1, -1), width, remSize, inlineSize);
-  if (/^not\b/i.test(trimmed))
-    return !evaluateLogicalContainerCondition(trimmed.slice(3), width, remSize, inlineSize);
+    return evaluateParsedLogicalContainerCondition(
+      trimmed.slice(1, -1),
+      width,
+      remSize,
+      inlineSize,
+    );
+  const notPrefix = /^not\s+/i.exec(trimmed);
+  if (notPrefix)
+    return !evaluateParsedLogicalContainerCondition(
+      trimmed.slice(notPrefix[0].length),
+      width,
+      remSize,
+      inlineSize,
+    );
   return evaluateContainerSizeConstraints(trimmed, width, remSize, inlineSize);
 }
 
@@ -105,7 +125,11 @@ function parseContainerCondition(conditionText: string): boolean {
   if (orParts.length > 1) return orParts.every(parseContainerCondition);
   const andParts = splitTopLevel(trimmed, 'and');
   if (andParts.length > 1) return andParts.every(parseContainerCondition);
-  if (/^not\b/i.test(trimmed)) return parseContainerCondition(trimmed.slice(3));
+  const notPrefix = /^not\s+/i.exec(trimmed);
+  if (notPrefix) {
+    const operand = trimmed.slice(notPrefix[0].length).trim();
+    return isWrappedByParentheses(operand) && parseContainerCondition(operand);
+  }
   return (
     containerSizeTermPattern.test(trimmed) ||
     featureFirstRangePattern.test(trimmed) ||
