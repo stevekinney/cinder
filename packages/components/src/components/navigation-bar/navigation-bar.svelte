@@ -518,6 +518,8 @@
       onfocusout={isMobileLayout ? bridgePortaledEvent : undefined}
       onpointerdown={isMobileLayout ? bridgePortaledEvent : undefined}
       onpointerup={isMobileLayout ? bridgePortaledEvent : undefined}
+      onmousedown={isMobileLayout ? bridgePortaledEvent : undefined}
+      onmouseup={isMobileLayout ? bridgePortaledEvent : undefined}
       oninput={isMobileLayout ? bridgePortaledEvent : undefined}
       onchange={isMobileLayout ? bridgePortaledEvent : undefined}
     >

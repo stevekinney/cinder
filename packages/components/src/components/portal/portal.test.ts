@@ -183,6 +183,54 @@ describe('Portal', () => {
     expect(receivedInput?.inputType).toBe('insertText');
   });
 
+  test('preserves the original portaled composed path', async () => {
+    const authoredRoot = document.createElement('div');
+    const portaledContainer = document.createElement('div');
+    const control = document.createElement('button');
+    portaledContainer.append(control);
+    document.body.append(authoredRoot, portaledContainer);
+
+    let receivedEvent: Event | undefined;
+    authoredRoot.addEventListener('mousedown', (event) => {
+      receivedEvent = event;
+    });
+
+    control.addEventListener('mousedown', (event) => {
+      redispatchPortaledEvent(event, authoredRoot);
+    });
+    control.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
+    await tick();
+
+    const receivedPath = receivedEvent?.composedPath() ?? [];
+    expect(receivedPath[0]).toBe(control);
+    expect(receivedPath).toContain(portaledContainer);
+    expect(receivedPath).not.toContain(authoredRoot);
+  });
+
+  test('does not deliver browser-synthesized mouse events twice after a pointer event', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    let received = 0;
+    authoredRoot.addEventListener('mousedown', () => {
+      received += 1;
+    });
+    control.addEventListener('pointerdown', (event) => {
+      Object.defineProperty(event, 'pointerType', { value: 'mouse' });
+      redispatchPortaledEvent(event, authoredRoot);
+    });
+    control.addEventListener('mousedown', (event) => {
+      redispatchPortaledEvent(event, authoredRoot);
+    });
+
+    control.dispatchEvent(
+      new MouseEvent('pointerdown', { bubbles: true, clientX: 10, clientY: 20 }),
+    );
+    control.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 10, clientY: 20 }));
+
+    expect(received).toBe(1);
+  });
+
   test('serializes scoped Cinder tokens and color scheme for a portaled surface', () => {
     const source = document.createElement('div');
     source.style.setProperty('--cinder-surface', 'hotpink');

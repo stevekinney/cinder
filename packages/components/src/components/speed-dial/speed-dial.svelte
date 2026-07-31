@@ -434,6 +434,8 @@
     onfocusout={bridgePortaledInteraction}
     onpointerdown={bridgePortaledInteraction}
     onpointerup={bridgePortaledInteraction}
+    onmousedown={bridgePortaledInteraction}
+    onmouseup={bridgePortaledInteraction}
     oninput={bridgePortaledInteraction}
     onchange={bridgePortaledInteraction}
   >
