@@ -26,15 +26,34 @@ export type InventoryViolation = {
   reason: string;
 };
 
+const MODULE_SCRIPT_REGEX =
+  /<script\b(?:[^>]*\bmodule\b[^>]*|[^>]*\bcontext\s*=\s*["']module["'][^>]*)>([\s\S]*?)<\/script>/gi;
+
+function findCinderMetadataBlock(source: string): string {
+  for (const moduleMatch of source.matchAll(MODULE_SCRIPT_REGEX)) {
+    const moduleSource = moduleMatch[1] ?? '';
+    for (const jsdocMatch of moduleSource.matchAll(/\/\*\*([\s\S]*?)\*\//g)) {
+      const block = jsdocMatch[1] ?? '';
+      if (/^\s*\*\s*@cinder\b/im.test(block)) return block;
+    }
+  }
+  return '';
+}
+
+function findExplicitRationale(source: string): string {
+  const metadataBlock = findCinderMetadataBlock(source);
+  return metadataBlock.match(/^\s*\*\s*@rationale\s+(.+?)\s*$/im)?.[1]?.trim() ?? '';
+}
+
 /** Return violations for one authored component metadata block. */
 export function findNeighbourRationaleViolations(entry: InventoryEntry): InventoryViolation[] {
   const hasRelatedAndAvoidWhen = entry.related.length > 0 && entry.avoidWhen.length > 0;
-  const rationale = entry.source.match(/@rationale\s+([^\n*]+)/i)?.[1]?.trim() ?? '';
-  const hasExplicitRationale =
-    rationale.length > 0 &&
-    (/\bnearest\s+alternative\b/i.test(rationale) ||
-      /\bclosest\s+alternative\b/i.test(rationale) ||
-      /\|\s*[a-z][a-z0-9-]*\b/.test(rationale));
+  const rationale = findExplicitRationale(entry.source);
+  const namedMarker = rationale
+    .match(/\b(?:nearest|closest)\s+alternative\s*:\s*(.+)$/i)?.[1]
+    ?.trim();
+  const namedPipeAlternative = rationale.match(/\|\s*([a-z][a-z0-9-]*)\b/)?.[1];
+  const hasExplicitRationale = Boolean(namedMarker || namedPipeAlternative);
 
   if (hasRelatedAndAvoidWhen || hasExplicitRationale) return [];
   return [
