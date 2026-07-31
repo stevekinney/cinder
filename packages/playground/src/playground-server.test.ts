@@ -44,6 +44,7 @@ import {
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
   triggerReload,
+  warmupInstabilityReasons,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import {
@@ -276,6 +277,15 @@ describe('startup warmup stability', () => {
     expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
     expect(isWarmupStable(4, 4, 100, 100, true)).toBe(false);
     expect(isWarmupStable(4, 4, 100, 100)).toBe(true);
+  });
+
+  it('reports every condition that invalidated a warmup pass', () => {
+    expect(warmupInstabilityReasons(4, 5, 100, 101, true)).toEqual([
+      'rebuild generation changed (4 -> 5)',
+      'newest source mtime changed (100 -> 101)',
+      'rebuild debounce is pending',
+    ]);
+    expect(warmupInstabilityReasons(4, 4, 100, 100)).toEqual([]);
   });
 });
 

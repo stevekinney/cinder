@@ -2657,10 +2657,33 @@ export function isWarmupStable(
   hasPendingRebuild = false,
 ): boolean {
   return (
-    generationAtStart === generationAtEnd &&
-    sourceMtimeAtStart === sourceMtimeAtEnd &&
-    !hasPendingRebuild
+    warmupInstabilityReasons(
+      generationAtStart,
+      generationAtEnd,
+      sourceMtimeAtStart,
+      sourceMtimeAtEnd,
+      hasPendingRebuild,
+    ).length === 0
   );
+}
+
+/** Explain why a warmup pass must be retried, for diagnostics in slow CI. */
+export function warmupInstabilityReasons(
+  generationAtStart: number,
+  generationAtEnd: number,
+  sourceMtimeAtStart: number | null,
+  sourceMtimeAtEnd: number | null,
+  hasPendingRebuild = false,
+): string[] {
+  const reasons: string[] = [];
+  if (generationAtStart !== generationAtEnd) {
+    reasons.push(`rebuild generation changed (${generationAtStart} -> ${generationAtEnd})`);
+  }
+  if (sourceMtimeAtStart !== sourceMtimeAtEnd) {
+    reasons.push(`newest source mtime changed (${sourceMtimeAtStart} -> ${sourceMtimeAtEnd})`);
+  }
+  if (hasPendingRebuild) reasons.push('rebuild debounce is pending');
+  return reasons;
 }
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
@@ -2711,10 +2734,20 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await getManifests().catch((error: unknown) => {
       console.error('[playground] manifest pre-warm failed:', error);
     });
-    if (generationAtStart === rebuildGeneration && rebuildDebounceTimer === null) {
+    const instabilityReasons = warmupInstabilityReasons(
+      generationAtStart,
+      rebuildGeneration,
+      null,
+      null,
+      rebuildDebounceTimer !== null,
+    );
+    if (instabilityReasons.length === 0) {
       stable = true;
       break;
     }
+    console.warn(
+      `[playground] warmup pre-build retry ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
+    );
     invalidateCachesForChange({ kind: 'components' });
   }
   if (!stable || !prebuild) {
@@ -2747,17 +2780,19 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
     }
     const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
-    if (
-      isWarmupStable(
-        generationAtStart,
-        rebuildGeneration,
-        sourceMtimeAtStart,
-        sourceMtimeAtEnd,
-        rebuildDebounceTimer !== null,
-      )
-    ) {
+    const instabilityReasons = warmupInstabilityReasons(
+      generationAtStart,
+      rebuildGeneration,
+      sourceMtimeAtStart,
+      sourceMtimeAtEnd,
+      rebuildDebounceTimer !== null,
+    );
+    if (instabilityReasons.length === 0) {
       rendererPrepared = true;
     } else {
+      console.warn(
+        `[playground] shell renderer warmup retry ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
+      );
       preparedShellServerRenderer = null;
       invalidateCachesForChange({ kind: 'components' });
       prebuild = await eagerPrebuildAll();
