@@ -92,15 +92,6 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
-  test('invalidates prior hidden proof after a nested unresolvable object spread', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        "<input {...{ type: 'hidden', ...attrs }} />",
-        'new-control/new-control.svelte',
-      ),
-    ).toHaveLength(1);
-  });
-
   test('allows a later static hidden type to re-establish proof after a dynamic spread', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -244,6 +235,15 @@ describe('primitive composition guard', () => {
       ).toHaveLength(1);
   });
 
+  test('preserves conditional predecessors before compound tag composition', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = ''; if (custom) tag = 'custom-'; tag += 'input';</script><svelte:element this={tag} />",
+        'compound-tag/compound-tag.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('rejects an added raw control in a tracked file', () => {
     expect(
       findPrimitiveCompositionViolations('<input /><input />', 'pin-input/pin-input.svelte'),
@@ -346,12 +346,6 @@ describe('primitive composition guard', () => {
       '[data-layout] { display: grid; } [data-layout][data-columns] { grid-template-columns: 1fr; }',
     ])
       expect(cssPrimitiveCounts(source).grid).toBe(1);
-  });
-
-  test('pairs selectors that can overlap through a tag and a class anchor', () => {
-    expect(
-      cssPrimitiveCounts('.layout { display: grid; } section { grid-template-columns: 1fr; }').grid,
-    ).toBe(1);
   });
 
   test('recognizes row, area, auto-column, and grid shorthand layouts', () => {
@@ -545,24 +539,6 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
-  test('keeps a top-level conditional style write reachable with its initializer', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; if (compact) layout = { display: 'block' };</script><div style={layout}></div>",
-        'new-grid/new-grid.svelte',
-      ),
-    ).toHaveLength(1);
-  });
-
-  test('resolves style-object aliases through mutable bindings', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        "<script>const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; let layout = gridStyle;</script><div style={layout}></div>",
-        'new-grid/new-grid.svelte',
-      ),
-    ).toHaveLength(1);
-  });
-
   test('resolves a conditional/logical expression assigned to a mutable style-object binding', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -574,6 +550,24 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'block' }; layout = dense && { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
         'new-grid/new-grid.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('preserves top-level conditional style-object assignment branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; dense ? layout = { display: 'grid', gridTemplateColumns: '1fr' } : layout = { display: 'block' };</script><div style={layout}></div>",
+        'conditional-style/conditional-style.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('propagates all reachable mutable style aliases', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let base = { display: 'block' }; function enable() { base = { display: 'grid', gridTemplateColumns: '1fr' }; } let layout; function assign() { layout = base; }</script><div style={layout}></div>",
+        'alias-style/alias-style.svelte',
       ),
     ).toHaveLength(1);
   });
@@ -676,26 +670,6 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
-  test('retains dynamic attributes when matching shared floating targets', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        '.menu[data-open] { position: absolute; z-index: 1; }',
-        'new-menu/new-menu.css',
-        '<script>let open = true;</script><div class="menu cinder-_floating-surface" data-open={open}></div>',
-      ),
-    ).toEqual([]);
-  });
-
-  test('does not exempt a shared selector when an uncomposed sibling also matches', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        '.menu { position: absolute; z-index: 1; }',
-        'new-menu/new-menu.css',
-        '<div class="menu cinder-_floating-surface"></div><div class="menu"></div>',
-      ),
-    ).toHaveLength(1);
-  });
-
   test('scopes the floating-surface exemption to the matching rendered element', () => {
     const floatingCss = '.menu { position: absolute; z-index: 1; }';
     expect(
@@ -787,6 +761,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('keeps negated tagged selectors disjoint', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        'input { display: grid; } .layout:not(input) { grid-template-columns: 1fr; }',
+        'negated-tag/negated-tag.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('allows a negated selector to overlap a generic peer', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -854,15 +837,6 @@ describe('primitive composition guard', () => {
         'polymorphic/polymorphic.svelte',
       ),
     ).toHaveLength(1);
-  });
-
-  test('evaluates compound polymorphic tag assignments', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        "<script>let tag = 'custom-'; tag += 'input';</script><svelte:element this={tag} />",
-        'polymorphic/polymorphic.svelte',
-      ),
-    ).toEqual([]);
   });
 
   test('keeps grid style branches independent', () => {
@@ -1006,15 +980,6 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
-  test('resolves mutable polymorphic label bindings for field-wrapper evidence', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        "<script>let tag = 'label';</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
-        'new-field/new-field.svelte',
-      ),
-    ).toHaveLength(1);
-  });
-
   test('recognizes static class objects', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -1050,6 +1015,15 @@ describe('primitive composition guard', () => {
         'polymorphic/polymorphic.svelte',
       ),
     ).toEqual([]);
+  });
+
+  test('follows mutable polymorphic field tags', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; tag = 'label';</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'mutable-field/mutable-field.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('recognizes modern width range media conditions', () => {

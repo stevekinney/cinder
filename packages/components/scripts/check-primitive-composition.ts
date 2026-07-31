@@ -234,8 +234,8 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
   if (instanceContent === undefined && !isRecord(root['fragment'])) return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
-  const mutableValues = new Map<string, Set<string>>();
-  const walkTopLevel = (current: unknown, shadowed = false): void => {
+  const mutableValues = new Set<string>();
+  const walkTopLevel = (current: unknown, shadowed = false, conditional = false): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
     let currentShadowed = shadowed;
@@ -254,6 +254,13 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     } else if (type === 'BlockStatement') {
       currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
     }
+    if (type === 'IfStatement') {
+      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed, conditional);
+      if (isRecord(current['consequent']))
+        walkTopLevel(current['consequent'], currentShadowed, true);
+      if (isRecord(current['alternate'])) walkTopLevel(current['alternate'], currentShadowed, true);
+      return;
+    }
     const node = current;
     let candidate: unknown;
     if (
@@ -266,6 +273,17 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       candidate = node['init'];
     if (
       !currentShadowed &&
+      node['type'] === 'VariableDeclarator' &&
+      isRecord(node['id']) &&
+      node['id']['type'] === 'Identifier' &&
+      node['id']['name'] === bindingName
+    ) {
+      mutableValues.clear();
+      for (const value of possibleStaticStringsFromExpression(node['init'], bindings))
+        mutableValues.add(value);
+    }
+    if (
+      !currentShadowed &&
       node['type'] === 'AssignmentExpression' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&
@@ -275,46 +293,33 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (
       !currentShadowed &&
       node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '+=' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&
-      node['left']['name'] === bindingName &&
-      node['operator'] !== '=' &&
-      node['operator'] === '+='
+      node['left']['name'] === bindingName
     ) {
       const rightValues = possibleStaticStringsFromExpression(node['right'], bindings);
-      const previousValues = mutableValues.get(bindingName) ?? new Set<string>();
       const combined = new Set<string>();
-      for (const previous of previousValues)
+      for (const previous of mutableValues)
         for (const right of rightValues) combined.add(previous + right);
+      mutableValues.clear();
+      for (const value of combined) mutableValues.add(value);
       candidate = undefined;
-      mutableValues.set(bindingName, combined);
-      for (const value of combined) {
-        const normalizedValue = value.toLowerCase();
-        if (
-          normalizedValue === 'input' ||
-          normalizedValue === 'select' ||
-          normalizedValue === 'textarea'
-        )
-          possibleControls.add(normalizedValue);
-      }
     }
     if (
       !currentShadowed &&
-      node['type'] === 'VariableDeclarator' &&
-      isRecord(node['id']) &&
-      node['id']['type'] === 'Identifier' &&
-      node['id']['name'] === bindingName
-    ) {
-      mutableValues.set(bindingName, possibleStaticStringsFromExpression(node['init'], bindings));
-    } else if (
-      !currentShadowed &&
       node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '=' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&
-      node['left']['name'] === bindingName &&
-      node['operator'] === '='
+      node['left']['name'] === bindingName
     ) {
-      mutableValues.set(bindingName, possibleStaticStringsFromExpression(node['right'], bindings));
+      const values = possibleStaticStringsFromExpression(node['right'], bindings);
+      if (conditional) for (const value of values) mutableValues.add(value);
+      else {
+        mutableValues.clear();
+        for (const value of values) mutableValues.add(value);
+      }
     }
     for (const candidateValue of possibleStaticStringsFromExpression(candidate, bindings)) {
       const normalizedValue = candidateValue.toLowerCase();
@@ -325,9 +330,19 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       )
         possibleControls.add(normalizedValue);
     }
+    for (const candidateValue of mutableValues) {
+      const normalizedValue = candidateValue.toLowerCase();
+      if (
+        normalizedValue === 'input' ||
+        normalizedValue === 'select' ||
+        normalizedValue === 'textarea'
+      )
+        possibleControls.add(normalizedValue);
+    }
     for (const child of Object.values(current)) {
-      if (Array.isArray(child)) child.forEach((item) => walkTopLevel(item, currentShadowed));
-      else if (isRecord(child)) walkTopLevel(child, currentShadowed);
+      if (Array.isArray(child))
+        child.forEach((item) => walkTopLevel(item, currentShadowed, conditional));
+      else if (isRecord(child)) walkTopLevel(child, currentShadowed, conditional);
     }
   };
   if (instanceContent !== undefined) walkTopLevel(instanceContent);
@@ -410,35 +425,18 @@ function hasStaticHiddenAttribute(
         typeIsHidden = undefined;
         continue;
       }
-      const applyObjectProperties = (properties: unknown[]): void => {
-        for (const property of properties) {
-          if (!isRecord(property)) continue;
-          if (property['type'] === 'SpreadElement') {
-            const nested = property['argument'];
-            if (
-              isRecord(nested) &&
-              nested['type'] === 'ObjectExpression' &&
-              Array.isArray(nested['properties'])
-            )
-              applyObjectProperties(nested['properties']);
-            else {
-              hiddenState = undefined;
-              typeIsHidden = undefined;
-            }
-            continue;
-          }
-          const name = staticPropertyName(property);
-          if (name === 'hidden')
-            hiddenState =
-              isRecord(property['value']) &&
-              property['value']['type'] === 'Literal' &&
-              property['value']['value'] === true;
-          else if (soloInput && name === 'type')
-            typeIsHidden =
-              staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
-        }
-      };
-      applyObjectProperties(expression['properties']);
+      for (const property of expression['properties']) {
+        if (!isRecord(property)) continue;
+        const name = staticPropertyName(property);
+        if (name === 'hidden')
+          hiddenState =
+            isRecord(property['value']) &&
+            property['value']['type'] === 'Literal' &&
+            property['value']['value'] === true;
+        else if (soloInput && name === 'type')
+          typeIsHidden =
+            staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
+      }
       continue;
     }
     if (attribute['type'] !== 'Attribute') continue;
@@ -625,7 +623,7 @@ function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
   walkAst(fragment, (node) => {
     if (node['type'] !== 'RegularElement' && node['type'] !== 'SvelteElement') return;
     const classes = elementClassSet(node, bindings);
-    const shared = classes.has('cinder-_floating-surface');
+    if (!classes.has('cinder-_floating-surface')) return;
     const attributes = new Map<string, string | true>();
     let id: string | undefined;
     if (Array.isArray(node['attributes']))
@@ -637,8 +635,8 @@ function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
           attribute['name'] === 'class'
         )
           continue;
-        const value =
-          attribute['value'] === true ? true : (staticAttributeValue(attribute) ?? true);
+        const value = attribute['value'] === true ? true : staticAttributeValue(attribute);
+        if (value === undefined) continue;
         attributes.set(attribute['name'].toLowerCase(), value);
         if (attribute['name'] === 'id' && typeof value === 'string') id = value;
       }
@@ -654,7 +652,6 @@ function collectSharedFloatingTargets(source: string): SharedFloatingTarget[] {
         ...(id === undefined ? {} : { id }),
         classes,
         attributes,
-        shared,
       });
   });
   return targets;

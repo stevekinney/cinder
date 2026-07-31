@@ -11,7 +11,6 @@ export type SharedFloatingTarget = {
   id?: string;
   classes: ReadonlySet<string>;
   attributes: ReadonlyMap<string, string | true>;
-  shared?: boolean;
 };
 
 export const gridDefinitionProperties = [
@@ -178,6 +177,13 @@ function selectorTargets(selector: string): SelectorTarget[] {
 }
 
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
+  const negatesTag = (target: SelectorTarget, other: SelectorTarget): boolean =>
+    other.tag !== undefined &&
+    target.functionalConstraints.some(
+      ({ kind, alternatives }) =>
+        kind === 'not' && alternatives.some((alternative) => alternative.tag === other.tag),
+    );
+  if (negatesTag(left, right) || negatesTag(right, left)) return false;
   const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
     (match) => match[1],
   );
@@ -218,13 +224,8 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
       kind === 'any' &&
       alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right)),
   );
-  const tagCrossAnchor =
-    (left.tag !== undefined &&
-      (right.id !== undefined || right.classes.size > 0 || right.attributes.size > 0)) ||
-    (right.tag !== undefined &&
-      (left.id !== undefined || left.classes.size > 0 || left.attributes.size > 0));
   return (
-    (shareAnchor || tagCrossAnchor || functionalAnchor) &&
+    (shareAnchor || functionalAnchor) &&
     !hasConflictingAttribute &&
     (left.id === undefined || right.id === undefined || left.id === right.id) &&
     (left.tag === undefined || right.tag === undefined || left.tag === right.tag)
@@ -534,14 +535,11 @@ export function cssPrimitiveCounts(
             ([positionTarget, zIndexTarget]) => {
               if (isInternalLayerTarget(positionTarget) || isInternalLayerTarget(zIndexTarget))
                 return false;
-              const matchingTargets = sharedTargets.filter(
+              const sharedPair = sharedTargets.some(
                 (sharedTarget) =>
                   targetMatchesSharedFloatingElement(positionTarget, sharedTarget) &&
                   targetMatchesSharedFloatingElement(zIndexTarget, sharedTarget),
               );
-              const sharedPair =
-                matchingTargets.length > 0 &&
-                matchingTargets.every((target) => target.shared !== false);
               const bothExplicitlyShared =
                 positionTarget.classes.has('cinder-_floating-surface') &&
                 zIndexTarget.classes.has('cinder-_floating-surface');

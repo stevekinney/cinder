@@ -82,6 +82,24 @@ function staticStringBindings(source: string): Map<string, string> {
       if (value !== undefined) bindings.set(declaration['id']['name'], value);
     }
   }
+  const walk = (node: unknown): void => {
+    if (!isRecord(node)) return;
+    if (
+      node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '=' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      typeof node['left']['name'] === 'string'
+    ) {
+      const value = staticStringFromExpression(node['right'], bindings);
+      if (value !== undefined) bindings.set(node['left']['name'], value);
+    }
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) for (const item of child) walk(item);
+      else if (isRecord(child)) walk(child);
+    }
+  };
+  for (const statement of body) walk(statement);
   return bindings;
 }
 

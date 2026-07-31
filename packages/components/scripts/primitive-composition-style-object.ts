@@ -164,7 +164,7 @@ function declaresNameWithinFunctionScope(node: unknown, name: string): boolean {
 function resolvedAssignmentValue(
   rawValue: unknown,
   bindings: ReadonlyMap<string, unknown[]> = new Map(),
-): { set: true; value: unknown } | { set: false } {
+): { set: true; values: unknown[] } | { set: false } {
   const value = unwrapTypeExpression(rawValue);
   if (
     isRecord(value) &&
@@ -172,11 +172,13 @@ function resolvedAssignmentValue(
       String(value['type']),
     )
   )
-    return { set: true, value };
-  if (isRecord(value) && value['type'] === 'Literal') return { set: true, value: value['value'] };
+    return { set: true, values: [value] };
+  if (isRecord(value) && value['type'] === 'Literal')
+    return { set: true, values: [value['value']] };
   if (isRecord(value) && value['type'] === 'Identifier' && typeof value['name'] === 'string') {
     const candidates = bindings.get(value['name']);
-    if (candidates?.length === 1) return { set: true, value: candidates[0] };
+    if (candidates !== undefined && candidates.length > 0)
+      return { set: true, values: [...candidates] };
   }
   return { set: false };
 }
@@ -207,8 +209,8 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         continue;
       const name = declaration['id']['name'];
       if (statement['kind'] !== 'const') mutableBindings.add(name);
-      const resolved = resolvedAssignmentValue(declaration['init'], bindings);
-      if (resolved.set) bindings.set(name, [resolved.value]);
+      const resolved = resolvedAssignmentValue(declaration['init']);
+      if (resolved.set) bindings.set(name, resolved.values);
       else bindings.delete(name);
     }
   }
@@ -232,24 +234,29 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     node: unknown,
     shadowed: ReadonlySet<string>,
     insideFunction: boolean,
-    conditional: boolean,
+    conditional = false,
   ): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
     let currentInsideFunction = insideFunction;
-    let currentConditional = conditional;
-    if (
-      [
-        'IfStatement',
-        'SwitchStatement',
-        'ForStatement',
-        'ForInStatement',
-        'ForOfStatement',
-        'WhileStatement',
-        'DoWhileStatement',
-      ].includes(String(node['type']))
-    )
-      currentConditional = true;
+    if (node['type'] === 'IfStatement') {
+      if (isRecord(node['test']))
+        walk(node['test'], currentShadowed, currentInsideFunction, conditional);
+      if (isRecord(node['consequent']))
+        walk(node['consequent'], currentShadowed, currentInsideFunction, true);
+      if (isRecord(node['alternate']))
+        walk(node['alternate'], currentShadowed, currentInsideFunction, true);
+      return;
+    }
+    if (node['type'] === 'ConditionalExpression') {
+      if (isRecord(node['test']))
+        walk(node['test'], currentShadowed, currentInsideFunction, conditional);
+      if (isRecord(node['consequent']))
+        walk(node['consequent'], currentShadowed, currentInsideFunction, true);
+      if (isRecord(node['alternate']))
+        walk(node['alternate'], currentShadowed, currentInsideFunction, true);
+      return;
+    }
     if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||
@@ -278,23 +285,23 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     ) {
       const name = node['left']['name'];
       const resolved = resolvedAssignmentValue(node['right'], bindings);
-      if (currentInsideFunction || currentConditional) {
-        if (resolved.set) bindings.set(name, [...(bindings.get(name) ?? []), resolved.value]);
+      if (currentInsideFunction) {
+        if (resolved.set) bindings.set(name, [...(bindings.get(name) ?? []), ...resolved.values]);
+      } else if (resolved.set && conditional) {
+        bindings.set(name, [...(bindings.get(name) ?? []), ...resolved.values]);
       } else if (resolved.set) {
-        bindings.set(name, [resolved.value]);
+        bindings.set(name, resolved.values);
       } else {
         bindings.delete(name);
       }
     }
     for (const value of Object.values(node)) {
       if (Array.isArray(value))
-        for (const item of value)
-          walk(item, currentShadowed, currentInsideFunction, currentConditional);
-      else if (isRecord(value))
-        walk(value, currentShadowed, currentInsideFunction, currentConditional);
+        for (const item of value) walk(item, currentShadowed, currentInsideFunction, conditional);
+      else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction, conditional);
     }
   };
-  for (const statement of body) walk(statement, new Set(), false, false);
+  for (const statement of body) walk(statement, new Set(), false);
 
   return bindings;
 }
