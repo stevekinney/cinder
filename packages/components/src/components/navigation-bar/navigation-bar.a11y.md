@@ -28,10 +28,10 @@ The consumer is responsible for:
 
 ## Keyboard Interactions
 
-| Key    | Behavior                                                                                                         |
-| ------ | ---------------------------------------------------------------------------------------------------------------- |
-| Tab    | Moves focus through items and actions in DOM order.                                                              |
-| Escape | Closes the mobile menu when open. Scoped to the `<nav>` element—Escape pressed outside the navbar has no effect. |
+| Key    | Behavior                                                                                                                       |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| Tab    | Moves focus through sequentially focusable items and actions in DOM order; enabled controls with `tabindex="-1"` are excluded. |
+| Escape | Closes the mobile menu when open. Scoped to the `<nav>` element—Escape pressed outside the navbar has no effect.               |
 
 ### Scoped Escape behavior
 

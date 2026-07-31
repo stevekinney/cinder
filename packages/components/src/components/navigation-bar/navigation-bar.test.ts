@@ -229,6 +229,28 @@ function disabledFirstNavigationSnippet() {
   }));
 }
 
+function negativeFirstNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+      </div>
+    `,
+  }));
+}
+
+function negativeFinalNavigationSnippet() {
+  return createRawSnippet(() => ({
+    render: () => `
+      <div>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="enabled">Enabled</button>
+        <button type="button" class="cinder-navigation-item" data-cinder-navigation-item data-key="skipped" tabindex="-1">Skipped</button>
+      </div>
+    `,
+  }));
+}
+
 function keyboardNavigationSnippet(clicks: Record<string, number>) {
   return createRawSnippet(() => ({
     render: () => `
@@ -294,6 +316,7 @@ describe('NavigationBar', () => {
   test('guards responsive portal focus and effective disabled targets', () => {
     expect(navigationBarSource).toContain("item.matches(':disabled')");
     expect(navigationBarSource).toContain('pendingTabFocus');
+    expect(navigationBarSource).toContain('pendingTabFocusTarget');
     expect(navigationBarSource).toContain(
       "isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined",
     );
@@ -917,10 +940,65 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('last sequential navigation item tabs to actions when a final enabled item has tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFinalNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+        actions: actionButtonSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+      const accountAction = container.querySelector('#nav-action') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'Tab' });
+      expect(document.activeElement).toBe(accountAction);
+    });
+  });
+
+  test('reverse Tab uses the first sequential navigation item when an enabled item has tabindex=-1', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]') as HTMLButtonElement;
+
+      enabledItem.focus();
+      await fireEvent.keyDown(enabledItem, { key: 'Tab', shiftKey: true });
+      expect(document.activeElement).toBe(toggle);
+    });
+  });
+
   test('toggle Tab skips disabled navigation items', async () => {
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
         items: disabledFirstNavigationSnippet(),
+        menuToggle: toggleSnippet(),
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const toggle = container.querySelector('#toggle-btn') as HTMLButtonElement;
+      const enabledItem = itemsRegion.querySelector('[data-key="enabled"]');
+
+      toggle.focus();
+      await fireEvent.keyDown(toggle, { key: 'Tab' });
+      expect(document.activeElement).toBe(enabledItem);
+    });
+  });
+
+  test('toggle Tab skips enabled navigation items removed from sequential tab order', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: negativeFirstNavigationSnippet(),
         menuToggle: toggleSnippet(),
       });
 

@@ -43,6 +43,7 @@
     findFocusTargetAfterNavigationItems,
     findFocusTargetBeforeNavigationItems,
     getNavigationBarBrandFocusTargets,
+    getSequentialFocusTargets,
   } from './navigation-bar-focus.ts';
 
   const COLLAPSIBLE_MAX_WIDTH_REM = 47.99;
@@ -87,6 +88,7 @@
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
   let pendingTabFocus = false;
+  let pendingTabFocusTarget: HTMLElement | null = null;
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
   const itemsPortalScope = createPortalAttachment({
@@ -112,11 +114,15 @@
   );
 
   $effect(() => {
-    if (!mobileMenuOpen || !isMobileLayout) pendingTabFocus = false;
+    if (!mobileMenuOpen || !isMobileLayout) {
+      pendingTabFocus = false;
+      pendingTabFocusTarget = null;
+    }
     if (!pendingTabFocus || !anchoredItems.positionReady) return;
     pendingTabFocus = false;
-    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
-    firstItem?.focus();
+    const pendingTarget = pendingTabFocusTarget;
+    pendingTabFocusTarget = null;
+    queueMicrotask(() => (pendingTarget ?? getToggleTabTarget())?.focus());
   });
 
   $effect(() => {
@@ -210,28 +216,37 @@
     if (event.key !== 'Tab' || event.shiftKey || !isMobileLayout || !mobileMenuOpen) return;
     if (!anchoredItems.positionReady) {
       pendingTabFocus = true;
+      pendingTabFocusTarget =
+        menuTogglePlacement === 'before-brand'
+          ? (getNavigationBarBrandFocusTargets(navigationBarElement)[0] ?? null)
+          : null;
       event.preventDefault();
       return;
     }
-    const brandTarget =
-      menuTogglePlacement === 'before-brand'
-        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
-        : null;
-    if (brandTarget) {
-      event.preventDefault();
-      brandTarget.focus();
-      return;
-    }
-    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
-    if (!firstItem) return;
+    const target = getToggleTabTarget();
+    if (!target) return;
     event.preventDefault();
-    firstItem.focus();
+    target.focus();
   }
 
   function getNavigationItems(): HTMLElement[] {
     if (!itemsRegionElement) return [];
 
     return Array.from(itemsRegionElement.querySelectorAll<HTMLElement>(navigationItemSelector));
+  }
+
+  function getSequentialNavigationItems(): HTMLElement[] {
+    return getSequentialFocusTargets(itemsRegionElement).filter(
+      (item) => item.matches(navigationItemSelector) && isEnabledNavigationItem(item),
+    );
+  }
+
+  function getToggleTabTarget(): HTMLElement | null {
+    const brandTarget =
+      menuTogglePlacement === 'before-brand'
+        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
+        : null;
+    return brandTarget ?? getSequentialNavigationItems()[0] ?? null;
   }
 
   function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
@@ -250,7 +265,7 @@
     const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
     if (event.target !== brandTargets.at(-1)) return false;
 
-    const firstItem = getNavigationItems().find(isEnabledNavigationItem);
+    const firstItem = getSequentialNavigationItems()[0];
     if (!firstItem) return false;
 
     event.preventDefault();
@@ -343,7 +358,7 @@
   function bridgePortaledPanelTab(event: KeyboardEvent, navigationItem: HTMLElement): boolean {
     if (!anchoredItems.positionReady) return false;
 
-    const enabledItems = getNavigationItems().filter(isEnabledNavigationItem);
+    const enabledItems = getSequentialNavigationItems();
     if (enabledItems.length === 0) return false;
 
     if (event.shiftKey && navigationItem === enabledItems[0]) {
