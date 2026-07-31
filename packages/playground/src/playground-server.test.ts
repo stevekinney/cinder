@@ -39,6 +39,7 @@ import {
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
@@ -289,11 +290,15 @@ describe('startup warmup stability', () => {
     expect(warmupInstabilityReasons(4, 4, 100, 100)).toEqual([]);
   });
 
-  it('keeps renderer retries free of a second full page pre-build', async () => {
+  it('only retries the full page pre-build after invalidation or a source change', async () => {
     expect(rendererWarmupNeedsPrebuild(false, false, false)).toBe(false);
     expect(rendererWarmupNeedsPrebuild(true, false, false)).toBe(true);
     expect(rendererWarmupNeedsPrebuild(false, true, false)).toBe(true);
     expect(rendererWarmupNeedsPrebuild(false, false, true)).toBe(true);
+    expect(rendererWarmupNeedsCacheInvalidation(false, true, false)).toBe(true);
+    expect(rendererWarmupNeedsCacheInvalidation(true, true, false)).toBe(true);
+    expect(rendererWarmupNeedsCacheInvalidation(true, false, false)).toBe(false);
+    expect(rendererWarmupNeedsCacheInvalidation(false, false, true)).toBe(true);
     const source = await readFile(new URL('./playground-server.ts', import.meta.url), 'utf8');
     const rendererWarmup = source.slice(
       source.indexOf('  // Prepare the SSR shell renderer'),
@@ -302,7 +307,7 @@ describe('startup warmup stability', () => {
     expect(rendererWarmup).toContain('rendererWarmupNeedsPrebuild(');
     expect(rendererWarmup).toContain('if (needsPrebuild)');
     expect(rendererWarmup).toContain('prebuild = await eagerPrebuildAll()');
-    expect(rendererWarmup).toContain('if (generationAtStart === rebuildGeneration)');
+    expect(rendererWarmup).toContain('rendererWarmupNeedsCacheInvalidation(');
     expect(rendererWarmup).toContain('resetShellRendererWarmupState();\n        continue;');
     expect(rendererWarmup.indexOf('resetShellRendererWarmupState()')).toBeLessThan(
       rendererWarmup.indexOf('if (needsPrebuild)'),

@@ -1356,6 +1356,14 @@ export function rendererWarmupNeedsPrebuild(
   return generationChanged || sourceChanged || hasPendingRebuild;
 }
 
+export function rendererWarmupNeedsCacheInvalidation(
+  generationChanged: boolean,
+  sourceChanged: boolean,
+  hasPendingRebuild: boolean,
+): boolean {
+  return sourceChanged || (!generationChanged && hasPendingRebuild);
+}
+
 /**
  * Compile and load the documentation page's server renderer.
  *
@@ -2819,7 +2827,13 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       if (needsPrebuild) {
         // Any source change can make the eager browser bundles stale. Restore
         // the bundle guarantee before advertising readiness.
-        if (generationAtStart === rebuildGeneration) {
+        if (
+          rendererWarmupNeedsCacheInvalidation(
+            generationAtStart !== rebuildGeneration,
+            sourceMtimeAtStart !== sourceMtimeAtEnd,
+            rebuildDebounceTimer !== null,
+          )
+        ) {
           invalidateCachesForChange({ kind: 'components' });
         }
         prebuild = await eagerPrebuildAll();
