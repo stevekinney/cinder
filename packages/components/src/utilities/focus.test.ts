@@ -130,6 +130,40 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('skips controls inside closed details but includes them when open', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const summary = document.createElement('summary');
+    const button = document.createElement('button');
+    details.append(summary, button);
+    region.append(details);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(summary);
+    expect(getSequentialFocusTargets(region)).not.toContain(button);
+    details.open = true;
+    expect(getSequentialFocusTargets(region)).toContain(button);
+    region.remove();
+  });
+
+  test('skips nested controls when an outer details element is closed', () => {
+    const region = document.createElement('div');
+    const outer = document.createElement('details');
+    const outerSummary = document.createElement('summary');
+    const inner = document.createElement('details');
+    const innerSummary = document.createElement('summary');
+    const button = document.createElement('button');
+    inner.append(innerSummary, button);
+    outer.append(outerSummary, inner);
+    region.append(outer);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(outerSummary);
+    expect(getSequentialFocusTargets(region)).not.toContain(innerSummary);
+    expect(getSequentialFocusTargets(region)).not.toContain(button);
+    region.remove();
+  });
+
   test('exposes one radio per same-name group, preferring checked or first eligible', () => {
     const region = document.createElement('div');
     const first = document.createElement('input');

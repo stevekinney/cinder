@@ -117,7 +117,9 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
     !isRendered(candidate)
   )
     return false;
-  if (candidate.matches('summary')) return isFirstDetailsSummary(candidate);
+  if (candidate.matches('summary'))
+    return isFirstDetailsSummary(candidate) && !isInsideClosedDetails(candidate);
+  if (isInsideClosedDetails(candidate)) return false;
   return true;
 }
 
@@ -135,6 +137,20 @@ function isFirstDetailsSummary(element: HTMLElement): boolean {
     details?.tagName === 'DETAILS' &&
     Array.from(details.children).find((child) => child.tagName === 'SUMMARY') === element
   );
+}
+
+function isInsideClosedDetails(element: HTMLElement): boolean {
+  let current: HTMLElement | null = element.parentElement;
+  while (current) {
+    if (
+      current.tagName === 'DETAILS' &&
+      !current.hasAttribute('open') &&
+      Array.from(current.children).find((child) => child.tagName === 'SUMMARY') !== element
+    )
+      return true;
+    current = current.parentElement ?? shadowHost(current.getRootNode());
+  }
+  return false;
 }
 
 function closestComposed(element: HTMLElement, selector: string): HTMLElement | null {
