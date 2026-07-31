@@ -145,17 +145,10 @@ function matchesDirectionStyleRule(element: HTMLElement): boolean {
     ...Array.from(element.ownerDocument.adoptedStyleSheets ?? []),
   ]);
   const root = element.getRootNode();
-  if (root !== element.ownerDocument) {
-    const adoptedStyleSheets = Reflect.get(root, 'adoptedStyleSheets');
-    if (Array.isArray(adoptedStyleSheets)) {
-      for (const sheet of adoptedStyleSheets) styleSheets.add(sheet as CSSStyleSheet);
-    }
-    const querySelectorAll = Reflect.get(root, 'querySelectorAll');
-    if (typeof querySelectorAll === 'function') {
-      for (const styleElement of querySelectorAll.call(root, 'style')) {
-        const sheet = Reflect.get(styleElement, 'sheet');
-        if (sheet) styleSheets.add(sheet as CSSStyleSheet);
-      }
+  if (typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot) {
+    for (const sheet of root.adoptedStyleSheets) styleSheets.add(sheet);
+    for (const styleElement of root.querySelectorAll('style')) {
+      if (styleElement.sheet) styleSheets.add(styleElement.sheet);
     }
   }
   for (const sheet of styleSheets) {
@@ -457,23 +450,24 @@ function evaluateRangeComparisons(
 ): boolean | undefined {
   const featureFirstPattern = /(?:width|inline-size)\s*(>=|>|<=|<)\s*([\d.]+)(px|rem)/gi;
   const valueFirstPattern = /([\d.]+)(px|rem)\s*(<=|<)\s*(?:width|inline-size)/gi;
-  const comparisons = [
-    ...conditionText.matchAll(featureFirstPattern),
-    ...[...conditionText.matchAll(valueFirstPattern)].map(
-      (comparison) =>
-        [
-          comparison[0],
-          comparison[3] === '<=' ? '>=' : '>',
-          comparison[1],
-          comparison[2],
-        ] as unknown as RegExpMatchArray,
-    ),
-  ];
+  const comparisons: { operator: string; threshold: string; unit: string }[] = [];
+  for (const comparison of conditionText.matchAll(featureFirstPattern)) {
+    const operator = comparison[1];
+    const threshold = comparison[2];
+    const unit = comparison[3];
+    if (operator && threshold && unit) comparisons.push({ operator, threshold, unit });
+  }
+  for (const comparison of conditionText.matchAll(valueFirstPattern)) {
+    const threshold = comparison[1];
+    const unit = comparison[2];
+    const operator = comparison[3] === '<=' ? '>=' : '>';
+    if (threshold && unit) comparisons.push({ operator, threshold, unit });
+  }
   if (comparisons.length === 0) return undefined;
   const satisfiesAll = comparisons.every((comparison) => {
-    const operator = comparison[1]!;
+    const { operator } = comparison;
     const threshold =
-      Number(comparison[2]) * (comparison[3]!.toLowerCase() === 'rem' ? remSize : 1);
+      Number(comparison.threshold) * (comparison.unit.toLowerCase() === 'rem' ? remSize : 1);
     if (operator === '>=') return width >= threshold;
     if (operator === '>') return width > threshold;
     if (operator === '<=') return width <= threshold;
