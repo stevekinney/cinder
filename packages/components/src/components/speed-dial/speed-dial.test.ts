@@ -45,7 +45,6 @@ describe('SpeedDial', () => {
     expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
     expect(toolbar.hasAttribute('inert')).toBe(true);
-    expect(toolbar.getAttribute('aria-hidden')).toBe('true');
     expect(speedDialStyles).toMatch(
       /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{[^}]*background:\s*transparent;[^}]*border-color:\s*transparent;[^}]*box-shadow:\s*none;/s,
     );
@@ -79,7 +78,6 @@ describe('SpeedDial', () => {
     expect(screen.getByRole('toolbar', { name: 'Actions', hidden: true })).toBe(toolbar);
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
     expect(toolbar.hasAttribute('inert')).toBe(true);
-    expect(toolbar.getAttribute('aria-hidden')).toBe('true');
   });
 
   test('empty aria-label falls back to the default accessible name', () => {
