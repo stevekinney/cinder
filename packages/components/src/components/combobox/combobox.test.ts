@@ -554,6 +554,24 @@ describe('Combobox filtering', () => {
     });
   });
 
+  test('portaled options preserve the root-scoped styling context', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = container.querySelector('#fruit') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = await findOption('Apple');
+
+    expect(option.closest('.cinder-combobox')).not.toBeNull();
+  });
+
+  test('a custom instance class survives on the portaled options panel', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
+    const input = container.querySelector('#fruit') as HTMLInputElement;
+    await fireEvent.focus(input);
+    const option = await findOption('Apple');
+
+    expect(option.closest('.cinder-combobox.compact')).not.toBeNull();
+  });
+
   test('typing with no matches renders the empty state', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
