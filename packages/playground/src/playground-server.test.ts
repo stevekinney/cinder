@@ -19,7 +19,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { rm, writeFile } from 'node:fs/promises';
+import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import {
@@ -45,7 +45,6 @@ import {
   shellBuildSucceeded,
   triggerReload,
   warmupInstabilityReasons,
-  warmupRetryAction,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import {
@@ -289,9 +288,13 @@ describe('startup warmup stability', () => {
     expect(warmupInstabilityReasons(4, 4, 100, 100)).toEqual([]);
   });
 
-  it('does not repeat the full page pre-build after renderer invalidation', () => {
-    expect(warmupRetryAction('eager-prebuild')).toBe('full-prebuild');
-    expect(warmupRetryAction('shell-renderer')).toBe('renderer-only');
+  it('keeps renderer retries free of a second full page pre-build', async () => {
+    const source = await readFile(new URL('./playground-server.ts', import.meta.url), 'utf8');
+    const rendererWarmup = source.slice(
+      source.indexOf('  // Prepare the SSR shell renderer'),
+      source.indexOf('  if (!rendererPrepared)') + 1,
+    );
+    expect(rendererWarmup).not.toContain('eagerPrebuildAll()');
   });
 });
 
