@@ -1728,6 +1728,84 @@ describe('Portal', () => {
     expect(wrapper?.hasAttribute('dir')).toBe(false);
   });
 
+  test('clears a removed explicit direction instead of restoring the mount value', async () => {
+    const { rerender } = render(Portal, {
+      props: { dir: 'rtl', children: childSnippet },
+    });
+
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    await rerender({ dir: undefined, children: childSnippet });
+    await tick();
+
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('falls back to an authored source direction after removing an explicit direction', async () => {
+    const source = document.createElement('section');
+    source.setAttribute('dir', 'ltr');
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    document.body.append(source);
+
+    const { container, rerender } = render(Portal, {
+      target: mountPoint,
+      props: { dir: 'rtl', children: childSnippet },
+    });
+    source.append(container);
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    await rerender({ target: mountPoint, dir: undefined, children: childSnippet });
+    await tick();
+
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('falls back to a computed source direction after removing an explicit direction', async () => {
+    const source = document.createElement('section');
+    source.style.direction = 'ltr';
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    document.body.append(source);
+
+    const { container, rerender } = render(Portal, {
+      target: mountPoint,
+      props: { dir: 'rtl', children: childSnippet },
+    });
+    source.append(container);
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    await rerender({ target: mountPoint, dir: undefined, children: childSnippet });
+    await tick();
+
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('reapplies a different explicit direction after removing one', async () => {
+    const { rerender } = render(Portal, {
+      props: { dir: 'rtl', children: childSnippet },
+    });
+
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+
+    await rerender({ dir: undefined, children: childSnippet });
+    await tick();
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    await rerender({ dir: 'ltr', children: childSnippet });
+    await tick();
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
   test('restores initial attributes when a themed portal is disabled inline', async () => {
     document.documentElement.setAttribute('data-theme', 'dark');
 

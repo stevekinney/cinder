@@ -988,12 +988,10 @@ export function createPortalAttachment(
     // "inherit dir/lang/data-theme/data-cinder-theme from the trigger subtree" contract.
     const initialParent = element.parentElement;
     const initialAttributes = {
-      dir: element.getAttribute('dir'),
       lang: element.getAttribute('lang'),
       dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
-    const preserveInitialDirection = options.explicitAttributes === undefined;
     const managedAttributes = {
       dir: null as string | null,
       lang: null as string | null,
@@ -1018,12 +1016,8 @@ export function createPortalAttachment(
             ? explicitDirection
             : direction !== managedAttributes.dir
               ? direction
-              : preserveInitialDirection
-                ? initialAttributes.dir
-                : null,
-        preserveDirection:
-          explicitDirection !== undefined ||
-          (preserveInitialDirection && initialAttributes.dir !== null),
+              : null,
+        preserveDirection: explicitDirection !== undefined,
         lang:
           explicitLanguage !== undefined
             ? explicitLanguage
