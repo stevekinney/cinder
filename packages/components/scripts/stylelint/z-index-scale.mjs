@@ -157,11 +157,23 @@ function evaluateConstantArithmetic(expression) {
 // Returns `null` when the value can't be statically resolved to a number at
 // all (e.g. it references a custom property).
 function resolveStaticNumber(value) {
-  const calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(value);
-  const expression = calcMatch ? calcMatch[1] : value;
+  let expression = value;
+  let calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(expression);
+  while (calcMatch) {
+    expression = calcMatch[1];
+    calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(expression);
+  }
   const direct = Number(expression);
   if (Number.isFinite(direct)) return direct;
   return evaluateConstantArithmetic(expression);
+}
+
+function decodeCssEscapes(value) {
+  return value
+    .replaceAll(/\\([0-9a-f]{1,6})(?:\s)?/gi, (_, codePoint) =>
+      String.fromCodePoint(Number.parseInt(codePoint, 16)),
+    )
+    .replaceAll(/\\(.)/g, '$1');
 }
 
 function isStaticallyNegative(value) {
@@ -188,6 +200,8 @@ function customPropertyFallbacks(value) {
   function visit(expression) {
     for (let index = 0; index < expression.length; index += 1) {
       if (!/^var\s*\(/i.test(expression.slice(index))) continue;
+      const previousCharacter = expression[index - 1];
+      if (previousCharacter && /[\w-]/.test(previousCharacter)) continue;
 
       const openIndex = expression.indexOf('(', index);
       let depth = 1;
@@ -224,7 +238,7 @@ function customPropertyFallbacks(value) {
 }
 
 function bannedFallback(value) {
-  return customPropertyFallbacks(value).find(
+  return customPropertyFallbacks(decodeCssEscapes(value)).find(
     (fallback) => isStaticallyNegative(fallback) || isStaticallyMagicNumber(fallback),
   );
 }
@@ -270,10 +284,15 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
 
       const offendingFallback = bannedFallback(value);
       if (offendingFallback) {
+        const declarationText = declaration.toString();
+        const fallbackIndex = declarationText.indexOf(offendingFallback);
         stylelint.utils.report({
           ruleName,
           result,
           node: declaration,
+          ...(fallbackIndex >= 0
+            ? { index: fallbackIndex, endIndex: fallbackIndex + offendingFallback.length }
+            : {}),
           message: `${messages.bannedFallback} Offending fallback: \`${offendingFallback}\`.`,
         });
         return;

@@ -163,6 +163,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999))',
     'calc(var(--item-layer, 10000 - 1) + 1)',
     'var(--item-layer, calc(0 - 1))',
+    'var(--item-layer, calc(calc(10000 - 1)))',
+    'v\\61r(--item-layer, -1)',
   ])('rejects a banned literal in an unresolved custom-property fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -183,6 +185,19 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(result)).toHaveLength(1);
     expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
+  test('does not inspect a similarly named non-var function', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: this is a non-var function. */
+            z-index: cvar(--item-layer, 9999);
+          }
+        `),
+      ),
+    ).toEqual([]);
   });
 
   test.each([
