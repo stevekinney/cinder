@@ -173,6 +173,26 @@
     return `cinder-mega-menu-${instanceId}-submenu-panel-${normalizedItem}-${normalizedSubmenu}-${stableHash(`${itemId}:${submenuId}`)}`;
   }
 
+  type MenuRoot = Pick<Document, 'activeElement' | 'getElementById'>;
+
+  function menuRoot(): MenuRoot | null {
+    const root = navElement?.getRootNode();
+    if (!root || !('activeElement' in root) || !('getElementById' in root)) return null;
+    return root as MenuRoot;
+  }
+
+  function elementById<T extends HTMLElement = HTMLElement>(id: string): T | null {
+    return menuRoot()?.getElementById(id) as T | null;
+  }
+
+  function focusElementById(id: string) {
+    elementById(id)?.focus();
+  }
+
+  function activeElement(): Element | null {
+    return menuRoot()?.activeElement ?? null;
+  }
+
   function updateIndicator() {
     if (!indicatorVisible || !navElement || !openItemId) {
       indicatorStyle = '';
@@ -205,14 +225,14 @@
       restoreFocus &&
       currentItemId !== null &&
       typeof document !== 'undefined' &&
-      navElement?.contains(document.activeElement);
+      navElement?.contains(activeElement());
 
     openItemId = null;
     previousOpenIndex = null;
 
     if (shouldRestoreFocus && currentItemId) {
       void tick().then(() => {
-        document.getElementById(triggerId(currentItemId))?.focus();
+        focusElementById(triggerId(currentItemId));
       });
     }
   }
@@ -221,7 +241,7 @@
     const bounded = ((index % items.length) + items.length) % items.length;
     const target = items[bounded];
     if (!target || typeof document === 'undefined') return;
-    document.getElementById(triggerId(target.id))?.focus();
+    focusElementById(triggerId(target.id));
   }
 
   function onTriggerClick(index: number) {
@@ -252,7 +272,7 @@
   async function focusPanelContent(itemId: string) {
     if (typeof document === 'undefined') return;
     await tick();
-    const panel = document.getElementById(contentId(itemId));
+    const panel = elementById(contentId(itemId));
     if (!(panel instanceof HTMLElement)) return;
     const firstFocusable = panel.querySelector<HTMLElement>(
       'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -438,6 +458,8 @@
           {triggerId}
           {submenuTriggerId}
           {submenuPanelId}
+          {elementById}
+          {focusElementById}
           {closeMenu}
         />
       {/key}

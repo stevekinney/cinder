@@ -66,7 +66,7 @@ const items = [
 ];
 
 describe('MegaMenu', () => {
-  function getTriggerByLabel(container: HTMLElement, label: string): HTMLButtonElement {
+  function getTriggerByLabel(container: ParentNode, label: string): HTMLButtonElement {
     const triggers = Array.from(
       container.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__trigger'),
     );
@@ -192,6 +192,54 @@ describe('MegaMenu', () => {
     first.focus();
     await fireEvent.keyDown(first, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(second);
+  });
+
+  test('shadow-root keyboard navigation resolves focus targets inside the component root', async () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    const view = render(MegaMenu, { target: shadow, props: { items } });
+
+    try {
+      const products = getTriggerByLabel(shadow, 'Products');
+      const resources = getTriggerByLabel(shadow, 'Resources');
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowRight' });
+      expect(shadow.activeElement).toBe(resources);
+
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowDown' });
+      const uiKit = shadow.querySelector<HTMLAnchorElement>('a[href="/ui"]');
+      expect(shadow.activeElement).toBe(uiKit);
+
+      const frontend = Array.from(
+        shadow.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+      ).find((trigger) => trigger.textContent?.trim() === 'Frontend');
+      const backend = Array.from(
+        shadow.querySelectorAll<HTMLButtonElement>('.cinder-mega-menu__submenu-trigger'),
+      ).find((trigger) => trigger.textContent?.trim() === 'Backend');
+      if (!frontend || !backend) throw new Error('Missing nested submenu triggers.');
+
+      frontend.focus();
+      await fireEvent.keyDown(frontend, { key: 'ArrowDown' });
+      expect(shadow.activeElement).toBe(backend);
+
+      await fireEvent.keyDown(backend, { key: 'ArrowRight' });
+      const apis = shadow.querySelector<HTMLAnchorElement>('a[href="/apis"]');
+      expect(shadow.activeElement).toBe(apis);
+
+      if (!apis) throw new Error('Missing nested submenu link.');
+      await fireEvent.keyDown(apis, { key: 'ArrowLeft' });
+      expect(shadow.activeElement).toBe(backend);
+
+      await fireEvent.keyDown(backend, { key: 'Escape' });
+      await Promise.resolve();
+      expect(shadow.querySelector('.cinder-mega-menu__content')).toBeNull();
+      expect(shadow.activeElement).toBe(products);
+    } finally {
+      view.unmount();
+      host.remove();
+    }
   });
 
   test('arrow keys enter, traverse, and leave a nested submenu', async () => {
