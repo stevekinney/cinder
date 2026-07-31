@@ -433,6 +433,93 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test.each([
+    ['inside the scope root', 'theme', 'rtl', 'ltr'],
+    ['outside the scope root', 'other', 'rtl', 'rtl'],
+    ['outside the scope limit', 'theme stop', 'rtl', 'rtl'],
+  ] as const)(
+    'respects @scope boundaries when scanning direction rules: %s',
+    (_, classes, fallback, expected) => {
+      const originalWindowGetComputedStyle = window.getComputedStyle;
+      const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+      const getComputedStyleOverride = ((target: Element) => {
+        const style = originalWindowGetComputedStyle(target);
+        Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+        return style;
+      }) as typeof window.getComputedStyle;
+      window.getComputedStyle = getComputedStyleOverride;
+      globalThis.getComputedStyle = getComputedStyleOverride;
+
+      const styleRule = createStyleRule({ selectorText: '.shell', direction: 'ltr' });
+      const scopeRule = {
+        type: 0,
+        cssText: classes === 'theme stop' ? '@scope (.theme) to (.stop) {}' : '@scope (.theme) {}',
+        cssRules: [styleRule],
+      } as unknown as CSSRule;
+      const wrapper = document.createElement('section');
+      wrapper.className = classes;
+      const element = document.createElement('div');
+      element.className = 'shell';
+      wrapper.appendChild(element);
+      document.body.appendChild(wrapper);
+
+      try {
+        const direction = withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+          resolveTextDirection(element, fallback),
+        );
+        expect(direction).toBe(expected);
+      } finally {
+        window.getComputedStyle = originalWindowGetComputedStyle;
+        globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+      }
+    },
+  );
+
+  test('supports selector-list scope roots and fails closed on malformed scope syntax', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const styleRule = createStyleRule({ selectorText: '.shell', direction: 'ltr' });
+    const wrapper = document.createElement('section');
+    wrapper.className = 'alt';
+    const element = document.createElement('div');
+    element.className = 'shell';
+    wrapper.append(element);
+    document.body.append(wrapper);
+    try {
+      const selectorListScope = {
+        type: 0,
+        cssText: '@scope (.theme, .alt) {}',
+        cssRules: [styleRule],
+      } as unknown as CSSRule;
+      expect(
+        withDocumentStyleSheets([{ cssRules: [selectorListScope] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+
+      const malformedScope = {
+        type: 0,
+        cssText: '@scope (.theme, ) {}',
+        cssRules: [styleRule],
+      } as unknown as CSSRule;
+      expect(
+        withDocumentStyleSheets([{ cssRules: [malformedScope] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('ignores direction rules inside inactive container-query shims', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

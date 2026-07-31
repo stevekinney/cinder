@@ -147,6 +147,7 @@ function isConditionalRuleActive(
   element: HTMLElement,
   getParentElement: ParentElementResolver,
 ): boolean {
+  if (isScopeRule(rule)) return isScopeActive(rule, element);
   const conditionText = Reflect.get(rule, 'conditionText');
   if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
 
@@ -161,6 +162,61 @@ function isConditionalRuleActive(
     return CSS.supports(conditionText);
 
   return true;
+}
+
+function isScopeRule(rule: CSSRule): boolean {
+  if (rule.constructor.name === 'CSSScopeRule') return true;
+  const cssText = Reflect.get(rule, 'cssText');
+  return typeof cssText === 'string' && /^\s*@scope\b/i.test(cssText);
+}
+
+function isScopeActive(rule: CSSRule, element: HTMLElement): boolean {
+  const cssText = Reflect.get(rule, 'cssText');
+  if (typeof cssText !== 'string') return false;
+  const prelude = /^\s*@scope\s*([^{]*)\{/i.exec(cssText)?.[1]?.trim();
+  if (prelude === undefined) return false;
+  const toMatch = /\bto\s*\(([^()]*)\)\s*$/i.exec(prelude);
+  const rootText = (toMatch ? prelude.slice(0, toMatch.index) : prelude).trim();
+  const rootSelector = rootText.replace(/^\((.*)\)$/s, '$1').trim();
+  try {
+    if (toMatch && splitScopeSelectors(toMatch[1]!).length === 0) return false;
+    if (
+      rootSelector &&
+      !splitScopeSelectors(rootSelector).some(
+        (selector) => element.matches(selector) || element.closest(selector),
+      )
+    )
+      return false;
+    if (
+      toMatch?.[1] &&
+      splitScopeSelectors(toMatch[1]).some((selector) => element.closest(selector))
+    )
+      return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function splitScopeSelectors(value: string): string[] {
+  const selectors: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '(') depth += 1;
+    else if (value[index] === ')') depth -= 1;
+    else if (value[index] === ',' && depth === 0) {
+      const selector = value.slice(start, index).trim();
+      if (!selector) return [];
+      selectors.push(selector);
+      start = index + 1;
+    }
+  }
+  if (depth !== 0) return [];
+  const selector = value.slice(start).trim();
+  if (!selector) return [];
+  selectors.push(selector);
+  return selectors;
 }
 
 function isContainerQueryActive(
