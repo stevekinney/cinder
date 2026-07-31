@@ -573,6 +573,22 @@ function collectMediaQueries(rules: CSSRuleList | Iterable<CSSRule>, queries: Se
   }
 }
 
+function addMediaQueryListener(mediaQuery: MediaQueryList) {
+  if (typeof mediaQuery.addEventListener === 'function') {
+    mediaQuery.addEventListener('change', invalidateComputedDirections);
+  } else {
+    mediaQuery.addListener?.(invalidateComputedDirections);
+  }
+}
+
+function removeMediaQueryListener(mediaQuery: MediaQueryList) {
+  if (typeof mediaQuery.removeEventListener === 'function') {
+    mediaQuery.removeEventListener('change', invalidateComputedDirections);
+  } else {
+    mediaQuery.removeListener?.(invalidateComputedDirections);
+  }
+}
+
 function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
   if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
   return typeof value === 'object' && value !== null && Symbol.iterator in value;
@@ -590,15 +606,13 @@ function refreshMediaQueryObservers() {
   }
   for (const [query, mediaQuery] of observedMediaQueries) {
     if (queries.has(query)) continue;
-    mediaQuery.removeEventListener?.('change', invalidateComputedDirections);
-    mediaQuery.removeListener?.(invalidateComputedDirections);
+    removeMediaQueryListener(mediaQuery);
     observedMediaQueries.delete(query);
   }
   for (const query of queries) {
     if (observedMediaQueries.has(query)) continue;
     const mediaQuery = window.matchMedia(query);
-    mediaQuery.addEventListener?.('change', invalidateComputedDirections);
-    mediaQuery.addListener?.(invalidateComputedDirections);
+    addMediaQueryListener(mediaQuery);
     observedMediaQueries.set(query, mediaQuery);
   }
 }
@@ -637,8 +651,7 @@ function stopDirectionInvalidationObservers() {
   window.removeEventListener('resize', invalidateComputedDirections);
   window.removeEventListener('orientationchange', invalidateComputedDirections);
   for (const mediaQuery of observedMediaQueries.values()) {
-    mediaQuery.removeEventListener?.('change', invalidateComputedDirections);
-    mediaQuery.removeListener?.(invalidateComputedDirections);
+    removeMediaQueryListener(mediaQuery);
   }
   observedMediaQueries.clear();
   if (directionInvalidationFrame !== null) {
