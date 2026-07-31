@@ -61,13 +61,77 @@ const sequentialFocusCandidateSelector = [
 /** Return elements that participate in the document's sequential tab order. */
 export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];
-  return Array.from(root.querySelectorAll<HTMLElement>(sequentialFocusCandidateSelector)).filter(
-    (candidate) =>
-      !hasNegativeTabIndex(candidate) &&
-      !candidate.hasAttribute('disabled') &&
-      !candidate.matches(':disabled') &&
-      !closestComposed(candidate, '[hidden], [inert], [aria-hidden="true"]') &&
-      isRendered(candidate),
+  const candidates = Array.from(
+    root.querySelectorAll<HTMLElement>(sequentialFocusCandidateSelector),
+  ).filter(isSequentialCandidate);
+  const radios: {
+    root: Node;
+    form: HTMLFormElement | null;
+    name: string;
+    members: HTMLInputElement[];
+  }[] = [];
+  for (const candidate of candidates) {
+    if (!(candidate instanceof HTMLInputElement) || candidate.type !== 'radio') continue;
+    const rootNode = candidate.getRootNode();
+    const group = radios.find(
+      (entry) =>
+        entry.root === rootNode && entry.form === candidate.form && entry.name === candidate.name,
+    );
+    if (group) group.members.push(candidate);
+    else
+      radios.push({
+        root: rootNode,
+        form: candidate.form,
+        name: candidate.name,
+        members: [candidate],
+      });
+  }
+  const radioRepresentatives = new Set(
+    radios.flatMap(({ members }) => [members.find((radio) => radio.checked) ?? members[0]]),
+  );
+  return candidates
+    .filter(
+      (candidate) =>
+        !(
+          candidate instanceof HTMLInputElement &&
+          candidate.type === 'radio' &&
+          !radioRepresentatives.has(candidate)
+        ),
+    )
+    .sort((left, right) => {
+      const leftTabIndex = explicitTabIndex(left);
+      const rightTabIndex = explicitTabIndex(right);
+      if (leftTabIndex === rightTabIndex) return 0;
+      if (leftTabIndex === 0) return 1;
+      if (rightTabIndex === 0) return -1;
+      return leftTabIndex - rightTabIndex;
+    });
+}
+
+function isSequentialCandidate(candidate: HTMLElement): boolean {
+  const rawTabIndex = candidate.getAttribute('tabindex');
+  if (
+    (rawTabIndex !== null && rawTabIndex.trim() !== '' && !Number.isFinite(Number(rawTabIndex))) ||
+    (rawTabIndex !== null && candidate.tabIndex < 0) ||
+    candidate.hasAttribute('disabled') ||
+    candidate.matches(':disabled') ||
+    closestComposed(candidate, '[hidden], [inert], [aria-hidden="true"]') !== null ||
+    !isRendered(candidate)
+  )
+    return false;
+  if (candidate.matches('summary')) return isFirstDetailsSummary(candidate);
+  return true;
+}
+
+function explicitTabIndex(element: HTMLElement): number {
+  return element.hasAttribute('tabindex') ? Math.max(0, element.tabIndex) : 0;
+}
+
+function isFirstDetailsSummary(element: HTMLElement): boolean {
+  const details = element.parentElement;
+  return (
+    details?.tagName === 'DETAILS' &&
+    Array.from(details.children).find((child) => child.tagName === 'SUMMARY') === element
   );
 }
 
@@ -76,9 +140,7 @@ function closestComposed(element: HTMLElement, selector: string): HTMLElement | 
   while (candidate) {
     if (candidate.matches(selector)) return candidate;
     const root = candidate.getRootNode();
-    candidate =
-      candidate.parentElement ??
-      (root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null);
+    candidate = candidate.parentElement ?? shadowHost(root);
   }
   return null;
 }
@@ -90,16 +152,19 @@ function isRendered(element: HTMLElement): boolean {
     const style = getComputedStyle(candidate);
     if (style.display === 'none' || style.visibility === 'hidden') return false;
     const root = candidate.getRootNode();
-    candidate =
-      candidate.parentElement ??
-      (root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null);
+    candidate = candidate.parentElement ?? shadowHost(root);
   }
   return true;
 }
 
-function hasNegativeTabIndex(element: HTMLElement): boolean {
-  const tabIndex = element.getAttribute('tabindex');
-  return tabIndex !== null && Number(tabIndex) < 0;
+function shadowHost(root: Node): HTMLElement | null {
+  if (!('host' in root)) return null;
+  const host = (root as { host?: unknown }).host;
+  return isElementNode(host) ? host : null;
+}
+
+function isElementNode(value: unknown): value is HTMLElement {
+  return Boolean(value && typeof value === 'object' && 'nodeType' in value && value.nodeType === 1);
 }
 
 /**

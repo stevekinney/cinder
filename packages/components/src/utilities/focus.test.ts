@@ -71,7 +71,9 @@ describe('restoreFocusTo', () => {
 describe('getSequentialFocusTargets', () => {
   test('includes native sequential controls omitted by the old selector', () => {
     const region = document.createElement('div');
+    const details = document.createElement('details');
     const summary = document.createElement('summary');
+    details.append(summary);
     const iframe = document.createElement('iframe');
     const audio = document.createElement('audio');
     audio.setAttribute('controls', '');
@@ -79,7 +81,7 @@ describe('getSequentialFocusTargets', () => {
     video.setAttribute('controls', '');
     const embed = document.createElement('embed');
     const object = document.createElement('object');
-    region.append(summary, iframe, audio, video, embed, object);
+    region.append(details, iframe, audio, video, embed, object);
     document.body.append(region);
 
     const targets = getSequentialFocusTargets(region);
@@ -88,6 +90,65 @@ describe('getSequentialFocusTargets', () => {
     expect(targets).toContain(video);
     expect(targets).toContain(embed);
     expect(targets).toContain(object);
+    region.remove();
+  });
+
+  test('orders positive tabindex values before default controls and rejects invalid tabindex', () => {
+    const region = document.createElement('div');
+    const defaultButton = document.createElement('button');
+    const positiveTwo = document.createElement('button');
+    positiveTwo.setAttribute('tabindex', '2');
+    const positiveOne = document.createElement('button');
+    positiveOne.setAttribute('tabindex', '1');
+    const invalid = document.createElement('button');
+    invalid.setAttribute('tabindex', 'bogus');
+    region.append(defaultButton, positiveTwo, positiveOne, invalid);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(
+      targets.map((target) =>
+        target === positiveOne ? 'one' : target === positiveTwo ? 'two' : 'default',
+      ),
+    ).toEqual(['one', 'two', 'default']);
+    region.remove();
+  });
+
+  test('includes only the first summary in a details element', () => {
+    const region = document.createElement('div');
+    const details = document.createElement('details');
+    const first = document.createElement('summary');
+    const second = document.createElement('summary');
+    const standalone = document.createElement('summary');
+    details.append(first, second);
+    region.append(details, standalone);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(first);
+    expect(getSequentialFocusTargets(region)).not.toContain(second);
+    expect(getSequentialFocusTargets(region)).not.toContain(standalone);
+    region.remove();
+  });
+
+  test('exposes one radio per same-name group, preferring checked or first eligible', () => {
+    const region = document.createElement('div');
+    const first = document.createElement('input');
+    first.type = 'radio';
+    first.name = 'choice';
+    const checked = document.createElement('input');
+    checked.type = 'radio';
+    checked.name = 'choice';
+    checked.checked = true;
+    const other = document.createElement('input');
+    other.type = 'radio';
+    other.name = 'other';
+    region.append(first, checked, other);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).not.toContain(first);
+    expect(targets).toContain(checked);
+    expect(targets).toContain(other);
     region.remove();
   });
 
