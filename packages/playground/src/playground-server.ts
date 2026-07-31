@@ -2754,7 +2754,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       break;
     }
     console.warn(
-      `[playground] warmup pre-build retry ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
+      `[playground] warmup pre-build invalidated on attempt ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
     );
     invalidateCachesForChange({ kind: 'components' });
   }
@@ -2780,6 +2780,9 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     try {
       preparedShellServerRenderer = await loadShellServerRenderer();
       if (shellRendererUsedFallback) {
+        console.warn(
+          `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: renderer fallback was used`,
+        );
         preparedShellServerRenderer = null;
         continue;
       }
@@ -2799,7 +2802,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       rendererPrepared = true;
     } else {
       console.warn(
-        `[playground] shell renderer warmup retry ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
+        `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
       );
       preparedShellServerRenderer = null;
       invalidateCachesForChange({ kind: 'components' });
