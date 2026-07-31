@@ -246,18 +246,36 @@ export function copyInheritedPortalAttributes(
     theme: element.getAttribute('data-cinder-theme'),
   },
 ) {
+  const inheritedDirectionAttribute = 'data-cinder-portal-inherited-direction';
   const preservesExplicitDirection =
     fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
-  const inheritedDir =
-    inheritAttributes && source && !preservesExplicitDirection
-      ? (closestAcrossShadow(source, '[dir]')?.getAttribute('dir') ??
-        (typeof getComputedStyle === 'function' ? getComputedStyle(source).direction : null))
-      : null;
+  let inheritedDir: string | null | undefined = null;
+  if (inheritAttributes && source && !preservesExplicitDirection) {
+    let directionSource: HTMLElement | null = source;
+    while (directionSource) {
+      const matchingDirection: HTMLElement | null = directionSource.closest<HTMLElement>('[dir]');
+      if (!matchingDirection) break;
+      if (!matchingDirection.hasAttribute(inheritedDirectionAttribute)) {
+        inheritedDir = matchingDirection.getAttribute('dir');
+        break;
+      }
+      directionSource = matchingDirection.parentElement ?? getShadowHost(matchingDirection);
+    }
+    if (inheritedDir === null && typeof getComputedStyle === 'function') {
+      inheritedDir = getComputedStyle(source).direction;
+    }
+  }
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
   if (nextDir) {
     element.setAttribute('dir', nextDir);
+    if (!preservesExplicitDirection && inheritedDir !== null) {
+      element.setAttribute(inheritedDirectionAttribute, 'true');
+    } else {
+      element.removeAttribute(inheritedDirectionAttribute);
+    }
   } else {
     element.removeAttribute('dir');
+    element.removeAttribute(inheritedDirectionAttribute);
   }
 
   const preservesExplicitLanguage =
@@ -461,13 +479,16 @@ function observeInheritedPortalAttributes(
   inheritAttributes: boolean,
   syncAttributes: () => void,
 ): (() => void) | null {
-  if (!inheritAttributes || !source || typeof MutationObserver === 'undefined') return null;
+  if (!inheritAttributes || !source) return null;
 
-  const observer = new MutationObserver(() => {
-    syncAttributes();
-  });
+  const observer =
+    typeof MutationObserver === 'undefined'
+      ? null
+      : new MutationObserver(() => {
+          syncAttributes();
+        });
   function observe(elementToObserve: HTMLElement | null | undefined) {
-    if (!elementToObserve || observedElements.includes(elementToObserve)) return;
+    if (!observer || !elementToObserve || observedElements.includes(elementToObserve)) return;
     observedElements.push(elementToObserve);
     observer.observe(elementToObserve, {
       attributes: true,
@@ -486,10 +507,56 @@ function observeInheritedPortalAttributes(
   const resizeObserver =
     typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncAttributes);
   resizeObserver?.observe(source);
+  const stopObservingComputedDirection = observeComputedDirection(source, syncAttributes);
 
   return () => {
-    observer.disconnect();
+    observer?.disconnect();
     resizeObserver?.disconnect();
+    stopObservingComputedDirection();
+  };
+}
+
+type ComputedDirectionObservation = {
+  source: HTMLElement;
+  direction: string;
+  sync: () => void;
+};
+
+const computedDirectionObservations = new Set<ComputedDirectionObservation>();
+let computedDirectionFrame: number | null = null;
+
+function observeComputedDirection(source: HTMLElement, sync: () => void): () => void {
+  if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+    return () => {};
+  }
+
+  const observation: ComputedDirectionObservation = {
+    source,
+    direction: getComputedStyle(source).direction,
+    sync,
+  };
+  computedDirectionObservations.add(observation);
+
+  const observeNextFrame = () => {
+    computedDirectionFrame = window.requestAnimationFrame(() => {
+      computedDirectionFrame = null;
+      for (const current of computedDirectionObservations) {
+        const direction = getComputedStyle(current.source).direction;
+        if (direction === current.direction) continue;
+        current.direction = direction;
+        current.sync();
+      }
+      if (computedDirectionObservations.size > 0) observeNextFrame();
+    });
+  };
+  if (computedDirectionFrame === null) observeNextFrame();
+
+  return () => {
+    computedDirectionObservations.delete(observation);
+    if (computedDirectionObservations.size === 0 && computedDirectionFrame !== null) {
+      window.cancelAnimationFrame(computedDirectionFrame);
+      computedDirectionFrame = null;
+    }
   };
 }
 

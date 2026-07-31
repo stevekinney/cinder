@@ -6,6 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 import { renderThenHydrate } from '../../test/hydrate.ts';
 
 setupHappyDom();
+const nativeGetComputedStyle = globalThis.getComputedStyle;
 
 const { render, cleanup, waitFor } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
@@ -32,6 +33,11 @@ afterEach(() => {
   document.documentElement.removeAttribute('data-theme');
   document.documentElement.removeAttribute('data-cinder-theme');
   document.documentElement.removeAttribute('dir');
+  Object.defineProperty(globalThis, 'getComputedStyle', {
+    configurable: true,
+    value: nativeGetComputedStyle,
+  });
+  document.head.replaceChildren();
   document.body.replaceChildren();
 });
 
@@ -247,6 +253,22 @@ describe('Portal', () => {
     document.body.append(source, element);
 
     copyInheritedPortalAttributes(element, source, true);
+    stylesheet.remove();
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('does not let a generated outer portal direction mask inner computed direction', () => {
+    const outerWrapper = document.createElement('div');
+    outerWrapper.setAttribute('dir', 'ltr');
+    outerWrapper.setAttribute('data-cinder-portal-inherited-direction', 'true');
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const element = document.createElement('div');
+    outerWrapper.append(source, element);
+    document.body.append(outerWrapper);
+
+    copyInheritedPortalAttributes(element, source, true);
 
     expect(element.getAttribute('dir')).toBe('rtl');
   });
@@ -257,7 +279,6 @@ describe('Portal', () => {
     const mountPoint = document.createElement('div');
     source.append(mountPoint);
     document.body.append(source);
-
     render(Portal, { target: mountPoint, props: { children: childSnippet } });
     await tick();
 
@@ -268,6 +289,40 @@ describe('Portal', () => {
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('ltr'));
 
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
+  test('updates inherited computed direction after a sibling selector changes', async () => {
+    const source = document.createElement('div');
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    const sibling = document.createElement('div');
+    document.body.append(sibling, source);
+
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: (element: Element) => {
+        const computed = nativeGetComputedStyle(element);
+        if (element === mountPoint) {
+          Object.defineProperty(computed, 'direction', {
+            configurable: true,
+            value: sibling.classList.contains('portal-rtl') ? 'rtl' : 'ltr',
+          });
+        }
+        return computed;
+      },
+    });
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    sibling.classList.add('portal-rtl');
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: nativeGetComputedStyle,
+    });
   });
 
   test('moves children into a custom target', async () => {
