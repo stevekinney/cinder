@@ -454,7 +454,12 @@ describe('SpeedDial', () => {
       action.setAttribute('tabindex', '-1');
     }
     trigger.focus();
-    const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true });
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
     trigger.dispatchEvent(event);
 
     expect(event.defaultPrevented).toBe(false);
@@ -466,7 +471,12 @@ describe('SpeedDial', () => {
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
     const toolbar = document.querySelector<HTMLElement>('[role="toolbar"]')!;
     trigger.focus();
-    const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true });
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
     trigger.dispatchEvent(event);
 
     expect(toolbar.hasAttribute('inert')).toBe(true);
