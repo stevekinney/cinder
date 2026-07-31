@@ -1362,7 +1362,18 @@
                       <div class="dx-keys">
                         {#each a11y.keyboard as shortcut, index (index)}
                           <div class="dx-keys__row">
-                            <div><Kbd label={shortcut.keys} /></div>
+                            <div class="dx-keys__key-list">
+                              {#each shortcut.keys.split(/\s+\/\s+/) as key, keyIndex (keyIndex)}
+                                {#if keyIndex === 0}
+                                  <Kbd label={key} />
+                                {:else}
+                                  <span class="dx-keys__alternative">
+                                    <span class="dx-keys__separator">/</span>
+                                    <Kbd label={key} />
+                                  </span>
+                                {/if}
+                              {/each}
+                            </div>
                             <div class="dx-keys__action">{shortcut.action}</div>
                           </div>
                         {/each}
@@ -3081,9 +3092,24 @@
     display: grid;
     grid-template-columns: 9rem 1fr;
     gap: var(--cinder-space-3);
-    align-items: center;
+    align-items: start;
     padding: var(--cinder-space-3) var(--cinder-space-4);
     font-size: var(--cinder-text-sm);
+  }
+  .dx-keys__key-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    min-inline-size: 0;
+  }
+  .dx-keys__separator {
+    color: var(--cinder-text-muted);
+  }
+  .dx-keys__alternative {
+    display: inline-flex;
+    gap: var(--cinder-space-1);
+    align-items: center;
   }
   .dx-keys__row + .dx-keys__row {
     border-block-start: 1px solid var(--cinder-border-muted);

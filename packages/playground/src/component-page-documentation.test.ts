@@ -303,7 +303,16 @@ describe('component-page single-scroll layout', () => {
     const withA11y = baseFixture();
     withA11y.component.a11y = {
       pattern: 'WAI-ARIA Button',
-      keyboard: [{ keys: 'Enter / Space', action: 'Activates the button.' }],
+      keyboard: [
+        {
+          keys: 'ArrowLeft / ArrowRight / Home / End / ArrowDown / Escape',
+          action: 'Traverses triggers and opens or closes panels.',
+        },
+        {
+          keys: 'Ctrl+/',
+          action: 'Opens search.',
+        },
+      ],
       notes: ['Uses a native button element.'],
     };
     installDocumentationDataIsland(withA11y);
@@ -314,8 +323,16 @@ describe('component-page single-scroll layout', () => {
     expect(document.getElementById('accessibility')).toBeTruthy();
     expect(screen.getByText(/Implements the WAI-ARIA Button pattern/)).toBeTruthy();
     // Keyboard table built from Kbd.
-    expect(screen.getByText('Enter / Space')).toBeTruthy();
-    expect(screen.getByText('Activates the button.')).toBeTruthy();
+    const keyLists = document.querySelectorAll('.dx-keys__key-list');
+    expect(keyLists[0]?.getAttribute('aria-label')).toBeNull();
+    expect(Array.from(keyLists[0]?.querySelectorAll('.dx-keys__separator') ?? [])).toHaveLength(5);
+    expect(
+      Array.from(keyLists[0]?.querySelectorAll('kbd') ?? []).map((key) => key.textContent),
+    ).toEqual(['ArrowLeft', 'ArrowRight', 'Home', 'End', 'ArrowDown', 'Escape']);
+    expect(
+      Array.from(keyLists[1]?.querySelectorAll('kbd') ?? []).map((key) => key.textContent),
+    ).toEqual(['Ctrl+/']);
+    expect(screen.getByText('Traverses triggers and opens or closes panels.')).toBeTruthy();
     expect(screen.getByText('Uses a native button element.')).toBeTruthy();
 
     unmount();
