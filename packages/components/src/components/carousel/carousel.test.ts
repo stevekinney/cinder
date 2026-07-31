@@ -109,20 +109,27 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 72 });
   });
 
-  test('settles a cancelled native gesture after the scroll-end debounce', async () => {
+  test('keeps autoplay paused until a cancelled native gesture settles', async () => {
     jest.useFakeTimers();
-    const { container } = render(Carousel, { slides });
+    const { container } = render(Carousel, {
+      slides,
+      autoplay: true,
+      autoplayInterval: 50,
+    });
     const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
-    const neighbor = viewport.children[1] as HTMLElement;
 
     await fireEvent.pointerDown(viewport, { pointerId: 73, pointerType: 'touch' });
     await fireEvent.pointerCancel(window, { pointerId: 73 });
 
-    // pointercancel terminates the browser pointer stream, so native-scroll
-    // ownership must settle from the scroll-end debounce rather than waiting
-    // for a pointerup that will never arrive.
-    jest.advanceTimersByTime(100);
-    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+    // The cancelled gesture owns native scrolling until the debounce expires;
+    // autoplay must not move the active slide during that window.
+    jest.advanceTimersByTime(99);
+    expectActiveSlide(container, 0);
+
+    // Once native scrolling settles, autoplay is allowed to resume. The
+    // additional interval is the discriminating signal that settlement ran.
+    jest.advanceTimersByTime(1 + 50);
+    await waitFor(() => expectActiveSlide(container, 1));
   });
 
   test('keeps interaction active while another pointer remains down', async () => {
