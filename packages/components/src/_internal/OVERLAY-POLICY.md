@@ -23,6 +23,12 @@ correctness until the support policy changes.
 - Components may accept a `portalTarget` prop to override (deferred until a real consumer needs it).
 - All overlays render into the portal **after hydration**. SSR markup is empty.
 
+Dialog-owned anchored surfaces use the open native `<dialog>` as their portal
+boundary. The dialog must keep those surfaces paintable in the top layer; its
+content panel remains the clipping boundary for ordinary modal content. This
+preserves modal scrolling and rounded content clipping without allowing a
+nested Popover, SpeedDial, or NavigationBar surface to be truncated.
+
 ## SSR rule (hard constraint)
 
 Overlays render nothing on the server, regardless of their initial `open` state. The standard idiom in a [Svelte 5](https://svelte.dev/docs/svelte/overview) component:
