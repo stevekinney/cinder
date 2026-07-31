@@ -398,6 +398,49 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(precedingButton);
   });
 
+  test('reverse Tab from an arrow-focused untabbable first action returns before the SpeedDial', async () => {
+    const precedingButton = document.createElement('button');
+    precedingButton.textContent = 'Before SpeedDial';
+    document.body.append(precedingButton);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.setAttribute('tabindex', '-1');
+    create.focus();
+    await fireEvent.keyDown(create, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(precedingButton);
+  });
+
+  test('forward Tab from an arrow-focused untabbable last action moves to the trigger', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const share = screen.getByRole('button', { name: 'Share' });
+    share.setAttribute('tabindex', '-1');
+    share.focus();
+    await fireEvent.keyDown(share, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  test('reverse Tab from the open trigger moves to the last sequential action', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    trigger.focus();
+    await fireEvent.keyDown(trigger, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Share' }));
+  });
+
   test('skips CSS-hidden controls when reversing from the first action', async () => {
     const hiddenButton = document.createElement('button');
     hiddenButton.style.display = 'none';

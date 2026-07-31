@@ -242,6 +242,16 @@
   function handleTriggerKeydown(event: KeyboardEvent): void {
     if (hidden) return;
 
+    if (open && event.key === 'Tab' && event.shiftKey) {
+      const sequentialButtons = getSequentiallyTabbableActionButtons();
+      const lastButton = sequentialButtons.at(-1) ?? getEnabledActionButtons().at(-1);
+      if (lastButton) {
+        event.preventDefault();
+        lastButton.focus();
+      }
+      return;
+    }
+
     if (
       event.key !== 'ArrowUp' &&
       event.key !== 'ArrowDown' &&
@@ -267,13 +277,30 @@
     if (!target) return;
 
     const tabOrderButtons = getSequentiallyTabbableActionButtons();
-    if (event.key === 'Tab' && event.shiftKey && target === tabOrderButtons[0]) {
+    const targetIndex = getEnabledActionButtons().indexOf(target);
+    const firstTabOrderIndex = tabOrderButtons.length
+      ? getEnabledActionButtons().indexOf(tabOrderButtons[0]!)
+      : -1;
+    const lastTabOrderIndex = tabOrderButtons.length
+      ? getEnabledActionButtons().indexOf(tabOrderButtons.at(-1)!)
+      : -1;
+    if (
+      event.key === 'Tab' &&
+      event.shiftKey &&
+      targetIndex !== -1 &&
+      (firstTabOrderIndex === -1 || targetIndex <= firstTabOrderIndex)
+    ) {
       const previousTarget = getFocusTargetBeforeSpeedDial();
       event.preventDefault();
       (previousTarget ?? getTriggerElement())?.focus();
       return;
     }
-    if (event.key === 'Tab' && !event.shiftKey && target === tabOrderButtons.at(-1)) {
+    if (
+      event.key === 'Tab' &&
+      !event.shiftKey &&
+      targetIndex !== -1 &&
+      (lastTabOrderIndex === -1 || targetIndex >= lastTabOrderIndex)
+    ) {
       event.preventDefault();
       getTriggerElement()?.focus();
       return;
