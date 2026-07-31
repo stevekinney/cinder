@@ -29,6 +29,7 @@
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { getSequentialFocusTargets } from '../../utilities/focus.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     closestAcrossShadow,
