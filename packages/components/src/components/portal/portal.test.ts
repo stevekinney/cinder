@@ -1801,9 +1801,9 @@ describe('Portal', () => {
     await tick();
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
 
-    await rerender({ dir: 'ltr', children: childSnippet });
+    await rerender({ dir: 'rtl', children: childSnippet });
     await tick();
-    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
   });
 
   test('restores initial attributes when a themed portal is disabled inline', async () => {
