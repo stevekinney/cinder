@@ -140,6 +140,21 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 75 });
   });
 
+  test('resumes native-scroll settling when blur releases a tracked pointer', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const neighbor = viewport.children[1] as HTMLElement;
+
+    await fireEvent.pointerDown(viewport, { pointerId: 76, pointerType: 'touch' });
+    await fireEvent.scroll(viewport);
+    jest.advanceTimersByTime(100);
+    window.dispatchEvent(new Event('blur'));
+    jest.advanceTimersByTime(100);
+
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+  });
+
   test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {
     const css = await Bun.file(new URL('./carousel.css', import.meta.url)).text();
     expect(css).not.toContain('scroll-snap-stop: always');

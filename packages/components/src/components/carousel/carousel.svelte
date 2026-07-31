@@ -341,9 +341,11 @@
 
   function onWindowBlur(): void {
     const wasInteracting = isInteracting;
+    const wasNativeScrolling = isNativeScrolling;
     activePointerIds.clear();
     isInteracting = false;
     removePointerEndListeners();
+    if (wasNativeScrolling) scheduleNativeScrollEnd();
     // Only relinquish programmatic/autoplay ownership if blur is actually
     // ending a tracked pointer interaction. An unrelated blur (e.g. focusing
     // browser chrome while a dot or autoplay transition is animating) must
