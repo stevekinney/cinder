@@ -75,6 +75,8 @@ export function evaluateLogicalContainerCondition(
   const trimmed = conditionText.trim();
   if (trimmed.startsWith('(') && trimmed.endsWith(')'))
     return evaluateLogicalContainerCondition(trimmed.slice(1, -1), width, remSize, inlineSize);
+  if (/^not\b/i.test(trimmed))
+    return !evaluateLogicalContainerCondition(trimmed.slice(3), width, remSize, inlineSize);
   return evaluateContainerSizeConstraints(trimmed, width, remSize, inlineSize);
 }
 

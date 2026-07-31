@@ -2,7 +2,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
-import { isFullyParsedContainerCondition } from './text-direction-container.ts';
+import {
+  evaluateLogicalContainerCondition,
+  isFullyParsedContainerCondition,
+} from './text-direction-container.ts';
 import {
   elementDirectionStyleOverride,
   isContainerRule,
@@ -104,6 +107,7 @@ describe('resolveTextDirection', () => {
       ['(min-width: 20px) and (max-width: 40rem)', true],
       ['(min-width: 20px) or (max-width: 40rem)', true],
       ['not (min-width: 20px)', true],
+      ['not ((min-width: 20px) or (max-width: 40rem))', true],
       ['(min-width: 20px) unexpected', false],
       ['(width >= 20px) xor (width <= 40px)', false],
       ['foo(width >= 20px)', false],
@@ -113,6 +117,15 @@ describe('resolveTextDirection', () => {
     for (const [condition, expected] of cases) {
       expect(isFullyParsedContainerCondition(condition), condition).toBe(expected);
     }
+  });
+
+  test('evaluates grouped NOT over OR without treating it as an implicit conjunction', () => {
+    const condition = 'not ((min-width: 20px) or (max-width: 10px))';
+    expect(evaluateLogicalContainerCondition(condition, 5, 16, 5)).toBe(false);
+    expect(evaluateLogicalContainerCondition(condition, 30, 16, 30)).toBe(false);
+    expect(evaluateLogicalContainerCondition(condition, 15, 16, 15)).toBe(true);
+    expect(evaluateLogicalContainerCondition('not (min-width: 20px)', 10, 16, 10)).toBe(true);
+    expect(evaluateLogicalContainerCondition('not (min-width: 20px)', 30, 16, 30)).toBe(false);
   });
 
   test('only treats unknown CSS rules with container at-rule text as container rules', () => {
