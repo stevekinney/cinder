@@ -206,6 +206,10 @@ function decodeCssEscapes(value) {
 
 function protectCssSyntaxEscapes(value) {
   return value
+    .replaceAll(/\\(?:00002c|000028|000029)\s?/gi, (escape) => {
+      if (escape.toLowerCase().includes('00002c')) return '\uE000';
+      return escape.toLowerCase().includes('000028') ? '\uE001' : '\uE002';
+    })
     .replaceAll(/\\(?:0*2c)(?=\s|$|[^0-9a-f])\s?/gi, '\uE000')
     .replaceAll(/\\(?:0*28|0*29)(?=\s|$|[^0-9a-f])\s?/gi, (escape) =>
       escape.includes('28') ? '\uE001' : '\uE002',

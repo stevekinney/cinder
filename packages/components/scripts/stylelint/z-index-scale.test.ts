@@ -244,6 +244,14 @@ describe('cinder/z-index-scale', () => {
       expect(warnings(numericEscapedComma)).toHaveLength(1);
     }
 
+    const sixDigitComma = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this is a valid custom property name. */
+        z-index: var(--foo\\00002cbar, 9999);
+      }
+    `);
+    expect(warnings(sixDigitComma)).toHaveLength(1);
+
     const invalidUnicode = await lint(`
       .fixture {
         /* cinder-z-index-local: this property name contains an invalid escape. */
@@ -278,6 +286,14 @@ describe('cinder/z-index-scale', () => {
       expect(warnings(result)).toHaveLength(1);
     }
 
+    const sixDigitHexAdjacent = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this is a valid custom property name. */
+        z-index: var(--foo\\000028bar\\000029, -1);
+      }
+    `);
+    expect(warnings(sixDigitHexAdjacent)).toHaveLength(1);
+
     const dynamicFallback = await lint(`
       .fixture {
         /* cinder-z-index-local: this is a valid dynamic fallback. */
@@ -285,6 +301,14 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(dynamicFallback)).toEqual([]);
+
+    const ordinaryName = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this is a valid dynamic fallback. */
+        z-index: var(--foo00002cbar, var(--dynamic));
+      }
+    `);
+    expect(warnings(ordinaryName)).toEqual([]);
   });
 
   test('rejects escaped layer-token fallbacks', async () => {
