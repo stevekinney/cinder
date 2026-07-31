@@ -1813,6 +1813,57 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('observes media queries in recursively imported stylesheets', () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    const importedMediaRule = {
+      cssText: '@media (prefers-color-scheme: dark) {}',
+      type: 4,
+      media: {},
+      conditionText: '(prefers-color-scheme: dark)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    const importedSheet = { cssRules: [importedMediaRule] } as unknown as CSSStyleSheet;
+    const importRule = {
+      type: 3,
+      cssText: '@import url("theme.css");',
+      styleSheet: importedSheet,
+    } as unknown as CSSImportRule;
+    globalThis.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+        },
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+    const element = document.createElement('div');
+    document.body.append(element);
+    let changes = 0;
+
+    try {
+      const disconnect = withDocumentStyleSheets([{ cssRules: [importRule] }], () =>
+        observeTextDirectionMediaQueries(element, () => {
+          changes += 1;
+        }),
+      );
+      expect(listeners.size).toBe(1);
+      for (const listener of listeners) listener(new Event('change'));
+      expect(changes).toBe(1);
+      disconnect?.();
+      expect(listeners.size).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
   test('observes text mutations under auto direction sources', async () => {
     const wrapper = document.createElement('section');
     wrapper.dir = 'auto';

@@ -383,8 +383,28 @@ export function observeTextDirectionMediaQueries(
     }
   }
   const queries = new Set<string>();
+  const visitedSheets = new Set<CSSStyleSheet>();
   const visit = (rules: CSSRuleList | Iterable<CSSRule>) => {
     for (const rule of Array.from(rules)) {
+      if (Reflect.get(rule, 'type') === 3) {
+        let imported: CSSStyleSheet | undefined;
+        try {
+          imported = Reflect.get(rule, 'styleSheet');
+        } catch {
+          // Ignore inaccessible cross-origin imported stylesheets.
+          continue;
+        }
+        if (imported && !visitedSheets.has(imported)) {
+          visitedSheets.add(imported);
+          try {
+            const importedRules = Reflect.get(imported, 'cssRules');
+            if (isCssRuleCollection(importedRules)) visit(importedRules);
+          } catch {
+            // Ignore inaccessible cross-origin imported stylesheets.
+          }
+        }
+        continue;
+      }
       if (isMediaRule(rule)) {
         const condition = Reflect.get(rule, 'conditionText');
         if (typeof condition === 'string' && condition) queries.add(condition);
@@ -394,6 +414,8 @@ export function observeTextDirectionMediaQueries(
     }
   };
   for (const sheet of sheets) {
+    if (visitedSheets.has(sheet)) continue;
+    visitedSheets.add(sheet);
     try {
       visit(sheet.cssRules);
     } catch {
