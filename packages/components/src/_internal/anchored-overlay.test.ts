@@ -211,4 +211,38 @@ describe('anchored overlay width styles', () => {
     });
     expect(panel.getAttribute('style')).toContain('max-block-size: min(24rem, 120px)');
   });
+
+  test('clears available-height sizing when size turns off while open', async () => {
+    const view = render(AnchoredOverlayBoundaryFixture, { size: true });
+    const boundary = screen.getByTestId('boundary');
+    const panel = screen.getByTestId('panel');
+    boundary.getBoundingClientRect = () =>
+      ({
+        width: 360,
+        height: 180,
+      }) as DOMRect;
+
+    await waitFor(() => {
+      expect(panel.getAttribute('style')).toContain('max-block-size: min(24rem, 180px)');
+    });
+
+    await view.rerender({ size: false });
+
+    await waitFor(() => {
+      expect(computePositionSpy).toHaveBeenCalledTimes(2);
+    });
+    expect(panel.getAttribute('style')).not.toContain('max-block-size');
+    expect(panel.style.maxBlockSize).toBe('');
+
+    const boundaryObserver = BoundaryResizeObserver.instances.find((observer) =>
+      observer.observed.includes(boundary),
+    );
+    boundaryObserver?.trigger(boundary);
+
+    await waitFor(() => {
+      expect(computePositionSpy).toHaveBeenCalledTimes(3);
+    });
+    expect(panel.getAttribute('style')).not.toContain('max-block-size');
+    expect(panel.style.maxBlockSize).toBe('');
+  });
 });

@@ -178,6 +178,10 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       const updatePosition = async () => {
         if (cancelled) return;
         const currentGeneration = ++generation;
+        if (!sizeEnabled) {
+          availableHeightStyle = '';
+          panel.style.removeProperty('max-block-size');
+        }
         const middleware: Middleware[] = [
           offsetMiddleware(offset),
           flip(boundary ? { boundary } : undefined),

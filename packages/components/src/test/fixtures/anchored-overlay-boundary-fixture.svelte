@@ -3,9 +3,10 @@
 
   interface Props {
     open?: boolean;
+    size?: boolean;
   }
 
-  let { open = true }: Props = $props();
+  let { open = true, size = true }: Props = $props();
 
   let anchor = $state<HTMLButtonElement | null>(null);
   let panel = $state<HTMLDivElement | null>(null);
@@ -16,7 +17,7 @@
     anchor: () => anchor,
     panel: () => panel,
     boundary: () => boundary,
-    size: () => true,
+    size: () => size,
     sizeMaxBlockSize: () => '24rem',
   });
 </script>
