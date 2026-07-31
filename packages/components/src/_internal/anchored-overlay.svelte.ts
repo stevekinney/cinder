@@ -60,6 +60,23 @@ export function getAnchoredOverlayAvailableHeightStyle(availableHeight: number):
   return `${Math.max(0, availableHeight)}px`;
 }
 
+export function getAnchoredOverlayMaxBlockSizeStyle(
+  availableHeight: number,
+  maximumBlockSize: string,
+): string {
+  return `min(${maximumBlockSize}, ${getAnchoredOverlayAvailableHeightStyle(availableHeight)})`;
+}
+
+export function applyAnchoredOverlayMaxBlockSize(
+  panel: HTMLElement,
+  availableHeight: number,
+  maximumBlockSize: string,
+): string {
+  const value = getAnchoredOverlayMaxBlockSizeStyle(availableHeight, maximumBlockSize);
+  panel.style.maxBlockSize = value;
+  return value;
+}
+
 function getArrowStyle(placement: Placement, data: { x?: number; y?: number } | undefined) {
   if (!data) return '';
 
@@ -154,7 +171,11 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         middleware.push(
           sizeMiddleware({
             apply({ availableHeight }) {
-              availableHeightStyle = `min(${sizeMaxBlockSize}, ${getAnchoredOverlayAvailableHeightStyle(availableHeight)})`;
+              availableHeightStyle = applyAnchoredOverlayMaxBlockSize(
+                panel,
+                availableHeight,
+                sizeMaxBlockSize,
+              );
             },
           }),
         );
@@ -214,6 +235,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     return () => {
       cancelled = true;
       stopAutoUpdate?.();
+      panel.style.removeProperty('max-block-size');
       positionReady = false;
       positionStyle = '';
       availableHeightStyle = '';

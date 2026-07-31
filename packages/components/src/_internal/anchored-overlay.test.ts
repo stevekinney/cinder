@@ -3,7 +3,9 @@ import { describe, expect, test } from 'bun:test';
 import { compileModule } from 'svelte/compiler';
 
 import {
+  applyAnchoredOverlayMaxBlockSize,
   getAnchoredOverlayAvailableHeightStyle,
+  getAnchoredOverlayMaxBlockSizeStyle,
   getAnchoredOverlayWidthStyle,
 } from './anchored-overlay.svelte.ts';
 
@@ -38,6 +40,24 @@ describe('anchored overlay width styles', () => {
   test('available height style clamps negative space and preserves measured space', () => {
     expect(getAnchoredOverlayAvailableHeightStyle(320)).toBe('320px');
     expect(getAnchoredOverlayAvailableHeightStyle(-1)).toBe('0px');
+  });
+
+  test('applies the available-height cap during measurement and supports cleanup', () => {
+    const panel = {
+      style: {
+        maxBlockSize: '',
+        removeProperty(property: string) {
+          if (property === 'max-block-size') this.maxBlockSize = '';
+        },
+      },
+    } as unknown as HTMLElement;
+
+    expect(getAnchoredOverlayMaxBlockSizeStyle(320, '24rem')).toBe('min(24rem, 320px)');
+    expect(applyAnchoredOverlayMaxBlockSize(panel, 320, '24rem')).toBe('min(24rem, 320px)');
+    expect(panel.style.maxBlockSize).toBe('min(24rem, 320px)');
+
+    panel.style.removeProperty('max-block-size');
+    expect(panel.style.maxBlockSize).toBe('');
   });
 
   test('server compilation omits Floating UI runtime imports', async () => {
