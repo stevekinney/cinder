@@ -235,6 +235,17 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
   const mutableValues = new Set<string>();
+  const recordControls = (values: Iterable<string>): void => {
+    for (const candidateValue of values) {
+      const normalizedValue = candidateValue.toLowerCase();
+      if (
+        normalizedValue === 'input' ||
+        normalizedValue === 'select' ||
+        normalizedValue === 'textarea'
+      )
+        possibleControls.add(normalizedValue);
+    }
+  };
   const walkTopLevel = (current: unknown, shadowed = false, conditional = false): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
@@ -285,6 +296,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (
       !currentShadowed &&
       node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '=' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&
       node['left']['name'] === bindingName
@@ -321,24 +333,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
         for (const value of values) mutableValues.add(value);
       }
     }
-    for (const candidateValue of possibleStaticStringsFromExpression(candidate, bindings)) {
-      const normalizedValue = candidateValue.toLowerCase();
-      if (
-        normalizedValue === 'input' ||
-        normalizedValue === 'select' ||
-        normalizedValue === 'textarea'
-      )
-        possibleControls.add(normalizedValue);
-    }
-    for (const candidateValue of mutableValues) {
-      const normalizedValue = candidateValue.toLowerCase();
-      if (
-        normalizedValue === 'input' ||
-        normalizedValue === 'select' ||
-        normalizedValue === 'textarea'
-      )
-        possibleControls.add(normalizedValue);
-    }
+    recordControls(possibleStaticStringsFromExpression(candidate, bindings));
     for (const child of Object.values(current)) {
       if (Array.isArray(child))
         child.forEach((item) => walkTopLevel(item, currentShadowed, conditional));
@@ -355,6 +350,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (node['type'] === 'ExpressionTag' && isRecord(node['expression']))
         walkTopLevel(node['expression']);
     });
+  recordControls(mutableValues);
   return possibleControls;
 }
 

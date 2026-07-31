@@ -33,7 +33,7 @@ function unwrapTypeExpression(expression: unknown): unknown {
 
 function staticStringFromExpression(
   rawExpression: unknown,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, readonly string[]>,
 ): string | undefined {
   const expression = unwrapTypeExpression(rawExpression);
   if (!isRecord(expression)) return undefined;
@@ -50,8 +50,31 @@ function staticStringFromExpression(
     return isRecord(value) && typeof value['cooked'] === 'string' ? value['cooked'] : undefined;
   }
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
-    return bindings.get(expression['name']);
+    return bindings.get(expression['name'])?.[0];
   return undefined;
+}
+
+function staticStringValuesFromExpression(
+  rawExpression: unknown,
+  bindings: ReadonlyMap<string, readonly string[]>,
+): string[] {
+  const expression = unwrapTypeExpression(rawExpression);
+  if (!isRecord(expression)) return [];
+  if (expression['type'] === 'Literal' && typeof expression['value'] === 'string')
+    return [expression['value']];
+  if (
+    expression['type'] === 'TemplateLiteral' &&
+    Array.isArray(expression['expressions']) &&
+    expression['expressions'].length === 0 &&
+    Array.isArray(expression['quasis']) &&
+    isRecord(expression['quasis'][0])
+  ) {
+    const value = expression['quasis'][0]['value'];
+    return isRecord(value) && typeof value['cooked'] === 'string' ? [value['cooked']] : [];
+  }
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
+    return [...(bindings.get(expression['name']) ?? [])];
+  return [];
 }
 
 function collectPatternNames(pattern: unknown, into: Set<string>): void {
@@ -74,7 +97,11 @@ function collectFunctionScopedNames(node: unknown, into: Set<string>): void {
     node['type'] === 'ArrowFunctionExpression'
   )
     return;
-  if (node['type'] === 'VariableDeclaration' && Array.isArray(node['declarations']))
+  if (
+    node['type'] === 'VariableDeclaration' &&
+    node['kind'] === 'var' &&
+    Array.isArray(node['declarations'])
+  )
     for (const declaration of node['declarations']) collectPatternNames(declaration, into);
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) for (const item of value) collectFunctionScopedNames(item, into);
@@ -82,9 +109,9 @@ function collectFunctionScopedNames(node: unknown, into: Set<string>): void {
   }
 }
 
-function staticStringBindings(source: string): Map<string, string> {
+function staticStringBindings(source: string): Map<string, string[]> {
   const root: unknown = parseSvelte(source, { modern: true });
-  const bindings = new Map<string, string>();
+  const bindings = new Map<string, string[]>();
   if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
     return bindings;
   const body = root['instance']['content']['body'];
@@ -106,18 +133,45 @@ function staticStringBindings(source: string): Map<string, string> {
         typeof declaration['id']['name'] !== 'string'
       )
         continue;
-      const value = staticStringFromExpression(declaration['init'], bindings);
-      if (value !== undefined) bindings.set(declaration['id']['name'], value);
+      const values = staticStringValuesFromExpression(declaration['init'], bindings);
+      if (values.length > 0) bindings.set(declaration['id']['name'], values);
     }
   }
-  const walk = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
+  const walk = (
+    node: unknown,
+    shadowed: ReadonlySet<string> = new Set(),
+    insideFunction = false,
+    conditional = false,
+  ): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
+    let currentInsideFunction = insideFunction;
+    if (node['type'] === 'IfStatement') {
+      if (isRecord(node['test']))
+        walk(node['test'], currentShadowed, currentInsideFunction, conditional);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const branches = [node['consequent'], node['alternate']].map((branch) => {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction, true);
+        return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      });
+      bindings.clear();
+      const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
+      for (const name of names) {
+        const previous = base.get(name) ?? [];
+        bindings.set(name, [
+          ...new Set(branches.flatMap((branch) => branch.get(name) ?? previous)),
+        ]);
+      }
+      return;
+    }
     if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||
       node['type'] === 'ArrowFunctionExpression'
     ) {
+      currentInsideFunction = true;
       const localNames = new Set<string>();
       if (Array.isArray(node['params']))
         for (const parameter of node['params']) collectPatternNames(parameter, localNames);
@@ -144,12 +198,21 @@ function staticStringBindings(source: string): Map<string, string> {
       typeof node['left']['name'] === 'string' &&
       !currentShadowed.has(node['left']['name'])
     ) {
-      const value = staticStringFromExpression(node['right'], bindings);
-      if (value !== undefined) bindings.set(node['left']['name'], value);
+      const values = staticStringValuesFromExpression(node['right'], bindings);
+      if (values.length > 0) {
+        const name = node['left']['name'];
+        bindings.set(
+          name,
+          currentInsideFunction || conditional
+            ? [...new Set([...(bindings.get(name) ?? []), ...values])]
+            : values,
+        );
+      }
     }
     for (const child of Object.values(node)) {
-      if (Array.isArray(child)) for (const item of child) walk(item, currentShadowed);
-      else if (isRecord(child)) walk(child, currentShadowed);
+      if (Array.isArray(child))
+        for (const item of child) walk(item, currentShadowed, currentInsideFunction, conditional);
+      else if (isRecord(child)) walk(child, currentShadowed, currentInsideFunction, conditional);
     }
   };
   for (const statement of body) walk(statement);
@@ -164,19 +227,18 @@ function isCanonicalFieldComponent(node: UnknownRecord): boolean {
 function localMarkupEvidence(
   node: unknown,
   source: string,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, readonly string[]>,
 ): { labelCount: number; terms: string } {
   if (!isRecord(node) || isCanonicalFieldComponent(node)) return { labelCount: 0, terms: '' };
-  const resolvedElementName =
+  const resolvedElementNames =
     node['type'] === 'RegularElement'
-      ? node['name']
+      ? typeof node['name'] === 'string'
+        ? [node['name']]
+        : []
       : node['type'] === 'SvelteElement'
-        ? staticStringFromExpression(node['tag'], bindings)
-        : undefined;
-  const labelCount =
-    typeof resolvedElementName === 'string' && resolvedElementName.toLowerCase() === 'label'
-      ? 1
-      : 0;
+        ? staticStringValuesFromExpression(node['tag'], bindings)
+        : [];
+  const labelCount = resolvedElementNames.filter((name) => name.toLowerCase() === 'label').length;
   const terms: string[] = [];
   if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
   if (
@@ -203,7 +265,7 @@ function localMarkupEvidence(
 function qualifyingFieldLabels(
   node: unknown,
   source: string,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, readonly string[]>,
 ): FieldEvidence {
   if (!isRecord(node))
     return {

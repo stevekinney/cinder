@@ -590,6 +590,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('retains a style binding introduced only inside a conditional branch', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout; if (dense) layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'conditional-binding/conditional-binding.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('resolves style-object bindings wrapped in a TypeScript `as const` assertion', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -792,6 +801,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         'input { display: grid; } input:not(.disabled) { grid-template-columns: 1fr; }',
+        'compound-negation/compound-negation.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('allows overlap when a tagless selector negates a compound tag', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        'input { display: grid; } .layout:not(input.disabled) { grid-template-columns: 1fr; }',
         'compound-negation/compound-negation.css',
       ),
     ).toHaveLength(1);
@@ -1058,6 +1076,33 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         "<script>let tag = 'div'; function helper() { let tag = 'span'; tag = 'label'; }</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
         'shadowed-field/shadowed-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('tracks outer field-tag assignments after a block-scoped shadow', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function setTag() { if (local) { let tag = 'span'; } tag = 'label'; }</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'block-shadow-field/block-shadow-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('retains both reachable field-tag values across if branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; if (custom) tag = 'label'; else tag = 'span';</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'conditional-field/conditional-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('does not report an intermediate raw-control compound tag value', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = ''; if (custom) tag += 'input'; tag += '-wrapper';</script><svelte:element this={tag} />",
+        'compound-control/compound-control.svelte',
       ),
     ).toEqual([]);
   });

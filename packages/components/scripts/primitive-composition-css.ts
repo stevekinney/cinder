@@ -177,6 +177,10 @@ function selectorTargets(selector: string): SelectorTarget[] {
 }
 
 function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
+  const alternativeAddsConstraints = (alternative: SelectorTarget): boolean =>
+    (alternative.id !== undefined && alternative.id !== target.id) ||
+    [...alternative.classes].some((className) => !target.classes.has(className)) ||
+    [...alternative.attributes].some(([name]) => !target.attributes.has(name));
   return (
     other.tag !== undefined &&
     target.functionalConstraints.some(
@@ -184,8 +188,10 @@ function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
         kind === 'not' &&
         alternatives.some(
           (alternative) =>
-            alternative.tag === other.tag &&
-            (target.tag === undefined || targetNecessarilyMatches(other, alternative)),
+            (alternative.tag === other.tag &&
+              target.tag === undefined &&
+              !alternativeAddsConstraints(alternative)) ||
+            targetNecessarilyMatches(other, alternative),
         ),
     )
   );
@@ -228,13 +234,22 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
     (left.tag !== undefined && left.tag === right.tag) ||
     [...left.classes].some((className) => right.classes.has(className)) ||
     [...left.attributes.keys()].some((attribute) => right.attributes.has(attribute));
-  const functionalAnchor = left.functionalConstraints.some(
-    ({ kind, alternatives }) =>
-      kind === 'any' &&
-      alternatives.some((alternative) => targetsCanMatchSameElement(alternative, right)),
+  const functionalAnchor = left.functionalConstraints.some(({ alternatives }) =>
+    alternatives.some(
+      (alternative) =>
+        targetsCanMatchSameElement(alternative, right) ||
+        (alternative.tag !== undefined && alternative.tag === right.tag),
+    ),
+  );
+  const reverseFunctionalAnchor = right.functionalConstraints.some(({ alternatives }) =>
+    alternatives.some(
+      (alternative) =>
+        targetsCanMatchSameElement(alternative, left) ||
+        (alternative.tag !== undefined && alternative.tag === left.tag),
+    ),
   );
   return (
-    (shareAnchor || functionalAnchor) &&
+    (shareAnchor || functionalAnchor || reverseFunctionalAnchor) &&
     !hasConflictingAttribute &&
     (left.id === undefined || right.id === undefined || left.id === right.id) &&
     (left.tag === undefined || right.tag === undefined || left.tag === right.tag)
