@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
+import { isFullyParsedContainerCondition } from './text-direction-container.ts';
 import {
   elementDirectionStyleOverride,
   isContainerRule,
@@ -93,6 +94,27 @@ function createStyleSheetWithThrowingRules(): CSSStyleSheet {
 }
 
 describe('resolveTextDirection', () => {
+  test('fails closed when a container condition contains unparsed syntax', () => {
+    const cases: [string, boolean][] = [
+      ['(min-width: 20px)', true],
+      ['(max-inline-size: 40rem)', true],
+      ['(width: 20px)', true],
+      ['(inline-size >= 20rem)', true],
+      ['(20rem <= width <= 40rem)', true],
+      ['(min-width: 20px) and (max-width: 40rem)', true],
+      ['(min-width: 20px) or (max-width: 40rem)', true],
+      ['not (min-width: 20px)', true],
+      ['(min-width: 20px) unexpected', false],
+      ['(width >= 20px) xor (width <= 40px)', false],
+      ['foo(width >= 20px)', false],
+      ['(min-width: 20px) and (unknown-feature: 1px)', false],
+      ['(min-width: 1.2.3px)', false],
+    ];
+    for (const [condition, expected] of cases) {
+      expect(isFullyParsedContainerCondition(condition), condition).toBe(expected);
+    }
+  });
+
   test('only treats unknown CSS rules with container at-rule text as container rules', () => {
     const unknownRule = { cssText: '@unknown (min-width: 1px) {}', type: 0 } as unknown as CSSRule;
     const containerRule = {

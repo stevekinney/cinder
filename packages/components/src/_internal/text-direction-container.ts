@@ -61,6 +61,7 @@ export function evaluateLogicalContainerCondition(
   remSize: number,
   inlineSize: number,
 ): boolean {
+  if (!isFullyParsedContainerCondition(conditionText)) return false;
   const orParts = splitTopLevel(conditionText, 'or');
   if (orParts.length > 1)
     return orParts.some((part) =>
@@ -75,6 +76,62 @@ export function evaluateLogicalContainerCondition(
   if (trimmed.startsWith('(') && trimmed.endsWith(')'))
     return evaluateLogicalContainerCondition(trimmed.slice(1, -1), width, remSize, inlineSize);
   return evaluateContainerSizeConstraints(trimmed, width, remSize, inlineSize);
+}
+
+const containerSizeTermPattern =
+  /^(?:(?:min|max)-(?:width|inline-size)|(?:width|inline-size))\s*:\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
+const featureFirstRangePattern =
+  /^(?:width|inline-size)\s*(?:>=|>|<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
+const valueFirstRangePattern =
+  /^(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:<=|<|>=|>)\s*(?:width|inline-size))(?:\s*(?:<=|<|>=|>)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?$/i;
+
+/**
+ * Returns true only when every token in a size condition belongs to the
+ * deliberately small grammar evaluated below. Unknown CSS syntax must not
+ * silently inherit the evaluator's historical "active" default.
+ */
+export function isFullyParsedContainerCondition(conditionText: string): boolean {
+  const trimmed = conditionText.trim();
+  if (!trimmed || !hasBalancedParentheses(trimmed)) return false;
+  return parseContainerCondition(trimmed);
+}
+
+function parseContainerCondition(conditionText: string): boolean {
+  let trimmed = conditionText.trim();
+  while (isWrappedByParentheses(trimmed)) trimmed = trimmed.slice(1, -1).trim();
+  const orParts = splitTopLevel(trimmed, 'or');
+  if (orParts.length > 1) return orParts.every(parseContainerCondition);
+  const andParts = splitTopLevel(trimmed, 'and');
+  if (andParts.length > 1) return andParts.every(parseContainerCondition);
+  if (/^not\b/i.test(trimmed)) return parseContainerCondition(trimmed.slice(3));
+  return (
+    containerSizeTermPattern.test(trimmed) ||
+    featureFirstRangePattern.test(trimmed) ||
+    valueFirstRangePattern.test(trimmed)
+  );
+}
+
+function hasBalancedParentheses(conditionText: string): boolean {
+  let depth = 0;
+  for (const character of conditionText) {
+    if (character === '(') depth += 1;
+    if (character === ')') {
+      depth -= 1;
+      if (depth < 0) return false;
+    }
+  }
+  return depth === 0;
+}
+
+function isWrappedByParentheses(conditionText: string): boolean {
+  if (!conditionText.startsWith('(') || !conditionText.endsWith(')')) return false;
+  let depth = 0;
+  for (let index = 0; index < conditionText.length; index += 1) {
+    if (conditionText[index] === '(') depth += 1;
+    if (conditionText[index] === ')') depth -= 1;
+    if (depth === 0 && index < conditionText.length - 1) return false;
+  }
+  return depth === 0;
 }
 
 // True when the condition references a width/inline-size comparison whose
