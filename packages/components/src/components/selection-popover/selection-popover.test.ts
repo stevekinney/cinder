@@ -1130,9 +1130,10 @@ describe('SelectionPopover', () => {
         },
       });
 
-      // An external input owns a keyboard that is already visible.
+      // An external input owns a keyboard that is already visible. Do not
+      // dispatch a movement event here: that would itself be the dismissal
+      // under test before focus reaches the collapsed action.
       externalInput.focus();
-      visualViewport.dispatchEvent(new Event('resize'));
 
       // Switch navigation lands on the collapsed action inside the popover.
       // That control is not the composer and must not preserve external
