@@ -412,8 +412,8 @@ test('selection flush to viewport top places popover below the selection without
   // `data-cinder-position-ready` never flips to 'true'. That raced at roughly a
   // 40% failure rate locally.
   //
-  // Wait for scroll QUIESCENCE — no scroll event for two consecutive animation
-  // frames' worth of idle — rather than for the final offset.
+  // Wait for scroll QUIESCENCE — no scroll event for at least 100ms, checked on
+  // animation frames — rather than only waiting for the final offset.
   await page.evaluate(async () => {
     await new Promise<void>((resolve) => {
       let lastScrollAt = performance.now();
