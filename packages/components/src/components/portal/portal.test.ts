@@ -226,6 +226,50 @@ describe('Portal', () => {
     expect(element.lang).toBe('fr');
   });
 
+  test('inherits computed direction when no explicit dir ancestor exists', () => {
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const element = document.createElement('div');
+    document.body.append(source, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('inherits computed direction from a CSS class', () => {
+    const stylesheet = document.createElement('style');
+    stylesheet.textContent = '.portal-rtl { direction: rtl; }';
+    document.head.append(stylesheet);
+    const source = document.createElement('div');
+    source.className = 'portal-rtl';
+    const element = document.createElement('div');
+    document.body.append(source, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('updates inherited computed direction when the source style changes', async () => {
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    document.body.append(source);
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    source.style.direction = 'ltr';
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('ltr'));
+
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+  });
+
   test('moves children into a custom target', async () => {
     const host = document.createElement('div');
     host.id = 'portal-host';
@@ -514,7 +558,7 @@ describe('Portal', () => {
     expect(wrapper?.getAttribute('data-theme')).toBe('light');
   });
 
-  test('clears inherited portal direction when the source stops providing it', async () => {
+  test('updates inherited portal direction when the source stops providing an explicit dir', async () => {
     document.documentElement.removeAttribute('dir');
 
     const scopedAncestor = document.createElement('section');
@@ -539,7 +583,7 @@ describe('Portal', () => {
     scopedAncestor.removeAttribute('dir');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(wrapper?.hasAttribute('dir')).toBe(false);
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
   });
 
   test('preserves an explicitly empty inherited language', () => {

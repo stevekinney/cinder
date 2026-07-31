@@ -250,7 +250,8 @@ export function copyInheritedPortalAttributes(
     fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
   const inheritedDir =
     inheritAttributes && source && !preservesExplicitDirection
-      ? closestAcrossShadow(source, '[dir]')?.getAttribute('dir')
+      ? (closestAcrossShadow(source, '[dir]')?.getAttribute('dir') ??
+        (typeof getComputedStyle === 'function' ? getComputedStyle(source).direction : null))
       : null;
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
   if (nextDir) {
