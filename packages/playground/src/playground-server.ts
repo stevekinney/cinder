@@ -202,16 +202,17 @@ type ShellServerRendererLoadResult = {
   usedFallback: boolean;
 };
 
+/** Resolve a renderer load failure against the current last-good renderer. */
 export async function resolveRendererLoad<T>(
   loadRenderer: () => Promise<T>,
-  lastGood: T | null,
+  getLastGood: () => T | null,
   onError?: (error: unknown) => void,
 ): Promise<{ renderer: T; usedFallback: boolean }> {
   try {
     return { renderer: await loadRenderer(), usedFallback: false };
   } catch (error) {
     onError?.(error);
-    return { renderer: fallbackToLastGood(lastGood, error), usedFallback: true };
+    return { renderer: fallbackToLastGood(getLastGood(), error), usedFallback: true };
   }
 }
 let shellServerRendererPromise: Promise<ShellServerRendererLoadResult> | null = null;
@@ -1376,7 +1377,7 @@ async function loadShellServerRenderer(): Promise<ShellServerRendererLoadResult>
 
   shellServerRendererPromise = resolveRendererLoad(
     loadFreshRenderer,
-    lastGoodShellServerRenderer,
+    () => lastGoodShellServerRenderer,
     (error) => {
       console.error(
         '[playground] shell server rebuild failed; serving the last-good renderer:',

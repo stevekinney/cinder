@@ -1467,33 +1467,38 @@ describe('playground build boundaries', () => {
     expect(isPageServerRenderers({ renderComponentPageBody: () => ({}) })).toBe(false);
   });
 
-  it('keeps stale fallback status isolated from a newer renderer result', async () => {
+  it('resolves a stale failed load against the latest renderer result', async () => {
+    type Renderer = () => { body: string; head: string };
+
     let rejectStale!: (error: Error) => void;
-    let resolveCurrent!: (renderer: () => { body: string; head: string }) => void;
-    const staleLoad = resolveRendererLoad<() => { body: string; head: string }>(
+    let resolveCurrent!: (renderer: Renderer) => void;
+    let lastGoodRenderer: Renderer | null = null;
+    const getLastGoodRenderer = (): Renderer | null => lastGoodRenderer;
+    const staleLoad = resolveRendererLoad<Renderer>(
       () =>
         new Promise((_resolve, reject) => {
           rejectStale = reject;
         }),
-      () => ({ body: 'stale fallback', head: '' }),
+      getLastGoodRenderer,
     );
-    const currentLoad = resolveRendererLoad<() => { body: string; head: string }>(
+    const currentLoad = resolveRendererLoad<Renderer>(
       () =>
         new Promise((resolve) => {
           resolveCurrent = resolve;
         }),
-      () => ({ body: 'current fallback', head: '' }),
+      getLastGoodRenderer,
     );
 
     resolveCurrent(() => ({ body: 'current', head: '' }));
     const currentResult = await currentLoad;
     expect(currentResult.usedFallback).toBe(false);
     expect(currentResult.renderer()).toEqual({ body: 'current', head: '' });
+    lastGoodRenderer = currentResult.renderer;
 
     rejectStale(new Error('stale build failed'));
     const staleResult = await staleLoad;
     expect(staleResult.usedFallback).toBe(true);
-    expect(staleResult.renderer()).toEqual({ body: 'stale fallback', head: '' });
+    expect(staleResult.renderer()).toEqual({ body: 'current', head: '' });
     expect(currentResult.usedFallback).toBe(false);
     expect(currentResult.renderer()).toEqual({ body: 'current', head: '' });
   });
