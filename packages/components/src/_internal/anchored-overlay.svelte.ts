@@ -55,6 +55,10 @@ export function getAnchoredOverlayWidthStyle(
   return 'max-inline-size: min(28rem, calc(100vw - var(--cinder-space-4)));';
 }
 
+export function getAnchoredOverlayAvailableHeightStyle(availableHeight: number): string {
+  return `${Math.max(0, availableHeight)}px`;
+}
+
 function getArrowStyle(placement: Placement, data: { x?: number; y?: number } | undefined) {
   if (!data) return '';
 
@@ -149,7 +153,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         middleware.push(
           sizeMiddleware({
             apply({ availableHeight, elements }) {
-              elements.floating.style.maxBlockSize = `${Math.max(0, availableHeight)}px`;
+              elements.floating.style.maxBlockSize = getAnchoredOverlayAvailableHeightStyle(availableHeight);
             },
           }),
         );

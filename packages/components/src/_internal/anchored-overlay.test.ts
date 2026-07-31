@@ -2,7 +2,10 @@
 import { describe, expect, test } from 'bun:test';
 import { compileModule } from 'svelte/compiler';
 
-import { getAnchoredOverlayWidthStyle } from './anchored-overlay.svelte.ts';
+import {
+  getAnchoredOverlayAvailableHeightStyle,
+  getAnchoredOverlayWidthStyle,
+} from './anchored-overlay.svelte.ts';
 
 describe('anchored overlay width styles', () => {
   test('match-anchor locks the floating surface to the anchor width', () => {
@@ -32,11 +35,9 @@ describe('anchored overlay width styles', () => {
     expect(getAnchoredOverlayWidthStyle('none', { width: 320 })).toBe('');
   });
 
-  test('opt-in sizing middleware constrains the floating panel to available height', async () => {
-    const source = await Bun.file(`${import.meta.dir}/anchored-overlay.svelte.ts`).text();
-
-    expect(source).toContain('sizeMiddleware({');
-    expect(source).toContain('elements.floating.style.maxBlockSize');
+  test('available height style clamps negative space and preserves measured space', () => {
+    expect(getAnchoredOverlayAvailableHeightStyle(320)).toBe('320px');
+    expect(getAnchoredOverlayAvailableHeightStyle(-1)).toBe('0px');
   });
 
   test('server compilation omits Floating UI runtime imports', async () => {
