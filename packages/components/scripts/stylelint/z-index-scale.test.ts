@@ -263,6 +263,30 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test('preserves numeric escaped parentheses in custom-property names while scanning fallbacks', async () => {
+    for (const [opening, closing] of [
+      ['\\28 ', '\\29 '],
+      ['\\028 ', '\\029 '],
+      ['\\000028 ', '\\000029 '],
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: this is a valid custom property name. */
+          z-index: var(--foo${opening}bar${closing}, -1);
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+    }
+
+    const dynamicFallback = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this is a valid dynamic fallback. */
+        z-index: var(--foo\\28 bar\\29 , var(--dynamic));
+      }
+    `);
+    expect(warnings(dynamicFallback)).toEqual([]);
+  });
+
   test('rejects escaped layer-token fallbacks', async () => {
     const result = await lint(`.fixture { z-index: v\\61r(--cinder-z-popover, 1100); }`);
     expect(warnings(result)).toHaveLength(1);

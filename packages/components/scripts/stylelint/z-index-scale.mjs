@@ -207,6 +207,9 @@ function decodeCssEscapes(value) {
 function protectCssSyntaxEscapes(value) {
   return value
     .replaceAll(/\\(?:0*2c)(?=\s|$|[^0-9a-f])\s?/gi, '\uE000')
+    .replaceAll(/\\(?:0*28|0*29)(?=\s|$|[^0-9a-f])\s?/gi, (escape) =>
+      escape.includes('28') ? '\uE001' : '\uE002',
+    )
     .replaceAll(/\\([(),])/g, (_, character) =>
       character === ',' ? '\uE000' : character === '(' ? '\uE001' : '\uE002',
     );
