@@ -152,6 +152,9 @@ function matchesDirectionStyleRule(element: HTMLElement): boolean {
     for (const styleElement of root.querySelectorAll('style')) {
       if (styleElement.sheet) styleSheets.add(styleElement.sheet);
     }
+    for (const linkElement of root.querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"]')) {
+      if (linkElement.sheet) styleSheets.add(linkElement.sheet);
+    }
   }
   for (const sheet of styleSheets) {
     if (!isActiveStyleSheet(sheet)) continue;
@@ -289,11 +292,10 @@ function isContainerQueryActive(
   rule: CSSRule,
 ): boolean {
   if (typeof getComputedStyle !== 'function') return false;
-  const styleQuery = /style\(\s*(--[\w-]+)\s*:\s*([^)]+)\)/i.exec(conditionText);
+  const styleQuery = parseStyleQuery(conditionText);
   if (styleQuery) {
     const remainder = (
-      conditionText.slice(0, styleQuery.index) +
-      conditionText.slice(styleQuery.index + styleQuery[0].length)
+      conditionText.slice(0, styleQuery.index) + conditionText.slice(styleQuery.end)
     )
       .replace(/^\s*(?:and|or|not)\b/i, '')
       .replace(/^\(|\)$/g, '')
@@ -320,11 +322,11 @@ function isContainerQueryActive(
         }
       }
       const value =
-        getComputedStyle(ancestor).getPropertyValue(styleQuery[1]!).trim() ||
-        ancestor.style.getPropertyValue(styleQuery[1]!).trim();
+        getComputedStyle(ancestor).getPropertyValue(styleQuery.name).trim() ||
+        ancestor.style.getPropertyValue(styleQuery.name).trim();
       return /^\s*not\b/i.test(conditionText)
-        ? value !== styleQuery[2]!.trim()
-        : value === styleQuery[2]!.trim();
+        ? value !== styleQuery.value.trim()
+        : value === styleQuery.value.trim();
     }
     return false;
   }
@@ -438,9 +440,6 @@ function isContainerQueryActive(
     getComputedStyle(element.ownerDocument.documentElement).fontSize,
   );
   const remSize = Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : 16;
-  const queryUsesPhysicalWidth =
-    /(?:^|[\s(])(?:width|min-width|max-width)\s*[:<>=]/i.test(conditionText) ||
-    /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*width\b/i.test(conditionText);
   // This evaluator only understands `px`/`rem` length units and the
   // width/inline-size features. A condition using any other CSS length unit
   // (`em`, `vw`, `%`, ...), or a size feature it doesn't implement (`height`,
@@ -449,12 +448,72 @@ function isContainerQueryActive(
   // rule at the current size would otherwise be treated as an active
   // styling hint).
   if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
-  if ((queryUsesPhysicalWidth || usesInlineSize) && /\bor\b/i.test(conditionText)) {
-    return conditionText
-      .split(/\s+or\s+/i)
-      .some((clause) => evaluateContainerSizeCondition(clause, width, remSize, inlineSize));
+  return evaluateLogicalContainerCondition(conditionText, width, remSize, inlineSize);
+}
+
+function parseStyleQuery(
+  conditionText: string,
+): { index: number; end: number; name: string; value: string } | undefined {
+  const start = /style\(\s*(--[\w-]+)\s*:\s*/i.exec(conditionText);
+  if (!start || !start[1]) return undefined;
+  let depth = 0;
+  for (let index = start.index + start[0].length; index < conditionText.length; index += 1) {
+    const character = conditionText[index];
+    if (character === '(') depth += 1;
+    if (character === ')') {
+      if (depth === 0)
+        return {
+          index: start.index,
+          end: index + 1,
+          name: start[1],
+          value: conditionText.slice(start.index + start[0].length, index),
+        };
+      depth -= 1;
+    }
   }
-  return evaluateContainerSizeConstraints(conditionText, width, remSize, inlineSize);
+  return undefined;
+}
+
+function splitTopLevel(conditionText: string, operator: 'and' | 'or'): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  const pattern = new RegExp(`\\s+${operator}\\s+`, 'gi');
+  for (const match of conditionText.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    for (const character of conditionText.slice(start, index)) {
+      if (character === '(') depth += 1;
+      if (character === ')') depth -= 1;
+    }
+    if (depth === 0) {
+      parts.push(conditionText.slice(start, index));
+      start = index + match[0].length;
+    }
+  }
+  parts.push(conditionText.slice(start));
+  return parts;
+}
+
+function evaluateLogicalContainerCondition(
+  conditionText: string,
+  width: number,
+  remSize: number,
+  inlineSize: number,
+): boolean {
+  const orParts = splitTopLevel(conditionText, 'or');
+  if (orParts.length > 1)
+    return orParts.some((part) =>
+      evaluateLogicalContainerCondition(part, width, remSize, inlineSize),
+    );
+  const andParts = splitTopLevel(conditionText, 'and');
+  if (andParts.length > 1)
+    return andParts.every((part) =>
+      evaluateLogicalContainerCondition(part, width, remSize, inlineSize),
+    );
+  const trimmed = conditionText.trim();
+  if (trimmed.startsWith('(') && trimmed.endsWith(')'))
+    return evaluateLogicalContainerCondition(trimmed.slice(1, -1), width, remSize, inlineSize);
+  return evaluateContainerSizeConstraints(trimmed, width, remSize, inlineSize);
 }
 
 function composedParentElement(element: HTMLElement): HTMLElement | null {
@@ -594,16 +653,6 @@ function evaluateContainerSizeConstraints(
   return /^\s*not\b/i.test(conditionText) ? !combinedMatches : combinedMatches;
 }
 
-function evaluateContainerSizeCondition(
-  conditionText: string,
-  width: number,
-  remSize: number,
-  inlineSize = width,
-): boolean {
-  if (hasUnsupportedContainerSizeQuery(conditionText)) return false;
-  return evaluateContainerSizeConstraints(conditionText, width, remSize, inlineSize);
-}
-
 export function isContainerRule(rule: CSSRule): boolean {
   if (rule.constructor.name === 'CSSContainerRule') return true;
   if (Reflect.get(rule, 'type') !== 0) return false;
@@ -663,4 +712,46 @@ export function observeTextDirection(
 
   observeDirectionChain();
   return () => observer.disconnect();
+}
+
+export function observeTextDirectionMediaQueries(
+  element: HTMLElement | null | undefined,
+  onChange: () => void,
+): (() => void) | undefined {
+  if (!element || typeof matchMedia !== 'function') return undefined;
+  const sheets = new Set<CSSStyleSheet>(Array.from(element.ownerDocument.styleSheets));
+  const root = element.getRootNode();
+  if (typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot) {
+    for (const sheet of root.adoptedStyleSheets) sheets.add(sheet);
+    for (const style of root.querySelectorAll<HTMLStyleElement | HTMLLinkElement>(
+      'style,link[rel~="stylesheet"]',
+    )) {
+      const sheet = style.sheet;
+      if (sheet) sheets.add(sheet);
+    }
+  }
+  const queries = new Set<string>();
+  const visit = (rules: CSSRuleList | Iterable<CSSRule>) => {
+    for (const rule of Array.from(rules)) {
+      if (isMediaRule(rule)) {
+        const condition = Reflect.get(rule, 'conditionText');
+        if (typeof condition === 'string' && condition) queries.add(condition);
+      }
+      const nested = readNestedCssRules(rule);
+      if (nested) visit(nested);
+    }
+  };
+  for (const sheet of sheets) {
+    try {
+      visit(sheet.cssRules);
+    } catch {
+      // Ignore inaccessible cross-origin stylesheets.
+    }
+  }
+  const mediaQueries = [...queries].map((query) => matchMedia(query));
+  const handler = () => onChange();
+  for (const mediaQuery of mediaQueries) mediaQuery.addEventListener?.('change', handler);
+  return () => {
+    for (const mediaQuery of mediaQueries) mediaQuery.removeEventListener?.('change', handler);
+  };
 }

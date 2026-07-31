@@ -33,6 +33,7 @@
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import {
     elementDirectionStyleOverride,
+    observeTextDirectionMediaQueries,
     observeTextDirection,
     resolveTextDirection,
   } from '../../_internal/text-direction.ts';
@@ -53,6 +54,7 @@
 
   let navElement = $state<HTMLElement | null>(null);
   let directionRevision = $state(0);
+  let directionChainRevision = $state(0);
   const localeContext = getLocaleContext();
   const generatedId = $props.id();
   let openItemId = $state<string | null>(null);
@@ -107,8 +109,16 @@
   $effect(() => {
     return observeTextDirection(navElement, () => {
       directionRevision += 1;
+      directionChainRevision += 1;
     });
   });
+
+  $effect(() =>
+    observeTextDirectionMediaQueries(navElement, () => {
+      directionRevision += 1;
+      updateIndicator();
+    }),
+  );
 
   const openItem = $derived(items.find((item) => item.id === openItemId) ?? null);
   const openIndex = $derived(openItemId ? items.findIndex((item) => item.id === openItemId) : -1);
@@ -442,7 +452,7 @@
   });
 
   $effect(() => {
-    directionRevision;
+    directionChainRevision;
     if (!navElement || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => {
       directionRevision += 1;
