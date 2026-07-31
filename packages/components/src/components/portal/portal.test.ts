@@ -14,6 +14,7 @@ const {
   copyInheritedPortalAttributes,
   findNearestOpenTopLayer,
   getInheritedPortalStyle,
+  invalidatePortalDirection,
   observePortalSourceAvailability,
   redispatchPortaledEvent,
 } = await import('./portal.utilities.svelte.ts');
@@ -324,6 +325,131 @@ describe('Portal', () => {
       configurable: true,
       value: nativeGetComputedStyle,
     });
+  });
+
+  test('updates computed direction after a CSSOM invalidation hook', async () => {
+    const source = document.createElement('div');
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    document.body.append(source);
+    let direction: 'ltr' | 'rtl' = 'ltr';
+    const nativeGetComputedStyle = globalThis.getComputedStyle;
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: (element: Element) => {
+        const computed = nativeGetComputedStyle(element);
+        if (element === mountPoint) {
+          Object.defineProperty(computed, 'direction', { configurable: true, value: direction });
+        }
+        return computed;
+      },
+    });
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    direction = 'rtl';
+    invalidatePortalDirection();
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+  });
+
+  test('registers stylesheet-level media conditions for invalidation', async () => {
+    const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
+    Object.defineProperty(document, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(prefers-color-scheme: dark)' }, cssRules: [] }],
+    });
+    const originalMatchMedia = window.matchMedia;
+    let observedQuery = '';
+    window.matchMedia = ((query: string) => {
+      observedQuery = query;
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+    const mountPoint = document.createElement('div');
+    document.body.append(mountPoint);
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    expect(observedQuery).toBe('(prefers-color-scheme: dark)');
+    window.matchMedia = originalMatchMedia;
+    if (originalStyleSheets) {
+      Object.defineProperty(document, 'styleSheets', originalStyleSheets);
+    } else {
+      Reflect.deleteProperty(document, 'styleSheets');
+    }
+  });
+
+  test('observes direction invalidations inside a shadow root', async () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const source = document.createElement('div');
+    const mountPoint = document.createElement('div');
+    const sibling = document.createElement('div');
+    source.append(mountPoint);
+    shadow.append(sibling, source);
+    document.body.append(host);
+    const nativeGetComputedStyle = globalThis.getComputedStyle;
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: (element: Element) => {
+        const computed = nativeGetComputedStyle(element);
+        if (element === mountPoint) {
+          Object.defineProperty(computed, 'direction', {
+            configurable: true,
+            value: sibling.classList.contains('portal-rtl') ? 'rtl' : 'ltr',
+          });
+        }
+        return computed;
+      },
+    });
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    sibling.classList.add('portal-rtl');
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+  });
+
+  test('invalidates direction for arbitrary selector attributes', async () => {
+    const source = document.createElement('div');
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    document.body.append(source);
+    let direction: 'ltr' | 'rtl' = 'ltr';
+    const nativeGetComputedStyle = globalThis.getComputedStyle;
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: (element: Element) => {
+        const computed = nativeGetComputedStyle(element);
+        if (element === mountPoint) {
+          Object.defineProperty(computed, 'direction', { configurable: true, value: direction });
+        }
+        return computed;
+      },
+    });
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    direction = 'rtl';
+    source.setAttribute('data-locale', 'ar');
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
   });
 
   test('mounts without computed-style observation when getComputedStyle is unavailable', async () => {

@@ -529,6 +529,7 @@ type ComputedDirectionObservation = {
 
 const computedDirectionObservations = new Set<ComputedDirectionObservation>();
 const observedMediaQueries = new Map<string, MediaQueryList>();
+const directionInvalidationRoots = new Set<Node>();
 let directionInvalidationObserver: MutationObserver | null = null;
 let directionInvalidationFrame: number | null = null;
 let directionInvalidationDocument: Document | null = null;
@@ -544,6 +545,11 @@ function invalidateComputedDirections() {
     directionInvalidationFrame = null;
     syncComputedDirections();
   });
+}
+
+/** Notify mounted portals after a CSSOM rule edit (`insertRule`, `replace`, or `replaceSync`). */
+export function invalidatePortalDirection() {
+  invalidateComputedDirections();
 }
 
 function syncComputedDirections() {
@@ -599,6 +605,8 @@ function refreshMediaQueryObservers() {
   const queries = new Set<string>();
   for (const stylesheet of Array.from(document.styleSheets)) {
     try {
+      const mediaText = stylesheet.media?.mediaText;
+      if (mediaText) queries.add(mediaText);
       collectMediaQueries(stylesheet.cssRules, queries);
     } catch {
       // Cross-origin stylesheets are not script-readable.
@@ -625,14 +633,13 @@ function startDirectionInvalidationObservers() {
     typeof MutationObserver === 'undefined'
       ? null
       : new MutationObserver((mutations) => {
-          if (mutations.some((mutation) => mutation.type === 'childList')) {
+          if (mutations.some(isStylesheetMutation)) {
             refreshMediaQueryObservers();
           }
           invalidateComputedDirections();
         });
   directionInvalidationObserver?.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: ['class', 'style', 'dir'],
     childList: true,
     subtree: true,
   });
@@ -640,6 +647,31 @@ function startDirectionInvalidationObservers() {
   window.addEventListener('resize', invalidateComputedDirections);
   window.addEventListener('orientationchange', invalidateComputedDirections);
   refreshMediaQueryObservers();
+}
+
+function isStylesheetMutation(mutation: MutationRecord): boolean {
+  if (mutation.type !== 'childList') return false;
+  if (mutation.target instanceof HTMLStyleElement) return true;
+  return [...mutation.addedNodes, ...mutation.removedNodes].some(
+    (node) => node instanceof HTMLStyleElement || node instanceof HTMLLinkElement,
+  );
+}
+
+function observeDirectionShadowRoots(source: HTMLElement) {
+  if (!directionInvalidationObserver) return;
+  let current: HTMLElement | null = source;
+  while (current) {
+    const root = current.getRootNode();
+    if (root instanceof ShadowRoot && !directionInvalidationRoots.has(root)) {
+      directionInvalidationRoots.add(root);
+      directionInvalidationObserver.observe(root, {
+        attributes: true,
+        childList: true,
+        subtree: true,
+      });
+    }
+    current = getShadowHost(current);
+  }
 }
 
 function stopDirectionInvalidationObservers() {
@@ -654,6 +686,7 @@ function stopDirectionInvalidationObservers() {
     removeMediaQueryListener(mediaQuery);
   }
   observedMediaQueries.clear();
+  directionInvalidationRoots.clear();
   if (directionInvalidationFrame !== null) {
     window.cancelAnimationFrame(directionInvalidationFrame);
     directionInvalidationFrame = null;
@@ -684,6 +717,7 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
   };
   computedDirectionObservations.add(observation);
   startDirectionInvalidationObservers();
+  observeDirectionShadowRoots(source);
 
   return () => {
     computedDirectionObservations.delete(observation);
