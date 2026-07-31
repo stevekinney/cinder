@@ -2813,6 +2813,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         generationAtStart !== rebuildGeneration,
         rebuildDebounceTimer !== null,
       );
+      resetShellRendererWarmupState();
       if (needsPrebuild) {
         // A watcher invalidation cleared the page pointers; restore the eager
         // browser-bundle guarantee before advertising readiness.
@@ -2822,7 +2823,6 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         // A source-mtime-only change does not invalidate page bundles. Reset
         // only the renderer promise so the already-warmed browser bundles stay
         // available for the first request.
-        resetShellRendererWarmupState();
       }
     }
   }

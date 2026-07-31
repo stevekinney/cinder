@@ -301,6 +301,9 @@ describe('startup warmup stability', () => {
     expect(rendererWarmup).toContain('rendererWarmupNeedsPrebuild(');
     expect(rendererWarmup).toContain('if (needsPrebuild)');
     expect(rendererWarmup).toContain('prebuild = await eagerPrebuildAll()');
+    expect(rendererWarmup.indexOf('resetShellRendererWarmupState()')).toBeLessThan(
+      rendererWarmup.indexOf('if (needsPrebuild)'),
+    );
   });
 });
 
