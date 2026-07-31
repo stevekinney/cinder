@@ -207,6 +207,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     return () => {
       cancelled = true;
       stopAutoUpdate?.();
+      panel.style.maxBlockSize = '';
       positionReady = false;
       positionStyle = '';
       arrowStyle = '';

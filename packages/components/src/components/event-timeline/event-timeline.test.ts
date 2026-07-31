@@ -86,6 +86,7 @@ describe('EventTimeline', () => {
   test('opts cluster surfaces into available-height overlay sizing', () => {
     expect(EVENT_TIMELINE_SOURCE).toContain('size: () => true');
     expect(EVENT_TIMELINE_CSS).toContain('overflow: auto');
+    expect(EVENT_TIMELINE_CSS).not.toContain('max-block-size: min(24rem');
   });
 
   const start = '2026-07-03T00:00:00.000Z';
