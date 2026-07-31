@@ -39,6 +39,7 @@ import {
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  rendererWarmupNeedsPrebuild,
   resolvePreferredPort,
   rewriteRepositoryRelativeReadmeLinks,
   setPreparedShellServerRenderer,
@@ -289,12 +290,17 @@ describe('startup warmup stability', () => {
   });
 
   it('keeps renderer retries free of a second full page pre-build', async () => {
+    expect(rendererWarmupNeedsPrebuild(false, false)).toBe(false);
+    expect(rendererWarmupNeedsPrebuild(true, false)).toBe(true);
+    expect(rendererWarmupNeedsPrebuild(false, true)).toBe(true);
     const source = await readFile(new URL('./playground-server.ts', import.meta.url), 'utf8');
     const rendererWarmup = source.slice(
       source.indexOf('  // Prepare the SSR shell renderer'),
       source.indexOf('  if (!rendererPrepared)') + 1,
     );
-    expect(rendererWarmup).not.toContain('eagerPrebuildAll()');
+    expect(rendererWarmup).toContain('rendererWarmupNeedsPrebuild(');
+    expect(rendererWarmup).toContain('if (needsPrebuild)');
+    expect(rendererWarmup).toContain('prebuild = await eagerPrebuildAll()');
   });
 });
 

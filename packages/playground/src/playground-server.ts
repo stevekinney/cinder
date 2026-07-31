@@ -1342,6 +1342,19 @@ export function setPreparedShellServerRenderer(renderer: ShellServerRenderer | n
   preparedShellServerRenderer = renderer;
 }
 
+function resetShellRendererWarmupState(): void {
+  shellServerRendererPromise = null;
+  preparedShellServerRenderer = null;
+  shellRendererUsedFallback = false;
+}
+
+export function rendererWarmupNeedsPrebuild(
+  generationChanged: boolean,
+  hasPendingRebuild: boolean,
+): boolean {
+  return generationChanged || hasPendingRebuild;
+}
+
 /**
  * Compile and load the documentation page's server renderer.
  *
@@ -2796,8 +2809,21 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
       console.warn(
         `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
       );
-      preparedShellServerRenderer = null;
-      invalidateCachesForChange({ kind: 'components' });
+      const needsPrebuild = rendererWarmupNeedsPrebuild(
+        generationAtStart !== rebuildGeneration,
+        rebuildDebounceTimer !== null,
+      );
+      if (needsPrebuild) {
+        // A watcher invalidation cleared the page pointers; restore the eager
+        // browser-bundle guarantee before advertising readiness.
+        prebuild = await eagerPrebuildAll();
+        if (!prebuild.shellSucceeded) break;
+      } else {
+        // A source-mtime-only change does not invalidate page bundles. Reset
+        // only the renderer promise so the already-warmed browser bundles stay
+        // available for the first request.
+        resetShellRendererWarmupState();
+      }
     }
   }
   if (!rendererPrepared) {
