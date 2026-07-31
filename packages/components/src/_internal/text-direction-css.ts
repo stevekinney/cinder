@@ -173,46 +173,197 @@ function isScopeRule(rule: CSSRule): boolean {
 function isScopeActive(rule: CSSRule, element: HTMLElement): boolean {
   const cssText = Reflect.get(rule, 'cssText');
   if (typeof cssText !== 'string') return false;
-  const prelude = /^\s*@scope\s*([^{]*)\{/i.exec(cssText)?.[1]?.trim();
-  if (prelude === undefined) return false;
-  const toMatch = /\bto\s*\(([^()]*)\)\s*$/i.exec(prelude);
-  const rootText = (toMatch ? prelude.slice(0, toMatch.index) : prelude).trim();
-  const rootSelector = rootText.replace(/^\((.*)\)$/s, '$1').trim();
   try {
-    if (toMatch && splitScopeSelectors(toMatch[1]!).length === 0) return false;
-    if (
-      rootSelector &&
-      !splitScopeSelectors(rootSelector).some(
-        (selector) => element.matches(selector) || element.closest(selector),
-      )
-    )
-      return false;
-    if (
-      toMatch?.[1] &&
-      splitScopeSelectors(toMatch[1]).some((selector) => element.closest(selector))
-    )
-      return false;
+    const prelude = parseScopePrelude(cssText);
+    if (!prelude) return false;
+    const scopeRoot = findScopeMatch(element, prelude.rootSelectors);
+    if (prelude.rootSelectors.length > 0 && !scopeRoot) return false;
+    const scopeLimit = findScopeMatch(element, prelude.limitSelectors ?? []);
+    if (scopeLimit && (!scopeRoot || scopeRoot.contains(scopeLimit))) return false;
     return true;
   } catch {
     return false;
   }
 }
 
+interface ScopePrelude {
+  rootSelectors: string[];
+  limitSelectors: string[] | null;
+}
+
+function parseScopePrelude(cssText: string): ScopePrelude | null {
+  const match = /^\s*@scope\b/i.exec(cssText);
+  if (!match) return null;
+  const start = match[0].length;
+  let quote: string | null = null;
+  let escaped = false;
+  let parentheses = 0;
+  let brackets = 0;
+  let end = -1;
+  for (let index = start; index < cssText.length; index += 1) {
+    const character = cssText[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === '(') parentheses += 1;
+    else if (character === ')') parentheses -= 1;
+    else if (character === '[') brackets += 1;
+    else if (character === ']') brackets -= 1;
+    else if (character === '{' && parentheses === 0 && brackets === 0) {
+      end = index;
+      break;
+    }
+    if (parentheses < 0 || brackets < 0) return null;
+  }
+  if (end < 0 || quote || escaped || parentheses !== 0 || brackets !== 0) return null;
+  const prelude = cssText.slice(start, end).trim();
+  const limitIndex = findScopeLimitKeyword(prelude);
+  const rootText = (limitIndex === null ? prelude : prelude.slice(0, limitIndex)).trim();
+  const limitText = limitIndex === null ? null : prelude.slice(limitIndex + 2).trim();
+  const rootSelectorText = unwrapScopeGroup(rootText);
+  if (rootSelectorText === null) return null;
+  const rootSelectors = rootSelectorText ? splitScopeSelectors(rootSelectorText) : [];
+  if (rootSelectorText && rootSelectors.length === 0) return null;
+  if (limitText === null) return { rootSelectors, limitSelectors: null };
+  const limitSelectorText = unwrapScopeGroup(limitText);
+  if (limitSelectorText === null || !limitSelectorText) return null;
+  const limitSelectors = splitScopeSelectors(limitSelectorText);
+  return limitSelectors.length > 0 ? { rootSelectors, limitSelectors } : null;
+}
+
+function findScopeLimitKeyword(prelude: string): number | null {
+  let quote: string | null = null;
+  let escaped = false;
+  let parentheses = 0;
+  let brackets = 0;
+  for (let index = 0; index < prelude.length; index += 1) {
+    const character = prelude[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === '(') parentheses += 1;
+    else if (character === ')') parentheses -= 1;
+    else if (character === '[') brackets += 1;
+    else if (character === ']') brackets -= 1;
+    if (parentheses < 0 || brackets < 0) return null;
+    if (
+      parentheses === 0 &&
+      brackets === 0 &&
+      prelude.slice(index, index + 2).toLowerCase() === 'to' &&
+      !/[\w-]/.test(prelude[index - 1] ?? '') &&
+      !/[\w-]/.test(prelude[index + 2] ?? '')
+    ) {
+      const remainder = prelude.slice(index + 2);
+      const opening = remainder.search(/\S/);
+      if (opening >= 0 && remainder[opening] === '(') return index;
+    }
+  }
+  return null;
+}
+
+function unwrapScopeGroup(value: string): string | null {
+  if (!value) return '';
+  if (value[0] !== '(') return value;
+  const end = findScopeGroupEnd(value);
+  if (end < 0 || value.slice(end + 1).trim()) return null;
+  return value.slice(1, end).trim();
+}
+
+function findScopeGroupEnd(value: string): number {
+  let depth = 0;
+  let brackets = 0;
+  let quote: string | null = null;
+  let escaped = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === '[') brackets += 1;
+    else if (character === ']') brackets -= 1;
+    else if (character === '(' && brackets === 0) depth += 1;
+    else if (character === ')' && brackets === 0) {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+    if (brackets < 0) return -1;
+  }
+  return -1;
+}
+
+function findScopeMatch(element: HTMLElement, selectors: string[]): Element | null {
+  for (const selector of selectors) {
+    const match = element.matches(selector) ? element : element.closest(selector);
+    if (match) return match;
+  }
+  return null;
+}
+
 function splitScopeSelectors(value: string): string[] {
   const selectors: string[] = [];
-  let depth = 0;
+  let parentheses = 0;
+  let brackets = 0;
+  let quote: string | null = null;
+  let escaped = false;
   let start = 0;
   for (let index = 0; index < value.length; index += 1) {
-    if (value[index] === '(') depth += 1;
-    else if (value[index] === ')') depth -= 1;
-    else if (value[index] === ',' && depth === 0) {
+    const character = value[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (character === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (character === quote) quote = null;
+      continue;
+    }
+    if (character === '"' || character === "'") quote = character;
+    else if (character === '(') parentheses += 1;
+    else if (character === ')') parentheses -= 1;
+    else if (character === '[') brackets += 1;
+    else if (character === ']') brackets -= 1;
+    else if (character === ',' && parentheses === 0 && brackets === 0) {
       const selector = value.slice(start, index).trim();
       if (!selector) return [];
       selectors.push(selector);
       start = index + 1;
     }
+    if (parentheses < 0 || brackets < 0) return [];
   }
-  if (depth !== 0) return [];
+  if (escaped || quote || parentheses !== 0 || brackets !== 0) return [];
   const selector = value.slice(start).trim();
   if (!selector) return [];
   selectors.push(selector);
