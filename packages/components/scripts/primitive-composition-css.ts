@@ -176,13 +176,17 @@ function selectorTargets(selector: string): SelectorTarget[] {
   return targets;
 }
 
-function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
-  const negatesTag = (target: SelectorTarget, other: SelectorTarget): boolean =>
+function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
+  return (
     other.tag !== undefined &&
     target.functionalConstraints.some(
       ({ kind, alternatives }) =>
         kind === 'not' && alternatives.some((alternative) => alternative.tag === other.tag),
-    );
+    )
+  );
+}
+
+function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
   if (negatesTag(left, right) || negatesTag(right, left)) return false;
   const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
     (match) => match[1],
