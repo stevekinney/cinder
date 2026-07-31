@@ -286,17 +286,17 @@ describe('startup warmup stability', () => {
     scheduleRebuild({ kind: 'components' });
 
     expect(getRebuildGeneration()).toBe(generationAtStart);
-    await waitForPendingRebuild();
+    const settledGeneration = await waitForPendingRebuild();
 
-    expect(getRebuildGeneration()).toBe(generationAtStart + 1);
+    expect(settledGeneration).toBe(generationAtStart + 1);
+    expect(getRebuildGeneration()).toBe(settledGeneration);
   });
 
   it('captures the settled generation as a stable prebuild baseline', async () => {
     const generationBeforeDebounce = getRebuildGeneration();
     scheduleRebuild({ kind: 'components' });
 
-    await waitForPendingRebuild();
-    const generationAtStart = getRebuildGeneration();
+    const generationAtStart = await waitForPendingRebuild();
 
     expect(generationAtStart).toBe(generationBeforeDebounce + 1);
     await new Promise((resolve) => setTimeout(resolve, 0));

@@ -442,9 +442,10 @@ export function scheduleRebuild(scope: ChangeScope): void {
   }, 100);
 }
 
-/** Wait until the current watcher debounce has applied its cache invalidation. */
-export async function waitForPendingRebuild(): Promise<void> {
+/** Wait for pending invalidation, then return the settled rebuild generation. */
+export async function waitForPendingRebuild(): Promise<number> {
   await rebuildDebouncePromise;
+  return rebuildGeneration;
 }
 
 /** Exposed for behavioral tests that verify debounce ordering. */
@@ -2823,8 +2824,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
-    await waitForPendingRebuild();
-    const generationAtStart = rebuildGeneration;
+    const generationAtStart = await waitForPendingRebuild();
     prebuild = await eagerPrebuildAll();
     await getManifests().catch((error: unknown) => {
       console.error('[playground] manifest pre-warm failed:', error);
