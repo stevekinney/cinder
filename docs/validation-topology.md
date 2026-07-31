@@ -139,6 +139,12 @@ from the layer it needs to run in.
   wrappers. Its explicit allow-list is the migration tracker for issue #919: each
   known offender remains listed until its dedicated migration pull request lands,
   while newly introduced copies fail immediately.
+- **Component inventory neighbour-rationale guard**
+  (`packages/components/scripts/check-component-inventory.ts`, wired into
+  `lint:invariants`) — checks every canonical component's authored `@related` and
+  `@avoidWhen` metadata (or an explicit `@rationale` naming the nearest
+  alternative). It validates the written contract only; it does not infer
+  similarity or decide whether components should be consolidated.
 - **Memory canary** (`packages/components/scripts/memory-canary.ts`,
   `test:memory-canary`, wired as a non-blocking step in `main-green.yaml`) —
   runs a fixed representative slice of component suites and reports peak RSS.
