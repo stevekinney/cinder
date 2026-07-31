@@ -92,7 +92,8 @@ function matchesDirectionStyleRuleList(
         continue;
       }
       try {
-        if (element.matches(rule.selectorText)) return true;
+        const selectorText = resolveNestedSelector(rule);
+        if (selectorText && element.matches(selectorText)) return true;
       } catch {
         continue;
       }
@@ -140,6 +141,20 @@ function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
     typeof Reflect.get(rule, 'style') === 'object' &&
     Reflect.get(rule, 'style') !== null
   );
+}
+
+function resolveNestedSelector(rule: CSSStyleRule): string | undefined {
+  let selector = rule.selectorText.trim();
+  let parentRule = Reflect.get(rule, 'parentRule');
+  while (parentRule && isCssStyleRule(parentRule)) {
+    const parentSelector = parentRule.selectorText.trim();
+    if (!parentSelector) return undefined;
+    selector = selector.includes('&')
+      ? selector.replaceAll('&', parentSelector)
+      : `${parentSelector} ${selector}`;
+    parentRule = Reflect.get(parentRule, 'parentRule');
+  }
+  return selector;
 }
 
 function isConditionalRuleActive(

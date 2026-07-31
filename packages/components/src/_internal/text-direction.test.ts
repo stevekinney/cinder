@@ -433,6 +433,125 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('resolves a native CSS nesting parent selector before matching direction rules', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'nested-shell';
+      const element = document.createElement('div');
+      element.className = 'nested-menu';
+      shell.appendChild(element);
+      document.body.appendChild(shell);
+
+      const nestedRule = createStyleRule({ selectorText: '& .nested-menu', direction: 'ltr' });
+      const outerRule = createStyleRule({ selectorText: '.nested-shell', cssRules: [nestedRule] });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('resolves multiple native CSS nesting parent selectors', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'multi-nested-shell';
+      const region = document.createElement('div');
+      region.className = 'multi-nested-region';
+      const element = document.createElement('div');
+      element.className = 'multi-nested-menu';
+      region.appendChild(element);
+      shell.appendChild(region);
+      document.body.appendChild(shell);
+
+      const innerRule = createStyleRule({ selectorText: '& .multi-nested-menu', direction: 'ltr' });
+      const middleRule = createStyleRule({
+        selectorText: '& .multi-nested-region',
+        cssRules: [innerRule],
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.multi-nested-shell',
+        cssRules: [middleRule],
+      });
+      Object.defineProperty(innerRule, 'parentRule', { configurable: true, value: middleRule });
+      Object.defineProperty(middleRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('resolves a native nesting parent selector used mid-selector', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const parent = document.createElement('section');
+      parent.className = 'mid-selector-parent';
+      const shell = document.createElement('div');
+      shell.className = 'mid-selector-shell';
+      parent.appendChild(shell);
+      document.body.appendChild(parent);
+
+      const nestedRule = createStyleRule({
+        selectorText: '.mid-selector-parent:has(&)',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.mid-selector-shell',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(parent, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('ignores direction rules inside inactive container-query shims', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
