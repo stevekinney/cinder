@@ -155,6 +155,7 @@
     offset: () => 8,
     shiftPadding: () => 8,
     size: () => true,
+    sizeMaxBlockSize: () => '24rem',
     // Read from state (kept fresh below) rather than recomputing here: `strategy`
     // is captured once when the anchored overlay's autoUpdate session starts, so
     // it must be reactive for the session to notice a containing block appearing

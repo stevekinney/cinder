@@ -15,6 +15,7 @@ export type AnchoredOverlayOptions = {
   arrowVisible?: () => boolean;
   /** Constrain the floating panel to the available block space on its resolved side. */
   size?: () => boolean;
+  sizeMaxBlockSize?: () => string;
   widthMode?: () => AnchoredOverlayWidthMode;
   strategy?: () => 'fixed' | 'absolute';
 };
@@ -93,6 +94,7 @@ function reportAnchoredOverlaySetupError(error: unknown): void {
 export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
   let positionReady = $state(false);
   let positionStyle = $state('');
+  let availableHeightStyle = $state('');
   let resolvedPlacement = $state<Placement>(options.placement?.() ?? DEFAULT_PLACEMENT);
   let arrowStyle = $state('');
 
@@ -100,6 +102,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     if (!options.open()) {
       positionReady = false;
       positionStyle = '';
+      availableHeightStyle = '';
       arrowStyle = '';
       resolvedPlacement = options.placement?.() ?? DEFAULT_PLACEMENT;
       return;
@@ -110,6 +113,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     if (!anchor || !panel) {
       positionReady = false;
       positionStyle = '';
+      availableHeightStyle = '';
       arrowStyle = '';
       return;
     }
@@ -122,6 +126,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const arrow = options.arrow?.();
     const arrowVisible = options.arrowVisible?.() ?? Boolean(arrow);
     const sizeEnabled = options.size?.() ?? false;
+    const sizeMaxBlockSize = options.sizeMaxBlockSize?.() ?? '100%';
     const widthMode = options.widthMode?.() ?? 'content';
     const strategyOverride = options.strategy?.();
     let cancelled = false;
@@ -144,19 +149,19 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       const middleware: Middleware[] = [
         offsetMiddleware(offset),
         flip(),
-        shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }),
       ];
-      if (arrowVisible && arrow) {
-        middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
-      }
       if (sizeEnabled) {
         middleware.push(
           sizeMiddleware({
-            apply({ availableHeight, elements }) {
-              elements.floating.style.maxBlockSize = getAnchoredOverlayAvailableHeightStyle(availableHeight);
+            apply({ availableHeight }) {
+              availableHeightStyle = `min(${sizeMaxBlockSize}, ${getAnchoredOverlayAvailableHeightStyle(availableHeight)})`;
             },
           }),
         );
+      }
+      middleware.push(shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }));
+      if (arrowVisible && arrow) {
+        middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
       }
 
       stopAutoUpdate = autoUpdate(anchor, panel, async () => {
@@ -185,6 +190,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           `position: ${strategy};`,
           `left: ${result.x}px;`,
           `top: ${result.y}px;`,
+          availableHeightStyle ? `max-block-size: ${availableHeightStyle};` : '',
           widthStyle,
         ]
           .filter(Boolean)
@@ -199,6 +205,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       if (cancelled) return;
       positionReady = false;
       positionStyle = '';
+      availableHeightStyle = '';
       arrowStyle = '';
       resolvedPlacement = placement;
       reportAnchoredOverlaySetupError(error);
@@ -207,9 +214,9 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     return () => {
       cancelled = true;
       stopAutoUpdate?.();
-      panel.style.maxBlockSize = '';
       positionReady = false;
       positionStyle = '';
+      availableHeightStyle = '';
       arrowStyle = '';
       resolvedPlacement = placement;
     };
