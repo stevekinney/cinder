@@ -159,37 +159,10 @@ function resolveNestedSelector(rule: CSSStyleRule): string | undefined {
 }
 
 function combineNestedSelectors(parentSelector: string, nestedSelector: string): string {
-  const parents = splitSelectorList(parentSelector);
-  const nestedSelectors = splitSelectorList(nestedSelector);
-  return nestedSelectors
-    .flatMap((child) =>
-      parents.map((parent) =>
-        child.includes('&') ? child.replaceAll('&', parent) : `${parent} ${child}`,
-      ),
-    )
-    .join(', ');
-}
-
-function splitSelectorList(selectorText: string): string[] {
-  const selectors: string[] = [];
-  let parenthesesDepth = 0;
-  let bracketDepth = 0;
-  let start = 0;
-  for (let index = 0; index < selectorText.length; index += 1) {
-    const character = selectorText[index];
-    if (character === '(') parenthesesDepth += 1;
-    if (character === ')') parenthesesDepth = Math.max(0, parenthesesDepth - 1);
-    if (character === '[') bracketDepth += 1;
-    if (character === ']') bracketDepth = Math.max(0, bracketDepth - 1);
-    if (character === ',' && parenthesesDepth === 0 && bracketDepth === 0) {
-      const selector = selectorText.slice(start, index).trim();
-      if (selector) selectors.push(selector);
-      start = index + 1;
-    }
-  }
-  const selector = selectorText.slice(start).trim();
-  if (selector) selectors.push(selector);
-  return selectors;
+  const parentContext = parentSelector.includes(',') ? `:is(${parentSelector})` : parentSelector;
+  return nestedSelector.includes('&')
+    ? nestedSelector.replaceAll('&', parentContext)
+    : `${parentContext} ${nestedSelector}`;
 }
 
 function isConditionalRuleActive(

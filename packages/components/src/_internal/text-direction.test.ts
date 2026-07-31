@@ -600,6 +600,44 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('preserves mixed parent-list combinations for multiple nesting references', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const container = document.createElement('section');
+      const previous = document.createElement('div');
+      previous.className = 'mixed-selector-first';
+      const element = document.createElement('div');
+      element.className = 'mixed-selector-second';
+      container.append(previous, element);
+      document.body.appendChild(container);
+
+      const nestedRule = createStyleRule({ selectorText: '& + &', direction: 'ltr' });
+      const outerRule = createStyleRule({
+        selectorText: '.mixed-selector-first, .mixed-selector-second',
+        cssRules: [nestedRule],
+      });
+      Object.defineProperty(nestedRule, 'parentRule', { configurable: true, value: outerRule });
+
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          elementDirectionStyleOverride(element),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('resolves a native nesting parent selector used mid-selector', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
