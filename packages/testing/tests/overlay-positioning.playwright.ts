@@ -9,7 +9,7 @@ if (!desktopViewport) {
   throw new Error('Desktop viewport is required for overlay positioning tests.');
 }
 
-function manifestEntry(slug: 'popover' | 'tooltip') {
+function manifestEntry(slug: 'modal' | 'popover' | 'tooltip') {
   const entry = manifest.find((candidate) => candidate.slug === slug);
   if (!entry) {
     throw new Error(`Missing manifest entry for ${slug}.`);
