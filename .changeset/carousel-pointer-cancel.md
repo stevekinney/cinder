@@ -2,4 +2,4 @@
 '@lostgradient/cinder': patch
 ---
 
-Keep Carousel native-scroll ownership until a cancelled touch or pen pointer is released.
+Settle Carousel native-scroll ownership from the debounce after a touch or pen pointer is cancelled.
