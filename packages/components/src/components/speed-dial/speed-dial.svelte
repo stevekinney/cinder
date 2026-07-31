@@ -23,12 +23,11 @@
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { composedFocusScopes } from '../../utilities/focus.ts';
+  import { composedFocusScopes, getSequentialFocusTargets } from '../../utilities/focus.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
-    closestAcrossShadow,
     createInheritedPortalStyle,
     findNearestOpenTopLayer,
     getShadowHost,
@@ -41,9 +40,6 @@
 
   const actionsId = $props.id();
   const defaultAriaLabel = 'Quick actions';
-  const documentFocusSelector =
-    'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
-
   let {
     open = $bindable(false),
     direction = 'up',
@@ -183,15 +179,11 @@
     // lives in that same shadow root.
     for (const { root, anchor } of composedFocusScopes(speedDialRoot)) {
       const preceding =
-        Array.from(root.querySelectorAll<HTMLElement>(documentFocusSelector))
+        getSequentialFocusTargets(root)
           .filter(
             (candidate) =>
-              !hasNegativeTabIndex(candidate) &&
-              !candidate.matches(':disabled') &&
               !speedDialRoot.contains(candidate) &&
               !actionsElement?.contains(candidate) &&
-              !closestAcrossShadow(candidate, '[hidden], [inert], [aria-hidden="true"]') &&
-              isRenderedCandidate(candidate) &&
               Boolean(candidate.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING),
           )
           .at(-1) ?? null;

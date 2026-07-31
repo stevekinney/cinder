@@ -1,36 +1,4 @@
-import { composedFocusScopes } from '../../utilities/focus.ts';
-import { closestAcrossShadow, getShadowHost } from '../portal/portal.utilities.svelte.ts';
-
-const focusCandidateSelector =
-  'button:not([disabled]), a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]';
-
-function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
-  if (!root) return [];
-  return Array.from(root.querySelectorAll<HTMLElement>(focusCandidateSelector)).filter(
-    (candidate) =>
-      !hasNegativeTabIndex(candidate) &&
-      !candidate.matches(':disabled') &&
-      !(candidate instanceof HTMLInputElement && candidate.type === 'hidden') &&
-      !closestAcrossShadow(candidate, '[hidden], [inert], [aria-hidden="true"]') &&
-      isRendered(candidate),
-  );
-}
-
-function isRendered(element: HTMLElement): boolean {
-  if (typeof getComputedStyle !== 'function') return true;
-  let candidate: HTMLElement | null = element;
-  while (candidate) {
-    const style = getComputedStyle(candidate);
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
-    candidate = candidate.parentElement ?? getShadowHost(candidate);
-  }
-  return true;
-}
-
-function hasNegativeTabIndex(element: HTMLElement): boolean {
-  const tabIndex = element.getAttribute('tabindex');
-  return tabIndex !== null && Number(tabIndex) < 0;
-}
+import { composedFocusScopes, getSequentialFocusTargets } from '../../utilities/focus.ts';
 
 export function getNavigationBarBrandFocusTargets(
   navigationBar: HTMLElement | null,

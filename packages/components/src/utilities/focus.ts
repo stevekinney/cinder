@@ -41,6 +41,67 @@ export function restoreFocusTo(target: HTMLElement | null): boolean {
   return true;
 }
 
+const sequentialFocusCandidateSelector = [
+  'a[href]',
+  'area[href]',
+  'button',
+  'input:not([type="hidden"])',
+  'select',
+  'textarea',
+  'summary',
+  'iframe',
+  'audio[controls]',
+  'video[controls]',
+  'embed',
+  'object',
+  '[contenteditable]:not([contenteditable="false"])',
+  '[tabindex]',
+].join(', ');
+
+/** Return elements that participate in the document's sequential tab order. */
+export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
+  if (!root) return [];
+  return Array.from(root.querySelectorAll<HTMLElement>(sequentialFocusCandidateSelector)).filter(
+    (candidate) =>
+      !hasNegativeTabIndex(candidate) &&
+      !candidate.hasAttribute('disabled') &&
+      !candidate.matches(':disabled') &&
+      !closestComposed(candidate, '[hidden], [inert], [aria-hidden="true"]') &&
+      isRendered(candidate),
+  );
+}
+
+function closestComposed(element: HTMLElement, selector: string): HTMLElement | null {
+  let candidate: HTMLElement | null = element;
+  while (candidate) {
+    if (candidate.matches(selector)) return candidate;
+    const root = candidate.getRootNode();
+    candidate =
+      candidate.parentElement ??
+      (root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null);
+  }
+  return null;
+}
+
+function isRendered(element: HTMLElement): boolean {
+  if (typeof getComputedStyle !== 'function') return true;
+  let candidate: HTMLElement | null = element;
+  while (candidate) {
+    const style = getComputedStyle(candidate);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    const root = candidate.getRootNode();
+    candidate =
+      candidate.parentElement ??
+      (root instanceof ShadowRoot && root.host instanceof HTMLElement ? root.host : null);
+  }
+  return true;
+}
+
+function hasNegativeTabIndex(element: HTMLElement): boolean {
+  const tabIndex = element.getAttribute('tabindex');
+  return tabIndex !== null && Number(tabIndex) < 0;
+}
+
 /**
  * A composed-tree root to search for a sequential focus candidate, paired
  * with the element to measure `compareDocumentPosition` against at that
