@@ -45,9 +45,6 @@ describe('SpeedDial', () => {
     expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
     expect(toolbar.hasAttribute('inert')).toBe(true);
-    expect(speedDialStyles).toMatch(
-      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{[^}]*background:\s*transparent;[^}]*border-color:\s*transparent;[^}]*box-shadow:\s*none;/s,
-    );
   });
 
   test('open and reduced-motion styles preserve the same closed resting reset', () => {

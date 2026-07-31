@@ -28,8 +28,8 @@
 
   /*
    * Keep the action surface mounted while its children play their exit
-   * transition, but remove the shared floating-surface chrome from the
-   * settled closed state. The surface remains inert in the component markup,
+   * transition, but remove the shared floating-surface chrome whenever the
+   * surface is closed. The surface remains inert in the component markup,
    * so this is purely a visual reset.
    */
   .cinder-speed-dial__actions:not([data-cinder-open]) {
