@@ -7,6 +7,7 @@ import {
   getAnchoredOverlayAvailableHeightStyle,
   getAnchoredOverlayMaxBlockSizeStyle,
   getAnchoredOverlayWidthStyle,
+  isAnchoredOverlayGenerationCurrent,
 } from './anchored-overlay.svelte.ts';
 
 describe('anchored overlay width styles', () => {
@@ -60,9 +61,16 @@ describe('anchored overlay width styles', () => {
     expect(panel.style.maxBlockSize).toBe('');
   });
 
+  test('rejects stale concurrent positioning generations before DOM writes', () => {
+    expect(isAnchoredOverlayGenerationCurrent(3, 3)).toBe(true);
+    expect(isAnchoredOverlayGenerationCurrent(2, 3)).toBe(false);
+  });
+
   test('server compilation omits Floating UI runtime imports', async () => {
     const sourcePath = `${import.meta.dir}/anchored-overlay.svelte.ts`;
     const source = await Bun.file(sourcePath).text();
+    expect(source).toContain('sizeMiddleware({');
+    expect(source).toContain('padding: shiftPadding');
     const moduleSource = new Bun.Transpiler({ loader: 'ts' }).transformSync(source);
     const result = compileModule(moduleSource, {
       filename: sourcePath,

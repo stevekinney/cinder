@@ -77,6 +77,13 @@ export function applyAnchoredOverlayMaxBlockSize(
   return value;
 }
 
+export function isAnchoredOverlayGenerationCurrent(
+  positioningGeneration: number,
+  latestGeneration: number,
+): boolean {
+  return positioningGeneration === latestGeneration;
+}
+
 function getArrowStyle(placement: Placement, data: { x?: number; y?: number } | undefined) {
   if (!data) return '';
 
@@ -163,31 +170,29 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
 
       if (cancelled) return;
 
-      const middleware: Middleware[] = [
-        offsetMiddleware(offset),
-        flip(),
-      ];
-      if (sizeEnabled) {
-        middleware.push(
-          sizeMiddleware({
-            apply({ availableHeight }) {
-              availableHeightStyle = applyAnchoredOverlayMaxBlockSize(
-                panel,
-                availableHeight,
-                sizeMaxBlockSize,
-              );
-            },
-          }),
-        );
-      }
-      middleware.push(shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }));
-      if (arrowVisible && arrow) {
-        middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
-      }
-
       stopAutoUpdate = autoUpdate(anchor, panel, async () => {
         if (cancelled) return;
         const currentGeneration = ++generation;
+        const middleware: Middleware[] = [offsetMiddleware(offset), flip()];
+        if (sizeEnabled) {
+          middleware.push(
+            sizeMiddleware({
+              padding: shiftPadding,
+              apply({ availableHeight }) {
+                if (!isAnchoredOverlayGenerationCurrent(currentGeneration, generation)) return;
+                availableHeightStyle = applyAnchoredOverlayMaxBlockSize(
+                  panel,
+                  availableHeight,
+                  sizeMaxBlockSize,
+                );
+              },
+            }),
+          );
+        }
+        middleware.push(shift({ padding: shiftPadding, crossAxis: shiftCrossAxis }));
+        if (arrowVisible && arrow) {
+          middleware.push(arrowMiddleware({ element: arrow, padding: arrowPadding }));
+        }
         let result: Awaited<ReturnType<typeof computePosition>>;
         const strategy = strategyOverride ?? (panel.closest('dialog') ? 'absolute' : 'fixed');
         try {
