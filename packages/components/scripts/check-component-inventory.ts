@@ -42,7 +42,20 @@ function findCinderMetadataBlock(source: string): string {
 
 function findExplicitRationale(source: string): string {
   const metadataBlock = findCinderMetadataBlock(source);
-  return metadataBlock.match(/^\s*\*\s*@rationale\s+(.+?)\s*$/im)?.[1]?.trim() ?? '';
+  const rationaleLines: string[] = [];
+  let collecting = false;
+  for (const line of metadataBlock.split('\n')) {
+    const content = line.replace(/^\s*\*\s?/, '').trim();
+    if (/^@rationale\b/i.test(content)) {
+      rationaleLines.push(content.replace(/^@rationale\s*/i, '').trim());
+      collecting = true;
+    } else if (collecting && /^@\S+/.test(content)) {
+      break;
+    } else if (collecting && content) {
+      rationaleLines.push(content);
+    }
+  }
+  return rationaleLines.join(' ').trim();
 }
 
 /** Return violations for one authored component metadata block. */
@@ -52,8 +65,13 @@ export function findNeighbourRationaleViolations(entry: InventoryEntry): Invento
   const namedMarker = rationale
     .match(/\b(?:nearest|closest)\s+alternative\s*:\s*(.+)$/i)?.[1]
     ?.trim();
+  const namedProseAlternative = rationale.match(
+    /\b(?:nearest|closest)\s+alternative\s+(?:is|would be)\s+([a-z][a-z0-9-]*)\b/i,
+  )?.[1];
   const namedPipeAlternative = rationale.match(/\|\s*([a-z][a-z0-9-]*)\b/)?.[1];
-  const hasExplicitRationale = Boolean(namedMarker || namedPipeAlternative);
+  const hasExplicitRationale = Boolean(
+    (namedMarker && namedMarker !== '') || namedProseAlternative || namedPipeAlternative,
+  );
 
   if (hasRelatedAndAvoidWhen || hasExplicitRationale) return [];
   return [

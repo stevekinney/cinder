@@ -75,4 +75,28 @@ describe('findNeighbourRationaleViolations', () => {
       }),
     ).toHaveLength(1);
   });
+
+  it('accepts a rationale whose named alternative wraps onto a continuation line', () => {
+    expect(
+      findNeighbourRationaleViolations({
+        id: 'new-component',
+        related: [],
+        avoidWhen: [],
+        source:
+          '<script module>/**\n * @cinder\n * @rationale Nearest alternative:\n * button has a different interaction contract.\n */</script>',
+      }),
+    ).toEqual([]);
+  });
+
+  it('accepts natural prose that names the nearest alternative', () => {
+    expect(
+      findNeighbourRationaleViolations({
+        id: 'new-component',
+        related: [],
+        avoidWhen: [],
+        source:
+          '<script module>/**\n * @cinder\n * @rationale The nearest alternative is button, but it has a different contract.\n */</script>',
+      }),
+    ).toEqual([]);
+  });
 });
