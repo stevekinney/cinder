@@ -242,19 +242,38 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     if (node['type'] === 'IfStatement') {
       if (isRecord(node['test']))
         walk(node['test'], currentShadowed, currentInsideFunction, conditional);
-      if (isRecord(node['consequent']))
-        walk(node['consequent'], currentShadowed, currentInsideFunction, true);
-      if (isRecord(node['alternate']))
-        walk(node['alternate'], currentShadowed, currentInsideFunction, true);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const branchValues: Map<string, unknown[]>[] = [];
+      for (const branch of [node['consequent'], node['alternate']]) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction, false);
+        branchValues.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+      }
+      bindings.clear();
+      for (const [name, values] of base) {
+        const merged = branchValues.flatMap((branch) => branch.get(name) ?? values);
+        bindings.set(name, [...new Set(merged)]);
+      }
       return;
     }
     if (node['type'] === 'ConditionalExpression') {
       if (isRecord(node['test']))
         walk(node['test'], currentShadowed, currentInsideFunction, conditional);
-      if (isRecord(node['consequent']))
-        walk(node['consequent'], currentShadowed, currentInsideFunction, true);
-      if (isRecord(node['alternate']))
-        walk(node['alternate'], currentShadowed, currentInsideFunction, true);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const branches = [node['consequent'], node['alternate']].map((branch) => {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction, false);
+        return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      });
+      bindings.clear();
+      for (const [name, values] of base) {
+        const merged = branches.flatMap((branch) => branch.get(name) ?? values);
+        bindings.set(name, [...new Set(merged)]);
+      }
       return;
     }
     if (

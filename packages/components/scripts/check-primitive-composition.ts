@@ -302,7 +302,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       const combined = new Set<string>();
       for (const previous of mutableValues)
         for (const right of rightValues) combined.add(previous + right);
-      mutableValues.clear();
+      if (!conditional) mutableValues.clear();
       for (const value of combined) mutableValues.add(value);
       candidate = undefined;
     }

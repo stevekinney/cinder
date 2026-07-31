@@ -54,6 +54,34 @@ function staticStringFromExpression(
   return undefined;
 }
 
+function collectPatternNames(pattern: unknown, into: Set<string>): void {
+  if (!isRecord(pattern)) return;
+  if (pattern['type'] === 'Identifier' && typeof pattern['name'] === 'string')
+    into.add(pattern['name']);
+  else if (pattern['type'] === 'VariableDeclarator') collectPatternNames(pattern['id'], into);
+  else
+    for (const value of Object.values(pattern)) {
+      if (Array.isArray(value)) for (const item of value) collectPatternNames(item, into);
+      else if (isRecord(value)) collectPatternNames(value, into);
+    }
+}
+
+function collectFunctionScopedNames(node: unknown, into: Set<string>): void {
+  if (!isRecord(node)) return;
+  if (
+    node['type'] === 'FunctionDeclaration' ||
+    node['type'] === 'FunctionExpression' ||
+    node['type'] === 'ArrowFunctionExpression'
+  )
+    return;
+  if (node['type'] === 'VariableDeclaration' && Array.isArray(node['declarations']))
+    for (const declaration of node['declarations']) collectPatternNames(declaration, into);
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) for (const item of value) collectFunctionScopedNames(item, into);
+    else if (isRecord(value)) collectFunctionScopedNames(value, into);
+  }
+}
+
 function staticStringBindings(source: string): Map<string, string> {
   const root: unknown = parseSvelte(source, { modern: true });
   const bindings = new Map<string, string>();
@@ -82,21 +110,46 @@ function staticStringBindings(source: string): Map<string, string> {
       if (value !== undefined) bindings.set(declaration['id']['name'], value);
     }
   }
-  const walk = (node: unknown): void => {
+  const walk = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
     if (!isRecord(node)) return;
+    let currentShadowed = shadowed;
+    if (
+      node['type'] === 'FunctionDeclaration' ||
+      node['type'] === 'FunctionExpression' ||
+      node['type'] === 'ArrowFunctionExpression'
+    ) {
+      const localNames = new Set<string>();
+      if (Array.isArray(node['params']))
+        for (const parameter of node['params']) collectPatternNames(parameter, localNames);
+      if (isRecord(node['body'])) collectFunctionScopedNames(node['body'], localNames);
+      currentShadowed = new Set([...shadowed, ...localNames]);
+    } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      const localNames = new Set<string>();
+      for (const statement of node['body'])
+        if (
+          isRecord(statement) &&
+          statement['type'] === 'VariableDeclaration' &&
+          (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+          Array.isArray(statement['declarations'])
+        )
+          for (const declaration of statement['declarations'])
+            if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      currentShadowed = new Set([...shadowed, ...localNames]);
+    }
     if (
       node['type'] === 'AssignmentExpression' &&
       node['operator'] === '=' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&
-      typeof node['left']['name'] === 'string'
+      typeof node['left']['name'] === 'string' &&
+      !currentShadowed.has(node['left']['name'])
     ) {
       const value = staticStringFromExpression(node['right'], bindings);
       if (value !== undefined) bindings.set(node['left']['name'], value);
     }
     for (const child of Object.values(node)) {
-      if (Array.isArray(child)) for (const item of child) walk(item);
-      else if (isRecord(child)) walk(child);
+      if (Array.isArray(child)) for (const item of child) walk(item, currentShadowed);
+      else if (isRecord(child)) walk(child, currentShadowed);
     }
   };
   for (const statement of body) walk(statement);

@@ -244,6 +244,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('preserves skipped paths through conditional compound composition', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = ''; if (custom) tag += 'custom-'; tag += 'input';</script><svelte:element this={tag} />",
+        'conditional-compound/conditional-compound.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('rejects an added raw control in a tracked file', () => {
     expect(
       findPrimitiveCompositionViolations('<input /><input />', 'pin-input/pin-input.svelte'),
@@ -572,6 +581,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('keeps only the terminal write within a conditional branch', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; if (dense) { layout = { display: 'grid', gridTemplateColumns: '1fr' }; layout = { display: 'block' }; }</script><div style={layout}></div>",
+        'terminal-branch/terminal-branch.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('resolves style-object bindings wrapped in a TypeScript `as const` assertion', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -768,6 +786,15 @@ describe('primitive composition guard', () => {
         'negated-tag/negated-tag.css',
       ),
     ).toEqual([]);
+  });
+
+  test('allows overlap when a negation excludes only a compound selector', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        'input { display: grid; } input:not(.disabled) { grid-template-columns: 1fr; }',
+        'compound-negation/compound-negation.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('allows a negated selector to overlap a generic peer', () => {
@@ -1024,6 +1051,15 @@ describe('primitive composition guard', () => {
         'mutable-field/mutable-field.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('ignores assignments to shadowed field tags', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function helper() { let tag = 'span'; tag = 'label'; }</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'shadowed-field/shadowed-field.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('recognizes modern width range media conditions', () => {

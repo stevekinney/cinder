@@ -181,7 +181,12 @@ function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
     other.tag !== undefined &&
     target.functionalConstraints.some(
       ({ kind, alternatives }) =>
-        kind === 'not' && alternatives.some((alternative) => alternative.tag === other.tag),
+        kind === 'not' &&
+        alternatives.some(
+          (alternative) =>
+            alternative.tag === other.tag &&
+            (target.tag === undefined || targetNecessarilyMatches(other, alternative)),
+        ),
     )
   );
 }
