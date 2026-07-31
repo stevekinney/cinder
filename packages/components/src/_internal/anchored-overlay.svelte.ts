@@ -160,6 +160,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     let cancelled = false;
     let generation = 0;
     let stopAutoUpdate: (() => void) | undefined;
+    let boundaryResizeObserver: ResizeObserver | undefined;
 
     void (async () => {
       const {
@@ -174,7 +175,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
 
       if (cancelled) return;
 
-      stopAutoUpdate = autoUpdate(anchor, panel, async () => {
+      const updatePosition = async () => {
         if (cancelled) return;
         const currentGeneration = ++generation;
         const middleware: Middleware[] = [
@@ -241,7 +242,21 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           ? getArrowStyle(result.placement, result.middlewareData.arrow)
           : '';
         positionReady = true;
-      });
+      };
+
+      stopAutoUpdate = autoUpdate(anchor, panel, updatePosition);
+
+      if (
+        boundary &&
+        boundary !== anchor &&
+        boundary !== panel &&
+        typeof ResizeObserver !== 'undefined'
+      ) {
+        boundaryResizeObserver = new ResizeObserver(() => {
+          void updatePosition();
+        });
+        boundaryResizeObserver.observe(boundary);
+      }
     })().catch((error) => {
       if (cancelled) return;
       positionReady = false;
@@ -255,6 +270,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     return () => {
       cancelled = true;
       stopAutoUpdate?.();
+      boundaryResizeObserver?.disconnect();
       panel.style.removeProperty('max-block-size');
       positionReady = false;
       positionStyle = '';
