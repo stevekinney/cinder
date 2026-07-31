@@ -187,6 +187,16 @@ type ShellServerRenderer = (props: { components: string[]; readmeHtml: string })
   body: string;
   head: string;
 };
+type ShellServerRendererModule = { renderShellBody: ShellServerRenderer };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isShellServerRendererModule(value: unknown): value is ShellServerRendererModule {
+  return isRecord(value) && typeof value['renderShellBody'] === 'function';
+}
+
 let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 let preparedShellServerRenderer: ShellServerRenderer | null = null;
@@ -215,6 +225,15 @@ type PageServerRenderers = {
   renderComponentPageBody: PageServerRenderer;
   renderLandingBody: LandingServerRenderer;
 };
+
+export function isPageServerRenderers(value: unknown): value is PageServerRenderers {
+  return (
+    isRecord(value) &&
+    typeof value['renderComponentPageBody'] === 'function' &&
+    typeof value['renderLandingBody'] === 'function'
+  );
+}
+
 let pageServerRendererPromise: Promise<PageServerRenderers> | null = null;
 let lastGoodPageServerRenderer: PageServerRenderers | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
@@ -1284,6 +1303,10 @@ export function shellBuildSucceeded(code: string | null, usedFallback: boolean):
   return code !== null && !usedFallback;
 }
 
+export function formatBuildLogs(logs: readonly { message: string }[]): string {
+  return logs.map(({ message }) => message).join('\n');
+}
+
 async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
@@ -1299,7 +1322,7 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
         splitting: false,
       });
       if (!result.success || result.outputs[0] === undefined) {
-        throw new Error(`Shell server bundle failed:\n${result.logs.join('\n')}`);
+        throw new Error(`Shell server bundle failed:\n${formatBuildLogs(result.logs)}`);
       }
 
       const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
@@ -1311,14 +1334,10 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
       } finally {
         rmSync(serverBundleDirectory, { recursive: true, force: true });
       }
-      if (
-        typeof loaded !== 'object' ||
-        loaded === null ||
-        typeof Reflect.get(loaded, 'renderShellBody') !== 'function'
-      ) {
+      if (!isShellServerRendererModule(loaded)) {
         throw new Error('Shell server bundle did not export renderShellBody');
       }
-      const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
+      const renderer = loaded.renderShellBody;
       shellRendererUsedFallback = false;
       if (generationAtStart === rebuildGeneration) {
         lastGoodShellServerRenderer = renderer;
@@ -1388,7 +1407,7 @@ async function loadPageServerRenderer(): Promise<PageServerRenderers> {
         splitting: false,
       });
       if (!result.success || result.outputs[0] === undefined) {
-        throw new Error(`Page server bundle failed:\n${result.logs.join('\n')}`);
+        throw new Error(`Page server bundle failed:\n${formatBuildLogs(result.logs)}`);
       }
 
       const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
@@ -1400,26 +1419,12 @@ async function loadPageServerRenderer(): Promise<PageServerRenderers> {
       } finally {
         rmSync(serverBundleDirectory, { recursive: true, force: true });
       }
-      if (
-        typeof loaded !== 'object' ||
-        loaded === null ||
-        typeof Reflect.get(loaded, 'renderComponentPageBody') !== 'function' ||
-        typeof Reflect.get(loaded, 'renderLandingBody') !== 'function'
-      ) {
-        const missing = ['renderComponentPageBody', 'renderLandingBody'].filter(
-          (name) =>
-            typeof loaded !== 'object' ||
-            loaded === null ||
-            typeof Reflect.get(loaded, name) !== 'function',
-        );
-        throw new Error(`Page server bundle did not export ${missing.join(' and ')}`);
+      if (!isPageServerRenderers(loaded)) {
+        throw new Error('Page server bundle did not export both renderers');
       }
       const renderer: PageServerRenderers = {
-        renderComponentPageBody: Reflect.get(
-          loaded,
-          'renderComponentPageBody',
-        ) as PageServerRenderer,
-        renderLandingBody: Reflect.get(loaded, 'renderLandingBody') as LandingServerRenderer,
+        renderComponentPageBody: loaded.renderComponentPageBody,
+        renderLandingBody: loaded.renderLandingBody,
       };
       if (generationAtStart === rebuildGeneration) {
         lastGoodPageServerRenderer = renderer;
@@ -1553,10 +1558,38 @@ export async function readGeneratedComponentSchema(
 ): Promise<GeneratedComponentSchema | null> {
   try {
     if (!(await generatedSchemaFile.exists())) return null;
-    return (await generatedSchemaFile.json()) as GeneratedComponentSchema;
+    const schema: unknown = await generatedSchemaFile.json();
+    return isGeneratedComponentSchema(schema) ? schema : null;
   } catch {
     return null;
   }
+}
+
+function isGeneratedComponentSchema(value: unknown): value is GeneratedComponentSchema {
+  if (!isRecord(value)) return false;
+
+  if ('properties' in value && value['properties'] !== undefined) {
+    const properties = value['properties'];
+    if (!isRecord(properties)) return false;
+    if (Object.values(properties).some((property) => !isRecord(property))) return false;
+  }
+
+  if ('metadata' in value && value['metadata'] !== undefined) {
+    const metadata = value['metadata'];
+    if (!isRecord(metadata)) return false;
+    const unsupportedProps = metadata['unsupportedProps'];
+    if (unsupportedProps === undefined) return true;
+    if (!Array.isArray(unsupportedProps)) return false;
+    return unsupportedProps.every(
+      (prop) =>
+        isRecord(prop) &&
+        typeof prop['name'] === 'string' &&
+        (prop['required'] === undefined || typeof prop['required'] === 'boolean') &&
+        (prop['reason'] === undefined || typeof prop['reason'] === 'string'),
+    );
+  }
+
+  return true;
 }
 
 export function mergeGeneratedSchemaMetadata(

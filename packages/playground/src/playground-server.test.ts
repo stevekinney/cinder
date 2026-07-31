@@ -35,7 +35,10 @@ import {
   createHttpServerOnAvailablePort,
   createSharedDisposer,
   fallbackToLastGood,
+  formatBuildLogs,
   handleRequest,
+  isPageServerRenderers,
+  isShellServerRendererModule,
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
@@ -1334,6 +1337,18 @@ describe('generated schema metadata', () => {
     ).toBeNull();
   });
 
+  it.each([null, 42, 'schema', []])(
+    'rejects a generated schema with the wrong root shape: %p',
+    async (value) => {
+      expect(
+        await readGeneratedComponentSchema({
+          exists: () => Promise.resolve(true),
+          json: () => Promise.resolve(value),
+        }),
+      ).toBeNull();
+    },
+  );
+
   it('overlays defaults without adding private props or losing analyzer-owned bindability', () => {
     const analyzedManifest: ComponentManifest = {
       name: 'Input',
@@ -1384,6 +1399,28 @@ describe('generated schema metadata', () => {
         },
       }).isCompound,
     ).toBe(true);
+  });
+});
+
+describe('playground build boundaries', () => {
+  it('formats structured Bun build logs without object stringification', () => {
+    expect(formatBuildLogs([{ message: 'missing export' }, { message: 'plain failure' }])).toBe(
+      'missing export\nplain failure',
+    );
+  });
+
+  it('narrows dynamically loaded renderer exports with runtime guards', () => {
+    expect(isShellServerRendererModule({ renderShellBody: () => ({ body: '', head: '' }) })).toBe(
+      true,
+    );
+    expect(isShellServerRendererModule({ renderShellBody: 'not a function' })).toBe(false);
+    expect(
+      isPageServerRenderers({
+        renderComponentPageBody: () => ({ body: '', head: '' }),
+        renderLandingBody: () => ({ body: '', head: '' }),
+      }),
+    ).toBe(true);
+    expect(isPageServerRenderers({ renderComponentPageBody: () => ({}) })).toBe(false);
   });
 });
 
