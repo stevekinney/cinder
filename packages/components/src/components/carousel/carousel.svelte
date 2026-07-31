@@ -60,6 +60,7 @@
   let viewportElement = $state<HTMLElement | null>(null);
   let programmaticTarget: number | null = null;
   const activePointerIds = new SvelteSet<number>();
+  const cancelledPointerIds = new SvelteSet<number>();
   let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
   let scrollFrame: number | null = null;
   let cachedViewportInlineSize = 0;
@@ -278,7 +279,7 @@
     }
     if (inlineSize === cachedViewportInlineSize) return;
     cachedViewportInlineSize = inlineSize;
-    if (!isInteracting && !isNativeScrolling) {
+    if (!isInteracting && !isNativeScrolling && activePointerIds.size === 0) {
       scrollToActiveSlide('auto');
     }
   });
@@ -290,11 +291,21 @@
   }
 
   function finishPointerInteraction(event: PointerEvent): void {
-    if (event.type === 'pointercancel') scheduleNativeScrollEnd();
-    activePointerIds.delete(event.pointerId);
-    if (activePointerIds.size > 0) return;
     isInteracting = false;
+    if (event.type === 'pointercancel') {
+      // A browser takeover cancels pointer events before the user's finger
+      // necessarily leaves the surface. Keep the pointer tracked until the
+      // matching pointerup so the resting alignment effect cannot run while
+      // the cancelled gesture is still physically held.
+      cancelledPointerIds.add(event.pointerId);
+      scheduleNativeScrollEnd();
+      return;
+    }
+    activePointerIds.delete(event.pointerId);
+    cancelledPointerIds.delete(event.pointerId);
+    if (activePointerIds.size > 0) return;
     removePointerEndListeners();
+    if (isNativeScrolling) scheduleNativeScrollEnd();
   }
 
   function scheduleNativeScrollEnd(): void {
@@ -302,6 +313,7 @@
     if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
     nativeScrollEndTimer = setTimeout(() => {
       nativeScrollEndTimer = null;
+      if (activePointerIds.size > 0) return;
       isNativeScrolling = false;
       settledIndex = viewportElement ? nearestVisibleSlideIndex(viewportElement) : currentIndex;
       if (programmaticTarget === null) isAutoplayTransitioning = false;
@@ -316,6 +328,8 @@
     // height for the duration of an ordinary click.
     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
 
+    for (const pointerId of cancelledPointerIds) activePointerIds.delete(pointerId);
+    cancelledPointerIds.clear();
     programmaticTarget = null;
     isAutoplayTransitioning = false;
     isInteracting = true;
@@ -338,6 +352,7 @@
   function onWindowBlur(): void {
     const wasInteracting = isInteracting;
     activePointerIds.clear();
+    cancelledPointerIds.clear();
     isInteracting = false;
     removePointerEndListeners();
     // Only relinquish programmatic/autoplay ownership if blur is actually
@@ -404,7 +419,7 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
-    if (isInteracting || isNativeScrolling) return;
+    if (isInteracting || isNativeScrolling || activePointerIds.size > 0) return;
     const identityChanged = slideIdentity !== previousSlideIdentity;
     previousSlideIdentity = slideIdentity;
     if (identityChanged) {
@@ -434,7 +449,7 @@
     const viewport = viewportElement;
     if (viewport === null || typeof MutationObserver === 'undefined') return;
     const observer = new MutationObserver(() => {
-      if (isInteracting || isNativeScrolling) return;
+      if (isInteracting || isNativeScrolling || activePointerIds.size > 0) return;
       scrollToActiveSlide('auto');
     });
     let ancestor: HTMLElement | null = viewport;

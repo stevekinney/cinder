@@ -109,6 +109,26 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 72 });
   });
 
+  test('keeps a cancelled native gesture active until its pointer is released', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const neighbor = viewport.children[1] as HTMLElement;
+
+    await fireEvent.pointerDown(viewport, { pointerId: 73, pointerType: 'touch' });
+    await fireEvent.pointerCancel(window, { pointerId: 73 });
+
+    // The browser can cancel pointer events while the finger remains down.
+    // The cancelled gesture must retain native-scroll ownership past the
+    // debounce window, or the alignment effect can snap the track mid-pan.
+    jest.advanceTimersByTime(100);
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(false);
+
+    await fireEvent.pointerUp(window, { pointerId: 73 });
+    jest.advanceTimersByTime(100);
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+  });
+
   test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {
     const css = await Bun.file(new URL('./carousel.css', import.meta.url)).text();
     expect(css).not.toContain('scroll-snap-stop: always');
