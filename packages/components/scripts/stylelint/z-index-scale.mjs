@@ -166,8 +166,9 @@ function evaluateConstantArithmetic(expression) {
 function resolveStaticNumber(value) {
   const expression = flattenCalcFunctions(value);
   const direct = Number(expression);
-  if (Number.isFinite(direct)) return direct;
-  return evaluateConstantArithmetic(expression);
+  if (Number.isFinite(direct)) return roundCssInteger(direct);
+  const evaluated = evaluateConstantArithmetic(expression);
+  return evaluated === null ? null : roundCssInteger(evaluated);
 }
 
 function decodeCssEscapes(value) {
@@ -202,6 +203,12 @@ function flattenCalcFunctions(value) {
     index = closeIndex - 1;
   }
   return output;
+}
+
+// CSS rounds integer-context values to the nearest integer, with ties toward
+// positive infinity (for example, -1.5 becomes -1 and 9998.5 becomes 9999).
+function roundCssInteger(value) {
+  return Math.floor(value + 0.5);
 }
 
 function isStaticallyNegative(value) {

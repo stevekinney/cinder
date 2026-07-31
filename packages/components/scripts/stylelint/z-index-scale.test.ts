@@ -167,6 +167,8 @@ describe('cinder/z-index-scale', () => {
     'v\\61r(--item-layer, -1)',
     'var(--item-layer, calc(calc(10000 - 1) + 0))',
     'var(--item-layer, calc(1e4 - 1))',
+    'var(--item-layer, calc(9999.4))',
+    'var(--item-layer, calc(9998.5))',
   ])('rejects a banned literal in an unresolved custom-property fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -187,6 +189,24 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(result)).toHaveLength(1);
     expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
+  test('follows CSS integer rounding for negative half values', async () => {
+    const roundedToZero = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this rounds to the neutral zero layer. */
+        z-index: var(--item-layer, calc(-0.5));
+      }
+    `);
+    expect(warnings(roundedToZero)).toEqual([]);
+
+    const roundedNegative = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this remains a negative layer after rounding. */
+        z-index: var(--item-layer, calc(-1.5));
+      }
+    `);
+    expect(warnings(roundedNegative)).toHaveLength(1);
   });
 
   test('does not inspect a similarly named non-var function', async () => {
