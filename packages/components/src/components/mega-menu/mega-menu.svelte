@@ -28,6 +28,8 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import {
     elementDirectionStyleOverride,
@@ -583,6 +585,11 @@
                     onkeydown={(event) => onSubmenuTriggerKeydown(event, subIndex)}
                   >
                     {sub.label}
+                    {#if resolvedDirection === 'rtl'}
+                      <ChevronLeft size={16} strokeWidth={2} aria-hidden="true" />
+                    {:else}
+                      <ChevronRight size={16} strokeWidth={2} aria-hidden="true" />
+                    {/if}
                   </button>
                 </li>
               {/each}

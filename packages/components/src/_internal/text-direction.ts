@@ -379,8 +379,8 @@ function isContainerQueryActive(
   // horizontal writing mode, where the two resolve to the same value (some
   // environments only resolve the property name that was actually set).
   const firstInset = verticalInlineAxis
-    ? readInset('padding-block-start', 'padding-top') +
-      readInset('border-block-start-width', 'border-top-width')
+    ? readInset('padding-inline-start', 'padding-top') +
+      readInset('border-inline-start-width', 'border-top-width')
     : usesInlineSize
       ? readInset('padding-inline-start', 'padding-left') +
         readInset('border-inline-start-width', 'border-left-width')
@@ -390,8 +390,8 @@ function isContainerQueryActive(
           isVerticalWritingMode ? 'border-left-width' : 'border-inline-start-width',
         );
   const secondInset = verticalInlineAxis
-    ? readInset('padding-block-end', 'padding-bottom') +
-      readInset('border-block-end-width', 'border-bottom-width')
+    ? readInset('padding-inline-end', 'padding-bottom') +
+      readInset('border-inline-end-width', 'border-bottom-width')
     : usesInlineSize
       ? readInset('padding-inline-end', 'padding-right') +
         readInset('border-inline-end-width', 'border-right-width')
@@ -433,10 +433,10 @@ function hasUnsupportedContainerSizeQuery(conditionText: string): boolean {
   if (/(?:min-|max-)?(?:height|block-size)\b/i.test(conditionText)) return true;
   if (/\baspect-ratio\b/i.test(conditionText)) return true;
   if (/\borientation\s*:/i.test(conditionText)) return true;
-  const unitMatch = /(?:min-|max-)?(?:width|inline-size)\s*(?:>=|>|<=|<|:)\s*[\d.]+([a-z%]+)/i.exec(
-    conditionText,
+  const unitMatches = conditionText.matchAll(
+    /(?:min-|max-)?(?:width|inline-size)\s*(?:>=|>|<=|<|:)\s*[\d.]+([a-z%]+)/gi,
   );
-  return unitMatch !== null && !/^(?:px|rem)$/i.test(unitMatch[1]!);
+  return [...unitMatches].some((match) => !/^(?:px|rem)$/i.test(match[1]!));
 }
 
 // A conjunctive range condition — e.g. `(width >= 20rem) and (width <= 40rem)`
@@ -558,7 +558,9 @@ export function observeTextDirection(
   const observer = new MutationObserver((mutations) => {
     if (
       mutations.some(
-        (mutation) => mutation.type === 'attributes' && mutation.attributeName === 'dir',
+        (mutation) =>
+          (mutation.type === 'attributes' && mutation.attributeName === 'dir') ||
+          mutation.type === 'childList',
       )
     ) {
       observeDirectionChain();
@@ -577,7 +579,7 @@ export function observeTextDirection(
       // catch a direction change driven by one of those selectors.
       observer.observe(currentElement, {
         attributes: true,
-        childList: isAutoDirection,
+        childList: true,
         characterData: isAutoDirection,
         subtree: isAutoDirection,
       });

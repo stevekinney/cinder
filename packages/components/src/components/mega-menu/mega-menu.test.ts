@@ -98,6 +98,28 @@ describe('MegaMenu', () => {
     expect(container.querySelector(`#${panelId}`)).toBeNull();
   });
 
+  test('renders a right-facing nested submenu chevron in left-to-right mode', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'ltr' });
+    await fireEvent.click(getTriggerByLabel(container, 'Products'));
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '.cinder-mega-menu__submenu-trigger',
+    );
+    if (!trigger) throw new Error('Missing nested submenu trigger.');
+    expect(trigger.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(trigger.querySelector('svg')?.getAttribute('class')).toContain('lucide-chevron-right');
+  });
+
+  test('renders a left-facing nested submenu chevron in right-to-left mode', async () => {
+    const { container } = render(MegaMenu, { items, dir: 'rtl' });
+    await fireEvent.click(getTriggerByLabel(container, 'Products'));
+    const trigger = container.querySelector<HTMLButtonElement>(
+      '.cinder-mega-menu__submenu-trigger',
+    );
+    if (!trigger) throw new Error('Missing nested submenu trigger.');
+    expect(trigger.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+    expect(trigger.querySelector('svg')?.getAttribute('class')).toContain('lucide-chevron-left');
+  });
+
   test('keeps the top-level sections grid while indenting only nested sections', () => {
     const styles = readFileSync(new URL('./mega-menu.css', import.meta.url), 'utf8');
 
@@ -105,7 +127,7 @@ describe('MegaMenu', () => {
     expect(styles).toContain('.cinder-mega-menu__sub .cinder-mega-menu__sections {');
     expect(styles).toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\bleft:\s*0;/s);
     expect(styles).not.toMatch(/\.cinder-mega-menu__indicator\s*\{[^}]*\binset-inline-start:/s);
-    expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(0, 1fr));');
+    expect(styles).toContain('grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));');
   });
 
   test('keeps submenu trigger IDs unique for non-BMP labels', async () => {

@@ -650,6 +650,36 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('treats every unsupported unit in a mixed container query as inactive', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 320, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'mixed-unit-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.mixed-unit-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container (min-width: 20px) and (max-width: 40em) { .mixed-unit-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: '(min-width: 20px) and (max-width: 40em)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('treats a container size query with an unimplemented feature as inactive', () => {
     // `height` (and block-size, aspect-ratio, orientation) are not
     // implemented by this evaluator at all — neither regex captures them, so
@@ -1601,6 +1631,27 @@ describe('resolveTextDirection', () => {
     disconnect?.();
 
     expect(changes).toBeGreaterThan(0);
+  });
+
+  test('rebuilds direction observers after reparenting', async () => {
+    const oldParent = document.createElement('section');
+    oldParent.dir = 'ltr';
+    const newParent = document.createElement('section');
+    newParent.dir = 'rtl';
+    const element = document.createElement('div');
+    oldParent.append(element);
+    document.body.append(oldParent, newParent);
+
+    let changes = 0;
+    const disconnect = observeTextDirection(element, () => {
+      changes += 1;
+    });
+    newParent.append(element);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    disconnect?.();
+
+    expect(changes).toBeGreaterThan(0);
+    expect(resolveTextDirection(element)).toBe('rtl');
   });
 
   test('does not observe a missing element', () => {
