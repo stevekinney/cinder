@@ -328,15 +328,16 @@
 
   $effect(() => {
     if (!navElement) return;
+    const element = navElement;
     const refresh = () => {
       directionRevision += 1;
       updateIndicator();
     };
-    navElement.addEventListener('focusin', refresh);
-    navElement.addEventListener('focusout', refresh);
+    element.addEventListener('focusin', refresh);
+    element.addEventListener('focusout', refresh);
     return () => {
-      navElement?.removeEventListener('focusin', refresh);
-      navElement?.removeEventListener('focusout', refresh);
+      element.removeEventListener('focusin', refresh);
+      element.removeEventListener('focusout', refresh);
     };
   });
 
