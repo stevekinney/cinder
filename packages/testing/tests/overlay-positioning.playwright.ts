@@ -130,3 +130,40 @@ test('tooltip anchors inside transformed and scrolled preview shells', async ({
     fixture: 'transformed-ancestor-shell',
   });
 });
+
+test('modal keeps a dialog-owned anchored overlay visible beyond its panel', async ({
+  componentPage,
+}) => {
+  const modal = manifestEntry('modal');
+  const fixture = modal.fixtures?.find((candidate) => candidate.name === 'anchored-overlay');
+  if (!fixture) throw new Error('Missing modal anchored-overlay fixture.');
+
+  const page = await componentPage.open({
+    entry: modal,
+    theme: 'light',
+    viewport: desktopViewport,
+    fixtureName: fixture.name,
+    fixtureContentHash: fixture.fixtureContentHash,
+  });
+
+  const dialog = page.locator('dialog.cinder-modal');
+  const panel = dialog.locator('.cinder-modal__panel');
+  const overlay = dialog.locator('.cinder-popover').first();
+  const scope = dialog.locator('.cinder-popover__portal-scope').first();
+
+  await expect(dialog).toBeVisible();
+  await expect(scope).toHaveCount(1);
+  await expect(overlay).toBeVisible();
+  await expect(overlay).toHaveAttribute('data-cinder-position-ready', 'true');
+
+  const panelBox = await panel.boundingBox();
+  const overlayBox = await overlay.boundingBox();
+  expect(panelBox).not.toBeNull();
+  expect(overlayBox).not.toBeNull();
+  expect(overlayBox!.y + overlayBox!.height).toBeGreaterThan(panelBox!.y + panelBox!.height);
+  await expect
+    .poll(() =>
+      overlay.evaluate((element) => getComputedStyle(element.closest('dialog')!).overflow),
+    )
+    .toBe('visible');
+});
