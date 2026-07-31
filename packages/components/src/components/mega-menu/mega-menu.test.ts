@@ -421,10 +421,13 @@ describe('MegaMenu', () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     class StubResizeObserver {
       static instances: StubResizeObserver[] = [];
+      readonly observed: Element[] = [];
       constructor(private readonly callback: ResizeObserverCallback) {
         StubResizeObserver.instances.push(this);
       }
-      observe() {}
+      observe(element: Element) {
+        this.observed.push(element);
+      }
       disconnect() {}
       deliver() {
         this.callback([], this as unknown as ResizeObserver);
@@ -439,6 +442,53 @@ describe('MegaMenu', () => {
       expect(StubResizeObserver.instances).toHaveLength(1);
     } finally {
       globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('observes the composed shadow-host ancestor chain', async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    class ChainResizeObserver {
+      static last: ChainResizeObserver | undefined;
+      readonly observed: Element[] = [];
+      constructor() {
+        ChainResizeObserver.last = this;
+      }
+      observe(element: Element) {
+        this.observed.push(element);
+      }
+      disconnect() {}
+    }
+    globalThis.ResizeObserver = ChainResizeObserver as unknown as typeof ResizeObserver;
+    try {
+      const host = document.createElement('div');
+      const shadow = host.attachShadow({ mode: 'open' });
+      document.body.append(host);
+      const view = render(MegaMenu, { target: shadow, props: { items } });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(ChainResizeObserver.last?.observed).toContain(host);
+      view.unmount();
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('focus state changes re-resolve direction for keyboard navigation', async () => {
+    const style = document.createElement('style');
+    style.textContent = '.cinder-mega-menu:focus-within { direction: ltr; }';
+    document.head.append(style);
+    try {
+      const { container } = render(MegaMenuLocaleTestHarness, { items, direction: 'rtl' });
+      const products = getTriggerByLabel(container, 'Products');
+      const resources = getTriggerByLabel(container, 'Resources');
+      const nav = container.querySelector('nav');
+      nav?.addEventListener('focusin', () => nav.style.setProperty('direction', 'ltr'), {
+        once: true,
+      });
+      products.focus();
+      await fireEvent.keyDown(products, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(resources);
+    } finally {
+      style.remove();
     }
   });
 

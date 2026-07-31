@@ -975,6 +975,76 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('uses composed shadow ancestry for named style containers', () => {
+    const host = document.createElement('div');
+    host.style.setProperty('container-name', 'sidebar');
+    host.style.setProperty('--flow', 'rtl');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const container = document.createElement('section');
+    const element = document.createElement('div');
+    element.className = 'shadow-named-style-ltr';
+    container.append(element);
+    shadow.append(container);
+    document.body.append(host);
+    const nestedRule = createStyleRule({
+      selectorText: '.shadow-named-style-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container sidebar style(--flow: rtl) {}',
+      type: 0,
+      conditionText: 'style(--flow: rtl)',
+      containerName: 'sidebar',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('uses fractional computed container width over integer client width', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'clientWidth', { value: 320, configurable: true });
+    Object.defineProperty(container, 'offsetWidth', { value: 320, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'fractional-container-ltr';
+    container.append(element);
+    document.body.append(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.fractional-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText: '@container (min-width: 320.25px) {}',
+      type: 0,
+      conditionText: '(min-width: 320.25px)',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    const original = window.getComputedStyle;
+    const override = ((target: Element) => {
+      const style = original(target);
+      if (target === container)
+        Object.defineProperty(style, 'width', { value: '320.5px', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = override;
+    globalThis.getComputedStyle = override;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = original;
+      globalThis.getComputedStyle = original;
+      container.remove();
+    }
+  });
+
   test('evaluates range-syntax size queries', () => {
     const container = document.createElement('section');
     container.style.setProperty('container-type', 'inline-size');
