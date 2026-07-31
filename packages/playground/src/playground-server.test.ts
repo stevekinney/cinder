@@ -45,6 +45,7 @@ import {
   rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
   resolvePreferredPort,
+  resolveRendererLoad,
   rewriteRepositoryRelativeReadmeLinks,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
@@ -1349,6 +1350,24 @@ describe('generated schema metadata', () => {
     },
   );
 
+  it.each([
+    { properties: null },
+    { properties: { value: null } },
+    { metadata: null },
+    { metadata: { unsupportedProps: {} } },
+    { metadata: { unsupportedProps: [null] } },
+    { metadata: { unsupportedProps: [{ name: 42 }] } },
+    { metadata: { unsupportedProps: [{ name: 'value', required: 'yes' }] } },
+    { metadata: { unsupportedProps: [{ name: 'value', reason: 42 }] } },
+  ])('rejects an invalid generated schema member shape: %p', async (value) => {
+    expect(
+      await readGeneratedComponentSchema({
+        exists: () => Promise.resolve(true),
+        json: () => Promise.resolve(value),
+      }),
+    ).toBeNull();
+  });
+
   it('overlays defaults without adding private props or losing analyzer-owned bindability', () => {
     const analyzedManifest: ComponentManifest = {
       name: 'Input',
@@ -1421,6 +1440,37 @@ describe('playground build boundaries', () => {
       }),
     ).toBe(true);
     expect(isPageServerRenderers({ renderComponentPageBody: () => ({}) })).toBe(false);
+  });
+
+  it('keeps stale fallback status isolated from a newer renderer result', async () => {
+    let rejectStale!: (error: Error) => void;
+    let resolveCurrent!: (renderer: () => { body: string; head: string }) => void;
+    const staleLoad = resolveRendererLoad<() => { body: string; head: string }>(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectStale = reject;
+        }),
+      () => ({ body: 'stale fallback', head: '' }),
+    );
+    const currentLoad = resolveRendererLoad<() => { body: string; head: string }>(
+      () =>
+        new Promise((resolve) => {
+          resolveCurrent = resolve;
+        }),
+      () => ({ body: 'current fallback', head: '' }),
+    );
+
+    resolveCurrent(() => ({ body: 'current', head: '' }));
+    const currentResult = await currentLoad;
+    expect(currentResult.usedFallback).toBe(false);
+    expect(currentResult.renderer()).toEqual({ body: 'current', head: '' });
+
+    rejectStale(new Error('stale build failed'));
+    const staleResult = await staleLoad;
+    expect(staleResult.usedFallback).toBe(true);
+    expect(staleResult.renderer()).toEqual({ body: 'stale fallback', head: '' });
+    expect(currentResult.usedFallback).toBe(false);
+    expect(currentResult.renderer()).toEqual({ body: 'current', head: '' });
   });
 });
 

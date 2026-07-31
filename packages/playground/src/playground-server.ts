@@ -197,10 +197,26 @@ export function isShellServerRendererModule(value: unknown): value is ShellServe
   return isRecord(value) && typeof value['renderShellBody'] === 'function';
 }
 
-let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
+type ShellServerRendererLoadResult = {
+  renderer: ShellServerRenderer;
+  usedFallback: boolean;
+};
+
+export async function resolveRendererLoad<T>(
+  loadRenderer: () => Promise<T>,
+  lastGood: T | null,
+  onError?: (error: unknown) => void,
+): Promise<{ renderer: T; usedFallback: boolean }> {
+  try {
+    return { renderer: await loadRenderer(), usedFallback: false };
+  } catch (error) {
+    onError?.(error);
+    return { renderer: fallbackToLastGood(lastGood, error), usedFallback: true };
+  }
+}
+let shellServerRendererPromise: Promise<ShellServerRendererLoadResult> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 let preparedShellServerRenderer: ShellServerRenderer | null = null;
-let shellRendererUsedFallback = false;
 
 /**
  * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
@@ -1307,51 +1323,53 @@ export function formatBuildLogs(logs: readonly { message: string }[]): string {
   return logs.map(({ message }) => message).join('\n');
 }
 
-async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
+async function loadShellServerRenderer(): Promise<ShellServerRendererLoadResult> {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
-  shellServerRendererPromise = (async () => {
-    try {
-      const generationAtStart = rebuildGeneration;
-      const result = await Bun.build({
-        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
-        plugins: [sveltePlugin({ generate: 'server' })],
-        target: 'bun',
-        format: 'esm',
-        conditions: ['bun', 'svelte'],
-        splitting: false,
-      });
-      if (!result.success || result.outputs[0] === undefined) {
-        throw new Error(`Shell server bundle failed:\n${formatBuildLogs(result.logs)}`);
-      }
+  const generationAtStart = rebuildGeneration;
+  const loadFreshRenderer = async (): Promise<ShellServerRenderer> => {
+    const result = await Bun.build({
+      entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
+      plugins: [sveltePlugin({ generate: 'server' })],
+      target: 'bun',
+      format: 'esm',
+      conditions: ['bun', 'svelte'],
+      splitting: false,
+    });
+    if (!result.success || result.outputs[0] === undefined) {
+      throw new Error(`Shell server bundle failed:\n${formatBuildLogs(result.logs)}`);
+    }
 
-      const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
-      const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
-      let loaded: unknown;
-      try {
-        await Bun.write(serverBundlePath, await result.outputs[0].text());
-        loaded = await import(pathToFileURL(serverBundlePath).href);
-      } finally {
-        rmSync(serverBundleDirectory, { recursive: true, force: true });
-      }
-      if (!isShellServerRendererModule(loaded)) {
-        throw new Error('Shell server bundle did not export renderShellBody');
-      }
-      const renderer = loaded.renderShellBody;
-      shellRendererUsedFallback = false;
-      if (generationAtStart === rebuildGeneration) {
-        lastGoodShellServerRenderer = renderer;
-      }
-      return renderer;
-    } catch (error) {
+    const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
+    const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
+    let loaded: unknown;
+    try {
+      await Bun.write(serverBundlePath, await result.outputs[0].text());
+      loaded = await import(pathToFileURL(serverBundlePath).href);
+    } finally {
+      rmSync(serverBundleDirectory, { recursive: true, force: true });
+    }
+    if (!isShellServerRendererModule(loaded)) {
+      throw new Error('Shell server bundle did not export renderShellBody');
+    }
+    return loaded.renderShellBody;
+  };
+
+  shellServerRendererPromise = resolveRendererLoad(
+    loadFreshRenderer,
+    lastGoodShellServerRenderer,
+    (error) => {
       console.error(
         '[playground] shell server rebuild failed; serving the last-good renderer:',
         error,
       );
-      shellRendererUsedFallback = true;
-      return fallbackToLastGood(lastGoodShellServerRenderer, error);
+    },
+  ).then((result) => {
+    if (!result.usedFallback && generationAtStart === rebuildGeneration) {
+      lastGoodShellServerRenderer = result.renderer;
     }
-  })();
+    return result;
+  });
 
   return shellServerRendererPromise;
 }
@@ -1364,7 +1382,6 @@ export function setPreparedShellServerRenderer(renderer: ShellServerRenderer | n
 function resetShellRendererWarmupState(): void {
   shellServerRendererPromise = null;
   preparedShellServerRenderer = null;
-  shellRendererUsedFallback = false;
 }
 
 export function rendererWarmupNeedsPrebuild(
@@ -2523,7 +2540,11 @@ export async function handleRequest(request: Request): Promise<Response> {
       discoverSidebarComponents(),
       renderLandingReadmeHtml(),
     ]);
-    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
+    let renderShellBody = preparedShellServerRenderer;
+    if (renderShellBody === null) {
+      const loadedShellRenderer = await loadShellServerRenderer();
+      renderShellBody = loadedShellRenderer.renderer;
+    }
     const renderedShell = renderShellBody({
       components: sidebarComponents,
       readmeHtml,
@@ -2825,8 +2846,9 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     const generationAtStart = rebuildGeneration;
     const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
     try {
-      preparedShellServerRenderer = await loadShellServerRenderer();
-      if (shellRendererUsedFallback) {
+      const rendererResult = await loadShellServerRenderer();
+      preparedShellServerRenderer = rendererResult.renderer;
+      if (rendererResult.usedFallback) {
         console.warn(
           `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: renderer fallback was used`,
         );
