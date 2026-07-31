@@ -88,7 +88,9 @@ allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 allowedGridCounts.set('logo-cloud/logo-cloud.css', 11);
-allowedGridCounts.set('mega-menu/mega-menu.css', 2);
+// The nested submenu's master/detail column split adds one tracked match
+// alongside the top-level section grid and the existing trigger/panel split.
+allowedGridCounts.set('mega-menu/mega-menu.css', 3);
 allowedGridCounts.set('phone-input/phone-input.css', 2);
 allowedGridCounts.set('pricing-section/pricing-section.css', 5);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
