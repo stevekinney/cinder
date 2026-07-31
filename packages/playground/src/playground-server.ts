@@ -1420,6 +1420,21 @@ export function rendererWarmupNeedsCacheInvalidation(
   return sourceChanged || (!generationChanged && hasPendingRebuild);
 }
 
+/** Decide whether a renderer attempt is acceptable and whether its bundles must be rebuilt. */
+export function rendererWarmupAttemptDecision(
+  usedFallback: boolean,
+  generationChanged: boolean,
+  sourceChanged: boolean,
+  hasPendingRebuild: boolean,
+): { accepted: boolean; needsPrebuild: boolean } {
+  const needsPrebuild = rendererWarmupNeedsPrebuild(
+    generationChanged,
+    sourceChanged,
+    hasPendingRebuild,
+  );
+  return { accepted: !usedFallback && !needsPrebuild, needsPrebuild };
+}
+
 /**
  * Compile and load the documentation page's server renderer.
  *
@@ -2904,41 +2919,42 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
 
     const generationAtStart = rebuildGeneration;
     const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
+    let rendererResult: ShellServerRendererLoadResult;
     try {
-      const rendererResult = await loadShellServerRenderer();
+      rendererResult = await loadShellServerRenderer();
       preparedShellServerRenderer = rendererResult.renderer;
-      if (rendererResult.usedFallback) {
-        console.warn(
-          `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: renderer fallback was used`,
-        );
-        resetShellRendererWarmupState();
-        continue;
-      }
     } catch (error) {
       await dispose();
       throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
     }
     const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
+    const generationChanged = generationAtStart !== rebuildGeneration;
+    const sourceChanged = sourceMtimeAtStart !== sourceMtimeAtEnd;
+    const hasPendingRebuild = rebuildDebounceTimer !== null;
     const instabilityReasons = warmupInstabilityReasons(
       generationAtStart,
       rebuildGeneration,
       sourceMtimeAtStart,
       sourceMtimeAtEnd,
-      rebuildDebounceTimer !== null,
+      hasPendingRebuild,
     );
-    if (instabilityReasons.length === 0) {
+    const decision = rendererWarmupAttemptDecision(
+      rendererResult.usedFallback,
+      generationChanged,
+      sourceChanged,
+      hasPendingRebuild,
+    );
+    if (decision.accepted) {
       rendererPrepared = true;
     } else {
+      if (rendererResult.usedFallback) {
+        instabilityReasons.unshift('renderer fallback was used');
+      }
       console.warn(
         `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
       );
-      const needsPrebuild = rendererWarmupNeedsPrebuild(
-        generationAtStart !== rebuildGeneration,
-        sourceMtimeAtStart !== sourceMtimeAtEnd,
-        rebuildDebounceTimer !== null,
-      );
       resetShellRendererWarmupState();
-      if (needsPrebuild) {
+      if (decision.needsPrebuild) {
         // Any source change can make the eager browser bundles stale. Restore
         // the bundle guarantee before advertising readiness. The next attempt
         // validates the generation around that prebuild before loading another
@@ -2948,7 +2964,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         if (
           rendererWarmupNeedsCacheInvalidation(
             generationAtStart !== rebuildGeneration,
-            sourceMtimeAtStart !== sourceMtimeAtEnd,
+            sourceChanged,
             false,
           )
         ) {

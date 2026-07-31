@@ -43,6 +43,7 @@ import {
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
   resolvePreferredPort,
@@ -377,6 +378,21 @@ describe('startup warmup stability', () => {
     expect(rendererWarmupNeedsCacheInvalidation(true, true, false)).toBe(true);
     expect(rendererWarmupNeedsCacheInvalidation(true, false, false)).toBe(false);
     expect(rendererWarmupNeedsCacheInvalidation(false, false, true)).toBe(true);
+  });
+
+  it('carries cache instability through a renderer fallback', () => {
+    expect(rendererWarmupAttemptDecision(true, true, false, false)).toEqual({
+      accepted: false,
+      needsPrebuild: true,
+    });
+    expect(rendererWarmupAttemptDecision(true, false, false, false)).toEqual({
+      accepted: false,
+      needsPrebuild: false,
+    });
+    expect(rendererWarmupAttemptDecision(false, false, false, false)).toEqual({
+      accepted: true,
+      needsPrebuild: false,
+    });
   });
 });
 
