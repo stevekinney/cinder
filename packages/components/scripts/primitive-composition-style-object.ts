@@ -252,8 +252,9 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         ...branchValues.flatMap((branch) => [...branch.keys()]),
       ]);
       for (const name of names) {
-        const merged = branchValues.flatMap((branch) => branch.get(name) ?? []);
-        bindings.set(name, [...new Set(merged)]);
+        const merged = [...new Set(branchValues.flatMap((branch) => branch.get(name) ?? []))];
+        if (merged.length > 0) bindings.set(name, merged);
+        else bindings.delete(name);
       }
       return;
     }
@@ -269,8 +270,9 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       bindings.clear();
       const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
       for (const name of names) {
-        const merged = branches.flatMap((branch) => branch.get(name) ?? []);
-        bindings.set(name, [...new Set(merged)]);
+        const merged = [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))];
+        if (merged.length > 0) bindings.set(name, merged);
+        else bindings.delete(name);
       }
       return;
     }

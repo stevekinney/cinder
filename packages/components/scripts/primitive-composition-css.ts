@@ -81,6 +81,21 @@ function attributeOperatorMatches(
   return true;
 }
 
+function attributeConstraintNecessarilyMatches(
+  peer: AttributeConstraint,
+  alternative: AttributeConstraint,
+): boolean {
+  if (alternative.operator === undefined) return true;
+  if (
+    peer.operator !== alternative.operator ||
+    peer.value === undefined ||
+    alternative.value === undefined
+  )
+    return false;
+  if (alternative.insensitive) return peer.value.toLowerCase() === alternative.value.toLowerCase();
+  return !peer.insensitive && peer.value === alternative.value;
+}
+
 function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTarget): boolean {
   return (
     (alternative.tag === undefined || peer.tag === alternative.tag) &&
@@ -90,8 +105,7 @@ function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTar
       const peerConstraint = peer.attributes.get(name);
       return (
         peerConstraint !== undefined &&
-        peerConstraint.operator === constraint.operator &&
-        peerConstraint.value === constraint.value
+        attributeConstraintNecessarilyMatches(peerConstraint, constraint)
       );
     })
   );
@@ -244,8 +258,9 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
     const leftValue = leftConstraint.value;
     const rightValue = rightConstraint.value;
     if (leftValue === undefined || rightValue === undefined) return false;
-    const leftNormalized = normalizeAttributeValue(leftValue, leftConstraint.insensitive);
-    const rightNormalized = normalizeAttributeValue(rightValue, rightConstraint.insensitive);
+    const insensitive = leftConstraint.insensitive || rightConstraint.insensitive;
+    const leftNormalized = normalizeAttributeValue(leftValue, insensitive);
+    const rightNormalized = normalizeAttributeValue(rightValue, insensitive);
     if (leftConstraint.operator === '=' && rightConstraint.operator !== '=')
       return !attributeOperatorMatches(rightConstraint.operator, leftNormalized, rightNormalized);
     if (rightConstraint.operator === '=' && leftConstraint.operator !== '=')

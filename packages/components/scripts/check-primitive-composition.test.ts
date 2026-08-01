@@ -418,6 +418,16 @@ describe('primitive composition guard', () => {
     ).toBe(0);
   });
 
+  test('combines mixed-sensitivity attribute selectors symmetrically', () => {
+    for (const source of [
+      ".layout[data-state='A'] { display: grid; } .layout[data-state='a' i] { grid-template-columns: 1fr; }",
+      ".layout[data-state='a' i] { display: grid; } .layout[data-state='A'] { grid-template-columns: 1fr; }",
+      ".layout[data-state='ALPHA'] { display: grid; } .layout[data-state^='al' i] { grid-template-columns: 1fr; }",
+      ".layout[data-state^='Al'] { display: grid; } .layout[data-state='ALPHA' i] { grid-template-columns: 1fr; }",
+    ])
+      expect(cssPrimitiveCounts(source).grid).toBe(1);
+  });
+
   test('does not combine declarations from different conditional scopes', () => {
     expect(
       cssPrimitiveCounts(
@@ -637,6 +647,19 @@ describe('primitive composition guard', () => {
           'unknown-branch-style/unknown-branch-style.svelte',
         ),
       ).toEqual([]);
+  });
+
+  test('keeps outer style-object declarations after every conditional alias branch becomes unresolved', () => {
+    for (const conditionalWrite of [
+      "if (dense) layout = Object.freeze({ display: 'block' }); else layout = Object.seal({ display: 'block' });",
+      "dense ? layout = Object.freeze({ display: 'block' }) : layout = Object.seal({ display: 'block' });",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let layout = { display: 'block' }; ${conditionalWrite}</script><div style={{ ...layout, display: 'grid', gridTemplateColumns: '1fr' }}></div>`,
+          'unknown-conditional-alias/unknown-conditional-alias.svelte',
+        ),
+      ).toHaveLength(1);
   });
 
   test('resolves style-object bindings wrapped in a TypeScript `as const` assertion', () => {
@@ -871,6 +894,21 @@ describe('primitive composition guard', () => {
         'compound-negation/compound-negation.css',
       ),
     ).toHaveLength(1);
+  });
+
+  test('distinguishes case sensitivity in negated attribute constraints', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-state='A' i] { display: grid; } .layout:not([data-state='A']) { grid-template-columns: 1fr; }",
+        'case-insensitive-negation/case-insensitive-negation.css',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-state='A'] { display: grid; } .layout:not([data-state='A' i]) { grid-template-columns: 1fr; }",
+        'case-insensitive-negation/case-insensitive-negation.css',
+      ),
+    ).toEqual([]);
   });
 
   test('allows a negated selector to overlap a generic peer', () => {
