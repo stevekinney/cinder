@@ -2,7 +2,7 @@
 
 Lightweight unified-patch viewer for source-code and operational diffs with file headers, hunk headers, line state styling, and bounded rendering.
 
-See the [editor/Cinder surface boundary](../../../../docs/decisions/editor-chat-cinder-surfaces.md).
+See the [editor/Cinder surface boundary](../../../../../docs/decisions/editor-chat-cinder-surfaces.md).
 SourceDiffViewer owns dependency-light source patches; use the editor DiffViewer
 for Markdown review and editor-runtime workflows.
 
