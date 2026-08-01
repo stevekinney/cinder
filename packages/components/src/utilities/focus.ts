@@ -114,7 +114,7 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
     (rawTabIndex !== null && rawTabIndex.trim() !== '' && !Number.isFinite(Number(rawTabIndex))) ||
     (candidate.tabIndex < 0 && (rawTabIndex !== null || !hasNativeSequentialDefault(candidate))) ||
     candidate.matches(':disabled') ||
-    closestComposed(candidate, '[hidden], [inert], [aria-hidden="true"]') !== null ||
+    closestComposed(candidate, '[hidden], [inert]') !== null ||
     !isRendered(candidate)
   )
     return false;

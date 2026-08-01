@@ -290,6 +290,16 @@ describe('getSequentialFocusTargets', () => {
     expect(getSequentialFocusTargets(region)).not.toContain(hiddenInput);
   });
 
+  test('keeps focusable aria-hidden elements in the native sequential order', () => {
+    const region = document.createElement('div');
+    const hiddenFromAccessibilityTree = document.createElement('button');
+    hiddenFromAccessibilityTree.type = 'button';
+    hiddenFromAccessibilityTree.setAttribute('aria-hidden', 'true');
+    region.append(hiddenFromAccessibilityTree);
+
+    expect(getSequentialFocusTargets(region)).toContain(hiddenFromAccessibilityTree);
+  });
+
   test('crosses a shadow host when checking hidden and rendered state', () => {
     const host = document.createElement('div');
     const shadow = host.attachShadow({ mode: 'open' });
