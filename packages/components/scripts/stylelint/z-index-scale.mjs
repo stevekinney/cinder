@@ -222,11 +222,13 @@ function protectCssSyntaxEscapes(value) {
 function flattenCalcFunctions(value) {
   let output = '';
   for (let index = 0; index < value.length; index += 1) {
-    if (!/^calc\s*\(/i.test(value.slice(index))) {
+    const calcMatch = /^(?:-webkit-)?calc\s*\(/i.exec(value.slice(index));
+    const previousCharacter = value[index - 1];
+    if (!calcMatch || (previousCharacter && /[\w\u0080-\uFFFF-]/.test(previousCharacter))) {
       output += value[index];
       continue;
     }
-    const openIndex = value.indexOf('(', index);
+    const openIndex = index + calcMatch[0].lastIndexOf('(');
     let depth = 1;
     let closeIndex = openIndex + 1;
     while (closeIndex < value.length && depth > 0) {

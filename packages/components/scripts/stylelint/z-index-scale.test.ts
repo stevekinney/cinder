@@ -163,6 +163,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999))',
     'var(--item-layer, calc(+9999))',
     'var(--item-layer, calc(+1e4 - 1))',
+    'var(--item-layer, -webkit-calc(9999))',
     'calc(var(--item-layer, 10000 - 1) + 1)',
     'var(--item-layer, calc(0 - 1))',
     'var(--item-layer, calc(calc(10000 - 1)))',
@@ -221,6 +222,17 @@ describe('cinder/z-index-scale', () => {
           .fixture {
             /* cinder-z-index-local: this is a non-var function. */
             z-index: cvar(--item-layer, 9999);
+          }
+        `),
+      ),
+    ).toEqual([]);
+
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: this is not a CSS math function. */
+            z-index: var(--item-layer, recalc(9999));
           }
         `),
       ),
