@@ -370,6 +370,28 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test('retains signed-zero evidence across a resolved fallback frame', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the nested fallback can become negative infinity. */
+        z-index: calc(1 / var(--outer, calc(var(--inner, -1) * 0)) + var(--dynamic));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('requires an exact algebraic zero before eliminating a banned fallback', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: multiplying by 0.4 still produces a negative layer. */
+        z-index: var(--outer, calc(var(--inner, -3) * 0.4 + var(--dynamic)));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test.each([
     'var(--outer, calc(var(--inner, -1) * 1 + var(--dynamic)))',
     'var(--outer, calc(var(--inner, -1) + 0 + var(--dynamic)))',

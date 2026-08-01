@@ -3,6 +3,7 @@ import {
   decodeCssEscapes,
   isCssIdentifierCharacter,
   isCssWhitespace,
+  isStaticallyNegativeZero,
   isStaticallyZero,
   protectCssSyntaxEscapes,
 } from './z-index-value-analysis.mjs';
@@ -220,9 +221,11 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
   // banned child unless its contribution is safe independently of that choice.
+  const resolvedNegativeZero = frame.type === 'fallback' && frame.resolvedNegativeZero === true;
   const uneliminatedChildren = frame.children.filter(
     (child) =>
-      child.unprovenBannedCandidate && !childIsEliminatedByZeroProduct(value, range, child),
+      child.unprovenBannedCandidate &&
+      (resolvedNegativeZero || !childIsEliminatedByZeroProduct(value, range, child)),
   );
   const [uneliminatedChild] = uneliminatedChildren;
   if (frame.resolvedClassification === 'too-complex') return candidate;
@@ -254,7 +257,7 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification !== 'safe')
     return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
-  if (hasSingleChildWithEnclosingContext) return undefined;
+  if (hasSingleChildWithEnclosingContext && !resolvedNegativeZero) return undefined;
   return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
 }
 
@@ -320,6 +323,13 @@ function fallbackCandidates(value) {
       onlyChild.end === fallbackRange.end
         ? onlyChild.resolvedClassification
         : classifyResolvedFallback(frame.resolvedFallback);
+    frame.resolvedNegativeZero =
+      frame.children.length === 1 &&
+      onlyChild.start === fallbackRange.start &&
+      onlyChild.end === fallbackRange.end
+        ? onlyChild.resolvedNegativeZero
+        : typeof frame.resolvedFallback === 'string' &&
+          isStaticallyNegativeZero(frame.resolvedFallback);
     const candidate = {
       fallbackIndex: fallbackRange.start,
       rawFallback,

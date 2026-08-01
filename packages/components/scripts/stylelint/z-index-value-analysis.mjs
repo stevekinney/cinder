@@ -393,11 +393,17 @@ function exceedsStaticAnalysisDepth(expression) {
   return false;
 }
 
-function resolveStaticNumber(value) {
+function resolveStaticValue(value) {
   const expression = collapseSimpleParenthesisChain(flattenCalcFunctions(value));
   if (exceedsStaticAnalysisDepth(expression)) return staticAnalysisTooComplex;
-  const evaluated = evaluateConstantArithmetic(expression);
-  return evaluated === null ? null : Math.floor(evaluated + 0.5);
+  return evaluateConstantArithmetic(expression);
+}
+
+function resolveStaticNumber(value) {
+  const evaluated = resolveStaticValue(value);
+  return evaluated === null || evaluated === staticAnalysisTooComplex
+    ? evaluated
+    : Math.floor(evaluated + 0.5);
 }
 
 export function decodeCssEscapes(value) {
@@ -508,5 +514,9 @@ export function isStaticallyMagicNumber(value) {
 }
 
 export function isStaticallyZero(value) {
-  return resolveStaticNumber(value) === 0;
+  return resolveStaticValue(value) === 0;
+}
+
+export function isStaticallyNegativeZero(value) {
+  return Object.is(resolveStaticValue(value), -0);
 }
