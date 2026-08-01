@@ -208,14 +208,16 @@ export function bannedFallback(value) {
   const decodedValue = decodeCssEscapes(protectedValue);
   const positionsAreStable = protectedValue === value && decodedValue === value;
   for (const { fallbackIndex, rawFallback, resolvedFallback } of fallbackCandidates(decodedValue)) {
+    const analysisWasTooComplex = resolvedFallback === fallbackResolutionTooComplex;
     if (
-      resolvedFallback === fallbackResolutionTooComplex ||
+      analysisWasTooComplex ||
       (typeof resolvedFallback === 'string' &&
         (isStaticallyNegative(resolvedFallback) || isStaticallyMagicNumber(resolvedFallback)))
     )
       return {
         index: positionsAreStable ? fallbackIndex : undefined,
         value: rawFallback,
+        reason: analysisWasTooComplex ? 'too-complex' : 'banned',
       };
   }
   return undefined;

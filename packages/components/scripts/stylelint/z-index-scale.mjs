@@ -52,6 +52,8 @@ const messages = stylelint.utils.ruleMessages(ruleName, {
     'A `--cinder-z-*` token must not have a fallback; define the token once in tokens-base.css.',
   bannedFallback:
     'A `var()`, `env()`, or `attr()` fallback must not contain a banned z-index escape hatch.',
+  fallbackTooComplex:
+    'A `var()`, `env()`, or `attr()` fallback was too complex to verify safely; simplify the expression.',
   invalid:
     '`z-index` must be `auto`, `0`, `1`, or a `--cinder-z-*` token without a fallback. ' +
     'Higher component-local values require an adjacent `cinder-z-index-local:` reason.',
@@ -146,6 +148,10 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
           offendingFallback.value.length <= maximumDiagnosticExpressionLength
             ? offendingFallback.value
             : `${offendingFallback.value.slice(0, maximumDiagnosticExpressionLength - 1)}…`;
+        const diagnosticMessage =
+          offendingFallback.reason === 'too-complex'
+            ? messages.fallbackTooComplex
+            : messages.bannedFallback;
         stylelint.utils.report({
           ruleName,
           result,
@@ -153,7 +159,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
           ...(fallbackIndex >= 0
             ? { index: fallbackIndex, endIndex: fallbackIndex + offendingFallback.value.length }
             : {}),
-          message: `${messages.bannedFallback} Offending expression: \`${diagnosticExpression}\`.`,
+          message: `${diagnosticMessage} Offending expression: \`${diagnosticExpression}\`.`,
         });
         return;
       }

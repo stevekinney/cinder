@@ -408,6 +408,18 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
+  test('evaluates long unary-sign chains without losing a banned result', async () => {
+    const unarySigns = '-'.repeat(50_000);
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: generated unary signs must not bypass static analysis. */
+        z-index: var(--item-layer, calc(${unarySigns}9999));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test('reduces wide min, max, and hypot fallbacks without argument-limit bypasses', async () => {
     const repeatedArguments = 130_000;
     for (const [functionName, repeatedValue] of [
@@ -441,7 +453,10 @@ describe('cinder/z-index-scale', () => {
         z-index: ${nestedFallback};
       }
     `);
-    expect(warnings(result)).toHaveLength(1);
+    const [warning] = warnings(result);
+    expect(warning).toBeDefined();
+    expect(warning?.text).toContain('too complex to verify');
+    expect(warning?.text).not.toContain('must not contain a banned z-index');
   });
 
   test('bounds cumulative output for repeated mixed fallback branches', async () => {

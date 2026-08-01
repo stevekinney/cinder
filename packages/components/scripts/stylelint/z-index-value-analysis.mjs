@@ -102,7 +102,7 @@ function evaluateConstantArithmetic(expression) {
     return { value, units: new Map([[unitKey, 1]]) };
   }
 
-  function parseAtom() {
+  function parsePrimary() {
     skipSpace();
     if (peek() === '(') {
       index += 1;
@@ -111,11 +111,6 @@ function evaluateConstantArithmetic(expression) {
       if (peek() !== ')') throw new Error('expected )');
       index += 1;
       return value;
-    }
-    if (peek() === '-') {
-      index += 1;
-      const value = parseAtom();
-      return withValue(value, -value.value);
     }
     const functionStart = index;
     if (/[a-z-]/i.test(peek() ?? '')) {
@@ -244,6 +239,18 @@ function evaluateConstantArithmetic(expression) {
       throw new Error('unsupported function');
     }
     return parseNumber();
+  }
+
+  function parseAtom() {
+    skipSpace();
+    let isNegative = false;
+    while (peek() === '-') {
+      isNegative = !isNegative;
+      index += 1;
+      skipSpace();
+    }
+    const value = parsePrimary();
+    return isNegative ? withValue(value, -value.value) : value;
   }
 
   function parseTerm() {
