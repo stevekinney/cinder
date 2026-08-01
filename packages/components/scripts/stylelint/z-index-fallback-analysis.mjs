@@ -24,7 +24,8 @@ function resolveFrameExpression(frame, value, range) {
     return onlyChild.resolvedFallback;
 
   let resolvedExpression = rawExpression;
-  for (const child of frame.children.toReversed()) {
+  for (let childIndex = frame.children.length - 1; childIndex >= 0; childIndex -= 1) {
+    const child = frame.children[childIndex];
     const relativeStart = child.start - range.start;
     const relativeEnd = child.end - range.start;
     resolvedExpression =

@@ -5,6 +5,9 @@ import stylelint from 'stylelint';
 
 const ruleName = 'cinder/z-index-scale';
 const pluginPath = fileURLToPath(new URL('./z-index-scale.mjs', import.meta.url));
+const fallbackAnalysisPath = fileURLToPath(
+  new URL('./z-index-fallback-analysis.mjs', import.meta.url),
+);
 
 async function lint(css: string) {
   return stylelint.lint({
@@ -25,6 +28,10 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
 }
 
 describe('cinder/z-index-scale', () => {
+  test('keeps the fallback scanner compatible with the ES2022 runtime target', async () => {
+    expect(await Bun.file(fallbackAnalysisPath).text()).not.toContain('.toReversed(');
+  });
+
   test.each([
     'auto',
     'AUTO',
