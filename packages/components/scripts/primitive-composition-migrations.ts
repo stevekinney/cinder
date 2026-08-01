@@ -7,6 +7,9 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['approval-card/approval-card-actions.svelte', 2],
   ['checkbox/checkbox.svelte', 1],
   ['combobox/combobox.svelte', 1],
+  // CommandPalette intentionally retains one native text input inside a modal
+  // <dialog>; see docs/decisions/command-palette-native-dialog.md. This exception
+  // is bounded to the editable combobox control, not the dialog surface.
   ['command-palette/command-palette.svelte', 1],
   ['date-picker/date-picker.svelte', 2],
   ['faceted-filter-bar/faceted-filter-bar.svelte', 1],
