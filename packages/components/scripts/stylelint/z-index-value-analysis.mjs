@@ -412,7 +412,7 @@ export function decodeCssEscapes(value) {
 
 function appendMappedCharacter(output, sourceRanges, character, sourceRange) {
   output.push(character);
-  sourceRanges.push(sourceRange);
+  for (let index = 0; index < character.length; index += 1) sourceRanges.push(sourceRange);
 }
 
 function appendMappedSlice(output, sourceRanges, value, start, end, baseRanges) {

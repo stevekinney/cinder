@@ -635,6 +635,50 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.endColumn).toBe(end.column);
   });
 
+  test('anchors fallback warnings after escaped astral code points', async () => {
+    const css =
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(\\1f600 + var(--x, 9999)); }';
+    const result = await lint(css);
+    const [warning] = warnings(result);
+    const start = sourceLocation(css, css.lastIndexOf('9999'));
+    const end = sourceLocation(css, css.lastIndexOf('9999') + 4);
+    expect(warning?.line).toBe(start.line);
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endLine).toBe(end.line);
+    expect(warning?.endColumn).toBe(end.column);
+    expect(warning?.text).toContain('Offending expression: `9999`');
+  });
+
+  test.each([
+    ['negative', 'calc(\\1f600 + v\\61r(--x, -1))', '-1'],
+    ['nested', 'calc(\\1f600 + var(--outer, v\\61r(--inner, 9999)))', '9999'],
+  ])('maps the exact %s fallback range through nested CSS escapes', async (_, value, fallback) => {
+    const css = `.fixture { /* cinder-z-index-local: test. */ z-index: ${value}; }`;
+    const result = await lint(css);
+    const [warning] = warnings(result);
+    const start = sourceLocation(css, css.lastIndexOf(fallback));
+    const end = sourceLocation(css, css.lastIndexOf(fallback) + fallback.length);
+    expect(warning?.line).toBe(start.line);
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endLine).toBe(end.line);
+    expect(warning?.endColumn).toBe(end.column);
+    expect(warning?.text).toContain(`Offending expression: \`${fallback}\``);
+  });
+
+  test('maps a too-complex fallback range through escaped astral code points', async () => {
+    const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
+    const expression = `calc(\\1f600 + var(--x, ${deepStaticMath}))`;
+    const css = `.fixture { /* cinder-z-index-local: test. */ z-index: ${expression}; }`;
+    const [warning] = warnings(await lint(css));
+    const start = sourceLocation(css, css.indexOf(expression));
+    const end = sourceLocation(css, css.indexOf(expression) + expression.length);
+    expect(warning?.line).toBe(start.line);
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endLine).toBe(end.line);
+    expect(warning?.endColumn).toBe(end.column);
+    expect(warning?.text).toContain('too complex to verify');
+  });
+
   test('preserves warning anchoring when masked inline comments contain form-feed characters', async () => {
     const css =
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x/*\\f*/, 9999)); }'.replace(
