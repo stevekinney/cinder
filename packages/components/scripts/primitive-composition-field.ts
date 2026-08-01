@@ -305,6 +305,90 @@ function staticStringBindings(source: string): Map<string, string[]> {
       }
       return;
     }
+    if (node['type'] === 'SwitchStatement' && Array.isArray(node['cases'])) {
+      if (isRecord(node['discriminant'])) walk(node['discriminant'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const cases = node['cases'].filter(isRecord);
+      const switchNames = new Set<string>();
+      for (const switchCase of cases)
+        if (Array.isArray(switchCase['consequent']))
+          for (const statement of switchCase['consequent'])
+            if (
+              isRecord(statement) &&
+              statement['type'] === 'VariableDeclaration' &&
+              (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+              Array.isArray(statement['declarations'])
+            )
+              for (const declaration of statement['declarations'])
+                if (isRecord(declaration)) collectPatternNames(declaration['id'], switchNames);
+      const switchShadowed = new Set([...currentShadowed, ...switchNames]);
+      const branches: Map<string, string[]>[] = [];
+      let hasDefault = false;
+      const discriminant = node['discriminant'];
+      const knownValue =
+        isRecord(discriminant) && discriminant['type'] === 'Literal'
+          ? discriminant['value']
+          : undefined;
+      const knownDiscriminant = isRecord(discriminant) && discriminant['type'] === 'Literal';
+      let knownStart: number | undefined;
+      if (knownDiscriminant) {
+        let defaultStart: number | undefined;
+        for (let index = 0; index < cases.length; index += 1) {
+          const test = cases[index]?.['test'];
+          if (test === null) {
+            defaultStart = index;
+            continue;
+          }
+          if (isRecord(test) && test['type'] === 'Literal' && test['value'] === knownValue) {
+            knownStart = index;
+            break;
+          }
+        }
+        if (knownStart === undefined) knownStart = defaultStart ?? -1;
+      }
+      const starts =
+        knownStart === undefined
+          ? cases.map((_, index) => index)
+          : knownStart < 0
+            ? [-1]
+            : [knownStart];
+      for (const start of starts) {
+        const branch = new Map([...base].map(([name, values]) => [name, [...values]] as const));
+        bindings.clear();
+        for (const [name, values] of branch) bindings.set(name, [...values]);
+        for (let index = 0; index <= (start < 0 ? cases.length - 1 : start); index += 1) {
+          const test = cases[index]?.['test'];
+          if (test === null) hasDefault = true;
+          else if (isRecord(test)) walk(test, switchShadowed);
+        }
+        if (start < 0) {
+          branches.push(
+            new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+          );
+          continue;
+        }
+        let stopped = false;
+        for (let index = start; index < cases.length && !stopped; index += 1) {
+          const consequent = cases[index]?.['consequent'];
+          if (!Array.isArray(consequent)) continue;
+          for (const statement of consequent) {
+            walk(statement, switchShadowed);
+            if (unconditionallyAbruptStatement(statement)) {
+              stopped = true;
+              break;
+            }
+          }
+        }
+        branches.push(new Map([...bindings].map(([name, values]) => [name, [...values]] as const)));
+      }
+      if (!hasDefault)
+        branches.push(new Map([...base].map(([name, values]) => [name, [...values]] as const)));
+      bindings.clear();
+      const names = new Set(branches.flatMap((branch) => [...branch.keys()]));
+      for (const name of names)
+        bindings.set(name, mergeStringValues(...branches.map((branch) => branch.get(name) ?? [])));
+      return;
+    }
     if (
       node['type'] === 'ForStatement' ||
       node['type'] === 'ForInStatement' ||

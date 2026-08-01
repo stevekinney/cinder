@@ -101,6 +101,16 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('resolves nested static hidden spreads', () => {
+    for (const source of [
+      "<input {...{ type: 'text', ...{ type: 'hidden' } }} />",
+      "<input {...{ type: 'text', ...{ ...{ type: 'hidden' } } }} />",
+    ])
+      expect(findPrimitiveCompositionViolations(source, 'new-control/new-control.svelte')).toEqual(
+        [],
+      );
+  });
+
   test('allows a later static hidden type to re-establish proof after a dynamic spread', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -657,6 +667,15 @@ describe('primitive composition guard', () => {
       ).toEqual([]);
   });
 
+  test('ignores statically unreachable style-object assignments', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; if (false) layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'unreachable-style-assignment/unreachable-style-assignment.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('preserves top-level conditional style-object assignment branches', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -682,6 +701,37 @@ describe('primitive composition guard', () => {
         'alias-style/alias-style.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('resolves function-local style aliases', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function enable() { const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; layout = gridStyle; }</script><div style={layout} onclick={enable}></div>",
+        'callback-style-alias/callback-style-alias.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const gridStyle = { display: 'block' }; let layout = gridStyle; function enable() { const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; layout = gridStyle; }</script><div style={layout} onclick={enable}></div>",
+        'callback-style-alias/callback-style-alias.svelte',
+      ),
+    ).toHaveLength(1);
+    for (const functionBody of [
+      "{ const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; } layout = gridStyle;",
+      "layout = gridStyle; const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' };",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let layout = { display: 'block' }; function enable() { ${functionBody} }</script><div style={layout} onclick={enable}></div>`,
+          'callback-style-alias/callback-style-alias.svelte',
+        ),
+      ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function define() { const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; } function enable() { layout = gridStyle; }</script><div style={layout} onclick={enable}></div>",
+        'callback-style-alias/callback-style-alias.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('keeps only the terminal write within a conditional branch', () => {
@@ -1624,6 +1674,20 @@ describe('primitive composition guard', () => {
       ).toEqual([]);
   });
 
+  test('tracks logical assignment operators on control tags', () => {
+    for (const source of [
+      "let tag = ''; tag ||= 'input';",
+      "let tag = 'ready'; tag &&= 'input';",
+      "let tag; tag ??= 'input';",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>${source}</script><svelte:element this={tag} />`,
+          'logical-assignment-control/logical-assignment-control.svelte',
+        ),
+      ).toHaveLength(1);
+  });
+
   test('respects shadowed undefined loop tests and terminal exits', () => {
     for (const initializer of ['true', 'dynamicValue'])
       expect(
@@ -1687,6 +1751,37 @@ describe('primitive composition guard', () => {
         'shadowed-undefined-control/shadowed-undefined-control.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; function unrelated(undefined) {} undefined ?? (tag = 'div');</script><svelte:element this={tag} />",
+        'shadowed-undefined-control/shadowed-undefined-control.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; ((undefined = 'provided') => { undefined ?? (tag = 'div'); })();</script><svelte:element this={tag} />",
+        'shadowed-undefined-control/shadowed-undefined-control.svelte',
+      ),
+    ).toHaveLength(1);
+    for (const statement of [
+      "function show() { var undefined = 'provided'; undefined ?? (tag = 'div'); } show();",
+      "try { throw 'provided'; } catch (undefined) { undefined ?? (tag = 'div'); }",
+      "switch (0) { default: { let undefined = 'provided'; undefined ?? (tag = 'div'); } }",
+      "for (let undefined = 'provided'; undefined;) { undefined ?? (tag = 'div'); break; }",
+      "for (let undefined of ['provided']) { undefined ?? (tag = 'div'); }",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'input'; ${statement}</script><svelte:element this={tag} />`,
+          'shadowed-undefined-control/shadowed-undefined-control.svelte',
+        ),
+      ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; for (let undefined of ['provided']) { undefined ?? (tag = 'div'); } undefined ?? (tag = 'div');</script><svelte:element this={tag} />",
+        'shadowed-undefined-control/shadowed-undefined-control.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('tracks mutable control writes in default parameters', () => {
@@ -2238,6 +2333,39 @@ describe('primitive composition guard', () => {
         'callback-control-alias/callback-control-alias.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show(ready) { if (ready) { const controlTag = 'input'; tag = controlTag; } }</script><svelte:element this={tag} />",
+        'callback-control-alias/callback-control-alias.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show(ready) { if (ready) { const controlTag = 'input'; const metadata = {}; tag = controlTag; } }</script><svelte:element this={tag} />",
+        'callback-control-alias/callback-control-alias.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const controlTag = 'div'; let tag = 'div'; function show(ready) { if (ready) { const controlTag = 'input'; } tag = controlTag; }</script><svelte:element this={tag} />",
+        'callback-control-alias/callback-control-alias.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show() { tag = controlTag; const controlTag = 'input'; }</script><svelte:element this={tag} />",
+        'callback-control-alias/callback-control-alias.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('publishes explicit callback writes that equal the declaration-time value', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; function show() { tag = 'input'; } tag = 'div';</script><button onclick={show}>Show</button><svelte:element this={tag} />",
+        'callback-control-write/callback-control-write.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('preserves mutable control states that leave loops through continue', () => {
@@ -2259,6 +2387,12 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let tag = 'div'; switch (1) { case 1: break; case (tag = 'input'): break; }</script><svelte:element this={tag} />",
+        'switch-test-control/switch-test-control.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; switch (1) { case 1: tag = 'div'; case (tag = 'input'): break; }</script><svelte:element this={tag} />",
         'switch-test-control/switch-test-control.svelte',
       ),
     ).toEqual([]);
@@ -2378,6 +2512,27 @@ describe('primitive composition guard', () => {
         'try-catch-control/try-catch-control.svelte',
       ),
     ).toEqual([]);
+  });
+
+  test('merges field-tag switch exits independently', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'span'; function show(kind) { switch (kind) { case 'edit': tag = 'label'; break; default: tag = 'span'; } }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'switch-field-state/switch-field-state.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'span'; function show() { switch ('no') { default: tag = 'span'; break; case (tag = 'label'): break; } }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'switch-field-state/switch-field-state.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'span'; function show() { switch ('no') { default: tag = 'label'; break; case (tag = 'span'): tag = 'div'; } }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'switch-field-state/switch-field-state.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('keeps mutually exclusive template field evidence separate', () => {

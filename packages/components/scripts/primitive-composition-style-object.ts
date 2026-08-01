@@ -298,6 +298,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   const declaredBindings = new Set<string>();
   const callbackBindings = new Map<string, unknown[]>();
   const callbackFrames: Map<string, unknown[]>[] = [];
+  const localAliasFrames: Map<string, unknown[]>[] = [];
   const synchronousFunctions = new WeakSet<object>();
   if (!isRecord(instance) || !isRecord(instance['content'])) return bindings;
   const body = instance['content']['body'];
@@ -345,6 +346,12 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     mergeValues([...values, ...(callbackBindings.get(name) ?? [])]);
   const cloneBindings = (): Map<string, unknown[]> =>
     new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+  const visibleAliasBindings = (): Map<string, unknown[]> => {
+    const visible = new Map(bindings);
+    for (const frame of localAliasFrames)
+      for (const [name, values] of frame) visible.set(name, values);
+    return visible;
+  };
   const mergeBindingStates = (
     base: Map<string, unknown[]>,
     branch: Map<string, unknown[]>,
@@ -388,6 +395,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     controlLabel?: string,
   ): void => {
     if (!isRecord(node)) return;
+    let pushedAliasBlock = false;
     let currentShadowed = shadowed;
     let currentInsideFunction = insideFunction;
     if (node['type'] === 'BreakStatement') {
@@ -485,6 +493,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       return;
     }
     if (node['type'] === 'IfStatement') {
+      const testTruthiness = staticTruthiness(node['test'], bindings);
       if (isRecord(node['test'])) walk(node['test'], currentShadowed, currentInsideFunction);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       const callbackFrame = callbackFrames.at(-1);
@@ -493,7 +502,13 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         : undefined;
       const branchCallbackFrames: Map<string, unknown[]>[] = [];
       const branchValues: Map<string, unknown[]>[] = [];
-      for (const branch of [node['consequent'], node['alternate']]) {
+      const branchesToWalk =
+        testTruthiness === true
+          ? [node['consequent']]
+          : testTruthiness === false
+            ? [node['alternate']]
+            : [node['consequent'], node['alternate']];
+      for (const branch of branchesToWalk) {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
         if (callbackFrame) {
@@ -502,6 +517,33 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
             callbackFrame.set(name, [...values]);
         }
         if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction);
+        if (isRecord(branch)) {
+          const localNames = new Set<string>();
+          const collect = (candidate: unknown): void => {
+            if (!isRecord(candidate)) return;
+            if (
+              candidate['type'] === 'FunctionDeclaration' ||
+              candidate['type'] === 'FunctionExpression' ||
+              candidate['type'] === 'ArrowFunctionExpression'
+            )
+              return;
+            if (
+              candidate['type'] === 'VariableDeclaration' &&
+              Array.isArray(candidate['declarations'])
+            )
+              for (const declaration of candidate['declarations'])
+                if (isRecord(declaration)) declaredNamesInPattern(declaration['id'], localNames);
+            for (const value of Object.values(candidate))
+              if (Array.isArray(value)) value.forEach(collect);
+              else if (isRecord(value)) collect(value);
+          };
+          collect(branch);
+          for (const name of localNames) {
+            const previous = base.get(name);
+            if (previous === undefined) bindings.delete(name);
+            else bindings.set(name, [...previous]);
+          }
+        }
         if (callbackFrame)
           branchCallbackFrames.push(
             new Map([...callbackFrame].map(([name, values]) => [name, [...values]] as const)),
@@ -736,6 +778,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     ) {
       currentInsideFunction = true;
       callbackFrames.push(new Map());
+      localAliasFrames.push(new Map());
       const localNames = new Set<string>();
       if (Array.isArray(node['params']))
         for (const parameter of node['params']) declaredNamesInPattern(parameter, localNames);
@@ -747,6 +790,8 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       if (newlyShadowed.length > 0)
         currentShadowed = new Set([...currentShadowed, ...newlyShadowed]);
     } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      localAliasFrames.push(new Map());
+      pushedAliasBlock = true;
       const lexicalNames = new Set<string>();
       for (const statement of node['body']) {
         if (
@@ -765,11 +810,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       if (newlyShadowed.length > 0)
         currentShadowed = new Set([...currentShadowed, ...newlyShadowed]);
     }
-    if (
-      node['type'] === 'VariableDeclaration' &&
-      !currentInsideFunction &&
-      Array.isArray(node['declarations'])
-    ) {
+    if (node['type'] === 'VariableDeclaration' && Array.isArray(node['declarations'])) {
       for (const declaration of node['declarations']) {
         if (
           !isRecord(declaration) ||
@@ -778,6 +819,17 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
           typeof declaration['id']['name'] !== 'string'
         )
           continue;
+        if (
+          currentInsideFunction &&
+          (!isRecord(declaration['init']) || declaration['init']['type'] !== 'ObjectExpression')
+        )
+          continue;
+        if (currentInsideFunction) {
+          const resolved = resolvedAssignmentValue(declaration['init'], visibleAliasBindings());
+          if (resolved.set)
+            localAliasFrames.at(-1)?.set(declaration['id']['name'], resolved.values);
+          continue;
+        }
         resolveDeclaration(
           declaration['id']['name'],
           typeof node['kind'] === 'string' ? node['kind'] : 'let',
@@ -795,7 +847,10 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       !currentShadowed.has(node['left']['name'])
     ) {
       const name = node['left']['name'];
-      const resolved = resolvedAssignmentValue(node['right'], bindings);
+      const aliasBindings = new Map(bindings);
+      for (const frame of localAliasFrames)
+        for (const [alias, values] of frame) aliasBindings.set(alias, values);
+      const resolved = resolvedAssignmentValue(node['right'], aliasBindings);
       if (currentInsideFunction) {
         if (resolved.set) {
           const currentFrame = callbackFrames.at(-1);
@@ -859,12 +914,14 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         for (const item of value) walk(item, currentShadowed, currentInsideFunction);
       else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
     }
+    if (pushedAliasBlock) localAliasFrames.pop();
     if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||
       node['type'] === 'ArrowFunctionExpression'
     ) {
       const frame = callbackFrames.pop();
+      localAliasFrames.pop();
       const synchronous = synchronousFunctions.has(node);
       if (synchronous) synchronousFunctions.delete(node);
       if (frame) {
