@@ -19,6 +19,7 @@ const canonicalUnitConversions = new Map([
   ['dpi', { dimension: 'resolution', factor: 1 / 96 }],
   ['dpcm', { dimension: 'resolution', factor: 2.54 / 96 }],
 ]);
+const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 
 function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
@@ -283,7 +284,8 @@ function fallbackCandidates(value) {
   const fallbackFrames = [];
 
   for (let index = 0; index < value.length; index += 1) {
-    const functionMatch = /^(?:var|env|attr)\(/i.exec(value.slice(index));
+    fallbackFunctionPattern.lastIndex = index;
+    const functionMatch = fallbackFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
     if (functionMatch && !isCssIdentifierCharacter(previousCharacter)) {
       const nearestFunction = fallbackFrames.at(-1);

@@ -27,6 +27,8 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
 describe('cinder/z-index-scale', () => {
   test.each([
     'auto',
+    'AUTO',
+    'Auto',
     '0',
     '1',
     'var(--cinder-z-popover)',
@@ -219,6 +221,15 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(result)).toHaveLength(1);
     expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
+  test('anchors a fallback warning to the fallback occurrence', async () => {
+    const css =
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(9999 + var(--x, 9999)); }';
+    const result = await lint(css);
+    const [warning] = warnings(result);
+    expect(warning?.column).toBe(css.lastIndexOf('9999') + 1);
+    expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
   });
 
   test('does not treat whitespace-separated identifiers as substitution functions', async () => {

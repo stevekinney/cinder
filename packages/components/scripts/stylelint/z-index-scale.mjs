@@ -76,6 +76,18 @@ function hasAdjacentLocalReason(declaration) {
   return text.slice(localReasonPrefix.length).trim().length > 0;
 }
 
+function fallbackIndexInDeclaration(declarationText, fallback) {
+  let searchStart = 0;
+  for (;;) {
+    const fallbackIndex = declarationText.indexOf(fallback, searchStart);
+    if (fallbackIndex === -1) return -1;
+    let boundaryIndex = fallbackIndex - 1;
+    while (/[\t\n\f\r ]/.test(declarationText[boundaryIndex] ?? '')) boundaryIndex -= 1;
+    if (declarationText[boundaryIndex] === ',') return fallbackIndex;
+    searchStart = fallbackIndex + 1;
+  }
+}
+
 const plugin = stylelint.createPlugin(ruleName, (primary) => {
   return (root, result) => {
     const validOptions = stylelint.utils.validateOptions(result, ruleName, {
@@ -99,7 +111,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       const rawValue = stripComments(declaration.value.trim()).trim();
       const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
       const tokenMatch = layerTokenPattern.exec(value);
-      if (allowedLocalValues.has(value)) return;
+      if (allowedLocalValues.has(value.toLowerCase())) return;
       if (tokenMatch) {
         if (declaredLayerTokens.has(tokenMatch[1])) return;
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
@@ -119,7 +131,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       const offendingFallback = bannedFallback(rawValue);
       if (offendingFallback) {
         const declarationText = declaration.toString();
-        const fallbackIndex = declarationText.indexOf(offendingFallback);
+        const fallbackIndex = fallbackIndexInDeclaration(declarationText, offendingFallback);
         stylelint.utils.report({
           ruleName,
           result,
