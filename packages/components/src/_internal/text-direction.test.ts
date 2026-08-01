@@ -536,6 +536,36 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('fails closed for a malformed negated container query before applying direction', () => {
+    const container = document.createElement('section');
+    container.style.setProperty('container-type', 'inline-size');
+    Object.defineProperty(container, 'offsetWidth', { value: 400, configurable: true });
+    const element = document.createElement('div');
+    element.className = 'malformed-negated-container-ltr';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.malformed-negated-container-ltr',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container not min-width: 20px { .malformed-negated-container-ltr { direction: ltr; } }',
+      type: 0,
+      conditionText: 'not min-width: 20px',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
+    }
+  });
+
   test('uses an active style container query direction rule', () => {
     const wrapper = document.createElement('section');
     wrapper.style.setProperty('--example', 'true');
