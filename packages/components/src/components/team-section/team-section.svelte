@@ -47,17 +47,19 @@
 
 <svelte:element
   this={as}
-  class={classNames('cinder-team-section', className)}
+  class={classNames('cinder-_section-skeleton', 'cinder-team-section', className)}
   data-cinder-columns={String(columns)}
   {...rest}
 >
   <Container {maxWidth}>
-    <div class="cinder-team-section__inner">
+    <div class="cinder-_section-skeleton__inner cinder-team-section__inner">
       {#if title}
-        <header class="cinder-team-section__header">
-          <h2 class="cinder-team-section__title">{title}</h2>
+        <header class="cinder-_section-skeleton__header cinder-team-section__header">
+          <h2 class="cinder-_section-skeleton__title cinder-team-section__title">{title}</h2>
           {#if description}
-            <p class="cinder-team-section__description">{description}</p>
+            <p class="cinder-_section-skeleton__description cinder-team-section__description">
+              {description}
+            </p>
           {/if}
         </header>
       {/if}
@@ -68,7 +70,7 @@
         </div>
       {/if}
 
-      <ul class="cinder-team-section__list">
+      <ul class="cinder-_section-skeleton__list cinder-team-section__list">
         {#each members as member, index (`${member.name}-${index}`)}
           <li class="cinder-team-section__item">
             <Card>

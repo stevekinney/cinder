@@ -1,49 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../_internal/section-skeleton.css';
 @layer cinder.components {
-  .cinder-person-byline {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-3);
-  }
-
-  .cinder-person-byline__meta {
-    display: grid;
-    gap: var(--cinder-space-1);
-  }
-
-  .cinder-person-byline__name,
-  .cinder-person-byline__role {
-    margin: 0;
-    line-height: var(--cinder-leading-snug);
-  }
-
-  .cinder-person-byline__name {
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-semibold);
-  }
-
-  .cinder-person-byline__role {
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
-  }
-
-  .cinder-testimonial-section {
-    container-type: inline-size;
-    container-name: cinder-testimonial-section;
-    padding-block: var(--cinder-space-10);
-  }
-
-  .cinder-testimonial-section__inner {
-    display: grid;
-    gap: var(--cinder-space-6);
-  }
-
-  .cinder-testimonial-section__header {
-    display: grid;
-    gap: var(--cinder-space-2);
-    max-inline-size: 60ch;
-  }
-
   .cinder-testimonial-section__title {
     margin: 0;
     font-size: var(--cinder-text-3xl);
@@ -52,15 +9,6 @@
   .cinder-testimonial-section__description {
     margin: 0;
     color: var(--cinder-text-muted);
-  }
-
-  .cinder-testimonial-section__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: var(--cinder-space-4);
-    grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
   .cinder-testimonial-section[data-cinder-layout='grid'][data-cinder-columns='2']
@@ -85,11 +33,5 @@
 
   .cinder-testimonial-section__person {
     margin-top: var(--cinder-space-4);
-  }
-
-  @container cinder-testimonial-section (max-width: 56rem) {
-    .cinder-testimonial-section__list {
-      grid-template-columns: 1fr !important;
-    }
   }
 }

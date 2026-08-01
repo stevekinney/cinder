@@ -43,23 +43,27 @@
 
 <svelte:element
   this={as}
-  class={classNames('cinder-testimonial-section', className)}
+  class={classNames('cinder-_section-skeleton', 'cinder-testimonial-section', className)}
   data-cinder-layout={layout}
   data-cinder-columns={String(columns)}
   {...rest}
 >
   <Container {maxWidth}>
-    <div class="cinder-testimonial-section__inner">
+    <div class="cinder-_section-skeleton__inner cinder-testimonial-section__inner">
       {#if title}
-        <header class="cinder-testimonial-section__header">
-          <h2 class="cinder-testimonial-section__title">{title}</h2>
+        <header class="cinder-_section-skeleton__header cinder-testimonial-section__header">
+          <h2 class="cinder-_section-skeleton__title cinder-testimonial-section__title">{title}</h2>
           {#if description}
-            <p class="cinder-testimonial-section__description">{description}</p>
+            <p
+              class="cinder-_section-skeleton__description cinder-testimonial-section__description"
+            >
+              {description}
+            </p>
           {/if}
         </header>
       {/if}
 
-      <ul class="cinder-testimonial-section__list">
+      <ul class="cinder-_section-skeleton__list cinder-testimonial-section__list">
         {#each testimonials as item, index (`${item.name}-${index}`)}
           <li class="cinder-testimonial-section__item">
             <Card>
