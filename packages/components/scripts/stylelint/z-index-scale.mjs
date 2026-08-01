@@ -19,8 +19,8 @@
 
 import stylelint from 'stylelint';
 
+import { bannedFallback } from './z-index-fallback-analysis.mjs';
 import {
-  bannedFallback,
   decodeCssEscapes,
   isStaticallyMagicNumber,
   isStaticallyNegative,

@@ -190,6 +190,17 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999dppx / 96dpi))',
     'var(--item-layer, calc(9999x / 1dppx))',
     'attr(data-layer type(<integer>), 9999)',
+    'var(--item-layer, mod(9999, 10000))',
+    'var(--item-layer, rem(9999, 10000))',
+    'var(--item-layer, round(nearest, 9999.4, 1))',
+    'var(--item-layer, round(9999.4))',
+    'var(--item-layer, pow(9999, 1))',
+    'var(--item-layer, sqrt(99980001))',
+    'var(--item-layer, hypot(9999, 0))',
+    'var(--item-layer, calc(9999 * sin(pi / 2)))',
+    'var(--item-layer, exp(log(9999)))',
+    'var(--item-layer, calc(9999 * progress(1, 0, 1)))',
+    'var(--item-layer, calc(asin(1) / 90deg * 9999))',
   ])('rejects a banned value in a CSS substitution fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -213,14 +224,21 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('rejects a banned enclosing expression after substituting nested fallbacks', async () => {
-    const result = await lint(`
-      .fixture {
-        /* cinder-z-index-local: this relationship is intentionally local. */
-        z-index: var(--item-layer, calc(9999 + var(--offset, 0)));
-      }
-    `);
-    expect(warnings(result)).toHaveLength(1);
-    expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+    for (const value of [
+      'var(--item-layer, calc(9999 + var(--offset, 0)))',
+      'calc(var(--item-layer, 9998) + 1)',
+      'calc(env(cinder-missing, 0) - 1)',
+      'calc(attr(data-layer type(<integer>), 9998) + 1)',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: this relationship is intentionally local. */
+          z-index: ${value};
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+      expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+    }
   });
 
   test('anchors a fallback warning to the fallback occurrence', async () => {
@@ -270,6 +288,23 @@ describe('cinder/z-index-scale', () => {
         .fixture {
           /* cinder-z-index-local: generated fallbacks must not abort linting. */
           z-index: ${nestedFallback};
+        }
+      `);
+      expect(warnings(result)).toHaveLength(warningCount);
+    }
+  });
+
+  test('scans deeply nested calc chains without recursion or overflow', async () => {
+    const depth = 25_000;
+    for (const [leaf, warningCount] of [
+      ['1', 0],
+      ['9999', 1],
+    ] as const) {
+      const nestedCalc = `${'calc('.repeat(depth)}${leaf}${')'.repeat(depth)}`;
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: generated calculations must not abort linting. */
+          z-index: var(--item-layer, ${nestedCalc});
         }
       `);
       expect(warnings(result)).toHaveLength(warningCount);
@@ -421,6 +456,27 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)[0]?.text).toContain('must not have a fallback');
   });
 
+  test('preserves backslash parity while decoding layer-token names', async () => {
+    expect(warnings(await lint('.fixture { z-index: var(--cinder-z-po\\70 over); }'))).toEqual([]);
+    expect(
+      warnings(await lint('.fixture { z-index: var(--cinder-z-po\\\\70over); }')),
+    ).toHaveLength(1);
+    expect(
+      warnings(await lint('.fixture { z-index: var(--cinder-z-po\\\\\\70 over); }')),
+    ).toHaveLength(1);
+
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: this is not a var() function token. */
+            z-index: v\\\\61r(--item-layer, -1);
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
   test.each([
     'var(--item-layer)',
     'var(--item-layer, var(--cinder-z-popover))',
@@ -432,6 +488,18 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(1dppx / 96dpi))',
     'var(--item-layer, calc(1x / 1dppx))',
     'attr(data-layer type(<integer>), 1)',
+    'calc(var(--item-layer, 9998) + var(--dynamic))',
+    'var(--item-layer, mod(1, 10000))',
+    'var(--item-layer, rem(1, 10000))',
+    'var(--item-layer, round(nearest, 1.4, 1))',
+    'var(--item-layer, round(1.4))',
+    'var(--item-layer, pow(1, 1))',
+    'var(--item-layer, sqrt(1))',
+    'var(--item-layer, hypot(1, 0))',
+    'var(--item-layer, calc(1 * sin(pi / 2)))',
+    'var(--item-layer, exp(log(1)))',
+    'var(--item-layer, calc(1 * progress(1, 0, 1)))',
+    'var(--item-layer, calc(asin(1) / 90deg))',
   ])('accepts a reasoned unresolved property with a safe fallback: %s', async (value) => {
     expect(
       warnings(

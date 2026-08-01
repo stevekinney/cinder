@@ -19,9 +19,10 @@ const canonicalUnitConversions = new Map([
   ['dpi', { dimension: 'resolution', factor: 1 / 96 }],
   ['dpcm', { dimension: 'resolution', factor: 2.54 / 96 }],
 ]);
-const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
+const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
+const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 
-function isCssWhitespace(character) {
+export function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
 }
 
@@ -46,6 +47,17 @@ function combineUnits(left, right, direction) {
     else units.set(unit, combined);
   }
   return units;
+}
+
+function angleInRadians(value) {
+  if (value.units.size === 0) return value.value;
+  if (value.units.size === 1 && value.units.get('dimension:angle') === 1)
+    return (value.value * Math.PI) / 180;
+  throw new Error('expected a number or angle');
+}
+
+function angleInDegrees(value) {
+  return { value: (value * 180) / Math.PI, units: new Map([['dimension:angle', 1]]) };
 }
 
 // Evaluate static CSS math while retaining enough type information for
@@ -109,8 +121,26 @@ function evaluateConstantArithmetic(expression) {
     while (/[a-z-]/i.test(peek() ?? '')) index += 1;
     if (index !== functionStart) {
       const functionName = expression.slice(functionStart, index).toLowerCase();
-      if (peek() !== '(') throw new Error('expected function arguments');
+      if (peek() !== '(') {
+        if (functionName === 'e') return scalar(Math.E);
+        if (functionName === 'pi') return scalar(Math.PI);
+        if (functionName === 'infinity') return scalar(Infinity);
+        if (functionName === 'nan') return scalar(Number.NaN);
+        throw new Error('expected function arguments');
+      }
       index += 1;
+      let roundStrategy = 'nearest';
+      if (functionName === 'round') {
+        skipSpace();
+        const strategyMatch = /^(?:nearest|up|down|to-zero)/i.exec(expression.slice(index));
+        if (strategyMatch) {
+          roundStrategy = strategyMatch[0].toLowerCase();
+          index += strategyMatch[0].length;
+          skipSpace();
+          if (peek() !== ',') throw new Error('expected comma after round strategy');
+          index += 1;
+        }
+      }
       const arguments_ = [];
       for (;;) {
         arguments_.push(parseExpression());
@@ -137,6 +167,71 @@ function evaluateConstantArithmetic(expression) {
         return withValue(arguments_[0], Math.abs(arguments_[0].value));
       if (functionName === 'sign' && arguments_.length === 1)
         return scalar(Math.sign(arguments_[0].value));
+      if ((functionName === 'mod' || functionName === 'rem') && arguments_.length === 2) {
+        const [dividend, divisor] = arguments_;
+        if (divisor.value === 0) throw new Error('zero divisor');
+        const quotient = dividend.value / divisor.value;
+        return withValue(
+          dividend,
+          dividend.value -
+            divisor.value * (functionName === 'mod' ? Math.floor(quotient) : Math.trunc(quotient)),
+        );
+      }
+      if (functionName === 'round' && arguments_.length >= 1 && arguments_.length <= 2) {
+        const [value, interval = withValue(arguments_[0], 1)] = arguments_;
+        if (interval.value === 0) throw new Error('zero interval');
+        const ratio = value.value / interval.value;
+        const rounded =
+          roundStrategy === 'up'
+            ? Math.ceil(ratio)
+            : roundStrategy === 'down'
+              ? Math.floor(ratio)
+              : roundStrategy === 'to-zero'
+                ? Math.trunc(ratio)
+                : Math.floor(ratio + 0.5);
+        return withValue(value, rounded * interval.value);
+      }
+      if (functionName === 'pow' && arguments_.length === 2) {
+        if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
+        return scalar(Math.pow(arguments_[0].value, arguments_[1].value));
+      }
+      if (functionName === 'sqrt' && arguments_.length === 1) {
+        if (arguments_[0].units.size !== 0) throw new Error('expected a number');
+        return scalar(Math.sqrt(arguments_[0].value));
+      }
+      if (functionName === 'hypot' && arguments_.length > 0)
+        return withValue(arguments_[0], Math.hypot(...arguments_.map(({ value }) => value)));
+      if (functionName === 'log' && arguments_.length >= 1 && arguments_.length <= 2) {
+        if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
+        return scalar(
+          arguments_.length === 1
+            ? Math.log(arguments_[0].value)
+            : Math.log(arguments_[0].value) / Math.log(arguments_[1].value),
+        );
+      }
+      if (functionName === 'exp' && arguments_.length === 1) {
+        if (arguments_[0].units.size !== 0) throw new Error('expected a number');
+        return scalar(Math.exp(arguments_[0].value));
+      }
+      if (
+        (functionName === 'sin' || functionName === 'cos' || functionName === 'tan') &&
+        arguments_.length === 1
+      )
+        return scalar(Math[functionName](angleInRadians(arguments_[0])));
+      if (
+        (functionName === 'asin' || functionName === 'acos' || functionName === 'atan') &&
+        arguments_.length === 1
+      ) {
+        if (arguments_[0].units.size !== 0) throw new Error('expected a number');
+        return angleInDegrees(Math[functionName](arguments_[0].value));
+      }
+      if (functionName === 'atan2' && arguments_.length === 2)
+        return angleInDegrees(Math.atan2(arguments_[0].value, arguments_[1].value));
+      if (functionName === 'progress' && arguments_.length === 3) {
+        const [, start, end] = arguments_;
+        if (start.value === end.value) throw new Error('empty progress range');
+        return scalar((arguments_[0].value - start.value) / (end.value - start.value));
+      }
       throw new Error('unsupported function');
     }
     return parseNumber();
@@ -187,42 +282,79 @@ function evaluateConstantArithmetic(expression) {
 function flattenCalcFunctions(value) {
   let output = '';
   for (let index = 0; index < value.length; index += 1) {
-    const calcMatch = /^(?:-webkit-)?calc\(/i.exec(value.slice(index));
+    calcFunctionPattern.lastIndex = index;
+    const calcMatch = calcFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
     if (!calcMatch || isCssIdentifierCharacter(previousCharacter)) {
       output += value[index];
       continue;
     }
-    const openIndex = index + calcMatch[0].lastIndexOf('(');
-    let depth = 1;
-    let closeIndex = openIndex + 1;
-    while (closeIndex < value.length && depth > 0) {
-      if (value[closeIndex] === '(') depth += 1;
-      if (value[closeIndex] === ')') depth -= 1;
-      closeIndex += 1;
-    }
-    if (depth !== 0) {
-      output += value.slice(index);
-      break;
-    }
-    output += `(${flattenCalcFunctions(value.slice(openIndex + 1, closeIndex - 1))})`;
-    index = closeIndex - 1;
+    output += '(';
+    index += calcMatch[0].length - 1;
   }
   return output;
 }
 
+function collapseSimpleParenthesisChain(expression) {
+  let start = 0;
+  let end = expression.length;
+  while (expression[start] === '(' && expression[end - 1] === ')') {
+    start += 1;
+    end -= 1;
+  }
+  const center = expression.slice(start, end);
+  return /[()]/.test(center) ? expression : center;
+}
+
+function exceedsStaticAnalysisDepth(expression) {
+  let depth = 0;
+  for (const character of expression) {
+    if (character === '(') depth += 1;
+    if (character === ')') depth -= 1;
+    if (depth > 512) return true;
+  }
+  return false;
+}
+
 function resolveStaticNumber(value) {
-  const evaluated = evaluateConstantArithmetic(flattenCalcFunctions(value));
+  const expression = collapseSimpleParenthesisChain(flattenCalcFunctions(value));
+  if (exceedsStaticAnalysisDepth(expression)) return staticAnalysisTooComplex;
+  const evaluated = evaluateConstantArithmetic(expression);
   return evaluated === null ? null : Math.floor(evaluated + 0.5);
 }
 
 export function decodeCssEscapes(value) {
-  return value
-    .replaceAll(/\\([0-9a-f]{1,6})(?:\r\n|[\t\n\f\r ])?/gi, (_, codePoint) => {
-      const codePointValue = Number.parseInt(codePoint, 16);
-      return codePointValue > 0x10ffff ? '\ufffd' : String.fromCodePoint(codePointValue);
-    })
-    .replaceAll(/\\(.)/g, '$1');
+  let output = '';
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== '\\') {
+      output += value[index];
+      continue;
+    }
+
+    const nextCharacter = value[index + 1];
+    if (nextCharacter === undefined || /[\n\f\r]/.test(nextCharacter)) {
+      output += value[index];
+      continue;
+    }
+    if (!/[0-9a-f]/i.test(nextCharacter)) {
+      output += nextCharacter;
+      index += 1;
+      continue;
+    }
+
+    let hexEnd = index + 1;
+    while (hexEnd < value.length && hexEnd <= index + 6 && /[0-9a-f]/i.test(value[hexEnd]))
+      hexEnd += 1;
+    const codePointValue = Number.parseInt(value.slice(index + 1, hexEnd), 16);
+    output +=
+      codePointValue === 0 || codePointValue > 0x10ffff
+        ? '\ufffd'
+        : String.fromCodePoint(codePointValue);
+    if (value[hexEnd] === '\r' && value[hexEnd + 1] === '\n') hexEnd += 2;
+    else if (isCssWhitespace(value[hexEnd])) hexEnd += 1;
+    index = hexEnd - 1;
+  }
+  return output;
 }
 
 export function protectCssSyntaxEscapes(value) {
@@ -264,122 +396,24 @@ export function protectCssSyntaxEscapes(value) {
   return output;
 }
 
-function isCssIdentifierCharacter(character) {
+export function isCssIdentifierCharacter(character) {
   return character !== undefined && /[\w\u0080-\uFFFF-]/.test(character);
-}
-
-function trimCssWhitespaceRange(value, start, end) {
-  while (start < end && isCssWhitespace(value[start])) start += 1;
-  while (end > start && isCssWhitespace(value[end - 1])) end -= 1;
-  return { start, end };
-}
-
-// Parse every var()/env()/attr() fallback in one pass with an explicit parentheses
-// stack. Each closed function is resolved bottom-up by substituting the
-// fallback paths of direct nested functions, so hostile nesting cannot exhaust
-// the JavaScript call stack and enclosing arithmetic can still be evaluated.
-function fallbackCandidates(value) {
-  const candidates = [];
-  const parentheses = [];
-  const fallbackFrames = [];
-
-  for (let index = 0; index < value.length; index += 1) {
-    fallbackFunctionPattern.lastIndex = index;
-    const functionMatch = fallbackFunctionPattern.exec(value);
-    const previousCharacter = value[index - 1];
-    if (functionMatch && !isCssIdentifierCharacter(previousCharacter)) {
-      const nearestFunction = fallbackFrames.at(-1);
-      const frame = {
-        type: 'fallback',
-        start: index,
-        openIndex: index + functionMatch[0].length - 1,
-        commaIndex: -1,
-        children: [],
-        resolvedFallback: null,
-      };
-      if (nearestFunction && nearestFunction.commaIndex !== -1)
-        nearestFunction.children.push(frame);
-      parentheses.push(frame);
-      fallbackFrames.push(frame);
-      index = frame.openIndex;
-      continue;
-    }
-
-    if (value[index] === '(') {
-      parentheses.push({ type: 'group' });
-      continue;
-    }
-    if (value[index] === ',') {
-      const frame = parentheses.at(-1);
-      if (frame?.type === 'fallback' && frame.commaIndex === -1) frame.commaIndex = index;
-      continue;
-    }
-    if (value[index] !== ')') continue;
-
-    const frame = parentheses.pop();
-    if (frame?.type !== 'fallback') continue;
-    fallbackFrames.pop();
-    frame.end = index + 1;
-    if (frame.commaIndex === -1) continue;
-
-    const fallbackRange = trimCssWhitespaceRange(value, frame.commaIndex + 1, index);
-    const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
-    if (frame.children.some((child) => child.resolvedFallback === null)) {
-      candidates.push({ fallbackIndex: fallbackRange.start, rawFallback, resolvedFallback: null });
-      continue;
-    }
-
-    const [onlyChild] = frame.children;
-    if (
-      frame.children.length === 1 &&
-      onlyChild.start === fallbackRange.start &&
-      onlyChild.end === fallbackRange.end
-    ) {
-      frame.resolvedFallback = onlyChild.resolvedFallback;
-    } else {
-      frame.resolvedFallback = rawFallback;
-      for (const child of frame.children.toReversed()) {
-        const relativeStart = child.start - fallbackRange.start;
-        const relativeEnd = child.end - fallbackRange.start;
-        frame.resolvedFallback =
-          frame.resolvedFallback.slice(0, relativeStart) +
-          `(${child.resolvedFallback})` +
-          frame.resolvedFallback.slice(relativeEnd);
-      }
-    }
-    candidates.push({
-      fallbackIndex: fallbackRange.start,
-      rawFallback,
-      resolvedFallback: frame.resolvedFallback,
-    });
-  }
-
-  return candidates;
 }
 
 export function isStaticallyNegative(value) {
   const resolved = resolveStaticNumber(value);
-  return resolved !== null && resolved < 0;
+  return (
+    (resolved === staticAnalysisTooComplex &&
+      !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
+    (resolved !== null && resolved !== staticAnalysisTooComplex && resolved < 0)
+  );
 }
 
 export function isStaticallyMagicNumber(value) {
   const resolved = resolveStaticNumber(value);
-  return resolved !== null && resolved === 9999;
-}
-
-export function bannedFallback(value) {
-  const protectedValue = protectCssSyntaxEscapes(value);
-  const decodedValue = decodeCssEscapes(protectedValue);
-  const positionsAreStable = protectedValue === value && decodedValue === value;
-  for (const { fallbackIndex, rawFallback, resolvedFallback } of fallbackCandidates(decodedValue)) {
-    if (
-      resolvedFallback !== null &&
-      (isStaticallyNegative(resolvedFallback) || isStaticallyMagicNumber(resolvedFallback))
-    )
-      return {
-        index: positionsAreStable ? fallbackIndex : undefined,
-        value: rawFallback,
-      };
-  }
-  return undefined;
+  return (
+    (resolved === staticAnalysisTooComplex &&
+      !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
+    resolved === 9999
+  );
 }
