@@ -1639,6 +1639,7 @@
       ],
       "related": [
         "table",
+        "data-grid",
         "table-header",
         "table-body",
         "table-row",
@@ -5240,7 +5241,15 @@
           "reason": "Listing key-value attributes of one entity — use description-list instead."
         }
       ],
-      "related": ["table-header", "table-body", "table-row", "table-cell", "table-header-cell"],
+      "related": [
+        "data-table",
+        "data-grid",
+        "table-header",
+        "table-body",
+        "table-row",
+        "table-cell",
+        "table-header-cell"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
