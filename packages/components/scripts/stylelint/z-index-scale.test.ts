@@ -252,6 +252,22 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
+  test.each([
+    'var(--inner, -1)',
+    'env(cinder-missing, -1)',
+    'attr(data-layer type(<integer>), -1)',
+  ])('fails closed when an unresolved sibling masks a nested banned path: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: unresolved context must not mask a banned path. */
+        z-index: var(--outer, calc(${value} + var(--dynamic)));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
   test('anchors a fallback warning to the fallback occurrence', async () => {
     for (const css of [
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(9999 + var(--x, 9999)); }',

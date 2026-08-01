@@ -89,12 +89,27 @@ function fallbackCandidates(value) {
     const fallbackRange = trimCssWhitespaceRange(value, frame.commaIndex + 1, index);
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange);
+    const candidate = {
+      fallbackIndex: fallbackRange.start,
+      rawFallback,
+      resolvedFallback: frame.resolvedFallback,
+    };
+    const resolvedFallbackIsBanned =
+      frame.resolvedFallback !== null &&
+      (isStaticallyNegative(frame.resolvedFallback) ||
+        isStaticallyMagicNumber(frame.resolvedFallback));
+    frame.unprovenBannedCandidate = resolvedFallbackIsBanned
+      ? candidate
+      : frame.resolvedFallback === null
+        ? frame.children.find((child) => child.unprovenBannedCandidate)?.unprovenBannedCandidate
+        : undefined;
     if (!frame.isNestedFallback)
-      candidates.push({
-        fallbackIndex: fallbackRange.start,
-        rawFallback,
-        resolvedFallback: frame.resolvedFallback,
-      });
+      candidates.push(
+        candidate,
+        ...(frame.resolvedFallback === null && frame.unprovenBannedCandidate
+          ? [frame.unprovenBannedCandidate]
+          : []),
+      );
   }
 
   if (rootFrame.children.length > 0) {
