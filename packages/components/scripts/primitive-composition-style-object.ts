@@ -276,6 +276,22 @@ function mergeValues(values: readonly unknown[]): unknown[] {
   return [...new Set(values)];
 }
 
+function unconditionallyAbruptStatement(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  return (
+    statement['type'] === 'BlockStatement' &&
+    Array.isArray(statement['body']) &&
+    statement['body'].length > 0 &&
+    unconditionallyAbruptStatement(statement['body'][statement['body'].length - 1])
+  );
+}
+
 function staticBindings(instance: unknown): Map<string, unknown[]> {
   const bindings = new Map<string, unknown[]>();
   const mutableBindings = new Set<string>();
@@ -396,15 +412,74 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     if (node['type'] === 'SwitchStatement') {
       const interruptedStates: Map<string, unknown[]>[] = [];
       breakTargets.push({ label: controlLabel, states: interruptedStates });
-      for (const value of Object.values(node)) {
-        if (Array.isArray(value))
-          for (const item of value) walk(item, currentShadowed, currentInsideFunction);
-        else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
+      if (isRecord(node['discriminant']))
+        walk(node['discriminant'], currentShadowed, currentInsideFunction);
+      const cases = Array.isArray(node['cases']) ? node['cases'].filter(isRecord) : [];
+      const base = cloneBindings();
+      const staticCaseValue = (value: unknown): unknown => {
+        if (isRecord(value) && value['type'] === 'Literal') return value['value'];
+        if (
+          isRecord(value) &&
+          value['type'] === 'Identifier' &&
+          typeof value['name'] === 'string'
+        ) {
+          const candidates = bindings.get(value['name']) ?? [];
+          if (candidates.length === 1) return staticCaseValue(candidates[0]);
+        }
+        return undefined;
+      };
+      const discriminantValue = staticCaseValue(node['discriminant']);
+      const starts: Array<{ index: number; state: Map<string, unknown[]> }> = [];
+      let testState = new Map(base);
+      let matched = false;
+      for (let index = 0; index < cases.length; index++) {
+        const caseNode = cases[index];
+        if (caseNode === undefined) continue;
+        if (isRecord(caseNode['test'])) {
+          bindings.clear();
+          for (const [name, values] of testState) bindings.set(name, [...values]);
+          walk(caseNode['test'], currentShadowed, currentInsideFunction);
+          testState = cloneBindings();
+          const caseValue = staticCaseValue(caseNode['test']);
+          if (discriminantValue !== undefined && caseValue !== undefined) {
+            if (Object.is(discriminantValue, caseValue)) {
+              starts.push({ index, state: new Map(testState) });
+              matched = true;
+              break;
+            }
+          } else if (discriminantValue === undefined)
+            starts.push({ index, state: new Map(testState) });
+        } else if (!matched) starts.push({ index, state: new Map(testState) });
+      }
+      if (!matched && cases.some((caseNode) => !isRecord(caseNode['test']))) {
+        const index = cases.findIndex((caseNode) => !isRecord(caseNode['test']));
+        starts.push({ index, state: new Map(testState) });
+      } else if (discriminantValue === undefined)
+        starts.push({ index: cases.length, state: new Map(testState) });
+      const terminalStates: Map<string, unknown[]>[] = [];
+      for (const start of starts) {
+        bindings.clear();
+        for (const [name, values] of start.state) bindings.set(name, [...values]);
+        for (let index = start.index; index < cases.length; index++) {
+          const caseNode = cases[index];
+          if (caseNode === undefined) continue;
+          if (!Array.isArray(caseNode['consequent'])) continue;
+          for (const statement of caseNode['consequent']) {
+            walk(statement, currentShadowed, currentInsideFunction);
+            if (unconditionallyAbruptStatement(statement)) break;
+          }
+          if (caseNode['consequent'].some(unconditionallyAbruptStatement)) break;
+        }
+        terminalStates.push(cloneBindings());
       }
       breakTargets.pop();
-      let continuingState = cloneBindings();
+      let continuingState = terminalStates.shift() ?? base;
       for (const interruptedState of interruptedStates) {
         mergeBindingStates(continuingState, interruptedState);
+        continuingState = cloneBindings();
+      }
+      for (const terminalState of terminalStates) {
+        mergeBindingStates(continuingState, terminalState);
         continuingState = cloneBindings();
       }
       return;

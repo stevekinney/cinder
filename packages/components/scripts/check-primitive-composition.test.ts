@@ -1659,6 +1659,27 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('ignores style-object writes after an unconditional switch break', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; switch (mode) { case 'block': layout = { display: 'block' }; break; layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout}></div>",
+        'switch-break-style/switch-break-style.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; switch (1) { case 1: layout = { display: 'block' }; break; case 2: layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout}></div>",
+        'switch-break-style/switch-break-style.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; switch (mode) { case 1: layout = { display: 'block' }; break; }</script><div style={layout}></div>",
+        'switch-break-style/switch-break-style.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('does not treat a shadowed undefined binding as nullish', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -2235,6 +2256,12 @@ describe('primitive composition guard', () => {
         'switch-test-control/switch-test-control.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; switch (1) { case 1: break; case (tag = 'input'): break; }</script><svelte:element this={tag} />",
+        'switch-test-control/switch-test-control.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('discards synchronous IIFE return states after later writes', () => {
@@ -2256,12 +2283,32 @@ describe('primitive composition guard', () => {
   });
 
   test('preserves zero-entry field-tag loop states', () => {
-    expect(
-      findPrimitiveCompositionViolations(
-        "<script>let tag = 'label'; for (const item of []) tag = 'span';</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
-        'zero-entry-field-loop/zero-entry-field-loop.svelte',
-      ),
-    ).toHaveLength(1);
+    for (const loop of [
+      "for (const item of []) tag = 'span';",
+      "for (const item of items) tag = 'span';",
+      "for (const key in object) tag = 'span';",
+      "for (; ready;) tag = 'span';",
+      "while (ready) tag = 'span';",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'label'; ${loop}</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>`,
+          'zero-entry-field-loop/zero-entry-field-loop.svelte',
+        ),
+      ).toHaveLength(1);
+
+    for (const loop of [
+      "while (true) { tag = 'span'; break; }",
+      "for (;;) { tag = 'span'; break; }",
+      "for (;; tag = 'label') { tag = 'span'; break; }",
+      "for (const item of [1]) tag = 'span';",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'label'; ${loop}</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>`,
+          'guaranteed-entry-field-loop/guaranteed-entry-field-loop.svelte',
+        ),
+      ).toEqual([]);
   });
 
   test('keeps only terminal style writes within one callback', () => {
@@ -2304,6 +2351,18 @@ describe('primitive composition guard', () => {
         'direct-parent-grid/direct-parent-grid.css',
       ),
     ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        'main section > .layout { display: grid; } main article > .layout { grid-template-columns: 1fr; }',
+        'direct-parent-grid/direct-parent-grid.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        'main section > .layout { display: grid; } aside section > .layout { grid-template-columns: 1fr; }',
+        'direct-parent-grid/direct-parent-grid.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('merges try and catch as alternative control states', () => {
@@ -2313,6 +2372,12 @@ describe('primitive composition guard', () => {
         'try-catch-control/try-catch-control.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; try { throw 0; } catch (tag) { tag = 'input'; }</script><svelte:element this={tag} />",
+        'try-catch-control/try-catch-control.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('keeps mutually exclusive template field evidence separate', () => {

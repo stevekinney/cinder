@@ -94,6 +94,22 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
   return statement['body'].some(unconditionallyAbruptStatement);
 }
 
+function unconditionallyExitsBeforeLoopUpdate(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  return (
+    statement['type'] === 'BlockStatement' &&
+    Array.isArray(statement['body']) &&
+    statement['body'].length > 0 &&
+    unconditionallyExitsBeforeLoopUpdate(statement['body'][statement['body'].length - 1])
+  );
+}
+
 function collectPatternNames(pattern: unknown, into: Set<string>): void {
   if (!isRecord(pattern)) return;
   if (pattern['type'] === 'Identifier' && typeof pattern['name'] === 'string') {
@@ -276,37 +292,75 @@ function staticStringBindings(source: string): Map<string, string[]> {
       }
       return;
     }
+    if (node['type'] === 'WhileStatement') {
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const truthiness = staticTruthiness(node['test'], bindings);
+      if (truthiness === false) return;
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      if (truthiness !== true) {
+        const names = new Set([...base.keys(), ...bindings.keys()]);
+        for (const name of names)
+          bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
+      }
+      return;
+    }
     if (
       node['type'] === 'ForStatement' ||
       node['type'] === 'ForInStatement' ||
       node['type'] === 'ForOfStatement'
     ) {
-      if (
-        (node['type'] === 'ForInStatement' || node['type'] === 'ForOfStatement') &&
-        isRecord(node['right']) &&
-        node['right']['type'] === 'ArrayExpression' &&
-        Array.isArray(node['right']['elements']) &&
-        node['right']['elements'].length === 0
-      ) {
-        return;
-      }
       const declaration = node['type'] === 'ForStatement' ? node['init'] : node['left'];
+      const localNames = new Set<string>();
       if (
         isRecord(declaration) &&
         declaration['type'] === 'VariableDeclaration' &&
         (declaration['kind'] === 'let' || declaration['kind'] === 'const') &&
         Array.isArray(declaration['declarations'])
-      ) {
-        const localNames = new Set<string>();
+      )
         for (const declarator of declaration['declarations'])
           if (isRecord(declarator)) collectPatternNames(declarator['id'], localNames);
-        const loopShadowed = new Set([...currentShadowed, ...localNames]);
-        for (const child of Object.values(node)) {
-          if (Array.isArray(child)) for (const item of child) walk(item, loopShadowed);
-          else if (isRecord(child)) walk(child, loopShadowed);
-        }
-        return;
+      const loopShadowed = new Set([...currentShadowed, ...localNames]);
+      if (node['type'] === 'ForStatement') {
+        if (isRecord(node['init'])) walk(node['init'], loopShadowed);
+        if (isRecord(node['test'])) walk(node['test'], loopShadowed);
+      } else {
+        if (isRecord(node['right'])) walk(node['right'], currentShadowed);
+        if (isRecord(node['left'])) walk(node['left'], loopShadowed);
       }
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const testTruthiness =
+        node['type'] === 'ForStatement'
+          ? node['test'] === null
+            ? true
+            : staticTruthiness(node['test'], bindings)
+          : undefined;
+      const emptyIterable =
+        (node['type'] === 'ForInStatement' || node['type'] === 'ForOfStatement') &&
+        isRecord(node['right']) &&
+        node['right']['type'] === 'ArrayExpression' &&
+        Array.isArray(node['right']['elements']) &&
+        node['right']['elements'].length === 0;
+      const guaranteedIterable =
+        node['type'] === 'ForOfStatement' &&
+        isRecord(node['right']) &&
+        node['right']['type'] === 'ArrayExpression' &&
+        Array.isArray(node['right']['elements']) &&
+        node['right']['elements'].length > 0;
+      if (testTruthiness === false || emptyIterable) return;
+      if (isRecord(node['body'])) walk(node['body'], loopShadowed);
+      if (
+        node['type'] === 'ForStatement' &&
+        isRecord(node['update']) &&
+        !unconditionallyExitsBeforeLoopUpdate(node['body'])
+      )
+        walk(node['update'], loopShadowed);
+      if (testTruthiness !== true && !emptyIterable && !guaranteedIterable) {
+        const names = new Set([...base.keys(), ...bindings.keys()]);
+        for (const name of names)
+          bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
+      }
+      return;
     }
     if (
       node['type'] === 'FunctionDeclaration' ||

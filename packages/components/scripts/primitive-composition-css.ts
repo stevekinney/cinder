@@ -62,6 +62,7 @@ type AttributeConstraint = {
 
 type SelectorTarget = {
   ancestorSignature?: string;
+  directParentTag?: string;
   tag?: string;
   id?: string;
   impossible?: boolean;
@@ -233,7 +234,15 @@ function selectorTargets(selector: string): SelectorTarget[] {
           .map((node) => node.toString())
           .join('')
           .trim();
-        if (ancestorSignature) target.ancestorSignature = ancestorSignature;
+        if (ancestorSignature) {
+          target.ancestorSignature = ancestorSignature;
+          const combinator = selectorNode.nodes[lastCombinator];
+          if (combinator?.type === 'combinator' && combinator.value.trim() === '>') {
+            const parentCompound = ancestorSignature.split(/\s+/).at(-1) ?? '';
+            const directParentTag = parentCompound.match(/^[a-z][\w-]*/i)?.[0].toLowerCase();
+            if (directParentTag !== undefined) target.directParentTag = directParentTag;
+          }
+        }
       }
       targets.push(target);
     });
@@ -299,12 +308,9 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
   if (left.impossible || right.impossible) return false;
   if (negatesTag(left, right) || negatesTag(right, left)) return false;
   if (
-    left.ancestorSignature !== undefined &&
-    right.ancestorSignature !== undefined &&
-    /^[a-z][\w-]*/i.test(left.ancestorSignature) &&
-    /^[a-z][\w-]*/i.test(right.ancestorSignature) &&
-    left.ancestorSignature.match(/^[a-z][\w-]*/i)?.[0].toLowerCase() !==
-      right.ancestorSignature.match(/^[a-z][\w-]*/i)?.[0].toLowerCase()
+    left.directParentTag !== undefined &&
+    right.directParentTag !== undefined &&
+    left.directParentTag !== right.directParentTag
   )
     return false;
   const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
