@@ -8,6 +8,8 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
+const { waitForSpeedDialExit } = await import('./speed-dial-exit.ts');
+const { createQueuedFocusRestoration } = await import('./speed-dial-focus.ts');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
 const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
@@ -20,7 +22,227 @@ async function flushQueuedFocus(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function dispatchTransitionBoundary(
+  target: EventTarget,
+  type: 'transitioncancel' | 'transitionend',
+  propertyName: string,
+): void {
+  dispatchTransitionBoundaryWithTarget(target, target, type, propertyName);
+}
+
+function dispatchTransitionBoundaryWithTarget(
+  dispatchTarget: EventTarget,
+  eventTarget: EventTarget,
+  type: 'transitioncancel' | 'transitionend',
+  propertyName: string,
+): void {
+  const event = new Event(type, { bubbles: true });
+  Object.defineProperties(event, {
+    propertyName: { value: propertyName },
+    target: { value: eventTarget },
+  });
+  dispatchTarget.dispatchEvent(event);
+}
+
+function mockComputedTransitionStyle(
+  matchElement: (element: Element) => boolean,
+  transitionStyle: Pick<
+    CSSStyleDeclaration,
+    'transitionDelay' | 'transitionDuration' | 'transitionProperty'
+  >,
+) {
+  const originalGetComputedStyle = window.getComputedStyle.bind(window);
+  return spyOn(window, 'getComputedStyle').mockImplementation(
+    (element: Element, pseudoElement?: string | null) => {
+      const style = originalGetComputedStyle(element, pseudoElement);
+      if (!matchElement(element)) return style;
+      const mockedStyle = Object.create(style) as CSSStyleDeclaration;
+      Object.defineProperties(mockedStyle, {
+        transitionDelay: { configurable: true, value: transitionStyle.transitionDelay },
+        transitionDuration: { configurable: true, value: transitionStyle.transitionDuration },
+        transitionProperty: { configurable: true, value: transitionStyle.transitionProperty },
+      });
+      return mockedStyle;
+    },
+  );
+}
+
 describe('SpeedDial', () => {
+  test('queued focus restoration runs a current scheduled callback', () => {
+    const queuedCallbacks: VoidFunction[] = [];
+    const restoration = createQueuedFocusRestoration((callback) => queuedCallbacks.push(callback));
+    const restoreFocus = mock(() => {});
+
+    restoration.schedule(restoreFocus);
+    queuedCallbacks.shift()?.();
+
+    expect(restoreFocus).toHaveBeenCalledTimes(1);
+  });
+
+  test('queued focus restoration ignores callbacks after invalidation', () => {
+    const queuedCallbacks: VoidFunction[] = [];
+    const restoration = createQueuedFocusRestoration((callback) => queuedCallbacks.push(callback));
+    const restoreFocus = mock(() => {});
+
+    restoration.schedule(restoreFocus);
+    restoration.invalidate();
+    queuedCallbacks.shift()?.();
+
+    expect(restoreFocus).not.toHaveBeenCalled();
+  });
+
+  test('queued focus restoration blocks older close generations after later generations', () => {
+    const queuedCallbacks: VoidFunction[] = [];
+    const restoration = createQueuedFocusRestoration((callback) => queuedCallbacks.push(callback));
+    const staleRestoreFocus = mock(() => {});
+    const currentRestoreFocus = mock(() => {});
+
+    restoration.schedule(staleRestoreFocus);
+    restoration.invalidate();
+    restoration.schedule(currentRestoreFocus);
+
+    queuedCallbacks.shift()?.();
+    queuedCallbacks.shift()?.();
+
+    expect(staleRestoreFocus).not.toHaveBeenCalled();
+    expect(currentRestoreFocus).toHaveBeenCalledTimes(1);
+  });
+
+  test('exit helper waits for every transitioned property before completing', async () => {
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms',
+      transitionDuration: '150ms, 150ms',
+      transitionProperty: 'opacity, transform',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, complete);
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      await flushQueuedFocus();
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
+      await flushQueuedFocus();
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper treats transition cancel as one property boundary', async () => {
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms',
+      transitionDuration: '150ms, 150ms',
+      transitionProperty: 'opacity, transform',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, complete);
+
+      dispatchTransitionBoundary(action, 'transitioncancel', 'opacity');
+      await flushQueuedFocus();
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
+      await flushQueuedFocus();
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper repeats shorter transition time lists from the beginning', async () => {
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms',
+      transitionDuration: '150ms, 0ms',
+      transitionProperty: 'opacity, transform, width',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, complete);
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      await flushQueuedFocus();
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'width');
+      await flushQueuedFocus();
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper ignores bubbled transition events from non-element children', async () => {
+    const action = document.createElement('button');
+    const text = document.createTextNode('Create');
+    action.append(text);
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms',
+      transitionDuration: '150ms, 150ms',
+      transitionProperty: 'opacity, transform',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, complete);
+
+      dispatchTransitionBoundaryWithTarget(action, text, 'transitionend', 'opacity');
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
+      await flushQueuedFocus();
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      await flushQueuedFocus();
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper ignores stale transition callbacks after cleanup', async () => {
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms',
+      transitionDuration: '150ms, 150ms',
+      transitionProperty: 'opacity, transform',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, complete);
+      cancel();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
+      await flushQueuedFocus();
+
+      expect(complete).not.toHaveBeenCalled();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
   test('renders group, trigger, and toolbar semantics', () => {
     const { container } = render(SpeedDialFixture);
 
@@ -87,6 +309,169 @@ describe('SpeedDial', () => {
     expect(screen.getByRole('toolbar', { name: 'Actions', hidden: true })).toBe(toolbar);
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
     expect(toolbar.hasAttribute('inert')).toBe(true);
+  });
+
+  test('ordinary-motion close keeps fixed coordinates until the visible exit settles', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = mock(
+      (media: string): MediaQueryList =>
+        ({
+          matches: false,
+          media,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => true,
+        }) as MediaQueryList,
+    );
+
+    try {
+      render(SpeedDialFixture);
+      const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+
+      await waitFor(() => {
+        expect(toolbar.getAttribute('style')).toContain('position: fixed;');
+        expect(toolbar.getAttribute('style')).toContain('left:');
+        expect(toolbar.getAttribute('style')).toContain('top:');
+      });
+      const positionedStyle = toolbar.getAttribute('style');
+      const create = screen.getByRole('button', { name: 'Create' });
+      const exitingAction = create.closest('.cinder-speed-dial-action')!;
+      const getComputedStyleSpy = mockComputedTransitionStyle(
+        (element) => element.classList.contains('cinder-speed-dial-action'),
+        {
+          transitionDelay: '0ms, 0ms',
+          transitionDuration: '150ms, 150ms',
+          transitionProperty: 'opacity, transform',
+        },
+      );
+
+      try {
+        await fireEvent.click(trigger);
+
+        expect(toolbar.getAttribute('style')).toBe(positionedStyle);
+        expect(toolbar.hasAttribute('inert')).toBe(true);
+        expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+
+        dispatchTransitionBoundary(exitingAction, 'transitionend', 'opacity');
+        await flushQueuedFocus();
+
+        expect(toolbar.getAttribute('style')).toBe(positionedStyle);
+
+        dispatchTransitionBoundary(exitingAction, 'transitionend', 'transform');
+        await flushQueuedFocus();
+        expect(toolbar.getAttribute('style')).toBe('');
+      } finally {
+        getComputedStyleSpy.mockRestore();
+      }
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('reduced-motion close settles inline immediately', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = mock(
+      (media: string): MediaQueryList =>
+        ({
+          matches: media === '(prefers-reduced-motion: reduce)',
+          media,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => true,
+        }) as MediaQueryList,
+    );
+
+    try {
+      render(SpeedDialFixture);
+      const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+      expect(toolbar.getAttribute('style')).toContain('position: fixed;');
+
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+
+      expect(toolbar.hasAttribute('inert')).toBe(true);
+      expect(toolbar.getAttribute('style')).toBe('');
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('reopening during an ordinary-motion exit keeps the positioned surface active', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = mock(
+      (media: string): MediaQueryList =>
+        ({
+          matches: false,
+          media,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => true,
+        }) as MediaQueryList,
+    );
+
+    try {
+      render(SpeedDialFixture);
+      const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+
+      await waitFor(() => {
+        expect(toolbar.getAttribute('style')).toContain('position: fixed;');
+        expect(toolbar.getAttribute('style')).toContain('left:');
+        expect(toolbar.getAttribute('style')).toContain('top:');
+      });
+      const positionedStyle = toolbar.getAttribute('style');
+      const create = screen.getByRole('button', { name: 'Create' });
+      const exitingAction = create.closest('.cinder-speed-dial-action')!;
+      const getComputedStyleSpy = mockComputedTransitionStyle(
+        (element) => element.classList.contains('cinder-speed-dial-action'),
+        {
+          transitionDelay: '0ms, 0ms',
+          transitionDuration: '150ms, 150ms',
+          transitionProperty: 'opacity, transform',
+        },
+      );
+
+      try {
+        await fireEvent.click(trigger);
+        dispatchTransitionBoundary(exitingAction, 'transitionend', 'opacity');
+        await flushQueuedFocus();
+        expect(toolbar.getAttribute('style')).toBe(positionedStyle);
+
+        await fireEvent.click(trigger);
+        await flushQueuedFocus();
+
+        dispatchTransitionBoundary(exitingAction, 'transitionend', 'transform');
+        await flushQueuedFocus();
+
+        expect(toolbar.hasAttribute('data-cinder-open')).toBe(true);
+        expect(toolbar.hasAttribute('inert')).toBe(false);
+        expect(toolbar.getAttribute('style')).toContain('position: fixed;');
+      } finally {
+        getComputedStyleSpy.mockRestore();
+      }
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 
   test('empty aria-label falls back to the default accessible name', () => {
@@ -250,17 +635,54 @@ describe('SpeedDial', () => {
 
   test('an unavailable source ancestor closes and disables portaled actions', async () => {
     const { container } = render(SpeedDialFixture);
-    await fireEvent.click(screen.getByRole('button', { name: 'Quick actions' }));
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+    await fireEvent.click(trigger);
     await flushQueuedFocus();
+
+    const action = screen.getByRole('button', { name: 'Create' });
+    action.focus();
+    expect(document.activeElement).toBe(action);
 
     container.setAttribute('inert', '');
 
     await waitFor(() => {
       expect(screen.getByTestId('open-state').textContent).toBe('closed');
     });
+    await flushQueuedFocus();
+
     const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
     expect(toolbar.hasAttribute('inert')).toBe(true);
     expect(container.contains(toolbar)).toBe(true);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  test('unavailable source close can reopen without stealing new action focus', async () => {
+    const { container } = render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.focus();
+    expect(document.activeElement).toBe(create);
+
+    container.setAttribute('inert', '');
+    await waitFor(() => {
+      expect(screen.getByTestId('open-state').textContent).toBe('closed');
+    });
+
+    container.removeAttribute('inert');
+    await waitFor(() => {
+      trigger.click();
+      expect(screen.getByTestId('open-state').textContent).toBe('open');
+    });
+
+    const share = screen.getByRole('button', { name: 'Share', hidden: true });
+    share.focus();
+    expect(document.activeElement).toBe(share);
+
+    await flushQueuedFocus();
+    expect(document.activeElement).toBe(share);
   });
 
   test('a disabled owning fieldset closes and disables portaled actions', async () => {
@@ -293,8 +715,14 @@ describe('SpeedDial', () => {
 
     try {
       await view.rerender({ direction: 'left', open: true });
+      const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+      expect(toolbar.hasAttribute('inert')).toBe(false);
+      expect(toolbar.hasAttribute('aria-hidden')).toBe(false);
+      expect(document.activeElement).toBe(share);
+
       await flushQueuedFocus();
       expect(focusSpy).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(share);
     } finally {
       focusSpy.mockRestore();
     }
