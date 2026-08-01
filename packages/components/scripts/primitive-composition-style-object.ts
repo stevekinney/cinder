@@ -209,7 +209,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         continue;
       const name = declaration['id']['name'];
       if (statement['kind'] !== 'const') mutableBindings.add(name);
-      const resolved = resolvedAssignmentValue(declaration['init']);
+      const resolved = resolvedAssignmentValue(declaration['init'], bindings);
       if (resolved.set) bindings.set(name, resolved.values);
       else bindings.delete(name);
     }

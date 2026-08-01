@@ -357,6 +357,15 @@ describe('primitive composition guard', () => {
       expect(cssPrimitiveCounts(source).grid).toBe(1);
   });
 
+  test('associates class-only and tag-only selectors across rules', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout { display: grid; } section { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('recognizes row, area, auto-column, and grid shorthand layouts', () => {
     for (const property of [
       'grid-template-rows',
@@ -576,6 +585,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let base = { display: 'block' }; function enable() { base = { display: 'grid', gridTemplateColumns: '1fr' }; } let layout; function assign() { layout = base; }</script><div style={layout}></div>",
+        'alias-style/alias-style.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('resolves a top-level mutable style alias initializer', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const gridStyle = { display: 'grid', gridTemplateColumns: '1fr' }; let layout = gridStyle;</script><div style={layout}></div>",
         'alias-style/alias-style.svelte',
       ),
     ).toHaveLength(1);
@@ -1018,6 +1036,15 @@ describe('primitive composition guard', () => {
         'html-field/html-field.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('does not resolve ambiguous mutable HtmlTag field bindings by array order', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let markup = '<div></div>'; if (custom) markup = '<label>Name</label><p>Help</p><p>Error</p>'; else markup = '<div></div>';</script>{@html markup}",
+        'html-field/html-field.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('matches completed compound pseudo alternatives', () => {

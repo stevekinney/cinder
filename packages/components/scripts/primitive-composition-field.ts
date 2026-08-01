@@ -49,8 +49,10 @@ function staticStringFromExpression(
     const value = expression['quasis'][0]['value'];
     return isRecord(value) && typeof value['cooked'] === 'string' ? value['cooked'] : undefined;
   }
-  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
-    return bindings.get(expression['name'])?.[0];
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const values = bindings.get(expression['name']);
+    return values?.length === 1 ? values[0] : undefined;
+  }
   return undefined;
 }
 
