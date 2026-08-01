@@ -515,7 +515,9 @@ function observeInheritedPortalAttributes(
       nextElements.push(ancestor);
       ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
     }
-    nextElements.push(document.documentElement);
+    if (!nextElements.includes(document.documentElement)) {
+      nextElements.push(document.documentElement);
+    }
     if (
       observedElements.length === nextElements.length &&
       observedElements.every((element, index) => element === nextElements[index])
