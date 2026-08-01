@@ -82,13 +82,9 @@ function evaluateParsedLogicalContainerCondition(
       evaluateParsedLogicalContainerCondition(part, width, remSize, inlineSize),
     );
   const trimmed = conditionText.trim();
-  if (trimmed.startsWith('(') && trimmed.endsWith(')'))
-    return evaluateParsedLogicalContainerCondition(
-      trimmed.slice(1, -1),
-      width,
-      remSize,
-      inlineSize,
-    );
+  const unwrapped = unwrapRedundantParentheses(trimmed);
+  if (unwrapped !== trimmed)
+    return evaluateParsedLogicalContainerCondition(unwrapped, width, remSize, inlineSize);
   const notPrefix = /^not\s+/i.exec(trimmed);
   if (notPrefix)
     return !evaluateParsedLogicalContainerCondition(
@@ -119,8 +115,7 @@ export function isFullyParsedContainerCondition(conditionText: string): boolean 
 }
 
 function parseContainerCondition(conditionText: string): boolean {
-  let trimmed = conditionText.trim();
-  while (isWrappedByParentheses(trimmed)) trimmed = trimmed.slice(1, -1).trim();
+  const trimmed = unwrapRedundantParentheses(conditionText);
   const orParts = splitTopLevel(trimmed, 'or');
   if (orParts.length > 1) return orParts.every(parseContainerCondition);
   const andParts = splitTopLevel(trimmed, 'and');
@@ -128,7 +123,8 @@ function parseContainerCondition(conditionText: string): boolean {
   const notPrefix = /^not\s+/i.exec(trimmed);
   if (notPrefix) {
     const operand = trimmed.slice(notPrefix[0].length).trim();
-    return isWrappedByParentheses(operand) && parseContainerCondition(operand);
+    const unwrappedOperand = unwrapRedundantParentheses(operand);
+    return unwrappedOperand !== operand && parseContainerCondition(unwrappedOperand);
   }
   return (
     containerSizeTermPattern.test(trimmed) ||
@@ -149,15 +145,33 @@ function hasBalancedParentheses(conditionText: string): boolean {
   return depth === 0;
 }
 
-function isWrappedByParentheses(conditionText: string): boolean {
-  if (!conditionText.startsWith('(') || !conditionText.endsWith(')')) return false;
+function unwrapRedundantParentheses(conditionText: string): string {
+  const trimmed = conditionText.trim();
+  if (!trimmed.startsWith('(') || !trimmed.endsWith(')')) return trimmed;
+  const matchingClose = new Map<number, number>();
+  const openPositions: number[] = [];
   let depth = 0;
-  for (let index = 0; index < conditionText.length; index += 1) {
-    if (conditionText[index] === '(') depth += 1;
-    if (conditionText[index] === ')') depth -= 1;
-    if (depth === 0 && index < conditionText.length - 1) return false;
+  for (let index = 0; index < trimmed.length; index += 1) {
+    if (trimmed[index] === '(') {
+      openPositions.push(index);
+      depth += 1;
+    } else if (trimmed[index] === ')') {
+      const open = openPositions.pop();
+      if (open === undefined) return trimmed;
+      matchingClose.set(open, index);
+      depth -= 1;
+    }
   }
-  return depth === 0;
+  if (depth !== 0) return trimmed;
+  let start = 0;
+  let end = trimmed.length - 1;
+  while (start < end && matchingClose.get(start) === end) {
+    start += 1;
+    end -= 1;
+    while (/\s/.test(trimmed[start] ?? '')) start += 1;
+    while (/\s/.test(trimmed[end] ?? '')) end -= 1;
+  }
+  return start === 0 ? trimmed : trimmed.slice(start, end + 1).trim();
 }
 
 // True when the condition references a width/inline-size comparison whose
