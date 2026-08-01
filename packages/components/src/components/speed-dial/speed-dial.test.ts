@@ -386,7 +386,6 @@ describe('SpeedDial', () => {
     const precedingButton = document.createElement('button');
     precedingButton.setAttribute('tabindex', '0');
     precedingButton.textContent = 'Before SpeedDial';
-    precedingButton.setAttribute('tabindex', '0');
     document.body.append(precedingButton);
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
