@@ -145,6 +145,30 @@ test.describe('table scroll recipe', () => {
 
 const allEntries = loadManifest();
 
+test.describe('number input resting geometry', () => {
+  test('desktop steppers stretch to the grouped control height', async ({ componentPage }) => {
+    const entry = allEntries.find((candidate) => candidate.slug === 'number-input');
+    if (!entry) throw new Error('NumberInput is missing from the component manifest.');
+
+    const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop');
+    if (!desktop) throw new Error('Desktop viewport fixture is missing.');
+
+    const page = await componentPage.open({ entry, theme: 'light', viewport: desktop });
+    const group = page.locator('.cinder-number-input .cinder-input-group').first();
+    const steppers = group.locator('.cinder-number-input__stepper');
+    await expect(steppers).toHaveCount(2);
+
+    const groupBox = await group.boundingBox();
+    expect(groupBox).not.toBeNull();
+
+    for (const stepper of await steppers.all()) {
+      const stepperBox = await stepper.boundingBox();
+      expect(stepperBox).not.toBeNull();
+      expect(Math.abs(stepperBox!.height - groupBox!.height)).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
 test.describe('date picker surface ownership', () => {
   test('uses one custom calendar surface without native date controls', async ({
     componentPage,

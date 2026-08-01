@@ -11,6 +11,7 @@
   }
 
   .cinder-input-group:has(> .cinder-number-input__input) > .cinder-input-group__trailing {
+    align-items: stretch;
     max-inline-size: none;
   }
 
