@@ -66,10 +66,10 @@ const meta = {
 // Postcss keeps `/* ... */` comments embedded inside a raw declaration value
 // instead of tokenizing them out, so `var(--cinder-z-popover/**/, 1100)` is a
 // valid way to slip a forbidden fallback past a regex that only expects
-// whitespace between the token and the comma. Strip comments before any
-// pattern match runs so a CSS comment can never mask a fallback value.
-function stripComments(value) {
-  return value.replaceAll(/\/\*[\s\S]*?\*\//g, ' ');
+// whitespace between the token and the comma. Mask comments with same-length
+// whitespace so they cannot hide a fallback and diagnostic offsets stay exact.
+function maskComments(value) {
+  return value.replaceAll(/\/\*[\s\S]*?\*\//g, (comment) => ' '.repeat(comment.length));
 }
 
 function findLayerTokenReferences(value) {
@@ -112,7 +112,10 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
 
     root.walkDecls((declaration) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
-      const rawValue = stripComments(declaration.value.trim()).trim();
+      const declarationValue = declaration.value.trim();
+      const maskedDeclarationValue = maskComments(declarationValue);
+      const valueOffset = maskedDeclarationValue.length - maskedDeclarationValue.trimStart().length;
+      const rawValue = maskedDeclarationValue.trim();
       const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
       const tokenMatch = layerTokenPattern.exec(value);
       const layerTokenReferences = findLayerTokenReferences(value);
@@ -136,14 +139,11 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       const offendingFallback = bannedFallback(rawValue);
       if (offendingFallback) {
         const declarationText = declaration.toString();
-        const normalizedDeclarationValue = declaration.value.trim();
-        const declarationValueIndex = declarationText.indexOf(normalizedDeclarationValue);
+        const declarationValueIndex = declarationText.indexOf(declarationValue);
         const fallbackIndex =
-          offendingFallback.index === undefined ||
-          normalizedDeclarationValue !== rawValue ||
-          declarationValueIndex === -1
+          offendingFallback.index === undefined || declarationValueIndex === -1
             ? -1
-            : declarationValueIndex + offendingFallback.index;
+            : declarationValueIndex + valueOffset + offendingFallback.index;
         const diagnosticExpression =
           offendingFallback.value.length <= maximumDiagnosticExpressionLength
             ? offendingFallback.value

@@ -410,6 +410,7 @@ describe('cinder/z-index-scale', () => {
     for (const css of [
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x, 9999)); }',
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(min(1, 9999) * var(--x, 9999)); }',
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x/**/, 9999)); }',
     ]) {
       const result = await lint(css);
       const [warning] = warnings(result);
