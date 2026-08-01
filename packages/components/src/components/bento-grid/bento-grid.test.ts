@@ -81,6 +81,7 @@ describe('BentoGrid', () => {
     });
     const root = container.querySelector('div.cinder-bento-grid');
     expect(root).not.toBeNull();
+    expect(root?.classList.contains('cinder-grid')).toBe(true);
     expect(root?.textContent).toContain('content');
   });
 
@@ -177,9 +178,9 @@ describe('BentoGrid', () => {
       props: { children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-row-gap')).toBe('');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-column-gap')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('');
     expect(root.hasAttribute('data-cinder-collapse')).toBe(true);
   });
 
@@ -188,9 +189,7 @@ describe('BentoGrid', () => {
       props: { columns: 4, children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe(
-      'repeat(4, minmax(0, 1fr))',
-    );
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(4, minmax(0, 1fr))');
   });
 
   test('threads string columns verbatim', () => {
@@ -198,7 +197,7 @@ describe('BentoGrid', () => {
       props: { columns: '18rem minmax(0, 1fr)', children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('18rem minmax(0, 1fr)');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('18rem minmax(0, 1fr)');
   });
 
   test('ignores invalid numeric column counts', () => {
@@ -206,7 +205,7 @@ describe('BentoGrid', () => {
       props: { columns: 0, children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
   });
 
   test('threads gap to both row and column gap', () => {
@@ -214,8 +213,8 @@ describe('BentoGrid', () => {
       props: { gap: '1rem', children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-row-gap')).toBe('1rem');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-column-gap')).toBe('1rem');
+    expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('1rem');
+    expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('1rem');
   });
 
   test('rowGap and columnGap override the uniform gap independently', () => {
@@ -228,8 +227,8 @@ describe('BentoGrid', () => {
       },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-row-gap')).toBe('1.5rem');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-column-gap')).toBe('2rem');
+    expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('1.5rem');
+    expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('2rem');
   });
 
   test('collapse can be disabled', () => {
@@ -257,6 +256,7 @@ describe('BentoGrid', () => {
   test('collapse CSS uses measured narrow state without a viewport media query', () => {
     const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
     expect(css).toContain('[data-cinder-collapse][data-cinder-narrow]');
+    expect(css).not.toContain('display: grid');
     expect(css).toContain('> .cinder-bento-cell');
     expect(css).not.toMatch(/@media[^{]*(?:min-width|max-width)/);
   });

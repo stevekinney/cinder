@@ -3,14 +3,7 @@
 
 @layer cinder.components {
   .cinder-bento-grid {
-    display: grid;
-    grid-template-columns: var(--cinder-bento-grid-columns, repeat(4, minmax(0, 1fr)));
-    row-gap: var(--cinder-bento-grid-row-gap, var(--cinder-space-4));
-    column-gap: var(--cinder-bento-grid-column-gap, var(--cinder-space-4));
-  }
-
-  .cinder-bento-grid[data-cinder-collapse][data-cinder-narrow] {
-    grid-template-columns: 1fr;
+    --cinder-grid-columns: repeat(4, minmax(0, 1fr));
   }
 
   .cinder-bento-grid[data-cinder-collapse][data-cinder-narrow] > .cinder-bento-cell {

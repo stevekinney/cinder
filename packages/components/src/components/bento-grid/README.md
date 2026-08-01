@@ -39,8 +39,7 @@ rows and columns through `BentoGrid.Cell` (or standalone `BentoCell`).
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-grid-columns`
 <!-- generated:variables:end -->
 
 ## Subcomponents

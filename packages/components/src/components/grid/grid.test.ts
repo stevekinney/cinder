@@ -45,6 +45,14 @@ describe('Grid', () => {
     expect(root?.getAttribute('data-testid')).toBe('grid');
   });
 
+  test('marks collapse-enabled grids for measured narrow state', () => {
+    const { container } = render(Grid, {
+      props: { collapse: true, children: textSnippet('content') },
+    });
+    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    expect(root.hasAttribute('data-cinder-collapse')).toBe(true);
+  });
+
   test('omits inline custom properties when layout props are absent', () => {
     const { container } = render(Grid, {
       props: { children: textSnippet('content') },

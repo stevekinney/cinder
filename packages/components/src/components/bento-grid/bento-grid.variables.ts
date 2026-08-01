@@ -1,3 +1,3 @@
-const variables: readonly string[] = [];
+const variables: readonly string[] = ['--cinder-grid-columns'];
 
 export default variables;

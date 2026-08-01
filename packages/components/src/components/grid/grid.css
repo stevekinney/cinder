@@ -7,6 +7,10 @@
     column-gap: var(--cinder-grid-column-gap, var(--cinder-space-4));
   }
 
+  .cinder-grid[data-cinder-collapse][data-cinder-narrow] {
+    grid-template-columns: 1fr;
+  }
+
   .cinder-grid-item {
     grid-column-start: var(--cinder-grid-item-column-start, auto);
     grid-column-end: var(--cinder-grid-item-column-end, auto);

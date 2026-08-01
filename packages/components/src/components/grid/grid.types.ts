@@ -18,6 +18,8 @@ export type GridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   rowGap?: string;
   /** Column gap override. Wins over `gap` for columns. */
   columnGap?: string;
+  /** Enables a narrow-screen fallback where the grid becomes a single column. */
+  collapse?: boolean;
   /**
    * Minimum item width for an intrinsic auto-fill grid. When present, this takes
    * precedence over `columns`.
