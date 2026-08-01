@@ -530,6 +530,20 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test.each(['++++9999', '+- -9999', '+-+1'])(
+    'evaluates mixed unary-sign chains without losing a banned result: %s',
+    async (expression) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: mixed unary signs must not bypass static analysis. */
+          z-index: var(--item-layer, calc(${expression}));
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
   test('reduces wide min, max, and hypot fallbacks without argument-limit bypasses', async () => {
     const repeatedArguments = 130_000;
     for (const [functionName, repeatedValue] of [

@@ -305,8 +305,8 @@ function evaluateConstantArithmetic(expression) {
   function parseAtom() {
     skipSpace();
     let isNegative = false;
-    while (peek() === '-') {
-      isNegative = !isNegative;
+    while (peek() === '-' || peek() === '+') {
+      if (peek() === '-') isNegative = !isNegative;
       index += 1;
       skipSpace();
     }
