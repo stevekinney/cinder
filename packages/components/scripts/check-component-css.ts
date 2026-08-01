@@ -122,13 +122,16 @@ const PRIVATE_COMPONENT_IMPORT_PARAMS = /^(['"])\.\.\/_internal\/[a-z][a-z0-9-]*
 function isOneLevelComponentSidecar(file: string | undefined): boolean {
   if (!file) return false;
   const normalizedFile = file.replaceAll('\\', '/');
-  const componentsMarker = '/components/';
-  const componentsIndex = normalizedFile.lastIndexOf(componentsMarker);
-  if (componentsIndex === -1) return false;
-  const relativeSegments = normalizedFile
-    .slice(componentsIndex + componentsMarker.length)
-    .split('/')
-    .filter(Boolean);
+  const componentsMarker = '/src/components/';
+  const componentsIndex = normalizedFile.indexOf(componentsMarker);
+  const relativeStart =
+    componentsIndex === -1
+      ? normalizedFile.startsWith('src/components/')
+        ? 'src/components/'.length
+        : -1
+      : componentsIndex + componentsMarker.length;
+  if (relativeStart === -1) return false;
+  const relativeSegments = normalizedFile.slice(relativeStart).split('/').filter(Boolean);
   return relativeSegments.length === 2;
 }
 

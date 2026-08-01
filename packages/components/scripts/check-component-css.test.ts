@@ -194,6 +194,16 @@ describe('checkComponentCssSource', () => {
     expect(violations.some((violation) => violation.message.includes('@import'))).toBe(true);
   });
 
+  it('rejects a nested components directory that cannot resolve a private import', () => {
+    const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-experimental-section {} }`;
+    const violations = checkComponentCssSource(
+      source,
+      '/virtual/packages/components/src/components/experimental/components/example/example.css',
+    );
+
+    expect(violations.some((violation) => violation.message.includes('@import'))).toBe(true);
+  });
+
   it('rejects a non-sibling-leaf @import (mismatched dir/basename)', () => {
     const source = `${LAYER_ORDER_PRELUDE}\n@import '../tab/other.css';\n@layer cinder.components { .cinder-tabs { display: flex; } }`;
     const violations = checkComponentCssSource(source, fakePath);
