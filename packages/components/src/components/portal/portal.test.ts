@@ -448,6 +448,43 @@ describe('Portal', () => {
     window.matchMedia = originalMatchMedia;
   });
 
+  test('registers media conditions from every enclosing shadow root', async () => {
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    Object.defineProperty(outerShadow, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(prefers-contrast: more)' }, cssRules: [] }],
+    });
+    const innerHost = document.createElement('div');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const mountPoint = document.createElement('div');
+    innerShadow.append(mountPoint);
+    outerShadow.append(innerHost);
+    document.body.append(outerHost);
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    expect(observedQueries).toContain('(prefers-contrast: more)');
+    window.matchMedia = originalMatchMedia;
+  });
+
   test('refreshes media listeners when the CSSOM invalidation hook changes rules', async () => {
     const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
     const originalMatchMedia = window.matchMedia;

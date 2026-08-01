@@ -630,6 +630,7 @@ function refreshMediaQueryObservers() {
   for (const current of computedDirectionObservations) {
     const root = current.source.getRootNode();
     if (root instanceof ShadowRoot) roots.add(root);
+    for (const observedRoot of current.roots) roots.add(observedRoot);
   }
   for (const root of roots) {
     const stylesheets = [
