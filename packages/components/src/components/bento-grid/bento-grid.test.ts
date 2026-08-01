@@ -255,6 +255,7 @@ describe('BentoGrid', () => {
 
   test('collapse CSS uses measured narrow state without a viewport media query', () => {
     const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
+    expect(css).toContain("@import '../grid/grid.css';");
     expect(css).toContain('[data-cinder-collapse][data-cinder-narrow]');
     expect(css).not.toContain('display: grid');
     expect(css).toContain('> .cinder-bento-cell');
