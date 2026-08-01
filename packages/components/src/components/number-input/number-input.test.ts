@@ -52,6 +52,27 @@ async function focus(input: HTMLInputElement) {
 }
 
 describe('NumberInput basics', () => {
+  test('composes the editable control through Input', () => {
+    const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
+
+    expect(container.querySelector('.cinder-input-group')).not.toBeNull();
+    expect(getInput(container).closest('.cinder-input-group')).not.toBeNull();
+  });
+
+  test('forwards the native input attachment', () => {
+    let attachedInput: HTMLInputElement | undefined;
+    render(NumberInput, {
+      props: {
+        id: 'n',
+        inputAttachment: (node: HTMLInputElement) => {
+          attachedInput = node;
+        },
+      },
+    });
+
+    expect(attachedInput?.id).toBe('n');
+  });
+
   test('renders Lucide icons for the stepper controls', () => {
     const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
 
