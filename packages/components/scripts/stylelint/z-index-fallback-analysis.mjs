@@ -221,7 +221,7 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
       `${functionName}(` ||
     value[trimmedRange.end - 1] !== ')'
   )
-    return [];
+    return undefined;
 
   const argumentRanges = [];
   let argumentStart = trimmedRange.start + functionName.length + 1;
@@ -230,18 +230,26 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
     if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
     else if (value[index] === '(') depth += 1;
     else if (value[index] === ')') {
-      if (depth === 0) return [];
+      if (depth === 0) return undefined;
       depth -= 1;
     } else if (value[index] === ',' && depth === 0) {
       argumentRanges.push({ start: argumentStart, end: index });
       argumentStart = index + 1;
     }
   }
-  if (depth !== 0) return [];
+  if (depth !== 0) return undefined;
   argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
+  if (
+    argumentRanges.some(
+      (argumentRange) =>
+        trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end).start ===
+        trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end).end,
+    )
+  )
+    return undefined;
 
   let childIndex = 0;
-  return argumentRanges.flatMap((argumentRange, argumentIndex) => {
+  const staticArguments = argumentRanges.flatMap((argumentRange, argumentIndex) => {
     while (
       childIndex < frame.children.length &&
       frame.children[childIndex].end <= argumentRange.start
@@ -254,19 +262,24 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
     const argument = trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end);
     return [{ index: argumentIndex, value: value.slice(argument.start, argument.end) }];
   });
+  return { argumentCount: argumentRanges.length, staticArguments };
 }
 
 function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
-  return fallbackIndependentStaticArguments(frame, value, range, functionName).some((argument) =>
-    functionName === 'min'
-      ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
-      : classifyStaticLayer(argument.value) === 'safe',
+  return (
+    fallbackIndependentStaticArguments(frame, value, range, functionName)?.staticArguments.some(
+      (argument) =>
+        functionName === 'min'
+          ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
+          : classifyStaticLayer(argument.value) === 'safe',
+    ) ?? false
   );
 }
 
 function hasFallbackIndependentClampBound(frame, value, range, boundIndex, candidate) {
-  const arguments_ = fallbackIndependentStaticArguments(frame, value, range, 'clamp');
-  const bound = arguments_.find((argument) => argument.index === boundIndex);
+  const clampArguments = fallbackIndependentStaticArguments(frame, value, range, 'clamp');
+  if (clampArguments?.argumentCount !== 3) return false;
+  const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
   if (!bound) return false;
   return candidate === 'magic'
     ? classifyStaticLayer(`min(9999, ${bound.value})`) === 'safe'

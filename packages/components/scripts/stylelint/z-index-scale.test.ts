@@ -384,6 +384,23 @@ describe('cinder/z-index-scale', () => {
     },
   );
 
+  test.each([
+    'clamp(0, var(--inner, -1))',
+    'clamp(0, var(--inner, -1),)',
+    'clamp(0,, var(--inner, -1), 1)',
+    'clamp(0, var(--inner, -1), 1, 2)',
+    'clamp(0, var(--inner, 9999), 1, 2)',
+  ])('does not apply independent bounds from a malformed clamp: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: malformed clamp syntax cannot prove the fallback safe. */
+        z-index: ${value};
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test.each(['var(--outer, var(--inner, 9)999)', 'calc(var(--inner, 9)999)'])(
     'preserves adjacent numeric tokens during fallback substitution: %s',
     async (value) => {
