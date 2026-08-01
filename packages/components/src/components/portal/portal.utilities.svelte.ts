@@ -363,15 +363,23 @@ export function redispatchPortaledEvent(
 ): boolean {
   if (!sourceTarget) return false;
 
-  if (isDuplicateMouseEvent(event)) {
-    // Browsers dispatch mousedown/mouseup after pointerdown/pointerup. The pointer
-    // bridge already delivered the interaction, so suppress only that follow-up.
-    event.stopPropagation();
-    return true;
-  }
+  // Pointer and mouse events are distinct native families. Bridge each native
+  // event once; dropping the browser's corresponding mousedown/mouseup would
+  // break consumers that listen to only that family. Synthetic events remain
+  // untrusted because `isTrusted` is platform-controlled.
 
   const originalTarget = event.target;
   const originalComposedPath = event.composedPath();
+  const authoredPath: EventTarget[] = [];
+  let authoredNode: Node | null = sourceTarget;
+  while (authoredNode) {
+    authoredPath.push(authoredNode);
+    authoredNode = authoredNode.parentNode;
+  }
+  const composedPath = [
+    ...originalComposedPath,
+    ...authoredPath.filter((entry) => !originalComposedPath.includes(entry)),
+  ];
   const eventInit: EventInit & { [property: string]: unknown } = {
     bubbles: event.bubbles,
     cancelable: event.cancelable,
@@ -415,66 +423,27 @@ export function redispatchPortaledEvent(
   // Dispatching at the authored root necessarily changes currentTarget and the
   // platform-computed path. Preserve the original portaled ancestry for delegated
   // consumers; isTrusted cannot be copied to a synthetic Event.
-  const preserveComposedPath = () =>
-    Object.defineProperty(bridgedEvent, 'composedPath', {
-      configurable: true,
-      value: () => [...originalComposedPath],
-    });
-  // happy-dom consults the public method while dispatching (native browsers use
-  // an internal path), so apply the observable override after its dispatch.
-  if ('happyDOM' in globalThis) queueMicrotask(preserveComposedPath);
-  else preserveComposedPath();
+  const nativeComposedPath = bridgedEvent.composedPath.bind(bridgedEvent);
+  let dispatchComplete = false;
+  Object.defineProperty(bridgedEvent, 'composedPath', {
+    configurable: true,
+    value: () => {
+      const useNative = !dispatchComplete && bridgedEvent.currentTarget === null;
+      return useNative ? nativeComposedPath() : [...composedPath];
+    },
+  });
   if (event.defaultPrevented) bridgedEvent.preventDefault();
 
-  rememberPointerMousePair(event);
   event.stopPropagation();
-  if (!sourceTarget.dispatchEvent(bridgedEvent)) {
+  const dispatched = sourceTarget.dispatchEvent(bridgedEvent);
+  dispatchComplete = true;
+  if (!dispatched) {
     event.preventDefault();
   }
   return true;
 }
 
 const redispatchedPortalEvents = new WeakSet<Event>();
-
-type MouseEventType = 'mousedown' | 'mouseup';
-const pendingMouseEvents = new WeakMap<EventTarget, Map<MouseEventType, Event>>();
-
-function pointerToMouseType(type: string): MouseEventType | null {
-  if (type === 'pointerdown') return 'mousedown';
-  if (type === 'pointerup') return 'mouseup';
-  return null;
-}
-
-function rememberPointerMousePair(event: Event): void {
-  const mouseType = pointerToMouseType(event.type);
-  if (!mouseType || Reflect.get(event, 'pointerType') !== 'mouse') return;
-  const target = event.target;
-  if (!(target instanceof EventTarget)) return;
-  let pending = pendingMouseEvents.get(target);
-  if (!pending) {
-    pending = new Map();
-    pendingMouseEvents.set(target, pending);
-  }
-  pending.set(mouseType, event);
-  queueMicrotask(() => {
-    if (pending?.get(mouseType) === event) pending.delete(mouseType);
-  });
-}
-
-function isDuplicateMouseEvent(event: Event): boolean {
-  if (event.type !== 'mousedown' && event.type !== 'mouseup') return false;
-  const target = event.target;
-  if (!(target instanceof EventTarget)) return false;
-  const pending = pendingMouseEvents.get(target);
-  const pointerEvent = pending?.get(event.type);
-  if (!pointerEvent) return false;
-  pending?.delete(event.type);
-  return (
-    Reflect.get(pointerEvent, 'button') === Reflect.get(event, 'button') &&
-    Reflect.get(pointerEvent, 'clientX') === Reflect.get(event, 'clientX') &&
-    Reflect.get(pointerEvent, 'clientY') === Reflect.get(event, 'clientY')
-  );
-}
 
 /** Returns the host element of `element`'s enclosing shadow root, or `null` if it is not in one. */
 export function getShadowHost(element: HTMLElement): HTMLElement | null {
