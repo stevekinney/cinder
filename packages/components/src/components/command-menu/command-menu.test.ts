@@ -44,14 +44,21 @@ function queryListbox() {
   return document.body.querySelector<HTMLUListElement>('[role="listbox"]');
 }
 
+function commandMenuRootDeclarationsFromCss(css: string) {
+  const declarationBlocks = Array.from(
+    css.matchAll(/\.cinder-command-menu\s*\{(?<body>[^}]*)\}/g),
+    (match) => match.groups?.['body'],
+  ).filter((body): body is string => body !== undefined);
+
+  expect(declarationBlocks.length).toBeGreaterThan(0);
+
+  return declarationBlocks.join('\n');
+}
+
 async function commandMenuRootDeclarations() {
   const css = await Bun.file(new URL('./command-menu.css', import.meta.url)).text();
-  const match = css.match(/\.cinder-command-menu\s*\{(?<body>[^}]*)\}/);
-  const body = match?.groups?.['body'];
 
-  expect(body).toBeDefined();
-
-  return body!;
+  return commandMenuRootDeclarationsFromCss(css);
 }
 
 async function settleCommandMenu() {
@@ -72,6 +79,15 @@ afterEach(() => {
 });
 
 describe('CommandMenu', () => {
+  test('the CSS declaration guard inspects every root selector block', () => {
+    const declarations = commandMenuRootDeclarationsFromCss(`
+      .cinder-command-menu { padding: 0; }
+      .cinder-command-menu { position: fixed; }
+    `);
+
+    expect(declarations).toContain('position: fixed');
+  });
+
   test('composes shared floating-surface chrome instead of redeclaring it', async () => {
     const rootDeclarations = await commandMenuRootDeclarations();
 
