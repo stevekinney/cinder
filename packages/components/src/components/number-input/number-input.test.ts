@@ -53,12 +53,17 @@ async function focus(input: HTMLInputElement) {
 
 describe('NumberInput basics', () => {
   test('sidecar includes Input styles and preserves the full stepper width', async () => {
-    const css = await Bun.file(new URL('./number-input.css', import.meta.url)).text();
+    const [css, componentSource] = await Promise.all([
+      Bun.file(new URL('./number-input.css', import.meta.url)).text(),
+      Bun.file(new URL('./number-input.svelte', import.meta.url)).text(),
+    ]);
 
     expect(css).toContain("@import '../input/input.css';");
     expect(css).toMatch(
       /\.cinder-input-group:has\(> \.cinder-number-input__input\)\s*> \.cinder-input-group__trailing\s*\{[^}]*max-inline-size:\s*none;/,
     );
+    expect(componentSource).toContain("from '@lostgradient/cinder/input';");
+    expect(componentSource).not.toContain("from '../input/");
   });
 
   test('composes the editable control through Input', () => {

@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import Input from '@lostgradient/cinder/input';
   import Minus from 'lucide-svelte/icons/minus';
   import Plus from 'lucide-svelte/icons/plus';
   import type { NumberInputProps } from './number-input.types.ts';
@@ -23,7 +24,6 @@
 
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
-  import Input from '../input/input.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
   import { parseLocaleNumber } from '../../utilities/parse-locale-number.ts';
