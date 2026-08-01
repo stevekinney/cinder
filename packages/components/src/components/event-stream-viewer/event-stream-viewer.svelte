@@ -11,7 +11,8 @@
    * @useWhen Showing an append-only diagnostic stream with filtering, copy, and structured detail expansion.
    * @avoidWhen Showing a social activity feed or notification timeline — use feed instead.
    * @avoidWhen Rendering paginated historical records with sorting — use data-table instead.
-   * @related feed, timeline, json-viewer, status-dot, copy-button
+   * @avoidWhen Showing a simple static event rail, bounded schedule, or structured run-state rail — use timeline, event-timeline, or run-step-timeline.
+   * @related feed, timeline, run-step-timeline, event-timeline, json-viewer, status-dot, copy-button
    */
   export type {
     EventSeverity,

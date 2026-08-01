@@ -9,7 +9,9 @@
    * @useWhen Rendering an activity log, audit trail, or notification timeline.
    * @useWhen Announcing newly appended entries to assistive technology via the live prop.
    * @avoidWhen Displaying a one-off transient notice — use toast-region or banner instead.
-   * @related feed-event
+   * @avoidWhen Displaying static temporal history or execution state — use timeline or run-step-timeline.
+   * @avoidWhen Displaying a bounded schedule or dense diagnostics — use event-timeline or event-stream-viewer.
+   * @related timeline, run-step-timeline, event-timeline, event-stream-viewer, feed-event
    */
   export type { FeedProps } from './feed.types.ts';
 

@@ -11,7 +11,9 @@
    * @useWhen Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks.
    * @avoidWhen Surfacing a real-time social or activity stream — feed is the higher-affordance composition.
    * @avoidWhen Guiding users through a numbered procedural flow — steps conveys progress more clearly.
-   * @related feed, steps
+   * @avoidWhen Showing async execution state with retries, branches, or progress — use run-step-timeline.
+   * @avoidWhen Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer.
+   * @related feed, run-step-timeline, event-timeline, event-stream-viewer, steps
    */
   export type {
     TimelineEntry,

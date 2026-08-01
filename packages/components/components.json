@@ -2096,9 +2096,20 @@
         },
         {
           "reason": "Rendering paginated historical records with sorting — use data-table instead."
+        },
+        {
+          "reason": "Showing a simple static event rail, bounded schedule, or structured run-state rail — use timeline, event-timeline, or run-step-timeline."
         }
       ],
-      "related": ["feed", "timeline", "json-viewer", "status-dot", "copy-button"],
+      "related": [
+        "feed",
+        "timeline",
+        "run-step-timeline",
+        "event-timeline",
+        "json-viewer",
+        "status-dot",
+        "copy-button"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2127,9 +2138,12 @@
         {
           "reason": "Showing step-by-step run execution state.",
           "alternative": "run-step-timeline"
+        },
+        {
+          "reason": "Showing a user-facing activity feed or dense operational stream — use feed or event-stream-viewer."
         }
       ],
-      "related": ["timeline", "run-step-timeline", "status-dot"],
+      "related": ["timeline", "run-step-timeline", "feed", "event-stream-viewer", "status-dot"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -2216,9 +2230,21 @@
       "avoidWhen": [
         {
           "reason": "Displaying a one-off transient notice — use toast-region or banner instead."
+        },
+        {
+          "reason": "Displaying static temporal history or execution state — use timeline or run-step-timeline."
+        },
+        {
+          "reason": "Displaying a bounded schedule or dense diagnostics — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": ["feed-event"],
+      "related": [
+        "timeline",
+        "run-step-timeline",
+        "event-timeline",
+        "event-stream-viewer",
+        "feed-event"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -3981,9 +4007,22 @@
         },
         {
           "reason": "Showing a flat timestamp-first event log without structured step state — use timeline instead."
+        },
+        {
+          "reason": "Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead."
         }
       ],
-      "related": ["timeline", "steps", "status-dot", "progress", "badge", "collapsible"],
+      "related": [
+        "timeline",
+        "event-timeline",
+        "feed",
+        "event-stream-viewer",
+        "steps",
+        "status-dot",
+        "progress",
+        "badge",
+        "collapsible"
+      ],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5623,9 +5662,15 @@
         },
         {
           "reason": "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
+        },
+        {
+          "reason": "Showing async execution state with retries, branches, or progress — use run-step-timeline."
+        },
+        {
+          "reason": "Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": ["feed", "steps"],
+      "related": ["feed", "run-step-timeline", "event-timeline", "event-stream-viewer", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

@@ -12,7 +12,8 @@
    * @useWhen Visualizing speculative parallel work (race N lanes, keep the winner) or saga-style compensation of a forward step.
    * @avoidWhen Guiding users through an interactive wizard where they choose what to do next — use steps instead.
    * @avoidWhen Showing a flat timestamp-first event log without structured step state — use timeline instead.
-   * @related timeline, steps, status-dot, progress, badge, collapsible
+   * @avoidWhen Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead.
+   * @related timeline, event-timeline, feed, event-stream-viewer, steps, status-dot, progress, badge, collapsible
    */
   import type { RunStep, RunStepBranchGroup } from './run-step-timeline.types.ts';
 
