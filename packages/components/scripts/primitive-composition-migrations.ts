@@ -133,6 +133,9 @@ export const allowedFloatingCounts = new Map<string, number>(
     'waveform/waveform.css',
   ].map((filePath) => [filePath, 1] as const),
 );
+// CommandPalette is intentionally absent from this floating-surface migration:
+// its panel remains a native modal <dialog>, not a positioned non-modal surface.
+// See docs/decisions/command-palette-native-dialog.md for the bounded exception.
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
