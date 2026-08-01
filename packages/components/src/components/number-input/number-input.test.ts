@@ -65,6 +65,12 @@ describe('NumberInput basics', () => {
     expect(css).toMatch(
       /\.cinder-input-group:has\(> \.cinder-number-input__input\)\s*> \.cinder-input-group__trailing\s*\{[^}]*gap:\s*0;[^}]*padding-inline:\s*0;/,
     );
+    expect(css).toMatch(
+      /\.cinder-number-input\[data-invalid\]\s+\.cinder-number-input__stepper\s*\{[^}]*border-inline-start-color:\s*var\(--cinder-danger\);/,
+    );
+    expect(css).not.toMatch(
+      /\.cinder-input-group:has\(> \.cinder-number-input__input\[aria-invalid='true'\]\)\s*\{/,
+    );
     expect(componentSource).toContain("from '@lostgradient/cinder/input';");
     expect(componentSource).not.toContain("from '../input/");
   });
@@ -743,6 +749,7 @@ describe('Validity and a11y wiring', () => {
     });
     const input = getInput(container);
     expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.closest('.cinder-input-group')?.hasAttribute('data-invalid')).toBe(true);
     const errEl = container.querySelector('#n-error');
     expect(errEl).not.toBeNull();
     expect(input.getAttribute('aria-describedby')).toContain('n-error');
