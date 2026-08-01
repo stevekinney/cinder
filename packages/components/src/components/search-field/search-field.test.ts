@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { SearchFieldProps } from './search-field.types.ts';
@@ -19,6 +20,11 @@ const { default: FormFieldSearchFieldFixture } =
   await import('../../test/fixtures/form-field-search-field-fixture.svelte');
 
 describe('SearchField rendering', () => {
+  test('sidecar imports the composed Input styles', () => {
+    const styles = readFileSync(new URL('./search-field.css', import.meta.url), 'utf8');
+    expect(styles).toContain("@import '../input/input.css';");
+  });
+
   test('type surface excludes inherited defaultValue', () => {
     const excludesInheritedDefaultValue: 'defaultValue' extends keyof SearchFieldProps
       ? false
