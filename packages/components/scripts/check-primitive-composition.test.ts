@@ -31,9 +31,11 @@ describe('primitive composition guard', () => {
     expect(allowedGridCounts.get('footer/footer.css')).toBe(2);
   });
 
-  test('tracks only the remaining date field-wrapper migrations', () => {
+  test('drops completed field-wrapper migrations', () => {
     expect(allowedFieldWrapperCounts.get('date-picker/date-picker.svelte')).toBe(2);
     expect(allowedFieldWrapperCounts.has('date-range-field/date-range-field.svelte')).toBe(false);
+    expect(allowedFieldWrapperCounts.has('checkbox/checkbox.svelte')).toBe(false);
+    expect(allowedFieldWrapperCounts.has('input/input.svelte')).toBe(false);
   });
 
   test('does not retain completed internal-layer floating migrations', () => {
@@ -2505,13 +2507,13 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         '<label>Label<input /></label><p>description</p><p>error</p>',
-        'input/input.svelte',
+        'combobox/combobox.svelte',
       ),
     ).toEqual([]);
     expect(
       findPrimitiveCompositionViolations(
         '<label>First<input /></label><label>Second</label><p>description</p><p>error</p>',
-        'input/input.svelte',
+        'combobox/combobox.svelte',
       ),
     ).toHaveLength(1);
   });
