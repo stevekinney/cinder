@@ -37,6 +37,7 @@
     required,
     type = 'text',
     inputAttachment,
+    groupClassName,
     class: className,
     leading,
     trailing,
@@ -178,7 +179,7 @@
 
   {#if hasGroupWrapper}
     <div
-      class="cinder-input-group"
+      class={classNames('cinder-input-group', groupClassName)}
       data-leading={leading ? '' : undefined}
       data-trailing={hasTrailing ? '' : undefined}
       data-native-date={rendersNativeDateIcon ? '' : undefined}

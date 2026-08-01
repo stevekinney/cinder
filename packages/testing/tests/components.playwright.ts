@@ -154,7 +154,7 @@ test.describe('number input resting geometry', () => {
     if (!desktop) throw new Error('Desktop viewport fixture is missing.');
 
     const page = await componentPage.open({ entry, theme: 'light', viewport: desktop });
-    const group = page.locator('.cinder-number-input .cinder-input-group').first();
+    const group = page.locator('.cinder-input-group.cinder-number-input').first();
     const steppers = group.locator('.cinder-number-input__stepper');
     await expect(steppers).toHaveCount(2);
 

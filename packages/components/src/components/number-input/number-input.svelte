@@ -549,7 +549,7 @@
   </button>
 {/snippet}
 
-<div class={classNames('cinder-input-field', 'cinder-number-input', className)}>
+<div class="cinder-input-field">
   <Input
     {id}
     value={displayValue}
@@ -559,6 +559,7 @@
     disabled={resolvedDisabled}
     required={resolvedRequired}
     class="cinder-number-input__input"
+    groupClassName={classNames('cinder-number-input', className)}
     {...inputRest}
     type="text"
     role="spinbutton"

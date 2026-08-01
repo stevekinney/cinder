@@ -612,6 +612,20 @@ describe('Input group (leading/trailing addons)', () => {
     expect(trailingSpan?.hasAttribute('aria-hidden')).toBe(false);
   });
 
+  test('groupClassName applies to the grouped control frame', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'group-class',
+        value: '',
+        trailing: textSnippet('USD'),
+        groupClassName: 'custom-group',
+      },
+    });
+
+    expect(container.querySelector('.cinder-input-group.custom-group')).not.toBeNull();
+    expect(container.querySelector('input.custom-group')).toBeNull();
+  });
+
   test('error prop sets data-invalid on group; inner input has aria-invalid="true"', () => {
     const { container } = render(Input, {
       props: {

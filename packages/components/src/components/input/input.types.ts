@@ -63,5 +63,7 @@ export type InputProps = HTMLInputAttributes &
     type?: InputType;
     /** Attachment for native input access and lifecycle-scoped listeners. */
     inputAttachment?: Attachment<HTMLInputElement>;
+    /** Additional class names applied to the grouped control frame when leading or trailing content is present. */
+    groupClassName?: string;
     class?: string;
   };
