@@ -270,6 +270,25 @@ describe('Checkbox — FormField context wiring', () => {
     expect(input.getAttribute('aria-describedby')).toBe('agree-error');
   });
 
+  test('styles local description and error overrides inside FormField context', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        checkboxDescription: 'Checkbox-specific help',
+        checkboxError: 'Checkbox-specific error',
+      },
+    });
+    const wrapper = container.querySelector('.cinder-checkbox-field');
+    expect(container.querySelector('input[type="checkbox"]')?.getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.querySelector('.cinder-form-field__description')?.id).toBe('agree-description');
+    expect(wrapper?.querySelector('.cinder-form-field__error')?.id).toBe('agree-error');
+    expect(wrapper?.querySelector('.cinder-checkbox-field__description')).toBeNull();
+  });
+
   test('inherits disabled state from FormField context', () => {
     const { container } = render(FormFieldCheckboxFixture, {
       props: {

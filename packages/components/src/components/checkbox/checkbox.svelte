@@ -151,13 +151,15 @@
 {/snippet}
 
 {#if context}
-  {@render control()}
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-form-field__description">{description}</p>
-  {/if}
-  {#if error}
-    <p id={field.ownErrorId} class="cinder-form-field__error" aria-live="polite">{error}</p>
-  {/if}
+  <div class="cinder-checkbox-field">
+    {@render control()}
+    {#if description}
+      <p id={field.ownDescriptionId} class="cinder-form-field__description">{description}</p>
+    {/if}
+    {#if error}
+      <p id={field.ownErrorId} class="cinder-form-field__error" aria-live="polite">{error}</p>
+    {/if}
+  </div>
 {:else}
   <FormField
     id={field.id}
