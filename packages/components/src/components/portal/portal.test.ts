@@ -318,6 +318,27 @@ describe('Portal', () => {
     expect(element.getAttribute('dir')).toBe('rtl');
   });
 
+  test('stops generated direction lookup at a shadow-root portal boundary', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const destination = document.createElement('div');
+    destination.setAttribute('dir', 'ltr');
+    const generatedWrapper = document.createElement('div');
+    generatedWrapper.setAttribute('dir', 'ltr');
+    generatedWrapper.setAttribute('data-cinder-portal-inherited-direction', 'true');
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const element = document.createElement('div');
+    generatedWrapper.append(source);
+    destination.append(generatedWrapper);
+    shadow.append(destination);
+    document.body.append(host, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
   test('inherits a generated outer portal direction without computed-style support', () => {
     Object.defineProperty(globalThis, 'getComputedStyle', {
       configurable: true,
@@ -330,6 +351,30 @@ describe('Portal', () => {
     const element = document.createElement('div');
     outerWrapper.append(source, element);
     document.body.append(outerWrapper);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('falls back to a generated shadow-root direction without computed-style support', () => {
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: undefined,
+    });
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const destination = document.createElement('div');
+    destination.setAttribute('dir', 'ltr');
+    const generatedWrapper = document.createElement('div');
+    generatedWrapper.setAttribute('dir', 'rtl');
+    generatedWrapper.setAttribute('data-cinder-portal-inherited-direction', 'true');
+    const source = document.createElement('div');
+    const element = document.createElement('div');
+    generatedWrapper.append(source);
+    destination.append(generatedWrapper);
+    shadow.append(destination);
+    document.body.append(host, element);
 
     copyInheritedPortalAttributes(element, source, true);
 
@@ -588,6 +633,52 @@ describe('Portal', () => {
     window.matchMedia = originalMatchMedia;
   });
 
+  test('registers enclosing shadow-root media without MutationObserver support', async () => {
+    const originalMutationObserver = globalThis.MutationObserver;
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    Object.defineProperty(globalThis, 'MutationObserver', {
+      configurable: true,
+      value: undefined,
+    });
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    Object.defineProperty(outerShadow, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(prefers-contrast: more)' }, cssRules: [] }],
+    });
+    const innerHost = document.createElement('div');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const mountPoint = document.createElement('div');
+    innerShadow.append(mountPoint);
+    outerShadow.append(innerHost);
+    document.body.append(outerHost);
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    expect(observedQueries).toContain('(prefers-contrast: more)');
+    Object.defineProperty(globalThis, 'MutationObserver', {
+      configurable: true,
+      value: originalMutationObserver,
+    });
+    window.matchMedia = originalMatchMedia;
+  });
+
   test('refreshes media listeners when the CSSOM invalidation hook changes rules', async () => {
     const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
     const originalMatchMedia = window.matchMedia;
@@ -624,6 +715,44 @@ describe('Portal', () => {
     window.matchMedia = originalMatchMedia;
     if (originalStyleSheets) Object.defineProperty(document, 'styleSheets', originalStyleSheets);
     else Reflect.deleteProperty(document, 'styleSheets');
+  });
+
+  test('refreshes adopted stylesheet media through the CSSOM invalidation hook', async () => {
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const mountPoint = document.createElement('div');
+    shadow.append(mountPoint);
+    document.body.append(host);
+    Object.defineProperty(shadow, 'adoptedStyleSheets', {
+      configurable: true,
+      value: [],
+    });
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    Object.defineProperty(shadow, 'adoptedStyleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(prefers-contrast: more)' }, cssRules: [] }],
+    });
+    invalidatePortalDirection();
+
+    expect(observedQueries).toContain('(prefers-contrast: more)');
+    window.matchMedia = originalMatchMedia;
   });
 
   test('refreshes direction and media inventory when live style text changes', async () => {
@@ -867,6 +996,58 @@ describe('Portal', () => {
     direction = 'rtl';
     window.dispatchEvent(new Event('hashchange'));
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+  });
+
+  test('invalidates and releases shadow-root state event listeners', async () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const mountPoint = document.createElement('div');
+    shadow.append(mountPoint);
+    document.body.append(host);
+    const toggleListener: { current: EventListener | null } = { current: null };
+    let removedToggleListeners = 0;
+    const nativeAddEventListener = shadow.addEventListener.bind(shadow);
+    const nativeRemoveEventListener = shadow.removeEventListener.bind(shadow);
+    shadow.addEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
+      if (type === 'toggle' && typeof listener === 'function') toggleListener.current = listener;
+      nativeAddEventListener(type, listener, options);
+    }) as typeof shadow.addEventListener;
+    shadow.removeEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | EventListenerOptions,
+    ) => {
+      if (type === 'toggle' && listener === toggleListener.current) removedToggleListeners += 1;
+      nativeRemoveEventListener(type, listener, options);
+    }) as typeof shadow.removeEventListener;
+    let direction: 'ltr' | 'rtl' = 'ltr';
+    const nativeGetComputedStyle = globalThis.getComputedStyle;
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: (element: Element) => {
+        const computed = nativeGetComputedStyle(element);
+        if (element === mountPoint) {
+          Object.defineProperty(computed, 'direction', { configurable: true, value: direction });
+        }
+        return computed;
+      },
+    });
+
+    const view = render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+    expect(toggleListener.current).not.toBeNull();
+
+    direction = 'rtl';
+    toggleListener.current?.call(shadow, { target: mountPoint } as unknown as Event);
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+    view.unmount();
+    expect(removedToggleListeners).toBe(1);
   });
 
   test('rebinds shadow-root and ancestor observers when the source moves', async () => {

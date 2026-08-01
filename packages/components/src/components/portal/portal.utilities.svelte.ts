@@ -263,6 +263,7 @@ export function copyInheritedPortalAttributes(
       return computedDirection;
     };
     let directionSource: HTMLElement | null = source;
+    let crossedGeneratedDirectionBoundary = false;
     while (directionSource) {
       const matchingDirection = closestAcrossShadow(directionSource, '[dir]');
       if (!matchingDirection) {
@@ -271,6 +272,10 @@ export function copyInheritedPortalAttributes(
       }
       if (!matchingDirection.hasAttribute(inheritedDirectionAttribute)) {
         const explicitDirection = matchingDirection.getAttribute('dir');
+        if (crossedGeneratedDirectionBoundary) {
+          if (explicitDirection === 'auto') inheritedDir = 'auto';
+          break;
+        }
         const documentComputedDirection =
           matchingDirection === document.documentElement && explicitDirection !== 'auto'
             ? readComputedDirection()
@@ -278,11 +283,10 @@ export function copyInheritedPortalAttributes(
         inheritedDir = documentComputedDirection || explicitDirection;
         break;
       }
-      generatedDirectionFallback ??= matchingDirection.getAttribute('dir');
-      directionSource =
-        matchingDirection.getRootNode() === document
-          ? null
-          : (matchingDirection.parentElement ?? getShadowHost(matchingDirection));
+      const generatedDirection = matchingDirection.getAttribute('dir');
+      generatedDirectionFallback ??= generatedDirection;
+      crossedGeneratedDirectionBoundary = true;
+      directionSource = matchingDirection.parentElement ?? getShadowHost(matchingDirection);
     }
     if (inheritedDir === null) {
       inheritedDir = readComputedDirection() || generatedDirectionFallback;
@@ -573,8 +577,22 @@ const computedDirectionObservations = new Set<ComputedDirectionObservation>();
 const observedMediaQueries = new Map<string, MediaQueryList>();
 const directionInvalidationRoots = new Map<
   ShadowRoot,
-  { observer: MutationObserver; count: number }
+  { observer: MutationObserver | null; count: number }
 >();
+const directionInvalidationEvents = [
+  'focusin',
+  'focusout',
+  'pointerover',
+  'pointerout',
+  'input',
+  'change',
+  'toggle',
+  'pointerdown',
+  'pointerup',
+  'pointercancel',
+  'keydown',
+  'keyup',
+] as const;
 let directionInvalidationObserver: MutationObserver | null = null;
 let directionInvalidationFrame: number | null = null;
 let directionInvalidationDocument: Document | null = null;
@@ -592,7 +610,10 @@ function invalidateComputedDirections() {
   });
 }
 
-/** Notify mounted portals after a CSSOM rule edit (`insertRule`, `replace`, or `replaceSync`). */
+/**
+ * Notify mounted portals after a CSSOM edit that emits no DOM mutation, including `insertRule`,
+ * `replace`, `replaceSync`, or assigning `adoptedStyleSheets` on a document or shadow root.
+ */
 export function invalidatePortalDirection() {
   if (computedDirectionObservations.size === 0) return;
   refreshMediaQueryObservers();
@@ -731,20 +752,7 @@ function startDirectionInvalidationObservers() {
     window.addEventListener('resize', invalidateComputedDirections);
     window.addEventListener('orientationchange', invalidateComputedDirections);
     window.addEventListener('hashchange', invalidateComputedDirections);
-    for (const event of [
-      'focusin',
-      'focusout',
-      'pointerover',
-      'pointerout',
-      'input',
-      'change',
-      'toggle',
-      'pointerdown',
-      'pointerup',
-      'pointercancel',
-      'keydown',
-      'keyup',
-    ]) {
+    for (const event of directionInvalidationEvents) {
       document.addEventListener(event, invalidateComputedDirections, true);
     }
   }
@@ -783,7 +791,6 @@ function isStylesheetLink(node: Node): node is HTMLLinkElement {
 }
 
 function observeDirectionShadowRoots(source: HTMLElement) {
-  if (!directionInvalidationObserver) return [];
   const roots: ShadowRoot[] = [];
   let current: HTMLElement | null = source;
   while (current) {
@@ -793,17 +800,23 @@ function observeDirectionShadowRoots(source: HTMLElement) {
       const existing = directionInvalidationRoots.get(root);
       if (existing) existing.count += 1;
       else {
-        const observer = new MutationObserver((mutations) => {
-          if (mutations.some(isStylesheetMutation)) refreshMediaQueryObservers();
-          invalidateComputedDirections();
-        });
-        observer.observe(root, {
+        const observer =
+          typeof MutationObserver === 'undefined'
+            ? null
+            : new MutationObserver((mutations) => {
+                if (mutations.some(isStylesheetMutation)) refreshMediaQueryObservers();
+                invalidateComputedDirections();
+              });
+        observer?.observe(root, {
           attributes: true,
           characterData: true,
           childList: true,
           subtree: true,
         });
         root.addEventListener('load', handleStylesheetLoad, true);
+        for (const event of directionInvalidationEvents) {
+          root.addEventListener(event, invalidateComputedDirections, true);
+        }
         directionInvalidationRoots.set(root, { observer, count: 1 });
       }
     }
@@ -817,8 +830,11 @@ function releaseDirectionShadowRoot(root: ShadowRoot) {
   if (!existing) return;
   existing.count -= 1;
   if (existing.count > 0) return;
-  existing.observer.disconnect();
+  existing.observer?.disconnect();
   root.removeEventListener('load', handleStylesheetLoad, true);
+  for (const event of directionInvalidationEvents) {
+    root.removeEventListener(event, invalidateComputedDirections, true);
+  }
   directionInvalidationRoots.delete(root);
 }
 
@@ -833,20 +849,7 @@ function stopDirectionInvalidationObservers() {
     window.removeEventListener('orientationchange', invalidateComputedDirections);
     window.removeEventListener('hashchange', invalidateComputedDirections);
   }
-  for (const event of [
-    'focusin',
-    'focusout',
-    'pointerover',
-    'pointerout',
-    'input',
-    'change',
-    'toggle',
-    'pointerdown',
-    'pointerup',
-    'pointercancel',
-    'keydown',
-    'keyup',
-  ]) {
+  for (const event of directionInvalidationEvents) {
     directionInvalidationDocument?.removeEventListener(event, invalidateComputedDirections, true);
   }
   for (const mediaQuery of observedMediaQueries.values()) {
@@ -854,8 +857,11 @@ function stopDirectionInvalidationObservers() {
   }
   observedMediaQueries.clear();
   for (const [root, { observer }] of directionInvalidationRoots) {
-    observer.disconnect();
+    observer?.disconnect();
     root.removeEventListener('load', handleStylesheetLoad, true);
+    for (const event of directionInvalidationEvents) {
+      root.removeEventListener(event, invalidateComputedDirections, true);
+    }
   }
   directionInvalidationRoots.clear();
   if (directionInvalidationFrame !== null) {

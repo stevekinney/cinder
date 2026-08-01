@@ -57,7 +57,7 @@ To preserve correctness across the move, Portal copies `dir`, `lang`, `data-them
 
 Dynamic direction invalidation can observe stylesheet-level media conditions and readable nested rules only when the stylesheet is same-origin or CORS-readable. Browser CSSOM security hides media conditions in non-CORS cross-origin stylesheets, and there is no generic registration API that can subscribe to those hidden rules without polling; Portal therefore leaves those conditions to the browser rather than introducing a polling loop.
 
-Selector dependencies can originate outside the source's ancestor chain, including sibling classes and arbitrary selector attributes. Portal therefore shares one document mutation observer across mounted portals and coalesces every burst into at most one computed-direction pass per animation frame. CSSOM edits that do not produce DOM mutations remain the caller's responsibility through `invalidatePortalDirection()`.
+Selector dependencies can originate outside the source's ancestor chain, including sibling classes and arbitrary selector attributes. Portal therefore shares one document mutation observer across mounted portals and coalesces every burst into at most one computed-direction pass per animation frame. CSSOM edits that do not produce DOM mutations remain the caller's responsibility through `invalidatePortalDirection()`, including `insertRule()`, `replace()`, `replaceSync()`, and assigning `document.adoptedStyleSheets` or `shadowRoot.adoptedStyleSheets`.
 
 ## SSR and hydration behavior
 
