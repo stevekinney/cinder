@@ -589,6 +589,7 @@ describe('Combobox filtering', () => {
       const emptyState = container.querySelector('.cinder-combobox__empty');
       const panel = emptyState?.closest('.cinder-popover') as HTMLElement | null;
       expect(emptyState?.textContent?.trim()).toBe('No results');
+      expect(emptyState?.getAttribute('aria-selected')).toBe('false');
       expect(emptyState?.closest('[role="listbox"]')?.id).toBe('fruit-listbox');
       // The portaled empty panel preserves the `.cinder-combobox` root-scoped
       // styling hook (AGENTS.md § Conventions), so a consumer override such as
