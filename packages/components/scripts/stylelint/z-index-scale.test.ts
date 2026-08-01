@@ -390,6 +390,8 @@ describe('cinder/z-index-scale', () => {
     'clamp(0,, var(--inner, -1), 1)',
     'clamp(0, var(--inner, -1), 1, 2)',
     'clamp(0, var(--inner, 9999), 1, 2)',
+    'clamp(0, none, var(--inner, -1))',
+    'clamp(var(--inner, 9999), none, 1)',
   ])('does not apply independent bounds from a malformed clamp: %s', async (value) => {
     const result = await lint(`
       .fixture {

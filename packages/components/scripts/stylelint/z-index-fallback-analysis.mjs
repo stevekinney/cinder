@@ -239,14 +239,10 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
   }
   if (depth !== 0) return undefined;
   argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
-  if (
-    argumentRanges.some(
-      (argumentRange) =>
-        trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end).start ===
-        trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end).end,
-    )
-  )
-    return undefined;
+  const arguments_ = argumentRanges.map((argumentRange) =>
+    trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end),
+  );
+  if (arguments_.some((argument) => argument.start === argument.end)) return undefined;
 
   let childIndex = 0;
   const staticArguments = argumentRanges.flatMap((argumentRange, argumentIndex) => {
@@ -259,10 +255,14 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
     const containsFallback =
       child !== undefined && child.start < argumentRange.end && child.end > argumentRange.start;
     if (containsFallback) return [];
-    const argument = trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end);
+    const argument = arguments_[argumentIndex];
     return [{ index: argumentIndex, value: value.slice(argument.start, argument.end) }];
   });
-  return { argumentCount: argumentRanges.length, staticArguments };
+  return {
+    argumentCount: argumentRanges.length,
+    argumentValues: arguments_.map((argument) => value.slice(argument.start, argument.end)),
+    staticArguments,
+  };
 }
 
 function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
@@ -278,7 +278,11 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
 
 function hasFallbackIndependentClampBound(frame, value, range, boundIndex, candidate) {
   const clampArguments = fallbackIndependentStaticArguments(frame, value, range, 'clamp');
-  if (clampArguments?.argumentCount !== 3) return false;
+  if (
+    clampArguments?.argumentCount !== 3 ||
+    clampArguments.argumentValues[1].toLowerCase() === 'none'
+  )
+    return false;
   const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
   if (!bound) return false;
   return candidate === 'magic'
