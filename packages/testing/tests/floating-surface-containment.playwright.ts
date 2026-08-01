@@ -24,6 +24,7 @@ test.describe('floating surfaces escape component containment', () => {
     await expect(actions).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
     await expect(actions).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
     await expect(actions).toHaveCSS('box-shadow', 'none');
+    await expect(actions).toHaveCSS('overflow-y', 'hidden');
     await expect(actions).toHaveCSS('opacity', '1');
     await expect(actions).toHaveCSS('pointer-events', 'none');
     await expect(action).toHaveCSS('opacity', '0');

@@ -36,6 +36,7 @@
     background: transparent;
     border-color: transparent;
     box-shadow: none;
+    overflow-y: hidden;
   }
 
   .cinder-speed-dial__actions[data-cinder-direction='up'] {

@@ -55,6 +55,7 @@ describe('SpeedDial', () => {
     expect(closedActionsRule).toMatch(/background\s*:\s*transparent\s*;/);
     expect(closedActionsRule).toMatch(/border-color\s*:\s*transparent\s*;/);
     expect(closedActionsRule).toMatch(/box-shadow\s*:\s*none\s*;/);
+    expect(closedActionsRule).toMatch(/overflow-y\s*:\s*hidden\s*;/);
 
     const openActionsRule = speedDialStyles.match(
       /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{([^}]*)\}/s,
