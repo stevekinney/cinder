@@ -68,6 +68,18 @@ describe('Autocomplete — rendering and ARIA', () => {
     expect(css).toContain("@import '../input/input.css';");
   });
 
+  test('imports the composed Input API through its public subpath', async () => {
+    const [componentSource, typesSource] = await Promise.all([
+      Bun.file(new URL('./autocomplete.svelte', import.meta.url)).text(),
+      Bun.file(new URL('./autocomplete.types.ts', import.meta.url)).text(),
+    ]);
+
+    expect(componentSource).toContain("from '@lostgradient/cinder/input';");
+    expect(typesSource).toContain("from '@lostgradient/cinder/input';");
+    expect(componentSource).not.toContain("from '../input/");
+    expect(typesSource).not.toContain("from '../input/");
+  });
+
   test('renders a combobox input with autocomplete=list semantics', () => {
     const { container } = render(Autocomplete, {
       props: {
