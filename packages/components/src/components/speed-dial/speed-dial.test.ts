@@ -48,9 +48,11 @@ describe('SpeedDial', () => {
   });
 
   test('open and reduced-motion styles preserve the same closed resting reset', () => {
-    expect(speedDialStyles).toMatch(
-      /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{[^}]*pointer-events:\s*auto;/s,
-    );
+    const openActionsRule = speedDialStyles.match(
+      /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{([^}]*)\}/s,
+    )?.[1];
+    expect(openActionsRule).toBeDefined();
+    expect(openActionsRule).toContain('pointer-events: auto;');
     expect(speedDialStyles).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
     );
