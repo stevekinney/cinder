@@ -207,6 +207,7 @@ function alternativeAddsConstraints(target: SelectorTarget, alternative: Selecto
 }
 
 function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
+  const mergedTarget = mergeSelectorTargets(target, other);
   return (
     other.tag !== undefined &&
     target.functionalConstraints.some(
@@ -217,6 +218,8 @@ function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
             (alternative.tag === other.tag &&
               target.tag === undefined &&
               !alternativeAddsConstraints(target, alternative)) ||
+            (alternative.tag === other.tag &&
+              targetNecessarilyMatches(mergedTarget, alternative)) ||
             targetNecessarilyMatches(other, alternative),
         ),
     )
@@ -224,6 +227,7 @@ function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
 }
 
 function hasCompoundNegatedTagAnchor(target: SelectorTarget, other: SelectorTarget): boolean {
+  const mergedTarget = mergeSelectorTargets(target, other);
   return (
     target.tag === undefined &&
     other.tag !== undefined &&
@@ -232,7 +236,9 @@ function hasCompoundNegatedTagAnchor(target: SelectorTarget, other: SelectorTarg
         kind === 'not' &&
         alternatives.some(
           (alternative) =>
-            alternative.tag === other.tag && alternativeAddsConstraints(target, alternative),
+            alternative.tag === other.tag &&
+            alternativeAddsConstraints(target, alternative) &&
+            !targetNecessarilyMatches(mergedTarget, alternative),
         ),
     )
   );

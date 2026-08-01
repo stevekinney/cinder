@@ -146,11 +146,17 @@ function declaresNameWithinFunctionScope(node: unknown, name: string): boolean {
     node['type'] === 'ArrowFunctionExpression'
   )
     return false;
-  if (node['type'] === 'VariableDeclarator') {
-    const names = new Set<string>();
-    declaredNamesInPattern(node['id'], names);
-    if (names.has(name)) return true;
-  }
+  if (
+    node['type'] === 'VariableDeclaration' &&
+    node['kind'] === 'var' &&
+    Array.isArray(node['declarations'])
+  )
+    for (const declaration of node['declarations']) {
+      if (!isRecord(declaration)) continue;
+      const names = new Set<string>();
+      declaredNamesInPattern(declaration['id'], names);
+      if (names.has(name)) return true;
+    }
   for (const value of Object.values(node)) {
     if (Array.isArray(value)) {
       if (value.some((item) => declaresNameWithinFunctionScope(item, name))) return true;
@@ -183,15 +189,21 @@ function resolvedAssignmentValue(
   return { set: false };
 }
 
+function mergeValues(values: readonly unknown[]): unknown[] {
+  return [...new Set(values)];
+}
+
 function staticBindings(instance: unknown): Map<string, unknown[]> {
   const bindings = new Map<string, unknown[]>();
   const mutableBindings = new Set<string>();
+  const callbackBindings = new Map<string, unknown[]>();
   if (!isRecord(instance) || !isRecord(instance['content'])) return bindings;
   const body = instance['content']['body'];
   if (!Array.isArray(body)) return bindings;
 
-  // Pass 1: collect top-level `let`/`var` declarations (module-scope mutable
-  // bindings) and their initial value, in source order.
+  // Collect top-level binding names before walking the body. Values themselves
+  // are resolved by the walk so aliases observe assignments that precede their
+  // declaration in source order.
   for (const statement of body) {
     if (
       !isRecord(statement) ||
@@ -209,12 +221,8 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         continue;
       const name = declaration['id']['name'];
       if (statement['kind'] !== 'const') mutableBindings.add(name);
-      const resolved = resolvedAssignmentValue(declaration['init'], bindings);
-      if (resolved.set) bindings.set(name, resolved.values);
-      else bindings.delete(name);
     }
   }
-  if (mutableBindings.size === 0) return bindings;
 
   // Pass 2: apply every reassignment of a tracked mutable binding, including
   // writes made inside function bodies — a click handler reassigning a
@@ -230,6 +238,29 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   // initial render looked like, so it's recorded as an *additional*
   // reachable value rather than replacing the existing one — the same way a
   // ConditionalExpression's branches are both kept.
+  const valuesWithCallbackState = (name: string, values: readonly unknown[]): unknown[] =>
+    mergeValues([...values, ...(callbackBindings.get(name) ?? [])]);
+  const resolveDeclaration = (name: string, kind: string, initializer: unknown): void => {
+    if (initializer === undefined) {
+      // `var name;` preserves a prior value, while an uninitialized `let`
+      // declaration makes the binding unknown.
+      if (kind === 'var' && bindings.has(name)) return;
+      const callbackValues = callbackBindings.get(name) ?? [];
+      if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+      else bindings.delete(name);
+      return;
+    }
+    const resolved = resolvedAssignmentValue(initializer, bindings);
+    if (resolved.set) {
+      const values = valuesWithCallbackState(name, resolved.values);
+      if (values.length > 0) bindings.set(name, values);
+      else bindings.delete(name);
+    } else {
+      const callbackValues = callbackBindings.get(name) ?? [];
+      if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+      else bindings.delete(name);
+    }
+  };
   const walk = (node: unknown, shadowed: ReadonlySet<string>, insideFunction: boolean): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
@@ -292,6 +323,44 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       );
       if (newlyShadowed.length > 0)
         currentShadowed = new Set([...currentShadowed, ...newlyShadowed]);
+    } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      const lexicalNames = new Set<string>();
+      for (const statement of node['body']) {
+        if (
+          !isRecord(statement) ||
+          statement['type'] !== 'VariableDeclaration' ||
+          (statement['kind'] !== 'let' && statement['kind'] !== 'const') ||
+          !Array.isArray(statement['declarations'])
+        )
+          continue;
+        for (const declaration of statement['declarations'])
+          if (isRecord(declaration)) declaredNamesInPattern(declaration['id'], lexicalNames);
+      }
+      const newlyShadowed = [...mutableBindings].filter(
+        (name) => !currentShadowed.has(name) && lexicalNames.has(name),
+      );
+      if (newlyShadowed.length > 0)
+        currentShadowed = new Set([...currentShadowed, ...newlyShadowed]);
+    }
+    if (
+      node['type'] === 'VariableDeclaration' &&
+      !currentInsideFunction &&
+      Array.isArray(node['declarations'])
+    ) {
+      for (const declaration of node['declarations']) {
+        if (
+          !isRecord(declaration) ||
+          !isRecord(declaration['id']) ||
+          declaration['id']['type'] !== 'Identifier' ||
+          typeof declaration['id']['name'] !== 'string'
+        )
+          continue;
+        resolveDeclaration(
+          declaration['id']['name'],
+          typeof node['kind'] === 'string' ? node['kind'] : 'let',
+          declaration['init'],
+        );
+      }
     }
     if (
       node['type'] === 'AssignmentExpression' &&
@@ -305,11 +374,22 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       const name = node['left']['name'];
       const resolved = resolvedAssignmentValue(node['right'], bindings);
       if (currentInsideFunction) {
-        if (resolved.set) bindings.set(name, [...(bindings.get(name) ?? []), ...resolved.values]);
+        if (resolved.set) {
+          callbackBindings.set(
+            name,
+            mergeValues([...(callbackBindings.get(name) ?? []), ...resolved.values]),
+          );
+          bindings.set(
+            name,
+            valuesWithCallbackState(name, [...(bindings.get(name) ?? []), ...resolved.values]),
+          );
+        }
       } else if (resolved.set) {
-        bindings.set(name, resolved.values);
+        bindings.set(name, valuesWithCallbackState(name, resolved.values));
       } else {
-        bindings.delete(name);
+        const callbackValues = callbackBindings.get(name) ?? [];
+        if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+        else bindings.delete(name);
       }
     }
     for (const value of Object.values(node)) {
