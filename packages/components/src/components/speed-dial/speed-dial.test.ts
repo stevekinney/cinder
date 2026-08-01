@@ -9,6 +9,7 @@ setupHappyDom();
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
+const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
@@ -35,6 +36,57 @@ describe('SpeedDial', () => {
     expect(container.querySelector('.cinder-speed-dial')?.hasAttribute('data-cinder-open')).toBe(
       false,
     );
+  });
+
+  test('closed toolbar keeps its exit surface mounted and inert', () => {
+    const { container } = render(SpeedDialFixture);
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+
+    expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+    expect(toolbar.hasAttribute('inert')).toBe(true);
+  });
+
+  test('open and reduced-motion styles preserve the same closed resting reset', () => {
+    const closedActionsRule = speedDialStyles.match(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{([^}]*)\}/s,
+    )?.[1];
+    expect(closedActionsRule).toBeDefined();
+    expect(closedActionsRule).toMatch(/background\s*:\s*transparent\s*;/);
+    expect(closedActionsRule).toMatch(/border-color\s*:\s*transparent\s*;/);
+    expect(closedActionsRule).toMatch(/box-shadow\s*:\s*none\s*;/);
+    expect(closedActionsRule).toMatch(/overflow-y\s*:\s*hidden\s*;/);
+
+    const openActionsRule = speedDialStyles.match(
+      /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{([^}]*)\}/s,
+    )?.[1];
+    expect(openActionsRule).toBeDefined();
+    expect(openActionsRule).toMatch(/pointer-events\s*:\s*auto\s*;/);
+    expect(speedDialStyles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
+    );
+    expect(speedDialStyles).toMatch(/\.cinder-speed-dial-action\s*\{[^}]*opacity:\s*0;/s);
+    expect(speedDialStyles).toMatch(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s+\.cinder-speed-dial-action\s*\{[^}]*pointer-events:\s*none;/s,
+    );
+  });
+
+  test('open and post-close settled states keep the surface mounted and unavailable when closed', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(true);
+    expect(toolbar.hasAttribute('inert')).toBe(false);
+    await waitFor(() => expect(toolbar.hasAttribute('aria-hidden')).toBe(false));
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    expect(screen.getByRole('toolbar', { name: 'Actions', hidden: true })).toBe(toolbar);
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+    expect(toolbar.hasAttribute('inert')).toBe(true);
   });
 
   test('empty aria-label falls back to the default accessible name', () => {
