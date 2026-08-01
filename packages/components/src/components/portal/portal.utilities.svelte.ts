@@ -993,6 +993,7 @@ export function createPortalAttachment(
       dataTheme: element.getAttribute('data-theme'),
       theme: element.getAttribute('data-cinder-theme'),
     };
+    const preserveInitialDirection = options.explicitAttributes === undefined;
     const managedAttributes = {
       dir: null as string | null,
       lang: null as string | null,
@@ -1017,8 +1018,12 @@ export function createPortalAttachment(
             ? explicitDirection
             : direction !== managedAttributes.dir
               ? direction
-              : initialAttributes.dir,
-        preserveDirection: explicitDirection !== undefined || initialAttributes.dir !== null,
+              : preserveInitialDirection
+                ? initialAttributes.dir
+                : null,
+        preserveDirection:
+          explicitDirection !== undefined ||
+          (preserveInitialDirection && initialAttributes.dir !== null),
         lang:
           explicitLanguage !== undefined
             ? explicitLanguage

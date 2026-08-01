@@ -1689,6 +1689,22 @@ describe('Portal', () => {
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
   });
 
+  test('resumes inherited direction when an explicit portal direction is removed', async () => {
+    const view = render(Portal, {
+      props: { dir: 'ltr', children: childSnippet },
+    });
+    view.container.style.direction = 'rtl';
+    await tick();
+
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    await view.rerender({ dir: undefined, children: childSnippet });
+    await tick();
+
+    expect(wrapper?.getAttribute('dir')).toBe('rtl');
+  });
+
   test('allows explicit null to clear portal direction during inherited sync', async () => {
     document.documentElement.setAttribute('dir', 'rtl');
 
