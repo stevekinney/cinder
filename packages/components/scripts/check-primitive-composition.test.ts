@@ -1883,6 +1883,12 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
     expect(
       findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; switch (mode) { case 1: if (stop) break; else break; layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout}></div>",
+        'switch-branch-break-style/switch-branch-break-style.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'block' }; switch (1) { case 1: layout = { display: 'block' }; break; case 2: layout = { display: 'grid', gridTemplateColumns: '1fr' }; }</script><div style={layout}></div>",
         'switch-break-style/switch-break-style.svelte',
       ),
@@ -2133,6 +2139,12 @@ describe('primitive composition guard', () => {
         'switch-block-break/switch-block-break.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; switch (kind) { case 'edit': if (stop) break; else break; tag = 'input'; }</script><svelte:element this={tag} />",
+        'switch-branch-break/switch-branch-break.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('preserves control states from conditional switch breaks', () => {
@@ -2908,6 +2920,12 @@ describe('primitive composition guard', () => {
         'break-field-loop/break-field-loop.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let ready = true; let tag = 'span'; for (; ready; tag = 'label') { if (stop) break; else break; }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'branch-break-field-loop/branch-break-field-loop.svelte',
+      ),
+    ).toEqual([]);
     expect(
       findPrimitiveCompositionViolations(
         "<script>let ready = true; let tag = 'span'; for (; ready; tag = 'label') { tag = 'span'; if (stop) break; ready = false; }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",

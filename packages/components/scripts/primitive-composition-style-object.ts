@@ -299,6 +299,13 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
     statement['type'] === 'ThrowStatement'
   )
     return true;
+  if (statement['type'] === 'IfStatement')
+    return (
+      isRecord(statement['consequent']) &&
+      unconditionallyAbruptStatement(statement['consequent']) &&
+      isRecord(statement['alternate']) &&
+      unconditionallyAbruptStatement(statement['alternate'])
+    );
   return (
     statement['type'] === 'BlockStatement' &&
     Array.isArray(statement['body']) &&

@@ -110,6 +110,13 @@ function unconditionallyExitsBeforeLoopUpdate(statement: unknown): boolean {
     statement['type'] === 'ThrowStatement'
   )
     return true;
+  if (statement['type'] === 'IfStatement')
+    return (
+      isRecord(statement['consequent']) &&
+      unconditionallyExitsBeforeLoopUpdate(statement['consequent']) &&
+      isRecord(statement['alternate']) &&
+      unconditionallyExitsBeforeLoopUpdate(statement['alternate'])
+    );
   return (
     statement['type'] === 'BlockStatement' &&
     Array.isArray(statement['body']) &&
