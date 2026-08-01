@@ -52,7 +52,7 @@
 
   const context = getFormFieldContext();
   const localeContext = getLocaleContext();
-  const inputRest = rest as Record<string, unknown>;
+  const inputRest = $derived(rest as Record<string, unknown>);
 
   let editorBuffer = $state('');
   let isFocused = $state(false);
@@ -495,7 +495,7 @@
   // nothing. The internal message is wired into describedBy via its own id.
   const internalInvalid = $derived(malformedError || requiredEmptyError ? 'true' : undefined);
   const resolvedAriaInvalid = $derived(
-    internalInvalid ?? (rest['aria-invalid'] as 'true' | 'false' | undefined),
+    internalInvalid ?? (inputRest['aria-invalid'] as 'true' | 'false' | undefined),
   );
 
   const incrementDisabled = $derived(

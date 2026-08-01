@@ -89,6 +89,16 @@ describe('NumberInput basics', () => {
     expect(input.getAttribute('style')).toContain('accent-color: rebeccapurple');
   });
 
+  test('reactively forwards updated native attributes to Input', async () => {
+    const { container, rerender } = render(NumberInput, {
+      props: { id: 'n', placeholder: 'Initial' },
+    });
+
+    await rerender({ id: 'n', placeholder: 'Updated' });
+
+    expect(getInput(container).getAttribute('placeholder')).toBe('Updated');
+  });
+
   test('renders Lucide icons for the stepper controls', () => {
     const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
 
