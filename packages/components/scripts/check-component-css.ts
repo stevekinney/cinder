@@ -117,16 +117,6 @@ function isLayerOrderPreludeNode(node: { type: string }): boolean {
 const SIBLING_LEAF_IMPORT_PARAMS = /^(['"])\.\.\/([a-z][a-z0-9-]*)\/\2\.css\1$/;
 const PRIVATE_COMPONENT_IMPORT_PARAMS = /^(['"])\.\.\/_internal\/[a-z][a-z0-9-]*\.css\1$/;
 
-/**
- * Whether a `@import` at-rule is a permitted sibling-leaf import (see
- * {@link SIBLING_LEAF_IMPORT_PARAMS}). The capture group `\2` forces the
- * directory name and file basename to match, so `../tab/tab.css` passes while
- * `../tab/other.css`, `'foo'`, or `url(...)` forms do not.
- */
-function isSiblingLeafImport(atRule: AtRule): boolean {
-  return SIBLING_LEAF_IMPORT_PARAMS.test(atRule.params.trim());
-}
-
 function isAllowedComponentImport(atRule: AtRule): boolean {
   const params = atRule.params.trim();
   return SIBLING_LEAF_IMPORT_PARAMS.test(params) || PRIVATE_COMPONENT_IMPORT_PARAMS.test(params);
