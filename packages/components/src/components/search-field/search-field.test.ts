@@ -129,6 +129,9 @@ describe('SearchField clear button', () => {
     });
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     expect(clear.hasAttribute('hidden')).toBe(false);
+    expect(
+      clear.closest('.cinder-input-group__trailing')?.classList.contains('cinder-_truncate'),
+    ).toBe(false);
   });
 
   test('clear button has aria-label="Clear search"', () => {
