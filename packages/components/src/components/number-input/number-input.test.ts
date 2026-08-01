@@ -73,6 +73,22 @@ describe('NumberInput basics', () => {
     expect(attachedInput?.id).toBe('n');
   });
 
+  test('keeps the component class on the field wrapper and native styles on Input', () => {
+    const { container } = render(NumberInput, {
+      props: {
+        id: 'n',
+        class: 'custom-number-input',
+        style: 'accent-color: rebeccapurple',
+      },
+    });
+
+    const input = getInput(container);
+    expect(container.querySelector('.cinder-number-input')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-field.custom-number-input')).not.toBeNull();
+    expect(input.classList.contains('custom-number-input')).toBe(false);
+    expect(input.getAttribute('style')).toContain('accent-color: rebeccapurple');
+  });
+
   test('renders Lucide icons for the stepper controls', () => {
     const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
 

@@ -549,39 +549,45 @@
   </button>
 {/snippet}
 
-<Input
-  {id}
-  value={displayValue}
-  {...label === undefined ? {} : { label }}
-  {...description === undefined ? {} : { description }}
-  {...error === undefined ? {} : { error }}
-  disabled={resolvedDisabled}
-  required={resolvedRequired}
-  class={classNames('cinder-number-input__input', className)}
-  {...inputRest}
-  type="text"
-  role="spinbutton"
-  inputmode="decimal"
-  inputAttachment={attachInput}
-  trailing={steppers}
-  trailingInteractive
-  aria-invalid={resolvedAriaInvalid}
-  aria-describedby={[consumerDescribedBy, internalErrorId].filter(Boolean).join(' ') || undefined}
-  aria-valuenow={resolvedAriaValueNow}
-  aria-valuemin={resolvedAriaValueMin}
-  aria-valuemax={resolvedAriaValueMax}
-  oninput={onInput}
-  onfocus={onFocus}
-  onblur={onBlur}
-  onkeydown={onKeyDown}
-/>
+<div class={classNames('cinder-input-field', 'cinder-number-input', className)}>
+  <Input
+    {id}
+    value={displayValue}
+    {...label === undefined ? {} : { label }}
+    {...description === undefined ? {} : { description }}
+    {...error === undefined ? {} : { error }}
+    disabled={resolvedDisabled}
+    required={resolvedRequired}
+    class="cinder-number-input__input"
+    {...inputRest}
+    type="text"
+    role="spinbutton"
+    inputmode="decimal"
+    inputAttachment={attachInput}
+    trailing={steppers}
+    trailingInteractive
+    aria-invalid={resolvedAriaInvalid}
+    aria-describedby={[consumerDescribedBy, internalErrorId].filter(Boolean).join(' ') || undefined}
+    aria-valuenow={resolvedAriaValueNow}
+    aria-valuemin={resolvedAriaValueMin}
+    aria-valuemax={resolvedAriaValueMax}
+    oninput={onInput}
+    onfocus={onFocus}
+    onblur={onBlur}
+    onkeydown={onKeyDown}
+  />
 
-{#if showHiddenInput}
-  <input type="hidden" {name} value={value === null || value === undefined ? '' : String(value)} />
-{/if}
+  {#if showHiddenInput}
+    <input
+      type="hidden"
+      {name}
+      value={value === null || value === undefined ? '' : String(value)}
+    />
+  {/if}
 
-{#if internalErrorMessage}
-  <p id={internalErrorId} class="cinder-input-field__error" aria-live="polite">
-    {internalErrorMessage}
-  </p>
-{/if}
+  {#if internalErrorMessage}
+    <p id={internalErrorId} class="cinder-input-field__error" aria-live="polite">
+      {internalErrorMessage}
+    </p>
+  {/if}
+</div>
