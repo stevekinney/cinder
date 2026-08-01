@@ -852,6 +852,20 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test.each(['\n', '\r', '\f', '\r\n'])(
+    'does not join an identifier across a backslash-newline sequence: %j',
+    async (newline) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: backslash-newline is not an identifier escape. */
+          z-index: va\\${newline}r(--inner, -1);
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
+
   test('scans deeply nested fallback chains without recursion or overflow', async () => {
     const depth = 12_000;
     for (const [leaf, warningCount] of [
