@@ -76,6 +76,14 @@ describe('NumberInput basics', () => {
     expect(getInput(container).closest('.cinder-input-group')).not.toBeNull();
   });
 
+  test('marks the outer field wrapper as a full-width layout participant', () => {
+    const { container } = render(NumberInput, { props: { id: 'n', value: 2 } });
+    const field = container.firstElementChild;
+
+    expect(field?.classList.contains('cinder-input-field')).toBe(true);
+    expect(field?.hasAttribute('data-cinder-full-width')).toBe(true);
+  });
+
   test('forwards the native input attachment', () => {
     let attachedInput: HTMLInputElement | undefined;
     render(NumberInput, {

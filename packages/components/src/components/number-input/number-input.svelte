@@ -549,7 +549,7 @@
   </button>
 {/snippet}
 
-<div class="cinder-input-field">
+<div class="cinder-input-field" data-cinder-full-width>
   <Input
     {id}
     value={displayValue}
