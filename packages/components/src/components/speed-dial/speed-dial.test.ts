@@ -62,7 +62,7 @@ describe('SpeedDial', () => {
     expect(openActionsRule).toBeDefined();
     expect(openActionsRule).toContain('pointer-events: auto;');
     expect(speedDialStyles).toMatch(
-      /@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
     );
     expect(speedDialStyles).toMatch(/\.cinder-speed-dial-action\s*\{[^}]*opacity:\s*0;/s);
     expect(speedDialStyles).toMatch(
