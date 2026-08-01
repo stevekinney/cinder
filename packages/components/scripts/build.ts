@@ -590,6 +590,16 @@ for (const component of components) {
   copiedSidecars.push(destination);
 }
 
+const privateCssGlob = new Glob('**/*.css');
+for await (const relativePath of privateCssGlob.scan({
+  cwd: `${sourceRoot}/components/_internal`,
+})) {
+  const source = `${sourceRoot}/components/_internal/${relativePath}`;
+  const destination = `${distributionDirectory}/components/_internal/${relativePath}`;
+  await mkdir(dirname(destination), { recursive: true });
+  await Bun.write(destination, await Bun.file(source).text());
+}
+
 // -----------------------------------------------------------------------------
 // 5. Type declarations (unchanged from prior behavior).
 // -----------------------------------------------------------------------------

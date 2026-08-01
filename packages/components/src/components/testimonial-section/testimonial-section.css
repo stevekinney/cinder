@@ -1,6 +1,9 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../_internal/section-skeleton.css';
 @layer cinder.components {
+  .cinder-testimonial-section {
+    container-name: cinder-testimonial-section;
+  }
   .cinder-testimonial-section__title {
     margin: 0;
     font-size: var(--cinder-text-3xl);

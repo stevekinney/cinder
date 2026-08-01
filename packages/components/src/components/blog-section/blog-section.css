@@ -1,6 +1,9 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../_internal/section-skeleton.css';
 @layer cinder.components {
+  .cinder-blog-section {
+    container-name: cinder-blog-section;
+  }
   .cinder-blog-section__description {
     color: var(--cinder-text-muted);
   }

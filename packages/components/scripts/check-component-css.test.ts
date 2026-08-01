@@ -174,6 +174,11 @@ describe('checkComponentCssSource', () => {
     expect(checkComponentCssSource(source, fakePath)).toEqual([]);
   });
 
+  it('allows leading private component imports', () => {
+    const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-blog-section {} }`;
+    expect(checkComponentCssSource(source, fakePath)).toEqual([]);
+  });
+
   it('rejects a non-sibling-leaf @import (mismatched dir/basename)', () => {
     const source = `${LAYER_ORDER_PRELUDE}\n@import '../tab/other.css';\n@layer cinder.components { .cinder-tabs { display: flex; } }`;
     const violations = checkComponentCssSource(source, fakePath);

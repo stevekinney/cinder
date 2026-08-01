@@ -45,7 +45,6 @@ export const allowedGridCounts = new Map<string, number>(
     'action-row/action-row.css',
     'approval-card/approval-card.css',
     'bento-grid/bento-grid.css',
-    'blog-section/blog-section.css',
     'calendar/calendar.css',
     'choice-grid/choice-grid.css',
     'data-grid/data-grid.css',
@@ -68,15 +67,12 @@ export const allowedGridCounts = new Map<string, number>(
     'stacked-list-item/stacked-list-item.css',
     'statistic-group/statistic-group.css',
     'statistic/statistic.css',
-    'team-section/team-section.css',
-    'testimonial-section/testimonial-section.css',
     'timeline/timeline.css',
     'transfer-list/transfer-list.css',
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedGridCounts.set('action-row/action-row.css', 4);
 allowedGridCounts.set('bento-grid/bento-grid.css', 2);
-allowedGridCounts.set('blog-section/blog-section.css', 4);
 allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
 allowedGridCounts.set('description-list/description-list.css', 4);
@@ -99,8 +95,9 @@ allowedGridCounts.set('stacked-list-item/stacked-list-item.css', 6);
 allowedGridCounts.set('statistic-group/statistic-group.css', 10);
 allowedGridCounts.set('statistic/statistic.css', 2);
 allowedGridCounts.set('steps/steps.css', 4);
-allowedGridCounts.set('team-section/team-section.css', 5);
-allowedGridCounts.set('testimonial-section/testimonial-section.css', 4);
+// The shared section skeleton intentionally owns the common list grid
+// declaration and its three responsive overrides.
+allowedGridCounts.set('_internal/section-skeleton.css', 4);
 allowedGridCounts.set('timeline/timeline.css', 3);
 allowedGridCounts.set('transfer-list/transfer-list.css', 3);
 

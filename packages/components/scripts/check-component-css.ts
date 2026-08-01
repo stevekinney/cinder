@@ -115,6 +115,7 @@ function isLayerOrderPreludeNode(node: { type: string }): boolean {
  * `<leaf>/<leaf>.css`.
  */
 const SIBLING_LEAF_IMPORT_PARAMS = /^(['"])\.\.\/([a-z][a-z0-9-]*)\/\2\.css\1$/;
+const PRIVATE_COMPONENT_IMPORT_PARAMS = /^(['"])\.\.\/_internal\/[a-z][a-z0-9-]*\.css\1$/;
 
 /**
  * Whether a `@import` at-rule is a permitted sibling-leaf import (see
@@ -124,6 +125,11 @@ const SIBLING_LEAF_IMPORT_PARAMS = /^(['"])\.\.\/([a-z][a-z0-9-]*)\/\2\.css\1$/;
  */
 function isSiblingLeafImport(atRule: AtRule): boolean {
   return SIBLING_LEAF_IMPORT_PARAMS.test(atRule.params.trim());
+}
+
+function isAllowedComponentImport(atRule: AtRule): boolean {
+  const params = atRule.params.trim();
+  return SIBLING_LEAF_IMPORT_PARAMS.test(params) || PRIVATE_COMPONENT_IMPORT_PARAMS.test(params);
 }
 
 /**
@@ -163,7 +169,7 @@ export function isSingleComponentLayer(root: Root): boolean {
     if (isLayerOrderPreludeNode(node)) {
       continue;
     }
-    if (node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)) {
+    if (node.type === 'atrule' && node.name === 'import' && isAllowedComponentImport(node)) {
       continue;
     }
     return false;
@@ -274,7 +280,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
   // family — that path resolves identically in `src/` and `dist/` because the
   // layout mirrors. Reject every other `@import` upfront.
   root.walkAtRules('import', (atRule) => {
-    if (isSiblingLeafImport(atRule)) return;
+    if (isAllowedComponentImport(atRule)) return;
     violations.push({
       file,
       line: atRule.source?.start?.line ?? 1,
@@ -345,7 +351,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
       (node) =>
         !isComponentLayerNode(node) &&
         !isLayerOrderPreludeNode(node) &&
-        !(node.type === 'atrule' && node.name === 'import' && isSiblingLeafImport(node)),
+        !(node.type === 'atrule' && node.name === 'import' && isAllowedComponentImport(node)),
     );
     const target = offender ?? root;
     violations.push({

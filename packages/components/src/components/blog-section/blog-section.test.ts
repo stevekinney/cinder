@@ -1,5 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -36,6 +38,26 @@ const posts = [
 ];
 
 describe('BlogSection', () => {
+  test('centralizes the shared section skeleton styles', () => {
+    const componentDirectory = resolve(import.meta.dir, '..');
+    const skeleton = readFileSync(
+      resolve(componentDirectory, '_internal/section-skeleton.css'),
+      'utf8',
+    );
+    for (const section of ['blog-section', 'testimonial-section', 'team-section']) {
+      const stylesheet = readFileSync(
+        resolve(componentDirectory, section, `${section}.css`),
+        'utf8',
+      );
+      expect(stylesheet).toContain("@import '../_internal/section-skeleton.css';");
+      expect(stylesheet).not.toContain('container-type: inline-size');
+      expect(stylesheet).not.toContain('padding-block: var(--cinder-space-10)');
+      expect(stylesheet).not.toContain('grid-template-columns: repeat(1, minmax(0, 1fr))');
+    }
+    expect(skeleton).toContain('.cinder-_section-skeleton__list');
+    expect(skeleton.match(/\.cinder-_section-skeleton__list/g)?.length).toBeGreaterThan(0);
+  });
+
   test('renders post cards with title links and excerpts', () => {
     const { container } = render(BlogSection, {
       props: {

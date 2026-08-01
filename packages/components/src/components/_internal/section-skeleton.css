@@ -47,7 +47,19 @@
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
   }
-  @container (max-width: 56rem) {
+  @container cinder-blog-section (max-width: 56rem) {
+    .cinder-_section-skeleton__list {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  @container cinder-testimonial-section (max-width: 56rem) {
+    .cinder-_section-skeleton__list {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  @container cinder-team-section (max-width: 56rem) {
     .cinder-_section-skeleton__list {
       grid-template-columns: 1fr !important;
     }
