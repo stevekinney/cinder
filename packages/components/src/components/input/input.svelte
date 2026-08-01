@@ -188,7 +188,10 @@
     >
       {#if leading}
         <span
-          class="cinder-input-group__leading cinder-_truncate"
+          class={classNames(
+            'cinder-input-group__leading',
+            !leadingInteractive && 'cinder-_truncate',
+          )}
           aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
         >
       {/if}
@@ -197,7 +200,10 @@
 
       {#if trailing}
         <span
-          class="cinder-input-group__trailing cinder-_truncate"
+          class={classNames(
+            'cinder-input-group__trailing',
+            !trailingInteractive && 'cinder-_truncate',
+          )}
           aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
         >
       {:else if rendersNativeDateIcon}

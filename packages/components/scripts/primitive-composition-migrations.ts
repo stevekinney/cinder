@@ -16,7 +16,6 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['json-editor/json-editor.svelte', 1],
   ['multi-select/multi-select.svelte', 2],
   ['pin-input/pin-input.svelte', 1],
-  ['search-field/search-field.svelte', 1],
   ['select/select.svelte', 2],
   ['selection-popover/selection-popover.svelte', 1],
   ['table-row/table-row.svelte', 3],

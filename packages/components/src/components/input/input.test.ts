@@ -584,6 +584,8 @@ describe('Input group (leading/trailing addons)', () => {
     const trailingSpan = container.querySelector('.cinder-input-group__trailing');
     expect(leadingSpan?.getAttribute('aria-hidden')).toBe('true');
     expect(trailingSpan?.getAttribute('aria-hidden')).toBe('true');
+    expect(leadingSpan?.classList.contains('cinder-_truncate')).toBe(true);
+    expect(trailingSpan?.classList.contains('cinder-_truncate')).toBe(true);
   });
 
   test('leadingInteractive=true omits aria-hidden on leading container', () => {
@@ -597,6 +599,7 @@ describe('Input group (leading/trailing addons)', () => {
     });
     const leadingSpan = container.querySelector('.cinder-input-group__leading');
     expect(leadingSpan?.hasAttribute('aria-hidden')).toBe(false);
+    expect(leadingSpan?.classList.contains('cinder-_truncate')).toBe(false);
   });
 
   test('trailingInteractive=true omits aria-hidden on trailing container', () => {
@@ -610,6 +613,7 @@ describe('Input group (leading/trailing addons)', () => {
     });
     const trailingSpan = container.querySelector('.cinder-input-group__trailing');
     expect(trailingSpan?.hasAttribute('aria-hidden')).toBe(false);
+    expect(trailingSpan?.classList.contains('cinder-_truncate')).toBe(false);
   });
 
   test('groupClassName applies to the grouped control frame', () => {
