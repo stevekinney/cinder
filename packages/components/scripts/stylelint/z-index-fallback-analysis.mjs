@@ -57,6 +57,7 @@ function fallbackCandidates(value) {
         openIndex: index + functionMatch[0].length - 1,
         commaIndex: -1,
         children: [],
+        isNestedFallback: nearestFunction !== undefined && nearestFunction.commaIndex !== -1,
         resolvedFallback: null,
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
@@ -88,11 +89,12 @@ function fallbackCandidates(value) {
     const fallbackRange = trimCssWhitespaceRange(value, frame.commaIndex + 1, index);
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange);
-    candidates.push({
-      fallbackIndex: fallbackRange.start,
-      rawFallback,
-      resolvedFallback: frame.resolvedFallback,
-    });
+    if (!frame.isNestedFallback)
+      candidates.push({
+        fallbackIndex: fallbackRange.start,
+        rawFallback,
+        resolvedFallback: frame.resolvedFallback,
+      });
   }
 
   if (rootFrame.children.length > 0) {

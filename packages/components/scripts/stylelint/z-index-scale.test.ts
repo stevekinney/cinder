@@ -241,6 +241,17 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
+  test('evaluates nested fallbacks in their enclosing arithmetic context', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the enclosing fallback resolves to the local layer 1. */
+        z-index: var(--outer, calc(var(--inner, -1) + 2));
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test('anchors a fallback warning to the fallback occurrence', async () => {
     for (const css of [
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(9999 + var(--x, 9999)); }',
