@@ -139,7 +139,9 @@ function evaluateConstantArithmetic(expression) {
       if (functionName === 'min' && arguments_.length > 0) return Math.min(...arguments_);
       if (functionName === 'max' && arguments_.length > 0) return Math.max(...arguments_);
       if (functionName === 'clamp' && arguments_.length === 3)
-        return Math.min(arguments_[2], Math.max(arguments_[0], arguments_[1]));
+        return Math.max(arguments_[0], Math.min(arguments_[1], arguments_[2]));
+      if (functionName === 'abs' && arguments_.length === 1) return Math.abs(arguments_[0]);
+      if (functionName === 'sign' && arguments_.length === 1) return Math.sign(arguments_[0]);
       throw new Error('unsupported function');
     }
     return parseNumber();
@@ -205,18 +207,45 @@ function decodeCssEscapes(value) {
 }
 
 function protectCssSyntaxEscapes(value) {
-  return value
-    .replaceAll(/\\(?:00002c|000028|000029)\s?/gi, (escape) => {
-      if (escape.toLowerCase().includes('00002c')) return '\uE000';
-      return escape.toLowerCase().includes('000028') ? '\uE001' : '\uE002';
-    })
-    .replaceAll(/\\(?:0*2c)(?=\s|$|[^0-9a-f])\s?/gi, '\uE000')
-    .replaceAll(/\\(?:0*28|0*29)(?=\s|$|[^0-9a-f])\s?/gi, (escape) =>
-      escape.includes('28') ? '\uE001' : '\uE002',
-    )
-    .replaceAll(/\\([(),])/g, (_, character) =>
-      character === ',' ? '\uE000' : character === '(' ? '\uE001' : '\uE002',
-    );
+  let output = '';
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== '\\') {
+      output += value[index];
+      continue;
+    }
+
+    const nextCharacter = value[index + 1];
+    if (nextCharacter === undefined) {
+      output += value[index];
+      continue;
+    }
+
+    if (/[0-9a-f]/i.test(nextCharacter)) {
+      let hexEnd = index + 1;
+      while (hexEnd < value.length && hexEnd <= index + 6 && /[0-9a-f]/i.test(value[hexEnd]))
+        hexEnd += 1;
+      const codePoint = Number.parseInt(value.slice(index + 1, hexEnd), 16);
+      let escapeEnd = hexEnd;
+      if (/\s/.test(value[escapeEnd] ?? '')) escapeEnd += 1;
+      if (codePoint === 0x2c) output += '\uE000';
+      else if (codePoint === 0x28) output += '\uE001';
+      else if (codePoint === 0x29) output += '\uE002';
+      else output += value.slice(index, escapeEnd);
+      index = escapeEnd - 1;
+      continue;
+    }
+
+    if (nextCharacter === ',') output += '\uE000';
+    else if (nextCharacter === '(') output += '\uE001';
+    else if (nextCharacter === ')') output += '\uE002';
+    else output += value.slice(index, index + 2);
+    index += 1;
+  }
+  return output;
+}
+
+function isCssIdentifierCharacter(character) {
+  return character !== undefined && /[\w\u0080-\uFFFF-]/.test(character);
 }
 
 function flattenCalcFunctions(value) {
@@ -224,7 +253,7 @@ function flattenCalcFunctions(value) {
   for (let index = 0; index < value.length; index += 1) {
     const calcMatch = /^(?:-webkit-)?calc\s*\(/i.exec(value.slice(index));
     const previousCharacter = value[index - 1];
-    if (!calcMatch || (previousCharacter && /[\w\u0080-\uFFFF-]/.test(previousCharacter))) {
+    if (!calcMatch || isCssIdentifierCharacter(previousCharacter)) {
       output += value[index];
       continue;
     }
@@ -277,7 +306,7 @@ function customPropertyFallbacks(value) {
     for (let index = 0; index < expression.length; index += 1) {
       if (!/^var\s*\(/i.test(expression.slice(index))) continue;
       const previousCharacter = expression[index - 1];
-      if (previousCharacter && /[\w-]/.test(previousCharacter)) continue;
+      if (isCssIdentifierCharacter(previousCharacter)) continue;
 
       const openIndex = expression.indexOf('(', index);
       let depth = 1;
@@ -360,7 +389,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         return;
       }
 
-      const offendingFallback = bannedFallback(value);
+      const offendingFallback = bannedFallback(rawValue);
       if (offendingFallback) {
         const declarationText = declaration.toString();
         const fallbackIndex = declarationText.indexOf(offendingFallback);

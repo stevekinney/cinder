@@ -175,6 +175,10 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, min(9999, 10000))',
     'var(--item-layer, max(-1, -2))',
     'var(--item-layer, clamp(-1, -2, 1))',
+    'var(--item-layer, clamp(9999, 0, 1))',
+    'var(--item-layer, abs(-9999))',
+    'var(--item-layer, sign(-9999))',
+    'var(--x\\\\, -1)',
   ])('rejects a banned literal in an unresolved custom-property fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -233,6 +237,17 @@ describe('cinder/z-index-scale', () => {
           .fixture {
             /* cinder-z-index-local: this is not a CSS math function. */
             z-index: var(--item-layer, recalc(9999));
+          }
+        `),
+      ),
+    ).toEqual([]);
+
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: this is not a var() function. */
+            z-index: var(--item-layer, évar(--x, 9999));
           }
         `),
       ),
