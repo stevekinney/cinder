@@ -10,7 +10,7 @@ const nativeGetComputedStyle = globalThis.getComputedStyle;
 
 const { render, cleanup, waitFor } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
-const { default: PortalAttachmentTest } = await import('./portal-attachment-test.svelte');
+const { default: PortalAttachmentTest } = await import('./_portal-attachment-test-harness.svelte');
 const {
   copyInheritedPortalAttributes,
   findNearestOpenTopLayer,
