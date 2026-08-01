@@ -8,6 +8,7 @@ const pluginPath = fileURLToPath(new URL('./z-index-scale.mjs', import.meta.url)
 const fallbackAnalysisPath = fileURLToPath(
   new URL('./z-index-fallback-analysis.mjs', import.meta.url),
 );
+const valueAnalysisPath = fileURLToPath(new URL('./z-index-value-analysis.mjs', import.meta.url));
 
 async function lint(css: string) {
   return stylelint.lint({
@@ -30,6 +31,10 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
 describe('cinder/z-index-scale', () => {
   test('keeps the fallback scanner compatible with the ES2022 runtime target', async () => {
     expect(await Bun.file(fallbackAnalysisPath).text()).not.toContain('.toReversed(');
+  });
+
+  test('reduces wide CSS math functions without spreading call arguments', async () => {
+    expect(await Bun.file(valueAnalysisPath).text()).not.toMatch(/Math\.(?:hypot|max|min)\(\.\.\./);
   });
 
   test.each([
@@ -121,7 +126,7 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
-  test.each(['calc(0 - 1)', 'calc(-1 * 1)', 'calc(1 - 2)', 'calc((0 - 1) * 1)'])(
+  test.each(['calc(0 - 1)', 'calc(-1 * 1)', 'calc(1 - 2)', 'calc((0 - 1) * 1)', 'calc(-infinity)'])(
     'rejects the arithmetic negative layer %s even with a local reason',
     async (value) => {
       // Arithmetic like `0 - 1` is statically negative without being a bare
@@ -210,6 +215,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999 * progress(1, 0, 1)))',
     'var(--item-layer, calc(asin(1) / 90deg * 9999))',
     'var(--item-layer, calc(atan2(1, 0) / 90deg * 9999))',
+    'var(--item-layer, calc(-infinity))',
   ])('rejects a banned value in a CSS substitution fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -260,6 +266,41 @@ describe('cinder/z-index-scale', () => {
 
     expect(warnings(result)).toEqual([]);
   });
+
+  test.each([
+    'var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic)))',
+    'var(--outer, calc(0 * var(--inner, -1) + var(--dynamic)))',
+    'var(--outer, calc((var(--inner, -1)) * (0 + 0) + var(--dynamic)))',
+  ])('accepts a nested banned fallback whose contribution is eliminated: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the banned child cannot contribute to this layer. */
+        z-index: ${value};
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
+  test.each([
+    'var(--outer, calc(var(--inner, -1) * 1 + var(--dynamic)))',
+    'var(--outer, calc(var(--inner, -1) + 0 + var(--dynamic)))',
+    'var(--outer, calc(var(--inner, -1) / 0 + var(--dynamic)))',
+  ])(
+    'retains a nested banned fallback when its contribution is not eliminated: %s',
+    async (value) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: the banned child can still contribute. */
+            z-index: ${value};
+          }
+        `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
 
   test.each([
     'var(--inner, -1)',
@@ -345,6 +386,52 @@ describe('cinder/z-index-scale', () => {
       `);
       expect(warnings(result)).toHaveLength(warningCount);
     }
+  });
+
+  test('reduces wide min, max, and hypot fallbacks without argument-limit bypasses', async () => {
+    const repeatedArguments = 130_000;
+    for (const [functionName, repeatedValue] of [
+      ['min', '10000'],
+      ['max', '0'],
+      ['hypot', '0'],
+    ] as const) {
+      const value = `${functionName}(9999${`, ${repeatedValue}`.repeat(repeatedArguments)})`;
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: wide generated math still resolves to the banned layer. */
+          z-index: var(--item-layer, ${value});
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+    }
+  });
+
+  test('bounds cumulative work for mixed substitution and calc nesting', async () => {
+    let nestedFallback = '1';
+    for (let depth = 0; depth < 2_000; depth += 1)
+      nestedFallback = `var(--item-layer, calc(${nestedFallback} + 0))`;
+
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: excessive generated analysis fails closed. */
+        z-index: ${nestedFallback};
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('bounds cumulative output for repeated mixed fallback branches', async () => {
+    let repeatedFallback = '1';
+    for (let depth = 0; depth < 16; depth += 1)
+      repeatedFallback = `var(--item-layer, calc(${repeatedFallback} + ${repeatedFallback}))`;
+
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: excessive generated analysis fails closed. */
+        z-index: ${repeatedFallback};
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test('follows CSS integer rounding for negative half values', async () => {
@@ -503,6 +590,29 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)[0]?.text).toContain('must not have a fallback');
   });
 
+  test('preserves escaped whitespace as part of a layer-token identifier', async () => {
+    for (const value of [
+      'var(--cinder-z-popover\\20 )',
+      'var(--cinder-z-\\20 popover)',
+      'var(--cinder-z-popover\\9 )',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: this is a distinct undeclared token. */
+          z-index: ${value};
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+    }
+
+    expect(warnings(await lint('.fixture { z-index: var( --cinder-z-popover ); }'))).toEqual([]);
+    const fallback = warnings(
+      await lint('.fixture { z-index: var(--cinder-z-popover\\20 , 9999); }'),
+    );
+    expect(fallback).toHaveLength(1);
+    expect(fallback[0]?.text).toContain('must not have a fallback');
+  });
+
   test('preserves backslash parity while decoding layer-token names', async () => {
     expect(warnings(await lint('.fixture { z-index: var(--cinder-z-po\\70 over); }'))).toEqual([]);
     expect(
@@ -542,6 +652,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, round(1.4))',
     'var(--item-layer, pow(1, 1))',
     'var(--item-layer, sqrt(1))',
+    'var(--item-layer, min(1, 2))',
+    'var(--item-layer, max(1, 0))',
     'var(--item-layer, hypot(1, 0))',
     'var(--item-layer, calc(1 * sin(pi / 2)))',
     'var(--item-layer, exp(log(1)))',

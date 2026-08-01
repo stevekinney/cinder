@@ -157,10 +157,12 @@ function evaluateConstantArithmetic(expression) {
       }
       if (!arguments_.every((argument) => sameUnits(argument, arguments_[0])))
         throw new Error('incompatible units');
-      if (functionName === 'min' && arguments_.length > 0)
-        return withValue(arguments_[0], Math.min(...arguments_.map(({ value }) => value)));
-      if (functionName === 'max' && arguments_.length > 0)
-        return withValue(arguments_[0], Math.max(...arguments_.map(({ value }) => value)));
+      if ((functionName === 'min' || functionName === 'max') && arguments_.length > 0) {
+        let reducedValue = arguments_[0].value;
+        for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1)
+          reducedValue = Math[functionName](reducedValue, arguments_[argumentIndex].value);
+        return withValue(arguments_[0], reducedValue);
+      }
       if (functionName === 'clamp' && arguments_.length === 3)
         return withValue(
           arguments_[0],
@@ -202,8 +204,11 @@ function evaluateConstantArithmetic(expression) {
         if (arguments_[0].units.size !== 0) throw new Error('expected a number');
         return scalar(Math.sqrt(arguments_[0].value));
       }
-      if (functionName === 'hypot' && arguments_.length > 0)
-        return withValue(arguments_[0], Math.hypot(...arguments_.map(({ value }) => value)));
+      if (functionName === 'hypot' && arguments_.length > 0) {
+        let hypotenuse = 0;
+        for (const argument of arguments_) hypotenuse = Math.hypot(hypotenuse, argument.value);
+        return withValue(arguments_[0], hypotenuse);
+      }
       if (functionName === 'log' && arguments_.length >= 1 && arguments_.length <= 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
         return scalar(
@@ -274,7 +279,7 @@ function evaluateConstantArithmetic(expression) {
   try {
     const result = parseExpression();
     skipSpace();
-    return index === expression.length && result.units.size === 0 && Number.isFinite(result.value)
+    return index === expression.length && result.units.size === 0 && !Number.isNaN(result.value)
       ? result.value
       : null;
   } catch {
@@ -385,6 +390,7 @@ export function protectCssSyntaxEscapes(value) {
       if (codePoint === 0x2c) output += '\uE000';
       else if (codePoint === 0x28) output += '\uE001';
       else if (codePoint === 0x29) output += '\uE002';
+      else if ([0x09, 0x0a, 0x0c, 0x0d, 0x20].includes(codePoint)) output += '\uE003';
       else output += value.slice(index, escapeEnd);
       index = escapeEnd - 1;
       continue;
@@ -393,6 +399,7 @@ export function protectCssSyntaxEscapes(value) {
     if (nextCharacter === ',') output += '\uE000';
     else if (nextCharacter === '(') output += '\uE001';
     else if (nextCharacter === ')') output += '\uE002';
+    else if (nextCharacter === ' ' || nextCharacter === '\t') output += '\uE003';
     else output += value.slice(index, index + 2);
     index += 1;
   }
@@ -419,4 +426,8 @@ export function isStaticallyMagicNumber(value) {
       !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
     resolved === 9999
   );
+}
+
+export function isStaticallyZero(value) {
+  return resolveStaticNumber(value) === 0;
 }
