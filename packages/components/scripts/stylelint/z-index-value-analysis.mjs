@@ -426,21 +426,30 @@ export function isCssIdentifierCharacter(character) {
   return character !== undefined && /[\w\u0080-\uFFFF-]/.test(character);
 }
 
-export function isStaticallyNegative(value) {
+export function classifyStaticLayer(value) {
   const resolved = resolveStaticNumber(value);
+  if (resolved === staticAnalysisTooComplex) return 'too-complex';
+  if (resolved === null) return 'unresolved';
+  if (resolved < 0) return 'negative';
+  if (resolved === 9999) return 'magic';
+  return 'safe';
+}
+
+export function isStaticallyNegative(value) {
+  const classification = classifyStaticLayer(value);
   return (
-    (resolved === staticAnalysisTooComplex &&
+    (classification === 'too-complex' &&
       !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
-    (resolved !== null && resolved !== staticAnalysisTooComplex && resolved < 0)
+    classification === 'negative'
   );
 }
 
 export function isStaticallyMagicNumber(value) {
-  const resolved = resolveStaticNumber(value);
+  const classification = classifyStaticLayer(value);
   return (
-    (resolved === staticAnalysisTooComplex &&
+    (classification === 'too-complex' &&
       !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
-    resolved === 9999
+    classification === 'magic'
   );
 }
 

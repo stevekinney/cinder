@@ -1,9 +1,8 @@
 import {
+  classifyStaticLayer,
   decodeCssEscapes,
   isCssIdentifierCharacter,
   isCssWhitespace,
-  isStaticallyMagicNumber,
-  isStaticallyNegative,
   isStaticallyZero,
   protectCssSyntaxEscapes,
 } from './z-index-value-analysis.mjs';
@@ -126,6 +125,13 @@ function childIsEliminatedByZeroProduct(value, range, child) {
   );
 }
 
+function classifyResolvedFallback(resolvedFallback) {
+  if (resolvedFallback === fallbackResolutionTooComplex) return 'too-complex';
+  return typeof resolvedFallback === 'string'
+    ? classifyStaticLayer(resolvedFallback)
+    : 'unresolved';
+}
+
 function unprovenCandidateForFrame(frame, value, range, candidate) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
@@ -134,12 +140,8 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
     (child) =>
       child.unprovenBannedCandidate && !childIsEliminatedByZeroProduct(value, range, child),
   );
-  if (frame.resolvedFallback === fallbackResolutionTooComplex) return candidate;
-  if (
-    typeof frame.resolvedFallback === 'string' &&
-    (isStaticallyNegative(frame.resolvedFallback) ||
-      isStaticallyMagicNumber(frame.resolvedFallback))
-  )
+  if (frame.resolvedClassification === 'too-complex') return candidate;
+  if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic')
     return uneliminatedChild?.unprovenBannedCandidate ?? candidate;
   if (!uneliminatedChild) return undefined;
 
@@ -149,7 +151,7 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   // is only the child itself provides no such context.
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
-  return typeof frame.resolvedFallback === 'string' && hasSingleChildWithEnclosingContext
+  return frame.resolvedClassification === 'safe' && hasSingleChildWithEnclosingContext
     ? undefined
     : uneliminatedChild.unprovenBannedCandidate;
 }
@@ -178,6 +180,7 @@ function fallbackCandidates(value) {
         commaIndex: -1,
         children: [],
         resolvedFallback: null,
+        resolvedClassification: 'unresolved',
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
         nearestFunction.children.push(frame);
@@ -208,10 +211,18 @@ function fallbackCandidates(value) {
     const fallbackRange = trimCssWhitespaceRange(value, frame.commaIndex + 1, index);
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange, resolutionBudget);
+    const [onlyChild] = frame.children;
+    frame.resolvedClassification =
+      frame.children.length === 1 &&
+      onlyChild.start === fallbackRange.start &&
+      onlyChild.end === fallbackRange.end
+        ? onlyChild.resolvedClassification
+        : classifyResolvedFallback(frame.resolvedFallback);
     const candidate = {
       fallbackIndex: fallbackRange.start,
       rawFallback,
       resolvedFallback: frame.resolvedFallback,
+      resolvedClassification: frame.resolvedClassification,
     };
     frame.unprovenBannedCandidate = unprovenCandidateForFrame(
       frame,
@@ -229,10 +240,18 @@ function fallbackCandidates(value) {
       resolutionBudget,
     );
     rootFrame.resolvedFallback = resolvedValue;
+    const [onlyRootChild] = rootFrame.children;
+    rootFrame.resolvedClassification =
+      rootFrame.children.length === 1 &&
+      onlyRootChild.start === 0 &&
+      onlyRootChild.end === value.length
+        ? onlyRootChild.resolvedClassification
+        : classifyResolvedFallback(resolvedValue);
     const rootCandidate = {
       fallbackIndex: 0,
       rawFallback: value,
       resolvedFallback: resolvedValue,
+      resolvedClassification: rootFrame.resolvedClassification,
     };
     const unprovenRootCandidate = unprovenCandidateForFrame(
       rootFrame,
@@ -250,12 +269,14 @@ export function bannedFallback(value) {
   const protectedValue = protectCssSyntaxEscapes(value);
   const decodedValue = decodeCssEscapes(protectedValue);
   const positionsAreStable = protectedValue === value && decodedValue === value;
-  for (const { fallbackIndex, rawFallback, resolvedFallback } of fallbackCandidates(decodedValue)) {
-    const analysisWasTooComplex = resolvedFallback === fallbackResolutionTooComplex;
+  for (const { fallbackIndex, rawFallback, resolvedClassification } of fallbackCandidates(
+    decodedValue,
+  )) {
+    const analysisWasTooComplex = resolvedClassification === 'too-complex';
     if (
       analysisWasTooComplex ||
-      (typeof resolvedFallback === 'string' &&
-        (isStaticallyNegative(resolvedFallback) || isStaticallyMagicNumber(resolvedFallback)))
+      resolvedClassification === 'negative' ||
+      resolvedClassification === 'magic'
     )
       return {
         index: positionsAreStable ? fallbackIndex : undefined,

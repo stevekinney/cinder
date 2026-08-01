@@ -434,6 +434,23 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
+  test('reuses static classification across sole-child fallback chains', async () => {
+    let nestedFallback = `calc(${'-'.repeat(50_000)}9999)`;
+    for (let depth = 0; depth < 1_000; depth += 1)
+      nestedFallback = `var(--item-layer-${depth}, ${nestedFallback})`;
+
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: repeated wrappers must reuse the same classification. */
+        z-index: ${nestedFallback};
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('scans deeply nested calc chains without recursion or overflow', async () => {
     const depth = 25_000;
     for (const [leaf, warningCount] of [
@@ -497,6 +514,22 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     const [warning] = warnings(result);
+    expect(warning).toBeDefined();
+    expect(warning?.text).toContain('too complex to verify');
+    expect(warning?.text).not.toContain('must not contain a banned z-index');
+  });
+
+  test('reports static-depth exhaustion as too complex instead of proven banned', async () => {
+    const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
+    const [warning] = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: excessive static depth must fail closed accurately. */
+          z-index: var(--item-layer, ${deepStaticMath});
+        }
+      `),
+    );
+
     expect(warning).toBeDefined();
     expect(warning?.text).toContain('too complex to verify');
     expect(warning?.text).not.toContain('must not contain a banned z-index');
