@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
+
 @layer cinder.components {
   /* ========================================
  * NUMBER INPUT
@@ -6,6 +8,10 @@
 
   .cinder-input-group:has(> .cinder-number-input__input) > .cinder-number-input__input {
     padding-inline-end: var(--cinder-space-2);
+  }
+
+  .cinder-input-group:has(> .cinder-number-input__input) > .cinder-input-group__trailing {
+    max-inline-size: none;
   }
 
   .cinder-input-group:has(> .cinder-number-input__input[aria-invalid='true'])
