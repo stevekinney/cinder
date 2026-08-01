@@ -34,6 +34,13 @@ describe('SearchField rendering', () => {
     expect(input.getAttribute('type')).toBe('search');
   });
 
+  test('composes the shared Input control and grouped adornments', () => {
+    const { container } = render(SearchField, { props: { id: 'search', value: 'cinder' } });
+    expect(container.querySelector('.cinder-input-field')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group')).not.toBeNull();
+    expect(container.querySelector('#search')?.classList.contains('cinder-input')).toBe(true);
+  });
+
   test('forwards accessible input attributes while preserving the search role', () => {
     const { getByRole } = render(SearchField, {
       props: {
@@ -83,6 +90,15 @@ describe('SearchField rendering', () => {
     });
     const root = container.querySelector('.cinder-search-field');
     expect(root?.classList.contains('my-search')).toBe(true);
+  });
+
+  test('forwards native style props to the shared input control', () => {
+    const { container } = render(SearchField, {
+      props: { id: 'search', style: 'letter-spacing: 0.05em;' },
+    });
+    expect(container.querySelector('#search')?.getAttribute('style')).toBe(
+      'letter-spacing: 0.05em;',
+    );
   });
 });
 
