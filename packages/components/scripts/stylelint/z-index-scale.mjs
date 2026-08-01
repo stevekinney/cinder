@@ -45,6 +45,7 @@ const declaredLayerTokens = new Set([
   '--cinder-z-tooltip',
 ]);
 const allowedLocalValues = new Set(['auto', '0', '1']);
+const maximumDiagnosticExpressionLength = 240;
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
   fallback:
@@ -141,6 +142,10 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
           declarationValueIndex === -1
             ? -1
             : declarationValueIndex + offendingFallback.index;
+        const diagnosticExpression =
+          offendingFallback.value.length <= maximumDiagnosticExpressionLength
+            ? offendingFallback.value
+            : `${offendingFallback.value.slice(0, maximumDiagnosticExpressionLength - 1)}…`;
         stylelint.utils.report({
           ruleName,
           result,
@@ -148,7 +153,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
           ...(fallbackIndex >= 0
             ? { index: fallbackIndex, endIndex: fallbackIndex + offendingFallback.value.length }
             : {}),
-          message: `${messages.bannedFallback} Offending fallback: \`${offendingFallback.value}\`.`,
+          message: `${messages.bannedFallback} Offending expression: \`${diagnosticExpression}\`.`,
         });
         return;
       }

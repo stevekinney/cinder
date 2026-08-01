@@ -30,11 +30,15 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
 
 describe('cinder/z-index-scale', () => {
   test('keeps the fallback scanner compatible with the ES2022 runtime target', async () => {
-    expect(await Bun.file(fallbackAnalysisPath).text()).not.toContain('.toReversed(');
+    expect(await Bun.file(fallbackAnalysisPath).text()).not.toMatch(
+      /\.toReversed\s*(?:\?\.\s*)?\(/,
+    );
   });
 
   test('reduces wide CSS math functions without spreading call arguments', async () => {
-    expect(await Bun.file(valueAnalysisPath).text()).not.toMatch(/Math\.(?:hypot|max|min)\(\.\.\./);
+    expect(await Bun.file(valueAnalysisPath).text()).not.toMatch(
+      /Math\.(?:hypot|max|min)\s*(?:\?\.\s*)?\(\s*\.\.\./,
+    );
   });
 
   test.each([
@@ -418,7 +422,11 @@ describe('cinder/z-index-scale', () => {
           z-index: var(--item-layer, ${value});
         }
       `);
-      expect(warnings(result)).toHaveLength(1);
+      const [warning] = warnings(result);
+      expect(warning).toBeDefined();
+      expect(warning?.text.length).toBeLessThan(1_024);
+      expect(warning?.text).toContain('Offending expression:');
+      expect(warning?.text).toContain('…');
     }
   });
 
