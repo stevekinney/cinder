@@ -96,10 +96,16 @@ export class CommandListState {
       options.onDismiss(true);
     });
     const handlePointerDown = (event: MouseEvent): void => {
-      if (options.isOpen() && !options.isInside(event.target as Node)) options.onDismiss(false);
+      const target = event.target;
+      if (options.isOpen() && target instanceof Node && !options.isInside(target)) {
+        options.onDismiss(false);
+      }
     };
     const handleFocusIn = (event: FocusEvent): void => {
-      if (options.isOpen() && !options.isInside(event.target as Node)) options.onDismiss(false);
+      const target = event.target;
+      if (options.isOpen() && target instanceof Node && !options.isInside(target)) {
+        options.onDismiss(false);
+      }
     };
     document.addEventListener('mousedown', handlePointerDown, true);
     document.addEventListener('focusin', handleFocusIn, true);

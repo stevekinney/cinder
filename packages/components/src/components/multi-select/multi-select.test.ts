@@ -45,7 +45,15 @@ describe('MultiSelect', () => {
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-multiselectable')).toBe('true');
     expect(container.querySelectorAll('[role="option"]').length).toBe(4);
-    expect(container.querySelectorAll('[role="option"] input[type="checkbox"]')).toHaveLength(4);
+    expect(
+      container.querySelectorAll(
+        '[role="option"] :is(button, input, select, textarea, a[href], [contenteditable="true"])',
+      ),
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll('[role="option"] .cinder-checkbox-field__control'),
+    ).toHaveLength(4);
+    expect(container.querySelectorAll('[role="option"] .cinder-checkbox')).toHaveLength(4);
     expect(container.querySelector('.cinder-multi-select__checkbox')).toBeNull();
   });
 
@@ -61,6 +69,11 @@ describe('MultiSelect', () => {
     expect(trigger?.textContent).toContain('1 selected');
     expect(container.querySelector('.cinder-multi-select__count')?.textContent?.trim()).toBe('1');
     expect(apple.getAttribute('aria-selected')).toBe('true');
+    expect(
+      apple
+        .querySelector('.cinder-multi-select__checkbox-box')
+        ?.getAttribute('data-cinder-checked'),
+    ).toBe('true');
   });
 
   test('clear button removes all selected items', async () => {
@@ -537,6 +550,11 @@ describe('MultiSelect', () => {
     expect(filter.readOnly).toBe(true);
     expect(listbox.getAttribute('aria-readonly')).toBe('true');
     expect(container.querySelector('#fruits-option-0')?.getAttribute('aria-disabled')).toBeNull();
+    expect(
+      container
+        .querySelector('#fruits-option-0 .cinder-multi-select__checkbox-box')
+        ?.getAttribute('data-cinder-disabled'),
+    ).toBe('true');
   });
 
   test('filterable Home and End keep native input editing behavior', async () => {

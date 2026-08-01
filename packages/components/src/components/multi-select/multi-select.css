@@ -166,6 +166,41 @@
     cursor: not-allowed;
   }
 
+  .cinder-multi-select__checkbox-indicator {
+    pointer-events: none;
+  }
+
+  .cinder-multi-select__checkbox-box {
+    cursor: inherit;
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-checked] {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-checked] + .cinder-checkbox-field__indicator {
+    opacity: 1;
+    -webkit-mask-image: var(--_cinder-checkbox-check-mask);
+    mask-image: var(--_cinder-checkbox-check-mask);
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-disabled] {
+    cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-disabled][data-cinder-checked] {
+    background-color: var(--cinder-fill-disabled);
+    border-color: var(--cinder-fill-disabled);
+  }
+
+  .cinder-multi-select__checkbox-box[data-cinder-disabled][data-cinder-checked]
+    + .cinder-checkbox-field__indicator {
+    color: var(--cinder-text-disabled);
+  }
+
   .cinder-multi-select__option-text {
     min-width: 0;
     display: flex;

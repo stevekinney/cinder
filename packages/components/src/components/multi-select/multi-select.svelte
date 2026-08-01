@@ -25,8 +25,6 @@
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { tick, untrack } from 'svelte';
 
-  import Checkbox from '../checkbox/checkbox.svelte';
-  import FormFieldContextBoundary from '../_internal/form-field-context-boundary.svelte';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
@@ -459,7 +457,6 @@
               onmousedown={(event) => {
                 event.preventDefault();
                 if (item.disabled) return;
-                if ((event.target as Element).closest('input')) return;
                 commandList.setActiveById(`${id}-option-${index}`);
                 toggleItem(item);
               }}
@@ -468,20 +465,15 @@
                 commandList.setActiveById(`${id}-option-${index}`);
               }}
             >
-              <FormFieldContextBoundary>
-                {#snippet children()}
-                  <Checkbox
-                    id={`${id}-checkbox-${index}`}
-                    checked={selectedSet.has(item.id)}
-                    disabled={field.disabled || readonly || !!item.disabled}
-                    aria-label={item.label}
-                    onValueChangeRequest={(next) => {
-                      if (next !== selectedSet.has(item.id)) toggleItem(item);
-                      return next;
-                    }}
-                  />
-                {/snippet}
-              </FormFieldContextBoundary>
+              <span class="cinder-checkbox-field__control cinder-multi-select__checkbox-indicator">
+                <span
+                  class="cinder-checkbox cinder-multi-select__checkbox-box"
+                  data-cinder-checked={selectedSet.has(item.id) || undefined}
+                  data-cinder-disabled={field.disabled || readonly || item.disabled || undefined}
+                  aria-hidden="true"
+                ></span>
+                <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
+              </span>
               <span class="cinder-multi-select__option-text">
                 <span class="cinder-multi-select__option-label">{item.label}</span>
                 {#if item.description}
