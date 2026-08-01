@@ -1,4 +1,4 @@
-import type { InputProps } from '../input/input.types.ts';
+import type { InputProps } from '@lostgradient/cinder/input';
 
 export type AutocompleteSuggestion = {
   /** Text committed into the input when this suggestion is completed. */

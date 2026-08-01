@@ -6,6 +6,12 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
+// Source-package tests do not resolve the package's self-reference through Bun's
+// export map. Keep the component on its public subpath while mapping that entry
+// to the source implementation for this focused test process.
+const inputModule = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => inputModule);
+
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Autocomplete } = await import('./autocomplete.svelte');
 const { default: FormFieldAutocompleteFixture } =

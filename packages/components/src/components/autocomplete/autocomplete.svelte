@@ -20,14 +20,13 @@
 </script>
 
 <script lang="ts">
+  import Input, { type InputProps } from '@lostgradient/cinder/input';
   import type { AutocompleteProps, AutocompleteSuggestion } from './autocomplete.types.ts';
-  import type { InputProps } from '../input/input.types.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import Input from '../input/input.svelte';
   import Popover from '../popover/popover.svelte';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
