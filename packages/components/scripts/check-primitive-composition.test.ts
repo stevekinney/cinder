@@ -375,6 +375,14 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('associates tag-only selectors with id and attribute selectors across rules', () => {
+    for (const source of [
+      'section { display: grid; } #layout { grid-template-columns: 1fr; }',
+      'section { display: grid; } [data-layout] { grid-template-columns: 1fr; }',
+    ])
+      expect(cssPrimitiveCounts(source).grid).toBe(1);
+  });
+
   test('recognizes row, area, auto-column, and grid shorthand layouts', () => {
     for (const property of [
       'grid-template-rows',
@@ -1384,6 +1392,38 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         "<script>let tag = 'input'; for (const item of items) tag = 'div';</script><svelte:element this={tag} />",
         'loop-control-write/loop-control-write.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('preserves the skipped path through logical control writes', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; ready && (tag = 'div');</script><svelte:element this={tag} />",
+        'logical-control-write/logical-control-write.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('applies statically guaranteed logical control writes', () => {
+    for (const expression of [
+      "true && (tag = 'div')",
+      "false || (tag = 'div')",
+      "null ?? (tag = 'div')",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'input'; ${expression};</script><svelte:element this={tag} />`,
+          'guaranteed-logical-control-write/guaranteed-logical-control-write.svelte',
+        ),
+      ).toEqual([]);
+  });
+
+  test('tracks mutable control writes in default parameters', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show(unused = (tag = 'input')) {}</script><button onclick={() => show()}>Show</button><svelte:element this={tag} />",
+        'default-parameter-control/default-parameter-control.svelte',
       ),
     ).toHaveLength(1);
   });

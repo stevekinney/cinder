@@ -280,8 +280,10 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
   const shareAnchor =
     (left.id !== undefined && left.id === right.id) ||
     (left.tag !== undefined && left.tag === right.tag) ||
-    (left.tag !== undefined && right.classes.size > 0) ||
-    (right.tag !== undefined && left.classes.size > 0) ||
+    (left.tag !== undefined &&
+      (right.id !== undefined || right.classes.size > 0 || right.attributes.size > 0)) ||
+    (right.tag !== undefined &&
+      (left.id !== undefined || left.classes.size > 0 || left.attributes.size > 0)) ||
     [...left.classes].some((className) => right.classes.has(className)) ||
     [...left.attributes.keys()].some((attribute) => right.attributes.has(attribute)) ||
     hasCompoundNegatedTagAnchor(left, right) ||

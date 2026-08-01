@@ -295,6 +295,28 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       restoreMutableValues(branches.flatMap((branch) => [...branch]));
       return;
     }
+    if (type === 'LogicalExpression') {
+      const left = current['left'];
+      if (isRecord(left)) walkTopLevel(left, currentShadowed);
+      const base = snapshotMutableValues();
+      const operator = current['operator'];
+      const leftIsLiteral = isRecord(left) && left['type'] === 'Literal';
+      const leftValue = leftIsLiteral ? left['value'] : undefined;
+      const skipsRight =
+        leftIsLiteral &&
+        ((operator === '&&' && leftValue === false) ||
+          (operator === '||' && leftValue === true) ||
+          (operator === '??' && leftValue !== null));
+      if (skipsRight) return;
+      if (isRecord(current['right'])) walkTopLevel(current['right'], currentShadowed);
+      const guaranteesRight =
+        leftIsLiteral &&
+        ((operator === '&&' && leftValue === true) ||
+          (operator === '||' && leftValue === false) ||
+          (operator === '??' && leftValue === null));
+      if (!guaranteesRight) restoreMutableValues([...base, ...mutableValues]);
+      return;
+    }
     if (type === 'SwitchStatement' && Array.isArray(current['cases'])) {
       if (isRecord(current['discriminant'])) walkTopLevel(current['discriminant'], currentShadowed);
       const base = snapshotMutableValues();
@@ -387,6 +409,9 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (Array.isArray(current['arguments']))
         for (const argument of current['arguments']) walkTopLevel(argument, currentShadowed);
       const callee = current['callee'];
+      if (Array.isArray(callee['params']))
+        for (const parameter of callee['params'])
+          walkTopLevel(parameter, shadowsBindingInsideFunction(callee, currentShadowed));
       if (isRecord(callee['body']))
         walkTopLevel(callee['body'], shadowsBindingInsideFunction(callee, currentShadowed));
       return;
@@ -416,6 +441,8 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       type === 'ArrowFunctionExpression'
     ) {
       const base = snapshotMutableValues();
+      if (Array.isArray(current['params']))
+        for (const parameter of current['params']) walkTopLevel(parameter, currentShadowed);
       if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
       const terminalValues = snapshotMutableValues();
       recordControls(terminalValues);
