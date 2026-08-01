@@ -1,0 +1,45 @@
+@layer cinder.components {
+  /* Shared geometry and transient row state for option-like items. */
+  .cinder-_row-item,
+  .cinder-_option-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+    min-inline-size: 0;
+    border-radius: var(--cinder-radius-sm);
+  }
+
+  .cinder-_row-item[data-cinder-active],
+  .cinder-_row-item[aria-selected='true'],
+  .cinder-_option-row[data-cinder-active],
+  .cinder-_option-row[aria-selected='true'] {
+    background: var(--cinder-surface-raised-hover);
+  }
+
+  .cinder-_row-item[data-cinder-active],
+  .cinder-_option-row[data-cinder-active] {
+    box-shadow: inset 0 0 0 1px var(--cinder-ring-color);
+  }
+
+  .cinder-_row-item[aria-disabled='true'],
+  .cinder-_row-item[data-cinder-disabled],
+  .cinder-_option-row[aria-disabled='true'],
+  .cinder-_option-row[data-cinder-disabled] {
+    color: var(--cinder-text-disabled);
+    cursor: not-allowed;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-_row-item[data-cinder-active],
+    .cinder-_option-row[data-cinder-active] {
+      box-shadow: none;
+      outline: 1px solid Highlight;
+      outline-offset: -1px;
+    }
+
+    .cinder-_row-item[aria-selected='true']:not([data-cinder-active]),
+    .cinder-_option-row[aria-selected='true']:not([data-cinder-active]) {
+      outline: none;
+    }
+  }
+}

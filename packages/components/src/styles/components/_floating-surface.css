@@ -24,19 +24,6 @@
     pointer-events: none;
   }
 
-  .cinder-_option-row {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    border-radius: var(--cinder-radius-sm);
-    color: var(--cinder-text);
-  }
-
-  .cinder-_option-row[data-cinder-active],
-  .cinder-_option-row[aria-selected='true'] {
-    background: var(--cinder-surface-raised-hover);
-  }
-
   /*
    * The keyboard cursor (`data-cinder-active`) gets a geometric ring on top of
    * the background tint. The `--cinder-surface-raised-hover` fill is intentionally a
@@ -50,16 +37,6 @@
    * only: `aria-selected` is the committed choice and must stay visually
    * distinct from the transient keyboard cursor.
    */
-  .cinder-_option-row[data-cinder-active] {
-    box-shadow: inset 0 0 0 1px var(--cinder-ring-color);
-  }
-
-  .cinder-_option-row[aria-disabled='true'],
-  .cinder-_option-row[data-cinder-disabled] {
-    color: var(--cinder-text-disabled);
-    cursor: not-allowed;
-  }
-
   @media (forced-colors: active) {
     .cinder-_floating-surface {
       border-color: CanvasText;
@@ -75,14 +52,5 @@
      * specificity means a bare `[aria-selected='true']` reset would win on
      * source order and erase the only forced-colors position indicator).
      */
-    .cinder-_option-row[data-cinder-active] {
-      box-shadow: none;
-      outline: 1px solid Highlight;
-      outline-offset: -1px;
-    }
-
-    .cinder-_option-row[aria-selected='true']:not([data-cinder-active]) {
-      outline: none;
-    }
   }
 }
