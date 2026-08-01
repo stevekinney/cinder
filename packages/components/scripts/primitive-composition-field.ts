@@ -877,6 +877,7 @@ function qualifyingFieldLabelBranches(
   source: string,
   bindings: ReadonlyMap<string, readonly string[]>,
   booleanBindings: ReadonlyMap<string, boolean> = new Map(),
+  templateShadowed: ReadonlySet<string> = new Set(),
 ): FieldEvidence[] {
   if (!isRecord(node)) return [emptyFieldEvidence()];
   if (node['type'] === 'IfBlock') {
@@ -885,7 +886,8 @@ function qualifyingFieldLabelBranches(
       isRecord(test) &&
       test['type'] === 'Identifier' &&
       typeof test['name'] === 'string' &&
-      booleanBindings.has(test['name'])
+      booleanBindings.has(test['name']) &&
+      !templateShadowed.has(test['name'])
         ? booleanBindings.get(test['name'])
         : staticTruthiness(test, bindings);
     const branches =
@@ -898,8 +900,47 @@ function qualifyingFieldLabelBranches(
     return reachableBranches.length === 0
       ? [emptyFieldEvidence()]
       : reachableBranches.flatMap((branch) =>
-          qualifyingFieldLabelBranches(branch, source, bindings, booleanBindings),
+          qualifyingFieldLabelBranches(branch, source, bindings, booleanBindings, templateShadowed),
         );
+  }
+  if (node['type'] === 'EachBlock' || node['type'] === 'SnippetBlock') {
+    const names = new Set(templateShadowed);
+    if (isRecord(node['context'])) collectPatternNames(node['context'], names);
+    if (isRecord(node['index'])) collectPatternNames(node['index'], names);
+    if (Array.isArray(node['parameters']))
+      for (const parameter of node['parameters']) collectPatternNames(parameter, names);
+    const body = node['body'] ?? node['fragment'];
+    return isRecord(body)
+      ? qualifyingFieldLabelBranches(body, source, bindings, booleanBindings, names)
+      : [emptyFieldEvidence()];
+  }
+  if (node['type'] === 'AwaitBlock') {
+    const evidence: FieldEvidence[] = [];
+    if (isRecord(node['pending']))
+      evidence.push(
+        ...qualifyingFieldLabelBranches(
+          node['pending'],
+          source,
+          bindings,
+          booleanBindings,
+          templateShadowed,
+        ),
+      );
+    if (isRecord(node['then'])) {
+      const names = new Set(templateShadowed);
+      if (isRecord(node['value'])) collectPatternNames(node['value'], names);
+      evidence.push(
+        ...qualifyingFieldLabelBranches(node['then'], source, bindings, booleanBindings, names),
+      );
+    }
+    if (isRecord(node['catch'])) {
+      const names = new Set(templateShadowed);
+      if (isRecord(node['error'])) collectPatternNames(node['error'], names);
+      evidence.push(
+        ...qualifyingFieldLabelBranches(node['catch'], source, bindings, booleanBindings, names),
+      );
+    }
+    return evidence.length > 0 ? evidence : [emptyFieldEvidence()];
   }
   // A canonical `<FormField>`'s own props (label/description/error) aren't
   // hand-rolled evidence — but its rendered children (a child snippet can
@@ -912,7 +953,7 @@ function qualifyingFieldLabelBranches(
         const nested = parseSvelteFragment(html);
         return nested === undefined
           ? []
-          : qualifyingFieldLabelBranches(nested, html, bindings, booleanBindings);
+          : qualifyingFieldLabelBranches(nested, html, bindings, booleanBindings, templateShadowed);
       },
     );
     if (evidences.length > 0) return evidences;
@@ -924,7 +965,13 @@ function qualifyingFieldLabelBranches(
     const children = Array.isArray(value) ? value : [value];
     for (const child of children) {
       if (!isRecord(child)) continue;
-      const branches = qualifyingFieldLabelBranches(child, source, bindings, booleanBindings);
+      const branches = qualifyingFieldLabelBranches(
+        child,
+        source,
+        bindings,
+        booleanBindings,
+        templateShadowed,
+      );
       combinations = combinations.flatMap((combination) =>
         branches.map((branch) => [...combination, branch]),
       );

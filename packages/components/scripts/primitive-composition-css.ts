@@ -68,11 +68,22 @@ type SelectorTarget = {
   impossible?: boolean;
   classes: Set<string>;
   attributes: Map<string, AttributeConstraint>;
+  attributeConstraints: Map<string, AttributeConstraint[]>;
   functionalConstraints: Array<{
     kind: 'not' | 'any';
     alternatives: SelectorTarget[];
   }>;
 };
+
+function attributeConstraintsFor(
+  target: SelectorTarget,
+  name: string,
+): readonly AttributeConstraint[] {
+  return (
+    target.attributeConstraints.get(name) ??
+    (target.attributes.get(name) ? [target.attributes.get(name)!] : [])
+  );
+}
 
 function normalizeAttributeValue(value: string, insensitive: boolean): string {
   return insensitive ? value.toLowerCase() : value;
@@ -118,13 +129,13 @@ function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTar
     (alternative.tag === undefined || peer.tag === alternative.tag) &&
     (alternative.id === undefined || peer.id === alternative.id) &&
     [...alternative.classes].every((className) => peer.classes.has(className)) &&
-    [...alternative.attributes].every(([name, constraint]) => {
-      const peerConstraint = peer.attributes.get(name);
-      return (
-        peerConstraint !== undefined &&
-        attributeConstraintNecessarilyMatches(peerConstraint, constraint)
-      );
-    })
+    [...alternative.attributeConstraints].every(([name, constraints]) =>
+      constraints.every((constraint) =>
+        attributeConstraintsFor(peer, name).some((peerConstraint) =>
+          attributeConstraintNecessarilyMatches(peerConstraint, constraint),
+        ),
+      ),
+    )
   );
 }
 
@@ -136,11 +147,20 @@ function mediaType(query: string): { name: string; negated: boolean } | undefine
 
 function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
   const attributes = new Map(outer.attributes);
+  const attributeConstraints = new Map<string, AttributeConstraint[]>(
+    [...outer.attributeConstraints].map(([name, constraints]) => [name, [...constraints]]),
+  );
   let contradictoryAttributes = false;
-  for (const [name, constraint] of inner.attributes) {
-    const previous = attributes.get(name);
-    if (previous !== undefined && attributeConstraintsContradict(previous, constraint))
-      contradictoryAttributes = true;
+  for (const [name, constraints] of inner.attributeConstraints) {
+    const constraint = constraints.at(-1);
+    if (constraint === undefined) continue;
+    const previousConstraints = attributeConstraints.get(name) ?? [];
+    for (const current of constraints) {
+      if (previousConstraints.some((previous) => attributeConstraintsContradict(previous, current)))
+        contradictoryAttributes = true;
+      previousConstraints.push(current);
+    }
+    attributeConstraints.set(name, previousConstraints);
     attributes.set(name, constraint);
   }
   return {
@@ -155,6 +175,7 @@ function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): Sel
     ...((outer.id ?? inner.id) ? { id: outer.id ?? inner.id } : {}),
     classes: new Set([...outer.classes, ...inner.classes]),
     attributes,
+    attributeConstraints,
     functionalConstraints: [...outer.functionalConstraints, ...inner.functionalConstraints],
   };
 }
@@ -191,6 +212,7 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
   const target: SelectorTarget = {
     classes: new Set(),
     attributes: new Map(),
+    attributeConstraints: new Map(),
     functionalConstraints: [],
   };
   for (const node of nodes) {
@@ -207,9 +229,12 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
         value: node.value,
         insensitive: node.insensitive === true,
       } satisfies AttributeConstraint;
-      const previous = target.attributes.get(name);
-      if (previous !== undefined && attributeConstraintsContradict(previous, constraint))
+      const previousConstraints = target.attributeConstraints.get(name) ?? [];
+      if (
+        previousConstraints.some((previous) => attributeConstraintsContradict(previous, constraint))
+      )
         target.impossible = true;
+      target.attributeConstraints.set(name, [...previousConstraints, constraint]);
       target.attributes.set(name, constraint);
     }
   }
@@ -276,15 +301,16 @@ function alternativeAddsConstraints(target: SelectorTarget, alternative: Selecto
   return (
     (alternative.id !== undefined && alternative.id !== target.id) ||
     [...alternative.classes].some((className) => !target.classes.has(className)) ||
-    [...alternative.attributes].some(([name, constraint]) => {
-      const targetConstraint = target.attributes.get(name);
-      return (
-        targetConstraint === undefined ||
-        targetConstraint.operator !== constraint.operator ||
-        targetConstraint.value !== constraint.value ||
-        targetConstraint.insensitive !== constraint.insensitive
-      );
-    })
+    [...alternative.attributeConstraints].some(([name, constraints]) =>
+      constraints.some((constraint) =>
+        attributeConstraintsFor(target, name).every(
+          (targetConstraint) =>
+            targetConstraint.operator !== constraint.operator ||
+            targetConstraint.value !== constraint.value ||
+            targetConstraint.insensitive !== constraint.insensitive,
+        ),
+      ),
+    )
   );
 }
 
@@ -347,23 +373,11 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
     !leftAncestorIds.some((id) => rightAncestorIds.includes(id))
   )
     return false;
-  const hasConflictingAttribute = [...left.attributes].some(([attribute, leftConstraint]) => {
-    const rightConstraint = right.attributes.get(attribute);
-    if (rightConstraint === undefined) return false;
-    const leftValue = leftConstraint.value;
-    const rightValue = rightConstraint.value;
-    if (leftValue === undefined || rightValue === undefined) return false;
-    const insensitive = leftConstraint.insensitive || rightConstraint.insensitive;
-    const leftNormalized = normalizeAttributeValue(leftValue, insensitive);
-    const rightNormalized = normalizeAttributeValue(rightValue, insensitive);
-    if (leftConstraint.operator === '=' && rightConstraint.operator !== '=')
-      return !attributeOperatorMatches(rightConstraint.operator, leftNormalized, rightNormalized);
-    if (rightConstraint.operator === '=' && leftConstraint.operator !== '=')
-      return !attributeOperatorMatches(leftConstraint.operator, rightNormalized, leftNormalized);
-    return (
-      leftConstraint.operator === '=' &&
-      rightConstraint.operator === '=' &&
-      leftNormalized !== rightNormalized
+  const hasConflictingAttribute = [...left.attributes.keys()].some((attribute) => {
+    return attributeConstraintsFor(left, attribute).some((leftAttributeConstraint) =>
+      attributeConstraintsFor(right, attribute).some((rightAttributeConstraint) =>
+        attributeConstraintsContradict(leftAttributeConstraint, rightAttributeConstraint),
+      ),
     );
   });
   const shareAnchor =
@@ -663,8 +677,10 @@ function targetMatchesSharedFloatingElement(
     (target.tag === undefined || target.tag === sharedTarget.tag) &&
     (target.id === undefined || target.id === sharedTarget.id) &&
     [...target.classes].every((className) => sharedTarget.classes.has(className)) &&
-    [...target.attributes].every(([name, constraint]) =>
-      attributeConstraintMatches(sharedTarget.attributes.get(name), constraint),
+    [...target.attributeConstraints].every(([name, constraints]) =>
+      constraints.every((constraint) =>
+        attributeConstraintMatches(sharedTarget.attributes.get(name), constraint),
+      ),
     ) &&
     target.functionalConstraints.every(({ kind, alternatives }) =>
       kind === 'not'

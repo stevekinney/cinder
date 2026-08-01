@@ -63,7 +63,17 @@ function isDefinitelyUndefinedExpression(value: unknown): boolean {
 }
 
 function isDefinitelyNonUndefinedExpression(value: unknown): boolean {
-  return isRecord(value) && value['type'] === 'Literal';
+  return (
+    isRecord(value) &&
+    [
+      'Literal',
+      'ObjectExpression',
+      'ArrayExpression',
+      'FunctionExpression',
+      'ArrowFunctionExpression',
+      'ClassExpression',
+    ].includes(String(value['type']))
+  );
 }
 
 function walkAst(node: unknown, visit: (record: UnknownRecord) => void): void {
@@ -778,11 +788,14 @@ function possibleMutableControlNames(
       }
       if (isRecord(callee['body'])) {
         const previousSuppression = suppressPublication;
+        returnTargets.push([]);
         suppressPublication = true;
         undefinedShadowFrames.push(shadowsUndefinedInsideFunction(callee));
         walkTopLevel(callee['body'], bodyShadowed);
         undefinedShadowFrames.pop();
         suppressPublication = previousSuppression;
+        const returned = returnTargets.pop() ?? [];
+        restoreMutableValues([...mutableValues, ...returned.flatMap((state) => [...state])]);
       }
       return;
     }
@@ -1087,8 +1100,8 @@ export function visibleControlSignatures(source: string): string[] {
   walkAst(fragment, (node) => {
     if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
       const candidates = new Set<string>();
-      const html = staticStringFromExpression(node['expression'], bindings);
-      if (html !== undefined) candidates.add(html);
+      for (const html of possibleStaticStringsFromExpression(node['expression'], bindings))
+        candidates.add(html);
       possibleMutableControlNames(source, node['expression'], (values) => {
         for (const value of values) candidates.add(value);
       });

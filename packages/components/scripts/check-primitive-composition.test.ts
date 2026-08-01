@@ -2671,6 +2671,31 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('preserves IIFE returns and skips defaults for definitely supplied values', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; (() => { if (custom) { tag = 'input'; return; } tag = 'div'; })();</script><svelte:element this={tag} />",
+        'iife-control-flow/iife-control-flow.svelte',
+      ),
+    ).toHaveLength(1);
+    for (const argument of ['{}', '[]', 'function supplied() {}', 'class Supplied {}'])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'div'; ((value = (tag = 'input')) => {})(${argument});</script><svelte:element this={tag} />`,
+          'iife-default/iife-default.svelte',
+        ),
+      ).toEqual([]);
+  });
+
+  test('inspects static alternatives in raw HTML expressions', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        `{@html ready ? '<input aria-label="Name">' : '<div></div>'}`,
+        'raw-html-alternatives/raw-html-alternatives.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('models field-tag ternaries, try-catch paths, and bare-block shadowing', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -2684,6 +2709,20 @@ describe('primitive composition guard', () => {
     ])
       expect(
         findPrimitiveCompositionViolations(source, 'field-control-flow/field-control-flow.svelte'),
+      ).toHaveLength(1);
+  });
+
+  test('respects template-local shadows when pruning field IfBlocks', () => {
+    for (const source of [
+      '<script>const ready = true;</script>{#each items as ready}{#if ready}<div>Okay</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/if}{/each}',
+      '<script>const ready = true;</script>{#snippet render(ready)}{#if ready}<div>Okay</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/if}{/snippet}',
+      '<script>const ready = true;</script>{#await promise then ready}{#if ready}<div>Okay</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/if}{/await}',
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          source,
+          'template-field-shadow/template-field-shadow.svelte',
+        ),
       ).toHaveLength(1);
   });
 
@@ -2728,6 +2767,33 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         'input:is(select) { display: grid; grid-template-columns: 1fr; }',
         'functional-tag-conflict/functional-tag-conflict.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('retains every repeated attribute constraint when checking contradictions', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-x^='a'][data-x$='b'][data-x='cb'] { display: grid; grid-template-columns: 1fr; }",
+        'repeated-attribute-constraints/repeated-attribute-constraints.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-x^='a'][data-x$='b'][data-x='ab'] { display: grid; grid-template-columns: 1fr; }",
+        'repeated-attribute-constraints/repeated-attribute-constraints.css',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-x='ab'] { display: grid; } .layout:not([data-x^='b'][data-x='ab']) { grid-template-columns: 1fr; }",
+        'repeated-attribute-constraints/repeated-attribute-constraints.css',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-x='ab'] { display: grid; } .layout:not([data-x^='a'][data-x='ab']) { grid-template-columns: 1fr; }",
+        'repeated-attribute-constraints/repeated-attribute-constraints.css',
       ),
     ).toEqual([]);
   });
