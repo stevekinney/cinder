@@ -98,12 +98,17 @@ function attributeConstraintNecessarilyMatches(
   alternative: AttributeConstraint,
 ): boolean {
   if (alternative.operator === undefined) return true;
-  if (
-    peer.operator !== alternative.operator ||
-    peer.value === undefined ||
-    alternative.value === undefined
-  )
-    return false;
+  if (peer.value === undefined || alternative.value === undefined) return false;
+  if (peer.operator === '=') {
+    if (!alternative.insensitive && peer.insensitive) return false;
+    const insensitive = alternative.insensitive || peer.insensitive;
+    const peerValue = normalizeAttributeValue(peer.value, insensitive);
+    const alternativeValue = normalizeAttributeValue(alternative.value, insensitive);
+    return alternative.operator === '='
+      ? peerValue === alternativeValue
+      : attributeOperatorMatches(alternative.operator, peerValue, alternativeValue);
+  }
+  if (peer.operator !== alternative.operator) return false;
   if (alternative.insensitive) return peer.value.toLowerCase() === alternative.value.toLowerCase();
   return !peer.insensitive && peer.value === alternative.value;
 }
@@ -130,9 +135,18 @@ function mediaType(query: string): { name: string; negated: boolean } | undefine
 }
 
 function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
+  const attributes = new Map(outer.attributes);
+  let contradictoryAttributes = false;
+  for (const [name, constraint] of inner.attributes) {
+    const previous = attributes.get(name);
+    if (previous !== undefined && attributeConstraintsContradict(previous, constraint))
+      contradictoryAttributes = true;
+    attributes.set(name, constraint);
+  }
   return {
     ...(outer.impossible ||
     inner.impossible ||
+    contradictoryAttributes ||
     (outer.tag !== undefined && inner.tag !== undefined && outer.tag !== inner.tag) ||
     (outer.id !== undefined && inner.id !== undefined && outer.id !== inner.id)
       ? { impossible: true }
@@ -140,7 +154,7 @@ function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): Sel
     ...((outer.tag ?? inner.tag) ? { tag: outer.tag ?? inner.tag } : {}),
     ...((outer.id ?? inner.id) ? { id: outer.id ?? inner.id } : {}),
     classes: new Set([...outer.classes, ...inner.classes]),
-    attributes: new Map([...outer.attributes, ...inner.attributes]),
+    attributes,
     functionalConstraints: [...outer.functionalConstraints, ...inner.functionalConstraints],
   };
 }
@@ -201,13 +215,18 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
       node.type === 'pseudo' &&
       (node.value === ':not' || node.value === ':is' || node.value === ':where') &&
       Array.isArray(node.nodes)
-    )
-      target.functionalConstraints.push({
-        kind: node.value === ':not' ? 'not' : 'any',
-        alternatives: node.nodes.map((selectorNode) =>
-          mergeSelectorTargets(target, selectorTargetFromNodes(selectorNode.nodes)),
-        ),
-      });
+    ) {
+      const kind = node.value === ':not' ? 'not' : 'any';
+      const alternatives = node.nodes.map((selectorNode) =>
+        mergeSelectorTargets(target, selectorTargetFromNodes(selectorNode.nodes)),
+      );
+      target.functionalConstraints.push({ kind, alternatives });
+      if (
+        kind === 'not' &&
+        alternatives.some((alternative) => targetNecessarilyMatches(target, alternative))
+      )
+        target.impossible = true;
+    }
   }
   return target;
 }

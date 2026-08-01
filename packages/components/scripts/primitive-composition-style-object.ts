@@ -1,6 +1,8 @@
 import { parse as parseSvelte } from 'svelte/compiler';
 
 type UnknownRecord = Record<string, unknown>;
+const unresolvedBinding = Symbol('unresolved-binding');
+const knownUndefinedBinding = Symbol('known-undefined-binding');
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null;
@@ -65,6 +67,8 @@ function staticNullish(
   bindings: ReadonlyMap<string, readonly unknown[]>,
 ): boolean | undefined {
   const expression = unwrapTypeExpression(rawExpression);
+  if (expression === unresolvedBinding) return undefined;
+  if (expression === knownUndefinedBinding) return true;
   if (!isRecord(expression)) return expression === null || expression === undefined;
   if (expression['type'] === 'Literal') return expression['value'] === null;
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
@@ -82,6 +86,8 @@ function staticTruthiness(
   bindings: ReadonlyMap<string, readonly unknown[]>,
 ): boolean | undefined {
   const expression = unwrapTypeExpression(rawExpression);
+  if (expression === unresolvedBinding) return undefined;
+  if (expression === knownUndefinedBinding) return false;
   if (!isRecord(expression)) return expression === undefined ? undefined : Boolean(expression);
   if (expression['type'] === 'Literal') return Boolean(expression['value']);
   if (expression['type'] === 'ObjectExpression' || expression['type'] === 'ArrayExpression')
@@ -368,12 +374,13 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     states: Map<string, unknown[]>[] | undefined;
   }> = [];
   const resolveDeclaration = (name: string, kind: string, initializer: unknown): void => {
-    if (initializer === undefined) {
+    if (initializer === undefined || initializer === null) {
       // `var name;` preserves a prior value, while an uninitialized `let`
       // declaration makes the binding unknown.
       if (kind === 'var' && bindings.has(name)) return;
       const callbackValues = callbackBindings.get(name) ?? [];
       if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+      else if (name === 'undefined') bindings.set(name, [knownUndefinedBinding]);
       else bindings.delete(name);
       return;
     }
@@ -385,6 +392,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     } else {
       const callbackValues = callbackBindings.get(name) ?? [];
       if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+      else if (name === 'undefined') bindings.set(name, [unresolvedBinding]);
       else bindings.delete(name);
     }
   };

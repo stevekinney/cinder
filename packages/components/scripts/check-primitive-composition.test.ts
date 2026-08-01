@@ -680,6 +680,18 @@ describe('primitive composition guard', () => {
         'unreachable-style-assignment/unreachable-style-assignment.svelte',
       ),
     ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let undefined = dynamic; let layout = { display: 'block' }; if (undefined) layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'unreachable-style-assignment/unreachable-style-assignment.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let undefined; let layout = { display: 'block' }; if (undefined) layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'unreachable-style-assignment/unreachable-style-assignment.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('preserves top-level conditional style-object assignment branches', () => {
@@ -2039,6 +2051,24 @@ describe('primitive composition guard', () => {
         'valid-compound-negation/valid-compound-negation.css',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-state='a']:not([data-state='a']) { display: grid; } .layout { grid-template-columns: 1fr; }",
+        'split-compound-negation/split-compound-negation.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-state='abc']:not([data-state^='a']) { display: grid; } .layout { grid-template-columns: 1fr; }",
+        'split-compound-negation/split-compound-negation.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        ".layout[data-state='abc']:not([data-state^='b']) { display: grid; } .layout { grid-template-columns: 1fr; }",
+        'split-compound-negation/split-compound-negation.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('recognizes modern width range media conditions', () => {
@@ -2568,6 +2598,31 @@ describe('primitive composition guard', () => {
         'template-field-branches/template-field-branches.svelte',
       ),
     ).toEqual([]);
+    for (const source of [
+      '{#if false}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+      '<script>const ready = false;</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+      '<script>let ready = true;</script>{#if ready}<p>Help</p><p>Error</p>{:else}<label>Name</label><p>Help</p><p>Error</p>{/if}',
+      '<script>let ready = false; function helper() { let ready = true; ready = false; }</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+      '<script>let ready = false; try {} catch (ready) { ready = true; }</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+      '<script>let ready = false; for (let ready = true; ready; ready = false) {}</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+      '<script>let ready = false; switch (0) { case 0: let ready = true; ready = false; break; }</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          source,
+          'template-field-branches/template-field-branches.svelte',
+        ),
+      ).toEqual([]);
+    for (const source of [
+      '<script>let ready = false; ready = true;</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+      '<script>var ready = false; { var ready; ready = true; }</script>{#if ready}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/if}',
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          source,
+          'template-field-branches/template-field-branches.svelte',
+        ),
+      ).toHaveLength(1);
   });
 
   test('applies switch-wide lexical shadowing to control tags', () => {

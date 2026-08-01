@@ -601,6 +601,134 @@ function staticStringBindings(source: string): Map<string, string[]> {
   return bindings;
 }
 
+function staticBooleanBindings(source: string): Map<string, boolean> {
+  const root: unknown = parseSvelte(source, { modern: true });
+  const result = new Map<string, boolean>();
+  const mutableNames = new Set<string>();
+  const assignedNames = new Set<string>();
+  const body =
+    isRecord(root) && isRecord(root['instance']) && isRecord(root['instance']['content'])
+      ? root['instance']['content']['body']
+      : undefined;
+  if (!Array.isArray(body)) return result;
+  for (const statement of body) {
+    if (!isRecord(statement) || statement['type'] !== 'VariableDeclaration') continue;
+    if (!Array.isArray(statement['declarations'])) continue;
+    for (const declaration of statement['declarations']) {
+      const id = isRecord(declaration) ? declaration['id'] : undefined;
+      const init = isRecord(declaration) ? declaration['init'] : undefined;
+      if (
+        isRecord(id) &&
+        id['type'] === 'Identifier' &&
+        typeof id['name'] === 'string' &&
+        isRecord(init) &&
+        init['type'] === 'Literal' &&
+        typeof init['value'] === 'boolean'
+      ) {
+        result.set(id['name'], init['value']);
+        if (statement['kind'] !== 'const') mutableNames.add(id['name']);
+      }
+    }
+  }
+  const collectAssignments = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
+    if (!isRecord(node)) return;
+    if (
+      node['type'] === 'FunctionDeclaration' ||
+      node['type'] === 'FunctionExpression' ||
+      node['type'] === 'ArrowFunctionExpression'
+    ) {
+      const localNames = new Set<string>(shadowed);
+      if (Array.isArray(node['params']))
+        for (const parameter of node['params']) collectPatternNames(parameter, localNames);
+      if (isRecord(node['body'])) collectFunctionScopedNames(node['body'], localNames);
+      if (isRecord(node['body'])) collectAssignments(node['body'], localNames);
+      return;
+    }
+    let currentShadowed = shadowed;
+    if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      const localNames = new Set<string>(shadowed);
+      for (const statement of node['body'])
+        if (
+          isRecord(statement) &&
+          statement['type'] === 'VariableDeclaration' &&
+          (statement['kind'] === 'let' || statement['kind'] === 'const')
+        )
+          if (Array.isArray(statement['declarations']))
+            for (const declaration of statement['declarations'])
+              if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      currentShadowed = localNames;
+    }
+    if (node['type'] === 'CatchClause') {
+      const localNames = new Set<string>(shadowed);
+      if (isRecord(node['param'])) collectPatternNames(node['param'], localNames);
+      currentShadowed = localNames;
+    }
+    if (
+      node['type'] === 'ForStatement' ||
+      node['type'] === 'ForInStatement' ||
+      node['type'] === 'ForOfStatement'
+    ) {
+      const header = node['type'] === 'ForStatement' ? node['init'] : node['left'];
+      if (
+        isRecord(header) &&
+        header['type'] === 'VariableDeclaration' &&
+        header['kind'] !== 'var'
+      ) {
+        const localNames = new Set<string>(shadowed);
+        if (Array.isArray(header['declarations']))
+          for (const declaration of header['declarations'])
+            if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+        currentShadowed = localNames;
+      }
+    }
+    if (node['type'] === 'SwitchStatement' && Array.isArray(node['cases'])) {
+      const localNames = new Set<string>(shadowed);
+      for (const switchCase of node['cases'])
+        if (isRecord(switchCase) && Array.isArray(switchCase['consequent']))
+          for (const statement of switchCase['consequent'])
+            if (
+              isRecord(statement) &&
+              statement['type'] === 'VariableDeclaration' &&
+              (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+              Array.isArray(statement['declarations'])
+            )
+              for (const declaration of statement['declarations'])
+                if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      currentShadowed = localNames;
+    }
+    if (
+      node['type'] === 'AssignmentExpression' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      typeof node['left']['name'] === 'string'
+    )
+      if (!currentShadowed.has(node['left']['name'])) assignedNames.add(node['left']['name']);
+    if (
+      node['type'] === 'UpdateExpression' &&
+      isRecord(node['argument']) &&
+      node['argument']['type'] === 'Identifier' &&
+      typeof node['argument']['name'] === 'string'
+    )
+      if (!currentShadowed.has(node['argument']['name']))
+        assignedNames.add(node['argument']['name']);
+    if (
+      node['type'] === 'BindDirective' &&
+      isRecord(node['expression']) &&
+      node['expression']['type'] === 'Identifier' &&
+      typeof node['expression']['name'] === 'string'
+    )
+      if (!currentShadowed.has(node['expression']['name']))
+        assignedNames.add(node['expression']['name']);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach((item) => collectAssignments(item, currentShadowed));
+      else if (isRecord(value)) collectAssignments(value, currentShadowed);
+    }
+  };
+  collectAssignments(root);
+  for (const name of mutableNames) if (assignedNames.has(name)) result.delete(name);
+  return result;
+}
+
 function isCanonicalFieldComponent(node: UnknownRecord): boolean {
   if (node['type'] !== 'Component' || typeof node['name'] !== 'string') return false;
   return node['name'] === 'FormField' || node['name'].startsWith('FormField.');
@@ -701,13 +829,30 @@ function qualifyingFieldLabelBranches(
   node: unknown,
   source: string,
   bindings: ReadonlyMap<string, readonly string[]>,
+  booleanBindings: ReadonlyMap<string, boolean> = new Map(),
 ): FieldEvidence[] {
   if (!isRecord(node)) return [emptyFieldEvidence()];
   if (node['type'] === 'IfBlock') {
-    const branches = [node['consequent'], node['alternate']].filter(isRecord);
-    return branches.length === 0
+    const test = node['test'];
+    const truthiness =
+      isRecord(test) &&
+      test['type'] === 'Identifier' &&
+      typeof test['name'] === 'string' &&
+      booleanBindings.has(test['name'])
+        ? booleanBindings.get(test['name'])
+        : staticTruthiness(test, bindings);
+    const branches =
+      truthiness === true
+        ? [node['consequent']]
+        : truthiness === false
+          ? [node['alternate']]
+          : [node['consequent'], node['alternate']];
+    const reachableBranches = branches.filter(isRecord);
+    return reachableBranches.length === 0
       ? [emptyFieldEvidence()]
-      : branches.flatMap((branch) => qualifyingFieldLabelBranches(branch, source, bindings));
+      : reachableBranches.flatMap((branch) =>
+          qualifyingFieldLabelBranches(branch, source, bindings, booleanBindings),
+        );
   }
   // A canonical `<FormField>`'s own props (label/description/error) aren't
   // hand-rolled evidence — but its rendered children (a child snippet can
@@ -718,7 +863,9 @@ function qualifyingFieldLabelBranches(
     const evidences = staticStringValuesFromExpression(node['expression'], bindings).flatMap(
       (html) => {
         const nested = parseSvelteFragment(html);
-        return nested === undefined ? [] : qualifyingFieldLabelBranches(nested, html, bindings);
+        return nested === undefined
+          ? []
+          : qualifyingFieldLabelBranches(nested, html, bindings, booleanBindings);
       },
     );
     if (evidences.length > 0) return evidences;
@@ -730,7 +877,7 @@ function qualifyingFieldLabelBranches(
     const children = Array.isArray(value) ? value : [value];
     for (const child of children) {
       if (!isRecord(child)) continue;
-      const branches = qualifyingFieldLabelBranches(child, source, bindings);
+      const branches = qualifyingFieldLabelBranches(child, source, bindings, booleanBindings);
       combinations = combinations.flatMap((combination) =>
         branches.map((branch) => [...combination, branch]),
       );
@@ -745,8 +892,11 @@ export function fieldWrapperCount(source: string): number {
     ? 0
     : Math.max(
         0,
-        ...qualifyingFieldLabelBranches(fragment, source, staticStringBindings(source)).map(
-          (evidence) => evidence.count,
-        ),
+        ...qualifyingFieldLabelBranches(
+          fragment,
+          source,
+          staticStringBindings(source),
+          staticBooleanBindings(source),
+        ).map((evidence) => evidence.count),
       );
 }
