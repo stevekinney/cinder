@@ -21,11 +21,13 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
+  import type { Attachment } from 'svelte/attachments';
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { parseTimeString, serializeTimeParts } from '../../_internal/time-parts.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import Input from '../input/input.svelte';
   import type { TimeFieldProps } from './time-field.types.ts';
 
   let {
@@ -56,6 +58,8 @@
   const inputStep = $derived(includeSeconds ? 1 : 60);
   let inputMirrorValue = $state<string | undefined>(undefined);
   let inputMirrorSourceValue = $state<string | undefined>(undefined);
+  let inputElement: HTMLInputElement | undefined = $state();
+  const inputValue = $derived(inputMirrorValue ?? value ?? '');
   const submittedValue = $derived(canonicalTimeValue(inputMirrorValue ?? value));
   let resetTimezoneBaseline = $state<string | undefined>(undefined);
   let skipTimezoneBaselineUpdate = false;
@@ -182,6 +186,13 @@
     inputMirrorValue = (event.currentTarget as HTMLInputElement).value;
   }
 
+  const inputAttachment: Attachment<HTMLInputElement> = (element) => {
+    inputElement = element;
+    return () => {
+      if (inputElement === element) inputElement = undefined;
+    };
+  };
+
   function handleTimezoneChange(event: Event): void {
     if (resolvedDisabled || readonly) return;
     const target = event.currentTarget as HTMLSelectElement;
@@ -195,8 +206,7 @@
   }
 
   $effect(() => {
-    const input = document.getElementById(inputId);
-    const form = input instanceof HTMLInputElement ? input.form : null;
+    const form = inputElement?.form;
     if (!form) return;
     const resetValue = resetTarget;
     const resetTimezone = resetTimezoneFor(timezones);
@@ -220,12 +230,12 @@
   {/if}
 
   <div class="cinder-time-field__controls">
-    <input
+    <Input
       id={inputId}
       class="cinder-time-field__input"
       type="time"
       step={inputStep}
-      value={inputMirrorValue ?? value ?? ''}
+      value={inputValue}
       disabled={resolvedDisabled}
       {readonly}
       required={resolvedRequired}
@@ -235,6 +245,7 @@
       aria-invalid={invalid}
       oninput={handleInput}
       onchange={handleInputChange}
+      {inputAttachment}
     />
 
     {#if name}

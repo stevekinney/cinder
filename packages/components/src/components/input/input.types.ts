@@ -8,6 +8,7 @@ export type InputType =
   | 'password'
   | 'search'
   | 'tel'
+  | 'time'
   | 'url'
   | 'date'
   | 'number';

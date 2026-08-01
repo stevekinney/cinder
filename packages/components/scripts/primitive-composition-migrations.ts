@@ -21,7 +21,7 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['table-row/table-row.svelte', 3],
   ['tag-input/tag-input.svelte', 1],
   ['textarea/textarea.svelte', 1],
-  ['time-field/time-field.svelte', 2],
+  ['time-field/time-field.svelte', 1],
   ['tree/tree.svelte', 2],
   ['tree-item/tree-item.svelte', 2],
 ]);

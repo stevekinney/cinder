@@ -42,6 +42,45 @@ describe('TimeField', () => {
     expect(getInput(container).step).toBe('60');
   });
 
+  test('composes Input for the editable time control', () => {
+    const { container } = render(TimeField, {
+      props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
+    });
+
+    const input = getInput(container);
+    expect(input.classList.contains('cinder-input')).toBe(true);
+    expect(input.classList.contains('cinder-time-field__input')).toBe(true);
+    expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).not.toBe(
+      null,
+    );
+  });
+
+  test('keeps hidden serialization and timezone selection on native controls', () => {
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        name: 'reminder_time',
+        timezones: ['America/Denver', 'UTC'],
+        timezone: 'UTC',
+      },
+    });
+
+    const controls = Array.from(container.querySelectorAll('input, select'));
+    expect(controls.map((control) => control.tagName.toLowerCase())).toEqual([
+      'input',
+      'input',
+      'select',
+      'input',
+    ]);
+    expect(getInput(container).classList.contains('cinder-input')).toBe(true);
+    expect(container.querySelectorAll('input[type="hidden"]')).toHaveLength(2);
+    expect(container.querySelector('.cinder-time-field__timezone')).toBeInstanceOf(
+      HTMLSelectElement,
+    );
+  });
+
   test('uses the bindable value as the displayed native value', () => {
     const { container } = render(TimeField, {
       props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
@@ -346,9 +385,12 @@ describe('TimeField', () => {
     );
 
     expect(new Set(ids).size).toBe(ids.length);
-    expect(getInput(container).getAttribute('aria-describedby')).toBe(
-      'reminder-control-time-field-description reminder-control-time-field-error reminder-control-description reminder-control-error',
-    );
+    expect(getInput(container).getAttribute('aria-describedby')?.split(/\s+/)).toEqual([
+      'reminder-control-description',
+      'reminder-control-error',
+      'reminder-control-time-field-description',
+      'reminder-control-time-field-error',
+    ]);
   });
 
   test('forwards caller-provided accessible name props to the native time input', () => {
