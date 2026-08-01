@@ -155,6 +155,7 @@ function staticStringBindings(source: string): Map<string, string[]> {
     node: UnknownRecord;
     shadowed: ReadonlySet<string>;
   }> = [];
+  const preservedAbruptStates: Array<Map<string, string[]>> = [];
   let deferFunctions = true;
   if (!isRecord(root)) return bindings;
   const walk = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
@@ -195,10 +196,24 @@ function staticStringBindings(source: string): Map<string, string[]> {
     if (node['type'] === 'IfStatement') {
       if (isRecord(node['test'])) walk(node['test'], currentShadowed);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const knownTruthiness = staticTruthiness(node['test'], bindings);
+      if (knownTruthiness !== undefined) {
+        const branch = knownTruthiness ? node['consequent'] : node['alternate'];
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed);
+        return;
+      }
       const branches = [node['consequent'], node['alternate']].map((branch) => {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
         if (isRecord(branch)) walk(branch, currentShadowed);
+        if (isRecord(branch) && unconditionallyAbruptStatement(branch)) {
+          const preserved = preservedAbruptStates.at(-1);
+          if (preserved)
+            for (const [name, values] of bindings)
+              preserved.set(name, mergeStringValues(preserved.get(name) ?? [], values));
+        }
         return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       });
       bindings.clear();
@@ -266,6 +281,15 @@ function staticStringBindings(source: string): Map<string, string[]> {
       node['type'] === 'ForInStatement' ||
       node['type'] === 'ForOfStatement'
     ) {
+      if (
+        (node['type'] === 'ForInStatement' || node['type'] === 'ForOfStatement') &&
+        isRecord(node['right']) &&
+        node['right']['type'] === 'ArrayExpression' &&
+        Array.isArray(node['right']['elements']) &&
+        node['right']['elements'].length === 0
+      ) {
+        return;
+      }
       const declaration = node['type'] === 'ForStatement' ? node['init'] : node['left'];
       if (
         isRecord(declaration) &&
@@ -345,9 +369,33 @@ function staticStringBindings(source: string): Map<string, string[]> {
           for (const declaration of statement['declarations'])
             if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
       currentShadowed = new Set([...shadowed, ...localNames]);
+      preservedAbruptStates.push(new Map());
       for (const statement of node['body']) {
         if (isRecord(statement)) walk(statement, currentShadowed);
+        if (
+          isRecord(statement) &&
+          statement['type'] === 'IfStatement' &&
+          isRecord(statement['test'])
+        ) {
+          const truthiness = staticTruthiness(statement['test'], bindings);
+          const branch =
+            truthiness === true
+              ? statement['consequent']
+              : truthiness === false
+                ? statement['alternate']
+                : undefined;
+          if (isRecord(branch) && unconditionallyAbruptStatement(branch)) break;
+        }
         if (unconditionallyAbruptStatement(statement)) break;
+      }
+      const preserved = preservedAbruptStates.pop();
+      if (preserved) {
+        for (const [name, values] of preserved)
+          bindings.set(name, mergeStringValues(bindings.get(name) ?? [], values));
+        const parent = preservedAbruptStates.at(-1);
+        if (parent)
+          for (const [name, values] of preserved)
+            parent.set(name, mergeStringValues(parent.get(name) ?? [], values));
       }
       return;
     }
@@ -510,6 +558,12 @@ function qualifyingFieldLabelBranches(
   bindings: ReadonlyMap<string, readonly string[]>,
 ): FieldEvidence[] {
   if (!isRecord(node)) return [emptyFieldEvidence()];
+  if (node['type'] === 'IfBlock') {
+    const branches = [node['consequent'], node['alternate']].filter(isRecord);
+    return branches.length === 0
+      ? [emptyFieldEvidence()]
+      : branches.flatMap((branch) => qualifyingFieldLabelBranches(branch, source, bindings));
+  }
   // A canonical `<FormField>`'s own props (label/description/error) aren't
   // hand-rolled evidence — but its rendered children (a child snippet can
   // still hand-roll a label/description/error wrapper) must keep being

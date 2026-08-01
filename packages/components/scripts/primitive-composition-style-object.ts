@@ -60,6 +60,73 @@ function mergeDeclarations(
   return new Map([...base, ...additions]);
 }
 
+function staticNullish(
+  rawExpression: unknown,
+  bindings: ReadonlyMap<string, readonly unknown[]>,
+): boolean | undefined {
+  const expression = unwrapTypeExpression(rawExpression);
+  if (!isRecord(expression)) return expression === null || expression === undefined;
+  if (expression['type'] === 'Literal') return expression['value'] === null;
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    if (expression['name'] === 'undefined' && !bindings.has('undefined')) return true;
+    const candidates = bindings.get(expression['name']);
+    if (candidates === undefined || candidates.length !== 1) return undefined;
+    return staticNullish(candidates[0], bindings);
+  }
+  if (expression['type'] === 'UnaryExpression' && expression['operator'] === 'void') return true;
+  return false;
+}
+
+function staticTruthiness(
+  rawExpression: unknown,
+  bindings: ReadonlyMap<string, readonly unknown[]>,
+): boolean | undefined {
+  const expression = unwrapTypeExpression(rawExpression);
+  if (!isRecord(expression)) return expression === undefined ? undefined : Boolean(expression);
+  if (expression['type'] === 'Literal') return Boolean(expression['value']);
+  if (expression['type'] === 'ObjectExpression' || expression['type'] === 'ArrayExpression')
+    return true;
+  if (
+    expression['type'] === 'FunctionExpression' ||
+    expression['type'] === 'ArrowFunctionExpression' ||
+    expression['type'] === 'ClassExpression'
+  )
+    return true;
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    if (expression['name'] === 'undefined' && !bindings.has('undefined')) return false;
+    const candidates = bindings.get(expression['name']);
+    if (candidates === undefined || candidates.length !== 1) return undefined;
+    return staticTruthiness(candidates[0], bindings);
+  }
+  if (expression['type'] === 'UnaryExpression' && expression['operator'] === 'void') return false;
+  if (expression['type'] === 'UnaryExpression' && expression['operator'] === '!') {
+    const value = staticTruthiness(expression['argument'], bindings);
+    return value === undefined ? undefined : !value;
+  }
+  if (expression['type'] === 'LogicalExpression') {
+    const left = expression['left'];
+    const leftTruthiness = staticTruthiness(left, bindings);
+    const operator = expression['operator'];
+    if (operator === '&&') {
+      if (leftTruthiness === false) return false;
+      return leftTruthiness === true ? staticTruthiness(expression['right'], bindings) : undefined;
+    }
+    if (operator === '||') {
+      if (leftTruthiness === true) return true;
+      return leftTruthiness === false ? staticTruthiness(expression['right'], bindings) : undefined;
+    }
+    if (operator === '??') {
+      const leftNullish = staticNullish(left, bindings);
+      return leftNullish === true
+        ? staticTruthiness(expression['right'], bindings)
+        : leftNullish === false
+          ? leftTruthiness
+          : undefined;
+    }
+  }
+  return undefined;
+}
+
 function collectObjectDeclarationBranches(
   rawExpression: unknown,
   bindings: ReadonlyMap<string, readonly unknown[]>,
@@ -79,6 +146,22 @@ function collectObjectDeclarationBranches(
     expression['type'] === 'ConditionalExpression' ||
     expression['type'] === 'LogicalExpression'
   ) {
+    if (expression['type'] === 'LogicalExpression') {
+      const left = expression['left'];
+      const leftTruthiness = staticTruthiness(left, bindings);
+      const operator = expression['operator'];
+      const leftNullish = staticNullish(left, bindings);
+      const rightOnly =
+        (operator === '&&' && leftTruthiness === true) ||
+        (operator === '||' && leftTruthiness === false) ||
+        (operator === '??' && leftNullish === true);
+      const leftOnly =
+        (operator === '&&' && leftTruthiness === false) ||
+        (operator === '||' && leftTruthiness === true) ||
+        (operator === '??' && leftNullish === false);
+      if (rightOnly) return collectObjectDeclarationBranches(expression['right'], bindings);
+      if (leftOnly) return collectObjectDeclarationBranches(left, bindings);
+    }
     return [
       ...collectObjectDeclarationBranches(expression['consequent'] ?? expression['left'], bindings),
       ...collectObjectDeclarationBranches(expression['alternate'] ?? expression['right'], bindings),
@@ -198,6 +281,8 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   const mutableBindings = new Set<string>();
   const declaredBindings = new Set<string>();
   const callbackBindings = new Map<string, unknown[]>();
+  const callbackFrames: Map<string, unknown[]>[] = [];
+  const synchronousFunctions = new WeakSet<object>();
   if (!isRecord(instance) || !isRecord(instance['content'])) return bindings;
   const body = instance['content']['body'];
   if (!Array.isArray(body)) return bindings;
@@ -327,11 +412,25 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     if (node['type'] === 'IfStatement') {
       if (isRecord(node['test'])) walk(node['test'], currentShadowed, currentInsideFunction);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const callbackFrame = callbackFrames.at(-1);
+      const baseCallbackFrame = callbackFrame
+        ? new Map([...callbackFrame].map(([name, values]) => [name, [...values]] as const))
+        : undefined;
+      const branchCallbackFrames: Map<string, unknown[]>[] = [];
       const branchValues: Map<string, unknown[]>[] = [];
       for (const branch of [node['consequent'], node['alternate']]) {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
+        if (callbackFrame) {
+          callbackFrame.clear();
+          for (const [name, values] of baseCallbackFrame ?? [])
+            callbackFrame.set(name, [...values]);
+        }
         if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction);
+        if (callbackFrame)
+          branchCallbackFrames.push(
+            new Map([...callbackFrame].map(([name, values]) => [name, [...values]] as const)),
+          );
         branchValues.push(
           new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
         );
@@ -346,15 +445,38 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         if (merged.length > 0) bindings.set(name, merged);
         else bindings.delete(name);
       }
+      if (callbackFrame) {
+        callbackFrame.clear();
+        for (const name of new Set(branchCallbackFrames.flatMap((branch) => [...branch.keys()]))) {
+          const values = mergeValues(
+            branchCallbackFrames.flatMap((branch) => branch.get(name) ?? []),
+          );
+          if (values.length > 0) callbackFrame.set(name, values);
+        }
+      }
       return;
     }
     if (node['type'] === 'ConditionalExpression') {
       if (isRecord(node['test'])) walk(node['test'], currentShadowed, currentInsideFunction);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const callbackFrame = callbackFrames.at(-1);
+      const baseCallbackFrame = callbackFrame
+        ? new Map([...callbackFrame].map(([name, values]) => [name, [...values]] as const))
+        : undefined;
+      const branchCallbackFrames: Map<string, unknown[]>[] = [];
       const branches = [node['consequent'], node['alternate']].map((branch) => {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
+        if (callbackFrame) {
+          callbackFrame.clear();
+          for (const [name, values] of baseCallbackFrame ?? [])
+            callbackFrame.set(name, [...values]);
+        }
         if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction);
+        if (callbackFrame)
+          branchCallbackFrames.push(
+            new Map([...callbackFrame].map(([name, values]) => [name, [...values]] as const)),
+          );
         return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       });
       bindings.clear();
@@ -363,6 +485,15 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         const merged = [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))];
         if (merged.length > 0) bindings.set(name, merged);
         else bindings.delete(name);
+      }
+      if (callbackFrame) {
+        callbackFrame.clear();
+        for (const name of new Set(branchCallbackFrames.flatMap((branch) => [...branch.keys()]))) {
+          const values = mergeValues(
+            branchCallbackFrames.flatMap((branch) => branch.get(name) ?? []),
+          );
+          if (values.length > 0) callbackFrame.set(name, values);
+        }
       }
       return;
     }
@@ -529,6 +660,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       node['type'] === 'ArrowFunctionExpression'
     ) {
       currentInsideFunction = true;
+      callbackFrames.push(new Map());
       const localNames = new Set<string>();
       if (Array.isArray(node['params']))
         for (const parameter of node['params']) declaredNamesInPattern(parameter, localNames);
@@ -591,14 +723,45 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       const resolved = resolvedAssignmentValue(node['right'], bindings);
       if (currentInsideFunction) {
         if (resolved.set) {
-          callbackBindings.set(
-            name,
-            mergeValues([...(callbackBindings.get(name) ?? []), ...resolved.values]),
-          );
-          bindings.set(
-            name,
-            valuesWithCallbackState(name, [...(bindings.get(name) ?? []), ...resolved.values]),
-          );
+          const currentFrame = callbackFrames.at(-1);
+          const previousCallbackValues = currentFrame?.get(name) ?? [];
+          const allCallbackValues = callbackBindings.get(name) ?? [];
+          const currentValues = bindings.get(name) ?? [];
+          const isStyleObjectValue = (value: unknown): boolean => {
+            if (!isRecord(value)) return false;
+            if (value['type'] === 'ObjectExpression') return true;
+            if (value['type'] === 'ConditionalExpression')
+              return [value['consequent'], value['alternate']].some(
+                (branch) => isRecord(branch) && branch['type'] === 'ObjectExpression',
+              );
+            return (
+              value['type'] === 'LogicalExpression' &&
+              isRecord(value['right']) &&
+              value['right']['type'] === 'ObjectExpression'
+            );
+          };
+          if (
+            [...currentValues, ...allCallbackValues, ...resolved.values].some(isStyleObjectValue)
+          ) {
+            const priorCallbackSet = new Set(previousCallbackValues);
+            currentFrame?.set(name, mergeValues(resolved.values));
+            bindings.set(
+              name,
+              mergeValues([
+                ...currentValues.filter((value) => !priorCallbackSet.has(value)),
+                ...resolved.values,
+              ]),
+            );
+          } else {
+            currentFrame?.set(name, mergeValues([...previousCallbackValues, ...resolved.values]));
+            bindings.set(
+              name,
+              mergeValues([
+                ...currentValues.filter((value) => !new Set(previousCallbackValues).has(value)),
+                ...resolved.values,
+              ]),
+            );
+          }
         }
       } else if (resolved.set) {
         bindings.set(name, valuesWithCallbackState(name, resolved.values));
@@ -608,10 +771,40 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         else bindings.delete(name);
       }
     }
+    const synchronousCallee =
+      node['type'] === 'CallExpression' &&
+      isRecord(node['callee']) &&
+      (node['callee']['type'] === 'FunctionExpression' ||
+        node['callee']['type'] === 'ArrowFunctionExpression')
+        ? node['callee']
+        : undefined;
+    if (synchronousCallee) synchronousFunctions.add(synchronousCallee);
     for (const value of Object.values(node)) {
       if (Array.isArray(value))
         for (const item of value) walk(item, currentShadowed, currentInsideFunction);
       else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
+    }
+    if (
+      node['type'] === 'FunctionDeclaration' ||
+      node['type'] === 'FunctionExpression' ||
+      node['type'] === 'ArrowFunctionExpression'
+    ) {
+      const frame = callbackFrames.pop();
+      const synchronous = synchronousFunctions.has(node);
+      if (synchronous) synchronousFunctions.delete(node);
+      if (frame) {
+        if (synchronous && callbackFrames.length > 0) {
+          const parentFrame = callbackFrames.at(-1)!;
+          for (const [name, values] of frame)
+            parentFrame.set(name, mergeValues([...(parentFrame.get(name) ?? []), ...values]));
+        } else if (!synchronous) {
+          for (const [name, values] of frame)
+            callbackBindings.set(
+              name,
+              mergeValues([...(callbackBindings.get(name) ?? []), ...values]),
+            );
+        }
+      }
     }
   };
   for (const statement of body) walk(statement, new Set(), false);

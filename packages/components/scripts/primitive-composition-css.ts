@@ -25,8 +25,18 @@ export const gridDefinitionProperties = [
 
 export function declarationMap(rule: Rule): Map<string, string> {
   const declarations = new Map<string, string>();
+  const importantProperties = new Set<string>();
   rule.each((node) => {
-    if (node.type === 'decl') declarations.set(node.prop.toLowerCase(), node.value.toLowerCase());
+    if (node.type !== 'decl') return;
+    const property = node.prop.toLowerCase();
+    const important = node.important || /!important\s*$/i.test(node.value);
+    if (!important && importantProperties.has(property)) return;
+    const value = node.value
+      .replace(/\s*!important\s*$/i, '')
+      .trim()
+      .toLowerCase();
+    declarations.set(property, value);
+    if (important) importantProperties.add(property);
   });
   return declarations;
 }
@@ -120,7 +130,12 @@ function mediaType(query: string): { name: string; negated: boolean } | undefine
 
 function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
   return {
-    ...(outer.impossible || inner.impossible ? { impossible: true } : {}),
+    ...(outer.impossible ||
+    inner.impossible ||
+    (outer.tag !== undefined && inner.tag !== undefined && outer.tag !== inner.tag) ||
+    (outer.id !== undefined && inner.id !== undefined && outer.id !== inner.id)
+      ? { impossible: true }
+      : {}),
     ...((outer.tag ?? inner.tag) ? { tag: outer.tag ?? inner.tag } : {}),
     ...((outer.id ?? inner.id) ? { id: outer.id ?? inner.id } : {}),
     classes: new Set([...outer.classes, ...inner.classes]),
@@ -283,6 +298,15 @@ function hasCompoundNegatedTagAnchor(target: SelectorTarget, other: SelectorTarg
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
   if (left.impossible || right.impossible) return false;
   if (negatesTag(left, right) || negatesTag(right, left)) return false;
+  if (
+    left.ancestorSignature !== undefined &&
+    right.ancestorSignature !== undefined &&
+    /^[a-z][\w-]*/i.test(left.ancestorSignature) &&
+    /^[a-z][\w-]*/i.test(right.ancestorSignature) &&
+    left.ancestorSignature.match(/^[a-z][\w-]*/i)?.[0].toLowerCase() !==
+      right.ancestorSignature.match(/^[a-z][\w-]*/i)?.[0].toLowerCase()
+  )
+    return false;
   const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
     (match) => match[1],
   );
@@ -470,10 +494,19 @@ function conditionalQueryBranchesConflict(left: string, right: string): boolean 
   const leftType = mediaType(left);
   const rightType = mediaType(right);
   if (
+    (leftType?.negated === true && leftType.name === 'all') ||
+    (rightType?.negated === true && rightType.name === 'all')
+  )
+    return true;
+  if (
     leftType !== undefined &&
     rightType !== undefined &&
-    ((leftType.name !== 'all' && rightType.name !== 'all' && leftType.name !== rightType.name) ||
-      leftType.negated !== rightType.negated)
+    (leftType.negated !== rightType.negated
+      ? leftType.name === rightType.name && leftType.name !== 'all'
+      : !leftType.negated &&
+        leftType.name !== 'all' &&
+        rightType.name !== 'all' &&
+        leftType.name !== rightType.name)
   )
     return true;
   const bounds = [...widthBounds(left), ...widthBounds(right)];
@@ -522,6 +555,17 @@ function conditionalScopesConflict(left: ConditionalScope, right: ConditionalSco
 function conditionalScopesCanOverlap(left: Rule, right: Rule): boolean {
   const leftScope = conditionalScope(left);
   const rightScope = conditionalScope(right);
+  if (
+    [...leftScope, ...rightScope].some(
+      (condition) =>
+        condition.name === 'media' &&
+        conditionalQueryBranches(condition.parameters).every((branch) => {
+          const type = mediaType(branch);
+          return type?.negated === true && type.name === 'all';
+        }),
+    )
+  )
+    return false;
   return !leftScope.some((leftCondition) =>
     rightScope.some((rightCondition) => conditionalScopesConflict(leftCondition, rightCondition)),
   );
@@ -534,7 +578,10 @@ function compatibleSelectorTargetPairs(
   if (!conditionalScopesCanOverlap(left, right)) return [];
   const leftTargets = selectorTargets(left.selector);
   const rightTargets = selectorTargets(right.selector);
-  if (left === right) return leftTargets.map((target) => [target, target] as const);
+  if (left === right)
+    return leftTargets
+      .filter((target) => functionalConstraintsCanOverlap(target, target))
+      .map((target) => [target, target] as const);
   return leftTargets.flatMap((leftTarget) =>
     rightTargets
       .filter(

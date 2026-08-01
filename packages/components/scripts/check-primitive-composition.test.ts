@@ -92,6 +92,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('invalidates prior hidden proof after a nested dynamic spread', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '<script>const attrs = { hidden: false };</script><input hidden {...{ ...attrs }} />',
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('allows a later static hidden type to re-establish proof after a dynamic spread', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -634,6 +643,20 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('short-circuits statically unreachable style-object branches', () => {
+    for (const expression of [
+      "false && { display: 'grid', gridTemplateColumns: '1fr' }",
+      "true || { display: 'grid', gridTemplateColumns: '1fr' }",
+      "'block' ?? { display: 'grid', gridTemplateColumns: '1fr' }",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<div style={${expression}}></div>`,
+          'short-circuit-style/short-circuit-style.svelte',
+        ),
+      ).toEqual([]);
+  });
+
   test('preserves top-level conditional style-object assignment branches', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -990,6 +1013,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('preserves important declarations over later normal declarations', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout { display: grid !important; display: block; grid-template-columns: 1fr; }',
+        'important-grid/important-grid.css',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('reads only actual Svelte style blocks', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -1151,6 +1183,24 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         '@media not screen { .layout { display: grid; } } @media screen { .layout { grid-template-columns: 1fr; } }',
         'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('allows negated media types to overlap different positive types', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media not screen { .layout { display: grid; } } @media print { .layout { grid-template-columns: 1fr; } }',
+        'negated-media-overlap/negated-media-overlap.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('treats not all media branches as unreachable', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media not all { .layout { display: grid; } } .layout { grid-template-columns: 1fr; }',
+        'unreachable-media/unreachable-media.css',
       ),
     ).toEqual([]);
   });
@@ -1332,6 +1382,15 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('counts controls in every reachable raw HTML candidate', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let markup = '<div></div>'; function show() { markup = '<input aria-label=\"Name\">'; }</script><button onclick={show}>Show</button>{@html markup}",
+        'mutable-html-control/mutable-html-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('keeps raw HTML field evidence isolated by reachable candidate', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -1495,6 +1554,21 @@ describe('primitive composition guard', () => {
         'returning-control-handler/returning-control-handler.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('ignores raw controls in statically unreachable branches and loops', () => {
+    for (const statement of [
+      "if (false) tag = 'input';",
+      "while (false) tag = 'input';",
+      "for (; false;) tag = 'input';",
+      "for (const item of []) tag = 'input';",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'div'; ${statement}</script><svelte:element this={tag} />`,
+          'unreachable-control-write/unreachable-control-write.svelte',
+        ),
+      ).toEqual([]);
   });
 
   test('treats immediately invoked tag writes as synchronous', () => {
@@ -2132,6 +2206,138 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         '<header><label>Sort</label></header><section><p>Help</p><p>Error log</p></section>',
         'new-field/new-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('resolves aliases declared inside control callbacks', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show() { const controlTag = 'input'; tag = controlTag; }</script><svelte:element this={tag} />",
+        'callback-control-alias/callback-control-alias.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('preserves mutable control states that leave loops through continue', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; for (let i = 0; i < 1; i++) { if (true) { tag = 'input'; continue; } tag = 'div'; }</script><svelte:element this={tag} />",
+        'continue-control-state/continue-control-state.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('evaluates switch case tests before merging control branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; switch ('no') { case (tag = 'input'): break; }</script><svelte:element this={tag} />",
+        'switch-test-control/switch-test-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('discards synchronous IIFE return states after later writes', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; (() => { tag = 'input'; return; })(); tag = 'div';</script><svelte:element this={tag} />",
+        'iife-return-control/iife-return-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('preserves field tags from conditionally returning branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show() { if (true) { tag = 'label'; return; } tag = 'span'; }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'conditional-return-field/conditional-return-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('preserves zero-entry field-tag loop states', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'label'; for (const item of []) tag = 'span';</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+        'zero-entry-field-loop/zero-entry-field-loop.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps only terminal style writes within one callback', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function enable() { layout = { display: 'grid', gridTemplateColumns: '1fr' }; layout = { display: 'block' }; }</script><div style={layout} onclick={enable}></div>",
+        'terminal-callback-style/terminal-callback-style.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('preserves terminal style states from independent callbacks', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function enable() { layout = { display: 'grid', gridTemplateColumns: '1fr' }; } function disable() { layout = { display: 'block' }; }</script><div style={layout} onclick={enable} onkeydown={disable}></div>",
+        'independent-callback-style/independent-callback-style.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('discards synchronous nested style writes before a later terminal write', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function outer() { (() => { layout = { display: 'grid', gridTemplateColumns: '1fr' }; })(); layout = { display: 'block' }; }</script><div style={layout} onclick={outer}></div>",
+        'nested-callback-style/nested-callback-style.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('rejects selector pairs under incompatible direct parents', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        'section > .layout { display: grid; } article > .layout { grid-template-columns: 1fr; }',
+        'direct-parent-grid/direct-parent-grid.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        'section.foo > .layout { display: grid; } article.bar > .layout { grid-template-columns: 1fr; }',
+        'direct-parent-grid/direct-parent-grid.css',
+      ),
+    ).toEqual([]);
+  });
+
+  test('merges try and catch as alternative control states', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; try { tag = 'input'; } catch { tag = 'div'; }</script><svelte:element this={tag} />",
+        'try-catch-control/try-catch-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps mutually exclusive template field evidence separate', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '{#if ready}<label>Name</label>{:else}<p>Help</p><p>Error</p>{/if}',
+        'template-field-branches/template-field-branches.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('applies switch-wide lexical shadowing to control tags', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; switch (1) { case 1: let tag = 'input'; break; }</script><svelte:element this={tag} />",
+        'switch-control-shadow/switch-control-shadow.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('marks conflicting functional tag constraints impossible', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        'input:is(select) { display: grid; grid-template-columns: 1fr; }',
+        'functional-tag-conflict/functional-tag-conflict.css',
       ),
     ).toEqual([]);
   });

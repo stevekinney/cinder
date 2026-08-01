@@ -249,7 +249,11 @@ function declaresLexicalBindingDirectlyInBlock(block: UnknownRecord, bindingName
   );
 }
 
-function possibleMutableControlNames(source: string, expression: unknown): Set<string> {
+function possibleMutableControlNames(
+  source: string,
+  expression: unknown,
+  onReachableValues?: (values: ReadonlySet<string>) => void,
+): Set<string> {
   if (
     !isRecord(expression) ||
     expression['type'] !== 'Identifier' ||
@@ -294,6 +298,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     );
   const mutableValues = new Set<string>();
   const recordControls = (values: Iterable<string>): void => {
+    onReachableValues?.(new Set(values));
     for (const candidateValue of values) {
       const normalizedValue = candidateValue.toLowerCase();
       if (
@@ -310,6 +315,43 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     for (const value of values) mutableValues.add(value);
   };
   const breakTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
+  const continueTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
+  const returnTargets: Set<string>[][] = [];
+  let suppressPublication = false;
+  const collectLocalStaticBindings = (node: unknown): Map<string, string> => {
+    const local = new Map<string, string>();
+    const visit = (value: unknown): void => {
+      if (!isRecord(value)) return;
+      if (
+        value['type'] === 'FunctionDeclaration' ||
+        value['type'] === 'FunctionExpression' ||
+        value['type'] === 'ArrowFunctionExpression'
+      )
+        return;
+      if (value['type'] === 'VariableDeclaration' && Array.isArray(value['declarations'])) {
+        for (const declaration of value['declarations']) {
+          if (
+            !isRecord(declaration) ||
+            !isRecord(declaration['id']) ||
+            declaration['id']['type'] !== 'Identifier' ||
+            typeof declaration['id']['name'] !== 'string'
+          )
+            continue;
+          const resolved = staticStringFromExpression(
+            declaration['init'],
+            new Map([...bindings, ...local]),
+          );
+          if (resolved !== undefined) local.set(declaration['id']['name'], resolved);
+        }
+      }
+      for (const child of Object.values(value)) {
+        if (Array.isArray(child)) child.forEach(visit);
+        else if (isRecord(child)) visit(child);
+      }
+    };
+    visit(node);
+    return local;
+  };
   const shadowsBindingInsideParameters = (node: UnknownRecord, shadowed: boolean): boolean =>
     shadowed ||
     (Array.isArray(node['params']) &&
@@ -332,6 +374,17 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       target?.states.push(snapshotMutableValues());
       return;
     }
+    if (type === 'ContinueStatement') {
+      const label =
+        isRecord(current['label']) && typeof current['label']['name'] === 'string'
+          ? current['label']['name']
+          : undefined;
+      const target = label
+        ? continueTargets.findLast((candidate) => candidate.label === label)
+        : continueTargets.at(-1);
+      target?.states.push(snapshotMutableValues());
+      return;
+    }
     if (type === 'LabeledStatement') {
       const label =
         isRecord(current['label']) && typeof current['label']['name'] === 'string'
@@ -346,6 +399,13 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (type === 'IfStatement') {
       if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
       const base = snapshotMutableValues();
+      const truthiness = literalTruthiness(current['test']);
+      if (truthiness !== undefined) {
+        restoreMutableValues(base);
+        const branch = truthiness ? current['consequent'] : current['alternate'];
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return;
+      }
       const branches = [current['consequent'], current['alternate']].map((branch) => {
         restoreMutableValues(base);
         if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
@@ -393,6 +453,24 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (isRecord(current['discriminant'])) walkTopLevel(current['discriminant'], currentShadowed);
       const base = snapshotMutableValues();
       const cases = current['cases'].filter(isRecord);
+      const switchShadowed =
+        currentShadowed ||
+        cases.some(
+          (switchCase) =>
+            Array.isArray(switchCase['consequent']) &&
+            switchCase['consequent'].some(
+              (statement) =>
+                isRecord(statement) &&
+                statement['type'] === 'VariableDeclaration' &&
+                (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+                Array.isArray(statement['declarations']) &&
+                statement['declarations'].some(
+                  (declaration) =>
+                    isRecord(declaration) &&
+                    bindingPatternIncludesName(declaration['id'], bindingName),
+                ),
+            ),
+        );
       const branches: Set<string>[] = [];
       for (let startIndex = 0; startIndex < cases.length; startIndex++) {
         restoreMutableValues(base);
@@ -400,10 +478,12 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
         const interruptedStates: Set<string>[] = [];
         breakTargets.push({ label: controlLabel, states: interruptedStates });
         for (let caseIndex = startIndex; caseIndex < cases.length && !stopped; caseIndex++) {
+          const test = cases[caseIndex]?.['test'];
+          if (isRecord(test)) walkTopLevel(test, switchShadowed);
           const consequent = cases[caseIndex]?.['consequent'];
           if (!Array.isArray(consequent)) continue;
           for (const statement of consequent) {
-            walkTopLevel(statement, currentShadowed);
+            walkTopLevel(statement, switchShadowed);
             if (unconditionallyAbruptStatement(statement)) {
               stopped = true;
               break;
@@ -417,6 +497,22 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       }
       if (!cases.some((switchCase) => switchCase['test'] === null)) branches.push(base);
       restoreMutableValues(branches.flatMap((branch) => [...branch]));
+      return;
+    }
+    if (type === 'TryStatement') {
+      const base = snapshotMutableValues();
+      const alternatives: Set<string>[] = [];
+      const tryBlock = current['block'];
+      restoreMutableValues(base);
+      if (isRecord(tryBlock)) walkTopLevel(tryBlock, currentShadowed);
+      alternatives.push(snapshotMutableValues());
+      const handler = current['handler'];
+      restoreMutableValues(base);
+      if (isRecord(handler)) walkTopLevel(handler, currentShadowed);
+      alternatives.push(snapshotMutableValues());
+      restoreMutableValues(alternatives.flatMap((state) => [...state]));
+      const finalizer = current['finalizer'];
+      if (isRecord(finalizer)) walkTopLevel(finalizer, currentShadowed);
       return;
     }
     if (type === 'ForStatement') {
@@ -434,14 +530,36 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (isRecord(initializer)) walkTopLevel(initializer, loopShadowed);
       if (isRecord(current['test'])) walkTopLevel(current['test'], loopShadowed);
       const base = snapshotMutableValues();
+      if (literalTruthiness(current['test']) === false) {
+        restoreMutableValues(base);
+        return;
+      }
       const interruptedStates: Set<string>[] = [];
+      const continuedStates: Set<string>[] = [];
       breakTargets.push({ label: controlLabel, states: interruptedStates });
+      continueTargets.push({ label: controlLabel, states: continuedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], loopShadowed);
+      continueTargets.pop();
       breakTargets.pop();
-      if (!unconditionallyAbruptStatement(current['body']) && isRecord(current['update'])) {
-        walkTopLevel(current['update'], loopShadowed);
+      const fallthroughState = snapshotMutableValues();
+      if (isRecord(current['update'])) {
+        const updateStates: Set<string>[] = [];
+        const paths = unconditionallyAbruptStatement(current['body'])
+          ? continuedStates
+          : [...continuedStates, fallthroughState];
+        for (const path of paths) {
+          restoreMutableValues(path);
+          walkTopLevel(current['update'], loopShadowed);
+          updateStates.push(snapshotMutableValues());
+        }
         restoreMutableValues([
           ...interruptedStates.flatMap((state) => [...state]),
+          ...updateStates.flatMap((state) => [...state]),
+        ]);
+      } else {
+        restoreMutableValues([
+          ...interruptedStates.flatMap((state) => [...state]),
+          ...continuedStates.flatMap((state) => [...state]),
           ...mutableValues,
         ]);
       }
@@ -452,6 +570,15 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (type === 'ForInStatement' || type === 'ForOfStatement') {
       if (isRecord(current['right'])) walkTopLevel(current['right'], currentShadowed);
       const base = snapshotMutableValues();
+      if (
+        isRecord(current['right']) &&
+        current['right']['type'] === 'ArrayExpression' &&
+        Array.isArray(current['right']['elements']) &&
+        current['right']['elements'].length === 0
+      ) {
+        restoreMutableValues(base);
+        return;
+      }
       const left = current['left'];
       const loopShadowed =
         currentShadowed ||
@@ -466,11 +593,15 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (isRecord(left)) walkTopLevel(left, loopShadowed);
       const interruptedStates: Set<string>[] = [];
       breakTargets.push({ label: controlLabel, states: interruptedStates });
+      const continuedStates: Set<string>[] = [];
+      continueTargets.push({ label: controlLabel, states: continuedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], loopShadowed);
+      continueTargets.pop();
       breakTargets.pop();
       restoreMutableValues([
         ...base,
         ...interruptedStates.flatMap((state) => [...state]),
+        ...continuedStates.flatMap((state) => [...state]),
         ...mutableValues,
       ]);
       return;
@@ -478,11 +609,22 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (type === 'WhileStatement') {
       if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
       const base = snapshotMutableValues();
+      if (literalTruthiness(current['test']) === false) {
+        restoreMutableValues(base);
+        return;
+      }
       const interruptedStates: Set<string>[] = [];
       breakTargets.push({ label: controlLabel, states: interruptedStates });
+      const continuedStates: Set<string>[] = [];
+      continueTargets.push({ label: controlLabel, states: continuedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      continueTargets.pop();
       breakTargets.pop();
-      restoreMutableValues([...interruptedStates.flatMap((state) => [...state]), ...mutableValues]);
+      restoreMutableValues([
+        ...interruptedStates.flatMap((state) => [...state]),
+        ...continuedStates.flatMap((state) => [...state]),
+        ...mutableValues,
+      ]);
       if (!isStaticallyTrueExpression(current['test']))
         restoreMutableValues([...base, ...mutableValues]);
       return;
@@ -490,10 +632,17 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (type === 'DoWhileStatement') {
       const interruptedStates: Set<string>[] = [];
       breakTargets.push({ label: controlLabel, states: interruptedStates });
+      const continuedStates: Set<string>[] = [];
+      continueTargets.push({ label: controlLabel, states: continuedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      continueTargets.pop();
       breakTargets.pop();
       if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
-      restoreMutableValues([...interruptedStates.flatMap((state) => [...state]), ...mutableValues]);
+      restoreMutableValues([
+        ...interruptedStates.flatMap((state) => [...state]),
+        ...continuedStates.flatMap((state) => [...state]),
+        ...mutableValues,
+      ]);
       return;
     }
     if (
@@ -530,12 +679,18 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
           } else walkTopLevel(parameter, parameterShadowed);
         }
       }
-      if (isRecord(callee['body'])) walkTopLevel(callee['body'], bodyShadowed);
+      if (isRecord(callee['body'])) {
+        const previousSuppression = suppressPublication;
+        suppressPublication = true;
+        walkTopLevel(callee['body'], bodyShadowed);
+        suppressPublication = previousSuppression;
+      }
       return;
     }
     if (type === 'ReturnStatement' || type === 'ThrowStatement') {
       if (isRecord(current['argument'])) walkTopLevel(current['argument'], currentShadowed);
-      recordControls(mutableValues);
+      returnTargets.at(-1)?.push(snapshotMutableValues());
+      if (!suppressPublication) recordControls(mutableValues);
       return;
     }
     if (type === 'BlockStatement' && Array.isArray(current['body'])) {
@@ -558,6 +713,10 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       type === 'ArrowFunctionExpression'
     ) {
       const base = snapshotMutableValues();
+      const previousBindings = new Map(bindings);
+      for (const [name, value] of collectLocalStaticBindings(current['body']))
+        bindings.set(name, value);
+      returnTargets.push([]);
       const parameterShadowed = shadowsBindingInsideParameters(current, currentShadowed);
       const bodyShadowed = shadowsBindingInsideFunction(current, currentShadowed);
       if (Array.isArray(current['params']))
@@ -568,8 +727,14 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
         }
       if (isRecord(current['body'])) walkTopLevel(current['body'], bodyShadowed);
       const terminalValues = snapshotMutableValues();
-      recordControls(terminalValues);
-      restoreMutableValues([...base, ...terminalValues]);
+      const returnedValues = returnTargets.at(-1) ?? [];
+      returnTargets.pop();
+      restoreMutableValues([...terminalValues, ...returnedValues.flatMap((state) => [...state])]);
+      const reachableValues = snapshotMutableValues();
+      if (!suppressPublication) recordControls(reachableValues);
+      restoreMutableValues([...base, ...reachableValues]);
+      bindings.clear();
+      for (const [name, value] of previousBindings) bindings.set(name, value);
       return;
     }
     const node = current;
@@ -699,6 +864,14 @@ function hasStaticHiddenAttribute(
       }
       for (const property of expression['properties']) {
         if (!isRecord(property)) continue;
+        if (property['type'] === 'SpreadElement') {
+          // A nested spread can overwrite either proof with an unknown value;
+          // preserve source order but require a later static attribute/spread
+          // to establish the hidden state again.
+          hiddenState = undefined;
+          typeIsHidden = undefined;
+          continue;
+        }
         const name = staticPropertyName(property);
         if (name === 'hidden')
           hiddenState =
@@ -754,8 +927,13 @@ export function visibleControlSignatures(source: string): string[] {
   const signatures: string[] = [];
   walkAst(fragment, (node) => {
     if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
+      const candidates = new Set<string>();
       const html = staticStringFromExpression(node['expression'], bindings);
-      if (html !== undefined) signatures.push(...visibleControlSignatures(html));
+      if (html !== undefined) candidates.add(html);
+      possibleMutableControlNames(source, node['expression'], (values) => {
+        for (const value of values) candidates.add(value);
+      });
+      for (const candidate of candidates) signatures.push(...visibleControlSignatures(candidate));
       return;
     }
     const elementNames = new Set<string>();
