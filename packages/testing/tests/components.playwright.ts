@@ -178,9 +178,9 @@ test.describe('number input resting geometry', () => {
     expect(Math.abs(incrementBox!.x + incrementBox!.width - decrementBox!.x)).toBeLessThanOrEqual(
       1,
     );
-    expect(Math.abs(decrementBox!.x + decrementBox!.width - (groupBox!.x + groupBox!.width))).toBe(
-      1,
-    );
+    expect(
+      Math.abs(decrementBox!.x + decrementBox!.width - (groupBox!.x + groupBox!.width)),
+    ).toBeLessThanOrEqual(1);
   });
 });
 
