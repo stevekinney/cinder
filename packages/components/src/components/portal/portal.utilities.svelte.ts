@@ -555,6 +555,7 @@ function invalidateComputedDirections() {
 
 /** Notify mounted portals after a CSSOM rule edit (`insertRule`, `replace`, or `replaceSync`). */
 export function invalidatePortalDirection() {
+  if (computedDirectionObservations.size === 0) return;
   refreshMediaQueryObservers();
   invalidateComputedDirections();
 }

@@ -373,6 +373,30 @@ describe('Portal', () => {
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
   });
 
+  test('does not register media listeners without mounted portals', () => {
+    const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
+    const originalMatchMedia = window.matchMedia;
+    let matchMediaCalls = 0;
+    Object.defineProperty(document, 'styleSheets', {
+      configurable: true,
+      value: [{ media: { mediaText: '(prefers-color-scheme: dark)' }, cssRules: [] }],
+    });
+    window.matchMedia = ((query: string) => {
+      matchMediaCalls += 1;
+      return { media: query } as MediaQueryList;
+    }) as typeof window.matchMedia;
+
+    invalidatePortalDirection();
+
+    expect(matchMediaCalls).toBe(0);
+    window.matchMedia = originalMatchMedia;
+    if (originalStyleSheets) {
+      Object.defineProperty(document, 'styleSheets', originalStyleSheets);
+    } else {
+      Reflect.deleteProperty(document, 'styleSheets');
+    }
+  });
+
   test('registers stylesheet-level media conditions for invalidation', async () => {
     const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
     Object.defineProperty(document, 'styleSheets', {
