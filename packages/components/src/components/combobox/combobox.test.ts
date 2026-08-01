@@ -616,7 +616,7 @@ describe('Combobox filtering', () => {
       const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
       expect(scopedAncestor).not.toBeNull();
       expect(scopedAncestor).not.toBe(originalRoot);
-      expect(originalRoot?.contains(scopedAncestor)).toBe(false);
+      expect(originalRoot?.contains(scopedAncestor ?? null)).toBe(false);
       expect(scopedAncestor?.querySelector('.cinder-combobox')).toBeNull();
     });
   });
