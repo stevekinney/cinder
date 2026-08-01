@@ -16,9 +16,10 @@ Modal primitive, not duplicate shells.
 - **AlertDialog** is the nearest alternative for system-initiated urgent
   acknowledgement. It uses `role="alertdialog"`, requires a concise
   description, disables Escape/backdrop/close-X dismissal, and can close only
-  through an explicit acknowledgement action. Use Modal with `role="alertdialog"`
-  only when richer body composition is required and the same restrictions are
-  supplied.
+  through an explicit action: acknowledgement, or the preset's explicit cancel
+  alternative when `cancelLabel` is supplied. Use Modal with
+  `role="alertdialog"` only when richer body composition is required and the
+  same dismissal restrictions are supplied.
 
 All three preserve native dialog focus trapping, keyboard behavior, dismissal
 events, and ARIA naming/description contracts. Do not fold the presets into
