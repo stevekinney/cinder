@@ -151,8 +151,37 @@ function classifyResolvedFallback(resolvedFallback) {
     : 'unresolved';
 }
 
+function hasMatchingOuterParentheses(value, openIndex, end) {
+  let depth = 0;
+  for (let index = openIndex; index < end; index += 1) {
+    if (value[index] === '(') depth += 1;
+    else if (value[index] === ')') {
+      depth -= 1;
+      if (depth === 0) return index === end - 1;
+    }
+  }
+  return false;
+}
+
+function unwrapStaticContainer(value, range) {
+  let unwrappedRange = trimCssWhitespaceRange(value, range.start, range.end);
+  for (;;) {
+    let openIndex;
+    if (value[unwrappedRange.start] === '(') openIndex = unwrappedRange.start;
+    else {
+      const calcMatch = /^(?:-webkit-)?calc\(/i.exec(
+        value.slice(unwrappedRange.start, unwrappedRange.end),
+      );
+      if (!calcMatch) return unwrappedRange;
+      openIndex = unwrappedRange.start + calcMatch[0].length - 1;
+    }
+    if (!hasMatchingOuterParentheses(value, openIndex, unwrappedRange.end)) return unwrappedRange;
+    unwrappedRange = trimCssWhitespaceRange(value, openIndex + 1, unwrappedRange.end - 1);
+  }
+}
+
 function hasStaticallyNonnegativeMaxFloor(frame, value, range) {
-  const trimmedRange = trimCssWhitespaceRange(value, range.start, range.end);
+  const trimmedRange = unwrapStaticContainer(value, range);
   if (
     value.slice(trimmedRange.start, trimmedRange.start + 4).toLowerCase() !== 'max(' ||
     value[trimmedRange.end - 1] !== ')'
@@ -201,20 +230,23 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
     return uneliminatedChild?.unprovenBannedCandidate ?? candidate;
   if (!uneliminatedChild) return undefined;
 
+  const hasNonnegativeFloor = hasStaticallyNonnegativeMaxFloor(frame, value, range);
+  const contextuallyUnprovenChildren = uneliminatedChildren.filter(
+    (child) =>
+      !hasNonnegativeFloor || child.unprovenBannedCandidate.resolvedClassification !== 'negative',
+  );
+  if (contextuallyUnprovenChildren.length === 0) return undefined;
+
   const [onlyChild] = frame.children;
   // With exactly one fallback path, a concrete enclosing expression can prove
   // that path safe (for example, max(var(--layer, -1), 0)). An expression that
   // is only the child itself provides no such context.
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
-  if (frame.resolvedClassification !== 'safe') return uneliminatedChild.unprovenBannedCandidate;
+  if (frame.resolvedClassification !== 'safe')
+    return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
   if (hasSingleChildWithEnclosingContext) return undefined;
-
-  const hasNonnegativeFloor = hasStaticallyNonnegativeMaxFloor(frame, value, range);
-  return uneliminatedChildren.find(
-    (child) =>
-      !hasNonnegativeFloor || child.unprovenBannedCandidate.resolvedClassification !== 'negative',
-  )?.unprovenBannedCandidate;
+  return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
 }
 
 // Parse every var()/env()/attr() fallback in one pass with an explicit

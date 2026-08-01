@@ -822,6 +822,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999 * progress(0, 1, 1)))',
     'max(var(--item-layer, -1), var(--dynamic, 0), 0)',
     'max(var(--item-layer, -1), var(--dynamic, -2), 0)',
+    'max(var(--item-layer, -1), var(--dynamic), 0)',
+    'calc(max(var(--item-layer, -1), var(--dynamic, -2), 0))',
     'var(--item-layer, \\39 999)',
     'var(--item-layer, \\39 998)',
     'var(--item-layer, calc(asin(1) / 90deg))',
