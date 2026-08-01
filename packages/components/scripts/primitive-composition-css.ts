@@ -180,7 +180,15 @@ function alternativeAddsConstraints(target: SelectorTarget, alternative: Selecto
   return (
     (alternative.id !== undefined && alternative.id !== target.id) ||
     [...alternative.classes].some((className) => !target.classes.has(className)) ||
-    [...alternative.attributes].some(([name]) => !target.attributes.has(name))
+    [...alternative.attributes].some(([name, constraint]) => {
+      const targetConstraint = target.attributes.get(name);
+      return (
+        targetConstraint === undefined ||
+        targetConstraint.operator !== constraint.operator ||
+        targetConstraint.value !== constraint.value ||
+        targetConstraint.insensitive !== constraint.insensitive
+      );
+    })
   );
 }
 

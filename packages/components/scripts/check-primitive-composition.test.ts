@@ -599,6 +599,19 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('does not restore a prior style binding after an unresolved branch overwrite', () => {
+    for (const conditionalWrite of [
+      "if (dense) layout = Object.freeze({ display: 'block' }); else layout = { display: 'block' };",
+      "dense ? layout = Object.freeze({ display: 'block' }) : layout = { display: 'block' };",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; ${conditionalWrite}</script><div style={layout}></div>`,
+          'unknown-branch-style/unknown-branch-style.svelte',
+        ),
+      ).toEqual([]);
+  });
+
   test('resolves style-object bindings wrapped in a TypeScript `as const` assertion', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -819,6 +832,15 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         'input { display: grid; } .layout:not(input.disabled) { grid-template-columns: 1fr; }',
+        'compound-negation/compound-negation.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('distinguishes attribute constraints inside a negated compound tag', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "input[data-state='a'] { display: grid; } .layout[data-state='a']:not(input[data-state='b']) { grid-template-columns: 1fr; }",
         'compound-negation/compound-negation.css',
       ),
     ).toHaveLength(1);
@@ -1105,6 +1127,29 @@ describe('primitive composition guard', () => {
         'conditional-field/conditional-field.svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('retains both reachable field-tag values across ternary branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; custom ? (tag = 'label') : (tag = 'span');</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'conditional-field/conditional-field.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps loop-initializer field tags scoped to the loop', () => {
+    for (const loop of [
+      "for (let tag = 'span'; ready; ready = false) { tag = 'label'; }",
+      "for (let tag of tags) { tag = 'label'; }",
+      "for (let tag in tags) { tag = 'label'; }",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'div'; ${loop}</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>`,
+          'loop-shadow-field/loop-shadow-field.svelte',
+        ),
+      ).toEqual([]);
   });
 
   test('does not report an intermediate raw-control compound tag value', () => {

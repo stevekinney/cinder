@@ -152,12 +152,47 @@ function staticStringBindings(source: string): Map<string, string[]> {
       bindings.clear();
       const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
       for (const name of names) {
-        const previous = base.get(name) ?? [];
-        bindings.set(name, [
-          ...new Set(branches.flatMap((branch) => branch.get(name) ?? previous)),
-        ]);
+        bindings.set(name, [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))]);
       }
       return;
+    }
+    if (node['type'] === 'ConditionalExpression') {
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const branches = [node['consequent'], node['alternate']].map((branch) => {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed);
+        return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      });
+      bindings.clear();
+      const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
+      for (const name of names)
+        bindings.set(name, [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))]);
+      return;
+    }
+    if (
+      node['type'] === 'ForStatement' ||
+      node['type'] === 'ForInStatement' ||
+      node['type'] === 'ForOfStatement'
+    ) {
+      const declaration = node['type'] === 'ForStatement' ? node['init'] : node['left'];
+      if (
+        isRecord(declaration) &&
+        declaration['type'] === 'VariableDeclaration' &&
+        (declaration['kind'] === 'let' || declaration['kind'] === 'const') &&
+        Array.isArray(declaration['declarations'])
+      ) {
+        const localNames = new Set<string>();
+        for (const declarator of declaration['declarations'])
+          if (isRecord(declarator)) collectPatternNames(declarator['id'], localNames);
+        const loopShadowed = new Set([...currentShadowed, ...localNames]);
+        for (const child of Object.values(node)) {
+          if (Array.isArray(child)) for (const item of child) walk(item, loopShadowed);
+          else if (isRecord(child)) walk(child, loopShadowed);
+        }
+        return;
+      }
     }
     if (
       node['type'] === 'FunctionDeclaration' ||
