@@ -1,5 +1,9 @@
 # @lostgradient/chat
 
+The Chat message renderer owns conversation, streaming, transport, and tool-call
+presentation. See the [editor/chat/Cinder surface boundary](../../docs/decisions/editor-chat-cinder-surfaces.md)
+for the intentional distinction from Cinder's domain-neutral `Message`.
+
 `@lostgradient/chat` is Cinder's Svelte 5 conversation surface, packaged separately so applications that do not render Chat do not install or bundle its conversation-model dependencies.
 
 ## Install
