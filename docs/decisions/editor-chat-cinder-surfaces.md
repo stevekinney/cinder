@@ -6,14 +6,14 @@ downstream package.
 
 ## Diff viewers
 
-- Editor `diff-viewer` owns review-editor presentation and editor-runtime
-  integration: ProseMirror/Milkdown context, commentary, editable review
-  workflows, and editor-specific actions. Avoid it for a standalone unified
-  diff in a Cinder application.
+- Editor `diff-viewer` owns the Markdown review surface in the editor package:
+  normalization, front-matter handling, hunked and word-level changes, view
+  modes, and revert actions. Avoid it for a standalone unified diff in a
+  Cinder application.
 - Cinder `source-diff-viewer` owns a dependency-light read-only source diff. It
-  parses unified-diff text, renders syntax-oriented additions/deletions, and
-  remains usable without the editor package. Avoid it for editable review or
-  commentary workflows.
+  parses unified-diff text, renders structured file/hunk rows with additions
+  and removals, and remains usable without the editor package. Avoid it for
+  Markdown review workflows that need normalization or revert actions.
 
 The visual overlap is intentional; their parsers, dependency owners, and
 interaction contracts differ. Sharing either implementation would reverse the
@@ -21,10 +21,10 @@ package boundary or force editor dependencies into Cinder core.
 
 ## Message renderers
 
-- Cinder `Message` owns the core chat message surface: role/content layout,
-  markdown-safe rendering hooks, status states, and action affordances usable by
-  any Cinder consumer. Avoid it when the Chat package's conversation state and
-  transport context are required.
+- Cinder `Message` owns the domain-neutral message shell: role/name and
+  timestamp chrome plus an arbitrary body snippet usable by any Cinder
+  consumer. Avoid it when the Chat package's conversation state, transport,
+  streaming, or tool-call context is required.
 - Chat's message renderer owns Chat-specific conversation state, streaming and
   tool-call presentation, transport metadata, and package-level composition. It
   may compose Cinder primitives, but Cinder must not depend on Chat. Avoid it
