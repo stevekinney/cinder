@@ -53,6 +53,22 @@ describe('Grid', () => {
     expect(root.hasAttribute('data-cinder-collapse')).toBe(true);
   });
 
+  test('does not measure ordinary grids', () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    let measurements = 0;
+    HTMLElement.prototype.getBoundingClientRect = function () {
+      measurements += 1;
+      return originalGetBoundingClientRect.call(this);
+    };
+
+    try {
+      render(Grid, { props: { children: textSnippet('content') } });
+      expect(measurements).toBe(0);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
   test('omits inline custom properties when layout props are absent', () => {
     const { container } = render(Grid, {
       props: { children: textSnippet('content') },

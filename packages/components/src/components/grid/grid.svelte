@@ -89,7 +89,9 @@
   );
 
   const observeGrid = (node: HTMLElement) => {
-    updateNarrowState(node.getBoundingClientRect().width);
+    if (collapse) {
+      updateNarrowState(node.getBoundingClientRect().width);
+    }
     return observeResize(node);
   };
 </script>
