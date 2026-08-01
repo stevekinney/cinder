@@ -19,6 +19,8 @@
     EventTimelineSize,
     EventTimelineState,
   } from './event-timeline.types.ts';
+
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">

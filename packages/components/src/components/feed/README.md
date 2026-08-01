@@ -2,6 +2,8 @@
 
 Scrollable chronological list of activity events with optional load-more pagination.
 
+See the [chronological display boundary decision](../../../../docs/decisions/chronological-display-boundaries.md) for the boundary between user-facing activity, static history, schedules, and operational streams.
+
 ## Usage
 
 `Feed` is a compound component. Import the parent and compose `Feed.Event` via

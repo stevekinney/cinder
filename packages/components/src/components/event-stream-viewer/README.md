@@ -2,6 +2,8 @@
 
 Dense append-only viewer for timestamped operational events. Use it for workflow run logs, job output streams, webhook traces, activity completion feeds, and other real-time or historical event consoles.
 
+See the [chronological display boundary decision](../../../../docs/decisions/chronological-display-boundaries.md) for when to choose this operational console over Feed, Timeline, RunStepTimeline, or EventTimeline.
+
 ## Overview
 
 EventStreamViewer renders a scrollable list of timestamped events, each with a severity tone, optional source label, a one-line summary, and optional expandable JSON details. It handles follow-latest scrolling (auto-scroll to bottom as events arrive), a paused state when the user scrolls away, filtering hooks, copy actions, reconnect boundaries, and sequence-gap markers. Empty, loading, disconnected, and truncated states are built in.

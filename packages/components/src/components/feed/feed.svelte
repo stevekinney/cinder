@@ -12,6 +12,8 @@
    * @related feed-event
    */
   export type { FeedProps } from './feed.types.ts';
+
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">

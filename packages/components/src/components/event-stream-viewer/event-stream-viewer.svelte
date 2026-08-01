@@ -25,6 +25,8 @@
     StreamEvent,
     StreamReconnectedBoundary,
   } from './event-stream-viewer.types.ts';
+
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">

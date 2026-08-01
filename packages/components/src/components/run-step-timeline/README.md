@@ -4,6 +4,8 @@ Ordered step-by-step execution rail for async operations. Shows pending, running
 
 Use `RunStepTimeline` for CI jobs, workflow engine runs, import pipelines, deployment flows, and queue workers. Use `Timeline` for timestamp-first event logs. Use `Steps` for interactive wizard navigation.
 
+See the [chronological display boundary decision](../../../../docs/decisions/chronological-display-boundaries.md) for the distinction between execution state, event history, schedules, activity feeds, and operational streams.
+
 ## Overview
 
 `RunStepTimeline` takes a `steps` array and renders an ordered list. Each step shows:

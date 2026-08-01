@@ -28,6 +28,8 @@
     RunStepTimelineProps,
   } from './run-step-timeline.types.ts';
 
+  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
+
   // View-model row types for the render pipeline. Defined in the module script
   // so snippet parameter annotations below can resolve them (svelte-check does
   // not reliably see instance-<script> local types from snippet signatures).
