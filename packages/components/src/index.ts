@@ -594,7 +594,11 @@ export type {
   NavigationBarToggleAttributes,
   NavigationVariant,
 } from './components/navigation-bar/index.ts';
-export { default as Portal, createPortalAttachment } from './components/portal/index.ts';
+export {
+  default as Portal,
+  createPortalAttachment,
+  invalidatePortalDirection,
+} from './components/portal/index.ts';
 export type { PortalAttachmentOptions, PortalProps } from './components/portal/index.ts';
 
 export { default as PricingSection } from './components/pricing-section/index.ts';
