@@ -2,6 +2,9 @@
 
 Generic modal shell for rich content, forms, and structured workflows. Use the more specialised components when the content fits their narrower contract.
 
+See the [dialog preset boundary](../../../../docs/decisions/dialog-presets.md)
+for the durable distinction from ConfirmDialog and AlertDialog.
+
 ## Choosing this component
 
 - Presenting rich or structured content (forms, multi-step wizards, detail views) inside a blocking overlay.

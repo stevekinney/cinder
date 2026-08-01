@@ -2,6 +2,9 @@
 
 Pre-wired modal dialog for user-initiated binary decisions: "proceed" or "cancel". Focus defaults to the cancel button — the industry-standard guard against accidental destructive confirms.
 
+See the [dialog preset boundary](../../../../docs/decisions/dialog-presets.md)
+for the preserved role, acknowledgement, and dismissal contract.
+
 ## Dialog model
 
 ConfirmDialog is one of three dialog-level components:
