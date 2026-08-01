@@ -455,7 +455,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
               matched = true;
               break;
             }
-          } else if (discriminantValue === undefined)
+          } else if (discriminantValue === undefined || caseValue === undefined)
             starts.push({ index, state: new Map(testState) });
         } else if (!matched) starts.push({ index, state: new Map(testState) });
       }

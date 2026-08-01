@@ -261,6 +261,12 @@ describe('primitive composition guard', () => {
         'new-control/new-control.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; true ? (tag = 'div') : (tag = 'input');</script><svelte:element this={tag} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('preserves conditional predecessors before compound tag composition', () => {
@@ -1742,6 +1748,12 @@ describe('primitive composition guard', () => {
         'switch-break-style/switch-break-style.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const match = 'yes'; const block = { display: 'block' }; const grid = { display: 'grid', gridTemplateColumns: '1fr' }; let layout = block; switch ('yes') { case match: layout = grid; break; case 'yes': layout = block; }</script><div style={layout}></div>",
+        'switch-break-style/switch-break-style.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('does not treat a shadowed undefined binding as nullish', () => {
@@ -2396,6 +2408,12 @@ describe('primitive composition guard', () => {
         'switch-test-control/switch-test-control.svelte',
       ),
     ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>const match = 'yes'; let tag = 'div'; switch ('yes') { case match: tag = 'input'; break; case 'yes': tag = 'div'; }</script><svelte:element this={tag} />",
+        'switch-test-control/switch-test-control.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('discards synchronous IIFE return states after later writes', () => {
@@ -2419,6 +2437,7 @@ describe('primitive composition guard', () => {
   test('preserves zero-entry field-tag loop states', () => {
     for (const loop of [
       "for (const item of []) tag = 'span';",
+      "for (const item of [...[]]) tag = 'span';",
       "for (const item of items) tag = 'span';",
       "for (const key in object) tag = 'span';",
       "for (; ready;) tag = 'span';",
@@ -2436,6 +2455,7 @@ describe('primitive composition guard', () => {
       "for (;;) { tag = 'span'; break; }",
       "for (;; tag = 'label') { tag = 'span'; break; }",
       "for (const item of [1]) tag = 'span';",
+      "for (const item of [,]) tag = 'span';",
     ])
       expect(
         findPrimitiveCompositionViolations(
@@ -2509,6 +2529,12 @@ describe('primitive composition guard', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let tag = 'div'; try { throw 0; } catch (tag) { tag = 'input'; }</script><svelte:element this={tag} />",
+        'try-catch-control/try-catch-control.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; try { tag = 'div'; } finally {}</script><svelte:element this={tag} />",
         'try-catch-control/try-catch-control.svelte',
       ),
     ).toEqual([]);

@@ -380,6 +380,13 @@ function possibleMutableControlNames(
     if (type === 'ConditionalExpression') {
       if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
       const base = snapshotMutableValues();
+      const truthiness = literalTruthiness(current['test']);
+      if (truthiness !== undefined) {
+        restoreMutableValues(base);
+        const branch = truthiness ? current['consequent'] : current['alternate'];
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return;
+      }
       const branches = [current['consequent'], current['alternate']].map((branch) => {
         restoreMutableValues(base);
         if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
@@ -447,6 +454,7 @@ function possibleMutableControlNames(
       let knownStartIndex: number | undefined;
       if (hasKnownDiscriminant) {
         let defaultIndex: number | undefined;
+        let hasUnresolvedCaseTest = false;
         for (let index = 0; index < cases.length; index += 1) {
           const test = cases[index]?.['test'];
           if (test === null) {
@@ -454,11 +462,13 @@ function possibleMutableControlNames(
             continue;
           }
           if (isRecord(test) && test['type'] === 'Literal' && test['value'] === knownDiscriminant) {
-            knownStartIndex = index;
+            if (!hasUnresolvedCaseTest) knownStartIndex = index;
             break;
           }
+          if (!isRecord(test) || test['type'] !== 'Literal') hasUnresolvedCaseTest = true;
         }
-        if (knownStartIndex === undefined) knownStartIndex = defaultIndex ?? -1;
+        if (knownStartIndex === undefined && !hasUnresolvedCaseTest)
+          knownStartIndex = defaultIndex ?? -1;
       }
       const switchShadowed =
         currentShadowed ||
@@ -479,31 +489,29 @@ function possibleMutableControlNames(
             ),
         );
       const branches: Set<string>[] = [];
+      const defaultIndex = cases.findIndex((switchCase) => switchCase['test'] === null);
       const startIndices =
         knownStartIndex === undefined
-          ? cases.map((_, index) => index)
+          ? [...cases.map((_, index) => index), ...(defaultIndex < 0 ? [-1] : [])]
           : knownStartIndex < 0
             ? [-1]
             : [knownStartIndex];
       for (const startIndex of startIndices) {
         restoreMutableValues(base);
-        if (knownStartIndex !== undefined) {
-          const lastTestIndex = startIndex < 0 ? cases.length - 1 : startIndex;
-          for (let caseIndex = 0; caseIndex <= lastTestIndex; caseIndex += 1) {
-            const test = cases[caseIndex]?.['test'];
-            if (isRecord(test)) walkTopLevel(test, switchShadowed);
-          }
-          if (startIndex < 0) {
-            branches.push(snapshotMutableValues());
-            continue;
-          }
+        const lastTestIndex =
+          startIndex < 0 || startIndex === defaultIndex ? cases.length - 1 : startIndex;
+        for (let caseIndex = 0; caseIndex <= lastTestIndex; caseIndex += 1) {
+          const test = cases[caseIndex]?.['test'];
+          if (isRecord(test)) walkTopLevel(test, switchShadowed);
+        }
+        if (startIndex < 0) {
+          branches.push(snapshotMutableValues());
+          continue;
         }
         let stopped = false;
         const interruptedStates: Set<string>[] = [];
         breakTargets.push({ label: controlLabel, states: interruptedStates });
         for (let caseIndex = startIndex; caseIndex < cases.length && !stopped; caseIndex++) {
-          const test = cases[caseIndex]?.['test'];
-          if (knownStartIndex === undefined && isRecord(test)) walkTopLevel(test, switchShadowed);
           const consequent = cases[caseIndex]?.['consequent'];
           if (!Array.isArray(consequent)) continue;
           for (const statement of consequent) {
@@ -519,7 +527,6 @@ function possibleMutableControlNames(
           new Set([...mutableValues, ...interruptedStates.flatMap((state) => [...state])]),
         );
       }
-      if (!cases.some((switchCase) => switchCase['test'] === null)) branches.push(base);
       restoreMutableValues(branches.flatMap((branch) => [...branch]));
       undefinedShadowFrames.pop();
       return;
@@ -532,15 +539,15 @@ function possibleMutableControlNames(
       if (isRecord(tryBlock)) walkTopLevel(tryBlock, currentShadowed);
       alternatives.push(snapshotMutableValues());
       const handler = current['handler'];
-      restoreMutableValues(base);
       if (isRecord(handler)) {
+        restoreMutableValues(base);
         const catchShadowed =
           currentShadowed || bindingPatternIncludesName(handler['param'], bindingName);
         undefinedShadowFrames.push(bindingPatternIncludesName(handler['param'], 'undefined'));
         walkTopLevel(handler, catchShadowed);
         undefinedShadowFrames.pop();
+        alternatives.push(snapshotMutableValues());
       }
-      alternatives.push(snapshotMutableValues());
       restoreMutableValues(alternatives.flatMap((state) => [...state]));
       const finalizer = current['finalizer'];
       if (isRecord(finalizer)) walkTopLevel(finalizer, currentShadowed);

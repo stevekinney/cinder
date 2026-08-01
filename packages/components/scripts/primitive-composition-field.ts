@@ -110,6 +110,17 @@ function unconditionallyExitsBeforeLoopUpdate(statement: unknown): boolean {
   );
 }
 
+function staticallyGuaranteesNonEmptyArray(expression: unknown): boolean {
+  if (!isRecord(expression) || expression['type'] !== 'ArrayExpression') return false;
+  if (!Array.isArray(expression['elements'])) return false;
+  return expression['elements'].some((element) => {
+    if (element === null) return true;
+    if (!isRecord(element)) return false;
+    if (element['type'] !== 'SpreadElement') return true;
+    return staticallyGuaranteesNonEmptyArray(element['argument']);
+  });
+}
+
 function collectPatternNames(pattern: unknown, into: Set<string>): void {
   if (!isRecord(pattern)) return;
   if (pattern['type'] === 'Identifier' && typeof pattern['name'] === 'string') {
@@ -426,11 +437,7 @@ function staticStringBindings(source: string): Map<string, string[]> {
         Array.isArray(node['right']['elements']) &&
         node['right']['elements'].length === 0;
       const guaranteedIterable =
-        node['type'] === 'ForOfStatement' &&
-        isRecord(node['right']) &&
-        node['right']['type'] === 'ArrayExpression' &&
-        Array.isArray(node['right']['elements']) &&
-        node['right']['elements'].length > 0;
+        node['type'] === 'ForOfStatement' && staticallyGuaranteesNonEmptyArray(node['right']);
       if (testTruthiness === false || emptyIterable) return;
       if (isRecord(node['body'])) walk(node['body'], loopShadowed);
       if (
