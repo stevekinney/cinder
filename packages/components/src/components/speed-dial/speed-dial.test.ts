@@ -48,6 +48,14 @@ describe('SpeedDial', () => {
   });
 
   test('open and reduced-motion styles preserve the same closed resting reset', () => {
+    const closedActionsRule = speedDialStyles.match(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{([^}]*)\}/s,
+    )?.[1];
+    expect(closedActionsRule).toBeDefined();
+    expect(closedActionsRule).toContain('background: transparent;');
+    expect(closedActionsRule).toContain('border-color: transparent;');
+    expect(closedActionsRule).toContain('box-shadow: none;');
+
     const openActionsRule = speedDialStyles.match(
       /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{([^}]*)\}/s,
     )?.[1];
@@ -71,7 +79,7 @@ describe('SpeedDial', () => {
     const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
     expect(toolbar.hasAttribute('data-cinder-open')).toBe(true);
     expect(toolbar.hasAttribute('inert')).toBe(false);
-    expect(toolbar.hasAttribute('aria-hidden')).toBe(false);
+    await waitFor(() => expect(toolbar.hasAttribute('aria-hidden')).toBe(false));
 
     await fireEvent.click(trigger);
     await flushQueuedFocus();
