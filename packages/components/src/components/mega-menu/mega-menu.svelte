@@ -173,16 +173,26 @@
     return `cinder-mega-menu-${instanceId}-submenu-panel-${normalizedItem}-${normalizedSubmenu}-${stableHash(`${itemId}:${submenuId}`)}`;
   }
 
-  type MenuRoot = Pick<Document, 'activeElement' | 'getElementById'>;
+  type MenuRoot = Pick<Document, 'activeElement'> & Pick<ParentNode, 'querySelector'>;
 
   function menuRoot(): MenuRoot | null {
     const root = navElement?.getRootNode();
-    if (!root || !('activeElement' in root) || !('getElementById' in root)) return null;
+    if (!root || !('activeElement' in root) || !('querySelector' in root)) return null;
     return root as MenuRoot;
   }
 
+  function escapeIdForSelector(id: string): string {
+    if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') return CSS.escape(id);
+    return id
+      .replaceAll('\\', '\\\\')
+      .replaceAll('"', '\\"')
+      .replaceAll('\n', '\\a ')
+      .replaceAll('\r', '\\d ')
+      .replaceAll('\f', '\\c ');
+  }
+
   function elementById<T extends HTMLElement = HTMLElement>(id: string): T | null {
-    return menuRoot()?.getElementById(id) as T | null;
+    return menuRoot()?.querySelector<T>(`[id="${escapeIdForSelector(id)}"]`) ?? null;
   }
 
   function focusElementById(id: string) {

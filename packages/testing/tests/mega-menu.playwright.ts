@@ -65,6 +65,44 @@ test('nested submenu keyboard navigation enters, traverses, and exits', async ({
   await expect(page.locator('.cinder-mega-menu__content')).toHaveCount(0);
 });
 
+test('nested submenu keyboard navigation stays scoped inside a shadow root', async ({
+  componentPage,
+}) => {
+  const page = await componentPage.open({
+    entry: megaMenuEntry,
+    theme: 'light',
+    viewport: desktop,
+  });
+
+  await page.locator('.cinder-mega-menu').evaluate((menu) => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    document.body.append(host);
+    shadow.append(menu);
+  });
+
+  const products = page.getByRole('button', { name: 'Products' });
+  await products.focus();
+  await products.press('ArrowDown');
+  await expect(page.getByRole('link', { name: 'Components' })).toBeFocused();
+
+  await page.getByRole('link', { name: 'Components' }).press('Tab');
+  await page.getByRole('link', { name: 'Design tokens' }).press('Tab');
+  const frontend = page.getByRole('button', { name: 'Frontend' });
+  await expect(frontend).toBeFocused();
+  await frontend.press('ArrowDown');
+  const backend = page.getByRole('button', { name: 'Backend' });
+  await expect(backend).toBeFocused();
+  await backend.press('ArrowRight');
+  const apis = page.getByRole('link', { name: 'APIs' });
+  await expect(apis).toBeFocused();
+  await apis.press('ArrowLeft');
+  await expect(backend).toBeFocused();
+  await backend.press('Escape');
+  await expect(products).toBeFocused();
+  await expect(page.locator('.cinder-mega-menu__content')).toHaveCount(0);
+});
+
 test('mobile submenu layout preserves lateral navigation without overflowing', async ({
   componentPage,
 }) => {
