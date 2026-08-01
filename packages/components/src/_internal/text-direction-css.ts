@@ -387,6 +387,13 @@ export function observeTextDirectionMediaQueries(
   const visit = (rules: CSSRuleList | Iterable<CSSRule>) => {
     for (const rule of Array.from(rules)) {
       if (Reflect.get(rule, 'type') === 3) {
+        try {
+          const media = Reflect.get(rule, 'media');
+          const condition = media && Reflect.get(media, 'mediaText');
+          if (typeof condition === 'string' && condition) queries.add(condition);
+        } catch {
+          // Ignore inaccessible import media conditions.
+        }
         let imported: CSSStyleSheet | undefined;
         try {
           imported = Reflect.get(rule, 'styleSheet');

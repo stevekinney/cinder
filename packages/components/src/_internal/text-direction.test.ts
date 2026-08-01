@@ -1816,6 +1816,8 @@ describe('resolveTextDirection', () => {
   test('observes media queries in recursively imported stylesheets', () => {
     const originalMatchMedia = globalThis.matchMedia;
     const listeners = new Set<EventListener>();
+    let activeListenerCount = 0;
+    const queries: string[] = [];
     const importedMediaRule = {
       cssText: '@media (prefers-color-scheme: dark) {}',
       type: 4,
@@ -1826,7 +1828,8 @@ describe('resolveTextDirection', () => {
     const importedSheet = { cssRules: [importedMediaRule] } as unknown as CSSStyleSheet;
     const importRule = {
       type: 3,
-      cssText: '@import url("theme.css");',
+      cssText: '@import url("theme.css") screen and (prefers-color-scheme: dark);',
+      media: { mediaText: 'screen and (prefers-color-scheme: dark)' },
       styleSheet: importedSheet,
     } as unknown as CSSImportRule;
     globalThis.matchMedia = ((query: string) =>
@@ -1838,12 +1841,19 @@ describe('resolveTextDirection', () => {
         removeListener: () => {},
         addEventListener: (_type: string, listener: EventListener) => {
           listeners.add(listener);
+          activeListenerCount += 1;
         },
         removeEventListener: (_type: string, listener: EventListener) => {
           listeners.delete(listener);
+          activeListenerCount -= 1;
         },
         dispatchEvent: () => true,
       }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+    const originalMatchMediaWithTracking = globalThis.matchMedia;
+    globalThis.matchMedia = ((query: string) => {
+      queries.push(query);
+      return originalMatchMediaWithTracking(query);
+    }) as typeof globalThis.matchMedia;
     const element = document.createElement('div');
     document.body.append(element);
     let changes = 0;
@@ -1854,11 +1864,97 @@ describe('resolveTextDirection', () => {
           changes += 1;
         }),
       );
-      expect(listeners.size).toBe(1);
+      expect(queries).toEqual([
+        'screen and (prefers-color-scheme: dark)',
+        '(prefers-color-scheme: dark)',
+      ]);
+      expect(activeListenerCount).toBe(2);
       for (const listener of listeners) listener(new Event('change'));
       expect(changes).toBe(1);
       disconnect?.();
-      expect(listeners.size).toBe(0);
+      expect(activeListenerCount).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('deduplicates shared and cyclic imports while observing import media', () => {
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    let activeListenerCount = 0;
+    const queries: string[] = [];
+    const sharedMediaRule = {
+      cssText: '@media (prefers-contrast: more) {}',
+      type: 4,
+      media: {},
+      conditionText: '(prefers-contrast: more)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    const rootSheet = { cssRules: [] } as unknown as CSSStyleSheet;
+    const importedSheet = { cssRules: [] } as unknown as CSSStyleSheet;
+    const sharedSheet = { cssRules: [sharedMediaRule] } as unknown as CSSStyleSheet;
+    const rootImport = {
+      type: 3,
+      cssText: '@import url("nested.css") screen;',
+      media: { mediaText: 'screen' },
+      styleSheet: importedSheet,
+    } as unknown as CSSImportRule;
+    const duplicateSharedImport = {
+      type: 3,
+      cssText: '@import url("shared.css") screen;',
+      media: { mediaText: 'screen' },
+      styleSheet: sharedSheet,
+    } as unknown as CSSImportRule;
+    const cycleImport = {
+      type: 3,
+      cssText: '@import url("root.css");',
+      media: { mediaText: '' },
+      styleSheet: rootSheet,
+    } as unknown as CSSImportRule;
+    const sharedImport = {
+      type: 3,
+      cssText: '@import url("shared.css") screen;',
+      media: { mediaText: 'screen' },
+      styleSheet: sharedSheet,
+    } as unknown as CSSImportRule;
+    Object.defineProperty(rootSheet, 'cssRules', {
+      configurable: true,
+      value: [rootImport, duplicateSharedImport],
+    });
+    Object.defineProperty(importedSheet, 'cssRules', {
+      configurable: true,
+      value: [cycleImport, sharedImport],
+    });
+    globalThis.matchMedia = ((query: string) => {
+      queries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+          activeListenerCount += 1;
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+          activeListenerCount -= 1;
+        },
+        dispatchEvent: () => true,
+      } satisfies MediaQueryList;
+    }) as typeof globalThis.matchMedia;
+    const element = document.createElement('div');
+    document.body.append(element);
+
+    try {
+      const disconnect = withDocumentStyleSheets([{ cssRules: rootSheet.cssRules }], () =>
+        observeTextDirectionMediaQueries(element, () => {}),
+      );
+      expect(queries).toEqual(['screen', '(prefers-contrast: more)']);
+      expect(activeListenerCount).toBe(2);
+      disconnect?.();
+      expect(activeListenerCount).toBe(0);
     } finally {
       globalThis.matchMedia = originalMatchMedia;
     }
