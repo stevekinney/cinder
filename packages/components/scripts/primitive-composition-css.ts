@@ -125,7 +125,7 @@ function attributeConstraintNecessarilyMatches(
 }
 
 function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTarget): boolean {
-  return (
+  const basicMatch =
     (alternative.tag === undefined || peer.tag === alternative.tag) &&
     (alternative.id === undefined || peer.id === alternative.id) &&
     [...alternative.classes].every((className) => peer.classes.has(className)) &&
@@ -135,8 +135,54 @@ function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTar
           attributeConstraintNecessarilyMatches(peerConstraint, constraint),
         ),
       ),
-    )
+    );
+  if (!basicMatch) return false;
+  return alternative.functionalConstraints.every(({ kind, alternatives }) =>
+    kind === 'not'
+      ? alternatives.every((nested) => targetsNecessarilyDisjoint(peer, nested))
+      : alternatives.some((nested) => targetNecessarilyMatches(peer, nested)),
   );
+}
+
+function targetsNecessarilyDisjoint(left: SelectorTarget, right: SelectorTarget): boolean {
+  if (left.impossible || right.impossible) return true;
+  if (left.tag !== undefined && right.tag !== undefined && left.tag !== right.tag) return true;
+  if (left.id !== undefined && right.id !== undefined && left.id !== right.id) return true;
+  if (
+    [...left.attributeConstraints].some(([name, constraints]) =>
+      constraints.some((leftConstraint) =>
+        attributeConstraintsFor(right, name).some((rightConstraint) =>
+          attributeConstraintsContradict(leftConstraint, rightConstraint),
+        ),
+      ),
+    )
+  )
+    return true;
+  for (const constraint of left.functionalConstraints) {
+    if (
+      constraint.kind === 'not' &&
+      constraint.alternatives.some((alternative) => targetNecessarilyMatches(right, alternative))
+    )
+      return true;
+    if (
+      constraint.kind === 'any' &&
+      constraint.alternatives.every((alternative) => targetsNecessarilyDisjoint(alternative, right))
+    )
+      return true;
+  }
+  for (const constraint of right.functionalConstraints) {
+    if (
+      constraint.kind === 'not' &&
+      constraint.alternatives.some((alternative) => targetNecessarilyMatches(left, alternative))
+    )
+      return true;
+    if (
+      constraint.kind === 'any' &&
+      constraint.alternatives.every((alternative) => targetsNecessarilyDisjoint(left, alternative))
+    )
+      return true;
+  }
+  return false;
 }
 
 function mediaType(query: string): { name: string; negated: boolean } | undefined {

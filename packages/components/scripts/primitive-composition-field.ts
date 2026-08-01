@@ -91,7 +91,8 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
   )
     return true;
   if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
-  return statement['body'].some(unconditionallyAbruptStatement);
+  const last = statement['body'].at(-1);
+  return unconditionallyAbruptStatement(last);
 }
 
 function unconditionallyExitsBeforeLoopUpdate(statement: unknown): boolean {

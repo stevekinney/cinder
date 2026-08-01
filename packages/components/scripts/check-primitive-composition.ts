@@ -47,13 +47,13 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
   if (!isRecord(statement)) return false;
   if (
     statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ContinueStatement' ||
     statement['type'] === 'ReturnStatement' ||
     statement['type'] === 'ThrowStatement'
   )
     return true;
   if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
-  for (const child of statement['body']) if (unconditionallyAbruptStatement(child)) return true;
-  return false;
+  return unconditionallyAbruptStatement(statement['body'].at(-1));
 }
 
 function isDefinitelyUndefinedExpression(value: unknown): boolean {
@@ -67,11 +67,13 @@ function isDefinitelyNonUndefinedExpression(value: unknown): boolean {
     isRecord(value) &&
     [
       'Literal',
+      'TemplateLiteral',
       'ObjectExpression',
       'ArrayExpression',
       'FunctionExpression',
       'ArrowFunctionExpression',
       'ClassExpression',
+      'NewExpression',
     ].includes(String(value['type']))
   );
 }
@@ -309,17 +311,41 @@ function possibleMutableControlNames(
   const breakTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
   const continueTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
   const returnTargets: Set<string>[][] = [];
+  const tryPrefixTargets: Set<string>[][] = [];
   let finallyDepth = 0;
   const explicitWrites: boolean[] = [];
-  const localAliasFrames: Map<string, string>[] = [];
+  const localAliasFrames: Map<string, ReadonlySet<string>>[] = [];
   const undefinedShadowFrames: boolean[] = [];
   const undefinedIsShadowed = (): boolean => undefinedShadowFrames.some(Boolean);
   let suppressPublication = false;
-  const visibleBindings = (): Map<string, string> => {
-    const visible = new Map(bindings);
-    for (const frame of localAliasFrames)
-      for (const [name, value] of frame) visible.set(name, value);
-    return visible;
+  const possibleVisibleStrings = (valueExpression: unknown): Set<string> => {
+    if (!isRecord(valueExpression)) return new Set();
+    if (valueExpression['type'] === 'Identifier' && typeof valueExpression['name'] === 'string') {
+      for (let index = localAliasFrames.length - 1; index >= 0; index -= 1) {
+        const values = localAliasFrames[index]?.get(valueExpression['name']);
+        if (values !== undefined) return new Set(values);
+      }
+    }
+    if (
+      valueExpression['type'] === 'TSAsExpression' ||
+      valueExpression['type'] === 'TSSatisfiesExpression' ||
+      valueExpression['type'] === 'TSNonNullExpression'
+    )
+      return possibleVisibleStrings(valueExpression['expression']);
+    if (valueExpression['type'] === 'ConditionalExpression')
+      return new Set([
+        ...possibleVisibleStrings(valueExpression['consequent']),
+        ...possibleVisibleStrings(valueExpression['alternate']),
+      ]);
+    if (valueExpression['type'] === 'LogicalExpression')
+      return new Set([
+        ...possibleVisibleStrings(valueExpression['left']),
+        ...possibleVisibleStrings(valueExpression['right']),
+      ]);
+    return possibleStaticStringsFromExpression(valueExpression, bindings);
+  };
+  const captureTryPrefix = (): void => {
+    for (const states of tryPrefixTargets) states.push(snapshotMutableValues());
   };
   const shadowsBindingInsideParameters = (node: UnknownRecord, shadowed: boolean): boolean =>
     shadowed ||
@@ -565,11 +591,13 @@ function possibleMutableControlNames(
       const alternatives: Set<string>[] = [];
       const tryBlock = current['block'];
       restoreMutableValues(base);
+      tryPrefixTargets.push([]);
       if (isRecord(tryBlock)) walkTopLevel(tryBlock, currentShadowed);
+      const tryPrefixes = tryPrefixTargets.pop() ?? [];
       alternatives.push(snapshotMutableValues());
       const handler = current['handler'];
       if (isRecord(handler)) {
-        restoreMutableValues(base);
+        restoreMutableValues([...base, ...tryPrefixes.flatMap((state) => [...state])]);
         const catchShadowed =
           currentShadowed || bindingPatternIncludesName(handler['param'], bindingName);
         undefinedShadowFrames.push(bindingPatternIncludesName(handler['param'], 'undefined'));
@@ -805,6 +833,11 @@ function possibleMutableControlNames(
       if (!suppressPublication && finallyDepth === 0) recordControls(mutableValues);
       return;
     }
+    if (type === 'AwaitExpression') {
+      if (isRecord(current['argument'])) walkTopLevel(current['argument'], currentShadowed);
+      recordControls(mutableValues);
+      return;
+    }
     if (type === 'BlockStatement' && Array.isArray(current['body'])) {
       localAliasFrames.push(new Map());
       for (const statement of current['body']) {
@@ -877,6 +910,7 @@ function possibleMutableControlNames(
         mutableValues.clear();
         for (const value of possibleStaticStringsFromExpression(node['init'], bindings))
           mutableValues.add(value);
+        captureTryPrefix();
       }
     }
     if (
@@ -887,8 +921,8 @@ function possibleMutableControlNames(
       typeof node['id']['name'] === 'string' &&
       localAliasFrames.length > 0
     ) {
-      const resolved = staticStringFromExpression(node['init'], visibleBindings());
-      if (resolved !== undefined) localAliasFrames.at(-1)?.set(node['id']['name'], resolved);
+      const resolved = possibleVisibleStrings(node['init']);
+      if (resolved.size > 0) localAliasFrames.at(-1)?.set(node['id']['name'], resolved);
     }
     if (
       !currentShadowed &&
@@ -898,11 +932,12 @@ function possibleMutableControlNames(
       node['left']['type'] === 'Identifier' &&
       node['left']['name'] === bindingName
     ) {
-      const rightValues = possibleStaticStringsFromExpression(node['right'], visibleBindings());
+      const rightValues = possibleVisibleStrings(node['right']);
       const combined = new Set<string>();
       for (const previous of mutableValues)
         for (const right of rightValues) combined.add(previous + right);
       restoreMutableValues(combined);
+      captureTryPrefix();
       if (explicitWrites.length > 0) explicitWrites[explicitWrites.length - 1] = true;
     }
     if (
@@ -913,8 +948,9 @@ function possibleMutableControlNames(
       node['left']['type'] === 'Identifier' &&
       node['left']['name'] === bindingName
     ) {
-      const values = possibleStaticStringsFromExpression(node['right'], visibleBindings());
+      const values = possibleVisibleStrings(node['right']);
       restoreMutableValues(values);
+      captureTryPrefix();
       if (explicitWrites.length > 0) explicitWrites[explicitWrites.length - 1] = true;
     }
     if (
@@ -925,7 +961,7 @@ function possibleMutableControlNames(
       node['left']['type'] === 'Identifier' &&
       node['left']['name'] === bindingName
     ) {
-      const rightValues = possibleStaticStringsFromExpression(node['right'], visibleBindings());
+      const rightValues = possibleVisibleStrings(node['right']);
       const previousValues = [...mutableValues];
       const result = new Set<string>();
       for (const previous of previousValues) {
@@ -937,6 +973,7 @@ function possibleMutableControlNames(
       }
       if (previousValues.length === 0) for (const right of rightValues) result.add(right);
       restoreMutableValues(result);
+      captureTryPrefix();
       if (explicitWrites.length > 0) explicitWrites[explicitWrites.length - 1] = true;
     }
     for (const child of Object.values(current)) {

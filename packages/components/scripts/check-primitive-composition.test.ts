@@ -2678,13 +2678,31 @@ describe('primitive composition guard', () => {
         'iife-control-flow/iife-control-flow.svelte',
       ),
     ).toHaveLength(1);
-    for (const argument of ['{}', '[]', 'function supplied() {}', 'class Supplied {}'])
+    for (const argument of [
+      '{}',
+      '[]',
+      'function supplied() {}',
+      'class Supplied {}',
+      '`supplied`',
+      'new Object()',
+    ])
       expect(
         findPrimitiveCompositionViolations(
           `<script>let tag = 'div'; ((value = (tag = 'input')) => {})(${argument});</script><svelte:element this={tag} />`,
           'iife-default/iife-default.svelte',
         ),
       ).toEqual([]);
+  });
+
+  test('preserves try prefixes, local alias alternatives, and pre-await control states', () => {
+    for (const source of [
+      "<script>let tag = 'div'; function show() { try { tag = 'input'; risky(); tag = 'div'; } catch {} }</script><svelte:element this={tag} onclick={show} />",
+      "<script>let tag = 'div'; function show() { const next = ready ? 'input' : 'div'; tag = next; }</script><svelte:element this={tag} onclick={show} />",
+      "<script>let tag = 'div'; async function show() { tag = 'input'; await tick(); tag = 'div'; }</script><svelte:element this={tag} onclick={show} />",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(source, 'observable-control/observable-control.svelte'),
+      ).toHaveLength(1);
   });
 
   test('inspects static alternatives in raw HTML expressions', () => {
@@ -2706,6 +2724,7 @@ describe('primitive composition guard', () => {
     for (const source of [
       "<script>let tag = 'span'; function show() { try { tag = 'label'; } catch { tag = 'span'; } }</script><svelte:element this={tag} onclick={show}>Name</svelte:element><p>Help</p><p>Error</p>",
       "<script>let tag = 'label'; { let tag = 'span'; }</script><svelte:element this={tag}>Name</svelte:element><p>Help</p><p>Error</p>",
+      "<script>let tag = 'span'; function show() { if (custom) { if (cancel) return; tag = 'label'; } }</script><svelte:element this={tag} onclick={show}>Name</svelte:element><p>Help</p><p>Error</p>",
     ])
       expect(
         findPrimitiveCompositionViolations(source, 'field-control-flow/field-control-flow.svelte'),
@@ -2796,6 +2815,27 @@ describe('primitive composition guard', () => {
         'repeated-attribute-constraints/repeated-attribute-constraints.css',
       ),
     ).toEqual([]);
+  });
+
+  test('respects nested functional constraints in negated alternatives', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:not(:is(.disabled)) { display: grid; grid-template-columns: 1fr; }',
+        'nested-functional-negation/nested-functional-negation.css',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:not(:is(.layout)) { display: grid; grid-template-columns: 1fr; }',
+        'nested-functional-negation/nested-functional-negation.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:not(:not(.disabled)) { display: grid; grid-template-columns: 1fr; }',
+        'nested-functional-negation/nested-functional-negation.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('excludes unpublished Svelte fixtures and type tests', () => {
