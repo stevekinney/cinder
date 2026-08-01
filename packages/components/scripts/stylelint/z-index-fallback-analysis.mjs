@@ -272,7 +272,7 @@ function argumentWithFallbackPlaceholders(frame, value, range) {
     if (child.start < range.start || child.end > range.end) continue;
     expression =
       expression.slice(0, child.start - range.start) +
-      '0' +
+      ' 0 ' +
       expression.slice(child.end - range.start);
   }
   return expression;
