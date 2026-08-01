@@ -22,8 +22,10 @@
  *      layer order is declared up front rather than inferred from insertion
  *      order (which would silently invert the cascade). Re-declaring the same
  *      order after `@lostgradient/cinder/styles` already ran is a spec no-op.
- *   5. The ONLY at-rules permitted outside the wrapper are the leading prelude
- *      and leading sibling-leaf `@import '../<leaf>/<leaf>.css'` statements.
+ *   5. The ONLY at-rules permitted outside the wrapper are the leading prelude,
+ *      leading sibling-leaf `@import '../<leaf>/<leaf>.css'` statements, and
+ *      private `../_internal/<name>.css` imports from one-level component
+ *      sidecars whose source and distribution paths resolve identically.
  *      Compound parents (Tabs, Table, Accordion, SideNavigation) use the
  *      imports so that importing `@lostgradient/cinder/<parent>/styles` pulls the whole
  *      family. The path shape mirrors the verbatim dist layout —
@@ -117,9 +119,26 @@ function isLayerOrderPreludeNode(node: { type: string }): boolean {
 const SIBLING_LEAF_IMPORT_PARAMS = /^(['"])\.\.\/([a-z][a-z0-9-]*)\/\2\.css\1$/;
 const PRIVATE_COMPONENT_IMPORT_PARAMS = /^(['"])\.\.\/_internal\/[a-z][a-z0-9-]*\.css\1$/;
 
+function isOneLevelComponentSidecar(file: string | undefined): boolean {
+  if (!file) return false;
+  const normalizedFile = file.replaceAll('\\', '/');
+  const componentsMarker = '/components/';
+  const componentsIndex = normalizedFile.lastIndexOf(componentsMarker);
+  if (componentsIndex === -1) return false;
+  const relativeSegments = normalizedFile
+    .slice(componentsIndex + componentsMarker.length)
+    .split('/')
+    .filter(Boolean);
+  return relativeSegments.length === 2;
+}
+
 function isAllowedComponentImport(atRule: AtRule): boolean {
   const params = atRule.params.trim();
-  return SIBLING_LEAF_IMPORT_PARAMS.test(params) || PRIVATE_COMPONENT_IMPORT_PARAMS.test(params);
+  if (SIBLING_LEAF_IMPORT_PARAMS.test(params)) return true;
+  return (
+    PRIVATE_COMPONENT_IMPORT_PARAMS.test(params) &&
+    isOneLevelComponentSidecar(atRule.root().source?.input.file)
+  );
 }
 
 /**
@@ -276,7 +295,7 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
       line: atRule.source?.start?.line ?? 1,
       column: atRule.source?.start?.column ?? 1,
       message:
-        "`@import` is not allowed inside a component CSS sidecar, except a sibling-leaf family import of the form `@import '../<leaf>/<leaf>.css'`. The sidecar is copied verbatim into `dist/components/<name>/`, where only sibling-leaf paths resolve. Inline other rules instead.",
+        "`@import` is not allowed inside a component CSS sidecar, except a sibling-leaf family import of the form `@import '../<leaf>/<leaf>.css'` or a private `../_internal/<name>.css` import from a one-level component sidecar. The sidecar is copied verbatim into `dist/components/<name>/`, so deeper relative private paths do not resolve. Inline other rules instead.",
     });
   });
 

@@ -176,7 +176,22 @@ describe('checkComponentCssSource', () => {
 
   it('allows leading private component imports', () => {
     const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-blog-section {} }`;
-    expect(checkComponentCssSource(source, fakePath)).toEqual([]);
+    expect(
+      checkComponentCssSource(
+        source,
+        '/virtual/packages/components/src/components/blog-section/blog-section.css',
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects a private import that cannot resolve from an experimental sidecar', () => {
+    const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-experimental-section {} }`;
+    const violations = checkComponentCssSource(
+      source,
+      '/virtual/packages/components/src/components/experimental/example/example.css',
+    );
+
+    expect(violations.some((violation) => violation.message.includes('@import'))).toBe(true);
   });
 
   it('rejects a non-sibling-leaf @import (mismatched dir/basename)', () => {
