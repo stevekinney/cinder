@@ -260,6 +260,30 @@ describe('Portal', () => {
     expect(element.getAttribute('dir')).toBe('rtl');
   });
 
+  test('prefers computed direction over the document default', () => {
+    document.documentElement.setAttribute('dir', 'ltr');
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const element = document.createElement('div');
+    document.body.append(source, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('preserves automatic direction from the document root', () => {
+    document.documentElement.setAttribute('dir', 'auto');
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const element = document.createElement('div');
+    document.body.append(source, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('auto');
+  });
+
   test('inherits an explicit direction across a shadow host', () => {
     const host = document.createElement('div');
     host.setAttribute('dir', 'auto');
@@ -691,6 +715,46 @@ describe('Portal', () => {
     stylesheetContainer.remove();
     await waitFor(() => expect(removedQueries).toContain('(prefers-reduced-transparency: reduce)'));
 
+    window.matchMedia = originalMatchMedia;
+    if (originalStyleSheets) Object.defineProperty(document, 'styleSheets', originalStyleSheets);
+    else Reflect.deleteProperty(document, 'styleSheets');
+  });
+
+  test('does not refresh media inventory for non-stylesheet links', async () => {
+    const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
+    const originalMatchMedia = window.matchMedia;
+    const removedQueries: string[] = [];
+    let exposeMediaQuery = true;
+    Object.defineProperty(document, 'styleSheets', {
+      configurable: true,
+      get: () =>
+        exposeMediaQuery
+          ? [{ media: { mediaText: '(prefers-reduced-transparency: reduce)' }, cssRules: [] }]
+          : [],
+    });
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => removedQueries.push(query),
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+    const mountPoint = document.createElement('div');
+    document.body.append(mountPoint);
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    exposeMediaQuery = false;
+    const iconLink = document.createElement('link');
+    iconLink.rel = 'icon';
+    document.head.append(iconLink);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(removedQueries).not.toContain('(prefers-reduced-transparency: reduce)');
     window.matchMedia = originalMatchMedia;
     if (originalStyleSheets) Object.defineProperty(document, 'styleSheets', originalStyleSheets);
     else Reflect.deleteProperty(document, 'styleSheets');

@@ -252,6 +252,16 @@ export function copyInheritedPortalAttributes(
   let inheritedDir: string | null | undefined = null;
   let generatedDirectionFallback: string | null = null;
   if (inheritAttributes && source && !preservesExplicitDirection) {
+    let computedDirection: string | null = null;
+    let hasReadComputedDirection = false;
+    const readComputedDirection = () => {
+      if (!hasReadComputedDirection) {
+        computedDirection =
+          typeof getComputedStyle === 'function' ? getComputedStyle(source).direction : null;
+        hasReadComputedDirection = true;
+      }
+      return computedDirection;
+    };
     let directionSource: HTMLElement | null = source;
     while (directionSource) {
       const matchingDirection = closestAcrossShadow(directionSource, '[dir]');
@@ -260,7 +270,12 @@ export function copyInheritedPortalAttributes(
         continue;
       }
       if (!matchingDirection.hasAttribute(inheritedDirectionAttribute)) {
-        inheritedDir = matchingDirection.getAttribute('dir');
+        const explicitDirection = matchingDirection.getAttribute('dir');
+        const documentComputedDirection =
+          matchingDirection === document.documentElement && explicitDirection !== 'auto'
+            ? readComputedDirection()
+            : null;
+        inheritedDir = documentComputedDirection || explicitDirection;
         break;
       }
       generatedDirectionFallback ??= matchingDirection.getAttribute('dir');
@@ -269,10 +284,8 @@ export function copyInheritedPortalAttributes(
           ? null
           : (matchingDirection.parentElement ?? getShadowHost(matchingDirection));
     }
-    if (inheritedDir === null && typeof getComputedStyle === 'function') {
-      inheritedDir = getComputedStyle(source).direction;
-    } else if (inheritedDir === null) {
-      inheritedDir = generatedDirectionFallback;
+    if (inheritedDir === null) {
+      inheritedDir = readComputedDirection() || generatedDirectionFallback;
     }
   }
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
@@ -741,7 +754,7 @@ function startDirectionInvalidationObservers() {
 function isStylesheetMutation(mutation: MutationRecord): boolean {
   if (mutation.type === 'attributes') {
     return (
-      (mutation.target instanceof HTMLStyleElement || mutation.target instanceof HTMLLinkElement) &&
+      (mutation.target instanceof HTMLStyleElement || isStylesheetLink(mutation.target)) &&
       (mutation.attributeName === 'media' || mutation.attributeName === 'disabled')
     );
   }
@@ -754,9 +767,19 @@ function isStylesheetMutation(mutation: MutationRecord): boolean {
 }
 
 function containsStylesheetNode(node: Node): boolean {
-  if (node instanceof HTMLStyleElement || node instanceof HTMLLinkElement) return true;
+  if (node instanceof HTMLStyleElement || isStylesheetLink(node)) return true;
   if (!(node instanceof Element || node instanceof DocumentFragment)) return false;
-  return node.querySelector('style, link') !== null;
+  return (
+    node.querySelector('style') !== null ||
+    [...node.querySelectorAll('link')].some(isStylesheetLink)
+  );
+}
+
+function isStylesheetLink(node: Node): node is HTMLLinkElement {
+  return (
+    node instanceof HTMLLinkElement &&
+    node.rel.split(/\s+/).some((relationship) => relationship.toLowerCase() === 'stylesheet')
+  );
 }
 
 function observeDirectionShadowRoots(source: HTMLElement) {
@@ -844,7 +867,7 @@ function stopDirectionInvalidationObservers() {
 
 function handleStylesheetLoad(event: Event) {
   const target = event.target;
-  if (target instanceof HTMLLinkElement || target instanceof HTMLStyleElement) {
+  if (target instanceof HTMLStyleElement || (target instanceof Node && isStylesheetLink(target))) {
     refreshMediaQueryObservers();
     invalidateComputedDirections();
   }
