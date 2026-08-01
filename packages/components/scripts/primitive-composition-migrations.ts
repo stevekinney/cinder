@@ -95,9 +95,9 @@ allowedGridCounts.set('phone-input/phone-input.css', 2);
 allowedGridCounts.set('pricing-section/pricing-section.css', 5);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
 allowedGridCounts.set('selectable-row/selectable-row.css', 2);
-// The selector-aware analyzer counts only the line grid: the lines container's
-// display:grid has no grid-definition property and is not a hand-rolled layout.
-allowedGridCounts.set('source-diff-viewer/source-diff-viewer.css', 1);
+// The selector-aware analyzer counts the line grid's base and no-number column
+// definitions. The lines container has no grid-definition property.
+allowedGridCounts.set('source-diff-viewer/source-diff-viewer.css', 2);
 allowedGridCounts.set('stacked-list-item/stacked-list-item.css', 6);
 allowedGridCounts.set('statistic-group/statistic-group.css', 10);
 allowedGridCounts.set('statistic/statistic.css', 2);

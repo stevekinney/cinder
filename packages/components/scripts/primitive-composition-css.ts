@@ -63,6 +63,7 @@ type AttributeConstraint = {
 type SelectorTarget = {
   ancestorSignature?: string;
   directParentTag?: string;
+  directParentId?: string;
   tag?: string;
   id?: string;
   impossible?: boolean;
@@ -73,6 +74,7 @@ type SelectorTarget = {
     kind: 'not' | 'any';
     alternatives: SelectorTarget[];
   }>;
+  unknownPseudos: Set<string>;
 };
 
 function attributeConstraintsFor(
@@ -87,6 +89,29 @@ function attributeConstraintsFor(
 
 function normalizeAttributeValue(value: string, insensitive: boolean): string {
   return insensitive ? value.toLowerCase() : value;
+}
+
+function exactPositionalPseudo(pseudo: string): { axis: string; position: number } | undefined {
+  const match = pseudo.match(
+    /^:(nth-child|nth-last-child|nth-of-type|nth-last-of-type)\(\s*([+-]?\d+)\s*\)$/,
+  );
+  if (match?.[1] === undefined || match[2] === undefined) return undefined;
+  return { axis: match[1], position: Number(match[2]) };
+}
+
+function positionalPseudosConflict(
+  leftPseudos: ReadonlySet<string>,
+  rightPseudos: ReadonlySet<string>,
+): boolean {
+  const leftPositions = [...leftPseudos]
+    .map(exactPositionalPseudo)
+    .filter((value) => value !== undefined);
+  const rightPositions = [...rightPseudos]
+    .map(exactPositionalPseudo)
+    .filter((value) => value !== undefined);
+  return leftPositions.some((left) =>
+    rightPositions.some((right) => left.axis === right.axis && left.position !== right.position),
+  );
 }
 
 function attributeOperatorMatches(
@@ -110,18 +135,36 @@ function attributeConstraintNecessarilyMatches(
 ): boolean {
   if (alternative.operator === undefined) return true;
   if (peer.value === undefined || alternative.value === undefined) return false;
-  if (peer.operator === '=') {
-    if (!alternative.insensitive && peer.insensitive) return false;
-    const insensitive = alternative.insensitive || peer.insensitive;
-    const peerValue = normalizeAttributeValue(peer.value, insensitive);
-    const alternativeValue = normalizeAttributeValue(alternative.value, insensitive);
-    return alternative.operator === '='
-      ? peerValue === alternativeValue
-      : attributeOperatorMatches(alternative.operator, peerValue, alternativeValue);
-  }
-  if (peer.operator !== alternative.operator) return false;
-  if (alternative.insensitive) return peer.value.toLowerCase() === alternative.value.toLowerCase();
-  return !peer.insensitive && peer.value === alternative.value;
+  if (!alternative.insensitive && peer.insensitive) return false;
+  const insensitive = alternative.insensitive || peer.insensitive;
+  const peerValue = normalizeAttributeValue(peer.value, insensitive);
+  const alternativeValue = normalizeAttributeValue(alternative.value, insensitive);
+  if (peer.operator === '=')
+    return attributeOperatorMatches(alternative.operator, peerValue, alternativeValue);
+  if (peer.operator === undefined) return false;
+  if (alternative.operator === '^=')
+    return (
+      (peer.operator === '^=' || peer.operator === '|=') && peerValue.startsWith(alternativeValue)
+    );
+  if (alternative.operator === '$=')
+    return peer.operator === '$=' && peerValue.endsWith(alternativeValue);
+  if (alternative.operator === '*=')
+    return (
+      (peer.operator === '^=' ||
+        peer.operator === '$=' ||
+        peer.operator === '*=' ||
+        peer.operator === '|=' ||
+        peer.operator === '~=') &&
+      peerValue.includes(alternativeValue)
+    );
+  if (alternative.operator === '|=')
+    return (
+      peer.operator === '|=' &&
+      (peerValue === alternativeValue || peerValue.startsWith(`${alternativeValue}-`))
+    );
+  if (alternative.operator === '~=')
+    return peer.operator === '~=' && peerValue === alternativeValue;
+  return false;
 }
 
 function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTarget): boolean {
@@ -129,6 +172,7 @@ function targetNecessarilyMatches(peer: SelectorTarget, alternative: SelectorTar
     (alternative.tag === undefined || peer.tag === alternative.tag) &&
     (alternative.id === undefined || peer.id === alternative.id) &&
     [...alternative.classes].every((className) => peer.classes.has(className)) &&
+    [...alternative.unknownPseudos].every((pseudo) => peer.unknownPseudos.has(pseudo)) &&
     [...alternative.attributeConstraints].every(([name, constraints]) =>
       constraints.every((constraint) =>
         attributeConstraintsFor(peer, name).some((peerConstraint) =>
@@ -148,6 +192,7 @@ function targetsNecessarilyDisjoint(left: SelectorTarget, right: SelectorTarget)
   if (left.impossible || right.impossible) return true;
   if (left.tag !== undefined && right.tag !== undefined && left.tag !== right.tag) return true;
   if (left.id !== undefined && right.id !== undefined && left.id !== right.id) return true;
+  if (positionalPseudosConflict(left.unknownPseudos, right.unknownPseudos)) return true;
   if (
     [...left.attributeConstraints].some(([name, constraints]) =>
       constraints.some((leftConstraint) =>
@@ -209,12 +254,14 @@ function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): Sel
     attributeConstraints.set(name, previousConstraints);
     attributes.set(name, constraint);
   }
+  const unknownPseudos = new Set([...outer.unknownPseudos, ...inner.unknownPseudos]);
   return {
     ...(outer.impossible ||
     inner.impossible ||
     contradictoryAttributes ||
     (outer.tag !== undefined && inner.tag !== undefined && outer.tag !== inner.tag) ||
-    (outer.id !== undefined && inner.id !== undefined && outer.id !== inner.id)
+    (outer.id !== undefined && inner.id !== undefined && outer.id !== inner.id) ||
+    positionalPseudosConflict(unknownPseudos, unknownPseudos)
       ? { impossible: true }
       : {}),
     ...((outer.tag ?? inner.tag) ? { tag: outer.tag ?? inner.tag } : {}),
@@ -223,6 +270,7 @@ function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): Sel
     attributes,
     attributeConstraints,
     functionalConstraints: [...outer.functionalConstraints, ...inner.functionalConstraints],
+    unknownPseudos,
   };
 }
 
@@ -260,6 +308,7 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
     attributes: new Map(),
     attributeConstraints: new Map(),
     functionalConstraints: [],
+    unknownPseudos: new Set(),
   };
   for (const node of nodes) {
     if (node.type === 'class') target.classes.add(node.value);
@@ -285,20 +334,34 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
     }
   }
   for (const node of nodes) {
+    const pseudoName = node.type === 'pseudo' ? node.value.toLowerCase() : undefined;
     if (
       node.type === 'pseudo' &&
-      (node.value === ':not' || node.value === ':is' || node.value === ':where') &&
+      (pseudoName === ':not' || pseudoName === ':is' || pseudoName === ':where') &&
       Array.isArray(node.nodes)
     ) {
-      const kind = node.value === ':not' ? 'not' : 'any';
-      const alternatives = node.nodes.map((selectorNode) =>
-        mergeSelectorTargets(target, selectorTargetFromNodes(selectorNode.nodes)),
+      const kind = pseudoName === ':not' ? 'not' : 'any';
+      const nestedTargets = node.nodes.map((selectorNode) =>
+        selectorTargetFromNodes(selectorNode.nodes),
+      );
+      const alternatives = nestedTargets.map((nestedTarget) =>
+        mergeSelectorTargets(target, nestedTarget),
       );
       target.functionalConstraints.push({ kind, alternatives });
       if (
         kind === 'not' &&
-        alternatives.some((alternative) => targetNecessarilyMatches(target, alternative))
+        nestedTargets.some((nestedTarget) => targetNecessarilyMatches(target, nestedTarget))
       )
+        target.impossible = true;
+    } else if (node.type === 'pseudo' && !node.value.startsWith('::')) {
+      const serialized = node.toString();
+      const pseudo = `${node.value.toLowerCase()}${serialized.slice(node.value.length)}`;
+      const position = exactPositionalPseudo(pseudo);
+      target.unknownPseudos.add(
+        position === undefined ? pseudo : `:${position.axis}(${position.position})`,
+      );
+      if (position !== undefined && position.position <= 0) target.impossible = true;
+      if (positionalPseudosConflict(target.unknownPseudos, target.unknownPseudos))
         target.impossible = true;
     }
   }
@@ -334,6 +397,8 @@ function selectorTargets(selector: string): SelectorTarget[] {
             const parentCompound = ancestorSignature.split(/\s+/).at(-1) ?? '';
             const directParentTag = parentCompound.match(/^[a-z][\w-]*/i)?.[0].toLowerCase();
             if (directParentTag !== undefined) target.directParentTag = directParentTag;
+            const directParentId = parentCompound.match(/#([\w-]+)/)?.[1];
+            if (directParentId !== undefined) target.directParentId = directParentId;
           }
         }
       }
@@ -401,22 +466,17 @@ function hasCompoundNegatedTagAnchor(target: SelectorTarget, other: SelectorTarg
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
   if (left.impossible || right.impossible) return false;
   if (negatesTag(left, right) || negatesTag(right, left)) return false;
+  if (positionalPseudosConflict(left.unknownPseudos, right.unknownPseudos)) return false;
   if (
     left.directParentTag !== undefined &&
     right.directParentTag !== undefined &&
     left.directParentTag !== right.directParentTag
   )
     return false;
-  const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
-    (match) => match[1],
-  );
-  const rightAncestorIds = [...(right.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
-    (match) => match[1],
-  );
   if (
-    leftAncestorIds.length > 0 &&
-    rightAncestorIds.length > 0 &&
-    !leftAncestorIds.some((id) => rightAncestorIds.includes(id))
+    left.directParentId !== undefined &&
+    right.directParentId !== undefined &&
+    left.directParentId !== right.directParentId
   )
     return false;
   const hasConflictingAttribute = [...left.attributes.keys()].some((attribute) => {

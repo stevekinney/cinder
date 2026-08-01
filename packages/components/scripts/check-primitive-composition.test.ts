@@ -332,7 +332,7 @@ describe('primitive composition guard', () => {
   test('tracks the source-diff-viewer line grid without counting its grid container', () => {
     expect(
       findPrimitiveCompositionViolations(
-        '.lines { display: grid; } .line { display: grid; grid-template-columns: 1fr 1fr; }',
+        '.lines { display: grid; } .line { display: grid; grid-template-columns: 1fr 1fr; } .line:not(:has(.line-number)) { grid-template-columns: 1fr; }',
         'source-diff-viewer/source-diff-viewer.css',
       ),
     ).toEqual([]);
@@ -372,6 +372,59 @@ describe('primitive composition guard', () => {
         'new-grid/new-grid.css',
       ),
     ).toHaveLength(1);
+  });
+
+  test('preserves unknown pseudo-state constraints inside :not()', () => {
+    expect(
+      cssPrimitiveCounts(
+        '.layout:not(:hover) { display: grid; } .layout { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        '.layout:not(.layout) { display: grid; } .layout { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(0);
+    for (const source of [
+      '.layout:not(:nth-child(2)) { display: grid; } .layout:nth-child(3) { grid-template-columns: 1fr; }',
+      '.layout:not(:lang(fr)) { display: grid; } .layout:lang(en) { grid-template-columns: 1fr; }',
+      '.layout:not(:has(.x)) { display: grid; } .layout:has(.y) { grid-template-columns: 1fr; }',
+    ])
+      expect(cssPrimitiveCounts(source).grid).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        '.layout:nth-child(2) { display: grid; } .layout:nth-child(3) { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(0);
+    expect(
+      cssPrimitiveCounts(
+        '.layout:nth-of-type(+2) { display: grid; } .layout:nth-of-type(2) { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        '.layout:NOT(.disabled) { display: grid; } .layout.disabled { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(0);
+    for (const pseudo of [':IS(#active)', ':WHERE(#active)'])
+      expect(
+        cssPrimitiveCounts(
+          `.layout${pseudo} { display: grid; } .layout#inactive { grid-template-columns: 1fr; }`,
+        ).grid,
+      ).toBe(0);
+  });
+
+  test('allows distinct ids on descendant ancestor chains to overlap when nested', () => {
+    expect(
+      cssPrimitiveCounts(
+        '#outer .layout { display: grid; } #inner .layout { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        '#outer.layout { display: grid; } #inner.layout { grid-template-columns: 1fr; }',
+      ).grid,
+    ).toBe(0);
   });
 
   test('counts every compatible grid display and template pairing', () => {
@@ -494,6 +547,39 @@ describe('primitive composition guard', () => {
       ".layout[data-state^='Al'] { display: grid; } .layout[data-state='ALPHA' i] { grid-template-columns: 1fr; }",
     ])
       expect(cssPrimitiveCounts(source).grid).toBe(1);
+  });
+
+  test('recognizes attribute-operator implication with correct case sensitivity', () => {
+    for (const source of [
+      ".layout[data-x^='ab'] { display: grid; } .layout[data-x^='a'] { grid-template-columns: 1fr; }",
+      ".layout[data-x$='ab'] { display: grid; } .layout[data-x$='b'] { grid-template-columns: 1fr; }",
+      ".layout[data-x*='abc'] { display: grid; } .layout[data-x*='a'] { grid-template-columns: 1fr; }",
+      ".layout[data-x|='en-US'] { display: grid; } .layout[data-x|='en'] { grid-template-columns: 1fr; }",
+      ".layout[data-x|='en-US'] { display: grid; } .layout[data-x^='en'] { grid-template-columns: 1fr; }",
+      ".layout[data-x|='en-US'] { display: grid; } .layout[data-x*='-U'] { grid-template-columns: 1fr; }",
+      ".layout[data-x~='foo'] { display: grid; } .layout[data-x*='oo'] { grid-template-columns: 1fr; }",
+    ])
+      expect(cssPrimitiveCounts(source).grid).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        ".layout[data-x^='ab']:not([data-x^='a']) { display: grid; grid-template-columns: 1fr; }",
+      ).grid,
+    ).toBe(0);
+    expect(
+      cssPrimitiveCounts(
+        ".layout[data-x^='ab' i]:not([data-x^='a']) { display: grid; grid-template-columns: 1fr; }",
+      ).grid,
+    ).toBe(1);
+    expect(
+      cssPrimitiveCounts(
+        ".layout[data-x|='en-US']:not([data-x*='en']) { display: grid; grid-template-columns: 1fr; }",
+      ).grid,
+    ).toBe(0);
+    expect(
+      cssPrimitiveCounts(
+        ".layout[data-x~='foo']:not([data-x*='f']) { display: grid; grid-template-columns: 1fr; }",
+      ).grid,
+    ).toBe(0);
   });
 
   test('does not combine declarations from different conditional scopes', () => {
@@ -692,6 +778,12 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         "<script>let undefined = dynamic; let layout = { display: 'block' }; if (undefined) layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
         'unreachable-style-assignment/unreachable-style-assignment.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; if (ready) { var nextLayout = { display: 'grid', gridTemplateColumns: '1fr' }; layout = nextLayout; }</script><div style={layout}></div>",
+        'branch-var-style/branch-var-style.svelte',
       ),
     ).toHaveLength(1);
     expect(
@@ -1989,6 +2081,33 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('applies do-while tests to ordinary fallthrough states', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; do { tag = 'input'; } while ((tag = 'div', false));</script><svelte:element this={tag} />",
+        'do-while-fallthrough-test/do-while-fallthrough-test.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; do { tag = 'input'; break; } while ((tag = 'div', false));</script><svelte:element this={tag} />",
+        'do-while-break-control/do-while-break-control.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; do { tag = 'input'; } while (true);</script><svelte:element this={tag} />",
+        'do-while-static-true/do-while-static-true.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; do { tag = 'input'; } while (1);</script><svelte:element this={tag} />",
+        'do-while-truthy-test/do-while-truthy-test.svelte',
+      ),
+    ).toEqual([]);
+  });
+
   test('preserves raw controls across initializer-free var redeclarations', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -2746,6 +2865,30 @@ describe('primitive composition guard', () => {
   test('analyzes each-block field fallbacks without leaking body bindings', () => {
     expect(
       findPrimitiveCompositionViolations(
+        '{#each [1] as item}<label>Name</label><p>Help</p><p>Error</p>{:else}<div>Okay</div>{/each}',
+        'each-body-field/each-body-field.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '{#each [1] as item}<div>{item}</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/each}',
+        'unreachable-each-fallback-field/unreachable-each-fallback-field.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '{#each items as item}<div>{item}</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/each}',
+        'unknown-each-fallback-field/unknown-each-fallback-field.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '{#each [...items] as item}<div>{item}</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/each}',
+        'spread-each-fallback-field/spread-each-fallback-field.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
         '{#each [] as item}<div>{item}</div>{:else}<label>Name</label><p>Help</p><p>Error</p>{/each}',
         'each-fallback-field/each-fallback-field.svelte',
       ),
@@ -2889,6 +3032,31 @@ describe('primitive composition guard', () => {
         'raw-html-alternatives/raw-html-alternatives.svelte',
       ),
     ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        `{@html true ? '<div></div>' : '<input aria-label="Name">'}`,
+        'raw-html-static-true/raw-html-static-true.svelte',
+      ),
+    ).toEqual([]);
+    for (const test of ['0', "''", 'null'])
+      expect(
+        findPrimitiveCompositionViolations(
+          `{@html ${test} ? '<input aria-label="Name">' : '<div></div>'}`,
+          'raw-html-static-falsy/raw-html-static-falsy.svelte',
+        ),
+      ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        `<script lang="ts">const enabled = false as const;</script>{@html enabled ? '<input aria-label="Name">' : '<div></div>'}`,
+        'raw-html-static-asserted-boolean/raw-html-static-asserted-boolean.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        `{@html false ? '<input aria-label="Name">' : '<div></div>'}`,
+        'raw-html-static-false/raw-html-static-false.svelte',
+      ),
+    ).toEqual([]);
   });
 
   test('models field-tag ternaries, try-catch paths, and bare-block shadowing', () => {

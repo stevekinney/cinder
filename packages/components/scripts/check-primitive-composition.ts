@@ -96,9 +96,11 @@ function parseSvelteFragment(source: string): UnknownRecord | undefined {
   return root['fragment'];
 }
 
+type StaticBinding = { kind: 'boolean'; value: boolean } | { kind: 'string'; value: string };
+
 function staticStringFromExpression(
   expression: unknown,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): string | undefined {
   if (!isRecord(expression)) return undefined;
   if (expression['type'] === 'Literal' && typeof expression['value'] === 'string')
@@ -113,8 +115,10 @@ function staticStringFromExpression(
     const value = expression['quasis'][0]['value'];
     return isRecord(value) && typeof value['cooked'] === 'string' ? value['cooked'] : undefined;
   }
-  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
-    return bindings.get(expression['name']);
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const binding = bindings.get(expression['name']);
+    return binding?.kind === 'string' ? binding.value : undefined;
+  }
   if (
     expression['type'] === 'TSAsExpression' ||
     expression['type'] === 'TSSatisfiesExpression' ||
@@ -124,18 +128,73 @@ function staticStringFromExpression(
   return undefined;
 }
 
+function staticTruthinessFromExpression(
+  expression: unknown,
+  bindings: ReadonlyMap<string, StaticBinding>,
+): boolean | undefined {
+  if (!isRecord(expression)) return undefined;
+  if (expression['type'] === 'Literal') return Boolean(expression['value']);
+  if (
+    expression['type'] === 'TemplateLiteral' &&
+    Array.isArray(expression['expressions']) &&
+    expression['expressions'].length === 0 &&
+    Array.isArray(expression['quasis']) &&
+    isRecord(expression['quasis'][0])
+  ) {
+    const value = expression['quasis'][0]['value'];
+    if (isRecord(value) && typeof value['cooked'] === 'string') return Boolean(value['cooked']);
+  }
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return staticTruthinessFromExpression(expression['expression'], bindings);
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const binding = bindings.get(expression['name']);
+    if (binding !== undefined) return Boolean(binding.value);
+  }
+  return undefined;
+}
+
+function staticBooleanFromExpression(
+  expression: unknown,
+  bindings: ReadonlyMap<string, StaticBinding>,
+): boolean | undefined {
+  if (!isRecord(expression)) return undefined;
+  if (expression['type'] === 'Literal' && typeof expression['value'] === 'boolean')
+    return expression['value'];
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return staticBooleanFromExpression(expression['expression'], bindings);
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const binding = bindings.get(expression['name']);
+    return binding?.kind === 'boolean' ? binding.value : undefined;
+  }
+  return undefined;
+}
+
 function possibleStaticStringsFromExpression(
   expression: unknown,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): Set<string> {
   const directValue = staticStringFromExpression(expression, bindings);
   if (directValue !== undefined) return new Set([directValue]);
   if (!isRecord(expression)) return new Set();
-  if (expression['type'] === 'ConditionalExpression')
+  if (expression['type'] === 'ConditionalExpression') {
+    const truthiness = staticTruthinessFromExpression(expression['test'], bindings);
+    if (truthiness === true)
+      return possibleStaticStringsFromExpression(expression['consequent'], bindings);
+    if (truthiness === false)
+      return possibleStaticStringsFromExpression(expression['alternate'], bindings);
     return new Set([
       ...possibleStaticStringsFromExpression(expression['consequent'], bindings),
       ...possibleStaticStringsFromExpression(expression['alternate'], bindings),
     ]);
+  }
   if (expression['type'] === 'LogicalExpression')
     return new Set([
       ...possibleStaticStringsFromExpression(expression['left'], bindings),
@@ -144,9 +203,9 @@ function possibleStaticStringsFromExpression(
   return new Set();
 }
 
-function staticStringBindings(source: string): Map<string, string> {
+function staticStringBindings(source: string): Map<string, StaticBinding> {
   const root: unknown = parseSvelte(source, { modern: true });
-  const bindings = new Map<string, string>();
+  const bindings = new Map<string, StaticBinding>();
   if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
     return bindings;
   const body = root['instance']['content']['body'];
@@ -169,13 +228,15 @@ function staticStringBindings(source: string): Map<string, string> {
       )
         continue;
       const value = staticStringFromExpression(declaration['init'], bindings);
-      if (value !== undefined) bindings.set(declaration['id']['name'], value);
-      else if (
-        isRecord(declaration['init']) &&
-        declaration['init']['type'] === 'Literal' &&
-        typeof declaration['init']['value'] === 'boolean'
-      )
-        bindings.set(declaration['id']['name'], String(declaration['init']['value']));
+      if (value !== undefined) bindings.set(declaration['id']['name'], { kind: 'string', value });
+      else {
+        const booleanValue = staticBooleanFromExpression(declaration['init'], bindings);
+        if (booleanValue === undefined) continue;
+        bindings.set(declaration['id']['name'], {
+          kind: 'boolean',
+          value: booleanValue,
+        });
+      }
     }
   }
   return bindings;
@@ -768,6 +829,7 @@ function possibleMutableControlNames(
       return;
     }
     if (type === 'DoWhileStatement') {
+      const testCanExit = literalTruthiness(current['test']) !== true;
       const interruptedStates: Set<string>[] = [];
       breakTargets.push({ label: controlLabel, states: interruptedStates });
       const continuedStates: Set<string>[] = [];
@@ -776,15 +838,21 @@ function possibleMutableControlNames(
       continueTargets.pop();
       breakTargets.pop();
       const continuedAfterTest: Set<string>[] = [];
-      for (const state of continuedStates) {
-        restoreMutableValues(state);
+      if (testCanExit)
+        for (const state of continuedStates) {
+          restoreMutableValues(state);
+          if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+          continuedAfterTest.push(snapshotMutableValues());
+        }
+      const fallthroughAfterTest: Set<string>[] = [];
+      if (testCanExit && !unconditionallyAbruptStatement(current['body'])) {
         if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
-        continuedAfterTest.push(snapshotMutableValues());
+        fallthroughAfterTest.push(snapshotMutableValues());
       }
       restoreMutableValues([
         ...interruptedStates.flatMap((state) => [...state]),
         ...continuedAfterTest.flatMap((state) => [...state]),
-        ...mutableValues,
+        ...fallthroughAfterTest.flatMap((state) => [...state]),
       ]);
       return;
     }
@@ -1016,7 +1084,7 @@ function staticAttributeValue(attribute: UnknownRecord): string | undefined {
 
 function attributeValueWithDynamics(
   attribute: UnknownRecord,
-  bindings: ReadonlyMap<string, string> = new Map(),
+  bindings: ReadonlyMap<string, StaticBinding> = new Map(),
 ): string | undefined {
   const value = attribute['value'];
   if (value === true) return undefined;
@@ -1052,7 +1120,7 @@ function staticPropertyName(property: UnknownRecord): string | undefined {
 function hasStaticHiddenAttribute(
   element: UnknownRecord,
   elementNames: ReadonlySet<string>,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): boolean {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
@@ -1124,7 +1192,7 @@ function hasStaticHiddenAttribute(
       }
       if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
         const bound = bindings.get(expression['name']);
-        if (bound === 'true' || bound === 'false') hiddenState = bound === 'true';
+        if (bound?.kind === 'boolean') hiddenState = bound.value;
       }
       continue;
     }
@@ -1192,7 +1260,7 @@ export function visibleControlSignatures(source: string): string[] {
 
 function elementClassSet(
   element: UnknownRecord,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): Set<string> {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return new Set();
@@ -1207,7 +1275,8 @@ function elementClassSet(
         attribute['expression']['value'] === true) ||
         (attribute['expression']['type'] === 'Identifier' &&
           typeof attribute['expression']['name'] === 'string' &&
-          bindings.get(attribute['expression']['name']) === 'true'))
+          bindings.get(attribute['expression']['name'])?.kind === 'boolean' &&
+          bindings.get(attribute['expression']['name'])?.value === true))
     )
       classes.add(attribute['name']);
     if (attribute['type'] !== 'Attribute' || attribute['name'] !== 'class') continue;

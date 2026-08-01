@@ -1004,19 +1004,40 @@ function qualifyingFieldLabelBranches(
     if (Array.isArray(node['parameters']))
       for (const parameter of node['parameters']) collectPatternNames(parameter, names);
     const body = node['body'] ?? node['fragment'];
-    const evidence = isRecord(body)
-      ? qualifyingFieldLabelBranches(body, source, bindings, booleanBindings, names)
-      : [];
-    if (isRecord(node['fallback']))
-      evidence.push(
-        ...qualifyingFieldLabelBranches(
-          node['fallback'],
-          source,
-          bindings,
-          booleanBindings,
-          templateShadowed,
-        ),
-      );
+    const expression = node['expression'];
+    const arrayElements =
+      isRecord(expression) &&
+      expression['type'] === 'ArrayExpression' &&
+      Array.isArray(expression['elements'])
+        ? expression['elements']
+        : undefined;
+    const reachability =
+      arrayElements === undefined
+        ? 'unknown'
+        : arrayElements.length === 0
+          ? 'fallback'
+          : arrayElements.some(
+                (element) => !isRecord(element) || element['type'] !== 'SpreadElement',
+              )
+            ? 'body'
+            : 'unknown';
+    const evidence =
+      reachability === 'fallback'
+        ? []
+        : isRecord(body)
+          ? qualifyingFieldLabelBranches(body, source, bindings, booleanBindings, names)
+          : [];
+    if (reachability !== 'body')
+      if (isRecord(node['fallback']))
+        evidence.push(
+          ...qualifyingFieldLabelBranches(
+            node['fallback'],
+            source,
+            bindings,
+            booleanBindings,
+            templateShadowed,
+          ),
+        );
     return evidence.length > 0 ? evidence : [emptyFieldEvidence()];
   }
   if (node['type'] === 'AwaitBlock') {

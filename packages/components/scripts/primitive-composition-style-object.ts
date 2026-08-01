@@ -578,6 +578,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
               return;
             if (
               candidate['type'] === 'VariableDeclaration' &&
+              (candidate['kind'] === 'let' || candidate['kind'] === 'const') &&
               Array.isArray(candidate['declarations'])
             )
               for (const declaration of candidate['declarations'])
