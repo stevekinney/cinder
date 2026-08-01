@@ -473,7 +473,7 @@
                   <Checkbox
                     id={`${id}-checkbox-${index}`}
                     checked={selectedSet.has(item.id)}
-                    disabled={field.disabled || !!item.disabled}
+                    disabled={field.disabled || readonly || !!item.disabled}
                     aria-label={item.label}
                     onValueChangeRequest={(next) => {
                       if (next !== selectedSet.has(item.id)) toggleItem(item);
