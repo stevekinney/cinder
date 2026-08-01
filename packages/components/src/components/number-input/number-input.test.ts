@@ -62,6 +62,9 @@ describe('NumberInput basics', () => {
     expect(css).toMatch(
       /\.cinder-input-group:has\(> \.cinder-number-input__input\)\s*> \.cinder-input-group__trailing\s*\{[^}]*max-inline-size:\s*none;/,
     );
+    expect(css).toMatch(
+      /\.cinder-input-group:has\(> \.cinder-number-input__input\)\s*> \.cinder-input-group__trailing\s*\{[^}]*gap:\s*0;[^}]*padding-inline:\s*0;/,
+    );
     expect(componentSource).toContain("from '@lostgradient/cinder/input';");
     expect(componentSource).not.toContain("from '../input/");
   });

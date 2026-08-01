@@ -13,6 +13,8 @@
   .cinder-input-group:has(> .cinder-number-input__input) > .cinder-input-group__trailing {
     align-items: stretch;
     max-inline-size: none;
+    gap: 0;
+    padding-inline: 0;
   }
 
   .cinder-input-group:has(> .cinder-number-input__input[aria-invalid='true'])
