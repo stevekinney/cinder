@@ -2,7 +2,7 @@
 
 Sticky blocking acknowledgement dialog that cannot be dismissed by Escape or backdrop click. The user must click an explicit action button to proceed.
 
-See the [dialog preset boundary](../../../../docs/decisions/dialog-presets.md)
+See the [dialog preset boundary](../../../../../docs/decisions/dialog-presets.md)
 for the preserved role, acknowledgement, and dismissal contract.
 
 ## Dialog model

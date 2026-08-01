@@ -2,7 +2,7 @@
 
 Pre-wired modal dialog for user-initiated binary decisions: "proceed" or "cancel". Focus defaults to the cancel button — the industry-standard guard against accidental destructive confirms.
 
-See the [dialog preset boundary](../../../../docs/decisions/dialog-presets.md)
+See the [dialog preset boundary](../../../../../docs/decisions/dialog-presets.md)
 for the preserved role, acknowledgement, and dismissal contract.
 
 ## Dialog model
@@ -16,7 +16,7 @@ ConfirmDialog is one of three dialog-level components:
 The key distinction between ConfirmDialog and AlertDialog is _who initiates_ the interruption:
 
 - ConfirmDialog is for user-initiated actions that need a safety gate ("You clicked Delete — are you sure?"). Escape is a safe exit; cancel is the default focus.
-- AlertDialog is for system-initiated or out-of-band urgency ("Your session expired", "This action affects others"). Escape is blocked; acknowledgement is mandatory.
+- AlertDialog is for system-initiated or out-of-band urgency ("Your session expired", "A background process failed"). Escape is blocked; acknowledgement is mandatory.
 
 ## Choosing this component
 
