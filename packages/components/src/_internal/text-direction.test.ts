@@ -520,6 +520,57 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('fails closed when scope root or limit selector matching throws', () => {
+    const originalMatches = Element.prototype.matches;
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    Element.prototype.matches = function (selector: string): boolean {
+      if (selector === ':throwing-root' || selector === ':throwing-limit') {
+        throw new SyntaxError(`Unsupported selector: ${selector}`);
+      }
+      return originalMatches.call(this, selector);
+    };
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    const element = document.createElement('div');
+    element.className = 'shell';
+    document.body.append(element);
+    const styleRule = createStyleRule({ selectorText: '.shell', direction: 'ltr' });
+    const throwingRoot = {
+      type: 0,
+      cssText: '@scope (:throwing-root) {}',
+      cssRules: [styleRule],
+    } as unknown as CSSRule;
+    const throwingLimit = {
+      type: 0,
+      cssText: '@scope () to (:throwing-limit) {}',
+      cssRules: [styleRule],
+    } as unknown as CSSRule;
+
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [throwingRoot] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+      expect(
+        withDocumentStyleSheets([{ cssRules: [throwingLimit] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      Element.prototype.matches = originalMatches;
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('evaluates relative selectors against the resolved scope root', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

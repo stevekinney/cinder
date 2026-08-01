@@ -210,6 +210,8 @@ function findActiveScopeRoots(
   prelude: ScopePrelude,
   parentScopes: readonly ActiveScope[],
 ): Element[] | null {
+  if (!selectorsAreValid(element, prelude.rootSelectors)) return null;
+  if (prelude.limitSelectors && !selectorsAreValid(element, prelude.limitSelectors)) return null;
   const roots =
     prelude.rootSelectors.length === 0 ? [null] : findScopeMatches(element, prelude.rootSelectors);
   const activeRoots: Element[] = [];
@@ -228,6 +230,15 @@ function findActiveScopeRoots(
   }
   if (prelude.rootSelectors.length > 0 && activeRoots.length === 0) return null;
   return activeRoots;
+}
+
+function selectorsAreValid(element: Element, selectors: readonly string[]): boolean {
+  try {
+    for (const selector of selectors) element.matches(selector);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isWithinParentScopes(root: Element, parentScopes: readonly ActiveScope[]): boolean {
@@ -423,7 +434,7 @@ function findScopeMatches(element: HTMLElement, selectors: string[]): Element[] 
   let current: Element | null = element;
   while (current) {
     const currentElement: Element = current;
-    if (selectors.some((selector) => currentElement.matches(selector)))
+    if (selectors.some((selector) => matchesSelectorSafely(currentElement, selector)))
       matches.push(currentElement);
     current = currentElement.parentElement;
   }
