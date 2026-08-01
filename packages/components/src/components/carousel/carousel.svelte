@@ -278,7 +278,7 @@
     }
     if (inlineSize === cachedViewportInlineSize) return;
     cachedViewportInlineSize = inlineSize;
-    if (!isInteracting && !isNativeScrolling) {
+    if (!isInteracting && !isNativeScrolling && activePointerIds.size === 0) {
       scrollToActiveSlide('auto');
     }
   });
@@ -290,11 +290,14 @@
   }
 
   function finishPointerInteraction(event: PointerEvent): void {
-    if (event.type === 'pointercancel') scheduleNativeScrollEnd();
+    if (event.type === 'pointercancel') {
+      scheduleNativeScrollEnd();
+    }
     activePointerIds.delete(event.pointerId);
     if (activePointerIds.size > 0) return;
     isInteracting = false;
     removePointerEndListeners();
+    if (isNativeScrolling) scheduleNativeScrollEnd();
   }
 
   function scheduleNativeScrollEnd(): void {
@@ -302,6 +305,7 @@
     if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
     nativeScrollEndTimer = setTimeout(() => {
       nativeScrollEndTimer = null;
+      if (activePointerIds.size > 0) return;
       isNativeScrolling = false;
       settledIndex = viewportElement ? nearestVisibleSlideIndex(viewportElement) : currentIndex;
       if (programmaticTarget === null) isAutoplayTransitioning = false;
@@ -337,9 +341,11 @@
 
   function onWindowBlur(): void {
     const wasInteracting = isInteracting;
+    const wasNativeScrolling = isNativeScrolling;
     activePointerIds.clear();
     isInteracting = false;
     removePointerEndListeners();
+    if (wasNativeScrolling) scheduleNativeScrollEnd();
     // Only relinquish programmatic/autoplay ownership if blur is actually
     // ending a tracked pointer interaction. An unrelated blur (e.g. focusing
     // browser chrome while a dot or autoplay transition is animating) must
@@ -404,7 +410,7 @@
 
   $effect(() => {
     if (viewportElement === null || clampedLength < 1) return;
-    if (isInteracting || isNativeScrolling) return;
+    if (isInteracting || isNativeScrolling || activePointerIds.size > 0) return;
     const identityChanged = slideIdentity !== previousSlideIdentity;
     previousSlideIdentity = slideIdentity;
     if (identityChanged) {
@@ -434,7 +440,7 @@
     const viewport = viewportElement;
     if (viewport === null || typeof MutationObserver === 'undefined') return;
     const observer = new MutationObserver(() => {
-      if (isInteracting || isNativeScrolling) return;
+      if (isInteracting || isNativeScrolling || activePointerIds.size > 0) return;
       scrollToActiveSlide('auto');
     });
     let ancestor: HTMLElement | null = viewport;

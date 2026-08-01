@@ -109,6 +109,59 @@ describe('Carousel', () => {
     await fireEvent.pointerUp(window, { pointerId: 72 });
   });
 
+  test('keeps autoplay paused until a cancelled native gesture settles', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, {
+      slides,
+      autoplay: true,
+      autoplayInterval: 50,
+    });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+
+    await fireEvent.pointerDown(viewport, { pointerId: 73, pointerType: 'touch' });
+    await fireEvent.pointerCancel(window, { pointerId: 73 });
+
+    // The cancelled gesture owns native scrolling until the debounce expires;
+    // autoplay must not move the active slide during that window.
+    jest.advanceTimersByTime(99);
+    expectActiveSlide(container, 0);
+
+    // Once native scrolling settles, autoplay is allowed to resume. The
+    // additional interval is the discriminating signal that settlement ran.
+    jest.advanceTimersByTime(1 + 50);
+    await waitFor(() => expectActiveSlide(container, 1));
+  });
+
+  test('keeps interaction active while another pointer remains down', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides, autoplay: true, autoplayInterval: 10 });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const liveRegion = container.querySelector('[aria-live]');
+
+    await fireEvent.pointerDown(viewport, { pointerId: 74, pointerType: 'touch' });
+    await fireEvent.pointerDown(viewport, { pointerId: 75, pointerType: 'touch' });
+    await fireEvent.pointerUp(window, { pointerId: 74 });
+    jest.advanceTimersByTime(100);
+
+    expect(liveRegion?.getAttribute('aria-live')).toBe('polite');
+    await fireEvent.pointerUp(window, { pointerId: 75 });
+  });
+
+  test('resumes native-scroll settling when blur releases a tracked pointer', async () => {
+    jest.useFakeTimers();
+    const { container } = render(Carousel, { slides });
+    const viewport = container.querySelector('.cinder-carousel__viewport') as HTMLElement;
+    const neighbor = viewport.children[1] as HTMLElement;
+
+    await fireEvent.pointerDown(viewport, { pointerId: 76, pointerType: 'touch' });
+    await fireEvent.scroll(viewport);
+    jest.advanceTimersByTime(100);
+    window.dispatchEvent(new Event('blur'));
+    jest.advanceTimersByTime(100);
+
+    expect(neighbor.hasAttribute('data-cinder-collapsed')).toBe(true);
+  });
+
   test('allows nonadjacent programmatic navigation to pass intermediate snap points', async () => {
     const css = await Bun.file(new URL('./carousel.css', import.meta.url)).text();
     expect(css).not.toContain('scroll-snap-stop: always');
