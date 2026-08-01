@@ -182,7 +182,13 @@ describe('cinder/z-index-scale', () => {
     'env(cinder-missing, 9999)',
     'var(--item-layer, env(cinder-missing, 9999))',
     'var(--item-layer, calc(9999px / 1px))',
-  ])('rejects a banned value in a var() or env() fallback: %s', async (value) => {
+    'var(--item-layer, calc(9999s / 1000ms))',
+    'var(--item-layer, calc(9999turn / 360deg))',
+    'var(--item-layer, calc(9999khz / 1000hz))',
+    'var(--item-layer, calc(9999dppx / 96dpi))',
+    'var(--item-layer, calc(9999x / 1dppx))',
+    'attr(data-layer type(<integer>), 9999)',
+  ])('rejects a banned value in a CSS substitution fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
         /* cinder-z-index-local: this relationship is intentionally local. */
@@ -215,8 +221,8 @@ describe('cinder/z-index-scale', () => {
     expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
   });
 
-  test('does not treat whitespace-separated identifiers as var() or env() functions', async () => {
-    for (const functionName of ['var', 'env']) {
+  test('does not treat whitespace-separated identifiers as substitution functions', async () => {
+    for (const functionName of ['var', 'env', 'attr']) {
       for (const whitespace of [' ', '\u00a0']) {
         const result = await lint(`
           .fixture {
@@ -227,6 +233,16 @@ describe('cinder/z-index-scale', () => {
         expect(warnings(result)).toEqual([]);
       }
     }
+  });
+
+  test('consumes a CRLF pair that terminates a hexadecimal function-name escape', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: escaped function names still require inspection. */
+        z-index: v\\61\r\nr(--item-layer, 9999);
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test('scans deeply nested fallback chains without recursion or overflow', async () => {
@@ -396,7 +412,13 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, var(--cinder-z-popover))',
     'calc(var(--item-layer, var(--cinder-z-popover)) + 1)',
     'var(--item-layer, calc(96px / 1in))',
-  ])('accepts an unresolved property with a valid design-token fallback: %s', async (value) => {
+    'var(--item-layer, calc(1s / 1000ms))',
+    'var(--item-layer, calc(1turn / 360deg))',
+    'var(--item-layer, calc(1khz / 1000hz))',
+    'var(--item-layer, calc(1dppx / 96dpi))',
+    'var(--item-layer, calc(1x / 1dppx))',
+    'attr(data-layer type(<integer>), 1)',
+  ])('accepts a reasoned unresolved property with a safe fallback: %s', async (value) => {
     expect(
       warnings(
         await lint(`

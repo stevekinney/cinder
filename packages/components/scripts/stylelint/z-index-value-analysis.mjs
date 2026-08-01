@@ -1,11 +1,23 @@
-const absoluteLengthUnitFactors = new Map([
-  ['px', 1],
-  ['in', 96],
-  ['cm', 96 / 2.54],
-  ['mm', 96 / 25.4],
-  ['q', 96 / 101.6],
-  ['pt', 96 / 72],
-  ['pc', 16],
+const canonicalUnitConversions = new Map([
+  ['px', { dimension: 'length', factor: 1 }],
+  ['in', { dimension: 'length', factor: 96 }],
+  ['cm', { dimension: 'length', factor: 96 / 2.54 }],
+  ['mm', { dimension: 'length', factor: 96 / 25.4 }],
+  ['q', { dimension: 'length', factor: 96 / 101.6 }],
+  ['pt', { dimension: 'length', factor: 96 / 72 }],
+  ['pc', { dimension: 'length', factor: 16 }],
+  ['deg', { dimension: 'angle', factor: 1 }],
+  ['grad', { dimension: 'angle', factor: 0.9 }],
+  ['rad', { dimension: 'angle', factor: 180 / Math.PI }],
+  ['turn', { dimension: 'angle', factor: 360 }],
+  ['s', { dimension: 'time', factor: 1 }],
+  ['ms', { dimension: 'time', factor: 0.001 }],
+  ['hz', { dimension: 'frequency', factor: 1 }],
+  ['khz', { dimension: 'frequency', factor: 1000 }],
+  ['dppx', { dimension: 'resolution', factor: 1 }],
+  ['x', { dimension: 'resolution', factor: 1 }],
+  ['dpi', { dimension: 'resolution', factor: 1 / 96 }],
+  ['dpcm', { dimension: 'resolution', factor: 2.54 / 96 }],
 ]);
 
 function isCssWhitespace(character) {
@@ -71,9 +83,9 @@ function evaluateConstantArithmetic(expression) {
     while (/[a-z%]/i.test(peek() ?? '')) index += 1;
     const unit = expression.slice(unitStart, index).toLowerCase();
     if (!unit) return scalar(value);
-    const factor = absoluteLengthUnitFactors.get(unit);
-    const unitKey = factor === undefined ? `unit:${unit}` : 'dimension:length';
-    if (factor !== undefined) value *= factor;
+    const conversion = canonicalUnitConversions.get(unit);
+    const unitKey = conversion === undefined ? `unit:${unit}` : `dimension:${conversion.dimension}`;
+    if (conversion !== undefined) value *= conversion.factor;
     return { value, units: new Map([[unitKey, 1]]) };
   }
 
@@ -261,7 +273,7 @@ function trimCssWhitespaceRange(value, start, end) {
   return { start, end };
 }
 
-// Parse every var()/env() fallback in one pass with an explicit parentheses
+// Parse every var()/env()/attr() fallback in one pass with an explicit parentheses
 // stack. Each closed function is resolved bottom-up by substituting the
 // fallback paths of direct nested functions, so hostile nesting cannot exhaust
 // the JavaScript call stack and enclosing arithmetic can still be evaluated.
@@ -271,7 +283,7 @@ function fallbackCandidates(value) {
   const fallbackFrames = [];
 
   for (let index = 0; index < value.length; index += 1) {
-    const functionMatch = /^(?:var|env)\(/i.exec(value.slice(index));
+    const functionMatch = /^(?:var|env|attr)\(/i.exec(value.slice(index));
     const previousCharacter = value[index - 1];
     if (functionMatch && !isCssIdentifierCharacter(previousCharacter)) {
       const nearestFunction = fallbackFrames.at(-1);
