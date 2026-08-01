@@ -5,7 +5,6 @@
 export const allowedRawControlCounts = new Map<string, number>([
   ['_radio/radio.svelte', 1],
   ['approval-card/approval-card-actions.svelte', 2],
-  ['autocomplete/autocomplete.svelte', 1],
   ['checkbox/checkbox.svelte', 1],
   ['combobox/combobox.svelte', 1],
   ['command-palette/command-palette.svelte', 1],
@@ -149,7 +148,6 @@ allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [
     '_radio/radio.svelte',
-    'autocomplete/autocomplete.svelte',
     'checkbox/checkbox.svelte',
     'combobox/combobox.svelte',
     'date-picker/date-picker.svelte',
