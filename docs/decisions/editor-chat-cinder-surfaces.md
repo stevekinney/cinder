@@ -25,10 +25,11 @@ package boundary or force editor dependencies into Cinder core.
   timestamp chrome plus an arbitrary body snippet usable by any Cinder
   consumer. Avoid it when the Chat package's conversation state, transport,
   streaming, or tool-call context is required.
-- Chat's message renderer owns Chat-specific conversation state, streaming and
-  tool-call presentation, transport metadata, and package-level composition. It
-  may compose Cinder primitives, but Cinder must not depend on Chat. Avoid it
-  for a generic standalone message.
+- Chat `ChatMessage` owns Chat-specific message rendering: adapter-provided
+  metadata, streaming state, and tool-call presentation. The `Chat` container
+  and `ChatAdapter` own conversation state and transport. `ChatMessage` may
+  compose Cinder primitives, but Cinder must not depend on Chat. Avoid it for a
+  generic standalone message.
 
 These are domain adapters, not duplicate sources of truth. New shared visual
 primitives should be added to Cinder only when they have a domain-neutral API;
