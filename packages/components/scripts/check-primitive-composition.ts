@@ -299,6 +299,7 @@ function possibleMutableControlNames(
   const breakTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
   const continueTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
   const returnTargets: Set<string>[][] = [];
+  let finallyDepth = 0;
   const explicitWrites: boolean[] = [];
   const localAliasFrames: Map<string, string>[] = [];
   const undefinedShadowFrames: boolean[] = [];
@@ -492,7 +493,21 @@ function possibleMutableControlNames(
       const defaultIndex = cases.findIndex((switchCase) => switchCase['test'] === null);
       const startIndices =
         knownStartIndex === undefined
-          ? [...cases.map((_, index) => index), ...(defaultIndex < 0 ? [-1] : [])]
+          ? [
+              ...cases
+                .map((switchCase, index) => ({ switchCase, index }))
+                .filter(({ switchCase }) => {
+                  const test = switchCase['test'];
+                  return !(
+                    hasKnownDiscriminant &&
+                    isRecord(test) &&
+                    test['type'] === 'Literal' &&
+                    test['value'] !== knownDiscriminant
+                  );
+                })
+                .map(({ index }) => index),
+              ...(defaultIndex < 0 ? [-1] : []),
+            ]
           : knownStartIndex < 0
             ? [-1]
             : [knownStartIndex];
@@ -533,6 +548,10 @@ function possibleMutableControlNames(
     }
     if (type === 'TryStatement') {
       const base = snapshotMutableValues();
+      const returnFrame = returnTargets.at(-1);
+      const returnStart = returnFrame?.length ?? 0;
+      const hasFinalizer = isRecord(current['finalizer']);
+      if (hasFinalizer) finallyDepth += 1;
       const alternatives: Set<string>[] = [];
       const tryBlock = current['block'];
       restoreMutableValues(base);
@@ -550,7 +569,21 @@ function possibleMutableControlNames(
       }
       restoreMutableValues(alternatives.flatMap((state) => [...state]));
       const finalizer = current['finalizer'];
-      if (isRecord(finalizer)) walkTopLevel(finalizer, currentShadowed);
+      if (isRecord(finalizer)) {
+        walkTopLevel(finalizer, currentShadowed);
+        if (returnFrame) {
+          const captured = returnFrame.slice(returnStart);
+          for (const [index, capturedState] of captured.entries()) {
+            restoreMutableValues(capturedState);
+            walkTopLevel(finalizer, currentShadowed);
+            const finalizedState = snapshotMutableValues();
+            captured[index] = finalizedState;
+            recordControls(finalizedState);
+          }
+          returnFrame.splice(returnStart, captured.length, ...captured);
+        }
+        finallyDepth -= 1;
+      }
       return;
     }
     if (type === 'ForStatement') {
@@ -756,7 +789,7 @@ function possibleMutableControlNames(
     if (type === 'ReturnStatement' || type === 'ThrowStatement') {
       if (isRecord(current['argument'])) walkTopLevel(current['argument'], currentShadowed);
       returnTargets.at(-1)?.push(snapshotMutableValues());
-      if (!suppressPublication) recordControls(mutableValues);
+      if (!suppressPublication && finallyDepth === 0) recordControls(mutableValues);
       return;
     }
     if (type === 'BlockStatement' && Array.isArray(current['body'])) {
@@ -810,7 +843,8 @@ function possibleMutableControlNames(
       const changed =
         reachableValues.size !== base.size ||
         [...reachableValues].some((value) => !base.has(value));
-      if (!suppressPublication && (changed || hadExplicitWrite)) recordControls(reachableValues);
+      if (!suppressPublication && (changed || (hadExplicitWrite && returnedValues.length === 0)))
+        recordControls(reachableValues);
       restoreMutableValues([...base, ...reachableValues]);
       localAliasFrames.pop();
       undefinedShadowFrames.pop();
@@ -986,7 +1020,7 @@ function hasStaticHiddenAttribute(
         hiddenState =
           isRecord(property['value']) &&
           property['value']['type'] === 'Literal' &&
-          property['value']['value'] === true;
+          Boolean(property['value']['value']);
       else if (soloInput && name === 'type')
         typeIsHidden =
           staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';

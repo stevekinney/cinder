@@ -286,6 +286,7 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
   if (!isRecord(statement)) return false;
   if (
     statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ContinueStatement' ||
     statement['type'] === 'ReturnStatement' ||
     statement['type'] === 'ThrowStatement'
   )
@@ -373,6 +374,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     label: string | undefined;
     states: Map<string, unknown[]>[] | undefined;
   }> = [];
+  const continueTargets: Array<{ states: Map<string, unknown[]>[] }> = [];
   const resolveDeclaration = (name: string, kind: string, initializer: unknown): void => {
     if (initializer === undefined || initializer === null) {
       // `var name;` preserves a prior value, while an uninitialized `let`
@@ -404,6 +406,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   ): void => {
     if (!isRecord(node)) return;
     let pushedAliasBlock = false;
+    let blockBindingBase: Map<string, unknown[]> | undefined;
     let currentShadowed = shadowed;
     let currentInsideFunction = insideFunction;
     if (node['type'] === 'BreakStatement') {
@@ -417,12 +420,37 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       target?.states?.push(cloneBindings());
       return;
     }
+    if (node['type'] === 'ContinueStatement') {
+      continueTargets.at(-1)?.states.push(cloneBindings());
+      return;
+    }
     if (node['type'] === 'LabeledStatement') {
       const label =
         isRecord(node['label']) && typeof node['label']['name'] === 'string'
           ? node['label']['name']
           : undefined;
       if (isRecord(node['body'])) walk(node['body'], currentShadowed, currentInsideFunction, label);
+      return;
+    }
+    if (node['type'] === 'TryStatement') {
+      const base = cloneBindings();
+      const alternatives: Map<string, unknown[]>[] = [];
+      if (isRecord(node['block'])) {
+        walk(node['block'], currentShadowed, currentInsideFunction);
+        alternatives.push(cloneBindings());
+      }
+      bindings.clear();
+      for (const [name, values] of base) bindings.set(name, [...values]);
+      if (isRecord(node['handler'])) {
+        walk(node['handler'], currentShadowed, currentInsideFunction);
+        alternatives.push(cloneBindings());
+      }
+      bindings.clear();
+      for (const [name, values] of alternatives[0] ?? base) bindings.set(name, [...values]);
+      for (const alternative of alternatives.slice(1))
+        mergeBindingStates(cloneBindings(), alternative);
+      if (isRecord(node['finalizer']))
+        walk(node['finalizer'], currentShadowed, currentInsideFunction);
       return;
     }
     if (node['type'] === 'SwitchStatement') {
@@ -589,7 +617,13 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         ? new Map([...callbackFrame].map(([name, values]) => [name, [...values]] as const))
         : undefined;
       const branchCallbackFrames: Map<string, unknown[]>[] = [];
-      const branches = [node['consequent'], node['alternate']].map((branch) => {
+      const branchCandidates =
+        staticTruthiness(node['test'], base) === true
+          ? [node['consequent']]
+          : staticTruthiness(node['test'], base) === false
+            ? [node['alternate']]
+            : [node['consequent'], node['alternate']];
+      const branches = branchCandidates.map((branch) => {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
         if (callbackFrame) {
@@ -753,8 +787,11 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         bindings.clear();
         for (const [name, values] of beforeBody) bindings.set(name, [...values]);
         const interruptedStates: Map<string, unknown[]>[] = [];
+        const continuedStates: Map<string, unknown[]>[] = [];
         breakTargets.push({ label: controlLabel, states: interruptedStates });
+        continueTargets.push({ states: continuedStates });
         walk(node['body'], loopShadowed, currentInsideFunction);
+        continueTargets.pop();
         breakTargets.pop();
         if (
           node['type'] === 'ForStatement' &&
@@ -763,6 +800,10 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         )
           walk(node['update'], loopShadowed, currentInsideFunction);
         let afterBody = cloneBindings();
+        for (const continuedState of continuedStates) {
+          mergeBindingStates(afterBody, continuedState);
+          afterBody = cloneBindings();
+        }
         for (const interruptedState of interruptedStates) {
           mergeBindingStates(afterBody, interruptedState);
           afterBody = cloneBindings();
@@ -800,6 +841,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
       localAliasFrames.push(new Map());
       pushedAliasBlock = true;
+      blockBindingBase = cloneBindings();
       const lexicalNames = new Set<string>();
       for (const statement of node['body']) {
         if (
@@ -922,7 +964,26 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         for (const item of value) walk(item, currentShadowed, currentInsideFunction);
       else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
     }
-    if (pushedAliasBlock) localAliasFrames.pop();
+    if (pushedAliasBlock) {
+      localAliasFrames.pop();
+      if (blockBindingBase && node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+        const lexicalNames = new Set<string>();
+        for (const statement of node['body'])
+          if (
+            isRecord(statement) &&
+            statement['type'] === 'VariableDeclaration' &&
+            (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+            Array.isArray(statement['declarations'])
+          )
+            for (const declaration of statement['declarations'])
+              if (isRecord(declaration)) declaredNamesInPattern(declaration['id'], lexicalNames);
+        for (const name of lexicalNames) {
+          const previous = blockBindingBase.get(name);
+          if (previous === undefined) bindings.delete(name);
+          else bindings.set(name, [...previous]);
+        }
+      }
+    }
     if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||

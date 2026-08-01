@@ -253,6 +253,14 @@ function staticStringBindings(source: string): Map<string, string[]> {
     if (node['type'] === 'ConditionalExpression') {
       if (isRecord(node['test'])) walk(node['test'], currentShadowed);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const knownTruthiness = staticTruthiness(node['test'], bindings);
+      if (knownTruthiness !== undefined) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        const branch = knownTruthiness ? node['consequent'] : node['alternate'];
+        if (isRecord(branch)) walk(branch, currentShadowed);
+        return;
+      }
       const branches = [node['consequent'], node['alternate']].map((branch) => {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
@@ -314,6 +322,37 @@ function staticStringBindings(source: string): Map<string, string[]> {
         for (const name of names)
           bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
       }
+      return;
+    }
+    if (node['type'] === 'TryStatement') {
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const alternatives: Map<string, string[]>[] = [];
+      if (isRecord(node['block'])) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        walk(node['block'], currentShadowed);
+        alternatives.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+      }
+      if (isRecord(node['handler'])) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        const catchShadowed = new Set(currentShadowed);
+        if (isRecord(node['handler']['param']))
+          collectPatternNames(node['handler']['param'], catchShadowed);
+        walk(node['handler']['body'], catchShadowed);
+        alternatives.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+      }
+      bindings.clear();
+      for (const name of new Set(alternatives.flatMap((branch) => [...branch.keys()])))
+        bindings.set(
+          name,
+          mergeStringValues(...alternatives.map((branch) => branch.get(name) ?? [])),
+        );
+      if (isRecord(node['finalizer'])) walk(node['finalizer'], currentShadowed);
       return;
     }
     if (node['type'] === 'SwitchStatement' && Array.isArray(node['cases'])) {
@@ -503,6 +542,9 @@ function staticStringBindings(source: string): Map<string, string[]> {
       if (isRecord(node['body'])) walk(node['body'], catchShadowed);
       return;
     } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      const blockBase = new Map(
+        [...bindings].map(([name, values]) => [name, [...values]] as const),
+      );
       const localNames = new Set<string>();
       for (const statement of node['body'])
         if (
@@ -541,6 +583,11 @@ function staticStringBindings(source: string): Map<string, string[]> {
         if (parent)
           for (const [name, values] of preserved)
             parent.set(name, mergeStringValues(parent.get(name) ?? [], values));
+      }
+      for (const name of localNames) {
+        const previous = blockBase.get(name);
+        if (previous === undefined) bindings.delete(name);
+        else bindings.set(name, [...previous]);
       }
       return;
     }
@@ -881,6 +928,22 @@ function qualifyingFieldLabelBranches(
       combinations = combinations.flatMap((combination) =>
         branches.map((branch) => [...combination, branch]),
       );
+      if (combinations.length > 256) {
+        const unique = new Map<string, FieldEvidence[]>();
+        for (const combination of combinations) {
+          const aggregate = summarizeFieldEvidence(localEvidence, combination);
+          const signatureKey = [
+            aggregate.count,
+            aggregate.isolatedMessages,
+            aggregate.labelCount,
+            aggregate.rootLabelCount,
+            /description|help|hint|assist/i.test(aggregate.terms),
+            /error|validation|invalid|message/i.test(aggregate.terms),
+          ].join(',');
+          if (!unique.has(signatureKey)) unique.set(signatureKey, combination);
+        }
+        combinations = [...unique.values()];
+      }
     }
   }
   return combinations.map((childEvidence) => summarizeFieldEvidence(localEvidence, childEvidence));

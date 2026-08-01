@@ -195,7 +195,10 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
   };
   for (const node of nodes) {
     if (node.type === 'class') target.classes.add(node.value);
-    if (node.type === 'id') target.id = node.value;
+    if (node.type === 'id') {
+      if (target.id !== undefined && target.id !== node.value) target.impossible = true;
+      target.id = node.value;
+    }
     if (node.type === 'tag') target.tag = node.value.toLowerCase();
     if (node.type === 'attribute') {
       const name = node.attribute.toLowerCase();
@@ -580,6 +583,11 @@ function conditionalScopesConflict(left: ConditionalScope, right: ConditionalSco
 function conditionalScopesCanOverlap(left: Rule, right: Rule): boolean {
   const leftScope = conditionalScope(left);
   const rightScope = conditionalScope(right);
+  const internallyContradictory = (scope: ConditionalScope[]): boolean =>
+    scope.some((condition, index) =>
+      scope.slice(index + 1).some((other) => conditionalScopesConflict(condition, other)),
+    );
+  if (internallyContradictory(leftScope) || internallyContradictory(rightScope)) return false;
   if (
     [...leftScope, ...rightScope].some(
       (condition) =>
@@ -605,7 +613,7 @@ function compatibleSelectorTargetPairs(
   const rightTargets = selectorTargets(right.selector);
   if (left === right)
     return leftTargets
-      .filter((target) => functionalConstraintsCanOverlap(target, target))
+      .filter((target) => !target.impossible && functionalConstraintsCanOverlap(target, target))
       .map((target) => [target, target] as const);
   return leftTargets.flatMap((leftTarget) =>
     rightTargets
