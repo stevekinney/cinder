@@ -39,7 +39,7 @@ const allowedLocalValues = new Set(['auto', '0', '1']);
 const messages = stylelint.utils.ruleMessages(ruleName, {
   fallback:
     'A `--cinder-z-*` token must not have a fallback; define the token once in tokens-base.css.',
-  bannedFallback: 'A custom-property fallback must not contain a banned z-index escape hatch.',
+  bannedFallback: 'A `var()` or `env()` fallback must not contain a banned z-index escape hatch.',
   invalid:
     '`z-index` must be `auto`, `0`, `1`, or a `--cinder-z-*` token without a fallback. ' +
     'Higher component-local values require an adjacent `cinder-z-index-local:` reason.',
@@ -67,12 +67,42 @@ function hasAdjacentLocalReason(declaration) {
   return text.slice(localReasonPrefix.length).trim().length > 0;
 }
 
-// A tiny recursive-descent evaluator for +, -, *, /, unary minus, and
-// parens over numeric literals — just enough to statically evaluate a
-// `calc()` expression that contains no `var()` references (e.g. `0 - 1`,
-// `-1 * 1`). Returns `null` if the expression isn't purely this grammar
-// (in particular, anything referencing a custom property, which can't be
-// evaluated without knowing its runtime value).
+const absoluteLengthUnitFactors = new Map([
+  ['px', 1],
+  ['in', 96],
+  ['cm', 96 / 2.54],
+  ['mm', 96 / 25.4],
+  ['q', 96 / 101.6],
+  ['pt', 96 / 72],
+  ['pc', 16],
+]);
+
+function scalar(value) {
+  return { value, units: new Map() };
+}
+
+function withValue(source, value) {
+  return { value, units: new Map(source.units) };
+}
+
+function sameUnits(left, right) {
+  if (left.units.size !== right.units.size) return false;
+  return [...left.units].every(([unit, exponent]) => right.units.get(unit) === exponent);
+}
+
+function combineUnits(left, right, direction) {
+  const units = new Map(left.units);
+  for (const [unit, exponent] of right.units) {
+    const combined = (units.get(unit) ?? 0) + direction * exponent;
+    if (combined === 0) units.delete(unit);
+    else units.set(unit, combined);
+  }
+  return units;
+}
+
+// Evaluate static CSS math while retaining enough type information for
+// compatible units to cancel during division. Unknown units remain distinct,
+// but identical units can still cancel without needing layout context.
 function evaluateConstantArithmetic(expression) {
   let index = 0;
 
@@ -93,7 +123,7 @@ function evaluateConstantArithmetic(expression) {
       sawDigit = true;
       index += 1;
     }
-    if (/e/i.test(peek() ?? '')) {
+    if (/e/i.test(peek() ?? '') && /[+\-\d]/.test(expression[index + 1] ?? '')) {
       index += 1;
       if (peek() === '+' || peek() === '-') index += 1;
       const exponentStart = index;
@@ -101,7 +131,15 @@ function evaluateConstantArithmetic(expression) {
       if (index === exponentStart) throw new Error('expected exponent');
     }
     if (!sawDigit) throw new Error('expected a number');
-    return Number(expression.slice(start, index));
+    let value = Number(expression.slice(start, index));
+    const unitStart = index;
+    while (/[a-z%]/i.test(peek() ?? '')) index += 1;
+    const unit = expression.slice(unitStart, index).toLowerCase();
+    if (!unit) return scalar(value);
+    const factor = absoluteLengthUnitFactors.get(unit);
+    const unitKey = factor === undefined ? `unit:${unit}` : 'dimension:length';
+    if (factor !== undefined) value *= factor;
+    return { value, units: new Map([[unitKey, 1]]) };
   }
 
   function parseAtom() {
@@ -116,7 +154,8 @@ function evaluateConstantArithmetic(expression) {
     }
     if (peek() === '-') {
       index += 1;
-      return -parseAtom();
+      const value = parseAtom();
+      return withValue(value, -value.value);
     }
     const functionStart = index;
     while (/[a-z-]/i.test(peek() ?? '')) index += 1;
@@ -136,12 +175,21 @@ function evaluateConstantArithmetic(expression) {
         if (peek() !== ',') throw new Error('expected comma');
         index += 1;
       }
-      if (functionName === 'min' && arguments_.length > 0) return Math.min(...arguments_);
-      if (functionName === 'max' && arguments_.length > 0) return Math.max(...arguments_);
+      if (!arguments_.every((argument) => sameUnits(argument, arguments_[0])))
+        throw new Error('incompatible units');
+      if (functionName === 'min' && arguments_.length > 0)
+        return withValue(arguments_[0], Math.min(...arguments_.map(({ value }) => value)));
+      if (functionName === 'max' && arguments_.length > 0)
+        return withValue(arguments_[0], Math.max(...arguments_.map(({ value }) => value)));
       if (functionName === 'clamp' && arguments_.length === 3)
-        return Math.max(arguments_[0], Math.min(arguments_[1], arguments_[2]));
-      if (functionName === 'abs' && arguments_.length === 1) return Math.abs(arguments_[0]);
-      if (functionName === 'sign' && arguments_.length === 1) return Math.sign(arguments_[0]);
+        return withValue(
+          arguments_[0],
+          Math.max(arguments_[0].value, Math.min(arguments_[1].value, arguments_[2].value)),
+        );
+      if (functionName === 'abs' && arguments_.length === 1)
+        return withValue(arguments_[0], Math.abs(arguments_[0].value));
+      if (functionName === 'sign' && arguments_.length === 1)
+        return scalar(Math.sign(arguments_[0].value));
       throw new Error('unsupported function');
     }
     return parseNumber();
@@ -155,7 +203,10 @@ function evaluateConstantArithmetic(expression) {
       if (operator !== '*' && operator !== '/') return value;
       index += 1;
       const rhs = parseAtom();
-      value = operator === '*' ? value * rhs : value / rhs;
+      value = {
+        value: operator === '*' ? value.value * rhs.value : value.value / rhs.value,
+        units: combineUnits(value, rhs, operator === '*' ? 1 : -1),
+      };
     }
   }
 
@@ -167,14 +218,20 @@ function evaluateConstantArithmetic(expression) {
       if (operator !== '+' && operator !== '-') return value;
       index += 1;
       const rhs = parseTerm();
-      value = operator === '+' ? value + rhs : value - rhs;
+      if (!sameUnits(value, rhs)) throw new Error('incompatible units');
+      value = withValue(
+        value,
+        operator === '+' ? value.value + rhs.value : value.value - rhs.value,
+      );
     }
   }
 
   try {
     const result = parseExpression();
     skipSpace();
-    return index === expression.length && Number.isFinite(result) ? result : null;
+    return index === expression.length && result.units.size === 0 && Number.isFinite(result.value)
+      ? result.value
+      : null;
   } catch {
     return null;
   }
@@ -295,16 +352,15 @@ function isStaticallyMagicNumber(value) {
   return resolved !== null && resolved === 9999;
 }
 
-// Extract fallback arguments from every `var()` call, including nested calls.
-// The primary custom property is intentionally opaque: an unresolved property
-// is valid when it has no fallback, and a design-token fallback remains valid.
-// Only the fallback expression itself is evaluated for banned literals.
-function customPropertyFallbacks(value) {
+// Extract fallback arguments from every `var()` and `env()` call, including
+// nested calls. The unresolved primary value is intentionally opaque; only
+// fallback expressions are evaluated for banned literals.
+function cssFallbacks(value) {
   const fallbacks = [];
 
   function visit(expression) {
     for (let index = 0; index < expression.length; index += 1) {
-      if (!/^var\s*\(/i.test(expression.slice(index))) continue;
+      if (!/^(?:var|env)\s*\(/i.test(expression.slice(index))) continue;
       const previousCharacter = expression[index - 1];
       if (isCssIdentifierCharacter(previousCharacter)) continue;
 
@@ -344,7 +400,7 @@ function customPropertyFallbacks(value) {
 
 function bannedFallback(value) {
   const protectedValue = protectCssSyntaxEscapes(value);
-  return customPropertyFallbacks(decodeCssEscapes(protectedValue)).find(
+  return cssFallbacks(decodeCssEscapes(protectedValue)).find(
     (fallback) => isStaticallyNegative(fallback) || isStaticallyMagicNumber(fallback),
   );
 }

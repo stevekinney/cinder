@@ -179,7 +179,10 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, abs(-9999))',
     'var(--item-layer, sign(-9999))',
     'var(--x\\\\, -1)',
-  ])('rejects a banned literal in an unresolved custom-property fallback: %s', async (value) => {
+    'env(cinder-missing, 9999)',
+    'var(--item-layer, env(cinder-missing, 9999))',
+    'var(--item-layer, calc(9999px / 1px))',
+  ])('rejects a banned value in a var() or env() fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
         /* cinder-z-index-local: this relationship is intentionally local. */
@@ -350,6 +353,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer)',
     'var(--item-layer, var(--cinder-z-popover))',
     'calc(var(--item-layer, var(--cinder-z-popover)) + 1)',
+    'var(--item-layer, calc(96px / 1in))',
   ])('accepts an unresolved property with a valid design-token fallback: %s', async (value) => {
     expect(
       warnings(
