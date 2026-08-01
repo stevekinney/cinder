@@ -392,6 +392,10 @@ describe('cinder/z-index-scale', () => {
     'clamp(0, var(--inner, 9999), 1, 2)',
     'clamp(0, none, var(--inner, -1))',
     'clamp(var(--inner, 9999), none, 1)',
+    'clamp(0, none + var(--inner, -1), 1)',
+    'clamp(0, var(--inner, -1) + none, 1)',
+    'clamp(0, calc(none + var(--inner, -1)), 1)',
+    'clamp(0, "none" + var(--inner, -1), 1)',
   ])('does not apply independent bounds from a malformed clamp: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -649,6 +653,49 @@ describe('cinder/z-index-scale', () => {
 
     expect(warnings(result)).toHaveLength(1);
   });
+
+  test('does not use a negative-zero max floor in a signed-zero-sensitive context', async () => {
+    const unsafe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a negative-zero floor can preserve the fallback sign. */
+        z-index: calc(1 / var(--outer, max(var(--inner, -1) * 0, -0)) + var(--dynamic));
+      }
+    `);
+    expect(warnings(unsafe)).toHaveLength(1);
+
+    const safe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a positive-zero floor removes the fallback sign. */
+        z-index: calc(1 / var(--outer, max(var(--inner, -1) * 0, 0)) + var(--dynamic));
+      }
+    `);
+    expect(warnings(safe)).toEqual([]);
+  });
+
+  test('does not retokenize an escaped dimension unit as exponent notation', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the escaped unit keeps this fallback non-numeric. */
+        z-index: var(--outer, calc(9999\\65 0));
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
+  test.each(['#var(--inner, -1)', '@var(--inner, -1)'])(
+    'does not scan substitution-like text inside a CSS name token: %s',
+    async (fallback) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: the prefixed name cannot invoke var(). */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
 
   test('requires an exact algebraic zero before eliminating a banned fallback', async () => {
     const result = await lint(`

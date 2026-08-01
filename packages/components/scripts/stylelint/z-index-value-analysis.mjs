@@ -561,9 +561,15 @@ export function normalizeCssEscapesForInspection(value) {
           start: baseRanges[index].start,
           end: baseRanges[escapeEnd - 1].end,
         });
-      else if (isCssIdentifierCharacter(decodedCharacter))
-        appendMappedSlice(output, sourceRanges, value, index, escapeEnd, baseRanges);
-      else
+      else if (isCssIdentifierCharacter(decodedCharacter)) {
+        const beginsDimensionUnit = /[\d.]/.test(value[index - 1] ?? '');
+        if (beginsDimensionUnit)
+          appendMappedCharacter(output, sourceRanges, '\uE000', {
+            start: baseRanges[index].start,
+            end: baseRanges[escapeEnd - 1].end,
+          });
+        else appendMappedSlice(output, sourceRanges, value, index, escapeEnd, baseRanges);
+      } else
         appendMappedCharacter(output, sourceRanges, '\uE000', {
           start: baseRanges[index].start,
           end: baseRanges[escapeEnd - 1].end,

@@ -260,9 +260,22 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
   });
   return {
     argumentCount: argumentRanges.length,
-    argumentValues: arguments_.map((argument) => value.slice(argument.start, argument.end)),
+    argumentRanges: arguments_,
     staticArguments,
   };
+}
+
+function argumentWithFallbackPlaceholders(frame, value, range) {
+  let expression = value.slice(range.start, range.end);
+  for (let childIndex = frame.children.length - 1; childIndex >= 0; childIndex -= 1) {
+    const child = frame.children[childIndex];
+    if (child.start < range.start || child.end > range.end) continue;
+    expression =
+      expression.slice(0, child.start - range.start) +
+      '0' +
+      expression.slice(child.end - range.start);
+  }
+  return expression;
 }
 
 function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
@@ -271,23 +284,27 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
       (argument) =>
         functionName === 'min'
           ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
-          : classifyStaticLayer(argument.value) === 'safe',
+          : classifyStaticLayer(argument.value) === 'safe' &&
+            !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(argument.value)),
     ) ?? false
   );
 }
 
 function hasFallbackIndependentClampBound(frame, value, range, boundIndex, candidate) {
   const clampArguments = fallbackIndependentStaticArguments(frame, value, range, 'clamp');
-  if (
-    clampArguments?.argumentCount !== 3 ||
-    clampArguments.argumentValues[1].toLowerCase() === 'none'
-  )
-    return false;
+  if (clampArguments?.argumentCount !== 3) return false;
+  const centerExpression = argumentWithFallbackPlaceholders(
+    frame,
+    value,
+    clampArguments.argumentRanges[1],
+  );
+  if (!['safe', 'negative', 'magic'].includes(classifyStaticLayer(centerExpression))) return false;
   const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
   if (!bound) return false;
   return candidate === 'magic'
     ? classifyStaticLayer(`min(9999, ${bound.value})`) === 'safe'
-    : classifyStaticLayer(bound.value) === 'safe';
+    : classifyStaticLayer(bound.value) === 'safe' &&
+        !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(bound.value));
 }
 
 function hasBareOperatorStream(value) {
@@ -419,7 +436,12 @@ function fallbackCandidates(value) {
     fallbackFunctionPattern.lastIndex = index;
     const functionMatch = fallbackFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
-    if (functionMatch && !isCssIdentifierCharacter(previousCharacter)) {
+    if (
+      functionMatch &&
+      !isCssIdentifierCharacter(previousCharacter) &&
+      previousCharacter !== '#' &&
+      previousCharacter !== '@'
+    ) {
       const nearestFunction = fallbackFrames.at(-1);
       const inheritedContext = parentheses.at(-1)?.signedZeroSensitiveContext === true;
       const frame = {
