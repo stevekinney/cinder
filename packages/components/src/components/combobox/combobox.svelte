@@ -487,7 +487,13 @@
       class="cinder-combobox__empty-panel"
     >
       <div class={classNames('cinder-combobox', className)}>
-        <div class="cinder-combobox__empty" role="option" aria-disabled="true" data-cinder-active>
+        <div
+          class="cinder-combobox__empty"
+          role="option"
+          aria-disabled="true"
+          aria-selected="false"
+          data-cinder-active
+        >
           No results
         </div>
       </div>
