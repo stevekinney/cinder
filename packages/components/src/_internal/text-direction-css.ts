@@ -159,14 +159,48 @@ function resolveNestedSelector(rule: CSSStyleRule): string | undefined {
 }
 
 function combineNestedSelectors(parentSelector: string, nestedSelector: string): string {
-  const parentContext = parentSelector.includes(',') ? `:is(${parentSelector})` : parentSelector;
+  const parentContext =
+    splitSelectorList(parentSelector).length > 1 ? `:is(${parentSelector})` : parentSelector;
   return splitSelectorList(nestedSelector)
-    .map((selector) =>
-      selector.includes('&')
-        ? selector.replaceAll('&', parentContext)
-        : `${parentContext} ${selector}`,
-    )
+    .map((selector) => {
+      const resolved = replaceNestingReferences(selector, parentContext);
+      return resolved.replaced ? resolved.selector : `${parentContext} ${selector}`;
+    })
     .join(', ');
+}
+
+function replaceNestingReferences(
+  selector: string,
+  parentContext: string,
+): { selector: string; replaced: boolean } {
+  let quote: '"' | "'" | undefined;
+  let replaced = false;
+  let resolved = '';
+  for (let index = 0; index < selector.length; index += 1) {
+    const character = selector[index]!;
+    if (character === '\\') {
+      resolved += character;
+      if (index + 1 < selector.length) resolved += selector[++index];
+      continue;
+    }
+    if (quote !== undefined) {
+      resolved += character;
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      resolved += character;
+      continue;
+    }
+    if (character === '&') {
+      resolved += parentContext;
+      replaced = true;
+      continue;
+    }
+    resolved += character;
+  }
+  return { selector: resolved, replaced };
 }
 
 function splitSelectorList(selectorText: string): string[] {
@@ -176,6 +210,10 @@ function splitSelectorList(selectorText: string): string[] {
   let start = 0;
   for (let index = 0; index < selectorText.length; index += 1) {
     const character = selectorText[index];
+    if (character === '\\') {
+      index += 1;
+      continue;
+    }
     if (character === '(') parenthesesDepth += 1;
     if (character === ')') parenthesesDepth = Math.max(0, parenthesesDepth - 1);
     if (character === '[') bracketDepth += 1;

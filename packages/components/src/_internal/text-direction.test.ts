@@ -715,6 +715,59 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('preserves escaped delimiters and literal ampersands in nested selectors', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+
+    try {
+      const shell = document.createElement('section');
+      shell.className = 'escaped-nesting-shell';
+      const escapedComma = document.createElement('div');
+      escapedComma.className = 'escaped,comma';
+      const literalAmpersand = document.createElement('div');
+      literalAmpersand.setAttribute('data-label', '&');
+      const escapedAmpersand = document.createElement('div');
+      escapedAmpersand.className = 'escaped&ampersand';
+      shell.append(escapedComma, literalAmpersand, escapedAmpersand);
+      document.body.appendChild(shell);
+
+      const escapedCommaRule = createStyleRule({
+        selectorText: '.escaped\\,comma',
+        direction: 'ltr',
+      });
+      const literalAmpersandRule = createStyleRule({
+        selectorText: '[data-label="&"]',
+        direction: 'ltr',
+      });
+      const escapedAmpersandRule = createStyleRule({
+        selectorText: '.escaped\\&ampersand',
+        direction: 'ltr',
+      });
+      const outerRule = createStyleRule({
+        selectorText: '.escaped-nesting-shell',
+        cssRules: [escapedCommaRule, literalAmpersandRule, escapedAmpersandRule],
+      });
+      for (const rule of [escapedCommaRule, literalAmpersandRule, escapedAmpersandRule])
+        Object.defineProperty(rule, 'parentRule', { configurable: true, value: outerRule });
+
+      withDocumentStyleSheets([{ cssRules: [outerRule] }], () => {
+        expect(elementDirectionStyleOverride(escapedComma)).toBe('ltr');
+        expect(elementDirectionStyleOverride(literalAmpersand)).toBe('ltr');
+        expect(elementDirectionStyleOverride(escapedAmpersand)).toBe('ltr');
+      });
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('ignores direction rules inside inactive container-query shims', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
