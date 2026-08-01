@@ -63,6 +63,12 @@ const meta = {
   url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index-layers',
 };
 
+function isEscaped(value, index) {
+  let backslashCount = 0;
+  for (index -= 1; index >= 0 && value[index] === '\\'; index -= 1) backslashCount += 1;
+  return backslashCount % 2 === 1;
+}
+
 function quotedStringEnd(value, start) {
   const quote = value[start];
   for (let index = start + 1; index < value.length; index += 1) {
@@ -70,6 +76,7 @@ function quotedStringEnd(value, start) {
       if (value[index + 1] === '\r' && value[index + 2] === '\n') index += 2;
       else if (value[index + 1] !== undefined) index += 1;
     } else if (value[index] === quote) return index;
+    else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
   }
   return value.length - 1;
 }
@@ -89,7 +96,7 @@ function maskComments(value) {
       index = stringEnd;
       continue;
     }
-    if (value[index] !== '/' || value[index + 1] !== '*') {
+    if (value[index] !== '/' || value[index + 1] !== '*' || isEscaped(value, index)) {
       maskedValue += value[index];
       continue;
     }

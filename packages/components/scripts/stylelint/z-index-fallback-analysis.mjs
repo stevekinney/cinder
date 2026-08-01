@@ -50,6 +50,18 @@ function consumeResolutionWork(budget, amount) {
   return true;
 }
 
+function quotedStringEnd(value, start) {
+  const quote = value[start];
+  for (let index = start + 1; index < value.length; index += 1) {
+    if (value[index] === '\\') {
+      if (value[index + 1] === '\r' && value[index + 2] === '\n') index += 2;
+      else if (value[index + 1] !== undefined) index += 1;
+    } else if (value[index] === quote) return index;
+    else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
+  }
+  return value.length - 1;
+}
+
 function resolveFrameExpression(frame, value, range, budget) {
   if (frame.children.some((child) => child.resolvedFallback === fallbackResolutionTooComplex))
     return fallbackResolutionTooComplex;
@@ -172,14 +184,9 @@ function classifyResolvedFallback(resolvedFallback) {
 function unwrapStaticContainer(value, range) {
   const parenthesisPairs = new Map();
   const openParentheses = [];
-  let quote;
   for (let index = range.start; index < range.end; index += 1) {
-    if (quote) {
-      if (value[index] === quote) quote = undefined;
-      continue;
-    }
     if (value[index] === '"' || value[index] === "'") {
-      quote = value[index];
+      index = quotedStringEnd(value, index);
       continue;
     }
     if (value[index] === '(') openParentheses.push(index);
@@ -217,13 +224,8 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
   const argumentRanges = [];
   let argumentStart = trimmedRange.start + functionName.length + 1;
   let depth = 0;
-  let quote;
   for (let index = argumentStart; index < trimmedRange.end - 1; index += 1) {
-    if (quote) {
-      if (value[index] === quote) quote = undefined;
-      continue;
-    }
-    if (value[index] === '"' || value[index] === "'") quote = value[index];
+    if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
     else if (value[index] === '(') depth += 1;
     else if (value[index] === ')') {
       if (depth === 0) return false;
@@ -262,17 +264,12 @@ function hasBareOperatorStream(value) {
   const expression = value.trim();
   if (expression.startsWith('(')) return true;
   let depth = 0;
-  let quote;
   let sawTopLevelOperand = false;
   let previousNonWhitespace;
   for (let index = 0; index < expression.length; index += 1) {
     const character = expression[index];
-    if (quote) {
-      if (character === quote) quote = undefined;
-      continue;
-    }
     if (character === '"' || character === "'") {
-      quote = character;
+      index = quotedStringEnd(expression, index);
       continue;
     }
     if (character === '(') depth += 1;
@@ -377,8 +374,7 @@ function fallbackCandidates(value) {
 
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] === '"' || value[index] === "'") {
-      const quote = value[index];
-      for (index += 1; index < value.length && value[index] !== quote; index += 1) {}
+      index = quotedStringEnd(value, index);
       continue;
     }
     fallbackFunctionPattern.lastIndex = index;

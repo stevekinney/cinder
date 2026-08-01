@@ -468,11 +468,34 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
+  test('resumes fallback scanning after an unescaped newline terminates a quoted string', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a bad string must not hide the following negative fallback. */
+        z-index: calc(var(--left, "
+          ) + var(--inner, -1) + var(--right, "));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test('preserves fallbacks between comment delimiters inside quoted strings', async () => {
     const result = await lint(`
       .fixture {
         /* cinder-z-index-local: quoted comment text must not mask the negative fallback. */
         z-index: calc(var(--left, "/*") + var(--inner, -1) + var(--right, "*/"));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('does not treat an escaped slash as the start of a CSS comment', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: escaped syntax must not mask the nested magic fallback. */
+        z-index: var(--outer, \\/* var(--inner, 9999) */);
       }
     `);
 
