@@ -1,11 +1,10 @@
 import {
   classifyStaticLayer,
-  decodeCssEscapes,
   isCssIdentifierCharacter,
   isCssWhitespace,
   isStaticallyNegativeZero,
   isStaticallyZero,
-  protectCssSyntaxEscapes,
+  normalizeCssEscapesForInspection,
 } from './z-index-value-analysis.mjs';
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
@@ -516,9 +515,7 @@ function fallbackCandidates(value) {
 }
 
 export function bannedFallback(value) {
-  const protectedValue = protectCssSyntaxEscapes(value);
-  const decodedValue = decodeCssEscapes(protectedValue);
-  const positionsAreStable = protectedValue === value && decodedValue === value;
+  const { value: decodedValue, sourceRanges } = normalizeCssEscapesForInspection(value);
   for (const { fallbackIndex, rawFallback, resolvedClassification } of fallbackCandidates(
     decodedValue,
   )) {
@@ -527,12 +524,22 @@ export function bannedFallback(value) {
       analysisWasTooComplex ||
       resolvedClassification === 'negative' ||
       resolvedClassification === 'magic'
-    )
+    ) {
+      const sourceRangeStart = sourceRanges[fallbackIndex];
+      const sourceRangeEnd = sourceRanges[fallbackIndex + rawFallback.length - 1];
       return {
-        index: positionsAreStable ? fallbackIndex : undefined,
-        value: rawFallback,
+        index: sourceRangeStart?.start,
+        length:
+          sourceRangeStart === undefined || sourceRangeEnd === undefined
+            ? undefined
+            : sourceRangeEnd.end - sourceRangeStart.start,
+        value:
+          sourceRangeStart === undefined || sourceRangeEnd === undefined
+            ? rawFallback
+            : value.slice(sourceRangeStart.start, sourceRangeEnd.end),
         reason: analysisWasTooComplex ? 'too-complex' : 'banned',
       };
+    }
   }
   return undefined;
 }

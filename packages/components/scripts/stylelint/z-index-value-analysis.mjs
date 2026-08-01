@@ -407,20 +407,42 @@ function resolveStaticNumber(value) {
 }
 
 export function decodeCssEscapes(value) {
-  let output = '';
+  return decodeCssEscapesForInspection(value).value;
+}
+
+function appendMappedCharacter(output, sourceRanges, character, sourceRange) {
+  output.push(character);
+  sourceRanges.push(sourceRange);
+}
+
+function appendMappedSlice(output, sourceRanges, value, start, end, baseRanges) {
+  output.push(value.slice(start, end));
+  for (let index = start; index < end; index += 1) sourceRanges.push(baseRanges[index]);
+}
+
+function literalSourceRanges(value) {
+  return Array.from({ length: value.length }, (_, index) => ({ start: index, end: index + 1 }));
+}
+
+function decodeCssEscapesForInspection(value, baseRanges = literalSourceRanges(value)) {
+  const output = [];
+  const sourceRanges = [];
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] !== '\\') {
-      output += value[index];
+      appendMappedCharacter(output, sourceRanges, value[index], baseRanges[index]);
       continue;
     }
 
     const nextCharacter = value[index + 1];
     if (nextCharacter === undefined || /[\n\f\r]/.test(nextCharacter)) {
-      output += value[index];
+      appendMappedCharacter(output, sourceRanges, value[index], baseRanges[index]);
       continue;
     }
     if (!/[0-9a-f]/i.test(nextCharacter)) {
-      output += nextCharacter;
+      appendMappedCharacter(output, sourceRanges, nextCharacter, {
+        start: baseRanges[index].start,
+        end: baseRanges[index + 1].end,
+      });
       index += 1;
       continue;
     }
@@ -429,15 +451,74 @@ export function decodeCssEscapes(value) {
     while (hexEnd < value.length && hexEnd <= index + 6 && /[0-9a-f]/i.test(value[hexEnd]))
       hexEnd += 1;
     const codePointValue = Number.parseInt(value.slice(index + 1, hexEnd), 16);
-    output +=
+    const decodedCharacter =
       codePointValue === 0 || codePointValue > 0x10ffff
         ? '\ufffd'
         : String.fromCodePoint(codePointValue);
-    if (value[hexEnd] === '\r' && value[hexEnd + 1] === '\n') hexEnd += 2;
-    else if (isCssWhitespace(value[hexEnd])) hexEnd += 1;
-    index = hexEnd - 1;
+    let escapeEnd = hexEnd;
+    if (value[escapeEnd] === '\r' && value[escapeEnd + 1] === '\n') escapeEnd += 2;
+    else if (isCssWhitespace(value[escapeEnd])) escapeEnd += 1;
+    appendMappedCharacter(output, sourceRanges, decodedCharacter, {
+      start: baseRanges[index].start,
+      end: baseRanges[escapeEnd - 1].end,
+    });
+    index = escapeEnd - 1;
   }
-  return output;
+  return { value: output.join(''), sourceRanges };
+}
+
+export function normalizeCssEscapesForInspection(value) {
+  const output = [];
+  const sourceRanges = [];
+  const baseRanges = literalSourceRanges(value);
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] !== '\\') {
+      appendMappedCharacter(output, sourceRanges, value[index], baseRanges[index]);
+      continue;
+    }
+
+    const nextCharacter = value[index + 1];
+    if (nextCharacter === undefined) {
+      appendMappedCharacter(output, sourceRanges, value[index], baseRanges[index]);
+      continue;
+    }
+
+    if (/[0-9a-f]/i.test(nextCharacter)) {
+      let hexEnd = index + 1;
+      while (hexEnd < value.length && hexEnd <= index + 6 && /[0-9a-f]/i.test(value[hexEnd]))
+        hexEnd += 1;
+      const codePoint = Number.parseInt(value.slice(index + 1, hexEnd), 16);
+      let escapeEnd = hexEnd;
+      if (value[escapeEnd] === '\r' && value[escapeEnd + 1] === '\n') escapeEnd += 2;
+      else if (isCssWhitespace(value[escapeEnd])) escapeEnd += 1;
+      const decodedCharacter =
+        codePoint === 0 || codePoint > 0x10ffff ? '\ufffd' : String.fromCodePoint(codePoint);
+      if (/\d/.test(decodedCharacter))
+        appendMappedCharacter(output, sourceRanges, '\uE000', {
+          start: baseRanges[index].start,
+          end: baseRanges[escapeEnd - 1].end,
+        });
+      else if (isCssIdentifierCharacter(decodedCharacter))
+        appendMappedSlice(output, sourceRanges, value, index, escapeEnd, baseRanges);
+      else
+        appendMappedCharacter(output, sourceRanges, '\uE000', {
+          start: baseRanges[index].start,
+          end: baseRanges[escapeEnd - 1].end,
+        });
+      index = escapeEnd - 1;
+      continue;
+    }
+
+    if (/[\n\f\r]/.test(nextCharacter) || isCssIdentifierCharacter(nextCharacter))
+      appendMappedSlice(output, sourceRanges, value, index, index + 2, baseRanges);
+    else
+      appendMappedCharacter(output, sourceRanges, '\uE000', {
+        start: baseRanges[index].start,
+        end: baseRanges[index + 1].end,
+      });
+    index += 1;
+  }
+  return decodeCssEscapesForInspection(output.join(''), sourceRanges);
 }
 
 export function protectCssSyntaxEscapes(value) {

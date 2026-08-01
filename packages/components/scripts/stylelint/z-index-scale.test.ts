@@ -28,6 +28,26 @@ function warnings(result: Awaited<ReturnType<typeof stylelint.lint>>) {
     });
 }
 
+function sourceLocation(value: string, index: number) {
+  let line = 1;
+  let column = 1;
+  for (let cursor = 0; cursor < index; cursor += 1) {
+    if (value[cursor] === '\r') {
+      if (value[cursor + 1] === '\n') cursor += 1;
+      line += 1;
+      column = 1;
+      continue;
+    }
+    if (value[cursor] === '\n' || value[cursor] === '\f') {
+      line += 1;
+      column = 1;
+      continue;
+    }
+    column += 1;
+  }
+  return { line, column };
+}
+
 describe('cinder/z-index-scale', () => {
   test('keeps the fallback scanner compatible with the ES2022 runtime target', async () => {
     expect(await Bun.file(fallbackAnalysisPath).text()).not.toMatch(
@@ -600,6 +620,31 @@ describe('cinder/z-index-scale', () => {
       expect(warning?.column).toBe(css.lastIndexOf('9999') + 1);
       expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
     }
+  });
+
+  test('anchors fallback warnings after decoding escaped function names', async () => {
+    const css =
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + v\\61r(--x, 9999)); }';
+    const result = await lint(css);
+    const [warning] = warnings(result);
+    const start = sourceLocation(css, css.lastIndexOf('9999'));
+    const end = sourceLocation(css, css.lastIndexOf('9999') + 4);
+    expect(warning?.line).toBe(start.line);
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endLine).toBe(end.line);
+    expect(warning?.endColumn).toBe(end.column);
+  });
+
+  test('preserves warning anchoring when masked inline comments contain form-feed characters', async () => {
+    const css =
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x/*\\f*/, 9999)); }'.replace(
+        '\\f',
+        '\f',
+      );
+    const result = await lint(css);
+    const [warning] = warnings(result);
+    expect(warning?.column).toBe(css.lastIndexOf('9999') + 1);
+    expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
   });
 
   test('does not treat whitespace-separated identifiers as substitution functions', async () => {

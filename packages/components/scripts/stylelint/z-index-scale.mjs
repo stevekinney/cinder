@@ -105,7 +105,7 @@ function maskComments(value) {
       maskedValue += value.slice(index);
       break;
     }
-    maskedValue += value.slice(index, commentEnd + 2).replaceAll(/[^\n\r]/g, ' ');
+    maskedValue += value.slice(index, commentEnd + 2).replaceAll(/[^\n\r\f]/g, ' ');
     index = commentEnd + 1;
   }
   return maskedValue;
@@ -200,7 +200,11 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
           result,
           node: declaration,
           ...(fallbackIndex >= 0
-            ? { index: fallbackIndex, endIndex: fallbackIndex + offendingFallback.value.length }
+            ? {
+                index: fallbackIndex,
+                endIndex:
+                  fallbackIndex + (offendingFallback.length ?? offendingFallback.value.length),
+              }
             : {}),
           message: `${diagnosticMessage} Offending expression: \`${diagnosticExpression}\`.`,
         });
