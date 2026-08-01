@@ -204,6 +204,48 @@ describe('cinder/z-index-scale', () => {
     expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
   });
 
+  test('rejects a banned enclosing expression after substituting nested fallbacks', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this relationship is intentionally local. */
+        z-index: var(--item-layer, calc(9999 + var(--offset, 0)));
+      }
+    `);
+    expect(warnings(result)).toHaveLength(1);
+    expect(result.results[0]?.warnings?.[0]?.text).toContain('fallback');
+  });
+
+  test('does not treat whitespace-separated identifiers as var() or env() functions', async () => {
+    for (const functionName of ['var', 'env']) {
+      for (const whitespace of [' ', '\u00a0']) {
+        const result = await lint(`
+          .fixture {
+            /* cinder-z-index-local: this is not a CSS function token. */
+            z-index: ${functionName}${whitespace}(--item-layer, 9999);
+          }
+        `);
+        expect(warnings(result)).toEqual([]);
+      }
+    }
+  });
+
+  test('scans deeply nested fallback chains without recursion or overflow', async () => {
+    const depth = 12_000;
+    for (const [leaf, warningCount] of [
+      ['1', 0],
+      ['9999', 1],
+    ] as const) {
+      const nestedFallback = `${'var(--item-layer, '.repeat(depth)}${leaf}${')'.repeat(depth)}`;
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: generated fallbacks must not abort linting. */
+          z-index: ${nestedFallback};
+        }
+      `);
+      expect(warnings(result)).toHaveLength(warningCount);
+    }
+  });
+
   test('follows CSS integer rounding for negative half values', async () => {
     const roundedToZero = await lint(`
       .fixture {
