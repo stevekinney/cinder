@@ -45,6 +45,8 @@ describe('MultiSelect', () => {
     const listbox = container.querySelector('[role="listbox"]');
     expect(listbox?.getAttribute('aria-multiselectable')).toBe('true');
     expect(container.querySelectorAll('[role="option"]').length).toBe(4);
+    expect(container.querySelectorAll('[role="option"] input[type="checkbox"]')).toHaveLength(4);
+    expect(container.querySelector('.cinder-multi-select__checkbox')).toBeNull();
   });
 
   test('clicking an option toggles selection and updates count summary', async () => {

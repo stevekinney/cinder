@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../checkbox/checkbox.css';
+
 @layer cinder.components {
   .cinder-multi-select {
     display: flex;
@@ -162,26 +164,6 @@
 
   .cinder-multi-select__option[aria-disabled='true'] {
     cursor: not-allowed;
-  }
-
-  .cinder-multi-select__checkbox {
-    width: 1rem;
-    height: 1rem;
-    border: 1px solid var(--cinder-border-strong);
-    border-radius: var(--cinder-radius-sm);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    line-height: 1;
-    font-weight: 700;
-    color: var(--cinder-accent-text);
-    background: var(--cinder-surface-raised);
-  }
-
-  .cinder-multi-select__option[aria-selected='true'] .cinder-multi-select__checkbox {
-    border-color: var(--cinder-accent);
-    background: color-mix(in oklab, var(--cinder-accent) 18%, transparent);
   }
 
   .cinder-multi-select__option-text {

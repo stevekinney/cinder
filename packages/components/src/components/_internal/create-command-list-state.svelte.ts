@@ -1,3 +1,4 @@
+import { pushEscapeHandler } from '../../_internal/overlay.ts';
 import { inDocumentOrder } from '../../utilities/document-order.ts';
 import type { CommandItemRegistrationInput, CommandListContext } from './command-list-context.ts';
 
@@ -8,12 +9,23 @@ type RegistrationRecord = CommandItemRegistrationInput & {
   handle: RegistrationHandle;
 };
 
+export type CommandListItem = CommandItemRegistrationInput & {
+  id: string;
+  node: HTMLElement;
+};
+
 export type CommandListKeyboardOptions = {
   event: KeyboardEvent;
   onEnter?: (id: string) => void;
   onEscape?: () => void;
   ignoreModifiedNavigation?: boolean;
   preventDefaultOnEmptyEnter?: boolean;
+};
+
+export type CommandListDismissalOptions = {
+  isOpen: () => boolean;
+  isInside: (target: Node) => boolean;
+  onDismiss: (restoreFocus: boolean) => void;
 };
 
 export class CommandListState {
@@ -77,6 +89,27 @@ export class CommandListState {
     record?.node.scrollIntoView({ block: 'nearest' });
   }
 
+  bindDismissal(options: CommandListDismissalOptions): () => void {
+    const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
+      if (!options.isOpen() || event?.key !== 'Escape') return;
+      event.preventDefault();
+      options.onDismiss(true);
+    });
+    const handlePointerDown = (event: MouseEvent): void => {
+      if (options.isOpen() && !options.isInside(event.target as Node)) options.onDismiss(false);
+    };
+    const handleFocusIn = (event: FocusEvent): void => {
+      if (options.isOpen() && !options.isInside(event.target as Node)) options.onDismiss(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown, true);
+    document.addEventListener('focusin', handleFocusIn, true);
+    return () => {
+      releaseEscape();
+      document.removeEventListener('mousedown', handlePointerDown, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
+    };
+  }
+
   setActiveById(id: string): void {
     this.#intendedActiveId = id;
   }
@@ -103,6 +136,23 @@ export class CommandListState {
     };
     this.registrations.push(registration);
     return handle;
+  }
+
+  syncItems(items: readonly CommandListItem[]): void {
+    this.syncListboxId();
+    const previousActiveId = this.#intendedActiveId;
+    this.registrations = items.map((item) => ({
+      ...item,
+      handle: {
+        id: item.id,
+        unregister: () => {},
+      },
+    }));
+    this.#itemCounter = items.length;
+    this.#intendedActiveId = items.some((item) => item.id === previousActiveId)
+      ? previousActiveId
+      : null;
+    this.refreshRegistrationsReady();
   }
 
   activateItemById(id: string): RegistrationRecord | null {
