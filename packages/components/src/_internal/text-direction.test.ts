@@ -520,6 +520,136 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('evaluates relative selectors against the resolved scope root', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const root = document.createElement('section');
+    root.className = 'theme';
+    const element = document.createElement('div');
+    element.className = 'shell';
+    root.append(element);
+    document.body.append(root);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: ':scope > .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('requires nested scopes to intersect every enclosing scope', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const outer = document.createElement('section');
+    outer.className = 'outer';
+    const inside = document.createElement('div');
+    inside.className = 'inner';
+    const insideTarget = document.createElement('div');
+    insideTarget.className = 'shell';
+    inside.append(insideTarget);
+    outer.append(inside);
+    const outside = document.createElement('section');
+    const outsideInner = document.createElement('div');
+    outsideInner.className = 'inner';
+    const outsideTarget = document.createElement('div');
+    outsideTarget.className = 'shell';
+    outsideInner.append(outsideTarget);
+    outside.append(outsideInner);
+    document.body.append(outer, outside);
+    const nestedScope = {
+      type: 0,
+      cssText: '@scope (.inner) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const outerScope = {
+      type: 0,
+      cssText: '@scope (.outer) {}',
+      cssRules: [nestedScope],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerScope] }], () =>
+          resolveTextDirection(insideTarget, 'rtl'),
+        ),
+      ).toBe('ltr');
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerScope] }], () =>
+          resolveTextDirection(outsideTarget, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('keeps nested scope limits local to their enclosing root', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const outer = document.createElement('section');
+    outer.className = 'outer';
+    const root = document.createElement('div');
+    root.className = 'inner';
+    const limit = document.createElement('div');
+    limit.className = 'stop';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    limit.append(target);
+    root.append(limit);
+    outer.append(root);
+    document.body.append(outer);
+    const innerScope = {
+      type: 0,
+      cssText: '@scope (.inner) to (.stop) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const outerScope = {
+      type: 0,
+      cssText: '@scope (.outer) {}',
+      cssRules: [innerScope],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerScope] }], () =>
+          resolveTextDirection(target, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('does not apply a scope limit that is outside the matched scope root', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

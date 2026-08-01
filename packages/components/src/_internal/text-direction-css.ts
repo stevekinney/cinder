@@ -66,6 +66,7 @@ function matchesDirectionStyleRuleList(
   element: HTMLElement,
   rules: CSSRuleList | Iterable<CSSRule>,
   getParentElement: ParentElementResolver,
+  scopes: readonly ActiveScope[] = [],
 ): boolean {
   for (const rule of Array.from(rules)) {
     if (Reflect.get(rule, 'type') === 3) {
@@ -75,7 +76,7 @@ function matchesDirectionStyleRuleList(
           const importedRules = Reflect.get(imported, 'cssRules');
           if (
             isCssRuleCollection(importedRules) &&
-            matchesDirectionStyleRuleList(element, importedRules, getParentElement)
+            matchesDirectionStyleRuleList(element, importedRules, getParentElement, scopes)
           )
             return true;
         } catch {
@@ -87,22 +88,35 @@ function matchesDirectionStyleRuleList(
     if (isCssStyleRule(rule)) {
       if (!rule.style.direction) {
         const nestedRules = readNestedCssRules(rule);
-        if (nestedRules && matchesDirectionStyleRuleList(element, nestedRules, getParentElement))
+        if (
+          nestedRules &&
+          matchesDirectionStyleRuleList(element, nestedRules, getParentElement, scopes)
+        )
           return true;
         continue;
       }
       try {
-        if (element.matches(rule.selectorText)) return true;
+        if (matchesScopedSelector(element, rule.selectorText, scopes)) return true;
       } catch {
         continue;
       }
     }
 
     const nestedRules = readNestedCssRules(rule);
+    if (isScopeRule(rule)) {
+      const scope = createActiveScope(rule, element, scopes);
+      if (scope && nestedRules) {
+        if (
+          matchesDirectionStyleRuleList(element, nestedRules, getParentElement, [...scopes, scope])
+        )
+          return true;
+      }
+      continue;
+    }
     if (
       nestedRules &&
       isConditionalRuleActive(rule, element, getParentElement) &&
-      matchesDirectionStyleRuleList(element, nestedRules, getParentElement)
+      matchesDirectionStyleRuleList(element, nestedRules, getParentElement, scopes)
     ) {
       return true;
     }
@@ -147,7 +161,6 @@ function isConditionalRuleActive(
   element: HTMLElement,
   getParentElement: ParentElementResolver,
 ): boolean {
-  if (isScopeRule(rule)) return isScopeActive(rule, element);
   const conditionText = Reflect.get(rule, 'conditionText');
   if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
 
@@ -170,28 +183,108 @@ function isScopeRule(rule: CSSRule): boolean {
   return typeof cssText === 'string' && /^\s*@scope\b/i.test(cssText);
 }
 
-function isScopeActive(rule: CSSRule, element: HTMLElement): boolean {
+interface ScopePrelude {
+  rootSelectors: string[];
+  limitSelectors: string[] | null;
+}
+
+interface ActiveScope {
+  roots: Element[];
+}
+
+function createActiveScope(
+  rule: CSSRule,
+  element: HTMLElement,
+  parentScopes: readonly ActiveScope[],
+): ActiveScope | null {
   const cssText = Reflect.get(rule, 'cssText');
-  if (typeof cssText !== 'string') return false;
+  if (typeof cssText !== 'string') return null;
+  const prelude = parseScopePrelude(cssText);
+  if (!prelude) return null;
+  const roots = findActiveScopeRoots(element, prelude, parentScopes);
+  return roots === null ? null : { roots };
+}
+
+function findActiveScopeRoots(
+  element: HTMLElement,
+  prelude: ScopePrelude,
+  parentScopes: readonly ActiveScope[],
+): Element[] | null {
+  const roots =
+    prelude.rootSelectors.length === 0 ? [null] : findScopeMatches(element, prelude.rootSelectors);
+  const activeRoots: Element[] = [];
+  for (const root of roots) {
+    if (root && !isWithinParentScopes(root, parentScopes)) continue;
+    if (
+      root &&
+      prelude.limitSelectors &&
+      isWithinScopeLimit(element, root, prelude.limitSelectors)
+    ) {
+      continue;
+    }
+    if (root) activeRoots.push(root);
+    else if (!prelude.limitSelectors || !findScopeMatches(element, prelude.limitSelectors).length)
+      activeRoots.push(element.ownerDocument.documentElement);
+  }
+  if (prelude.rootSelectors.length > 0 && activeRoots.length === 0) return null;
+  return activeRoots;
+}
+
+function isWithinParentScopes(root: Element, parentScopes: readonly ActiveScope[]): boolean {
+  return parentScopes.every((scope) => scope.roots.some((parentRoot) => parentRoot.contains(root)));
+}
+
+function isWithinScopeLimit(
+  element: HTMLElement,
+  root: Element,
+  limitSelectors: string[],
+): boolean {
+  let current: Element | null = element;
+  while (current) {
+    if (limitSelectors.some((selector) => matchesSelectorSafely(current!, selector))) return true;
+    if (current === root) break;
+    current = current.parentElement;
+  }
+  return false;
+}
+
+function matchesSelectorSafely(element: Element, selector: string): boolean {
   try {
-    const prelude = parseScopePrelude(cssText);
-    if (!prelude) return false;
-    const scopeRoots = findScopeMatches(element, prelude.rootSelectors);
-    if (prelude.rootSelectors.length > 0 && scopeRoots.length === 0) return false;
-    if (!prelude.limitSelectors) return true;
-    const scopeLimits = findScopeMatches(element, prelude.limitSelectors);
-    if (scopeRoots.length === 0) return scopeLimits.length === 0;
-    return scopeRoots.some((scopeRoot) =>
-      scopeLimits.every((scopeLimit) => !scopeRoot.contains(scopeLimit)),
-    );
+    return element.matches(selector);
   } catch {
     return false;
   }
 }
 
-interface ScopePrelude {
-  rootSelectors: string[];
-  limitSelectors: string[] | null;
+function matchesScopedSelector(
+  element: HTMLElement,
+  selector: string,
+  scopes: readonly ActiveScope[],
+): boolean {
+  if (!selector.includes(':scope')) return matchesSelectorSafely(element, selector);
+  if (scopes.length === 0) return false;
+  for (const scope of scopes) {
+    for (const root of scope.roots) {
+      try {
+        if (Array.from(root.querySelectorAll(selector)).includes(element)) return true;
+        // Some CSSOM implementations do not implement :scope on querySelectorAll.
+        // Bind it explicitly to a temporary attribute and use the target's matcher.
+        const marker = 'data-cinder-scope-root';
+        const previous = root.getAttribute(marker);
+        try {
+          root.setAttribute(marker, 'true');
+          const boundSelector = selector.replaceAll(':scope', `[${marker}="true"]`);
+          if (element.matches(boundSelector)) return true;
+        } finally {
+          if (previous === null) root.removeAttribute(marker);
+          else root.setAttribute(marker, previous);
+        }
+      } catch {
+        // Unsupported relative selectors are not safe direction hints.
+      }
+    }
+  }
+  return false;
 }
 
 function parseScopePrelude(cssText: string): ScopePrelude | null {
