@@ -21,6 +21,7 @@
 
 <script lang="ts">
   import type { AutocompleteProps, AutocompleteSuggestion } from './autocomplete.types.ts';
+  import type { InputProps } from '../input/input.types.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
@@ -74,13 +75,12 @@
   const listboxId = $derived(`${resolvedId}-listbox`);
   const resolvedMinQueryLength = $derived(toNonNegativeInteger(minQueryLength, 1));
   const resolvedMaxVisibleSuggestions = $derived(toNonNegativeInteger(maxVisibleSuggestions, 50));
-
-  $effect(() => {
-    if (context && id && context.controlId !== id) {
-      devWarn(
-        `[cinder/Autocomplete] id mismatch: Autocomplete id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
-      );
-    }
+  const inputFieldProperties = $derived.by(() => {
+    const properties: Partial<Pick<InputProps, 'label' | 'description' | 'error'>> = {};
+    if (label !== undefined) properties.label = label;
+    if (description !== undefined) properties.description = description;
+    if (error !== undefined) properties.error = error;
+    return properties;
   });
 
   let inputElement = $state<HTMLInputElement | null>(null);
@@ -439,25 +439,12 @@
   data-disabled={field.disabled ? '' : undefined}
   data-invalid={field.ariaInvalid === 'true' ? '' : undefined}
 >
-  {#if label}
-    <label
-      for={resolvedId}
-      class="cinder-autocomplete__label"
-      data-disabled={field.disabled || undefined}
-    >
-      {label}
-      {#if field.required}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
   <Input
     {...rest}
     id={resolvedId}
     type="text"
-    class="cinder-autocomplete__input"
     bind:value
+    {...inputFieldProperties}
     {placeholder}
     inputAttachment={attachInput}
     disabled={field.disabled}
@@ -470,8 +457,8 @@
     aria-haspopup="listbox"
     aria-controls={open ? listboxId : undefined}
     aria-activedescendant={activeDescendant}
-    aria-invalid={field.ariaInvalid}
-    aria-describedby={field.describedBy}
+    aria-invalid={consumerInvalid}
+    aria-describedby={consumerDescribedBy}
     oninput={handleInput}
     onfocus={handleFocus}
     onblur={handleBlur}
@@ -483,14 +470,6 @@
       composing = false;
     }}
   />
-
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-autocomplete__description">{description}</p>
-  {/if}
-
-  {#if error}
-    <p id={field.ownErrorId} class="cinder-autocomplete__error" aria-live="polite">{error}</p>
-  {/if}
 
   <!-- Persistent status announcer (loading / no-results), outside the portaled
        popover so screen readers reliably hear it. -->

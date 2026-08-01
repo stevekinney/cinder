@@ -148,7 +148,6 @@ allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [
     '_radio/radio.svelte',
-    'autocomplete/autocomplete.svelte',
     'checkbox/checkbox.svelte',
     'combobox/combobox.svelte',
     'date-picker/date-picker.svelte',

@@ -75,6 +75,37 @@ describe('Autocomplete — rendering and ARIA', () => {
     expect(input.classList.contains('cinder-input')).toBe(true);
   });
 
+  test('delegates label, description, and error wiring to Input', () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'owned-field',
+        label: 'Search records',
+        description: 'Type at least one character',
+        error: 'Choose a valid record',
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(container);
+    const describedBy = input.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
+
+    expect(container.querySelector('.cinder-input-field__label')?.getAttribute('for')).toBe(
+      'owned-field',
+    );
+    expect(container.querySelector('.cinder-input-field__description')?.textContent).toBe(
+      'Type at least one character',
+    );
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toBe(
+      'Choose a valid record',
+    );
+    expect(container.querySelector('.cinder-autocomplete__label')).toBeNull();
+    expect(container.querySelector('.cinder-autocomplete__description')).toBeNull();
+    expect(container.querySelector('.cinder-autocomplete__error')).toBeNull();
+    expect(describedBy).toContain('owned-field-description');
+    expect(describedBy).toContain('owned-field-error');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
+
   test('forwards consumer native class and style while keeping the Input primitive class', () => {
     const { container } = render(Autocomplete, {
       props: {
@@ -690,12 +721,12 @@ describe('Autocomplete — FormField context', () => {
     });
 
     const input = getInput(container);
-    // resolveFieldControl composes both the control-level and context-level error ids;
+    // Input composes both the control-level and context-level error ids;
     // the deduplication pass removes the context description that also appears in
-    // context.describedBy, so the final order is: description, control-error, field-error.
+    // context.describedBy, so the final order is: description, input-error, field-error.
     const describedBy = input.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-search-description');
-    expect(describedBy).toContain('fruit-search-control-error');
+    expect(describedBy).toContain('fruit-search-input-error');
     // The FormField's own (field-level) error id must also be composed in — assert it
     // explicitly so a future regression that drops it can't pass silently.
     expect(describedBy).toContain('fruit-search-error');
