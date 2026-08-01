@@ -8,7 +8,7 @@
    * @tag schedule
    * @tag timeline
    * @useWhen Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip.
-   * @avoidWhen Showing vertical process history or dense activity feeds. | timeline
+   * @avoidWhen Showing sequential process history or dense activity feeds. | timeline
    * @avoidWhen Showing step-by-step run execution state. | run-step-timeline
    * @avoidWhen Showing a user-facing activity feed or dense operational stream — use feed or event-stream-viewer.
    * @related timeline, run-step-timeline, feed, event-stream-viewer, status-dot

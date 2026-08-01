@@ -2132,7 +2132,7 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Showing vertical process history or dense activity feeds.",
+          "reason": "Showing sequential process history or dense activity feeds.",
           "alternative": "timeline"
         },
         {
