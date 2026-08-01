@@ -10,6 +10,7 @@ const nativeGetComputedStyle = globalThis.getComputedStyle;
 
 const { render, cleanup, waitFor } = await import('@testing-library/svelte');
 const { default: Portal } = await import('./portal.svelte');
+const { default: PortalAttachmentTest } = await import('./portal-attachment-test.svelte');
 const {
   copyInheritedPortalAttributes,
   findNearestOpenTopLayer,
@@ -309,6 +310,36 @@ describe('Portal', () => {
     copyInheritedPortalAttributes(element, source, true);
 
     expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
+  test('preserves an initial direction on a direct portal attachment', async () => {
+    const source = document.createElement('div');
+    source.style.direction = 'ltr';
+    const target = document.createElement('div');
+    document.body.append(source, target);
+
+    render(PortalAttachmentTest, {
+      props: { source, target, initialDirection: 'rtl' },
+    });
+    await tick();
+
+    expect(
+      target.querySelector('[data-testid="direct-portal-attachment"]')?.getAttribute('dir'),
+    ).toBe('rtl');
+  });
+
+  test('inherits direction when a direct portal attachment has no initial direction', async () => {
+    const source = document.createElement('div');
+    source.setAttribute('dir', 'ltr');
+    const target = document.createElement('div');
+    document.body.append(source, target);
+
+    render(PortalAttachmentTest, { props: { source, target } });
+    await tick();
+
+    expect(
+      target.querySelector('[data-testid="direct-portal-attachment"]')?.getAttribute('dir'),
+    ).toBe('ltr');
   });
 
   test('updates inherited computed direction when the source style changes', async () => {
@@ -621,6 +652,101 @@ describe('Portal', () => {
     window.matchMedia = originalMatchMedia;
   });
 
+  test('refreshes media inventory for stylesheets nested in inserted subtrees', async () => {
+    const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    const removedQueries: string[] = [];
+    const stylesheetContainer = document.createElement('div');
+    stylesheetContainer.append(document.createElement('style'));
+    Object.defineProperty(document, 'styleSheets', {
+      configurable: true,
+      get: () =>
+        stylesheetContainer.isConnected
+          ? [{ media: { mediaText: '(prefers-reduced-transparency: reduce)' }, cssRules: [] }]
+          : [],
+    });
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => removedQueries.push(query),
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+    const mountPoint = document.createElement('div');
+    document.body.append(mountPoint);
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+
+    document.body.append(stylesheetContainer);
+    await waitFor(() =>
+      expect(observedQueries).toContain('(prefers-reduced-transparency: reduce)'),
+    );
+    stylesheetContainer.remove();
+    await waitFor(() => expect(removedQueries).toContain('(prefers-reduced-transparency: reduce)'));
+
+    window.matchMedia = originalMatchMedia;
+    if (originalStyleSheets) Object.defineProperty(document, 'styleSheets', originalStyleSheets);
+    else Reflect.deleteProperty(document, 'styleSheets');
+  });
+
+  test('refreshes media inventory after a shadow-root stylesheet loads', async () => {
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const stylesheetLink = document.createElement('link');
+    stylesheetLink.rel = 'stylesheet';
+    const loadListener: { current: EventListener | null } = { current: null };
+    const nativeAddEventListener = shadow.addEventListener.bind(shadow);
+    shadow.addEventListener = ((
+      type: string,
+      listener: EventListenerOrEventListenerObject,
+      options?: boolean | AddEventListenerOptions,
+    ) => {
+      if (type === 'load' && typeof listener === 'function') loadListener.current = listener;
+      nativeAddEventListener(type, listener, options);
+    }) as typeof shadow.addEventListener;
+    const mountPoint = document.createElement('div');
+    shadow.append(stylesheetLink, mountPoint);
+    document.body.append(host);
+    let loaded = false;
+    Object.defineProperty(shadow, 'styleSheets', {
+      configurable: true,
+      get: () =>
+        loaded ? [{ media: { mediaText: '(prefers-contrast: more)' }, cssRules: [] }] : [],
+    });
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+    expect(observedQueries).not.toContain('(prefers-contrast: more)');
+
+    loaded = true;
+    expect(loadListener.current).not.toBeNull();
+    loadListener.current?.call(shadow, { target: stylesheetLink } as unknown as Event);
+    await waitFor(() => expect(observedQueries).toContain('(prefers-contrast: more)'));
+    window.matchMedia = originalMatchMedia;
+  });
+
   test('invalidates direction on pointer transitions', async () => {
     const source = document.createElement('div');
     const mountPoint = document.createElement('div');
@@ -652,6 +778,33 @@ describe('Portal', () => {
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('ltr'));
   });
 
+  test('invalidates direction when the fragment target changes', async () => {
+    const source = document.createElement('div');
+    const mountPoint = document.createElement('div');
+    source.append(mountPoint);
+    document.body.append(source);
+    let direction: 'ltr' | 'rtl' = 'ltr';
+    const nativeGetComputedStyle = globalThis.getComputedStyle;
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: (element: Element) => {
+        const computed = nativeGetComputedStyle(element);
+        if (element === mountPoint)
+          Object.defineProperty(computed, 'direction', { configurable: true, value: direction });
+        return computed;
+      },
+    });
+
+    render(Portal, { target: mountPoint, props: { children: childSnippet } });
+    await tick();
+    const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
+
+    direction = 'rtl';
+    window.dispatchEvent(new Event('hashchange'));
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+  });
+
   test('rebinds shadow-root and ancestor observers when the source moves', async () => {
     const originalStyleSheets = Object.getOwnPropertyDescriptor(document, 'styleSheets');
     const originalMatchMedia = window.matchMedia;
@@ -679,10 +832,18 @@ describe('Portal', () => {
         dispatchEvent: () => true,
       } as MediaQueryList;
     }) as typeof window.matchMedia;
+    const oldAncestor = document.createElement('div');
+    oldAncestor.setAttribute('dir', 'ltr');
+    oldAncestor.setAttribute('lang', 'en');
+    oldAncestor.setAttribute('data-theme', 'old-theme');
+    host.setAttribute('dir', 'auto');
+    host.setAttribute('lang', 'ar');
+    host.setAttribute('data-theme', 'new-theme');
     const source = document.createElement('div');
     const mountPoint = document.createElement('div');
     source.append(mountPoint);
-    document.body.append(source, host);
+    oldAncestor.append(source);
+    document.body.append(oldAncestor, host);
     const nativeGetComputedStyle = globalThis.getComputedStyle;
     Object.defineProperty(globalThis, 'getComputedStyle', {
       configurable: true,
@@ -691,7 +852,7 @@ describe('Portal', () => {
         if (element === mountPoint)
           Object.defineProperty(computed, 'direction', {
             configurable: true,
-            value: source.getRootNode() instanceof ShadowRoot ? 'rtl' : 'ltr',
+            value: 'ltr',
           });
         return computed;
       },
@@ -701,10 +862,27 @@ describe('Portal', () => {
     await tick();
     const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
+    expect(wrapper?.getAttribute('lang')).toBe('en');
+    expect(wrapper?.getAttribute('data-theme')).toBe('old-theme');
 
     shadow.append(source);
-    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('auto'));
+    expect(wrapper?.getAttribute('lang')).toBe('ar');
+    expect(wrapper?.getAttribute('data-theme')).toBe('new-theme');
     expect(observedQueries).toContain('(max-width: 1px)');
+
+    host.setAttribute('lang', 'he');
+    host.setAttribute('data-theme', 'updated-theme');
+    host.setAttribute('data-cinder-theme', 'contrast');
+    await waitFor(() => expect(wrapper?.getAttribute('lang')).toBe('he'));
+    expect(wrapper?.getAttribute('data-theme')).toBe('updated-theme');
+    expect(wrapper?.getAttribute('data-cinder-theme')).toBe('contrast');
+
+    oldAncestor.setAttribute('lang', 'stale');
+    oldAncestor.setAttribute('data-theme', 'stale-theme');
+    await tick();
+    expect(wrapper?.getAttribute('lang')).toBe('he');
+    expect(wrapper?.getAttribute('data-theme')).toBe('updated-theme');
 
     window.matchMedia = originalMatchMedia;
     if (originalStyleSheets) Object.defineProperty(document, 'styleSheets', originalStyleSheets);

@@ -497,6 +497,8 @@ function observeInheritedPortalAttributes(
       : new MutationObserver(() => {
           syncAttributes();
         });
+  const observedElements: HTMLElement[] = [];
+
   function observe(elementToObserve: HTMLElement | null | undefined) {
     if (!observer || !elementToObserve || observedElements.includes(elementToObserve)) return;
     observedElements.push(elementToObserve);
@@ -505,19 +507,35 @@ function observeInheritedPortalAttributes(
       attributeFilter: ['class', 'style', 'dir', 'lang', 'data-theme', 'data-cinder-theme'],
     });
   }
-  const observedElements: HTMLElement[] = [];
 
-  let ancestor: HTMLElement | null = source;
-  while (ancestor) {
-    observe(ancestor);
-    ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
+  function rebindObservedElements() {
+    const nextElements: HTMLElement[] = [];
+    let ancestor: HTMLElement | null = source ?? null;
+    while (ancestor) {
+      nextElements.push(ancestor);
+      ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
+    }
+    nextElements.push(document.documentElement);
+    if (
+      observedElements.length === nextElements.length &&
+      observedElements.every((element, index) => element === nextElements[index])
+    ) {
+      return;
+    }
+    observer?.disconnect();
+    observedElements.length = 0;
+    for (const element of nextElements) observe(element);
   }
-  observe(document.documentElement);
+  rebindObservedElements();
 
   const resizeObserver =
     typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncAttributes);
   resizeObserver?.observe(source);
-  const stopObservingComputedDirection = observeComputedDirection(source, syncAttributes);
+  const stopObservingComputedDirection = observeComputedDirection(
+    source,
+    syncAttributes,
+    rebindObservedElements,
+  );
 
   return () => {
     observer?.disconnect();
@@ -530,6 +548,7 @@ type ComputedDirectionObservation = {
   source: HTMLElement;
   direction: string;
   sync: () => void;
+  rebindInheritedAttributes: () => void;
   roots: ShadowRoot[];
   resizeObserver: ResizeObserver | null;
   resizeObservedElements: HTMLElement[];
@@ -566,14 +585,17 @@ export function invalidatePortalDirection() {
 }
 
 function syncComputedDirections() {
-  let topologyChanged = false;
-  for (const current of computedDirectionObservations)
-    topologyChanged = rebindComputedDirectionObservation(current) || topologyChanged;
-  if (topologyChanged) refreshMediaQueryObservers();
+  const topologyChanges = new Set<ComputedDirectionObservation>();
+  for (const current of computedDirectionObservations) {
+    if (!rebindComputedDirectionObservation(current)) continue;
+    topologyChanges.add(current);
+    current.rebindInheritedAttributes();
+  }
+  if (topologyChanges.size > 0) refreshMediaQueryObservers();
   if (typeof getComputedStyle !== 'function') return;
   for (const current of computedDirectionObservations) {
     const direction = getComputedStyle(current.source).direction;
-    if (direction === current.direction) continue;
+    if (direction === current.direction && !topologyChanges.has(current)) continue;
     current.direction = direction;
     current.sync();
   }
@@ -693,6 +715,7 @@ function startDirectionInvalidationObservers() {
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('resize', invalidateComputedDirections);
     window.addEventListener('orientationchange', invalidateComputedDirections);
+    window.addEventListener('hashchange', invalidateComputedDirections);
     for (const event of [
       'focusin',
       'focusout',
@@ -725,9 +748,13 @@ function isStylesheetMutation(mutation: MutationRecord): boolean {
   }
   if (mutation.type !== 'childList') return false;
   if (mutation.target instanceof HTMLStyleElement) return true;
-  return [...mutation.addedNodes, ...mutation.removedNodes].some(
-    (node) => node instanceof HTMLStyleElement || node instanceof HTMLLinkElement,
-  );
+  return [...mutation.addedNodes, ...mutation.removedNodes].some(containsStylesheetNode);
+}
+
+function containsStylesheetNode(node: Node): boolean {
+  if (node instanceof HTMLStyleElement || node instanceof HTMLLinkElement) return true;
+  if (!(node instanceof Element || node instanceof DocumentFragment)) return false;
+  return node.querySelector('style, link') !== null;
 }
 
 function observeDirectionShadowRoots(source: HTMLElement) {
@@ -751,12 +778,23 @@ function observeDirectionShadowRoots(source: HTMLElement) {
           childList: true,
           subtree: true,
         });
+        root.addEventListener('load', handleStylesheetLoad, true);
         directionInvalidationRoots.set(root, { observer, count: 1 });
       }
     }
     current = getShadowHost(current);
   }
   return roots;
+}
+
+function releaseDirectionShadowRoot(root: ShadowRoot) {
+  const existing = directionInvalidationRoots.get(root);
+  if (!existing) return;
+  existing.count -= 1;
+  if (existing.count > 0) return;
+  existing.observer.disconnect();
+  root.removeEventListener('load', handleStylesheetLoad, true);
+  directionInvalidationRoots.delete(root);
 }
 
 function stopDirectionInvalidationObservers() {
@@ -768,6 +806,7 @@ function stopDirectionInvalidationObservers() {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', invalidateComputedDirections);
     window.removeEventListener('orientationchange', invalidateComputedDirections);
+    window.removeEventListener('hashchange', invalidateComputedDirections);
   }
   for (const event of [
     'focusin',
@@ -789,7 +828,10 @@ function stopDirectionInvalidationObservers() {
     removeMediaQueryListener(mediaQuery);
   }
   observedMediaQueries.clear();
-  for (const { observer } of directionInvalidationRoots.values()) observer.disconnect();
+  for (const [root, { observer }] of directionInvalidationRoots) {
+    observer.disconnect();
+    root.removeEventListener('load', handleStylesheetLoad, true);
+  }
   directionInvalidationRoots.clear();
   if (directionInvalidationFrame !== null) {
     if (typeof window !== 'undefined') window.cancelAnimationFrame(directionInvalidationFrame);
@@ -806,7 +848,11 @@ function handleStylesheetLoad(event: Event) {
   }
 }
 
-function observeComputedDirection(source: HTMLElement, sync: () => void): () => void {
+function observeComputedDirection(
+  source: HTMLElement,
+  sync: () => void,
+  rebindInheritedAttributes: () => void,
+): () => void {
   if (
     typeof getComputedStyle !== 'function' ||
     typeof window === 'undefined' ||
@@ -818,6 +864,7 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
     source,
     direction: getComputedStyle(source).direction,
     sync,
+    rebindInheritedAttributes,
     roots: [],
     resizeObserver: null,
     resizeObservedElements: [],
@@ -831,15 +878,7 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
   return () => {
     computedDirectionObservations.delete(observation);
     observation.resizeObserver?.disconnect();
-    for (const root of observation.roots) {
-      const existing = directionInvalidationRoots.get(root);
-      if (!existing) continue;
-      existing.count -= 1;
-      if (existing.count === 0) {
-        existing.observer.disconnect();
-        directionInvalidationRoots.delete(root);
-      }
-    }
+    for (const root of observation.roots) releaseDirectionShadowRoot(root);
     if (computedDirectionObservations.size === 0) {
       stopDirectionInvalidationObservers();
     } else {
@@ -894,15 +933,7 @@ function rebindComputedDirectionObservation(observation: ComputedDirectionObserv
     nextRoots.length !== observation.roots.length ||
     nextRoots.some((root, index) => root !== observation.roots[index]);
   if (rootsChanged) {
-    for (const root of observation.roots) {
-      const existing = directionInvalidationRoots.get(root);
-      if (!existing) continue;
-      existing.count -= 1;
-      if (existing.count === 0) {
-        existing.observer.disconnect();
-        directionInvalidationRoots.delete(root);
-      }
-    }
+    for (const root of observation.roots) releaseDirectionShadowRoot(root);
     observation.roots = observeDirectionShadowRoots(observation.source);
   }
   const resizeChanged = rebindResizeObservation(
@@ -952,7 +983,7 @@ export function createPortalAttachment(
             : direction !== managedAttributes.dir
               ? direction
               : initialAttributes.dir,
-        preserveDirection: explicitDirection !== undefined,
+        preserveDirection: explicitDirection !== undefined || initialAttributes.dir !== null,
         lang:
           explicitLanguage !== undefined
             ? explicitLanguage
