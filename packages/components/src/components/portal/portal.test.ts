@@ -293,6 +293,24 @@ describe('Portal', () => {
     expect(element.getAttribute('dir')).toBe('rtl');
   });
 
+  test('inherits a generated outer portal direction without computed-style support', () => {
+    Object.defineProperty(globalThis, 'getComputedStyle', {
+      configurable: true,
+      value: undefined,
+    });
+    const outerWrapper = document.createElement('div');
+    outerWrapper.setAttribute('dir', 'rtl');
+    outerWrapper.setAttribute('data-cinder-portal-inherited-direction', 'true');
+    const source = document.createElement('div');
+    const element = document.createElement('div');
+    outerWrapper.append(source, element);
+    document.body.append(outerWrapper);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('rtl');
+  });
+
   test('updates inherited computed direction when the source style changes', async () => {
     const source = document.createElement('div');
     source.style.direction = 'rtl';

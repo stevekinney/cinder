@@ -250,6 +250,7 @@ export function copyInheritedPortalAttributes(
   const preservesExplicitDirection =
     fallbackAttributes.preserveDirection || element.dataset['cinderExplicitDirection'] === 'true';
   let inheritedDir: string | null | undefined = null;
+  let generatedDirectionFallback: string | null = null;
   if (inheritAttributes && source && !preservesExplicitDirection) {
     let directionSource: HTMLElement | null = source;
     while (directionSource) {
@@ -262,6 +263,7 @@ export function copyInheritedPortalAttributes(
         inheritedDir = matchingDirection.getAttribute('dir');
         break;
       }
+      generatedDirectionFallback ??= matchingDirection.getAttribute('dir');
       directionSource =
         matchingDirection.getRootNode() === document
           ? null
@@ -269,6 +271,8 @@ export function copyInheritedPortalAttributes(
     }
     if (inheritedDir === null && typeof getComputedStyle === 'function') {
       inheritedDir = getComputedStyle(source).direction;
+    } else if (inheritedDir === null) {
+      inheritedDir = generatedDirectionFallback;
     }
   }
   const nextDir = inheritedDir ?? fallbackAttributes.dir;
@@ -543,10 +547,6 @@ let directionInvalidationDocument: Document | null = null;
 let directionInvalidationStarted = false;
 
 function invalidateComputedDirections() {
-  let topologyChanged = false;
-  for (const current of computedDirectionObservations)
-    topologyChanged = rebindComputedDirectionObservation(current) || topologyChanged;
-  if (topologyChanged) refreshMediaQueryObservers();
   if (directionInvalidationFrame !== null || typeof window === 'undefined') return;
   if (typeof window.requestAnimationFrame !== 'function') {
     syncComputedDirections();
@@ -566,6 +566,10 @@ export function invalidatePortalDirection() {
 }
 
 function syncComputedDirections() {
+  let topologyChanged = false;
+  for (const current of computedDirectionObservations)
+    topologyChanged = rebindComputedDirectionObservation(current) || topologyChanged;
+  if (topologyChanged) refreshMediaQueryObservers();
   if (typeof getComputedStyle !== 'function') return;
   for (const current of computedDirectionObservations) {
     const direction = getComputedStyle(current.source).direction;
