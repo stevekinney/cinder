@@ -528,6 +528,7 @@ type ComputedDirectionObservation = {
   sync: () => void;
   roots: ShadowRoot[];
   resizeObserver: ResizeObserver | null;
+  resizeObservedElements: HTMLElement[];
 };
 
 const computedDirectionObservations = new Set<ComputedDirectionObservation>();
@@ -542,6 +543,10 @@ let directionInvalidationDocument: Document | null = null;
 let directionInvalidationStarted = false;
 
 function invalidateComputedDirections() {
+  let topologyChanged = false;
+  for (const current of computedDirectionObservations)
+    topologyChanged = rebindComputedDirectionObservation(current) || topologyChanged;
+  if (topologyChanged) refreshMediaQueryObservers();
   if (directionInvalidationFrame !== null || typeof window === 'undefined') return;
   if (typeof window.requestAnimationFrame !== 'function') {
     syncComputedDirections();
@@ -676,6 +681,7 @@ function startDirectionInvalidationObservers() {
         });
   directionInvalidationObserver?.observe(document.documentElement, {
     attributes: true,
+    characterData: true,
     childList: true,
     subtree: true,
   });
@@ -691,6 +697,8 @@ function startDirectionInvalidationObservers() {
       'input',
       'change',
       'toggle',
+      'pointerdown',
+      'pointerup',
     ]) {
       document.addEventListener(event, invalidateComputedDirections, true);
     }
@@ -704,6 +712,9 @@ function isStylesheetMutation(mutation: MutationRecord): boolean {
       (mutation.target instanceof HTMLStyleElement || mutation.target instanceof HTMLLinkElement) &&
       (mutation.attributeName === 'media' || mutation.attributeName === 'disabled')
     );
+  }
+  if (mutation.type === 'characterData') {
+    return mutation.target.parentElement instanceof HTMLStyleElement;
   }
   if (mutation.type !== 'childList') return false;
   if (mutation.target instanceof HTMLStyleElement) return true;
@@ -727,7 +738,12 @@ function observeDirectionShadowRoots(source: HTMLElement) {
           if (mutations.some(isStylesheetMutation)) refreshMediaQueryObservers();
           invalidateComputedDirections();
         });
-        observer.observe(root, { attributes: true, childList: true, subtree: true });
+        observer.observe(root, {
+          attributes: true,
+          characterData: true,
+          childList: true,
+          subtree: true,
+        });
         directionInvalidationRoots.set(root, { observer, count: 1 });
       }
     }
@@ -754,6 +770,8 @@ function stopDirectionInvalidationObservers() {
     'input',
     'change',
     'toggle',
+    'pointerdown',
+    'pointerup',
   ]) {
     directionInvalidationDocument?.removeEventListener(event, invalidateComputedDirections, true);
   }
@@ -792,20 +810,13 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
     sync,
     roots: [],
     resizeObserver: null,
+    resizeObservedElements: [],
   };
   computedDirectionObservations.add(observation);
   startDirectionInvalidationObservers();
   observation.roots = observeDirectionShadowRoots(source);
   refreshMediaQueryObservers();
-  if (typeof ResizeObserver !== 'undefined') {
-    const resizeObserver = new ResizeObserver(invalidateComputedDirections);
-    let ancestor: HTMLElement | null = source;
-    while (ancestor) {
-      resizeObserver.observe(ancestor);
-      ancestor = ancestor.parentElement ?? getShadowHost(ancestor);
-    }
-    observation.resizeObserver = resizeObserver;
-  }
+  rebindResizeObservation(observation, collectResizeObservedElements(source));
 
   return () => {
     computedDirectionObservations.delete(observation);
@@ -825,6 +836,70 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
       refreshMediaQueryObservers();
     }
   };
+}
+
+function collectDirectionShadowRoots(source: HTMLElement): ShadowRoot[] {
+  const roots: ShadowRoot[] = [];
+  let current: HTMLElement | null = source;
+  while (current) {
+    const root = current.getRootNode();
+    if (root instanceof ShadowRoot && !roots.includes(root)) roots.push(root);
+    current = getShadowHost(current);
+  }
+  return roots;
+}
+
+function collectResizeObservedElements(source: HTMLElement): HTMLElement[] {
+  const elements: HTMLElement[] = [];
+  let current: HTMLElement | null = source;
+  while (current) {
+    elements.push(current);
+    current = current.parentElement ?? getShadowHost(current);
+  }
+  return elements;
+}
+
+function rebindResizeObservation(
+  observation: ComputedDirectionObservation,
+  nextElements: HTMLElement[],
+): boolean {
+  if (
+    observation.resizeObservedElements.length === nextElements.length &&
+    observation.resizeObservedElements.every((element, index) => element === nextElements[index])
+  )
+    return false;
+  observation.resizeObserver?.disconnect();
+  observation.resizeObserver = null;
+  observation.resizeObservedElements = nextElements;
+  if (typeof ResizeObserver === 'undefined') return true;
+  const resizeObserver = new ResizeObserver(invalidateComputedDirections);
+  for (const element of nextElements) resizeObserver.observe(element);
+  observation.resizeObserver = resizeObserver;
+  return true;
+}
+
+function rebindComputedDirectionObservation(observation: ComputedDirectionObservation): boolean {
+  const nextRoots = collectDirectionShadowRoots(observation.source);
+  const rootsChanged =
+    nextRoots.length !== observation.roots.length ||
+    nextRoots.some((root, index) => root !== observation.roots[index]);
+  if (rootsChanged) {
+    for (const root of observation.roots) {
+      const existing = directionInvalidationRoots.get(root);
+      if (!existing) continue;
+      existing.count -= 1;
+      if (existing.count === 0) {
+        existing.observer.disconnect();
+        directionInvalidationRoots.delete(root);
+      }
+    }
+    observation.roots = observeDirectionShadowRoots(observation.source);
+  }
+  const resizeChanged = rebindResizeObservation(
+    observation,
+    collectResizeObservedElements(observation.source),
+  );
+  return rootsChanged || resizeChanged;
 }
 
 export function createPortalAttachment(

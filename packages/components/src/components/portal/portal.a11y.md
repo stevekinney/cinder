@@ -55,6 +55,8 @@ When content is portaled to `document.body`, it leaves the subtree it was author
 
 To preserve correctness across the move, Portal copies `dir`, `lang`, `data-theme`, and `data-cinder-theme` from the nearest matching ancestor of the inheritance source onto the wrapper (controlled by `inheritAttributes`, on by default). When no explicit `dir` ancestor exists, it carries the source's computed direction so CSS `direction` rules from inline styles or classes remain effective after the move. `dir` is genuinely an accessibility concern: it drives bidirectional text rendering and the reading direction screen readers announce, so carrying it across the portal boundary keeps RTL content from silently flipping. Consumers that portal from a context with a meaningful `dir` (Popover, etc.) should pass an explicit `source` so the original ancestor chain — not the post-move parent, which is the target — is used for the lookup.
 
+Dynamic direction invalidation can observe stylesheet-level media conditions and readable nested rules only when the stylesheet is same-origin or CORS-readable. Browser CSSOM security hides media conditions in non-CORS cross-origin stylesheets, and there is no generic registration API that can subscribe to those hidden rules without polling; Portal therefore leaves those conditions to the browser rather than introducing a polling loop.
+
 ## SSR and hydration behavior
 
 There is no `document` on the server, and a portal target like `document.body` or a selector can't be resolved until the browser exists. Portal handles this explicitly rather than crashing or mis-rendering:
