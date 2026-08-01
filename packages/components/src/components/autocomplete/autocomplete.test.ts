@@ -72,6 +72,23 @@ describe('Autocomplete — rendering and ARIA', () => {
     expect(input.getAttribute('aria-haspopup')).toBe('listbox');
     expect(input.getAttribute('aria-expanded')).toBe('false');
     expect(input.getAttribute('autocomplete')).toBe('off');
+    expect(input.classList.contains('cinder-input')).toBe(true);
+  });
+
+  test('forwards consumer native class and style while keeping the Input primitive class', () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'styled-search',
+        class: 'custom-autocomplete',
+        style: 'accent-color: rebeccapurple',
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(container);
+    expect(container.firstElementChild?.classList.contains('custom-autocomplete')).toBe(true);
+    expect(input.classList.contains('cinder-input')).toBe(true);
+    expect(input.getAttribute('style')).toContain('accent-color: rebeccapurple');
   });
 
   test('consumer autocomplete attribute wins over the default off value', () => {

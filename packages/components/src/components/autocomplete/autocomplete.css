@@ -14,30 +14,6 @@
     font-weight: var(--cinder-font-medium);
   }
 
-  .cinder-autocomplete__input {
-    width: 100%;
-    min-height: 2.5rem;
-    padding: 0.625rem 0.75rem;
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
-    font: inherit;
-  }
-
-  .cinder-autocomplete__input:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-  }
-
-  @media (forced-colors: active) {
-    .cinder-autocomplete__input:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 3px;
-      box-shadow: none;
-    }
-  }
-
   .cinder-autocomplete__description,
   .cinder-autocomplete__error {
     margin: 0;

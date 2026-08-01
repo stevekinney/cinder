@@ -26,6 +26,7 @@
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import Input from '../input/input.svelte';
   import Popover from '../popover/popover.svelte';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
 
@@ -350,6 +351,13 @@
     oninput?.(target.value);
   }
 
+  function attachInput(node: HTMLInputElement): () => void {
+    inputElement = node;
+    return () => {
+      if (inputElement === node) inputElement = null;
+    };
+  }
+
   function handleFocus(): void {
     autocompleteDismissed = false;
     inputFocused = true;
@@ -444,14 +452,14 @@
     </label>
   {/if}
 
-  <input
-    bind:this={inputElement}
+  <Input
     {...rest}
     id={resolvedId}
     type="text"
     class="cinder-autocomplete__input"
-    {value}
+    bind:value
     {placeholder}
+    inputAttachment={attachInput}
     disabled={field.disabled}
     required={field.required}
     {readonly}
