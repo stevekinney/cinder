@@ -93,7 +93,8 @@ function resolveFrameExpression(frame, value, range, budget) {
   return resolvedExpression;
 }
 
-function factorAfter(value, start, end) {
+function factorAfter(value, start, end, budget) {
+  if (!consumeResolutionWork(budget, (end - start) * 4)) return undefined;
   while (start < end && isCssWhitespace(value[start])) start += 1;
   const factorStart = start;
   while (start < end && /[+-]/.test(value[start])) {
@@ -112,7 +113,8 @@ function factorAfter(value, start, end) {
   return value.slice(factorStart, start).trim();
 }
 
-function factorBefore(value, start, end) {
+function factorBefore(value, start, end, budget) {
+  if (!consumeResolutionWork(budget, (end - start) * 4)) return undefined;
   while (end > start && isCssWhitespace(value[end - 1])) end -= 1;
   const factorEnd = end;
   let depth = 0;
@@ -148,7 +150,7 @@ function contextForOpeningParenthesis(value, openIndex, inheritedContext, inheri
   };
 }
 
-function childIsEliminatedByZeroProduct(value, range, child) {
+function childIsEliminatedByZeroProduct(value, range, child, budget) {
   if (child.signedZeroSensitiveContext) return false;
   if (typeof child.resolvedFallback !== 'string') return false;
   let afterChild = child.end;
@@ -158,8 +160,9 @@ function childIsEliminatedByZeroProduct(value, range, child) {
   )
     afterChild += 1;
   if (value[afterChild] === '*') {
-    const factor = factorAfter(value, afterChild + 1, range.end);
-    if (isStaticallyZero(`calc(${child.resolvedFallback} * ${factor})`)) return true;
+    const factor = factorAfter(value, afterChild + 1, range.end, budget);
+    if (factor !== undefined && isStaticallyZero(`calc(${child.resolvedFallback} * ${factor})`))
+      return true;
   }
 
   let beforeChild = child.start;
@@ -169,8 +172,8 @@ function childIsEliminatedByZeroProduct(value, range, child) {
   )
     beforeChild -= 1;
   if (value[beforeChild - 1] !== '*') return false;
-  const factor = factorBefore(value, range.start, beforeChild - 1);
-  return isStaticallyZero(`calc(${factor} * ${child.resolvedFallback})`);
+  const factor = factorBefore(value, range.start, beforeChild - 1, budget);
+  return factor !== undefined && isStaticallyZero(`calc(${factor} * ${child.resolvedFallback})`);
 }
 
 function classifyResolvedFallback(resolvedFallback) {
@@ -211,14 +214,14 @@ function unwrapStaticContainer(value, range) {
   }
 }
 
-function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
+function fallbackIndependentStaticArguments(frame, value, range, functionName) {
   const trimmedRange = unwrapStaticContainer(value, range);
   if (
     value.slice(trimmedRange.start, trimmedRange.start + functionName.length + 1).toLowerCase() !==
       `${functionName}(` ||
     value[trimmedRange.end - 1] !== ')'
   )
-    return false;
+    return [];
 
   const argumentRanges = [];
   let argumentStart = trimmedRange.start + functionName.length + 1;
@@ -227,18 +230,18 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
     if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
     else if (value[index] === '(') depth += 1;
     else if (value[index] === ')') {
-      if (depth === 0) return false;
+      if (depth === 0) return [];
       depth -= 1;
     } else if (value[index] === ',' && depth === 0) {
       argumentRanges.push({ start: argumentStart, end: index });
       argumentStart = index + 1;
     }
   }
-  if (depth !== 0) return false;
+  if (depth !== 0) return [];
   argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
 
   let childIndex = 0;
-  return argumentRanges.some((argumentRange) => {
+  return argumentRanges.flatMap((argumentRange, argumentIndex) => {
     while (
       childIndex < frame.children.length &&
       frame.children[childIndex].end <= argumentRange.start
@@ -247,16 +250,27 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
     const child = frame.children[childIndex];
     const containsFallback =
       child !== undefined && child.start < argumentRange.end && child.end > argumentRange.start;
-    if (containsFallback) return false;
+    if (containsFallback) return [];
     const argument = trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end);
-    // A fallback-independent safe bound means a banned child fallback cannot
-    // determine the result. The caller pairs max floors with negative values
-    // and min ceilings with the historical magic value.
-    const staticArgument = value.slice(argument.start, argument.end);
-    return functionName === 'min'
-      ? classifyStaticLayer(`min(9999, ${staticArgument})`) === 'safe'
-      : classifyStaticLayer(staticArgument) === 'safe';
+    return [{ index: argumentIndex, value: value.slice(argument.start, argument.end) }];
   });
+}
+
+function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
+  return fallbackIndependentStaticArguments(frame, value, range, functionName).some((argument) =>
+    functionName === 'min'
+      ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
+      : classifyStaticLayer(argument.value) === 'safe',
+  );
+}
+
+function hasFallbackIndependentClampBound(frame, value, range, boundIndex, candidate) {
+  const arguments_ = fallbackIndependentStaticArguments(frame, value, range, 'clamp');
+  const bound = arguments_.find((argument) => argument.index === boundIndex);
+  if (!bound) return false;
+  return candidate === 'magic'
+    ? classifyStaticLayer(`min(9999, ${bound.value})`) === 'safe'
+    : classifyStaticLayer(bound.value) === 'safe';
 }
 
 function hasBareOperatorStream(value) {
@@ -288,19 +302,24 @@ function hasBareOperatorStream(value) {
   return false;
 }
 
-function negativeZeroIsSafeFinalLayer(frame, value, range) {
+function isBareCalcOnlyConstant(value) {
+  return /^[+-]?(?:e|pi|infinity|nan)$/i.test(value.trim());
+}
+
+function negativeZeroIsSafeFinalLayer(frame, value, range, budget) {
   if (!frame.resolvedNegativeZero) return false;
   const candidateChildren = frame.children.filter((child) => child.unprovenBannedCandidate);
   return (
     candidateChildren.length > 0 &&
     candidateChildren.every(
       (child) =>
-        child.negativeZeroIsSafeFinalLayer || childIsEliminatedByZeroProduct(value, range, child),
+        child.negativeZeroIsSafeFinalLayer ||
+        childIsEliminatedByZeroProduct(value, range, child, budget),
     )
   );
 }
 
-function unprovenCandidateForFrame(frame, value, range, candidate) {
+function unprovenCandidateForFrame(frame, value, range, candidate, budget) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
   // banned child unless its contribution is safe independently of that choice.
@@ -309,7 +328,7 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   const uneliminatedChildren = frame.children.filter(
     (child) =>
       child.unprovenBannedCandidate &&
-      (resolvedNegativeZero || !childIsEliminatedByZeroProduct(value, range, child)),
+      (resolvedNegativeZero || !childIsEliminatedByZeroProduct(value, range, child, budget)),
   );
   const [uneliminatedChild] = uneliminatedChildren;
   if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic') {
@@ -325,8 +344,12 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   }
   if (!uneliminatedChild) return undefined;
 
-  const hasNonnegativeFloor = hasFallbackIndependentSafeBound(frame, value, range, 'max');
-  const hasMagicCeiling = hasFallbackIndependentSafeBound(frame, value, range, 'min');
+  const hasNonnegativeFloor =
+    hasFallbackIndependentSafeBound(frame, value, range, 'max') ||
+    hasFallbackIndependentClampBound(frame, value, range, 0, 'negative');
+  const hasMagicCeiling =
+    hasFallbackIndependentSafeBound(frame, value, range, 'min') ||
+    hasFallbackIndependentClampBound(frame, value, range, 2, 'magic');
   const contextuallyUnprovenChildren = uneliminatedChildren.filter((child) => {
     const classification = child.unprovenBannedCandidate.resolvedClassification;
     return !(
@@ -441,7 +464,8 @@ function fallbackCandidates(value) {
         ? onlyChild.resolvedClassification
         : !frame.mathContext &&
             typeof frame.resolvedFallback === 'string' &&
-            hasBareOperatorStream(frame.resolvedFallback)
+            (hasBareOperatorStream(frame.resolvedFallback) ||
+              isBareCalcOnlyConstant(frame.resolvedFallback))
           ? 'unresolved'
           : classifyResolvedFallback(frame.resolvedFallback);
     frame.resolvedNegativeZero =
@@ -451,7 +475,12 @@ function fallbackCandidates(value) {
         ? onlyChild.resolvedNegativeZero
         : typeof frame.resolvedFallback === 'string' &&
           isStaticallyNegativeZero(frame.resolvedFallback);
-    frame.negativeZeroIsSafeFinalLayer = negativeZeroIsSafeFinalLayer(frame, value, fallbackRange);
+    frame.negativeZeroIsSafeFinalLayer = negativeZeroIsSafeFinalLayer(
+      frame,
+      value,
+      fallbackRange,
+      resolutionBudget,
+    );
     const candidate = {
       fallbackIndex: fallbackRange.start,
       rawFallback,
@@ -463,6 +492,7 @@ function fallbackCandidates(value) {
       value,
       fallbackRange,
       candidate,
+      resolutionBudget,
     );
     if (frame.unprovenBannedCandidate && frame.children.length > 1)
       frame.unprovenBannedCandidate = {
@@ -492,10 +522,12 @@ function fallbackCandidates(value) {
       onlyRootChild.end === value.length
         ? onlyRootChild.resolvedNegativeZero
         : typeof resolvedValue === 'string' && isStaticallyNegativeZero(resolvedValue);
-    rootFrame.negativeZeroIsSafeFinalLayer = negativeZeroIsSafeFinalLayer(rootFrame, value, {
-      start: 0,
-      end: value.length,
-    });
+    rootFrame.negativeZeroIsSafeFinalLayer = negativeZeroIsSafeFinalLayer(
+      rootFrame,
+      value,
+      { start: 0, end: value.length },
+      resolutionBudget,
+    );
     const rootCandidate = {
       fallbackIndex: 0,
       rawFallback: value,
@@ -507,6 +539,7 @@ function fallbackCandidates(value) {
       value,
       { start: 0, end: value.length },
       rootCandidate,
+      resolutionBudget,
     );
     if (unprovenRootCandidate) candidates.push(unprovenRootCandidate);
   }

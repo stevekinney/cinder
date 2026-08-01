@@ -370,6 +370,20 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test.each(['-1', '9999'])(
+    'accepts a banned fallback bounded by independent clamp limits: %s',
+    async (fallback) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: clamp guarantees a final local layer from zero through one. */
+          z-index: clamp(0, calc(var(--inner, ${fallback}) + var(--runtime)), 1);
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
+
   test.each(['var(--outer, var(--inner, 9)999)', 'calc(var(--inner, 9)999)'])(
     'preserves adjacent numeric tokens during fallback substitution: %s',
     async (value) => {
@@ -488,6 +502,18 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
+  test('does not count parentheses inside quoted strings as static expression depth', async () => {
+    const quotedParentheses = `"${'('.repeat(513)}not-a-number${')'.repeat(513)}"`;
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: string contents are opaque to static math analysis. */
+        z-index: var(--outer, ${quotedParentheses});
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test('resumes fallback scanning after an unescaped newline terminates a quoted string', async () => {
     const result = await lint(`
       .fixture {
@@ -549,6 +575,49 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(calculated)).toHaveLength(1);
+  });
+
+  test.each(['-pi', '-infinity'])(
+    'treats a bare calc-only constant as opaque outside a math context: %s',
+    async (constant) => {
+      const bare = await lint(`
+        .fixture {
+          /* cinder-z-index-local: calc constants are identifiers outside CSS math functions. */
+          z-index: var(--outer, ${constant});
+        }
+      `);
+      expect(warnings(bare)).toEqual([]);
+
+      const calculated = await lint(`
+        .fixture {
+          /* cinder-z-index-local: calc supplies the numeric constant grammar. */
+          z-index: var(--outer, calc(${constant}));
+        }
+      `);
+      expect(warnings(calculated)).toHaveLength(1);
+    },
+  );
+
+  test('retains banned values produced by valid negative round intervals', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: negative round intervals remain valid CSS math. */
+        z-index: var(--outer, round(nearest, 9999, -1));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('retains banned attr fallbacks regardless of the attribute result type', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a missing attribute substitutes fallback tokens directly. */
+        z-index: var(--outer, attr(data-layer raw-string, 9999));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test('retains signed-zero evidence across a resolved fallback frame', async () => {
@@ -910,6 +979,22 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('bounds nested zero-product factor analysis with unresolved runtime substitutions', async () => {
+    let nestedProduct = 'var(--runtime)';
+    for (let index = 0; index < 4_000; index += 1)
+      nestedProduct = `var(--item-${index}, -1) * (${nestedProduct})`;
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: generated products must fail closed without quadratic scans. */
+        z-index: var(--outer, calc(${nestedProduct}));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('follows CSS integer rounding for negative half values', async () => {
     const roundedToZero = await lint(`
       .fixture {
@@ -926,6 +1011,26 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(roundedNegative)).toHaveLength(1);
+  });
+
+  test('cancels recognized relative units but not unknown dimensions', async () => {
+    for (const unit of ['rem', 'dvw', 'cqi']) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: matching CSS dimensions cancel to the magic number. */
+          z-index: var(--outer, calc(9999${unit} / 1${unit}));
+        }
+      `);
+      expect(warnings(result)).toHaveLength(1);
+    }
+
+    const unknown = await lint(`
+      .fixture {
+        /* cinder-z-index-local: an unknown dimension makes the fallback invalid. */
+        z-index: var(--outer, calc(9999quux / 1quux));
+      }
+    `);
+    expect(warnings(unknown)).toEqual([]);
   });
 
   test('does not inspect a similarly named non-var function', async () => {

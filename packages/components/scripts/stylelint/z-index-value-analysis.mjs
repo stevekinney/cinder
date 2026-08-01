@@ -19,12 +19,68 @@ const canonicalUnitConversions = new Map([
   ['dpi', { dimension: 'resolution', factor: 1 / 96 }],
   ['dpcm', { dimension: 'resolution', factor: 2.54 / 96 }],
 ]);
+const relativeLengthUnitNames = new Set([
+  'em',
+  'rem',
+  'ex',
+  'rex',
+  'cap',
+  'rcap',
+  'ch',
+  'rch',
+  'ic',
+  'ric',
+  'lh',
+  'rlh',
+  'vw',
+  'svw',
+  'lvw',
+  'dvw',
+  'vh',
+  'svh',
+  'lvh',
+  'dvh',
+  'vi',
+  'svi',
+  'lvi',
+  'dvi',
+  'vb',
+  'svb',
+  'lvb',
+  'dvb',
+  'vmin',
+  'svmin',
+  'lvmin',
+  'dvmin',
+  'vmax',
+  'svmax',
+  'lvmax',
+  'dvmax',
+  'cqw',
+  'cqh',
+  'cqi',
+  'cqb',
+  'cqmin',
+  'cqmax',
+]);
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
 export function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
+}
+
+function quotedStringEnd(value, start) {
+  const quote = value[start];
+  for (let index = start + 1; index < value.length; index += 1) {
+    if (value[index] === '\\') {
+      if (value[index + 1] === '\r' && value[index + 2] === '\n') index += 2;
+      else if (value[index + 1] !== undefined) index += 1;
+    } else if (value[index] === quote) return index;
+    else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
+  }
+  return value.length - 1;
 }
 
 function scalar(value) {
@@ -117,6 +173,8 @@ function evaluateConstantArithmetic(expression) {
     const unit = expression.slice(unitStart, index).toLowerCase();
     if (!unit) return scalar(value);
     const conversion = canonicalUnitConversions.get(unit);
+    if (conversion === undefined && unit !== '%' && !relativeLengthUnitNames.has(unit))
+      throw new Error('unknown unit');
     const unitKey = conversion === undefined ? `unit:${unit}` : `dimension:${conversion.dimension}`;
     if (conversion !== undefined) value *= conversion.factor;
     return { value, units: new Map([[unitKey, 1]]) };
@@ -385,7 +443,12 @@ function collapseSimpleParenthesisChain(expression) {
 
 function exceedsStaticAnalysisDepth(expression) {
   let depth = 0;
-  for (const character of expression) {
+  for (let index = 0; index < expression.length; index += 1) {
+    const character = expression[index];
+    if (character === '"' || character === "'") {
+      index = quotedStringEnd(expression, index);
+      continue;
+    }
     if (character === '(') depth += 1;
     if (character === ')') depth -= 1;
     if (depth > 512) return true;
