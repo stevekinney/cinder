@@ -76,18 +76,6 @@ function hasAdjacentLocalReason(declaration) {
   return text.slice(localReasonPrefix.length).trim().length > 0;
 }
 
-function fallbackIndexInDeclaration(declarationText, fallback) {
-  let searchStart = 0;
-  for (;;) {
-    const fallbackIndex = declarationText.indexOf(fallback, searchStart);
-    if (fallbackIndex === -1) return -1;
-    let boundaryIndex = fallbackIndex - 1;
-    while (/[\t\n\f\r ]/.test(declarationText[boundaryIndex] ?? '')) boundaryIndex -= 1;
-    if (declarationText[boundaryIndex] === ',') return fallbackIndex;
-    searchStart = fallbackIndex + 1;
-  }
-}
-
 const plugin = stylelint.createPlugin(ruleName, (primary) => {
   return (root, result) => {
     const validOptions = stylelint.utils.validateOptions(result, ruleName, {
@@ -131,15 +119,22 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       const offendingFallback = bannedFallback(rawValue);
       if (offendingFallback) {
         const declarationText = declaration.toString();
-        const fallbackIndex = fallbackIndexInDeclaration(declarationText, offendingFallback);
+        const normalizedDeclarationValue = declaration.value.trim();
+        const declarationValueIndex = declarationText.indexOf(normalizedDeclarationValue);
+        const fallbackIndex =
+          offendingFallback.index === undefined ||
+          normalizedDeclarationValue !== rawValue ||
+          declarationValueIndex === -1
+            ? -1
+            : declarationValueIndex + offendingFallback.index;
         stylelint.utils.report({
           ruleName,
           result,
           node: declaration,
           ...(fallbackIndex >= 0
-            ? { index: fallbackIndex, endIndex: fallbackIndex + offendingFallback.length }
+            ? { index: fallbackIndex, endIndex: fallbackIndex + offendingFallback.value.length }
             : {}),
-          message: `${messages.bannedFallback} Offending fallback: \`${offendingFallback}\`.`,
+          message: `${messages.bannedFallback} Offending fallback: \`${offendingFallback.value}\`.`,
         });
         return;
       }

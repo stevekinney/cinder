@@ -325,7 +325,7 @@ function fallbackCandidates(value) {
     const fallbackRange = trimCssWhitespaceRange(value, frame.commaIndex + 1, index);
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     if (frame.children.some((child) => child.resolvedFallback === null)) {
-      candidates.push({ rawFallback, resolvedFallback: null });
+      candidates.push({ fallbackIndex: fallbackRange.start, rawFallback, resolvedFallback: null });
       continue;
     }
 
@@ -347,7 +347,11 @@ function fallbackCandidates(value) {
           frame.resolvedFallback.slice(relativeEnd);
       }
     }
-    candidates.push({ rawFallback, resolvedFallback: frame.resolvedFallback });
+    candidates.push({
+      fallbackIndex: fallbackRange.start,
+      rawFallback,
+      resolvedFallback: frame.resolvedFallback,
+    });
   }
 
   return candidates;
@@ -365,14 +369,17 @@ export function isStaticallyMagicNumber(value) {
 
 export function bannedFallback(value) {
   const protectedValue = protectCssSyntaxEscapes(value);
-  for (const { rawFallback, resolvedFallback } of fallbackCandidates(
-    decodeCssEscapes(protectedValue),
-  )) {
+  const decodedValue = decodeCssEscapes(protectedValue);
+  const positionsAreStable = protectedValue === value && decodedValue === value;
+  for (const { fallbackIndex, rawFallback, resolvedFallback } of fallbackCandidates(decodedValue)) {
     if (
       resolvedFallback !== null &&
       (isStaticallyNegative(resolvedFallback) || isStaticallyMagicNumber(resolvedFallback))
     )
-      return rawFallback;
+      return {
+        index: positionsAreStable ? fallbackIndex : undefined,
+        value: rawFallback,
+      };
   }
   return undefined;
 }

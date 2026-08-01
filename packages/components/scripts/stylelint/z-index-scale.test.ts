@@ -224,12 +224,15 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('anchors a fallback warning to the fallback occurrence', async () => {
-    const css =
-      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(9999 + var(--x, 9999)); }';
-    const result = await lint(css);
-    const [warning] = warnings(result);
-    expect(warning?.column).toBe(css.lastIndexOf('9999') + 1);
-    expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
+    for (const css of [
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(9999 + var(--x, 9999)); }',
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(min(1, 9999) + var(--x, 9999)); }',
+    ]) {
+      const result = await lint(css);
+      const [warning] = warnings(result);
+      expect(warning?.column).toBe(css.lastIndexOf('9999') + 1);
+      expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
+    }
   });
 
   test('does not treat whitespace-separated identifiers as substitution functions', async () => {
