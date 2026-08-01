@@ -87,7 +87,7 @@ function evaluateConstantArithmetic(expression) {
   function parseNumber() {
     skipSpace();
     const start = index;
-    if (peek() === '-') index += 1;
+    if (peek() === '-' || peek() === '+') index += 1;
     let sawDigit = false;
     while (/[\d.]/.test(peek() ?? '')) {
       sawDigit = true;

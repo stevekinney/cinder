@@ -161,6 +161,8 @@ describe('cinder/z-index-scale', () => {
   test.each([
     'var(--item-layer, 9999)',
     'var(--item-layer, calc(9999))',
+    'var(--item-layer, calc(+9999))',
+    'var(--item-layer, calc(+1e4 - 1))',
     'calc(var(--item-layer, 10000 - 1) + 1)',
     'var(--item-layer, calc(0 - 1))',
     'var(--item-layer, calc(calc(10000 - 1)))',
