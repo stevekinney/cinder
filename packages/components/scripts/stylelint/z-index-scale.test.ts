@@ -209,6 +209,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, exp(log(9999)))',
     'var(--item-layer, calc(9999 * progress(1, 0, 1)))',
     'var(--item-layer, calc(asin(1) / 90deg * 9999))',
+    'var(--item-layer, calc(atan2(1, 0) / 90deg * 9999))',
   ])('rejects a banned value in a CSS substitution fallback: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -546,6 +547,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, exp(log(1)))',
     'var(--item-layer, calc(1 * progress(1, 0, 1)))',
     'var(--item-layer, calc(asin(1) / 90deg))',
+    'var(--item-layer, calc(atan2(0, 1) / 90deg))',
   ])('accepts a reasoned unresolved property with a safe fallback: %s', async (value) => {
     expect(
       warnings(

@@ -118,7 +118,10 @@ function evaluateConstantArithmetic(expression) {
       return withValue(value, -value.value);
     }
     const functionStart = index;
-    while (/[a-z-]/i.test(peek() ?? '')) index += 1;
+    if (/[a-z-]/i.test(peek() ?? '')) {
+      index += 1;
+      while (/[a-z0-9-]/i.test(peek() ?? '')) index += 1;
+    }
     if (index !== functionStart) {
       const functionName = expression.slice(functionStart, index).toLowerCase();
       if (peek() !== '(') {
