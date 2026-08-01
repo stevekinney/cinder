@@ -512,7 +512,12 @@ function conditionalScope(rule: Rule): ConditionalScope[] {
   return scope;
 }
 
-type WidthBound = { kind: 'minimum' | 'maximum'; value: number; unit: 'px' | 'root-em' };
+type WidthBound = {
+  kind: 'minimum' | 'maximum';
+  value: number;
+  inclusive: boolean;
+  unit: 'px' | 'root-em';
+};
 
 function widthBounds(parameters: string): WidthBound[] {
   const bounds: WidthBound[] = [];
@@ -523,6 +528,7 @@ function widthBounds(parameters: string): WidthBound[] {
     bounds.push({
       kind: match[1].toLowerCase() === 'min' ? 'minimum' : 'maximum',
       value: Number(match[2]),
+      inclusive: true,
       // Media-query em and rem units both resolve against the initial root font size.
       unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
@@ -534,7 +540,8 @@ function widthBounds(parameters: string): WidthBound[] {
     const operator = match[1];
     bounds.push({
       kind: operator.startsWith('>') ? 'minimum' : 'maximum',
-      value: Number(match[2]) + (operator === '>' ? 0.000001 : operator === '<' ? -0.000001 : 0),
+      value: Number(match[2]),
+      inclusive: operator.includes('='),
       unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
@@ -545,7 +552,8 @@ function widthBounds(parameters: string): WidthBound[] {
     const operator = match[3];
     bounds.push({
       kind: operator.startsWith('<') ? 'minimum' : 'maximum',
-      value: Number(match[1]) + (operator === '<' ? 0.000001 : operator === '>' ? -0.000001 : 0),
+      value: Number(match[1]),
+      inclusive: operator.includes('='),
       unit: match[2].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
@@ -570,9 +578,16 @@ function conditionalQueryBranches(parameters: string): string[] {
     const character = parameters[index];
     if (character === '(') parenthesisDepth++;
     if (character === ')') parenthesisDepth--;
-    if (character !== ',' || parenthesisDepth !== 0) continue;
+    if (parenthesisDepth !== 0) continue;
+    const isComma = character === ',';
+    const isOr =
+      parameters.slice(index, index + 2).toLowerCase() === 'or' &&
+      !/[\w-]/.test(parameters[index - 1] ?? '') &&
+      !/[\w-]/.test(parameters[index + 2] ?? '');
+    if (!isComma && !isOr) continue;
     branches.push(parameters.slice(branchStart, index).trim());
-    branchStart = index + 1;
+    branchStart = index + (isOr ? 2 : 1);
+    if (isOr) index += 1;
   }
   branches.push(parameters.slice(branchStart).trim());
   return branches.filter(Boolean);
@@ -600,15 +615,19 @@ function conditionalQueryBranchesConflict(left: string, right: string): boolean 
   const bounds = [...widthBounds(left), ...widthBounds(right)];
   for (const unit of ['px', 'root-em'] as const) {
     const comparableBounds = bounds.filter((bound) => bound.unit === unit);
-    const minimum = Math.max(
-      ...comparableBounds.filter((bound) => bound.kind === 'minimum').map((bound) => bound.value),
-      -Infinity,
-    );
-    const maximum = Math.min(
-      ...comparableBounds.filter((bound) => bound.kind === 'maximum').map((bound) => bound.value),
-      Infinity,
-    );
+    const minimumBounds = comparableBounds.filter((bound) => bound.kind === 'minimum');
+    const maximumBounds = comparableBounds.filter((bound) => bound.kind === 'maximum');
+    const minimum = Math.max(...minimumBounds.map((bound) => bound.value), -Infinity);
+    const maximum = Math.min(...maximumBounds.map((bound) => bound.value), Infinity);
     if (minimum > maximum) return true;
+    if (
+      minimum === maximum &&
+      (!minimumBounds
+        .filter((bound) => bound.value === minimum)
+        .every((bound) => bound.inclusive) ||
+        !maximumBounds.filter((bound) => bound.value === maximum).every((bound) => bound.inclusive))
+    )
+      return true;
   }
   const leftDiscrete = discreteConditions(left);
   const rightDiscrete = discreteConditions(right);

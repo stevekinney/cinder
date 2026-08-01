@@ -527,6 +527,14 @@ describe('primitive composition guard', () => {
     ).toBe(0);
   });
 
+  test('preserves conditional query branches joined with or', () => {
+    expect(
+      cssPrimitiveCounts(
+        '@media (width < 40rem) or (width > 80rem) { .layout { display: grid; } } @media (width < 40rem) or (width > 80rem) { .layout { grid-template-columns: 1fr; } }',
+      ).grid,
+    ).toBe(1);
+  });
+
   test('rejects a hand-rolled grid in an inline style', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -2123,6 +2131,18 @@ describe('primitive composition guard', () => {
         'new-layout/new-layout.css',
       ),
     ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media (width <= 40rem) { .layout { display: grid; } } @media (width >= 40rem) { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        '@media (width < 40rem) { .layout { display: grid; } } @media (width > 39.9999995rem) { .layout { grid-template-columns: 1fr; } }',
+        'new-layout/new-layout.css',
+      ),
+    ).toHaveLength(1);
   });
 
   test('recognizes value-first width range media conditions', () => {
