@@ -819,7 +819,11 @@ function observeComputedDirection(source: HTMLElement, sync: () => void): () => 
         directionInvalidationRoots.delete(root);
       }
     }
-    stopDirectionInvalidationObservers();
+    if (computedDirectionObservations.size === 0) {
+      stopDirectionInvalidationObservers();
+    } else {
+      refreshMediaQueryObservers();
+    }
   };
 }
 

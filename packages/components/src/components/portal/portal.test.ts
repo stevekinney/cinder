@@ -436,6 +436,7 @@ describe('Portal', () => {
   test('refreshes media listeners when a later portal registers a shadow root', async () => {
     const originalMatchMedia = window.matchMedia;
     const observedQueries: string[] = [];
+    const removedQueries: string[] = [];
     window.matchMedia = ((query: string) => {
       observedQueries.push(query);
       return {
@@ -443,7 +444,7 @@ describe('Portal', () => {
         media: query,
         onchange: null,
         addEventListener: () => {},
-        removeEventListener: () => {},
+        removeEventListener: () => removedQueries.push(query),
         addListener: () => {},
         removeListener: () => {},
         dispatchEvent: () => true,
@@ -465,10 +466,15 @@ describe('Portal', () => {
     shadow.append(secondMountPoint);
     document.body.append(host);
 
-    render(Portal, { target: secondMountPoint, props: { children: childSnippet } });
+    const secondView = render(Portal, {
+      target: secondMountPoint,
+      props: { children: childSnippet },
+    });
     await tick();
 
     expect(observedQueries).toContain('(prefers-color-scheme: dark)');
+    secondView.unmount();
+    expect(removedQueries).toContain('(prefers-color-scheme: dark)');
     window.matchMedia = originalMatchMedia;
   });
 
