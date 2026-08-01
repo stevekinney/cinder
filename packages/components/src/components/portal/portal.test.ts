@@ -562,6 +562,21 @@ describe('Portal', () => {
     source.append(mountPoint);
     document.body.append(source);
     const nativeGetComputedStyle = globalThis.getComputedStyle;
+    const originalMatchMedia = window.matchMedia;
+    const observedQueries: string[] = [];
+    window.matchMedia = ((query: string) => {
+      observedQueries.push(query);
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      } as MediaQueryList;
+    }) as typeof window.matchMedia;
     Object.defineProperty(globalThis, 'getComputedStyle', {
       configurable: true,
       value: (element: Element) => {
@@ -581,8 +596,11 @@ describe('Portal', () => {
     const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
 
-    style.firstChild!.textContent = '.direction { direction: rtl; }';
+    style.firstChild!.textContent =
+      '@media (prefers-contrast: more) { .direction { direction: rtl; } }';
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+    expect(observedQueries).toContain('(prefers-contrast: more)');
+    window.matchMedia = originalMatchMedia;
   });
 
   test('invalidates direction on pointer transitions', async () => {
@@ -609,8 +627,11 @@ describe('Portal', () => {
 
     direction = 'rtl';
     document.dispatchEvent(new Event('pointerdown'));
-    document.dispatchEvent(new Event('pointerup'));
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
+
+    direction = 'ltr';
+    document.dispatchEvent(new Event('pointerup'));
+    await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('ltr'));
   });
 
   test('rebinds shadow-root and ancestor observers when the source moves', async () => {
@@ -664,7 +685,6 @@ describe('Portal', () => {
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
 
     shadow.append(source);
-    invalidatePortalDirection();
     await waitFor(() => expect(wrapper?.getAttribute('dir')).toBe('rtl'));
     expect(observedQueries).toContain('(max-width: 1px)');
 

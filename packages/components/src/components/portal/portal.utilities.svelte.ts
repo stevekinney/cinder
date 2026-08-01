@@ -699,6 +699,9 @@ function startDirectionInvalidationObservers() {
       'toggle',
       'pointerdown',
       'pointerup',
+      'pointercancel',
+      'keydown',
+      'keyup',
     ]) {
       document.addEventListener(event, invalidateComputedDirections, true);
     }
@@ -772,6 +775,9 @@ function stopDirectionInvalidationObservers() {
     'toggle',
     'pointerdown',
     'pointerup',
+    'pointercancel',
+    'keydown',
+    'keyup',
   ]) {
     directionInvalidationDocument?.removeEventListener(event, invalidateComputedDirections, true);
   }
