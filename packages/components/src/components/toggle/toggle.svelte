@@ -42,7 +42,7 @@
   const context = getFormFieldContext();
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
 
-  const labelId = $derived(`${id}-label`);
+  const labelId = $derived(context?.labelId ?? `${id}-label`);
 
   function toggle(): void {
     if (!resolvedDisabled) {
@@ -58,7 +58,7 @@
   }
 </script>
 
-<span class="cinder-toggle-field">
+{#snippet control()}
   <button
     {id}
     type="button"
@@ -86,22 +86,22 @@
     -->
     <input type="checkbox" hidden {name} {value} {form} disabled={resolvedDisabled} bind:checked />
   {/if}
-  <!--
-    The label is a <span> (not a <label for>) named via aria-labelledby. A native
-    <label for> targeting the <button> would forward a synthetic click to it,
-    which — combined with the button's own onclick — double-toggles in some
-    engines. aria-labelledby supplies the accessible name, and the span's own
-    onclick gives click-to-toggle. toggle() is disabled-guarded, so clicking the
-    label of a disabled toggle is a no-op.
-  -->
-  <span
-    id={labelId}
-    class="cinder-toggle-field__label"
-    role="presentation"
-    data-hidden={hideLabel || undefined}
-    data-disabled={resolvedDisabled || undefined}
-    onclick={toggle}
-  >
-    {label}
+{/snippet}
+
+{#if context}
+  {@render control()}
+{:else}
+  <span class="cinder-toggle-field">
+    {@render control()}
+    <span
+      id={labelId}
+      class="cinder-toggle-field__label"
+      role="presentation"
+      data-hidden={hideLabel || undefined}
+      data-disabled={resolvedDisabled || undefined}
+      onclick={toggle}
+    >
+      {label}
+    </span>
   </span>
-</span>
+{/if}

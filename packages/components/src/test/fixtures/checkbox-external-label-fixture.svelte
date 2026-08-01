@@ -3,7 +3,7 @@
 </script>
 
 <div class="repository-row">
-  <Checkbox id="repository-main" fieldClassName="repository-row__checkbox" />
+  <Checkbox id="repository-main" class="repository-row__checkbox" />
   <label for="repository-main" class="repository-row__label">
     <span aria-hidden="true">GH</span>
     <span>

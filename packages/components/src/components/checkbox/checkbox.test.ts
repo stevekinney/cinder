@@ -198,13 +198,13 @@ describe('Checkbox', () => {
     expect(input.classList.contains('extra')).toBe(true);
   });
 
-  test('fieldClassName prop merges with the outer checkbox field wrapper', () => {
+  test('class prop merges with the native checkbox control', () => {
     const { container } = render(Checkbox, {
       id: 'c',
-      fieldClassName: 'align-start',
+      class: 'align-start',
     });
-    const field = container.querySelector('.cinder-checkbox-field');
-    expect(field?.classList.contains('align-start')).toBe(true);
+    const input = container.querySelector('input');
+    expect(input?.classList.contains('align-start')).toBe(true);
   });
 
   test('supports a control-only checkbox with an external rich label', async () => {

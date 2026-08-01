@@ -22,8 +22,9 @@ Wraps an input, label, and helper or error text into a cohesive accessible field
 | `description` | `string`   | no       | —       | Helper text rendered below the control; wired into `aria-describedby`.                                           |
 | `disabled`    | `boolean`  | no       | —       | Propagated to opted-in controls via context. Does not style FormField itself.                                    |
 | `error`       | `string`   | no       | —       | Validation error; sets `aria-invalid="true"` on opted-in controls via context.                                   |
+| `hideLabel`   | `boolean`  | no       | —       | Visually hide the label while keeping it associated with the control.                                            |
 | `id`          | `string`   | yes      | —       | Required stable id — used for `<label for>`, description, error, and the child control's id via context.         |
-| `label`       | `string`   | yes      | —       | Visible label text. Required — the primitive's whole purpose is label association.                               |
+| `label`       | `string`   | no       | —       | Visible label text. Omit for an intentionally textless field.                                                    |
 | `required`    | `boolean`  | no       | —       | Renders a visual required marker and exposes `required: true` on the context.                                    |
 | `children`    | `(opaque)` | yes      | —       | Control(s) rendered inside the field. Not expressible in JSON Schema; see the component types for the signature. |
 

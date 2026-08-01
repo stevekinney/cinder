@@ -23,6 +23,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
+  import FormField from '../form-field/form-field.svelte';
 
   let {
     id,
@@ -73,8 +74,6 @@
       disabled,
     }),
   );
-  const ownDescriptionId = $derived(field.ownDescriptionId);
-  const ownErrorId = $derived(field.ownErrorId);
   const describedBy = $derived(field.describedBy);
   const resolvedAriaInvalid = $derived(field.ariaInvalid);
   const resolvedRequired = $derived(field.required);
@@ -163,20 +162,7 @@
   />
 {/snippet}
 
-<div class="cinder-input-field" data-cinder-full-width>
-  {#if label}
-    <label
-      for={id}
-      class={classNames('cinder-input-field__label', hideLabel && 'cinder-sr-only')}
-      data-disabled={resolvedDisabled || undefined}
-    >
-      {label}
-      {#if resolvedRequired}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
+{#snippet control()}
   {#if hasGroupWrapper}
     <div
       class={classNames('cinder-input-group', groupClassName)}
@@ -218,12 +204,27 @@
   {:else}
     {@render inputElement()}
   {/if}
+{/snippet}
 
+{#if context}
+  {@render control()}
   {#if description}
-    <p id={ownDescriptionId} class="cinder-input-field__description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-input-field__description">{description}</p>
   {/if}
-
   {#if error}
-    <p id={ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
+    <p id={field.ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
   {/if}
-</div>
+{:else}
+  <FormField
+    {id}
+    {label}
+    {hideLabel}
+    {description}
+    {error}
+    required={required ?? false}
+    disabled={disabled ?? false}
+    class="cinder-input-field"
+  >
+    {@render control()}
+  </FormField>
+{/if}

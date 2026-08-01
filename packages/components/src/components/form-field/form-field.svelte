@@ -28,6 +28,7 @@
   let {
     id,
     label,
+    hideLabel = false,
     description,
     error,
     required = false,
@@ -70,21 +71,23 @@
   });
 </script>
 
-<div class={classNames('cinder-form-field', className)}>
-  <label
-    id={labelId}
-    for={id}
-    class="cinder-form-field__label"
-    data-disabled={disabled || undefined}
-  >
-    {label}
-    {#if required}
-      <!-- Visible asterisk conveys "required" by shape, not color alone (WCAG
-           1.4.1). aria-hidden so the accessible name stays clean — the field's
-           own `required`/`aria-required` attribute is the single AT signal. -->
-      <span class="cinder-_required-marker" aria-hidden="true">*</span>
-    {/if}
-  </label>
+<div class={classNames('cinder-form-field', className)} data-cinder-full-width>
+  {#if label}
+    <label
+      id={labelId}
+      for={id}
+      class={classNames('cinder-form-field__label', hideLabel && 'cinder-sr-only')}
+      data-disabled={disabled || undefined}
+    >
+      {label}
+      {#if required}
+        <!-- Visible asterisk conveys "required" by shape, not color alone (WCAG
+             1.4.1). aria-hidden so the accessible name stays clean — the field's
+             own `required`/`aria-required` attribute is the single AT signal. -->
+        <span class="cinder-_required-marker" aria-hidden="true">*</span>
+      {/if}
+    </label>
+  {/if}
 
   {@render children()}
 

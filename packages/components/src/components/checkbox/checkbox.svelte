@@ -22,6 +22,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
+  import FormField from '../form-field/form-field.svelte';
 
   let {
     id,
@@ -34,7 +35,6 @@
     error,
     disabled,
     required,
-    fieldClassName,
     class: className,
     'aria-describedby': consumerDescribedBy,
     'aria-invalid': consumerInvalid,
@@ -129,7 +129,7 @@
   }
 </script>
 
-<div class={classNames('cinder-checkbox-field', fieldClassName)}>
+{#snippet control()}
   <div class="cinder-checkbox-row">
     <span class="cinder-checkbox-field__control">
       <input
@@ -147,25 +147,27 @@
       />
       <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
     </span>
-    {#if label}
-      <label
-        for={field.id}
-        class="cinder-checkbox-field__label"
-        data-disabled={field.disabled || undefined}
-      >
-        {label}
-        {#if field.required}
-          <span class="cinder-_required-marker" aria-hidden="true">*</span>
-        {/if}
-      </label>
-    {/if}
   </div>
+{/snippet}
 
+{#if context}
+  {@render control()}
   {#if description}
-    <p id={field.ownDescriptionId} class="cinder-checkbox-field__description">{description}</p>
+    <p id={field.ownDescriptionId} class="cinder-form-field__description">{description}</p>
   {/if}
-
   {#if error}
-    <p id={field.ownErrorId} class="cinder-checkbox-field__error" aria-live="polite">{error}</p>
+    <p id={field.ownErrorId} class="cinder-form-field__error" aria-live="polite">{error}</p>
   {/if}
-</div>
+{:else}
+  <FormField
+    id={field.id}
+    label={label ?? ''}
+    {description}
+    {error}
+    required={required ?? false}
+    disabled={disabled ?? false}
+    class="cinder-checkbox-field"
+  >
+    {@render control()}
+  </FormField>
+{/if}
