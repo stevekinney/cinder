@@ -11,7 +11,7 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
-const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
+const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow', 'rem']);
 
 function trimCssWhitespaceRange(value, start, end) {
   while (start < end && isCssWhitespace(value[start])) start += 1;
@@ -87,51 +87,37 @@ function factorBefore(value, start, end) {
   return value.slice(end + 1, factorEnd).trim();
 }
 
-function childIsInsideDivisionDenominator(value, range, child) {
-  const openings = [];
-  for (let index = range.start; index < child.start; index += 1) {
-    if (value[index] === '(') openings.push(index);
-    else if (value[index] === ')') openings.pop();
-  }
-
-  return openings.some((openIndex) => {
-    let operandStart = openIndex;
-    while (operandStart > range.start && isCssIdentifierCharacter(value[operandStart - 1]))
-      operandStart -= 1;
-    while (operandStart > range.start && isCssWhitespace(value[operandStart - 1]))
-      operandStart -= 1;
-    return value[operandStart - 1] === '/';
-  });
+function isPrecededByDivision(value, operandStart) {
+  while (operandStart > 0 && isCssWhitespace(value[operandStart - 1])) operandStart -= 1;
+  return value[operandStart - 1] === '/';
 }
 
-function childIsInsideSignedZeroSensitiveFunction(value, range, child) {
-  const openings = [];
-  for (let index = range.start; index < child.start; index += 1) {
-    if (value[index] === '(') {
-      let functionStart = index;
-      while (functionStart > range.start && isCssIdentifierCharacter(value[functionStart - 1]))
-        functionStart -= 1;
-      openings.push(value.slice(functionStart, index).toLowerCase());
-    } else if (value[index] === ')') openings.pop();
-  }
-
-  return openings.some((functionName) => signedZeroSensitiveFunctionNames.has(functionName));
+function contextForOpeningParenthesis(value, openIndex, inheritedContext) {
+  let functionStart = openIndex;
+  while (functionStart > 0 && isCssIdentifierCharacter(value[functionStart - 1]))
+    functionStart -= 1;
+  const functionName = value.slice(functionStart, openIndex).toLowerCase();
+  const operandStart = functionName ? functionStart : openIndex;
+  return (
+    inheritedContext ||
+    isPrecededByDivision(value, operandStart) ||
+    signedZeroSensitiveFunctionNames.has(functionName)
+  );
 }
 
 function childIsEliminatedByZeroProduct(value, range, child) {
-  if (
-    childIsInsideDivisionDenominator(value, range, child) ||
-    childIsInsideSignedZeroSensitiveFunction(value, range, child)
-  )
-    return false;
+  if (child.signedZeroSensitiveContext) return false;
+  if (typeof child.resolvedFallback !== 'string') return false;
   let afterChild = child.end;
   while (
     afterChild < range.end &&
     (isCssWhitespace(value[afterChild]) || value[afterChild] === ')')
   )
     afterChild += 1;
-  if (value[afterChild] === '*' && isStaticallyZero(factorAfter(value, afterChild + 1, range.end)))
-    return true;
+  if (value[afterChild] === '*') {
+    const factor = factorAfter(value, afterChild + 1, range.end);
+    if (isStaticallyZero(`calc(${child.resolvedFallback} * ${factor})`)) return true;
+  }
 
   let beforeChild = child.start;
   while (
@@ -139,10 +125,9 @@ function childIsEliminatedByZeroProduct(value, range, child) {
     (isCssWhitespace(value[beforeChild - 1]) || value[beforeChild - 1] === '(')
   )
     beforeChild -= 1;
-  return (
-    value[beforeChild - 1] === '*' &&
-    isStaticallyZero(factorBefore(value, range.start, beforeChild - 1))
-  );
+  if (value[beforeChild - 1] !== '*') return false;
+  const factor = factorBefore(value, range.start, beforeChild - 1);
+  return isStaticallyZero(`calc(${factor} * ${child.resolvedFallback})`);
 }
 
 function classifyResolvedFallback(resolvedFallback) {
@@ -234,13 +219,13 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   // any sibling may instead use its defined custom-property value. Preserve a
   // banned child unless its contribution is safe independently of that choice.
   const resolvedNegativeZero = frame.type === 'fallback' && frame.resolvedNegativeZero === true;
+  if (frame.resolvedClassification === 'too-complex') return candidate;
   const uneliminatedChildren = frame.children.filter(
     (child) =>
       child.unprovenBannedCandidate &&
       (resolvedNegativeZero || !childIsEliminatedByZeroProduct(value, range, child)),
   );
   const [uneliminatedChild] = uneliminatedChildren;
-  if (frame.resolvedClassification === 'too-complex') return candidate;
   if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic') {
     const matchingChild = uneliminatedChildren.find(
       (child) =>
@@ -275,8 +260,14 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
   if (frame.resolvedClassification !== 'safe')
     return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
-  if (hasSingleChildWithEnclosingContext && !resolvedNegativeZero) return undefined;
-  return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
+  const contextuallyUnprovenCandidate = contextuallyUnprovenChildren[0].unprovenBannedCandidate;
+  if (
+    hasSingleChildWithEnclosingContext &&
+    !resolvedNegativeZero &&
+    !contextuallyUnprovenCandidate.hasRuntimeSibling
+  )
+    return undefined;
+  return contextuallyUnprovenCandidate;
 }
 
 // Parse every var()/env()/attr() fallback in one pass with an explicit
@@ -296,6 +287,7 @@ function fallbackCandidates(value) {
     const previousCharacter = value[index - 1];
     if (functionMatch && !isCssIdentifierCharacter(previousCharacter)) {
       const nearestFunction = fallbackFrames.at(-1);
+      const inheritedContext = parentheses.at(-1)?.signedZeroSensitiveContext === true;
       const frame = {
         type: 'fallback',
         start: index,
@@ -304,6 +296,7 @@ function fallbackCandidates(value) {
         children: [],
         resolvedFallback: null,
         resolvedClassification: 'unresolved',
+        signedZeroSensitiveContext: inheritedContext || isPrecededByDivision(value, index),
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
         nearestFunction.children.push(frame);
@@ -315,7 +308,14 @@ function fallbackCandidates(value) {
     }
 
     if (value[index] === '(') {
-      parentheses.push({ type: 'group' });
+      parentheses.push({
+        type: 'group',
+        signedZeroSensitiveContext: contextForOpeningParenthesis(
+          value,
+          index,
+          parentheses.at(-1)?.signedZeroSensitiveContext === true,
+        ),
+      });
       continue;
     }
     if (value[index] === ',') {
@@ -361,6 +361,11 @@ function fallbackCandidates(value) {
       fallbackRange,
       candidate,
     );
+    if (frame.unprovenBannedCandidate && frame.children.length > 1)
+      frame.unprovenBannedCandidate = {
+        ...frame.unprovenBannedCandidate,
+        hasRuntimeSibling: true,
+      };
   }
 
   if (rootFrame.children.length > 0) {

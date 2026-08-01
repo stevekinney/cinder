@@ -344,6 +344,7 @@ describe('cinder/z-index-scale', () => {
   test.each([
     'var(--outer, calc(var(--inner, -1) * 0))',
     'var(--outer, calc(0 * var(--inner, -1)))',
+    'var(--outer, calc(var(--inner, -1) * 0 + 0))',
     'var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic)))',
     'var(--outer, calc(0 * var(--inner, -1) + var(--dynamic)))',
     'var(--outer, calc((var(--inner, -1)) * (0 + 0) + var(--dynamic)))',
@@ -361,6 +362,7 @@ describe('cinder/z-index-scale', () => {
   test.each([
     'var(--outer, calc(1 / (var(--inner, -1) * 0) + var(--dynamic)))',
     'var(--outer, calc(pow(var(--inner, -1) * 0, -1) + var(--dynamic)))',
+    'calc(1 / var(--outer, rem(var(--inner, -1) * 0, var(--divisor))))',
   ])('retains a zeroed banned fallback when its sign remains observable: %s', async (value) => {
     const result = await lint(`
       .fixture {
@@ -370,6 +372,39 @@ describe('cinder/z-index-scale', () => {
     `);
 
     expect(warnings(result)).toHaveLength(1);
+  });
+
+  test.each([
+    'calc(1 / var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic))))',
+    'calc(1 / var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic, 0))))',
+    'calc(1 / var(--outer, calc(var(--inner, -1) * 0 - var(--dynamic))))',
+  ])('retains signed-zero evidence with a runtime additive sibling: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a runtime sibling can preserve negative zero. */
+        z-index: ${value};
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('preserves ungrouped fallback token-stream precedence during zero elimination', async () => {
+    const unsafe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the ungrouped fallback can expose the magic layer. */
+        z-index: var(--outer, calc(0 * var(--inner, 0 + 9999) + var(--dynamic)));
+      }
+    `);
+    expect(warnings(unsafe)).toHaveLength(1);
+
+    const grouped = await lint(`
+      .fixture {
+        /* cinder-z-index-local: calc groups the fallback beneath the zero product. */
+        z-index: var(--outer, calc(0 * var(--inner, calc(0 + 9999)) + var(--dynamic)));
+      }
+    `);
+    expect(warnings(grouped)).toEqual([]);
   });
 
   test('retains signed-zero evidence across a resolved fallback frame', async () => {
@@ -611,6 +646,23 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('returns an exhausted wide fallback analysis before quadratic sibling scans', async () => {
+    const siblings = Array.from(
+      { length: 8_000 },
+      (_, index) => `var(--item-layer-${index}, -1)`,
+    ).join(' + ');
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: exhausted generated analysis must fail closed promptly. */
+        z-index: var(--outer, ${siblings});
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
   test('follows CSS integer rounding for negative half values', async () => {
