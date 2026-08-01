@@ -557,10 +557,15 @@ describe('Combobox filtering', () => {
   test('portaled options preserve the root-scoped styling context', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
     const input = container.querySelector('#fruit') as HTMLInputElement;
+    const originalRoot = input.closest('.cinder-combobox');
     await fireEvent.focus(input);
     const option = await findOption('Apple');
+    const portaledRoot = option.closest('.cinder-combobox');
 
-    expect(option.closest('.cinder-combobox')).not.toBeNull();
+    expect(portaledRoot).not.toBeNull();
+    expect(portaledRoot).not.toBe(originalRoot);
+    expect(originalRoot?.contains(portaledRoot)).toBe(false);
+    expect(portaledRoot?.querySelector('.cinder-combobox')).toBeNull();
   });
 
   test('a custom instance class survives on the portaled options panel', async () => {
@@ -600,6 +605,7 @@ describe('Combobox filtering', () => {
   test('a custom instance class survives on the portaled empty panel', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
     const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const originalRoot = input.closest('.cinder-combobox.compact');
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
@@ -609,6 +615,9 @@ describe('Combobox filtering', () => {
       // portaled, so both classes need to land on the same ancestor.
       const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
       expect(scopedAncestor).not.toBeNull();
+      expect(scopedAncestor).not.toBe(originalRoot);
+      expect(originalRoot?.contains(scopedAncestor)).toBe(false);
+      expect(scopedAncestor?.querySelector('.cinder-combobox')).toBeNull();
     });
   });
 
