@@ -1723,6 +1723,12 @@ describe('primitive composition guard', () => {
           'shadowed-undefined-loop/shadowed-undefined-loop.svelte',
         ),
       ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let undefined; let layout = { display: 'block' }; for (; undefined;) { layout = { display: 'grid', gridTemplateColumns: '1fr' }; break; }</script><div style={layout}></div>",
+        'shadowed-undefined-loop/shadowed-undefined-loop.svelte',
+      ),
+    ).toEqual([]);
     for (const exit of ['return;', 'throw new Error()'])
       expect(
         findPrimitiveCompositionViolations(

@@ -302,7 +302,6 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
 function staticBindings(instance: unknown): Map<string, unknown[]> {
   const bindings = new Map<string, unknown[]>();
   const mutableBindings = new Set<string>();
-  const declaredBindings = new Set<string>();
   const callbackBindings = new Map<string, unknown[]>();
   const callbackFrames: Map<string, unknown[]>[] = [];
   const localAliasFrames: Map<string, unknown[]>[] = [];
@@ -311,9 +310,9 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   const body = instance['content']['body'];
   if (!Array.isArray(body)) return bindings;
 
-  // Collect top-level binding names before walking the body. Values themselves
-  // are resolved by the walk so aliases observe assignments that precede their
-  // declaration in source order.
+  // Collect top-level mutable binding names before walking the body. Values
+  // themselves are resolved by the walk so aliases observe assignments that
+  // precede their declaration in source order.
   for (const statement of body) {
     if (
       !isRecord(statement) ||
@@ -330,7 +329,6 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       )
         continue;
       const name = declaration['id']['name'];
-      declaredBindings.add(name);
       if (statement['kind'] !== 'const') mutableBindings.add(name);
     }
   }
@@ -676,15 +674,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         if (expression['type'] === 'Literal') return Boolean(expression['value']);
         if (expression['type'] === 'Identifier' && expression['name'] === 'undefined') {
           if (loopShadowed.has('undefined')) return undefined;
-          const values = bindings.get('undefined');
-          if (values !== undefined && values.length === 1) {
-            const value = values[0];
-            return isRecord(value) && value['type'] === 'Literal'
-              ? Boolean(value['value'])
-              : Boolean(value);
-          }
-          if (declaredBindings.has('undefined')) return undefined;
-          return false;
+          return staticTruthiness(expression, bindings);
         }
         return undefined;
       };
