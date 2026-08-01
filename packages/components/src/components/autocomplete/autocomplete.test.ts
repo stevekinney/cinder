@@ -102,6 +102,56 @@ describe('Autocomplete — rendering and ARIA', () => {
 
     expect(getInput(container).getAttribute('autocomplete')).toBe('street-address');
   });
+
+  test('forwards native name, autofocus, and readonly semantics', () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'native-search',
+        name: 'query',
+        autofocus: true,
+        readonly: true,
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(container);
+    expect(input.getAttribute('name')).toBe('query');
+    expect(input.hasAttribute('autofocus')).toBe(true);
+    expect(input.readOnly).toBe(true);
+  });
+
+  test('participates in form serialization and restores the native value on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(Autocomplete, {
+      target: form,
+      props: {
+        id: 'form-search',
+        name: 'query',
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(rendered.container);
+    expect(input.form).toBe(form);
+    expect(input.name).toBe('query');
+    expect(input.value).toBe('');
+    const serialized = new FormData();
+    serialized.set(input.name, input.value);
+    expect(serialized.get('query')).toBe('');
+
+    await fireEvent.input(input, { target: { value: 'changed' } });
+    expect(input.value).toBe('changed');
+    serialized.set(input.name, input.value);
+    expect(serialized.get('query')).toBe('changed');
+
+    form.reset();
+    await waitFor(() => {
+      expect(input.value).toBe('');
+    });
+    serialized.set(input.name, input.value);
+    expect(serialized.get('query')).toBe('');
+  });
 });
 
 describe('Autocomplete — suggestions and free-form input', () => {
