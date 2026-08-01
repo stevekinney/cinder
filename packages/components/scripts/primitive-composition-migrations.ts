@@ -5,7 +5,6 @@
 export const allowedRawControlCounts = new Map<string, number>([
   ['_radio/radio.svelte', 1],
   ['approval-card/approval-card-actions.svelte', 2],
-  ['autocomplete/autocomplete.svelte', 1],
   ['checkbox/checkbox.svelte', 1],
   ['combobox/combobox.svelte', 1],
   ['command-palette/command-palette.svelte', 1],
@@ -16,7 +15,6 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['invocation-rule-builder/invocation-rule-builder.svelte', 8],
   ['json-editor/json-editor.svelte', 1],
   ['multi-select/multi-select.svelte', 2],
-  ['number-input/number-input.svelte', 1],
   ['pin-input/pin-input.svelte', 1],
   ['select/select.svelte', 2],
   ['selection-popover/selection-popover.svelte', 1],
@@ -153,7 +151,6 @@ export const allowedFieldWrapperCounts = new Map<string, number>(
     'form-field/form-field.svelte',
     'json-editor/json-editor.svelte',
     'multi-select/multi-select.svelte',
-    'number-input/number-input.svelte',
     'select/select.svelte',
     'textarea/textarea.svelte',
     'time-field/time-field.svelte',
