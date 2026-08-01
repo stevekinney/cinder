@@ -22,6 +22,7 @@ import stylelint from 'stylelint';
 import { bannedFallback } from './z-index-fallback-analysis.mjs';
 import {
   decodeCssEscapes,
+  isCssIdentifierCharacter,
   isStaticallyMagicNumber,
   isStaticallyNegative,
   protectCssSyntaxEscapes,
@@ -30,7 +31,8 @@ import {
 const ruleName = 'cinder/z-index-scale';
 const localReasonPrefix = 'cinder-z-index-local:';
 const layerTokenPattern = /^var\([\t\n\f\r ]*(--cinder-z-[a-z0-9-]+)[\t\n\f\r ]*\)$/i;
-const layerTokenReferencePattern = /var\([\t\n\f\r ]*--cinder-z-[a-z0-9-]+[\t\n\f\r ]*,/i;
+const layerTokenFunctionPattern =
+  /var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)[\t\n\f\r ]*([,)])/iy;
 const declaredLayerTokens = new Set([
   '--cinder-z-backdrop',
   '--cinder-z-dropdown',
@@ -67,6 +69,17 @@ function stripComments(value) {
   return value.replaceAll(/\/\*[\s\S]*?\*\//g, ' ');
 }
 
+function findLayerTokenReferences(value) {
+  const references = [];
+  for (let index = 0; index < value.length; index += 1) {
+    layerTokenFunctionPattern.lastIndex = index;
+    const match = layerTokenFunctionPattern.exec(value);
+    if (!match || isCssIdentifierCharacter(value[index - 1])) continue;
+    references.push({ token: match[1], hasFallback: match[2] === ',' });
+  }
+  return references;
+}
+
 function hasAdjacentLocalReason(declaration) {
   const previous = declaration.prev();
   if (previous?.type !== 'comment') return false;
@@ -99,6 +112,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       const rawValue = stripComments(declaration.value.trim()).trim();
       const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
       const tokenMatch = layerTokenPattern.exec(value);
+      const layerTokenReferences = findLayerTokenReferences(value);
       if (allowedLocalValues.has(value.toLowerCase())) return;
       if (tokenMatch) {
         if (declaredLayerTokens.has(tokenMatch[1])) return;
@@ -106,7 +120,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         return;
       }
 
-      if (layerTokenReferencePattern.test(value)) {
+      if (layerTokenReferences.some(({ hasFallback }) => hasFallback)) {
         stylelint.utils.report({
           ruleName,
           result,
@@ -142,9 +156,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       // The adjacent reason is the explicit, refactor-safe allow-list for
       // component-local relationships above the universal 0/1 threshold.
       // Never allow the historical magic escape hatch back, even with a note.
-      const referencedTokens = [...value.matchAll(/var\([\t\n\f\r ]*(--cinder-z-[\w-]+)/g)].map(
-        (match) => match[1],
-      );
+      const referencedTokens = layerTokenReferences.map(({ token }) => token);
       if (referencedTokens.some((token) => !declaredLayerTokens.has(token))) {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;

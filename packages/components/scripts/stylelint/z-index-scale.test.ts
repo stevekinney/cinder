@@ -49,6 +49,7 @@ describe('cinder/z-index-scale', () => {
     'var(--cinder-z-dropdown, 1100)',
     'var(--cinder-z-popover, 40)',
     'var(--cinder-z-tooltip, var(--fallback))',
+    'VAR(--cinder-z-popover, 1100)',
   ])('rejects a layer token fallback: %s', async (value) => {
     const result = warnings(await lint(`.fixture { z-index: ${value}; }`));
     expect(result).toHaveLength(1);
@@ -70,12 +71,12 @@ describe('cinder/z-index-scale', () => {
   });
 
   test('rejects an undeclared token even with a local reason', async () => {
-    const result = warnings(
-      await lint(
-        '.fixture { /* cinder-z-index-local: local layer. */ z-index: var(--cinder-z-popvoer); }',
-      ),
-    );
-    expect(result).toHaveLength(1);
+    for (const value of ['var(--cinder-z-popvoer)', 'VAR(--cinder-z-popvoer)']) {
+      const result = warnings(
+        await lint(`.fixture { /* cinder-z-index-local: local layer. */ z-index: ${value}; }`),
+      );
+      expect(result).toHaveLength(1);
+    }
   });
 
   test.each(['2', '4', '9999', '-1', 'calc(1 + 1)', 'var(--other-layer)'])(
@@ -370,6 +371,17 @@ describe('cinder/z-index-scale', () => {
           .fixture {
             /* cinder-z-index-local: this is a non-var function. */
             z-index: cvar(--item-layer, 9999);
+          }
+        `),
+      ),
+    ).toEqual([]);
+
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: this is not a var() function. */
+            z-index: cvar(--cinder-z-popover, 1100);
           }
         `),
       ),
