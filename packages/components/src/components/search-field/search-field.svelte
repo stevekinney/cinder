@@ -85,11 +85,12 @@
         element.value = resetTarget;
       });
     };
+    const form = element.form;
     element.addEventListener('search', handler);
-    element.form?.addEventListener('reset', resetHandler);
+    form?.addEventListener('reset', resetHandler);
     return () => {
       element.removeEventListener('search', handler);
-      element.form?.removeEventListener('reset', resetHandler);
+      form?.removeEventListener('reset', resetHandler);
       if (inputElement === element) inputElement = null;
     };
   };
