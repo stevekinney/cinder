@@ -339,6 +339,17 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
+  test('does not treat a safe value above the magic layer as an eliminating min ceiling', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: this ceiling can still expose the magic fallback. */
+        z-index: min(var(--magic, 9999), var(--dynamic), 10000);
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test.each(['var(--outer, var(--inner, 9)999)', 'calc(var(--inner, 9)999)'])(
     'preserves adjacent numeric tokens during fallback substitution: %s',
     async (value) => {
@@ -455,6 +466,28 @@ describe('cinder/z-index-scale', () => {
 
       expect(warnings(result)).toEqual([]);
     }
+  });
+
+  test('preserves fallbacks between comment delimiters inside quoted strings', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: quoted comment text must not mask the negative fallback. */
+        z-index: calc(var(--left, "/*") + var(--inner, -1) + var(--right, "*/"));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('does not find cinder layer-token references inside quoted strings', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: string tokens cannot invoke cinder layer substitutions. */
+        z-index: var(--outer, "var(--cinder-z-popover, 1)");
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
   });
 
   test('evaluates fallback operators only when a CSS math context supplies their grammar', async () => {
@@ -747,6 +780,21 @@ describe('cinder/z-index-scale', () => {
     `);
 
     expect(warnings(result)).toHaveLength(1);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test('unwraps deeply nested calc containers in linear time for safe-bound analysis', async () => {
+    const depth = 16_000;
+    const nestedValue = `${'calc('.repeat(depth)}max(var(--runtime), var(--inner, -1), 0)${')'.repeat(depth)}`;
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the static max floor keeps the negative fallback safe. */
+        z-index: ${nestedValue};
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 

@@ -169,19 +169,26 @@ function classifyResolvedFallback(resolvedFallback) {
     : 'unresolved';
 }
 
-function hasMatchingOuterParentheses(value, openIndex, end) {
-  let depth = 0;
-  for (let index = openIndex; index < end; index += 1) {
-    if (value[index] === '(') depth += 1;
+function unwrapStaticContainer(value, range) {
+  const parenthesisPairs = new Map();
+  const openParentheses = [];
+  let quote;
+  for (let index = range.start; index < range.end; index += 1) {
+    if (quote) {
+      if (value[index] === quote) quote = undefined;
+      continue;
+    }
+    if (value[index] === '"' || value[index] === "'") {
+      quote = value[index];
+      continue;
+    }
+    if (value[index] === '(') openParentheses.push(index);
     else if (value[index] === ')') {
-      depth -= 1;
-      if (depth === 0) return index === end - 1;
+      const openIndex = openParentheses.pop();
+      if (openIndex !== undefined) parenthesisPairs.set(openIndex, index);
     }
   }
-  return false;
-}
 
-function unwrapStaticContainer(value, range) {
   let unwrappedRange = trimCssWhitespaceRange(value, range.start, range.end);
   for (;;) {
     let openIndex;
@@ -193,7 +200,7 @@ function unwrapStaticContainer(value, range) {
       if (!calcMatch) return unwrappedRange;
       openIndex = unwrappedRange.start + calcMatch[0].length - 1;
     }
-    if (!hasMatchingOuterParentheses(value, openIndex, unwrappedRange.end)) return unwrappedRange;
+    if (parenthesisPairs.get(openIndex) !== unwrappedRange.end - 1) return unwrappedRange;
     unwrappedRange = trimCssWhitespaceRange(value, openIndex + 1, unwrappedRange.end - 1);
   }
 }
@@ -244,7 +251,10 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
     // A fallback-independent safe bound means a banned child fallback cannot
     // determine the result. The caller pairs max floors with negative values
     // and min ceilings with the historical magic value.
-    return classifyStaticLayer(value.slice(argument.start, argument.end)) === 'safe';
+    const staticArgument = value.slice(argument.start, argument.end);
+    return functionName === 'min'
+      ? classifyStaticLayer(`min(9999, ${staticArgument})`) === 'safe'
+      : classifyStaticLayer(staticArgument) === 'safe';
   });
 }
 

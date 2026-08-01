@@ -63,18 +63,54 @@ const meta = {
   url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index-layers',
 };
 
+function quotedStringEnd(value, start) {
+  const quote = value[start];
+  for (let index = start + 1; index < value.length; index += 1) {
+    if (value[index] === '\\') {
+      if (value[index + 1] === '\r' && value[index + 2] === '\n') index += 2;
+      else if (value[index + 1] !== undefined) index += 1;
+    } else if (value[index] === quote) return index;
+  }
+  return value.length - 1;
+}
+
 // Postcss keeps `/* ... */` comments embedded inside a raw declaration value
 // instead of tokenizing them out, so `var(--cinder-z-popover/**/, 1100)` is a
 // valid way to slip a forbidden fallback past a regex that only expects
-// whitespace between the token and the comma. Mask comments with same-length
-// whitespace so they cannot hide a fallback and diagnostic offsets stay exact.
+// whitespace between the token and the comma. Mask real comments with
+// same-length whitespace while preserving quoted comment-like text, newlines,
+// and diagnostic offsets.
 function maskComments(value) {
-  return value.replaceAll(/\/\*[\s\S]*?\*\//g, (comment) => ' '.repeat(comment.length));
+  let maskedValue = '';
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      const stringEnd = quotedStringEnd(value, index);
+      maskedValue += value.slice(index, stringEnd + 1);
+      index = stringEnd;
+      continue;
+    }
+    if (value[index] !== '/' || value[index + 1] !== '*') {
+      maskedValue += value[index];
+      continue;
+    }
+    const commentEnd = value.indexOf('*/', index + 2);
+    if (commentEnd === -1) {
+      maskedValue += value.slice(index);
+      break;
+    }
+    maskedValue += value.slice(index, commentEnd + 2).replaceAll(/[^\n\r]/g, ' ');
+    index = commentEnd + 1;
+  }
+  return maskedValue;
 }
 
 function findLayerTokenReferences(value) {
   const references = [];
   for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
     layerTokenFunctionPattern.lastIndex = index;
     const match = layerTokenFunctionPattern.exec(value);
     if (!match || isCssIdentifierCharacter(value[index - 1])) continue;
