@@ -342,6 +342,8 @@ describe('cinder/z-index-scale', () => {
   );
 
   test.each([
+    'var(--outer, calc(var(--inner, -1) * 0))',
+    'var(--outer, calc(0 * var(--inner, -1)))',
     'var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic)))',
     'var(--outer, calc(0 * var(--inner, -1) + var(--dynamic)))',
     'var(--outer, calc((var(--inner, -1)) * (0 + 0) + var(--dynamic)))',

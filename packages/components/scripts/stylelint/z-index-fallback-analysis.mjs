@@ -217,6 +217,18 @@ function hasStaticallyNonnegativeMaxFloor(frame, value, range) {
   });
 }
 
+function negativeZeroIsSafeFinalLayer(frame, value, range) {
+  if (!frame.resolvedNegativeZero) return false;
+  const candidateChildren = frame.children.filter((child) => child.unprovenBannedCandidate);
+  return (
+    candidateChildren.length > 0 &&
+    candidateChildren.every(
+      (child) =>
+        child.negativeZeroIsSafeFinalLayer || childIsEliminatedByZeroProduct(value, range, child),
+    )
+  );
+}
+
 function unprovenCandidateForFrame(frame, value, range, candidate) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
@@ -250,6 +262,12 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   if (contextuallyUnprovenChildren.length === 0) return undefined;
 
   const [onlyChild] = frame.children;
+  if (
+    frame.type === 'root' &&
+    frame.resolvedClassification === 'safe' &&
+    frame.negativeZeroIsSafeFinalLayer
+  )
+    return undefined;
   // With exactly one fallback path, a concrete enclosing expression can prove
   // that path safe (for example, max(var(--layer, -1), 0)). An expression that
   // is only the child itself provides no such context.
@@ -269,7 +287,7 @@ function fallbackCandidates(value) {
   const candidates = [];
   const parentheses = [];
   const fallbackFrames = [];
-  const rootFrame = { children: [] };
+  const rootFrame = { type: 'root', children: [] };
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
 
   for (let index = 0; index < value.length; index += 1) {
@@ -330,6 +348,7 @@ function fallbackCandidates(value) {
         ? onlyChild.resolvedNegativeZero
         : typeof frame.resolvedFallback === 'string' &&
           isStaticallyNegativeZero(frame.resolvedFallback);
+    frame.negativeZeroIsSafeFinalLayer = negativeZeroIsSafeFinalLayer(frame, value, fallbackRange);
     const candidate = {
       fallbackIndex: fallbackRange.start,
       rawFallback,
@@ -359,6 +378,16 @@ function fallbackCandidates(value) {
       onlyRootChild.end === value.length
         ? onlyRootChild.resolvedClassification
         : classifyResolvedFallback(resolvedValue);
+    rootFrame.resolvedNegativeZero =
+      rootFrame.children.length === 1 &&
+      onlyRootChild.start === 0 &&
+      onlyRootChild.end === value.length
+        ? onlyRootChild.resolvedNegativeZero
+        : typeof resolvedValue === 'string' && isStaticallyNegativeZero(resolvedValue);
+    rootFrame.negativeZeroIsSafeFinalLayer = negativeZeroIsSafeFinalLayer(rootFrame, value, {
+      start: 0,
+      end: value.length,
+    });
     const rootCandidate = {
       fallbackIndex: 0,
       rawFallback: value,
