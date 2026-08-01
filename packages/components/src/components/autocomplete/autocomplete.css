@@ -25,7 +25,7 @@
   /*
    * The active/keyboard-highlighted row treatment is owned by the shared
    * `.cinder-_option-row[data-cinder-active]` rules in
-   * `styles/components/_floating-surface.css`: a `--cinder-surface-hover`
+   * `styles/components/_row-item.css`: a `--cinder-surface-hover`
    * background plus an inset `--cinder-ring-color` ring (and a forced-colors
    * `outline: Highlight` fallback). A component-local override here previously
    * pinned the background to `--cinder-surface-raised` — identical to the
