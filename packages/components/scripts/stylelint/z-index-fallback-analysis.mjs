@@ -151,14 +151,51 @@ function classifyResolvedFallback(resolvedFallback) {
     : 'unresolved';
 }
 
+function hasStaticallyNonnegativeMaxFloor(frame, value, range) {
+  const trimmedRange = trimCssWhitespaceRange(value, range.start, range.end);
+  if (
+    value.slice(trimmedRange.start, trimmedRange.start + 4).toLowerCase() !== 'max(' ||
+    value[trimmedRange.end - 1] !== ')'
+  )
+    return false;
+
+  const argumentRanges = [];
+  let argumentStart = trimmedRange.start + 4;
+  let depth = 0;
+  for (let index = argumentStart; index < trimmedRange.end - 1; index += 1) {
+    if (value[index] === '(') depth += 1;
+    else if (value[index] === ')') {
+      if (depth === 0) return false;
+      depth -= 1;
+    } else if (value[index] === ',' && depth === 0) {
+      argumentRanges.push({ start: argumentStart, end: index });
+      argumentStart = index + 1;
+    }
+  }
+  if (depth !== 0) return false;
+  argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
+
+  return argumentRanges.some((argumentRange) => {
+    const containsFallback = frame.children.some(
+      (child) => child.start < argumentRange.end && child.end > argumentRange.start,
+    );
+    if (containsFallback) return false;
+    const argument = trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end);
+    // A fallback-independent safe floor means negative child fallbacks cannot
+    // determine the result. Magic floors remain banned and are not safe here.
+    return classifyStaticLayer(value.slice(argument.start, argument.end)) === 'safe';
+  });
+}
+
 function unprovenCandidateForFrame(frame, value, range, candidate) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
   // banned child unless its contribution is safe independently of that choice.
-  const uneliminatedChild = frame.children.find(
+  const uneliminatedChildren = frame.children.filter(
     (child) =>
       child.unprovenBannedCandidate && !childIsEliminatedByZeroProduct(value, range, child),
   );
+  const [uneliminatedChild] = uneliminatedChildren;
   if (frame.resolvedClassification === 'too-complex') return candidate;
   if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic')
     return uneliminatedChild?.unprovenBannedCandidate ?? candidate;
@@ -170,9 +207,14 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   // is only the child itself provides no such context.
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
-  return frame.resolvedClassification === 'safe' && hasSingleChildWithEnclosingContext
-    ? undefined
-    : uneliminatedChild.unprovenBannedCandidate;
+  if (frame.resolvedClassification !== 'safe') return uneliminatedChild.unprovenBannedCandidate;
+  if (hasSingleChildWithEnclosingContext) return undefined;
+
+  const hasNonnegativeFloor = hasStaticallyNonnegativeMaxFloor(frame, value, range);
+  return uneliminatedChildren.find(
+    (child) =>
+      !hasNonnegativeFloor || child.unprovenBannedCandidate.resolvedClassification !== 'negative',
+  )?.unprovenBannedCandidate;
 }
 
 // Parse every var()/env()/attr() fallback in one pass with an explicit

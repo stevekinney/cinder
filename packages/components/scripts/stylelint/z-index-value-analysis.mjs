@@ -236,6 +236,8 @@ function evaluateConstantArithmetic(expression) {
         }
         if (!Number.isFinite(value.value)) return withValue(value, value.value);
         const ratio = value.value / interval.value;
+        // CSS returns an exact multiple unchanged, including its signed zero.
+        if (Number.isInteger(ratio)) return withValue(value, value.value);
         const rounded =
           roundStrategy === 'up'
             ? Math.ceil(ratio)
@@ -290,9 +292,9 @@ function evaluateConstantArithmetic(expression) {
       if (functionName === 'atan2' && arguments_.length === 2)
         return angleInDegrees(Math.atan2(arguments_[0].value, arguments_[1].value));
       if (functionName === 'progress' && arguments_.length === 3) {
-        const [, start, end] = arguments_;
-        if (start.value === end.value) throw new Error('empty progress range');
-        const ratio = (arguments_[0].value - start.value) / (end.value - start.value);
+        const [value, start, end] = arguments_;
+        if (start.value === end.value) return scalar(value.value <= start.value ? 0 : 1);
+        const ratio = (value.value - start.value) / (end.value - start.value);
         return scalar(Math.min(1, Math.max(0, ratio)));
       }
       throw new Error('unsupported function');
@@ -456,9 +458,12 @@ export function protectCssSyntaxEscapes(value) {
       else if (isCssWhitespace(value[escapeEnd])) escapeEnd += 1;
       const decodedCharacter =
         codePoint === 0 || codePoint > 0x10ffff ? '\ufffd' : String.fromCodePoint(codePoint);
-      output += isCssIdentifierCharacter(decodedCharacter)
-        ? value.slice(index, escapeEnd)
-        : '\uE000';
+      // An escaped digit is an identifier code point, never part of a number token.
+      output += /\d/.test(decodedCharacter)
+        ? '\uE000'
+        : isCssIdentifierCharacter(decodedCharacter)
+          ? value.slice(index, escapeEnd)
+          : '\uE000';
       index = escapeEnd - 1;
       continue;
     }
