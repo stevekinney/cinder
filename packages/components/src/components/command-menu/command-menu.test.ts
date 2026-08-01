@@ -44,6 +44,16 @@ function queryListbox() {
   return document.body.querySelector<HTMLUListElement>('[role="listbox"]');
 }
 
+async function commandMenuRootDeclarations() {
+  const css = await Bun.file(new URL('./command-menu.css', import.meta.url)).text();
+  const match = css.match(/\.cinder-command-menu\s*\{(?<body>[^}]*)\}/);
+  const body = match?.groups?.['body'];
+
+  expect(body).toBeDefined();
+
+  return body!;
+}
+
 async function settleCommandMenu() {
   await Promise.resolve();
   await tick();
@@ -62,6 +72,24 @@ afterEach(() => {
 });
 
 describe('CommandMenu', () => {
+  test('composes shared floating-surface chrome instead of redeclaring it', async () => {
+    const rootDeclarations = await commandMenuRootDeclarations();
+
+    for (const property of [
+      'position',
+      'z-index',
+      'box-sizing',
+      'margin',
+      'border',
+      'border-radius',
+      'background',
+      'color',
+      'box-shadow',
+    ]) {
+      expect(rootDeclarations).not.toContain(`${property}:`);
+    }
+  });
+
   test('renders a portaled listbox while open', async () => {
     render(CommandMenuFixture);
     await waitFor(() => expect(queryMenu()).not.toBeNull());
