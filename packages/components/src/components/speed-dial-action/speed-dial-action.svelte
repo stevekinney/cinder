@@ -19,6 +19,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
+  import { isRedispatchedPortaledEvent } from '../portal/portal.utilities.svelte.ts';
   import { getSpeedDialContext } from '../speed-dial/speed-dial.context.ts';
   import type { SpeedDialActionProps } from './speed-dial-action.types.ts';
 
@@ -40,6 +41,7 @@
 
   function handleClick(event: MouseEvent): void {
     if (disabled) return;
+    if (isRedispatchedPortaledEvent(event)) return;
     onclick?.(event);
     context.close({ focusTrigger: true });
   }
