@@ -57,6 +57,11 @@ afterEach(() => {
 });
 
 describe('Autocomplete — rendering and ARIA', () => {
+  test('sidecar imports the composed Input styles', async () => {
+    const css = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
+    expect(css).toContain("@import '../input/input.css';");
+  });
+
   test('renders a combobox input with autocomplete=list semantics', () => {
     const { container } = render(Autocomplete, {
       props: {
@@ -167,21 +172,25 @@ describe('Autocomplete — rendering and ARIA', () => {
     expect(input.form).toBe(form);
     expect(input.name).toBe('query');
     expect(input.value).toBe('');
-    const serialized = new FormData();
-    serialized.set(input.name, input.value);
-    expect(serialized.get('query')).toBe('');
+    // happy-dom does not collect the nested Input control through
+    // `new FormData(form)`, so take a fresh snapshot from the exact native
+    // properties that browsers serialize for each assertion.
+    const serializeInput = () => {
+      const snapshot = new FormData();
+      snapshot.set(input.name, input.value);
+      return snapshot;
+    };
+    expect(serializeInput().get('query')).toBe('');
 
     await fireEvent.input(input, { target: { value: 'changed' } });
     expect(input.value).toBe('changed');
-    serialized.set(input.name, input.value);
-    expect(serialized.get('query')).toBe('changed');
+    expect(serializeInput().get('query')).toBe('changed');
 
     form.reset();
     await waitFor(() => {
       expect(input.value).toBe('');
     });
-    serialized.set(input.name, input.value);
-    expect(serialized.get('query')).toBe('');
+    expect(serializeInput().get('query')).toBe('');
   });
 });
 
