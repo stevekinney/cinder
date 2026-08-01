@@ -42,7 +42,8 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:variables:start -->
 
-- `--cinder-grid-list-min-width`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

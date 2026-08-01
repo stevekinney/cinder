@@ -28,6 +28,7 @@ describe('GridList', () => {
     });
     const list = container.querySelector('ul.cinder-grid-list');
     expect(list).not.toBeNull();
+    expect(list?.classList.contains('cinder-grid')).toBe(true);
     expect(list?.getAttribute('role')).toBe('list');
   });
 
@@ -45,15 +46,15 @@ describe('GridList', () => {
       props: { minColumnWidth: '20rem', children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
-    expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('20rem');
+    expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('20rem');
   });
 
-  test('no minColumnWidth → no inline custom property', () => {
+  test('no minColumnWidth → shared Grid default is used', () => {
     const { container } = render(GridList, {
       props: { children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
-    expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');
+    expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('16rem');
   });
 
   test('empty-string minColumnWidth is treated as unset', () => {
@@ -61,7 +62,7 @@ describe('GridList', () => {
       props: { minColumnWidth: '', children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
-    expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');
+    expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('16rem');
   });
 
   test('class prop is merged', () => {
@@ -91,6 +92,8 @@ describe('GridList', () => {
 
   test('linked items lift on hover via :has()', async () => {
     const css = await Bun.file(new URL('./grid-list.css', import.meta.url)).text();
+    expect(css).toContain("@import '../grid/grid.css';");
+    expect(css).not.toContain('grid-template-columns');
     expect(css).toMatch(
       /\.cinder-grid-list__item:has\(\.cinder-grid-list__link:hover\)\s*\{[\s\S]*?box-shadow:\s*var\(--cinder-shadow-md\)/,
     );

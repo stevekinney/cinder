@@ -53,7 +53,6 @@ export const allowedGridCounts = new Map<string, number>(
     'event-stream-viewer/event-stream-viewer.css',
     'feed/feed.css',
     'form-section/form-section.css',
-    'grid-list/grid-list.css',
     'grid/grid.css',
     'hero-section/hero-section.css',
     'logo-cloud/logo-cloud.css',
