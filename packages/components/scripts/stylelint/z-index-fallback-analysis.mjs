@@ -11,7 +11,32 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
-const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow', 'rem']);
+const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
+const mathFunctionNames = new Set([
+  '-webkit-calc',
+  'abs',
+  'acos',
+  'asin',
+  'atan',
+  'atan2',
+  'calc',
+  'clamp',
+  'cos',
+  'exp',
+  'hypot',
+  'log',
+  'max',
+  'min',
+  'mod',
+  'pow',
+  'progress',
+  'rem',
+  'round',
+  'sign',
+  'sin',
+  'sqrt',
+  'tan',
+]);
 
 function trimCssWhitespaceRange(value, start, end) {
   while (start < end && isCssWhitespace(value[start])) start += 1;
@@ -60,6 +85,10 @@ function resolveFrameExpression(frame, value, range, budget) {
 function factorAfter(value, start, end) {
   while (start < end && isCssWhitespace(value[start])) start += 1;
   const factorStart = start;
+  while (start < end && /[+-]/.test(value[start])) {
+    start += 1;
+    while (start < end && isCssWhitespace(value[start])) start += 1;
+  }
   let depth = 0;
   for (; start < end; start += 1) {
     const character = value[start];
@@ -92,17 +121,20 @@ function isPrecededByDivision(value, operandStart) {
   return value[operandStart - 1] === '/';
 }
 
-function contextForOpeningParenthesis(value, openIndex, inheritedContext) {
+function contextForOpeningParenthesis(value, openIndex, inheritedContext, inheritedMathContext) {
   let functionStart = openIndex;
   while (functionStart > 0 && isCssIdentifierCharacter(value[functionStart - 1]))
     functionStart -= 1;
   const functionName = value.slice(functionStart, openIndex).toLowerCase();
   const operandStart = functionName ? functionStart : openIndex;
-  return (
-    inheritedContext ||
-    isPrecededByDivision(value, operandStart) ||
-    signedZeroSensitiveFunctionNames.has(functionName)
-  );
+  const parentRequiresSignedZero = inheritedContext || isPrecededByDivision(value, operandStart);
+  return {
+    functionName,
+    mathContext: inheritedMathContext || mathFunctionNames.has(functionName),
+    parentRequiresSignedZero,
+    signedZeroSensitiveContext:
+      parentRequiresSignedZero || signedZeroSensitiveFunctionNames.has(functionName),
+  };
 }
 
 function childIsEliminatedByZeroProduct(value, range, child) {
@@ -166,19 +198,26 @@ function unwrapStaticContainer(value, range) {
   }
 }
 
-function hasStaticallyNonnegativeMaxFloor(frame, value, range) {
+function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
   const trimmedRange = unwrapStaticContainer(value, range);
   if (
-    value.slice(trimmedRange.start, trimmedRange.start + 4).toLowerCase() !== 'max(' ||
+    value.slice(trimmedRange.start, trimmedRange.start + functionName.length + 1).toLowerCase() !==
+      `${functionName}(` ||
     value[trimmedRange.end - 1] !== ')'
   )
     return false;
 
   const argumentRanges = [];
-  let argumentStart = trimmedRange.start + 4;
+  let argumentStart = trimmedRange.start + functionName.length + 1;
   let depth = 0;
+  let quote;
   for (let index = argumentStart; index < trimmedRange.end - 1; index += 1) {
-    if (value[index] === '(') depth += 1;
+    if (quote) {
+      if (value[index] === quote) quote = undefined;
+      continue;
+    }
+    if (value[index] === '"' || value[index] === "'") quote = value[index];
+    else if (value[index] === '(') depth += 1;
     else if (value[index] === ')') {
       if (depth === 0) return false;
       depth -= 1;
@@ -190,16 +229,57 @@ function hasStaticallyNonnegativeMaxFloor(frame, value, range) {
   if (depth !== 0) return false;
   argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
 
+  let childIndex = 0;
   return argumentRanges.some((argumentRange) => {
-    const containsFallback = frame.children.some(
-      (child) => child.start < argumentRange.end && child.end > argumentRange.start,
-    );
+    while (
+      childIndex < frame.children.length &&
+      frame.children[childIndex].end <= argumentRange.start
+    )
+      childIndex += 1;
+    const child = frame.children[childIndex];
+    const containsFallback =
+      child !== undefined && child.start < argumentRange.end && child.end > argumentRange.start;
     if (containsFallback) return false;
     const argument = trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end);
-    // A fallback-independent safe floor means negative child fallbacks cannot
-    // determine the result. Magic floors remain banned and are not safe here.
+    // A fallback-independent safe bound means a banned child fallback cannot
+    // determine the result. The caller pairs max floors with negative values
+    // and min ceilings with the historical magic value.
     return classifyStaticLayer(value.slice(argument.start, argument.end)) === 'safe';
   });
+}
+
+function hasBareOperatorStream(value) {
+  const expression = value.trim();
+  if (expression.startsWith('(')) return true;
+  let depth = 0;
+  let quote;
+  let sawTopLevelOperand = false;
+  let previousNonWhitespace;
+  for (let index = 0; index < expression.length; index += 1) {
+    const character = expression[index];
+    if (quote) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
+      continue;
+    }
+    if (character === '(') depth += 1;
+    else if (character === ')') depth -= 1;
+    else if (depth === 0 && (character === '*' || character === '/')) return true;
+    else if (depth === 0 && (character === '+' || character === '-')) {
+      const isIdentifierHyphen =
+        character === '-' &&
+        /[a-z_]/i.test(previousNonWhitespace ?? '') &&
+        /[a-z_]/i.test(expression[index + 1] ?? '');
+      const isUnary = !sawTopLevelOperand || previousNonWhitespace === 'e' || isIdentifierHyphen;
+      if (!isUnary) return true;
+    } else if (depth === 0 && !isCssWhitespace(character) && character !== ',')
+      sawTopLevelOperand = true;
+    if (!isCssWhitespace(character)) previousNonWhitespace = character.toLowerCase();
+  }
+  return false;
 }
 
 function negativeZeroIsSafeFinalLayer(frame, value, range) {
@@ -239,11 +319,15 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   }
   if (!uneliminatedChild) return undefined;
 
-  const hasNonnegativeFloor = hasStaticallyNonnegativeMaxFloor(frame, value, range);
-  const contextuallyUnprovenChildren = uneliminatedChildren.filter(
-    (child) =>
-      !hasNonnegativeFloor || child.unprovenBannedCandidate.resolvedClassification !== 'negative',
-  );
+  const hasNonnegativeFloor = hasFallbackIndependentSafeBound(frame, value, range, 'max');
+  const hasMagicCeiling = hasFallbackIndependentSafeBound(frame, value, range, 'min');
+  const contextuallyUnprovenChildren = uneliminatedChildren.filter((child) => {
+    const classification = child.unprovenBannedCandidate.resolvedClassification;
+    return !(
+      (hasNonnegativeFloor && classification === 'negative') ||
+      (hasMagicCeiling && classification === 'magic')
+    );
+  });
   if (contextuallyUnprovenChildren.length === 0) return undefined;
 
   const [onlyChild] = frame.children;
@@ -282,6 +366,11 @@ function fallbackCandidates(value) {
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
 
   for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      const quote = value[index];
+      for (index += 1; index < value.length && value[index] !== quote; index += 1) {}
+      continue;
+    }
     fallbackFunctionPattern.lastIndex = index;
     const functionMatch = fallbackFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
@@ -296,6 +385,7 @@ function fallbackCandidates(value) {
         children: [],
         resolvedFallback: null,
         resolvedClassification: 'unresolved',
+        mathContext: parentheses.at(-1)?.mathContext === true,
         signedZeroSensitiveContext: inheritedContext || isPrecededByDivision(value, index),
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
@@ -308,19 +398,23 @@ function fallbackCandidates(value) {
     }
 
     if (value[index] === '(') {
+      const context = contextForOpeningParenthesis(
+        value,
+        index,
+        parentheses.at(-1)?.signedZeroSensitiveContext === true,
+        parentheses.at(-1)?.mathContext === true,
+      );
       parentheses.push({
         type: 'group',
-        signedZeroSensitiveContext: contextForOpeningParenthesis(
-          value,
-          index,
-          parentheses.at(-1)?.signedZeroSensitiveContext === true,
-        ),
+        ...context,
       });
       continue;
     }
     if (value[index] === ',') {
       const frame = parentheses.at(-1);
       if (frame?.type === 'fallback' && frame.commaIndex === -1) frame.commaIndex = index;
+      else if (frame?.type === 'group' && frame.functionName === 'rem')
+        frame.signedZeroSensitiveContext = false;
       continue;
     }
     if (value[index] !== ')') continue;
@@ -340,7 +434,11 @@ function fallbackCandidates(value) {
       onlyChild.start === fallbackRange.start &&
       onlyChild.end === fallbackRange.end
         ? onlyChild.resolvedClassification
-        : classifyResolvedFallback(frame.resolvedFallback);
+        : !frame.mathContext &&
+            typeof frame.resolvedFallback === 'string' &&
+            hasBareOperatorStream(frame.resolvedFallback)
+          ? 'unresolved'
+          : classifyResolvedFallback(frame.resolvedFallback);
     frame.resolvedNegativeZero =
       frame.children.length === 1 &&
       onlyChild.start === fallbackRange.start &&

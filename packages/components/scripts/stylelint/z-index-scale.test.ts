@@ -328,6 +328,17 @@ describe('cinder/z-index-scale', () => {
     expect(result.results[0]?.warnings?.[0]?.text).toContain('`9999`');
   });
 
+  test('accepts a magic fallback capped by a fallback-independent min ceiling', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the static ceiling prevents the magic fallback from surfacing. */
+        z-index: min(var(--magic, 9999), var(--dynamic), 1);
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test.each(['var(--outer, var(--inner, 9)999)', 'calc(var(--inner, 9)999)'])(
     'preserves adjacent numeric tokens during fallback substitution: %s',
     async (value) => {
@@ -374,6 +385,17 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test('limits rem signed-zero sensitivity to the dividend', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a zero divisor cannot expose its negative fallback. */
+        z-index: var(--outer, rem(1, var(--inner, -1) * 0));
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test.each([
     'calc(1 / var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic))))',
     'calc(1 / var(--outer, calc(var(--inner, -1) * 0 + var(--dynamic, 0))))',
@@ -405,6 +427,52 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(grouped)).toEqual([]);
+  });
+
+  test('consumes a unary sign when scanning a right-hand zero factor', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the signed zero eliminates the negative fallback. */
+        z-index: var(--outer, calc(var(--inner, -1) * -0 + var(--dynamic)));
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
+  test('does not scan fallback-like text inside quoted strings', async () => {
+    for (const fallback of [
+      '"var(--inner, -1)"',
+      "'var(--inner, 9999)'",
+      '"var(\\"--inner, -1)"',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: string tokens cannot invoke substitution functions. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    }
+  });
+
+  test('evaluates fallback operators only when a CSS math context supplies their grammar', async () => {
+    const bare = await lint(`
+      .fixture {
+        /* cinder-z-index-local: bare operator tokens invalidate the fallback value. */
+        z-index: var(--outer, 10000 - 1);
+      }
+    `);
+    expect(warnings(bare)).toEqual([]);
+
+    const calculated = await lint(`
+      .fixture {
+        /* cinder-z-index-local: calc gives the substituted operator stream a math grammar. */
+        z-index: calc(var(--outer, 10000 - 1));
+      }
+    `);
+    expect(warnings(calculated)).toHaveLength(1);
   });
 
   test('retains signed-zero evidence across a resolved fallback frame', async () => {
@@ -658,6 +726,23 @@ describe('cinder/z-index-scale', () => {
       .fixture {
         /* cinder-z-index-local: exhausted generated analysis must fail closed promptly. */
         z-index: var(--outer, ${siblings});
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test('bounds static max-floor scans with an unresolved wide sibling set', async () => {
+    const siblings = Array.from(
+      { length: 64_000 },
+      (_, index) => `var(--item-layer-${index}, -1)`,
+    ).join(', ');
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: unresolved generated max arguments must fail closed promptly. */
+        z-index: max(var(--runtime), ${siblings});
       }
     `);
 
