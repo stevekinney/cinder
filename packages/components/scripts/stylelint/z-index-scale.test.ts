@@ -208,16 +208,21 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer type(<integer>), 9999)',
     'var(--item-layer, mod(9999, 10000))',
     'var(--item-layer, rem(9999, 10000))',
+    'var(--item-layer, calc(1 / rem(-0, 1)))',
+    'var(--item-layer, calc(1 / mod(0, -1)))',
     'var(--item-layer, mod(9999, infinity))',
     'var(--item-layer, rem(9999, infinity))',
     'var(--item-layer, rem(9999, -infinity))',
     'var(--item-layer, mod(-9999, -infinity))',
     'var(--item-layer, round(nearest, 9999.4, 1))',
     'var(--item-layer, round(9999.4))',
+    'var(--item-layer, round(down, -9999, infinity))',
     'var(--item-layer, pow(9999, 1))',
     'var(--item-layer, sqrt(99980001))',
     'var(--item-layer, hypot(9999, 0))',
     'var(--item-layer, calc(9999 * sin(pi / 2)))',
+    'var(--item-layer, calc(9999 + cos(90deg) * 1e16))',
+    'var(--item-layer, tan(270deg))',
     'var(--item-layer, exp(log(9999)))',
     'var(--item-layer, calc(9999 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(2, 0, 1)))',
@@ -225,6 +230,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(asin(1) / 90deg * 9999))',
     'var(--item-layer, calc(atan2(1, 0) / 90deg * 9999))',
     'var(--item-layer, calc(-infinity))',
+    'var(--item-layer, clamp(none, 9999, 10000))',
+    'var(--item-layer, clamp(0, 9999, none))',
     'calc(2 * var(--inner, 4997 + 5))',
   ])('rejects a banned value in a CSS substitution fallback: %s', async (value) => {
     const result = await lint(`
@@ -334,11 +341,14 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
-  test('retains a zeroed banned fallback when its sign affects a denominator', async () => {
+  test.each([
+    'var(--outer, calc(1 / (var(--inner, -1) * 0) + var(--dynamic)))',
+    'var(--outer, calc(pow(var(--inner, -1) * 0, -1) + var(--dynamic)))',
+  ])('retains a zeroed banned fallback when its sign remains observable: %s', async (value) => {
     const result = await lint(`
       .fixture {
-        /* cinder-z-index-local: negative zero in the denominator produces negative infinity. */
-        z-index: var(--outer, calc(1 / (var(--inner, -1) * 0) + var(--dynamic)));
+        /* cinder-z-index-local: negative zero can produce negative infinity. */
+        z-index: ${value};
       }
     `);
 
@@ -789,10 +799,15 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, mod(-9999, infinity))',
     'var(--item-layer, round(nearest, 1.4, 1))',
     'var(--item-layer, round(1.4))',
+    'var(--item-layer, round(nearest, -9999, infinity))',
+    'var(--item-layer, round(up, -9999, infinity))',
+    'var(--item-layer, round(down, 9999, infinity))',
     'var(--item-layer, pow(1, 1))',
     'var(--item-layer, sqrt(1))',
     'var(--item-layer, min(1, 2))',
     'var(--item-layer, max(1, 0))',
+    'var(--item-layer, clamp(none, 1, 10000))',
+    'var(--item-layer, clamp(0, 1, none))',
     'var(--item-layer, hypot(1, 0))',
     'var(--item-layer, calc(1 * sin(pi / 2)))',
     'var(--item-layer, exp(log(1)))',

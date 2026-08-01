@@ -21,6 +21,7 @@ const canonicalUnitConversions = new Map([
 ]);
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
+const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
 export function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
@@ -58,6 +59,25 @@ function angleInRadians(value) {
 
 function angleInDegrees(value) {
   return { value: (value * 180) / Math.PI, units: new Map([['dimension:angle', 1]]) };
+}
+
+function exactCardinalTrigonometricValue(functionName, argument) {
+  let quarterTurns;
+  if (argument.units.size === 0) quarterTurns = argument.value / (Math.PI / 2);
+  else if (argument.units.size === 1 && argument.units.get('dimension:angle') === 1)
+    quarterTurns = argument.value / 90;
+  else throw new Error('expected a number or angle');
+  if (!Number.isInteger(quarterTurns)) return undefined;
+
+  const normalizedQuarterTurns = ((quarterTurns % 4) + 4) % 4;
+  if (functionName === 'sin') return [0, 1, 0, -1][normalizedQuarterTurns];
+  if (functionName === 'cos') return [1, 0, -1, 0][normalizedQuarterTurns];
+  if (normalizedQuarterTurns % 2 === 0) return 0;
+  return normalizedQuarterTurns === 1 ? Infinity : -Infinity;
+}
+
+function hasNegativeSign(value) {
+  return value < 0 || Object.is(value, -0);
 }
 
 // Evaluate static CSS math while retaining enough type information for
@@ -141,7 +161,16 @@ function evaluateConstantArithmetic(expression) {
       }
       const arguments_ = [];
       for (;;) {
-        arguments_.push(parseExpression());
+        skipSpace();
+        const clampEndpointCanBeUnbounded =
+          functionName === 'clamp' && (arguments_.length === 0 || arguments_.length === 2);
+        const noneMatch = clampEndpointCanBeUnbounded
+          ? /^none(?=[\t\n\f\r ]*[,)])/i.exec(expression.slice(index))
+          : null;
+        if (noneMatch) {
+          arguments_.push(unboundedClampEndpoint);
+          index += noneMatch[0].length;
+        } else arguments_.push(parseExpression());
         skipSpace();
         if (peek() === ')') {
           index += 1;
@@ -150,7 +179,8 @@ function evaluateConstantArithmetic(expression) {
         if (peek() !== ',') throw new Error('expected comma');
         index += 1;
       }
-      if (!arguments_.every((argument) => sameUnits(argument, arguments_[0])))
+      const boundedArguments = arguments_.filter((argument) => argument !== unboundedClampEndpoint);
+      if (!boundedArguments.every((argument) => sameUnits(argument, boundedArguments[0])))
         throw new Error('incompatible units');
       if ((functionName === 'min' || functionName === 'max') && arguments_.length > 0) {
         let reducedValue = arguments_[0].value;
@@ -158,11 +188,13 @@ function evaluateConstantArithmetic(expression) {
           reducedValue = Math[functionName](reducedValue, arguments_[argumentIndex].value);
         return withValue(arguments_[0], reducedValue);
       }
-      if (functionName === 'clamp' && arguments_.length === 3)
-        return withValue(
-          arguments_[0],
-          Math.max(arguments_[0].value, Math.min(arguments_[1].value, arguments_[2].value)),
-        );
+      if (functionName === 'clamp' && arguments_.length === 3) {
+        const [minimum, value, maximum] = arguments_;
+        if (value === unboundedClampEndpoint) throw new Error('expected a central value');
+        const minimumValue = minimum === unboundedClampEndpoint ? -Infinity : minimum.value;
+        const maximumValue = maximum === unboundedClampEndpoint ? Infinity : maximum.value;
+        return withValue(value, Math.max(minimumValue, Math.min(value.value, maximumValue)));
+      }
       if (functionName === 'abs' && arguments_.length === 1)
         return withValue(arguments_[0], Math.abs(arguments_[0].value));
       if (functionName === 'sign' && arguments_.length === 1)
@@ -173,23 +205,36 @@ function evaluateConstantArithmetic(expression) {
         if (!Number.isFinite(dividend.value)) return withValue(dividend, Number.NaN);
         if (!Number.isFinite(divisor.value)) {
           if (Number.isNaN(divisor.value)) return withValue(dividend, Number.NaN);
-          const signsDiffer =
-            (dividend.value < 0 || Object.is(dividend.value, -0)) !== divisor.value < 0;
+          const signsDiffer = hasNegativeSign(dividend.value) !== hasNegativeSign(divisor.value);
           return withValue(
             dividend,
             functionName === 'mod' && signsDiffer ? Number.NaN : dividend.value,
           );
         }
         const quotient = dividend.value / divisor.value;
+        const result =
+          dividend.value -
+          divisor.value * (functionName === 'mod' ? Math.floor(quotient) : Math.trunc(quotient));
+        const zeroSignSource = functionName === 'mod' ? divisor.value : dividend.value;
         return withValue(
           dividend,
-          dividend.value -
-            divisor.value * (functionName === 'mod' ? Math.floor(quotient) : Math.trunc(quotient)),
+          result === 0 ? (hasNegativeSign(zeroSignSource) ? -0 : 0) : result,
         );
       }
       if (functionName === 'round' && arguments_.length >= 1 && arguments_.length <= 2) {
         const [value, interval = withValue(arguments_[0], 1)] = arguments_;
         if (interval.value === 0) throw new Error('zero interval');
+        if (!Number.isFinite(interval.value)) {
+          if (Number.isNaN(interval.value) || !Number.isFinite(value.value))
+            return withValue(value, Number.NaN);
+          const isNegative = hasNegativeSign(value.value);
+          if (roundStrategy === 'up')
+            return withValue(value, value.value > 0 ? Infinity : isNegative ? -0 : 0);
+          if (roundStrategy === 'down')
+            return withValue(value, value.value < 0 ? -Infinity : isNegative ? -0 : 0);
+          return withValue(value, isNegative ? -0 : 0);
+        }
+        if (!Number.isFinite(value.value)) return withValue(value, value.value);
         const ratio = value.value / interval.value;
         const rounded =
           roundStrategy === 'up'
@@ -229,8 +274,12 @@ function evaluateConstantArithmetic(expression) {
       if (
         (functionName === 'sin' || functionName === 'cos' || functionName === 'tan') &&
         arguments_.length === 1
-      )
-        return scalar(Math[functionName](angleInRadians(arguments_[0])));
+      ) {
+        const exactValue = exactCardinalTrigonometricValue(functionName, arguments_[0]);
+        return scalar(
+          exactValue === undefined ? Math[functionName](angleInRadians(arguments_[0])) : exactValue,
+        );
+      }
       if (
         (functionName === 'asin' || functionName === 'acos' || functionName === 'atan') &&
         arguments_.length === 1

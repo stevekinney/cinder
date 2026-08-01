@@ -10,6 +10,7 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
+const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
 
 function trimCssWhitespaceRange(value, start, end) {
   while (start < end && isCssWhitespace(value[start])) start += 1;
@@ -102,8 +103,26 @@ function childIsInsideDivisionDenominator(value, range, child) {
   });
 }
 
+function childIsInsideSignedZeroSensitiveFunction(value, range, child) {
+  const openings = [];
+  for (let index = range.start; index < child.start; index += 1) {
+    if (value[index] === '(') {
+      let functionStart = index;
+      while (functionStart > range.start && isCssIdentifierCharacter(value[functionStart - 1]))
+        functionStart -= 1;
+      openings.push(value.slice(functionStart, index).toLowerCase());
+    } else if (value[index] === ')') openings.pop();
+  }
+
+  return openings.some((functionName) => signedZeroSensitiveFunctionNames.has(functionName));
+}
+
 function childIsEliminatedByZeroProduct(value, range, child) {
-  if (childIsInsideDivisionDenominator(value, range, child)) return false;
+  if (
+    childIsInsideDivisionDenominator(value, range, child) ||
+    childIsInsideSignedZeroSensitiveFunction(value, range, child)
+  )
+    return false;
   let afterChild = child.end;
   while (
     afterChild < range.end &&
