@@ -788,6 +788,15 @@ describe('primitive composition guard', () => {
     ).toEqual([]);
   });
 
+  test('does not use negated alternatives as shared selector anchors', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        '.layout:not(.disabled) { display: grid; } .disabled { grid-template-columns: 1fr; }',
+        'new-layout/new-layout.css',
+      ),
+    ).toEqual([]);
+  });
+
   test('keeps negated tagged selectors disjoint', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -1103,6 +1112,33 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         "<script>let tag = ''; if (custom) tag += 'input'; tag += '-wrapper';</script><svelte:element this={tag} />",
         'compound-control/compound-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('does not report a raw-control value overwritten inside one conditional branch', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; if (custom) { tag = 'input'; tag = 'div'; }</script><svelte:element this={tag} />",
+        'terminal-conditional-control/terminal-conditional-control.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('does not retain an intermediate field tag overwritten inside one conditional branch', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; if (custom) { tag = 'label'; tag = 'span'; }</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'terminal-conditional-field/terminal-conditional-field.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('clears field-tag evidence after an unresolvable overwrite', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'label'; tag = dynamicTag;</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'dynamic-field-tag/dynamic-field-tag.svelte',
       ),
     ).toEqual([]);
   });

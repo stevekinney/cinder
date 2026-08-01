@@ -137,23 +137,16 @@ function staticStringBindings(source: string): Map<string, string[]> {
       if (values.length > 0) bindings.set(declaration['id']['name'], values);
     }
   }
-  const walk = (
-    node: unknown,
-    shadowed: ReadonlySet<string> = new Set(),
-    insideFunction = false,
-    conditional = false,
-  ): void => {
+  const walk = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
-    let currentInsideFunction = insideFunction;
     if (node['type'] === 'IfStatement') {
-      if (isRecord(node['test']))
-        walk(node['test'], currentShadowed, currentInsideFunction, conditional);
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       const branches = [node['consequent'], node['alternate']].map((branch) => {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
-        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction, true);
+        if (isRecord(branch)) walk(branch, currentShadowed);
         return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       });
       bindings.clear();
@@ -171,12 +164,21 @@ function staticStringBindings(source: string): Map<string, string[]> {
       node['type'] === 'FunctionExpression' ||
       node['type'] === 'ArrowFunctionExpression'
     ) {
-      currentInsideFunction = true;
       const localNames = new Set<string>();
       if (Array.isArray(node['params']))
         for (const parameter of node['params']) collectPatternNames(parameter, localNames);
       if (isRecord(node['body'])) collectFunctionScopedNames(node['body'], localNames);
       currentShadowed = new Set([...shadowed, ...localNames]);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      const terminal = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      bindings.clear();
+      const names = new Set([...base.keys(), ...terminal.keys()]);
+      for (const name of names)
+        bindings.set(name, [
+          ...new Set([...(base.get(name) ?? []), ...(terminal.get(name) ?? [])]),
+        ]);
+      return;
     } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
       const localNames = new Set<string>();
       for (const statement of node['body'])
@@ -198,21 +200,14 @@ function staticStringBindings(source: string): Map<string, string[]> {
       typeof node['left']['name'] === 'string' &&
       !currentShadowed.has(node['left']['name'])
     ) {
+      const name = node['left']['name'];
       const values = staticStringValuesFromExpression(node['right'], bindings);
-      if (values.length > 0) {
-        const name = node['left']['name'];
-        bindings.set(
-          name,
-          currentInsideFunction || conditional
-            ? [...new Set([...(bindings.get(name) ?? []), ...values])]
-            : values,
-        );
-      }
+      if (values.length > 0) bindings.set(name, values);
+      else bindings.delete(name);
     }
     for (const child of Object.values(node)) {
-      if (Array.isArray(child))
-        for (const item of child) walk(item, currentShadowed, currentInsideFunction, conditional);
-      else if (isRecord(child)) walk(child, currentShadowed, currentInsideFunction, conditional);
+      if (Array.isArray(child)) for (const item of child) walk(item, currentShadowed);
+      else if (isRecord(child)) walk(child, currentShadowed);
     }
   };
   for (const statement of body) walk(statement);

@@ -176,11 +176,15 @@ function selectorTargets(selector: string): SelectorTarget[] {
   return targets;
 }
 
-function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
-  const alternativeAddsConstraints = (alternative: SelectorTarget): boolean =>
+function alternativeAddsConstraints(target: SelectorTarget, alternative: SelectorTarget): boolean {
+  return (
     (alternative.id !== undefined && alternative.id !== target.id) ||
     [...alternative.classes].some((className) => !target.classes.has(className)) ||
-    [...alternative.attributes].some(([name]) => !target.attributes.has(name));
+    [...alternative.attributes].some(([name]) => !target.attributes.has(name))
+  );
+}
+
+function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
   return (
     other.tag !== undefined &&
     target.functionalConstraints.some(
@@ -190,8 +194,23 @@ function negatesTag(target: SelectorTarget, other: SelectorTarget): boolean {
           (alternative) =>
             (alternative.tag === other.tag &&
               target.tag === undefined &&
-              !alternativeAddsConstraints(alternative)) ||
+              !alternativeAddsConstraints(target, alternative)) ||
             targetNecessarilyMatches(other, alternative),
+        ),
+    )
+  );
+}
+
+function hasCompoundNegatedTagAnchor(target: SelectorTarget, other: SelectorTarget): boolean {
+  return (
+    target.tag === undefined &&
+    other.tag !== undefined &&
+    target.functionalConstraints.some(
+      ({ kind, alternatives }) =>
+        kind === 'not' &&
+        alternatives.some(
+          (alternative) =>
+            alternative.tag === other.tag && alternativeAddsConstraints(target, alternative),
         ),
     )
   );
@@ -233,20 +252,26 @@ function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget)
     (left.id !== undefined && left.id === right.id) ||
     (left.tag !== undefined && left.tag === right.tag) ||
     [...left.classes].some((className) => right.classes.has(className)) ||
-    [...left.attributes.keys()].some((attribute) => right.attributes.has(attribute));
-  const functionalAnchor = left.functionalConstraints.some(({ alternatives }) =>
-    alternatives.some(
-      (alternative) =>
-        targetsCanMatchSameElement(alternative, right) ||
-        (alternative.tag !== undefined && alternative.tag === right.tag),
-    ),
+    [...left.attributes.keys()].some((attribute) => right.attributes.has(attribute)) ||
+    hasCompoundNegatedTagAnchor(left, right) ||
+    hasCompoundNegatedTagAnchor(right, left);
+  const functionalAnchor = left.functionalConstraints.some(
+    ({ kind, alternatives }) =>
+      kind === 'any' &&
+      alternatives.some(
+        (alternative) =>
+          targetsCanMatchSameElement(alternative, right) ||
+          (alternative.tag !== undefined && alternative.tag === right.tag),
+      ),
   );
-  const reverseFunctionalAnchor = right.functionalConstraints.some(({ alternatives }) =>
-    alternatives.some(
-      (alternative) =>
-        targetsCanMatchSameElement(alternative, left) ||
-        (alternative.tag !== undefined && alternative.tag === left.tag),
-    ),
+  const reverseFunctionalAnchor = right.functionalConstraints.some(
+    ({ kind, alternatives }) =>
+      kind === 'any' &&
+      alternatives.some(
+        (alternative) =>
+          targetsCanMatchSameElement(alternative, left) ||
+          (alternative.tag !== undefined && alternative.tag === left.tag),
+      ),
   );
   return (
     (shareAnchor || functionalAnchor || reverseFunctionalAnchor) &&

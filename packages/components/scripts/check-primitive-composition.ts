@@ -246,7 +246,12 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
         possibleControls.add(normalizedValue);
     }
   };
-  const walkTopLevel = (current: unknown, shadowed = false, conditional = false): void => {
+  const snapshotMutableValues = (): Set<string> => new Set(mutableValues);
+  const restoreMutableValues = (values: Iterable<string>): void => {
+    mutableValues.clear();
+    for (const value of values) mutableValues.add(value);
+  };
+  const walkTopLevel = (current: unknown, shadowed = false): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
     let currentShadowed = shadowed;
@@ -266,22 +271,29 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
     }
     if (type === 'IfStatement') {
-      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed, conditional);
-      if (isRecord(current['consequent']))
-        walkTopLevel(current['consequent'], currentShadowed, true);
-      if (isRecord(current['alternate'])) walkTopLevel(current['alternate'], currentShadowed, true);
+      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      const base = snapshotMutableValues();
+      const branches = [current['consequent'], current['alternate']].map((branch) => {
+        restoreMutableValues(base);
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return snapshotMutableValues();
+      });
+      restoreMutableValues(branches.flatMap((branch) => [...branch]));
+      return;
+    }
+    if (
+      type === 'FunctionDeclaration' ||
+      type === 'FunctionExpression' ||
+      type === 'ArrowFunctionExpression'
+    ) {
+      const base = snapshotMutableValues();
+      if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      const terminalValues = snapshotMutableValues();
+      recordControls(terminalValues);
+      restoreMutableValues([...base, ...terminalValues]);
       return;
     }
     const node = current;
-    let candidate: unknown;
-    if (
-      !currentShadowed &&
-      node['type'] === 'VariableDeclarator' &&
-      isRecord(node['id']) &&
-      node['id']['type'] === 'Identifier' &&
-      node['id']['name'] === bindingName
-    )
-      candidate = node['init'];
     if (
       !currentShadowed &&
       node['type'] === 'VariableDeclarator' &&
@@ -296,15 +308,6 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     if (
       !currentShadowed &&
       node['type'] === 'AssignmentExpression' &&
-      node['operator'] === '=' &&
-      isRecord(node['left']) &&
-      node['left']['type'] === 'Identifier' &&
-      node['left']['name'] === bindingName
-    )
-      candidate = node['right'];
-    if (
-      !currentShadowed &&
-      node['type'] === 'AssignmentExpression' &&
       node['operator'] === '+=' &&
       isRecord(node['left']) &&
       node['left']['type'] === 'Identifier' &&
@@ -314,9 +317,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       const combined = new Set<string>();
       for (const previous of mutableValues)
         for (const right of rightValues) combined.add(previous + right);
-      if (!conditional) mutableValues.clear();
-      for (const value of combined) mutableValues.add(value);
-      candidate = undefined;
+      restoreMutableValues(combined);
     }
     if (
       !currentShadowed &&
@@ -327,17 +328,11 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       node['left']['name'] === bindingName
     ) {
       const values = possibleStaticStringsFromExpression(node['right'], bindings);
-      if (conditional) for (const value of values) mutableValues.add(value);
-      else {
-        mutableValues.clear();
-        for (const value of values) mutableValues.add(value);
-      }
+      restoreMutableValues(values);
     }
-    recordControls(possibleStaticStringsFromExpression(candidate, bindings));
     for (const child of Object.values(current)) {
-      if (Array.isArray(child))
-        child.forEach((item) => walkTopLevel(item, currentShadowed, conditional));
-      else if (isRecord(child)) walkTopLevel(child, currentShadowed, conditional);
+      if (Array.isArray(child)) child.forEach((item) => walkTopLevel(item, currentShadowed));
+      else if (isRecord(child)) walkTopLevel(child, currentShadowed);
     }
   };
   if (instanceContent !== undefined) walkTopLevel(instanceContent);
