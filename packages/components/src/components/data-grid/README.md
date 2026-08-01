@@ -2,6 +2,10 @@
 
 ARIA data grid foundation for spreadsheet-like datasets with stable row identity, explicit column widths, keyboard navigation, row selection, cell/range selection, and pinned-column metadata.
 
+See the [tabular family boundaries](../../../../docs/decisions/tabular-families.md).
+DataGrid is the interactive-grid alternative to the native Table and DataTable
+families; choose DataTable when native table semantics are the requirement.
+
 ## Usage
 
 ```svelte
