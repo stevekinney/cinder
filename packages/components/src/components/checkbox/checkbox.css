@@ -69,6 +69,11 @@
     border-color: var(--cinder-accent);
   }
 
+  .cinder-checkbox--indicator[data-cinder-checked] {
+    background: var(--cinder-accent);
+    border-color: var(--cinder-accent);
+  }
+
   .cinder-checkbox:indeterminate {
     background: var(--cinder-accent);
     border-color: var(--cinder-accent);
@@ -117,6 +122,12 @@
     mask-image: var(--_cinder-checkbox-check-mask);
   }
 
+  .cinder-checkbox--indicator[data-cinder-checked] + .cinder-checkbox-field__indicator {
+    opacity: 1;
+    -webkit-mask-image: var(--_cinder-checkbox-check-mask);
+    mask-image: var(--_cinder-checkbox-check-mask);
+  }
+
   .cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator {
     opacity: 1;
     -webkit-mask-image: var(--_cinder-checkbox-indeterminate-mask);
@@ -128,7 +139,8 @@
  * the glyph and paint with a system color that survives the override. */
   @media (forced-colors: active) {
     .cinder-checkbox:checked + .cinder-checkbox-field__indicator,
-    .cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator {
+    .cinder-checkbox:indeterminate + .cinder-checkbox-field__indicator,
+    .cinder-checkbox--indicator[data-cinder-checked] + .cinder-checkbox-field__indicator {
       forced-color-adjust: none;
       background-color: ButtonText;
     }
@@ -141,8 +153,19 @@
     border-color: var(--cinder-border-muted);
   }
 
+  .cinder-checkbox--indicator[data-cinder-disabled] {
+    cursor: not-allowed;
+    background: var(--cinder-surface-inset);
+    border-color: var(--cinder-border-muted);
+  }
+
   .cinder-checkbox:disabled:checked,
   .cinder-checkbox:disabled:indeterminate {
+    background-color: var(--cinder-fill-disabled);
+    border-color: var(--cinder-fill-disabled);
+  }
+
+  .cinder-checkbox--indicator[data-cinder-disabled][data-cinder-checked] {
     background-color: var(--cinder-fill-disabled);
     border-color: var(--cinder-fill-disabled);
   }
@@ -153,7 +176,9 @@
      mark vanishes. --cinder-text-disabled clears the 3:1 UI floor in both themes
      (light ~3.8:1, dark ~3.7:1). */
   .cinder-checkbox:disabled:checked + .cinder-checkbox-field__indicator,
-  .cinder-checkbox:disabled:indeterminate + .cinder-checkbox-field__indicator {
+  .cinder-checkbox:disabled:indeterminate + .cinder-checkbox-field__indicator,
+  .cinder-checkbox--indicator[data-cinder-disabled][data-cinder-checked]
+    + .cinder-checkbox-field__indicator {
     color: var(--cinder-text-disabled);
   }
 

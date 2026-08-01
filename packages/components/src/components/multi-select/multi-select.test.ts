@@ -51,10 +51,16 @@ describe('MultiSelect', () => {
       ),
     ).toHaveLength(0);
     expect(
-      container.querySelectorAll('[role="option"] .cinder-checkbox-field__control'),
+      container.querySelectorAll('[role="option"] [data-cinder-checkbox-indicator-shell]'),
     ).toHaveLength(4);
     expect(container.querySelectorAll('[role="option"] .cinder-checkbox')).toHaveLength(4);
+    expect(container.querySelector('[role="option"] input[type="checkbox"]')).toBeNull();
     expect(container.querySelector('.cinder-multi-select__checkbox')).toBeNull();
+    const appleIndicator = container.querySelector(
+      '#fruits-option-0 .cinder-multi-select__checkbox-box',
+    );
+    expect(appleIndicator?.hasAttribute('data-cinder-checked')).toBe(false);
+    expect(appleIndicator?.hasAttribute('data-cinder-disabled')).toBe(false);
   });
 
   test('clicking an option toggles selection and updates count summary', async () => {

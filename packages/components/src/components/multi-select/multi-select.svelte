@@ -25,6 +25,7 @@
   import ChevronDown from 'lucide-svelte/icons/chevron-down';
   import { tick, untrack } from 'svelte';
 
+  import CheckboxIndicatorShell from '../checkbox/checkbox-indicator-shell.svelte';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
@@ -465,15 +466,16 @@
                 commandList.setActiveById(`${id}-option-${index}`);
               }}
             >
-              <span class="cinder-checkbox-field__control cinder-multi-select__checkbox-indicator">
-                <span
-                  class="cinder-checkbox cinder-multi-select__checkbox-box"
-                  data-cinder-checked={selectedSet.has(item.id) || undefined}
-                  data-cinder-disabled={field.disabled || readonly || item.disabled || undefined}
-                  aria-hidden="true"
-                ></span>
-                <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
-              </span>
+              <CheckboxIndicatorShell class="cinder-multi-select__checkbox-indicator">
+                {#snippet control()}
+                  <span
+                    class="cinder-checkbox cinder-checkbox--indicator cinder-multi-select__checkbox-box"
+                    data-cinder-checked={selectedSet.has(item.id) || undefined}
+                    data-cinder-disabled={field.disabled || readonly || item.disabled || undefined}
+                    aria-hidden="true"
+                  ></span>
+                {/snippet}
+              </CheckboxIndicatorShell>
               <span class="cinder-multi-select__option-text">
                 <span class="cinder-multi-select__option-label">{item.label}</span>
                 {#if item.description}

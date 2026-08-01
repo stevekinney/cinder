@@ -237,8 +237,9 @@ describe('Checkbox indicator', () => {
 
   test('indicator is a sibling of the input inside the control wrapper', () => {
     const { container } = render(Checkbox, { id: 'ind2' });
-    const wrapper = container.querySelector('.cinder-checkbox-field__control');
+    const wrapper = container.querySelector('[data-cinder-checkbox-indicator-shell]');
     expect(wrapper).not.toBeNull();
+    expect(wrapper?.classList.contains('cinder-checkbox-field__control')).toBe(true);
     expect(wrapper!.querySelector('input#ind2')).not.toBeNull();
     expect(wrapper!.querySelector('.cinder-checkbox-field__indicator')).not.toBeNull();
   });

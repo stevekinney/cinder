@@ -17,6 +17,7 @@
 
 <script lang="ts">
   import type { CheckboxProps } from './checkbox.types.ts';
+  import CheckboxIndicatorShell from './checkbox-indicator-shell.svelte';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -131,22 +132,23 @@
 
 <div class={classNames('cinder-checkbox-field', fieldClassName)}>
   <div class="cinder-checkbox-row">
-    <span class="cinder-checkbox-field__control">
-      <input
-        bind:this={inputElement}
-        id={field.id}
-        type="checkbox"
-        {...rest}
-        disabled={field.disabled}
-        required={field.required}
-        {checked}
-        onchange={handleChange}
-        class={classNames('cinder-checkbox', className)}
-        aria-invalid={field.ariaInvalid}
-        aria-describedby={field.describedBy}
-      />
-      <span class="cinder-checkbox-field__indicator" aria-hidden="true"></span>
-    </span>
+    <CheckboxIndicatorShell>
+      {#snippet control()}
+        <input
+          bind:this={inputElement}
+          id={field.id}
+          type="checkbox"
+          {...rest}
+          disabled={field.disabled}
+          required={field.required}
+          {checked}
+          onchange={handleChange}
+          class={classNames('cinder-checkbox', className)}
+          aria-invalid={field.ariaInvalid}
+          aria-describedby={field.describedBy}
+        />
+      {/snippet}
+    </CheckboxIndicatorShell>
     {#if label}
       <label
         for={field.id}
