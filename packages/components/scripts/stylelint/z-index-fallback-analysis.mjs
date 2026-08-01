@@ -41,7 +41,10 @@ function resolveFrameExpression(frame, value, range, budget) {
     const child = frame.children[childIndex];
     const relativeStart = child.start - range.start;
     const relativeEnd = child.end - range.start;
-    const replacement = `(${child.resolvedFallback})`;
+    // Custom-property substitution splices a token stream directly into the
+    // surrounding value; it neither adds grouping parentheses nor retokenizes
+    // adjacent tokens. Separator whitespace preserves those token boundaries.
+    const replacement = ` ${child.resolvedFallback} `;
     const nextLength =
       resolvedExpression.length - (relativeEnd - relativeStart) + replacement.length;
     if (!consumeResolutionWork(budget, nextLength)) return fallbackResolutionTooComplex;

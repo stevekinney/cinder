@@ -238,7 +238,8 @@ function evaluateConstantArithmetic(expression) {
       if (functionName === 'progress' && arguments_.length === 3) {
         const [, start, end] = arguments_;
         if (start.value === end.value) throw new Error('empty progress range');
-        return scalar((arguments_[0].value - start.value) / (end.value - start.value));
+        const ratio = (arguments_[0].value - start.value) / (end.value - start.value);
+        return scalar(Math.min(1, Math.max(0, ratio)));
       }
       throw new Error('unsupported function');
     }
