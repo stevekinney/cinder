@@ -170,6 +170,16 @@ function evaluateConstantArithmetic(expression) {
       if ((functionName === 'mod' || functionName === 'rem') && arguments_.length === 2) {
         const [dividend, divisor] = arguments_;
         if (divisor.value === 0) throw new Error('zero divisor');
+        if (!Number.isFinite(dividend.value)) return withValue(dividend, Number.NaN);
+        if (!Number.isFinite(divisor.value)) {
+          if (Number.isNaN(divisor.value)) return withValue(dividend, Number.NaN);
+          const signsDiffer =
+            (dividend.value < 0 || Object.is(dividend.value, -0)) !== divisor.value < 0;
+          return withValue(
+            dividend,
+            functionName === 'mod' && signsDiffer ? Number.NaN : dividend.value,
+          );
+        }
         const quotient = dividend.value / divisor.value;
         return withValue(
           dividend,
@@ -395,20 +405,18 @@ export function protectCssSyntaxEscapes(value) {
       let escapeEnd = hexEnd;
       if (value[escapeEnd] === '\r' && value[escapeEnd + 1] === '\n') escapeEnd += 2;
       else if (isCssWhitespace(value[escapeEnd])) escapeEnd += 1;
-      if (codePoint === 0x2c) output += '\uE000';
-      else if (codePoint === 0x28) output += '\uE001';
-      else if (codePoint === 0x29) output += '\uE002';
-      else if ([0x09, 0x0a, 0x0c, 0x0d, 0x20].includes(codePoint)) output += '\uE003';
-      else output += value.slice(index, escapeEnd);
+      const decodedCharacter =
+        codePoint === 0 || codePoint > 0x10ffff ? '\ufffd' : String.fromCodePoint(codePoint);
+      output += isCssIdentifierCharacter(decodedCharacter)
+        ? value.slice(index, escapeEnd)
+        : '\uE000';
       index = escapeEnd - 1;
       continue;
     }
 
-    if (nextCharacter === ',') output += '\uE000';
-    else if (nextCharacter === '(') output += '\uE001';
-    else if (nextCharacter === ')') output += '\uE002';
-    else if (nextCharacter === ' ' || nextCharacter === '\t') output += '\uE003';
-    else output += value.slice(index, index + 2);
+    if (/[\n\f\r]/.test(nextCharacter) || isCssIdentifierCharacter(nextCharacter))
+      output += value.slice(index, index + 2);
+    else output += '\uE000';
     index += 1;
   }
   return output;

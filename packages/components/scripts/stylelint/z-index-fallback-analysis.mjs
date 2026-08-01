@@ -86,7 +86,25 @@ function factorBefore(value, start, end) {
   return value.slice(end + 1, factorEnd).trim();
 }
 
+function childIsInsideDivisionDenominator(value, range, child) {
+  const openings = [];
+  for (let index = range.start; index < child.start; index += 1) {
+    if (value[index] === '(') openings.push(index);
+    else if (value[index] === ')') openings.pop();
+  }
+
+  return openings.some((openIndex) => {
+    let operandStart = openIndex;
+    while (operandStart > range.start && isCssIdentifierCharacter(value[operandStart - 1]))
+      operandStart -= 1;
+    while (operandStart > range.start && isCssWhitespace(value[operandStart - 1]))
+      operandStart -= 1;
+    return value[operandStart - 1] === '/';
+  });
+}
+
 function childIsEliminatedByZeroProduct(value, range, child) {
+  if (childIsInsideDivisionDenominator(value, range, child)) return false;
   let afterChild = child.end;
   while (
     afterChild < range.end &&
@@ -106,6 +124,34 @@ function childIsEliminatedByZeroProduct(value, range, child) {
     value[beforeChild - 1] === '*' &&
     isStaticallyZero(factorBefore(value, range.start, beforeChild - 1))
   );
+}
+
+function unprovenCandidateForFrame(frame, value, range, candidate) {
+  // Resolving every sibling fallback at once represents only one runtime path:
+  // any sibling may instead use its defined custom-property value. Preserve a
+  // banned child unless its contribution is safe independently of that choice.
+  const uneliminatedChild = frame.children.find(
+    (child) =>
+      child.unprovenBannedCandidate && !childIsEliminatedByZeroProduct(value, range, child),
+  );
+  if (frame.resolvedFallback === fallbackResolutionTooComplex) return candidate;
+  if (
+    typeof frame.resolvedFallback === 'string' &&
+    (isStaticallyNegative(frame.resolvedFallback) ||
+      isStaticallyMagicNumber(frame.resolvedFallback))
+  )
+    return uneliminatedChild?.unprovenBannedCandidate ?? candidate;
+  if (!uneliminatedChild) return undefined;
+
+  const [onlyChild] = frame.children;
+  // With exactly one fallback path, a concrete enclosing expression can prove
+  // that path safe (for example, max(var(--layer, -1), 0)). An expression that
+  // is only the child itself provides no such context.
+  const hasSingleChildWithEnclosingContext =
+    frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
+  return typeof frame.resolvedFallback === 'string' && hasSingleChildWithEnclosingContext
+    ? undefined
+    : uneliminatedChild.unprovenBannedCandidate;
 }
 
 // Parse every var()/env()/attr() fallback in one pass with an explicit
@@ -131,7 +177,6 @@ function fallbackCandidates(value) {
         openIndex: index + functionMatch[0].length - 1,
         commaIndex: -1,
         children: [],
-        isNestedFallback: nearestFunction !== undefined && nearestFunction.commaIndex !== -1,
         resolvedFallback: null,
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
@@ -168,26 +213,12 @@ function fallbackCandidates(value) {
       rawFallback,
       resolvedFallback: frame.resolvedFallback,
     };
-    const resolvedFallbackIsBanned =
-      typeof frame.resolvedFallback === 'string' &&
-      (isStaticallyNegative(frame.resolvedFallback) ||
-        isStaticallyMagicNumber(frame.resolvedFallback));
-    frame.unprovenBannedCandidate = resolvedFallbackIsBanned
-      ? candidate
-      : frame.resolvedFallback === null
-        ? frame.children.find(
-            (child) =>
-              child.unprovenBannedCandidate &&
-              !childIsEliminatedByZeroProduct(value, fallbackRange, child),
-          )?.unprovenBannedCandidate
-        : undefined;
-    if (!frame.isNestedFallback)
-      candidates.push(
-        candidate,
-        ...(frame.resolvedFallback === null && frame.unprovenBannedCandidate
-          ? [frame.unprovenBannedCandidate]
-          : []),
-      );
+    frame.unprovenBannedCandidate = unprovenCandidateForFrame(
+      frame,
+      value,
+      fallbackRange,
+      candidate,
+    );
   }
 
   if (rootFrame.children.length > 0) {
@@ -197,7 +228,19 @@ function fallbackCandidates(value) {
       { start: 0, end: value.length },
       resolutionBudget,
     );
-    candidates.push({ fallbackIndex: 0, rawFallback: value, resolvedFallback: resolvedValue });
+    rootFrame.resolvedFallback = resolvedValue;
+    const rootCandidate = {
+      fallbackIndex: 0,
+      rawFallback: value,
+      resolvedFallback: resolvedValue,
+    };
+    const unprovenRootCandidate = unprovenCandidateForFrame(
+      rootFrame,
+      value,
+      { start: 0, end: value.length },
+      rootCandidate,
+    );
+    if (unprovenRootCandidate) candidates.push(unprovenRootCandidate);
   }
 
   return candidates;

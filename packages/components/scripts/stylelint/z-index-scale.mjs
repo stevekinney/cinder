@@ -30,7 +30,7 @@ import {
 
 const ruleName = 'cinder/z-index-scale';
 const localReasonPrefix = 'cinder-z-index-local:';
-const layerTokenPattern = /^var\([\t\n\f\r ]*(--cinder-z-[a-z0-9-]+)[\t\n\f\r ]*\)$/i;
+const layerTokenPattern = /^var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)[\t\n\f\r ]*\)$/i;
 const layerTokenFunctionPattern =
   /var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)[\t\n\f\r ]*([,)])/iy;
 const declaredLayerTokens = new Set([

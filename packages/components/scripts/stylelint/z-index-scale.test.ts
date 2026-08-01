@@ -183,7 +183,6 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(+9999))',
     'var(--item-layer, calc(+1e4 - 1))',
     'var(--item-layer, -webkit-calc(9999))',
-    'calc(var(--item-layer, 10000 - 1) + 1)',
     'var(--item-layer, calc(0 - 1))',
     'var(--item-layer, calc(calc(10000 - 1)))',
     'v\\61r(--item-layer, -1)',
@@ -209,6 +208,10 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer type(<integer>), 9999)',
     'var(--item-layer, mod(9999, 10000))',
     'var(--item-layer, rem(9999, 10000))',
+    'var(--item-layer, mod(9999, infinity))',
+    'var(--item-layer, rem(9999, infinity))',
+    'var(--item-layer, rem(9999, -infinity))',
+    'var(--item-layer, mod(-9999, -infinity))',
     'var(--item-layer, round(nearest, 9999.4, 1))',
     'var(--item-layer, round(9999.4))',
     'var(--item-layer, pow(9999, 1))',
@@ -274,6 +277,35 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
+  test('evaluates a top-level fallback only in its enclosing safe context', async () => {
+    const safe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: max prevents the fallback from producing a negative layer. */
+        z-index: max(var(--inner, -1), 0);
+      }
+    `);
+    expect(warnings(safe)).toEqual([]);
+
+    const unsafe = await lint(`
+      .fixture {
+        /* cinder-z-index-local: min can still expose the negative fallback. */
+        z-index: min(var(--inner, -1), 0);
+      }
+    `);
+    expect(warnings(unsafe)).toHaveLength(1);
+  });
+
+  test('retains a banned fallback when a sibling may use its defined value', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the factor fallback is not its only runtime value. */
+        z-index: var(--outer, calc(var(--inner, -1) * var(--factor, 0)));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
   test.each(['var(--outer, var(--inner, 9)999)', 'calc(var(--inner, 9)999)'])(
     'preserves adjacent numeric tokens during fallback substitution: %s',
     async (value) => {
@@ -300,6 +332,17 @@ describe('cinder/z-index-scale', () => {
     `);
 
     expect(warnings(result)).toEqual([]);
+  });
+
+  test('retains a zeroed banned fallback when its sign affects a denominator', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: negative zero in the denominator produces negative infinity. */
+        z-index: var(--outer, calc(1 / (var(--inner, -1) * 0) + var(--dynamic)));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test.each([
@@ -340,8 +383,8 @@ describe('cinder/z-index-scale', () => {
 
   test('anchors a fallback warning to the fallback occurrence', async () => {
     for (const css of [
-      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(9999 + var(--x, 9999)); }',
-      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(min(1, 9999) + var(--x, 9999)); }',
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x, 9999)); }',
+      '.fixture { /* cinder-z-index-local: test. */ z-index: calc(min(1, 9999) * var(--x, 9999)); }',
     ]) {
       const result = await lint(css);
       const [warning] = warnings(result);
@@ -652,6 +695,25 @@ describe('cinder/z-index-scale', () => {
     expect(fallback[0]?.text).toContain('must not have a fallback');
   });
 
+  test.each(['\\[x', '\\5b x', '\\*x'])(
+    'preserves escaped punctuation in a scale-prefixed token name: %s',
+    async (suffix) => {
+      const undeclared = await lint(`
+        .fixture {
+          /* cinder-z-index-local: escaped punctuation remains part of the identifier. */
+          z-index: var(--cinder-z-popover${suffix});
+        }
+      `);
+      expect(warnings(undeclared)).toHaveLength(1);
+
+      const fallback = warnings(
+        await lint(`.fixture { z-index: var(--cinder-z-popover${suffix}, 1100); }`),
+      );
+      expect(fallback).toHaveLength(1);
+      expect(fallback[0]?.text).toContain('must not have a fallback');
+    },
+  );
+
   test('preserves backslash parity while decoding layer-token names', async () => {
     expect(warnings(await lint('.fixture { z-index: var(--cinder-z-po\\70 over); }'))).toEqual([]);
     expect(
@@ -685,8 +747,13 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(1x / 1dppx))',
     'attr(data-layer type(<integer>), 1)',
     'calc(var(--item-layer, 9998) + var(--dynamic))',
+    'calc(var(--item-layer, 10000 - 1) + 1)',
     'var(--item-layer, mod(1, 10000))',
     'var(--item-layer, rem(1, 10000))',
+    'var(--item-layer, mod(1, infinity))',
+    'var(--item-layer, rem(1, infinity))',
+    'var(--item-layer, mod(9999, -infinity))',
+    'var(--item-layer, mod(-9999, infinity))',
     'var(--item-layer, round(nearest, 1.4, 1))',
     'var(--item-layer, round(1.4))',
     'var(--item-layer, pow(1, 1))',
