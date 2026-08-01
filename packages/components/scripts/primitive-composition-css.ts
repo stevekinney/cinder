@@ -54,6 +54,7 @@ type SelectorTarget = {
   ancestorSignature?: string;
   tag?: string;
   id?: string;
+  impossible?: boolean;
   classes: Set<string>;
   attributes: Map<string, AttributeConstraint>;
   functionalConstraints: Array<{
@@ -119,12 +120,41 @@ function mediaType(query: string): { name: string; negated: boolean } | undefine
 
 function mergeSelectorTargets(outer: SelectorTarget, inner: SelectorTarget): SelectorTarget {
   return {
+    ...(outer.impossible || inner.impossible ? { impossible: true } : {}),
     ...((outer.tag ?? inner.tag) ? { tag: outer.tag ?? inner.tag } : {}),
     ...((outer.id ?? inner.id) ? { id: outer.id ?? inner.id } : {}),
     classes: new Set([...outer.classes, ...inner.classes]),
     attributes: new Map([...outer.attributes, ...inner.attributes]),
     functionalConstraints: [...outer.functionalConstraints, ...inner.functionalConstraints],
   };
+}
+
+function attributeConstraintsContradict(
+  left: AttributeConstraint,
+  right: AttributeConstraint,
+): boolean {
+  if (left.value === undefined || right.value === undefined) return false;
+  const insensitive = left.insensitive || right.insensitive;
+  const leftValue = normalizeAttributeValue(left.value, insensitive);
+  const rightValue = normalizeAttributeValue(right.value, insensitive);
+  if (left.operator === '=' && right.operator === '=') return leftValue !== rightValue;
+  if (left.operator === '=' && right.operator !== undefined)
+    return !attributeOperatorMatches(right.operator, leftValue, rightValue);
+  if (right.operator === '=' && left.operator !== undefined)
+    return !attributeOperatorMatches(left.operator, rightValue, leftValue);
+  if (left.operator === right.operator) {
+    if (left.operator === '^=')
+      return !leftValue.startsWith(rightValue) && !rightValue.startsWith(leftValue);
+    if (left.operator === '$=')
+      return !leftValue.endsWith(rightValue) && !rightValue.endsWith(leftValue);
+    if (left.operator === '|=')
+      return !(
+        leftValue === rightValue ||
+        leftValue.startsWith(`${rightValue}-`) ||
+        rightValue.startsWith(`${leftValue}-`)
+      );
+  }
+  return false;
 }
 
 function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): SelectorTarget {
@@ -137,12 +167,18 @@ function selectorTargetFromNodes(nodes: readonly selectorParser.Node[]): Selecto
     if (node.type === 'class') target.classes.add(node.value);
     if (node.type === 'id') target.id = node.value;
     if (node.type === 'tag') target.tag = node.value.toLowerCase();
-    if (node.type === 'attribute')
-      target.attributes.set(node.attribute.toLowerCase(), {
+    if (node.type === 'attribute') {
+      const name = node.attribute.toLowerCase();
+      const constraint = {
         operator: node.operator,
         value: node.value,
         insensitive: node.insensitive === true,
-      });
+      } satisfies AttributeConstraint;
+      const previous = target.attributes.get(name);
+      if (previous !== undefined && attributeConstraintsContradict(previous, constraint))
+        target.impossible = true;
+      target.attributes.set(name, constraint);
+    }
   }
   for (const node of nodes) {
     if (
@@ -245,6 +281,7 @@ function hasCompoundNegatedTagAnchor(target: SelectorTarget, other: SelectorTarg
 }
 
 function targetsCanMatchSameElement(left: SelectorTarget, right: SelectorTarget): boolean {
+  if (left.impossible || right.impossible) return false;
   if (negatesTag(left, right) || negatesTag(right, left)) return false;
   const leftAncestorIds = [...(left.ancestorSignature?.matchAll(/#([\w-]+)/g) ?? [])].map(
     (match) => match[1],

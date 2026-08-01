@@ -308,6 +308,134 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       return;
     }
     if (
+      node['type'] === 'ForStatement' ||
+      node['type'] === 'ForInStatement' ||
+      node['type'] === 'ForOfStatement'
+    ) {
+      const loopBinding = node['type'] === 'ForStatement' ? node['init'] : node['left'];
+      const loopShadowed = new Set(currentShadowed);
+      if (
+        isRecord(loopBinding) &&
+        loopBinding['type'] === 'VariableDeclaration' &&
+        (loopBinding['kind'] === 'let' || loopBinding['kind'] === 'const') &&
+        Array.isArray(loopBinding['declarations'])
+      )
+        for (const declaration of loopBinding['declarations'])
+          if (isRecord(declaration)) declaredNamesInPattern(declaration['id'], loopShadowed);
+      const cloneBindings = (): Map<string, unknown[]> =>
+        new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const mergeBindingStates = (
+        base: Map<string, unknown[]>,
+        branch: Map<string, unknown[]>,
+      ): void => {
+        bindings.clear();
+        const names = new Set([...base.keys(), ...branch.keys()]);
+        for (const name of names) {
+          const values = mergeValues([...(base.get(name) ?? []), ...(branch.get(name) ?? [])]);
+          if (values.length > 0) bindings.set(name, values);
+        }
+      };
+      const literalTruthiness = (expression: unknown): boolean | undefined => {
+        if (!isRecord(expression)) return undefined;
+        if (expression['type'] === 'Literal') return Boolean(expression['value']);
+        if (expression['type'] === 'Identifier' && expression['name'] === 'undefined') return false;
+        return undefined;
+      };
+      const guaranteedBody = (): boolean => {
+        if (node['type'] === 'ForStatement') {
+          const test = node['test'];
+          return test === null || test === undefined || literalTruthiness(test) === true;
+        }
+        const right = node['right'];
+        if (!isRecord(right)) return false;
+        if (right['type'] === 'ArrayExpression' && Array.isArray(right['elements']))
+          return right['elements'].length > 0;
+        return false;
+      };
+      const definitelyEmptyBody = (): boolean => {
+        if (node['type'] === 'ForStatement') return literalTruthiness(node['test']) === false;
+        const right = node['right'];
+        return (
+          isRecord(right) &&
+          right['type'] === 'ArrayExpression' &&
+          Array.isArray(right['elements']) &&
+          right['elements'].length === 0
+        );
+      };
+      const canExitAfterEnteringStableTest = (candidate: unknown, testName: string): boolean => {
+        if (!isRecord(candidate)) return false;
+        if (
+          candidate['type'] === 'FunctionDeclaration' ||
+          candidate['type'] === 'FunctionExpression' ||
+          candidate['type'] === 'ArrowFunctionExpression'
+        )
+          return false;
+        if (candidate['type'] === 'BreakStatement' || candidate['type'] === 'CallExpression')
+          return true;
+        if (
+          candidate['type'] === 'AssignmentExpression' &&
+          isRecord(candidate['left']) &&
+          candidate['left']['type'] === 'Identifier' &&
+          candidate['left']['name'] === testName
+        )
+          return true;
+        if (
+          candidate['type'] === 'UpdateExpression' &&
+          isRecord(candidate['argument']) &&
+          candidate['argument']['type'] === 'Identifier' &&
+          candidate['argument']['name'] === testName
+        )
+          return true;
+        return Object.values(candidate).some((value) =>
+          Array.isArray(value)
+            ? value.some((item) => canExitAfterEnteringStableTest(item, testName))
+            : canExitAfterEnteringStableTest(value, testName),
+        );
+      };
+      const hasOnlyZeroEntryTerminalState =
+        node['type'] === 'ForStatement' &&
+        isRecord(node['test']) &&
+        node['test']['type'] === 'Identifier' &&
+        typeof node['test']['name'] === 'string' &&
+        !canExitAfterEnteringStableTest(node['body'], node['test']['name']) &&
+        !canExitAfterEnteringStableTest(node['update'], node['test']['name']);
+
+      if (node['type'] !== 'ForStatement' && isRecord(node['right']))
+        walk(node['right'], loopShadowed, currentInsideFunction);
+      if (isRecord(loopBinding)) {
+        if (
+          loopBinding['type'] === 'VariableDeclaration' &&
+          (loopBinding['kind'] === 'let' || loopBinding['kind'] === 'const') &&
+          Array.isArray(loopBinding['declarations'])
+        ) {
+          for (const declaration of loopBinding['declarations'])
+            if (isRecord(declaration) && isRecord(declaration['init']))
+              walk(declaration['init'], loopShadowed, currentInsideFunction);
+        } else walk(loopBinding, loopShadowed, currentInsideFunction);
+      }
+      if (isRecord(node['test'])) walk(node['test'], loopShadowed, currentInsideFunction);
+
+      const beforeBody = cloneBindings();
+      if (!definitelyEmptyBody() && !hasOnlyZeroEntryTerminalState && isRecord(node['body'])) {
+        bindings.clear();
+        for (const [name, values] of beforeBody) bindings.set(name, [...values]);
+        walk(node['body'], loopShadowed, currentInsideFunction);
+        if (node['type'] === 'ForStatement' && isRecord(node['update']))
+          walk(node['update'], loopShadowed, currentInsideFunction);
+        const afterBody = cloneBindings();
+        if (!guaranteedBody()) mergeBindingStates(beforeBody, afterBody);
+      } else {
+        bindings.clear();
+        for (const [name, values] of beforeBody) bindings.set(name, [...values]);
+      }
+      for (const name of loopShadowed) {
+        const previous = beforeBody.get(name);
+        if (previous === undefined) bindings.delete(name);
+        else bindings.set(name, [...previous]);
+      }
+      return;
+    }
+    if (
       node['type'] === 'FunctionDeclaration' ||
       node['type'] === 'FunctionExpression' ||
       node['type'] === 'ArrowFunctionExpression'

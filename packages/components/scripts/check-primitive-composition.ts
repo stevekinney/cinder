@@ -38,6 +38,21 @@ function isStaticallyTrueExpression(value: unknown): boolean {
   return isRecord(value) && value['type'] === 'Literal' && value['value'] === true;
 }
 
+function literalTruthiness(value: unknown): boolean | undefined {
+  if (!isRecord(value) || value['type'] !== 'Literal') return undefined;
+  return Boolean(value['value']);
+}
+
+function isDefinitelyUndefinedExpression(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (value['type'] === 'Identifier') return value['name'] === 'undefined';
+  return value['type'] === 'UnaryExpression' && value['operator'] === 'void';
+}
+
+function isDefinitelyNonUndefinedExpression(value: unknown): boolean {
+  return isRecord(value) && value['type'] === 'Literal';
+}
+
 function walkAst(node: unknown, visit: (record: UnknownRecord) => void): void {
   if (!isRecord(node)) return;
   visit(node);
@@ -238,6 +253,32 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
   if (instanceContent === undefined && !isRecord(root['fragment'])) return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
+  let undefinedCanBeShadowed = false;
+  walkAst(instanceContent, (node) => {
+    if (
+      node['type'] === 'VariableDeclarator' &&
+      bindingPatternIncludesName(node['id'], 'undefined')
+    )
+      undefinedCanBeShadowed = true;
+    if (
+      (node['type'] === 'FunctionDeclaration' ||
+        node['type'] === 'FunctionExpression' ||
+        node['type'] === 'ArrowFunctionExpression') &&
+      Array.isArray(node['params']) &&
+      node['params'].some((parameter) => bindingPatternIncludesName(parameter, 'undefined'))
+    )
+      undefinedCanBeShadowed = true;
+    if (node['type'] === 'CatchClause' && bindingPatternIncludesName(node['param'], 'undefined'))
+      undefinedCanBeShadowed = true;
+  });
+  const isDefinitelyUnshadowedUndefined = (value: unknown): boolean =>
+    isDefinitelyUndefinedExpression(value) &&
+    !(
+      isRecord(value) &&
+      value['type'] === 'Identifier' &&
+      value['name'] === 'undefined' &&
+      undefinedCanBeShadowed
+    );
   const mutableValues = new Set<string>();
   const recordControls = (values: Iterable<string>): void => {
     for (const candidateValue of values) {
@@ -255,22 +296,18 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     mutableValues.clear();
     for (const value of values) mutableValues.add(value);
   };
-  const shadowsBindingInsideFunction = (node: UnknownRecord, shadowed: boolean): boolean =>
+  const shadowsBindingInsideParameters = (node: UnknownRecord, shadowed: boolean): boolean =>
     shadowed ||
     (Array.isArray(node['params']) &&
-      node['params'].some((parameter) => bindingPatternIncludesName(parameter, bindingName))) ||
+      node['params'].some((parameter) => bindingPatternIncludesName(parameter, bindingName)));
+  const shadowsBindingInsideFunction = (node: UnknownRecord, shadowed: boolean): boolean =>
+    shadowsBindingInsideParameters(node, shadowed) ||
     declaresVarBindingWithinFunctionScope(node['body'], bindingName);
   const walkTopLevel = (current: unknown, shadowed = false): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
     let currentShadowed = shadowed;
-    if (
-      type === 'FunctionDeclaration' ||
-      type === 'FunctionExpression' ||
-      type === 'ArrowFunctionExpression'
-    ) {
-      currentShadowed = shadowsBindingInsideFunction(current, currentShadowed);
-    } else if (type === 'BlockStatement') {
+    if (type === 'BlockStatement') {
       currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
     }
     if (type === 'IfStatement') {
@@ -300,20 +337,22 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (isRecord(left)) walkTopLevel(left, currentShadowed);
       const base = snapshotMutableValues();
       const operator = current['operator'];
-      const leftIsLiteral = isRecord(left) && left['type'] === 'Literal';
-      const leftValue = leftIsLiteral ? left['value'] : undefined;
+      const leftTruthiness = literalTruthiness(left);
+      const leftIsNullish =
+        (isRecord(left) && left['type'] === 'Literal' && left['value'] === null) ||
+        isDefinitelyUnshadowedUndefined(left);
+      const leftIsNonNullishLiteral =
+        isRecord(left) && left['type'] === 'Literal' && left['value'] !== null;
       const skipsRight =
-        leftIsLiteral &&
-        ((operator === '&&' && leftValue === false) ||
-          (operator === '||' && leftValue === true) ||
-          (operator === '??' && leftValue !== null));
+        (leftTruthiness !== undefined &&
+          ((operator === '&&' && !leftTruthiness) || (operator === '||' && leftTruthiness))) ||
+        (operator === '??' && leftIsNonNullishLiteral);
       if (skipsRight) return;
       if (isRecord(current['right'])) walkTopLevel(current['right'], currentShadowed);
       const guaranteesRight =
-        leftIsLiteral &&
-        ((operator === '&&' && leftValue === true) ||
-          (operator === '||' && leftValue === false) ||
-          (operator === '??' && leftValue === null));
+        (leftTruthiness !== undefined &&
+          ((operator === '&&' && leftTruthiness) || (operator === '||' && !leftTruthiness))) ||
+        (operator === '??' && leftIsNullish);
       if (!guaranteesRight) restoreMutableValues([...base, ...mutableValues]);
       return;
     }
@@ -409,11 +448,32 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (Array.isArray(current['arguments']))
         for (const argument of current['arguments']) walkTopLevel(argument, currentShadowed);
       const callee = current['callee'];
-      if (Array.isArray(callee['params']))
-        for (const parameter of callee['params'])
-          walkTopLevel(parameter, shadowsBindingInsideFunction(callee, currentShadowed));
-      if (isRecord(callee['body']))
-        walkTopLevel(callee['body'], shadowsBindingInsideFunction(callee, currentShadowed));
+      const parameterShadowed = shadowsBindingInsideParameters(callee, currentShadowed);
+      const bodyShadowed = shadowsBindingInsideFunction(callee, currentShadowed);
+      if (Array.isArray(callee['params'])) {
+        const argumentsList = Array.isArray(current['arguments']) ? current['arguments'] : [];
+        for (let index = 0; index < callee['params'].length; index += 1) {
+          const parameter = callee['params'][index];
+          if (!isRecord(parameter)) continue;
+          const argument = argumentsList[index];
+          if (parameter['type'] === 'AssignmentPattern') {
+            if (
+              argument !== undefined &&
+              isDefinitelyNonUndefinedExpression(argument) &&
+              !isDefinitelyUndefinedExpression(argument)
+            )
+              continue;
+            if (argument === undefined || isDefinitelyUnshadowedUndefined(argument))
+              walkTopLevel(parameter['right'], parameterShadowed);
+            else {
+              const base = snapshotMutableValues();
+              walkTopLevel(parameter['right'], parameterShadowed);
+              restoreMutableValues([...base, ...mutableValues]);
+            }
+          } else walkTopLevel(parameter, parameterShadowed);
+        }
+      }
+      if (isRecord(callee['body'])) walkTopLevel(callee['body'], bodyShadowed);
       return;
     }
     if (type === 'ReturnStatement' || type === 'ThrowStatement') {
@@ -441,9 +501,15 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       type === 'ArrowFunctionExpression'
     ) {
       const base = snapshotMutableValues();
+      const parameterShadowed = shadowsBindingInsideParameters(current, currentShadowed);
+      const bodyShadowed = shadowsBindingInsideFunction(current, currentShadowed);
       if (Array.isArray(current['params']))
-        for (const parameter of current['params']) walkTopLevel(parameter, currentShadowed);
-      if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+        for (const parameter of current['params']) {
+          if (isRecord(parameter) && parameter['type'] === 'AssignmentPattern')
+            walkTopLevel(parameter['right'], parameterShadowed);
+          else walkTopLevel(parameter, parameterShadowed);
+        }
+      if (isRecord(current['body'])) walkTopLevel(current['body'], bodyShadowed);
       const terminalValues = snapshotMutableValues();
       recordControls(terminalValues);
       restoreMutableValues([...base, ...terminalValues]);

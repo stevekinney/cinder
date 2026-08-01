@@ -383,6 +383,41 @@ describe('primitive composition guard', () => {
       expect(cssPrimitiveCounts(source).grid).toBe(1);
   });
 
+  test('rejects tag-to-attribute anchors with contradictory repeated constraints', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "section { display: grid; } [data-state='a'][data-state='b'] { grid-template-columns: 1fr; }",
+        'contradictory-attribute-anchor/contradictory-attribute-anchor.css',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "section { display: grid; } [data-state='alpha'][data-state^='a'] { grid-template-columns: 1fr; }",
+        'satisfiable-attribute-anchor/satisfiable-attribute-anchor.css',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('resolves repeated prefix, suffix, and language attribute constraints', () => {
+    for (const source of [
+      "section { display: grid; } [data-state^='ab'][data-state^='ac'] { grid-template-columns: 1fr; }",
+      "section { display: grid; } [data-state$='ab'][data-state$='ac'] { grid-template-columns: 1fr; }",
+      "section { display: grid; } [lang|='en'][lang|='fr'] { grid-template-columns: 1fr; }",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(source, 'incompatible-attribute-ranges.css'),
+      ).toEqual([]);
+    for (const source of [
+      "section { display: grid; } [data-state^='a'][data-state^='ab'] { grid-template-columns: 1fr; }",
+      "section { display: grid; } [data-state$='a'][data-state$='ba'] { grid-template-columns: 1fr; }",
+      "section { display: grid; } [lang|='en'][lang|='en-US'] { grid-template-columns: 1fr; }",
+      "section { display: grid; } [data-state^='AB' i][data-state^='ab'] { grid-template-columns: 1fr; }",
+    ])
+      expect(
+        findPrimitiveCompositionViolations(source, 'compatible-attribute-ranges.css'),
+      ).toHaveLength(1);
+  });
+
   test('recognizes row, area, auto-column, and grid shorthand layouts', () => {
     for (const property of [
       'grid-template-rows',
@@ -1405,11 +1440,23 @@ describe('primitive composition guard', () => {
     ).toHaveLength(1);
   });
 
+  test('uses JavaScript truthiness for literal logical control writes', () => {
+    for (const expression of ["0 && (tag = 'div')", "'ready' || (tag = 'div')"])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'input'; ${expression};</script><svelte:element this={tag} />`,
+          'literal-logical-control-write/literal-logical-control-write.svelte',
+        ),
+      ).toHaveLength(1);
+  });
+
   test('applies statically guaranteed logical control writes', () => {
     for (const expression of [
       "true && (tag = 'div')",
       "false || (tag = 'div')",
       "null ?? (tag = 'div')",
+      "undefined ?? (tag = 'div')",
+      "void 0 ?? (tag = 'div')",
     ])
       expect(
         findPrimitiveCompositionViolations(
@@ -1419,11 +1466,66 @@ describe('primitive composition guard', () => {
       ).toEqual([]);
   });
 
+  test('does not treat a shadowed undefined binding as nullish', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; function show(undefined = 'provided') { undefined ?? (tag = 'div'); }</script><svelte:element this={tag} />",
+        'shadowed-undefined-control/shadowed-undefined-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('tracks mutable control writes in default parameters', () => {
     expect(
       findPrimitiveCompositionViolations(
         "<script>let tag = 'div'; function show(unused = (tag = 'input')) {}</script><button onclick={() => show()}>Show</button><svelte:element this={tag} />",
         'default-parameter-control/default-parameter-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('evaluates default parameters before body var shadowing', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show(unused = (tag = 'input')) { var tag; }</script><button onclick={() => show()}>Show</button><svelte:element this={tag} />",
+        'default-parameter-scope/default-parameter-scope.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show(unused = 1) { var tag; tag = 'input'; }</script><button onclick={() => show()}>Show</button><svelte:element this={tag} />",
+        'default-parameter-scope/default-parameter-scope.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('keeps parameter defaults inside the parameter binding scope', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; function show(unused = (tag = 'input'), tag) {}</script><button onclick={() => show()}>Show</button><svelte:element this={tag} />",
+        'default-parameter-shadow/default-parameter-shadow.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('only executes IIFE defaults when arguments are absent or undefined', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; ((unused = (tag = 'input')) => {})('provided');</script><svelte:element this={tag} />",
+        'iife-default-argument/iife-default-argument.svelte',
+      ),
+    ).toEqual([]);
+    for (const argument of ['', 'undefined'])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>let tag = 'div'; ((unused = (tag = 'input')) => {})${argument ? `(${argument})` : '()'};</script><svelte:element this={tag} />`,
+          'iife-default-argument/iife-default-argument.svelte',
+        ),
+      ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'input'; let maybe; ((unused = (tag = 'div')) => {})(maybe);</script><svelte:element this={tag} />",
+        'iife-default-argument/iife-default-argument.svelte',
       ),
     ).toHaveLength(1);
   });
@@ -1464,6 +1566,69 @@ describe('primitive composition guard', () => {
       findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'block' }; function enable() { layout = { display: 'grid', gridTemplateColumns: '1fr' }; } layout = { display: 'block' };</script><div style={layout}></div>",
         'future-style-state/future-style-state.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps loop-local style aliases from shadowing the outer binding', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; function enable() { for (let layout of layouts) { layout = { display: 'grid', gridTemplateColumns: '1fr' }; } }</script><div style={layout}></div>",
+        'loop-local-style-alias/loop-local-style-alias.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; for (let layout = { display: 'block' }; ready; layout = { display: 'block' }) {}</script><div style={layout}></div>",
+        'loop-local-style-alias/loop-local-style-alias.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; for (let layout = { display: 'block' }; ready; ) {} layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'post-loop-style-write/post-loop-style-write.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('preserves optional loop paths for mutable style objects', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; for (const item of items) layout = { display: 'block' };</script><div style={layout}></div>",
+        'optional-loop-style/optional-loop-style.svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; for (; false; layout = { display: 'grid', gridTemplateColumns: '1fr' }) {}</script><div style={layout}></div>",
+        'optional-loop-style/optional-loop-style.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; for (; ready; layout = { display: 'grid', gridTemplateColumns: '1fr' }) {}</script><div style={layout}></div>",
+        'optional-loop-style/optional-loop-style.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; for (const item of []) layout = { display: 'block' };</script><div style={layout}></div>",
+        'empty-loop-style/empty-loop-style.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps guaranteed loop initialization and post-loop writes ordered', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; for (layout = { display: 'block' }; false; ) {}</script><div style={layout}></div>",
+        'guaranteed-loop-style/guaranteed-loop-style.svelte',
+      ),
+    ).toEqual([]);
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let layout = { display: 'block' }; for (const item of []) {} layout = { display: 'grid', gridTemplateColumns: '1fr' };</script><div style={layout}></div>",
+        'post-loop-style/post-loop-style.svelte',
       ),
     ).toHaveLength(1);
   });
