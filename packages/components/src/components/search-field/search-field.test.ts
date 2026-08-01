@@ -7,6 +7,12 @@ import type { SearchFieldProps } from './search-field.types.ts';
 
 setupHappyDom();
 
+// Source-package tests do not resolve the package's self-reference through Bun's
+// export map. Keep the component on its public subpath while mapping that entry
+// to the source implementation for this focused test process.
+const { default: Input } = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => ({ default: Input }));
+
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
@@ -102,9 +108,8 @@ describe('SearchField rendering', () => {
     const { container } = render(SearchField, {
       props: { id: 'search', style: 'letter-spacing: 0.05em;' },
     });
-    expect(container.querySelector('#search')?.getAttribute('style')).toBe(
-      'letter-spacing: 0.05em;',
-    );
+    const input = container.querySelector('#search') as HTMLInputElement;
+    expect(input.style.letterSpacing).toBe('0.05em');
   });
 });
 
