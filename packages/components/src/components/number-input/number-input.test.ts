@@ -98,7 +98,7 @@ describe('NumberInput basics', () => {
     expect(attachedInput?.id).toBe('n');
   });
 
-  test('keeps the component override hook on the visible frame and native styles on Input', () => {
+  test('keeps consumer layout classes on the root and the component hook on the frame', () => {
     const { container } = render(NumberInput, {
       props: {
         id: 'n',
@@ -108,11 +108,10 @@ describe('NumberInput basics', () => {
     });
 
     const input = getInput(container);
-    expect(
-      container.querySelector('.cinder-input-group.cinder-number-input.custom-number-input'),
-    ).not.toBeNull();
+    expect(container.firstElementChild?.classList.contains('custom-number-input')).toBe(true);
+    expect(container.querySelector('.cinder-input-group.cinder-number-input')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group.custom-number-input')).toBeNull();
     expect(container.querySelector('.cinder-input-field.cinder-number-input')).toBeNull();
-    expect(container.querySelector('.cinder-input-field.custom-number-input')).toBeNull();
     expect(input.classList.contains('custom-number-input')).toBe(false);
     expect(input.getAttribute('style')).toContain('accent-color: rebeccapurple');
   });
