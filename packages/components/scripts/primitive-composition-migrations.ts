@@ -34,6 +34,12 @@ export const allowedRawControlCounts = new Map<string, number>([
 // their primitive migration is completed.
 export const allowedRawControlSignatures = new Map<string, readonly string[]>([
   [
+    'command-palette/command-palette.svelte',
+    [
+      'input|aria-activedescendant|aria-autocomplete=list|aria-controls|aria-expanded=true|autocomplete=off|autocorrect=off|class=cinder-command-palette__input|id|oninput|onkeydown|placeholder|role=combobox|spellcheck=false|this|type=text|value',
+    ],
+  ],
+  [
     'approval-card/approval-card-actions.svelte',
     [
       'textarea|class=cinder-approval-card__textarea cinder-approval-card__textarea--reason|id|rows=2|value',
