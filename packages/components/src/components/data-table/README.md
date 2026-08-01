@@ -2,7 +2,7 @@
 
 Data-driven accessible table that renders rows and columns into a real `<table>` with `<caption>`, scoped column and row headers, optional sortable columns, and a horizontal-scroll responsive container.
 
-See the [tabular family boundaries](../../../../docs/decisions/tabular-families.md).
+See the [tabular family boundaries](../../../../../docs/decisions/tabular-families.md).
 DataTable is the native-table convenience layer; use Table for bespoke cell
 composition and DataGrid when cell focus, range selection, or grid semantics
 are required.
