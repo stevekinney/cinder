@@ -316,6 +316,18 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test('reports the surviving magic fallback after a max floor eliminates a negative sibling', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the magic fallback remains observable. */
+        z-index: max(var(--negative, -1), var(--magic, 9999), 0);
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(result.results[0]?.warnings?.[0]?.text).toContain('`9999`');
+  });
+
   test.each(['var(--outer, var(--inner, 9)999)', 'calc(var(--inner, 9)999)'])(
     'preserves adjacent numeric tokens during fallback substitution: %s',
     async (value) => {

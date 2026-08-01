@@ -226,8 +226,17 @@ function unprovenCandidateForFrame(frame, value, range, candidate) {
   );
   const [uneliminatedChild] = uneliminatedChildren;
   if (frame.resolvedClassification === 'too-complex') return candidate;
-  if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic')
-    return uneliminatedChild?.unprovenBannedCandidate ?? candidate;
+  if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic') {
+    const matchingChild = uneliminatedChildren.find(
+      (child) =>
+        child.unprovenBannedCandidate.resolvedClassification === frame.resolvedClassification,
+    );
+    return (
+      matchingChild?.unprovenBannedCandidate ??
+      uneliminatedChild?.unprovenBannedCandidate ??
+      candidate
+    );
+  }
   if (!uneliminatedChild) return undefined;
 
   const hasNonnegativeFloor = hasStaticallyNonnegativeMaxFloor(frame, value, range);
