@@ -1769,6 +1769,18 @@ describe('primitive composition guard', () => {
         'switch-break-style/switch-break-style.svelte',
       ),
     ).toEqual([]);
+    for (const [initializer, unreachableCase] of [
+      ["'block'", "'grid'"],
+      ['1', '2'],
+      ['true', 'false'],
+      ['null', "'grid'"],
+    ])
+      expect(
+        findPrimitiveCompositionViolations(
+          `<script>const mode = ${initializer}; let layout = { display: 'block' }; switch (mode) { case ${unreachableCase}: layout = { display: 'grid', gridTemplateColumns: '1fr' }; break; default: layout = { display: 'block' }; }</script><div style={layout}></div>`,
+          'switch-break-style/switch-break-style.svelte',
+        ),
+      ).toEqual([]);
     expect(
       findPrimitiveCompositionViolations(
         "<script>let layout = { display: 'grid', gridTemplateColumns: '1fr' }; switch (mode) { case 1: layout = { display: 'block' }; break; }</script><div style={layout}></div>",

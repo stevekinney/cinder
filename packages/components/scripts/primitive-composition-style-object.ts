@@ -459,6 +459,13 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       const cases = Array.isArray(node['cases']) ? node['cases'].filter(isRecord) : [];
       const base = cloneBindings();
       const staticCaseValue = (value: unknown): unknown => {
+        if (
+          value === null ||
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        )
+          return value;
         if (isRecord(value) && value['type'] === 'Literal') return value['value'];
         if (
           isRecord(value) &&
