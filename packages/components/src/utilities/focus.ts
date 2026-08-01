@@ -109,6 +109,7 @@ export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[
 
 function isSequentialCandidate(candidate: HTMLElement): boolean {
   const rawTabIndex = candidate.getAttribute('tabindex');
+  if (candidate.matches('input[type="hidden"]')) return false;
   if (
     (rawTabIndex !== null && rawTabIndex.trim() !== '' && !Number.isFinite(Number(rawTabIndex))) ||
     (candidate.tabIndex < 0 && (rawTabIndex !== null || !hasNativeSequentialDefault(candidate))) ||

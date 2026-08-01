@@ -280,6 +280,16 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('excludes hidden inputs even when an explicit tabindex is supplied', () => {
+    const region = document.createElement('div');
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.tabIndex = 0;
+    region.append(hiddenInput);
+
+    expect(getSequentialFocusTargets(region)).not.toContain(hiddenInput);
+  });
+
   test('crosses a shadow host when checking hidden and rendered state', () => {
     const host = document.createElement('div');
     const shadow = host.attachShadow({ mode: 'open' });
