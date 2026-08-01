@@ -272,15 +272,19 @@ export function copyInheritedPortalAttributes(
       }
       if (!matchingDirection.hasAttribute(inheritedDirectionAttribute)) {
         const explicitDirection = matchingDirection.getAttribute('dir');
+        const normalizedExplicitDirection = explicitDirection?.toLowerCase();
         if (crossedGeneratedDirectionBoundary) {
-          if (explicitDirection === 'auto') inheritedDir = 'auto';
+          if (normalizedExplicitDirection === 'auto') inheritedDir = 'auto';
           break;
         }
         const documentComputedDirection =
-          matchingDirection === document.documentElement && explicitDirection !== 'auto'
+          matchingDirection === document.documentElement && normalizedExplicitDirection !== 'auto'
             ? readComputedDirection()
             : null;
-        inheritedDir = documentComputedDirection || explicitDirection;
+        inheritedDir =
+          normalizedExplicitDirection === 'auto'
+            ? normalizedExplicitDirection
+            : documentComputedDirection || explicitDirection;
         break;
       }
       const generatedDirection = matchingDirection.getAttribute('dir');

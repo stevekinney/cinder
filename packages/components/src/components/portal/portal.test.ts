@@ -284,9 +284,21 @@ describe('Portal', () => {
     expect(element.getAttribute('dir')).toBe('auto');
   });
 
+  test('preserves case-insensitive automatic direction from the document root', () => {
+    document.documentElement.setAttribute('dir', 'AUTO');
+    const source = document.createElement('div');
+    source.style.direction = 'rtl';
+    const element = document.createElement('div');
+    document.body.append(source, element);
+
+    copyInheritedPortalAttributes(element, source, true);
+
+    expect(element.getAttribute('dir')).toBe('auto');
+  });
+
   test('inherits an explicit direction across a shadow host', () => {
     const host = document.createElement('div');
-    host.setAttribute('dir', 'auto');
+    host.setAttribute('dir', 'AUTO');
     const shadow = host.attachShadow({ mode: 'open' });
     const generatedWrapper = document.createElement('div');
     generatedWrapper.setAttribute('dir', 'ltr');
