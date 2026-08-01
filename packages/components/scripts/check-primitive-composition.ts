@@ -281,6 +281,17 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       restoreMutableValues(branches.flatMap((branch) => [...branch]));
       return;
     }
+    if (type === 'ConditionalExpression') {
+      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      const base = snapshotMutableValues();
+      const branches = [current['consequent'], current['alternate']].map((branch) => {
+        restoreMutableValues(base);
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return snapshotMutableValues();
+      });
+      restoreMutableValues(branches.flatMap((branch) => [...branch]));
+      return;
+    }
     if (
       type === 'FunctionDeclaration' ||
       type === 'FunctionExpression' ||

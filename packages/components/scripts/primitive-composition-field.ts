@@ -137,6 +137,8 @@ function staticStringBindings(source: string): Map<string, string[]> {
         continue;
       const values = staticStringValuesFromExpression(declaration['init'], bindings);
       if (values.length > 0) bindings.set(declaration['id']['name'], values);
+      else if (declaration['init'] !== null && declaration['init'] !== undefined)
+        bindings.delete(declaration['id']['name']);
     }
   }
   const walk = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {

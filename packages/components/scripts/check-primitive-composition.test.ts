@@ -235,6 +235,15 @@ describe('primitive composition guard', () => {
       ).toHaveLength(1);
   });
 
+  test('counts raw controls assigned through ternary branches', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>let tag = 'div'; editable ? (tag = 'input') : (tag = 'div');</script><svelte:element this={tag} />",
+        'new-control/new-control.svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
   test('preserves conditional predecessors before compound tag composition', () => {
     expect(
       findPrimitiveCompositionViolations(
@@ -1213,6 +1222,24 @@ describe('primitive composition guard', () => {
         'dynamic-field-tag/dynamic-field-tag.svelte',
       ),
     ).toEqual([]);
+  });
+
+  test('clears field-tag evidence after an unresolvable var redeclaration initializer', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>var tag = 'label'; var tag = dynamicTag;</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'dynamic-field-tag/dynamic-field-tag.svelte',
+      ),
+    ).toEqual([]);
+  });
+
+  test('preserves field-tag evidence across a var redeclaration without an initializer', () => {
+    expect(
+      findPrimitiveCompositionViolations(
+        "<script>var tag = 'label'; var tag;</script><svelte:element this={tag} /><p>Description</p><p>Error message</p>",
+        'mutable-field/mutable-field.svelte',
+      ),
+    ).toHaveLength(1);
   });
 
   test('recognizes modern width range media conditions', () => {

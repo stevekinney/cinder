@@ -230,24 +230,18 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   // initial render looked like, so it's recorded as an *additional*
   // reachable value rather than replacing the existing one — the same way a
   // ConditionalExpression's branches are both kept.
-  const walk = (
-    node: unknown,
-    shadowed: ReadonlySet<string>,
-    insideFunction: boolean,
-    conditional = false,
-  ): void => {
+  const walk = (node: unknown, shadowed: ReadonlySet<string>, insideFunction: boolean): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
     let currentInsideFunction = insideFunction;
     if (node['type'] === 'IfStatement') {
-      if (isRecord(node['test']))
-        walk(node['test'], currentShadowed, currentInsideFunction, conditional);
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed, currentInsideFunction);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       const branchValues: Map<string, unknown[]>[] = [];
       for (const branch of [node['consequent'], node['alternate']]) {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
-        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction, false);
+        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction);
         branchValues.push(
           new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
         );
@@ -264,13 +258,12 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       return;
     }
     if (node['type'] === 'ConditionalExpression') {
-      if (isRecord(node['test']))
-        walk(node['test'], currentShadowed, currentInsideFunction, conditional);
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed, currentInsideFunction);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       const branches = [node['consequent'], node['alternate']].map((branch) => {
         bindings.clear();
         for (const [name, values] of base) bindings.set(name, [...values]);
-        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction, false);
+        if (isRecord(branch)) walk(branch, currentShadowed, currentInsideFunction);
         return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       });
       bindings.clear();
@@ -311,8 +304,6 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       const resolved = resolvedAssignmentValue(node['right'], bindings);
       if (currentInsideFunction) {
         if (resolved.set) bindings.set(name, [...(bindings.get(name) ?? []), ...resolved.values]);
-      } else if (resolved.set && conditional) {
-        bindings.set(name, [...(bindings.get(name) ?? []), ...resolved.values]);
       } else if (resolved.set) {
         bindings.set(name, resolved.values);
       } else {
@@ -321,8 +312,8 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     }
     for (const value of Object.values(node)) {
       if (Array.isArray(value))
-        for (const item of value) walk(item, currentShadowed, currentInsideFunction, conditional);
-      else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction, conditional);
+        for (const item of value) walk(item, currentShadowed, currentInsideFunction);
+      else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
     }
   };
   for (const statement of body) walk(statement, new Set(), false);
