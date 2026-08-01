@@ -33,6 +33,11 @@ const schema = {
       description:
         'When true, the trailing adornment is interactive and included in the accessibility tree. Default `false`.',
     },
+    groupClassName: {
+      type: 'string',
+      description:
+        'Additional class names applied to the grouped control frame when leading or trailing content is present.',
+    },
     label: {
       type: 'string',
       description: 'Visible label text rendered above the input and linked via `for`/`id`.',
@@ -49,11 +54,6 @@ const schema = {
     error: {
       type: 'string',
       description: 'Error message rendered below the input; also sets `aria-invalid` on the input.',
-    },
-    groupClassName: {
-      type: 'string',
-      description:
-        'Additional class names applied to the grouped control frame when leading or trailing content is present.',
     },
   },
   additionalProperties: false,
