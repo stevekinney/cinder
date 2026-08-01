@@ -38,7 +38,7 @@ describe('SpeedDial', () => {
     );
   });
 
-  test('closed toolbar keeps its exit surface mounted but has no visible floating chrome', () => {
+  test('closed toolbar keeps its exit surface mounted and inert', () => {
     const { container } = render(SpeedDialFixture);
     const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
 
@@ -52,15 +52,15 @@ describe('SpeedDial', () => {
       /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{([^}]*)\}/s,
     )?.[1];
     expect(closedActionsRule).toBeDefined();
-    expect(closedActionsRule).toContain('background: transparent;');
-    expect(closedActionsRule).toContain('border-color: transparent;');
-    expect(closedActionsRule).toContain('box-shadow: none;');
+    expect(closedActionsRule).toMatch(/background\s*:\s*transparent\s*;/);
+    expect(closedActionsRule).toMatch(/border-color\s*:\s*transparent\s*;/);
+    expect(closedActionsRule).toMatch(/box-shadow\s*:\s*none\s*;/);
 
     const openActionsRule = speedDialStyles.match(
       /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{([^}]*)\}/s,
     )?.[1];
     expect(openActionsRule).toBeDefined();
-    expect(openActionsRule).toContain('pointer-events: auto;');
+    expect(openActionsRule).toMatch(/pointer-events\s*:\s*auto\s*;/);
     expect(speedDialStyles).toMatch(
       /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
     );
