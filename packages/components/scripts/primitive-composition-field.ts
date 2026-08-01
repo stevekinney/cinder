@@ -58,6 +58,42 @@ function mergeStringValues(...values: (readonly string[])[]): string[] {
   return [...new Set(values.flat())];
 }
 
+function staticTruthiness(
+  value: unknown,
+  bindings: ReadonlyMap<string, readonly string[]>,
+): boolean | undefined {
+  const result = expressionResult(value);
+  if (isRecord(result) && result['type'] === 'Literal') return Boolean(result['value']);
+  const values = staticStringValuesFromExpression(result, bindings);
+  if (values.length === 0) return undefined;
+  const truthiness = new Set(values.map(Boolean));
+  return truthiness.size === 1 ? truthiness.values().next().value : undefined;
+}
+
+function expressionResult(value: unknown): unknown {
+  const expression = unwrapTypeExpression(value);
+  if (
+    isRecord(expression) &&
+    expression['type'] === 'AssignmentExpression' &&
+    expression['operator'] === '='
+  )
+    return expressionResult(expression['right']);
+  return expression;
+}
+
+function unconditionallyAbruptStatement(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ContinueStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
+  return statement['body'].some(unconditionallyAbruptStatement);
+}
+
 function collectPatternNames(pattern: unknown, into: Set<string>): void {
   if (!isRecord(pattern)) return;
   if (pattern['type'] === 'Identifier' && typeof pattern['name'] === 'string') {
@@ -187,6 +223,44 @@ function staticStringBindings(source: string): Map<string, string[]> {
         bindings.set(name, [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))]);
       return;
     }
+    if (node['type'] === 'LogicalExpression') {
+      if (isRecord(node['left'])) walk(node['left'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const truthiness = staticTruthiness(node['left'], bindings);
+      const operator = node['operator'];
+      const leftResult = expressionResult(node['left']);
+      const leftIsNullish =
+        (isRecord(leftResult) &&
+          leftResult['type'] === 'Literal' &&
+          leftResult['value'] === null) ||
+        (isRecord(leftResult) &&
+          leftResult['type'] === 'UnaryExpression' &&
+          leftResult['operator'] === 'void') ||
+        (isRecord(leftResult) &&
+          leftResult['type'] === 'Identifier' &&
+          leftResult['name'] === 'undefined' &&
+          !currentShadowed.has('undefined') &&
+          !bindings.has('undefined'));
+      const leftIsNonNullishLiteral =
+        isRecord(leftResult) && leftResult['type'] === 'Literal' && leftResult['value'] !== null;
+      const leftIsKnownString = staticStringValuesFromExpression(leftResult, bindings).length > 0;
+      const skipsRight =
+        (truthiness !== undefined &&
+          ((operator === '&&' && !truthiness) || (operator === '||' && truthiness))) ||
+        (operator === '??' && (leftIsNonNullishLiteral || leftIsKnownString));
+      if (skipsRight) return;
+      if (isRecord(node['right'])) walk(node['right'], currentShadowed);
+      const guaranteesRight =
+        (truthiness !== undefined &&
+          ((operator === '&&' && truthiness) || (operator === '||' && !truthiness))) ||
+        (operator === '??' && leftIsNullish);
+      if (!guaranteesRight) {
+        const names = new Set([...base.keys(), ...bindings.keys()]);
+        for (const name of names)
+          bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
+      }
+      return;
+    }
     if (
       node['type'] === 'ForStatement' ||
       node['type'] === 'ForInStatement' ||
@@ -254,6 +328,11 @@ function staticStringBindings(source: string): Map<string, string[]> {
         bindings.set(name, mergeStringValues(baseValues, callbackBindings.get(name) ?? []));
       }
       return;
+    } else if (node['type'] === 'CatchClause') {
+      const catchShadowed = new Set(currentShadowed);
+      if (isRecord(node['param'])) collectPatternNames(node['param'], catchShadowed);
+      if (isRecord(node['body'])) walk(node['body'], catchShadowed);
+      return;
     } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
       const localNames = new Set<string>();
       for (const statement of node['body'])
@@ -266,6 +345,11 @@ function staticStringBindings(source: string): Map<string, string[]> {
           for (const declaration of statement['declarations'])
             if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
       currentShadowed = new Set([...shadowed, ...localNames]);
+      for (const statement of node['body']) {
+        if (isRecord(statement)) walk(statement, currentShadowed);
+        if (unconditionallyAbruptStatement(statement)) break;
+      }
+      return;
     }
     if (
       node['type'] === 'AssignmentExpression' &&

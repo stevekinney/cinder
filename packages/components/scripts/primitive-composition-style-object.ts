@@ -196,6 +196,7 @@ function mergeValues(values: readonly unknown[]): unknown[] {
 function staticBindings(instance: unknown): Map<string, unknown[]> {
   const bindings = new Map<string, unknown[]>();
   const mutableBindings = new Set<string>();
+  const declaredBindings = new Set<string>();
   const callbackBindings = new Map<string, unknown[]>();
   if (!isRecord(instance) || !isRecord(instance['content'])) return bindings;
   const body = instance['content']['body'];
@@ -220,6 +221,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       )
         continue;
       const name = declaration['id']['name'];
+      declaredBindings.add(name);
       if (statement['kind'] !== 'const') mutableBindings.add(name);
     }
   }
@@ -240,6 +242,23 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
   // ConditionalExpression's branches are both kept.
   const valuesWithCallbackState = (name: string, values: readonly unknown[]): unknown[] =>
     mergeValues([...values, ...(callbackBindings.get(name) ?? [])]);
+  const cloneBindings = (): Map<string, unknown[]> =>
+    new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+  const mergeBindingStates = (
+    base: Map<string, unknown[]>,
+    branch: Map<string, unknown[]>,
+  ): void => {
+    bindings.clear();
+    const names = new Set([...base.keys(), ...branch.keys()]);
+    for (const name of names) {
+      const values = mergeValues([...(base.get(name) ?? []), ...(branch.get(name) ?? [])]);
+      if (values.length > 0) bindings.set(name, values);
+    }
+  };
+  const breakTargets: Array<{
+    label: string | undefined;
+    states: Map<string, unknown[]>[] | undefined;
+  }> = [];
   const resolveDeclaration = (name: string, kind: string, initializer: unknown): void => {
     if (initializer === undefined) {
       // `var name;` preserves a prior value, while an uninitialized `let`
@@ -261,10 +280,50 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       else bindings.delete(name);
     }
   };
-  const walk = (node: unknown, shadowed: ReadonlySet<string>, insideFunction: boolean): void => {
+  const walk = (
+    node: unknown,
+    shadowed: ReadonlySet<string>,
+    insideFunction: boolean,
+    controlLabel?: string,
+  ): void => {
     if (!isRecord(node)) return;
     let currentShadowed = shadowed;
     let currentInsideFunction = insideFunction;
+    if (node['type'] === 'BreakStatement') {
+      const label =
+        isRecord(node['label']) && typeof node['label']['name'] === 'string'
+          ? node['label']['name']
+          : undefined;
+      const target = label
+        ? breakTargets.findLast((candidate) => candidate.label === label)
+        : breakTargets.at(-1);
+      target?.states?.push(cloneBindings());
+      return;
+    }
+    if (node['type'] === 'LabeledStatement') {
+      const label =
+        isRecord(node['label']) && typeof node['label']['name'] === 'string'
+          ? node['label']['name']
+          : undefined;
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed, currentInsideFunction, label);
+      return;
+    }
+    if (node['type'] === 'SwitchStatement') {
+      const interruptedStates: Map<string, unknown[]>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
+      for (const value of Object.values(node)) {
+        if (Array.isArray(value))
+          for (const item of value) walk(item, currentShadowed, currentInsideFunction);
+        else if (isRecord(value)) walk(value, currentShadowed, currentInsideFunction);
+      }
+      breakTargets.pop();
+      let continuingState = cloneBindings();
+      for (const interruptedState of interruptedStates) {
+        mergeBindingStates(continuingState, interruptedState);
+        continuingState = cloneBindings();
+      }
+      return;
+    }
     if (node['type'] === 'IfStatement') {
       if (isRecord(node['test'])) walk(node['test'], currentShadowed, currentInsideFunction);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
@@ -322,23 +381,21 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       )
         for (const declaration of loopBinding['declarations'])
           if (isRecord(declaration)) declaredNamesInPattern(declaration['id'], loopShadowed);
-      const cloneBindings = (): Map<string, unknown[]> =>
-        new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
-      const mergeBindingStates = (
-        base: Map<string, unknown[]>,
-        branch: Map<string, unknown[]>,
-      ): void => {
-        bindings.clear();
-        const names = new Set([...base.keys(), ...branch.keys()]);
-        for (const name of names) {
-          const values = mergeValues([...(base.get(name) ?? []), ...(branch.get(name) ?? [])]);
-          if (values.length > 0) bindings.set(name, values);
-        }
-      };
       const literalTruthiness = (expression: unknown): boolean | undefined => {
         if (!isRecord(expression)) return undefined;
         if (expression['type'] === 'Literal') return Boolean(expression['value']);
-        if (expression['type'] === 'Identifier' && expression['name'] === 'undefined') return false;
+        if (expression['type'] === 'Identifier' && expression['name'] === 'undefined') {
+          if (loopShadowed.has('undefined')) return undefined;
+          const values = bindings.get('undefined');
+          if (values !== undefined && values.length === 1) {
+            const value = values[0];
+            return isRecord(value) && value['type'] === 'Literal'
+              ? Boolean(value['value'])
+              : Boolean(value);
+          }
+          if (declaredBindings.has('undefined')) return undefined;
+          return false;
+        }
         return undefined;
       };
       const guaranteedBody = (): boolean => {
@@ -362,6 +419,21 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
           right['elements'].length === 0
         );
       };
+      const endsWithAbruptExit = (candidate: unknown): boolean => {
+        if (!isRecord(candidate)) return false;
+        if (
+          candidate['type'] === 'BreakStatement' ||
+          candidate['type'] === 'ReturnStatement' ||
+          candidate['type'] === 'ThrowStatement'
+        )
+          return true;
+        return (
+          candidate['type'] === 'BlockStatement' &&
+          Array.isArray(candidate['body']) &&
+          candidate['body'].length > 0 &&
+          endsWithAbruptExit(candidate['body'][candidate['body'].length - 1])
+        );
+      };
       const canExitAfterEnteringStableTest = (candidate: unknown, testName: string): boolean => {
         if (!isRecord(candidate)) return false;
         if (
@@ -370,7 +442,12 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
           candidate['type'] === 'ArrowFunctionExpression'
         )
           return false;
-        if (candidate['type'] === 'BreakStatement' || candidate['type'] === 'CallExpression')
+        if (
+          candidate['type'] === 'BreakStatement' ||
+          candidate['type'] === 'ReturnStatement' ||
+          candidate['type'] === 'ThrowStatement' ||
+          candidate['type'] === 'CallExpression'
+        )
           return true;
         if (
           candidate['type'] === 'AssignmentExpression' &&
@@ -419,10 +496,21 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       if (!definitelyEmptyBody() && !hasOnlyZeroEntryTerminalState && isRecord(node['body'])) {
         bindings.clear();
         for (const [name, values] of beforeBody) bindings.set(name, [...values]);
+        const interruptedStates: Map<string, unknown[]>[] = [];
+        breakTargets.push({ label: controlLabel, states: interruptedStates });
         walk(node['body'], loopShadowed, currentInsideFunction);
-        if (node['type'] === 'ForStatement' && isRecord(node['update']))
+        breakTargets.pop();
+        if (
+          node['type'] === 'ForStatement' &&
+          isRecord(node['update']) &&
+          !endsWithAbruptExit(node['body'])
+        )
           walk(node['update'], loopShadowed, currentInsideFunction);
-        const afterBody = cloneBindings();
+        let afterBody = cloneBindings();
+        for (const interruptedState of interruptedStates) {
+          mergeBindingStates(afterBody, interruptedState);
+          afterBody = cloneBindings();
+        }
         if (!guaranteedBody()) mergeBindingStates(beforeBody, afterBody);
       } else {
         bindings.clear();

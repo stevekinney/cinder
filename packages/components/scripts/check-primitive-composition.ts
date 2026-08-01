@@ -43,6 +43,19 @@ function literalTruthiness(value: unknown): boolean | undefined {
   return Boolean(value['value']);
 }
 
+function unconditionallyAbruptStatement(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
+  for (const child of statement['body']) if (unconditionallyAbruptStatement(child)) return true;
+  return false;
+}
+
 function isDefinitelyUndefinedExpression(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (value['type'] === 'Identifier') return value['name'] === 'undefined';
@@ -296,6 +309,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
     mutableValues.clear();
     for (const value of values) mutableValues.add(value);
   };
+  const breakTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
   const shadowsBindingInsideParameters = (node: UnknownRecord, shadowed: boolean): boolean =>
     shadowed ||
     (Array.isArray(node['params']) &&
@@ -303,10 +317,29 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
   const shadowsBindingInsideFunction = (node: UnknownRecord, shadowed: boolean): boolean =>
     shadowsBindingInsideParameters(node, shadowed) ||
     declaresVarBindingWithinFunctionScope(node['body'], bindingName);
-  const walkTopLevel = (current: unknown, shadowed = false): void => {
+  const walkTopLevel = (current: unknown, shadowed = false, controlLabel?: string): void => {
     if (!isRecord(current)) return;
     const type = current['type'];
     let currentShadowed = shadowed;
+    if (type === 'BreakStatement') {
+      const label =
+        isRecord(current['label']) && typeof current['label']['name'] === 'string'
+          ? current['label']['name']
+          : undefined;
+      const target = label
+        ? breakTargets.findLast((candidate) => candidate.label === label)
+        : breakTargets.at(-1);
+      target?.states.push(snapshotMutableValues());
+      return;
+    }
+    if (type === 'LabeledStatement') {
+      const label =
+        isRecord(current['label']) && typeof current['label']['name'] === 'string'
+          ? current['label']['name']
+          : undefined;
+      if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed, label);
+      return;
+    }
     if (type === 'BlockStatement') {
       currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
     }
@@ -364,23 +397,23 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       for (let startIndex = 0; startIndex < cases.length; startIndex++) {
         restoreMutableValues(base);
         let stopped = false;
+        const interruptedStates: Set<string>[] = [];
+        breakTargets.push({ label: controlLabel, states: interruptedStates });
         for (let caseIndex = startIndex; caseIndex < cases.length && !stopped; caseIndex++) {
           const consequent = cases[caseIndex]?.['consequent'];
           if (!Array.isArray(consequent)) continue;
           for (const statement of consequent) {
             walkTopLevel(statement, currentShadowed);
-            if (
-              isRecord(statement) &&
-              (statement['type'] === 'BreakStatement' ||
-                statement['type'] === 'ReturnStatement' ||
-                statement['type'] === 'ThrowStatement')
-            ) {
+            if (unconditionallyAbruptStatement(statement)) {
               stopped = true;
               break;
             }
           }
         }
-        branches.push(snapshotMutableValues());
+        breakTargets.pop();
+        branches.push(
+          new Set([...mutableValues, ...interruptedStates.flatMap((state) => [...state])]),
+        );
       }
       if (!cases.some((switchCase) => switchCase['test'] === null)) branches.push(base);
       restoreMutableValues(branches.flatMap((branch) => [...branch]));
@@ -401,8 +434,17 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (isRecord(initializer)) walkTopLevel(initializer, loopShadowed);
       if (isRecord(current['test'])) walkTopLevel(current['test'], loopShadowed);
       const base = snapshotMutableValues();
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], loopShadowed);
-      if (isRecord(current['update'])) walkTopLevel(current['update'], loopShadowed);
+      breakTargets.pop();
+      if (!unconditionallyAbruptStatement(current['body']) && isRecord(current['update'])) {
+        walkTopLevel(current['update'], loopShadowed);
+        restoreMutableValues([
+          ...interruptedStates.flatMap((state) => [...state]),
+          ...mutableValues,
+        ]);
+      }
       if (current['test'] !== null && !isStaticallyTrueExpression(current['test']))
         restoreMutableValues([...base, ...mutableValues]);
       return;
@@ -422,21 +464,36 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
               isRecord(declaration) && bindingPatternIncludesName(declaration['id'], bindingName),
           ));
       if (isRecord(left)) walkTopLevel(left, loopShadowed);
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], loopShadowed);
-      restoreMutableValues([...base, ...mutableValues]);
+      breakTargets.pop();
+      restoreMutableValues([
+        ...base,
+        ...interruptedStates.flatMap((state) => [...state]),
+        ...mutableValues,
+      ]);
       return;
     }
     if (type === 'WhileStatement') {
       if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
       const base = snapshotMutableValues();
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      breakTargets.pop();
+      restoreMutableValues([...interruptedStates.flatMap((state) => [...state]), ...mutableValues]);
       if (!isStaticallyTrueExpression(current['test']))
         restoreMutableValues([...base, ...mutableValues]);
       return;
     }
     if (type === 'DoWhileStatement') {
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
       if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      breakTargets.pop();
       if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      restoreMutableValues([...interruptedStates.flatMap((state) => [...state]), ...mutableValues]);
       return;
     }
     if (
