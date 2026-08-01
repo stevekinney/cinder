@@ -78,7 +78,15 @@ function staticNullish(
     return staticNullish(candidates[0], bindings);
   }
   if (expression['type'] === 'UnaryExpression' && expression['operator'] === 'void') return true;
-  return false;
+  if (
+    expression['type'] === 'ObjectExpression' ||
+    expression['type'] === 'ArrayExpression' ||
+    expression['type'] === 'FunctionExpression' ||
+    expression['type'] === 'ArrowFunctionExpression' ||
+    expression['type'] === 'ClassExpression'
+  )
+    return false;
+  return undefined;
 }
 
 function staticTruthiness(
@@ -481,6 +489,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
       const starts: Array<{ index: number; state: Map<string, unknown[]> }> = [];
       let testState = new Map(base);
       let matched = false;
+      let defaultIndex: number | undefined;
       for (let index = 0; index < cases.length; index++) {
         const caseNode = cases[index];
         if (caseNode === undefined) continue;
@@ -498,12 +507,11 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
             }
           } else if (discriminantValue === undefined || caseValue === undefined)
             starts.push({ index, state: new Map(testState) });
-        } else if (!matched) starts.push({ index, state: new Map(testState) });
+        } else if (defaultIndex === undefined) defaultIndex = index;
       }
-      if (!matched && cases.some((caseNode) => !isRecord(caseNode['test']))) {
-        const index = cases.findIndex((caseNode) => !isRecord(caseNode['test']));
-        starts.push({ index, state: new Map(testState) });
-      } else if (discriminantValue === undefined)
+      if (!matched && defaultIndex !== undefined)
+        starts.push({ index: defaultIndex, state: new Map(testState) });
+      else if (discriminantValue === undefined)
         starts.push({ index: cases.length, state: new Map(testState) });
       const terminalStates: Map<string, unknown[]>[] = [];
       for (const start of starts) {
@@ -668,6 +676,7 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
     ) {
       const loopBinding = node['type'] === 'ForStatement' ? node['init'] : node['left'];
       const loopShadowed = new Set(currentShadowed);
+      const loopLocalNames = new Set<string>();
       if (
         isRecord(loopBinding) &&
         loopBinding['type'] === 'VariableDeclaration' &&
@@ -675,15 +684,35 @@ function staticBindings(instance: unknown): Map<string, unknown[]> {
         Array.isArray(loopBinding['declarations'])
       )
         for (const declaration of loopBinding['declarations'])
-          if (isRecord(declaration)) declaredNamesInPattern(declaration['id'], loopShadowed);
-      const literalTruthiness = (expression: unknown): boolean | undefined => {
-        if (!isRecord(expression)) return undefined;
-        if (expression['type'] === 'Literal') return Boolean(expression['value']);
-        if (expression['type'] === 'Identifier' && expression['name'] === 'undefined') {
-          if (loopShadowed.has('undefined')) return undefined;
-          return staticTruthiness(expression, bindings);
+          if (isRecord(declaration)) {
+            declaredNamesInPattern(declaration['id'], loopShadowed);
+            declaredNamesInPattern(declaration['id'], loopLocalNames);
+          }
+      const loopTruthinessBindings = new Map(bindings);
+      for (const name of loopLocalNames) loopTruthinessBindings.set(name, [unresolvedBinding]);
+      if (
+        isRecord(loopBinding) &&
+        loopBinding['type'] === 'VariableDeclaration' &&
+        Array.isArray(loopBinding['declarations'])
+      )
+        for (const declaration of loopBinding['declarations']) {
+          if (
+            !isRecord(declaration) ||
+            !isRecord(declaration['id']) ||
+            declaration['id']['type'] !== 'Identifier' ||
+            typeof declaration['id']['name'] !== 'string'
+          )
+            continue;
+          const name = declaration['id']['name'];
+          if (declaration['init'] === null || declaration['init'] === undefined) {
+            loopTruthinessBindings.set(name, [knownUndefinedBinding]);
+            continue;
+          }
+          const resolved = resolvedAssignmentValue(declaration['init'], loopTruthinessBindings);
+          loopTruthinessBindings.set(name, resolved.set ? resolved.values : [unresolvedBinding]);
         }
-        return undefined;
+      const literalTruthiness = (expression: unknown): boolean | undefined => {
+        return staticTruthiness(expression, loopTruthinessBindings);
       };
       const guaranteedBody = (): boolean => {
         if (node['type'] === 'ForStatement') {

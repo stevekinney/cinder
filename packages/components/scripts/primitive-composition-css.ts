@@ -522,39 +522,47 @@ type WidthBound = {
 function widthBounds(parameters: string): WidthBound[] {
   const bounds: WidthBound[] = [];
   for (const match of parameters.matchAll(
-    /\(\s*(min|max)-width\s*:\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*\)/gi,
+    /(\bnot\s+)?\(\s*(min|max)-width\s*:\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*\)/gi,
   )) {
-    if (match[1] === undefined || match[2] === undefined || match[3] === undefined) continue;
+    if (match[2] === undefined || match[3] === undefined || match[4] === undefined) continue;
+    const negated = match[1] !== undefined;
+    const kind = match[2].toLowerCase() === 'min' ? 'minimum' : 'maximum';
     bounds.push({
-      kind: match[1].toLowerCase() === 'min' ? 'minimum' : 'maximum',
-      value: Number(match[2]),
-      inclusive: true,
+      kind: negated ? (kind === 'minimum' ? 'maximum' : 'minimum') : kind,
+      value: Number(match[3]),
+      inclusive: !negated,
       // Media-query em and rem units both resolve against the initial root font size.
-      unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
+      unit: match[4].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
   for (const match of parameters.matchAll(
-    /\(\s*width\s*(<|<=|>|>=)\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*\)/gi,
+    /(\bnot\s+)?\(\s*width\s*(<|<=|>|>=)\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*\)/gi,
   )) {
-    if (match[1] === undefined || match[2] === undefined || match[3] === undefined) continue;
-    const operator = match[1];
+    if (match[2] === undefined || match[3] === undefined || match[4] === undefined) continue;
+    const negated = match[1] !== undefined;
+    const operator = negated
+      ? ({ '<': '>=', '<=': '>', '>': '<=', '>=': '<' }[match[2]] ?? match[2])
+      : match[2];
     bounds.push({
       kind: operator.startsWith('>') ? 'minimum' : 'maximum',
-      value: Number(match[2]),
+      value: Number(match[3]),
       inclusive: operator.includes('='),
-      unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
+      unit: match[4].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
   for (const match of parameters.matchAll(
-    /\(\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*(<|<=|>|>=)\s*width\s*\)/gi,
+    /(\bnot\s+)?\(\s*(\d+(?:\.\d+)?)\s*(px|r?em)\s*(<|<=|>|>=)\s*width\s*\)/gi,
   )) {
-    if (match[1] === undefined || match[2] === undefined || match[3] === undefined) continue;
-    const operator = match[3];
+    if (match[2] === undefined || match[3] === undefined || match[4] === undefined) continue;
+    const negated = match[1] !== undefined;
+    const operator = negated
+      ? ({ '<': '>=', '<=': '>', '>': '<=', '>=': '<' }[match[4]] ?? match[4])
+      : match[4];
     bounds.push({
       kind: operator.startsWith('<') ? 'minimum' : 'maximum',
-      value: Number(match[1]),
+      value: Number(match[2]),
       inclusive: operator.includes('='),
-      unit: match[2].toLowerCase() === 'px' ? 'px' : 'root-em',
+      unit: match[3].toLowerCase() === 'px' ? 'px' : 'root-em',
     });
   }
   return bounds;
@@ -570,7 +578,8 @@ function discreteConditions(parameters: string): Map<string, string> {
   return conditions;
 }
 
-function conditionalQueryBranches(parameters: string): string[] {
+export function conditionalQueryBranches(parameters: string): string[] {
+  parameters = parameters.replace(/\/\*[\s\S]*?\*\//g, (comment) => ' '.repeat(comment.length));
   const branches: string[] = [];
   let parenthesisDepth = 0;
   let branchStart = 0;

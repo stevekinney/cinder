@@ -389,7 +389,13 @@ function possibleMutableControlNames(
         isRecord(current['label']) && typeof current['label']['name'] === 'string'
           ? current['label']['name']
           : undefined;
-      if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed, label);
+      if (isRecord(current['body'])) {
+        const states: Set<string>[] = [];
+        breakTargets.push({ label, states });
+        walkTopLevel(current['body'], currentShadowed, label);
+        breakTargets.pop();
+        restoreMutableValues([...mutableValues, ...states.flatMap((state) => [...state])]);
+      }
       return;
     }
     if (type === 'BlockStatement') {
@@ -769,10 +775,15 @@ function possibleMutableControlNames(
       if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
       continueTargets.pop();
       breakTargets.pop();
-      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      const continuedAfterTest: Set<string>[] = [];
+      for (const state of continuedStates) {
+        restoreMutableValues(state);
+        if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+        continuedAfterTest.push(snapshotMutableValues());
+      }
       restoreMutableValues([
         ...interruptedStates.flatMap((state) => [...state]),
-        ...continuedStates.flatMap((state) => [...state]),
+        ...continuedAfterTest.flatMap((state) => [...state]),
         ...mutableValues,
       ]);
       return;

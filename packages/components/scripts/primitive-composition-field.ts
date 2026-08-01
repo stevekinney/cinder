@@ -90,6 +90,13 @@ function unconditionallyAbruptStatement(statement: unknown): boolean {
     statement['type'] === 'ThrowStatement'
   )
     return true;
+  if (statement['type'] === 'IfStatement')
+    return (
+      isRecord(statement['consequent']) &&
+      unconditionallyAbruptStatement(statement['consequent']) &&
+      isRecord(statement['alternate']) &&
+      unconditionallyAbruptStatement(statement['alternate'])
+    );
   if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
   const last = statement['body'].at(-1);
   return unconditionallyAbruptStatement(last);
@@ -184,10 +191,59 @@ function staticStringBindings(source: string): Map<string, string[]> {
     shadowed: ReadonlySet<string>;
   }> = [];
   const preservedAbruptStates: Array<Map<string, string[]>> = [];
+  const breakTargets: Array<{
+    kind: 'boundary' | 'for-update';
+    label: string | undefined;
+    states: Array<Map<string, string[]>>;
+  }> = [];
+  let currentPathCapturedBreak = false;
   let deferFunctions = true;
   if (!isRecord(root)) return bindings;
-  const walk = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
+  const walk = (
+    node: unknown,
+    shadowed: ReadonlySet<string> = new Set(),
+    controlLabel?: string,
+  ): void => {
     if (!isRecord(node)) return;
+    if (node['type'] === 'LabeledStatement') {
+      const label =
+        isRecord(node['label']) && typeof node['label']['name'] === 'string'
+          ? node['label']['name']
+          : undefined;
+      const body = node['body'];
+      if (
+        isRecord(body) &&
+        (body['type'] === 'ForStatement' ||
+          body['type'] === 'ForInStatement' ||
+          body['type'] === 'ForOfStatement' ||
+          body['type'] === 'WhileStatement' ||
+          body['type'] === 'DoWhileStatement' ||
+          body['type'] === 'SwitchStatement')
+      )
+        walk(body, shadowed, label);
+      else {
+        breakTargets.push({ kind: 'boundary', label, states: [] });
+        if (isRecord(body)) walk(body, shadowed);
+        breakTargets.pop();
+      }
+      return;
+    }
+    if (node['type'] === 'BreakStatement') {
+      const label =
+        isRecord(node['label']) && typeof node['label']['name'] === 'string'
+          ? node['label']['name']
+          : undefined;
+      const target = label
+        ? breakTargets.findLast((candidate) => candidate.label === label)
+        : breakTargets.at(-1);
+      if (target?.kind === 'for-update') {
+        target.states.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+        currentPathCapturedBreak = true;
+      }
+      return;
+    }
     if (
       deferFunctions &&
       (node['type'] === 'FunctionDeclaration' ||
@@ -232,23 +288,31 @@ function staticStringBindings(source: string): Map<string, string[]> {
         if (isRecord(branch)) walk(branch, currentShadowed);
         return;
       }
-      const branches = [node['consequent'], node['alternate']].map((branch) => {
-        bindings.clear();
-        for (const [name, values] of base) bindings.set(name, [...values]);
-        if (isRecord(branch)) walk(branch, currentShadowed);
-        if (isRecord(branch) && unconditionallyAbruptStatement(branch)) {
-          const preserved = preservedAbruptStates.at(-1);
-          if (preserved)
-            for (const [name, values] of bindings)
-              preserved.set(name, mergeStringValues(preserved.get(name) ?? [], values));
-        }
-        return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
-      });
+      const branches = [node['consequent'], node['alternate']]
+        .map((branch) => {
+          bindings.clear();
+          for (const [name, values] of base) bindings.set(name, [...values]);
+          const outerCapturedBreak = currentPathCapturedBreak;
+          currentPathCapturedBreak = false;
+          if (isRecord(branch)) walk(branch, currentShadowed);
+          const branchCapturedBreak = currentPathCapturedBreak;
+          currentPathCapturedBreak = outerCapturedBreak;
+          if (branchCapturedBreak) return undefined;
+          if (isRecord(branch) && unconditionallyAbruptStatement(branch)) {
+            const preserved = preservedAbruptStates.at(-1);
+            if (preserved)
+              for (const [name, values] of bindings)
+                preserved.set(name, mergeStringValues(preserved.get(name) ?? [], values));
+          }
+          return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+        })
+        .filter((branch): branch is Map<string, string[]> => branch !== undefined);
       bindings.clear();
       const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
       for (const name of names) {
         bindings.set(name, [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))]);
       }
+      currentPathCapturedBreak = branches.length === 0;
       return;
     }
     if (node['type'] === 'ConditionalExpression') {
@@ -312,12 +376,21 @@ function staticStringBindings(source: string): Map<string, string[]> {
       }
       return;
     }
+    if (node['type'] === 'DoWhileStatement') {
+      breakTargets.push({ kind: 'boundary', label: controlLabel, states: [] });
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      breakTargets.pop();
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      return;
+    }
     if (node['type'] === 'WhileStatement') {
       if (isRecord(node['test'])) walk(node['test'], currentShadowed);
       const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
       const truthiness = staticTruthiness(node['test'], bindings);
       if (truthiness === false) return;
+      breakTargets.push({ kind: 'boundary', label: controlLabel, states: [] });
       if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      breakTargets.pop();
       if (truthiness !== true) {
         const names = new Set([...base.keys(), ...bindings.keys()]);
         for (const name of names)
@@ -374,6 +447,7 @@ function staticStringBindings(source: string): Map<string, string[]> {
                 if (isRecord(declaration)) collectPatternNames(declaration['id'], switchNames);
       const switchShadowed = new Set([...currentShadowed, ...switchNames]);
       const branches: Map<string, string[]>[] = [];
+      breakTargets.push({ kind: 'boundary', label: controlLabel, states: [] });
       let hasDefault = false;
       const discriminant = node['discriminant'];
       const knownValue =
@@ -384,18 +458,22 @@ function staticStringBindings(source: string): Map<string, string[]> {
       let knownStart: number | undefined;
       if (knownDiscriminant) {
         let defaultStart: number | undefined;
+        let unresolvedBeforeMatch = false;
+        let ambiguousMatch = false;
         for (let index = 0; index < cases.length; index += 1) {
           const test = cases[index]?.['test'];
           if (test === null) {
             defaultStart = index;
             continue;
           }
+          if (!isRecord(test) || test['type'] !== 'Literal') unresolvedBeforeMatch = true;
           if (isRecord(test) && test['type'] === 'Literal' && test['value'] === knownValue) {
-            knownStart = index;
+            if (unresolvedBeforeMatch) ambiguousMatch = true;
+            else knownStart = index;
             break;
           }
         }
-        if (knownStart === undefined) knownStart = defaultStart ?? -1;
+        if (!ambiguousMatch && knownStart === undefined) knownStart = defaultStart ?? -1;
       }
       const starts =
         knownStart === undefined
@@ -438,6 +516,7 @@ function staticStringBindings(source: string): Map<string, string[]> {
       const names = new Set(branches.flatMap((branch) => [...branch.keys()]));
       for (const name of names)
         bindings.set(name, mergeStringValues(...branches.map((branch) => branch.get(name) ?? [])));
+      breakTargets.pop();
       return;
     }
     if (
@@ -479,13 +558,28 @@ function staticStringBindings(source: string): Map<string, string[]> {
       const guaranteedIterable =
         node['type'] === 'ForOfStatement' && staticallyGuaranteesNonEmptyArray(node['right']);
       if (testTruthiness === false || emptyIterable) return;
+      const breakTarget = {
+        kind: node['type'] === 'ForStatement' ? ('for-update' as const) : ('boundary' as const),
+        label: controlLabel,
+        states: [] as Array<Map<string, string[]>>,
+      };
+      const outerCapturedBreak = currentPathCapturedBreak;
+      currentPathCapturedBreak = false;
+      breakTargets.push(breakTarget);
       if (isRecord(node['body'])) walk(node['body'], loopShadowed);
+      breakTargets.pop();
+      const bodyCapturedBreak = currentPathCapturedBreak;
+      currentPathCapturedBreak = outerCapturedBreak;
       if (
         node['type'] === 'ForStatement' &&
         isRecord(node['update']) &&
+        !bodyCapturedBreak &&
         !unconditionallyExitsBeforeLoopUpdate(node['body'])
       )
         walk(node['update'], loopShadowed);
+      for (const state of breakTarget.states)
+        for (const [name, values] of state)
+          bindings.set(name, mergeStringValues(bindings.get(name) ?? [], values));
       if (testTruthiness !== true && !emptyIterable && !guaranteedIterable) {
         const names = new Set([...base.keys(), ...bindings.keys()]);
         for (const name of names)
@@ -560,6 +654,7 @@ function staticStringBindings(source: string): Map<string, string[]> {
       preservedAbruptStates.push(new Map());
       for (const statement of node['body']) {
         if (isRecord(statement)) walk(statement, currentShadowed);
+        if (currentPathCapturedBreak) break;
         if (
           isRecord(statement) &&
           statement['type'] === 'IfStatement' &&
@@ -744,13 +839,11 @@ function staticBooleanBindings(source: string): Map<string, boolean> {
                 if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
       currentShadowed = localNames;
     }
-    if (
-      node['type'] === 'AssignmentExpression' &&
-      isRecord(node['left']) &&
-      node['left']['type'] === 'Identifier' &&
-      typeof node['left']['name'] === 'string'
-    )
-      if (!currentShadowed.has(node['left']['name'])) assignedNames.add(node['left']['name']);
+    if (node['type'] === 'AssignmentExpression' && isRecord(node['left'])) {
+      const names = new Set<string>();
+      collectPatternNames(node['left'], names);
+      for (const name of names) if (!currentShadowed.has(name)) assignedNames.add(name);
+    }
     if (
       node['type'] === 'UpdateExpression' &&
       isRecord(node['argument']) &&
@@ -911,9 +1004,20 @@ function qualifyingFieldLabelBranches(
     if (Array.isArray(node['parameters']))
       for (const parameter of node['parameters']) collectPatternNames(parameter, names);
     const body = node['body'] ?? node['fragment'];
-    return isRecord(body)
+    const evidence = isRecord(body)
       ? qualifyingFieldLabelBranches(body, source, bindings, booleanBindings, names)
-      : [emptyFieldEvidence()];
+      : [];
+    if (isRecord(node['fallback']))
+      evidence.push(
+        ...qualifyingFieldLabelBranches(
+          node['fallback'],
+          source,
+          bindings,
+          booleanBindings,
+          templateShadowed,
+        ),
+      );
+    return evidence.length > 0 ? evidence : [emptyFieldEvidence()];
   }
   if (node['type'] === 'AwaitBlock') {
     const evidence: FieldEvidence[] = [];
