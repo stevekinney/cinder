@@ -1198,12 +1198,24 @@ describe('cinder/z-index-scale', () => {
 
   test('bounds associative symbolic identity normalization', async () => {
     const { analyzeStaticLayerValue } = await import(valueAnalysisPath);
-    const terms = Array.from({ length: 4_000 }, (_, index) =>
-      index % 2 === 0 ? '1em / 1rem' : '1ex / 1rem',
-    );
+    const terms = Array.from({ length: 2_000 }, (_, index) => `max(1em, ${index}px) / 1rem`);
     const startedAt = performance.now();
 
     expect(analyzeStaticLayerValue(`calc(${terms.join(' + ')})`)).toEqual({
+      classification: 'too-complex',
+      resultType: 'too-complex',
+    });
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test('bounds variadic symbolic identity normalization', async () => {
+    const { analyzeStaticLayerValue } = await import(valueAnalysisPath);
+    const arguments_ = Array.from({ length: 140_000 }, (_, index) =>
+      index % 2 === 0 ? '1em' : '1rem',
+    );
+    const startedAt = performance.now();
+
+    expect(analyzeStaticLayerValue(`max(${arguments_.join(',')})`)).toEqual({
       classification: 'too-complex',
       resultType: 'too-complex',
     });
@@ -1608,6 +1620,22 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(regroupedSum)).toHaveLength(1);
 
+    const regroupedLikeUnits = await lint(`
+      .fixture {
+        /* cinder-z-index-local: like-unit coefficients survive associative regrouping. */
+        z-index: var(--outer, calc(9999 * ((1em + 1em) + 1rem) / (1em + (1em + 1rem))));
+      }
+    `);
+    expect(warnings(regroupedLikeUnits)).toHaveLength(1);
+
+    const combinedLikeUnits = await lint(`
+      .fixture {
+        /* cinder-z-index-local: an equivalent written coefficient cancels the regrouped sum. */
+        z-index: var(--outer, calc(9999 * (2em + 1rem) / (1em + (1em + 1rem))));
+      }
+    `);
+    expect(warnings(combinedLikeUnits)).toHaveLength(1);
+
     const differentSum = await lint(`
       .fixture {
         /* cinder-z-index-local: different mixed-unit sums have an unknown numeric ratio. */
@@ -1615,6 +1643,48 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(differentSum)).toEqual([]);
+  });
+
+  test('reports relative-unit sign ranges that can reach a banned layer', async () => {
+    for (const [fallback, warningCount] of [
+      ['calc(9998 + sign(1em))', 1],
+      ['calc(9998 + sign(calc(1em)))', 1],
+      ['calc(9998 + sign((1em)))', 1],
+      ['calc(9998 + sign(-1em))', 0],
+      ['calc(9998 + sign(0em))', 0],
+    ] as const) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: only conversion-independent sign ranges are classified. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(warningCount);
+    }
+
+    const safeBound = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a zero relative unit can preserve the negative fallback. */
+        z-index: var(--outer, max(var(--inner, -1), calc(sign(1em) - 1)));
+      }
+    `);
+    expect(warnings(safeBound)).toHaveLength(1);
+
+    const correlatedSigns = await lint(`
+      .fixture {
+        /* cinder-z-index-local: identical sign calls share one runtime endpoint. */
+        z-index: var(--outer, calc(sign(1em) - sign(1em)));
+      }
+    `);
+    expect(warnings(correlatedSigns)).toEqual([]);
+
+    const { analyzeStaticLayerValue, evaluateStaticLayerNumber } = await import(valueAnalysisPath);
+    expect(analyzeStaticLayerValue('calc(9998 + sign(1%))')).toEqual({
+      classification: 'unresolved',
+      resultType: 'number',
+    });
+    expect(evaluateStaticLayerNumber('sign(1em)')).toBeUndefined();
   });
 
   test.each(['max', 'min', 'hypot'])(
@@ -2082,6 +2152,7 @@ describe('cinder/z-index-scale', () => {
     'env(revert, 9999)',
     'env(revert-layer, -1)',
     'env(default, 9999)',
+    'env(foo + 1, -1)',
     'attr(data-layer type(<integer), -1)',
   ])('does not propagate a fallback from an invalid substitution header: %s', async (fallback) => {
     expect(
@@ -2099,6 +2170,7 @@ describe('cinder/z-index-scale', () => {
   test.each([
     'var(--inner/**/, -1)',
     'env(viewport-segment-width 0 0, 9999)',
+    'env(foo +1, -1)',
     'attr(data-layer px, -1)',
     'attr(data-layer number, 9999)',
     'attr(data-layer unknown-unit, -1)',

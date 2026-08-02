@@ -65,6 +65,7 @@ const relativeLengthUnitNames = new Set([
   'cqmax',
 ]);
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
+const signFunctionPattern = /sign\(/iy;
 const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
 const urlFunctionPattern = /url\(/iy;
 const commutativeSymbolicOperations = new Set(['+', 'hypot', 'max', 'min']);
@@ -277,7 +278,27 @@ function evaluateConstantArithmetic(expression) {
   const symbolicIdentities = new Map();
 
   function additiveIdentityTerms(value) {
-    return value.associativeAddends ?? [valueIdentity(value)];
+    return (
+      value.associativeAddends ??
+      new Map([
+        [
+          `${mapIdentity(normalizedUnits(value.units))}|${mapIdentity(value.symbolicFactors)}`,
+          value.value,
+        ],
+      ])
+    );
+  }
+
+  function combinedAdditiveIdentityTerms(arguments_) {
+    const terms = new Map();
+    for (const argument of arguments_) {
+      for (const [identity, coefficient] of additiveIdentityTerms(argument))
+        terms.set(identity, (terms.get(identity) ?? 0) + coefficient);
+    }
+    for (const [identity, coefficient] of terms) {
+      if (coefficient === 0) terms.delete(identity);
+    }
+    return terms;
   }
 
   function symbolicIdentity(operation, arguments_, argumentIdentities) {
@@ -295,8 +316,10 @@ function evaluateConstantArithmetic(expression) {
     let associativeAddends;
     let argumentIdentities;
     if (operation === '+') {
-      associativeAddends = arguments_.flatMap(additiveIdentityTerms);
-      argumentIdentities = associativeAddends;
+      associativeAddends = combinedAdditiveIdentityTerms(arguments_);
+      argumentIdentities = [...associativeAddends].map(
+        ([identity, coefficient]) => `${numericIdentity(coefficient)}|${identity}`,
+      );
     } else if (commutativeSymbolicOperations.has(operation)) {
       argumentIdentities = arguments_.map(valueIdentity);
     }
@@ -455,6 +478,12 @@ function evaluateConstantArithmetic(expression) {
       const hasUnknownConversion = boundedArguments.some(
         (argument) => argument.symbolicFactors.size > 0,
       );
+      if (
+        functionName === 'sign' &&
+        boundedArguments.length === 1 &&
+        boundedArguments[0].units.has('unit:%')
+      )
+        return opaqueValue(functionName, boundedArguments, new Map());
       if (hasUnknownConversion) {
         if (functionName === 'sign' || functionName === 'progress')
           return opaqueValue(functionName, boundedArguments, new Map());
@@ -641,9 +670,15 @@ function evaluateConstantArithmetic(expression) {
       index += 1;
       const right = parseTerm();
       if (!sameUnits(value, right)) throw new Error('incompatible units');
-      value = sameSymbolicFactors(value, right)
-        ? withValue(value, operator === '+' ? value.value + right.value : value.value - right.value)
-        : opaqueValue(operator, [value, right], value.units);
+      if (sameSymbolicFactors(value, right)) {
+        const combinedValue = withValue(
+          value,
+          operator === '+' ? value.value + right.value : value.value - right.value,
+        );
+        if (operator === '+')
+          combinedValue.associativeAddends = combinedAdditiveIdentityTerms([value, right]);
+        value = combinedValue;
+      } else value = opaqueValue(operator, [value, right], value.units);
     }
   }
 
@@ -720,6 +755,119 @@ function resolveStaticNumber(value) {
   return evaluated === null || evaluated === staticAnalysisTooComplex
     ? evaluated
     : Math.floor(evaluated + 0.5);
+}
+
+function closingParenthesisIndex(value, argumentStart) {
+  let depth = 1;
+  for (let index = argumentStart; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    if (value[index] === '(') {
+      depth += 1;
+      if (depth > 512) return undefined;
+    } else if (value[index] === ')') {
+      depth -= 1;
+      if (depth === 0) return index;
+    }
+  }
+  return undefined;
+}
+
+function classifyRelativeLengthSignEndpoints(value) {
+  const ranges = [];
+  const groupIndexes = new Map();
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    signFunctionPattern.lastIndex = index;
+    const signMatch = signFunctionPattern.exec(value);
+    const previousCharacter = value[index - 1];
+    if (
+      !signMatch ||
+      isCssIdentifierCharacter(previousCharacter) ||
+      previousCharacter === '#' ||
+      previousCharacter === '@'
+    )
+      continue;
+    const argumentStart = index + signMatch[0].length;
+    const closeIndex = closingParenthesisIndex(value, argumentStart);
+    if (closeIndex === undefined) return undefined;
+    const argument = value.slice(argumentStart, closeIndex);
+    const resolvedArgument = resolveStaticArithmeticResult(argument);
+    const normalizedArgumentUnits =
+      resolvedArgument && resolvedArgument !== staticAnalysisTooComplex
+        ? normalizedUnits(resolvedArgument.units)
+        : new Map();
+    const [[symbolicFactor, symbolicExponent] = []] =
+      resolvedArgument && resolvedArgument !== staticAnalysisTooComplex
+        ? [...resolvedArgument.symbolicFactors]
+        : [];
+    if (
+      !resolvedArgument ||
+      resolvedArgument === staticAnalysisTooComplex ||
+      resolvedArgument.symbolicFactors.size !== 1 ||
+      !symbolicFactor?.startsWith('relative-length:') ||
+      symbolicExponent !== 1 ||
+      normalizedArgumentUnits.size !== 1 ||
+      normalizedArgumentUnits.get('dimension:length') !== 1 ||
+      resolvedArgument.value === 0
+    )
+      continue;
+    const identity = valueIdentity(resolvedArgument);
+    let groupIndex = groupIndexes.get(identity);
+    if (groupIndex === undefined) {
+      groupIndex = groupIndexes.size;
+      groupIndexes.set(identity, groupIndex);
+    }
+    ranges.push({
+      end: closeIndex + 1,
+      endpoints: [0, Math.sign(resolvedArgument.value)],
+      groupIndex,
+      start: index,
+    });
+    index = closeIndex;
+  }
+  if (ranges.length === 0) return undefined;
+  const combinationCount = 2 ** groupIndexes.size;
+  if (
+    !Number.isSafeInteger(combinationCount) ||
+    combinationCount * value.length > maximumStaticSymbolicIdentityWork
+  )
+    return 'too-complex';
+  let reachesNegative = false;
+  let reachesMagic = false;
+  for (let combination = 0; combination < combinationCount; combination += 1) {
+    const chunks = [];
+    let cursor = 0;
+    for (let rangeIndex = 0; rangeIndex < ranges.length; rangeIndex += 1) {
+      const range = ranges[rangeIndex];
+      chunks.push(value.slice(cursor, range.start));
+      chunks.push(String(range.endpoints[(combination >> range.groupIndex) & 1]));
+      cursor = range.end;
+    }
+    chunks.push(value.slice(cursor));
+    const endpoint = resolveStaticNumber(chunks.join(''));
+    if (typeof endpoint !== 'number' || Number.isNaN(endpoint)) continue;
+    reachesNegative ||= endpoint < 0;
+    reachesMagic ||= endpoint === 9999;
+  }
+  if (reachesNegative) return 'negative';
+  if (reachesMagic) return 'magic';
+  return undefined;
 }
 
 export function decodeCssEscapes(value) {
@@ -955,11 +1103,18 @@ export function analyzeStaticLayerValue(value) {
   if (arithmeticResult === staticAnalysisTooComplex)
     return { classification: 'too-complex', resultType: 'too-complex' };
   if (arithmeticResult === null) return { classification: 'unresolved', resultType: 'unresolved' };
-  if (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0)
+  if (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0) {
+    const relativeLengthSignClassification = classifyRelativeLengthSignEndpoints(value);
+    if (relativeLengthSignClassification !== undefined)
+      return {
+        classification: relativeLengthSignClassification,
+        resultType: relativeLengthSignClassification === 'too-complex' ? 'too-complex' : 'number',
+      };
     return {
       classification: 'unresolved',
       resultType: hasNumericResultType(arithmeticResult.units) ? 'number' : 'non-number',
     };
+  }
   const resolved = Math.floor(arithmeticResult.value + 0.5);
   if (resolved < 0) return { classification: 'negative', resultType: 'number' };
   if (resolved === 9999) return { classification: 'magic', resultType: 'number' };

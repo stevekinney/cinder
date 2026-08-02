@@ -1068,7 +1068,7 @@ function validSubstitutionHeader(frame, value) {
   if (frame.functionName === 'env')
     return (
       !invalidCustomIdentKeywords.has(header.slice(0, identifierEnd).toLowerCase()) &&
-      /^(?:\s+\d+)*$/.test(header.slice(identifierEnd))
+      /^(?:\s+\+?\d+)*$/.test(header.slice(identifierEnd))
     );
   if (frame.functionName !== 'attr') return false;
   const attrType = header.slice(identifierEnd).trim();
