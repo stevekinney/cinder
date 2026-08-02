@@ -65,6 +65,8 @@ const relativeLengthUnitNames = new Set([
   'cqmax',
 ]);
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
+const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
+const urlFunctionPattern = /url\(/iy;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
@@ -88,6 +90,57 @@ function quotedStringEnd(value, start) {
     else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
   }
   return value.length - 1;
+}
+
+export function unquotedUrlTokenEnd(value, start) {
+  urlFunctionPattern.lastIndex = start;
+  const match = urlFunctionPattern.exec(value);
+  const previousCharacter = value[start - 1];
+  if (
+    !match ||
+    isCssIdentifierCharacter(previousCharacter) ||
+    previousCharacter === '#' ||
+    previousCharacter === '@'
+  )
+    return undefined;
+
+  let index = start + match[0].length;
+  while (isCssWhitespace(value[index])) index += 1;
+  if (value[index] === '"' || value[index] === "'") return undefined;
+  for (; index < value.length; index += 1) {
+    if (value[index] === '\\' && value[index + 1] !== undefined) {
+      if (value[index + 1] === '\r' && value[index + 2] === '\n') index += 2;
+      else index += 1;
+      continue;
+    }
+    if (value[index] === ')') return index;
+  }
+  return value.length - 1;
+}
+
+function hasActualSubstitutionFunction(value) {
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    substitutionFunctionPattern.lastIndex = index;
+    const match = substitutionFunctionPattern.exec(value);
+    const previousCharacter = value[index - 1];
+    if (
+      match &&
+      !isCssIdentifierCharacter(previousCharacter) &&
+      previousCharacter !== '#' &&
+      previousCharacter !== '@'
+    )
+      return true;
+  }
+  return false;
 }
 
 // CSS numeric tokens spell only positive zero; generated arithmetic can still
@@ -198,6 +251,7 @@ function evaluateConstantArithmetic(expression) {
     }
     if (!sawDigit) throw new Error('expected a number');
     let value = Number(expression.slice(start, index));
+    if (value === 0) value = 0;
     const unitStart = index;
     while (/[a-z%]/i.test(peek() ?? '')) index += 1;
     const unit = expression.slice(unitStart, index).toLowerCase();
@@ -221,7 +275,10 @@ function evaluateConstantArithmetic(expression) {
       return value;
     }
     const functionStart = index;
-    if (/[a-z-]/i.test(peek() ?? '')) {
+    const startsIdentifier =
+      /[a-z]/i.test(peek() ?? '') ||
+      (peek() === '-' && /[a-z-]/i.test(expression[index + 1] ?? ''));
+    if (startsIdentifier) {
       index += 1;
       while (/[a-z0-9-]/i.test(peek() ?? '')) index += 1;
     }
@@ -231,6 +288,7 @@ function evaluateConstantArithmetic(expression) {
         if (functionName === 'e') return scalar(Math.E);
         if (functionName === 'pi') return scalar(Math.PI);
         if (functionName === 'infinity') return scalar(Infinity);
+        if (functionName === '-infinity') return scalar(-Infinity);
         if (functionName === 'nan') return scalar(Number.NaN);
         throw new Error('expected function arguments');
       }
@@ -392,16 +450,7 @@ function evaluateConstantArithmetic(expression) {
   }
 
   function parseAtom() {
-    skipSpace();
-    let isNegative = false;
-    while (peek() === '-' || peek() === '+') {
-      if (peek() === '-') isNegative = !isNegative;
-      index += 1;
-      skipSpace();
-    }
-    const value = parsePrimary();
-    if (!isNegative) return value;
-    return withValue(value, value.isLiteralZero ? 0 : -value.value);
+    return parsePrimary();
   }
 
   function parseTerm() {
@@ -725,8 +774,7 @@ export function classifyStaticLayer(value) {
 export function isStaticallyNegative(value) {
   const classification = classifyStaticLayer(value);
   return (
-    (classification === 'too-complex' &&
-      !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
+    (classification === 'too-complex' && !hasActualSubstitutionFunction(value)) ||
     classification === 'negative'
   );
 }
@@ -734,8 +782,7 @@ export function isStaticallyNegative(value) {
 export function isStaticallyMagicNumber(value) {
   const classification = classifyStaticLayer(value);
   return (
-    (classification === 'too-complex' &&
-      !/(?:^|[^\w\u0080-\uFFFF-])(?:var|env|attr)\(/i.test(value)) ||
+    (classification === 'too-complex' && !hasActualSubstitutionFunction(value)) ||
     classification === 'magic'
   );
 }

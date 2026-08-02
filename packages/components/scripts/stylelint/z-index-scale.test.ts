@@ -635,9 +635,12 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(calculated)).toHaveLength(1);
   });
 
-  test.each(['-pi', '-infinity'])(
+  test.each([
+    ['-pi', 0],
+    ['-infinity', 1],
+  ] as const)(
     'treats a bare calc-only constant as opaque outside a math context: %s',
-    async (constant) => {
+    async (constant, calculatedWarningCount) => {
       const bare = await lint(`
         .fixture {
           /* cinder-z-index-local: calc constants are identifiers outside CSS math functions. */
@@ -652,7 +655,7 @@ describe('cinder/z-index-scale', () => {
           z-index: var(--outer, calc(${constant}));
         }
       `);
-      expect(warnings(calculated)).toHaveLength(1);
+      expect(warnings(calculated)).toHaveLength(calculatedWarningCount);
     },
   );
 
@@ -943,7 +946,7 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
-  test('reuses static classification across sole-child fallback chains', async () => {
+  test('reuses unresolved classification across sole-child fallback chains', async () => {
     let nestedFallback = `calc(${'-'.repeat(50_000)}9999)`;
     for (let depth = 0; depth < 1_000; depth += 1)
       nestedFallback = `var(--item-layer-${depth}, ${nestedFallback})`;
@@ -951,12 +954,12 @@ describe('cinder/z-index-scale', () => {
     const startedAt = performance.now();
     const result = await lint(`
       .fixture {
-        /* cinder-z-index-local: repeated wrappers must reuse the same classification. */
+        /* cinder-z-index-local: repeated wrappers must reuse unresolved classification. */
         z-index: ${nestedFallback};
       }
     `);
 
-    expect(warnings(result)).toHaveLength(1);
+    expect(warnings(result)).toEqual([]);
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
@@ -977,24 +980,47 @@ describe('cinder/z-index-scale', () => {
     }
   });
 
-  test('evaluates long unary-sign chains without losing a banned result', async () => {
+  test('leaves long invalid unary-sign chains unresolved without excessive work', async () => {
     const unarySigns = '-'.repeat(50_000);
+    const startedAt = performance.now();
     const result = await lint(`
       .fixture {
-        /* cinder-z-index-local: generated unary signs must not bypass static analysis. */
+        /* cinder-z-index-local: invalid generated syntax can remain unused. */
         z-index: var(--item-layer, calc(${unarySigns}9999));
       }
     `);
 
-    expect(warnings(result)).toHaveLength(1);
+    expect(warnings(result)).toEqual([]);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
-  test.each(['++++9999', '+- -9999', '+-+1'])(
-    'evaluates mixed unary-sign chains without losing a banned result: %s',
+  test.each([
+    '--9999',
+    '++++9999',
+    '+- -9999',
+    '+-+1',
+    '-+9999',
+    '- 9999',
+    '+ 9999',
+    '-(9999)',
+    '+calc(9999)',
+  ])('does not evaluate an invalid unary-sign expression: %s', async (expression) => {
+    const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: the invalid fallback can remain unused. */
+          z-index: var(--item-layer, calc(${expression}));
+        }
+      `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
+  test.each(['+9999', '-1', '-infinity'])(
+    'continues evaluating a valid signed numeric token: %s',
     async (expression) => {
       const result = await lint(`
         .fixture {
-          /* cinder-z-index-local: mixed unary signs must not bypass static analysis. */
+          /* cinder-z-index-local: valid signed values remain subject to the policy. */
           z-index: var(--item-layer, calc(${expression}));
         }
       `);
@@ -1056,6 +1082,25 @@ describe('cinder/z-index-scale', () => {
     expect(warning).toBeDefined();
     expect(warning?.text).toContain('too complex to verify');
     expect(warning?.text).not.toContain('must not contain a banned z-index');
+  });
+
+  test.each([
+    '#var(--runtime)',
+    '@var(--runtime)',
+    '#env(runtime)',
+    '@env(runtime)',
+    '#attr(data-runtime)',
+    '@attr(data-runtime)',
+  ])('does not treat a CSS name token as a runtime substitution: %s', async (lookalike) => {
+    const tooDeepToClassify = `${'calc(1 + '.repeat(520)}${lookalike}${')'.repeat(520)}`;
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: token lookalikes cannot bypass fail-closed analysis. */
+        z-index: ${tooDeepToClassify};
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test('bounds cumulative output for repeated mixed fallback branches', async () => {
@@ -1538,6 +1583,12 @@ describe('cinder/z-index-scale', () => {
     'u\\72l(var(--inner, -1))',
     'url(foo var(--inner, -1))',
     'url(data:image/svg+xml,var(--inner,-1))',
+    'url(var(--cinder-z-popover, 1))',
+    'URL(var(--cinder-z-popover, 1))',
+    'u\\72l(var(--cinder-z-popover, 1))',
+    'url(data:image/svg+xml,var(--cinder-z-popover,1))',
+    'url("var(--cinder-z-popover, 1)")',
+    'url(foo\\)var(--cinder-z-popover, 1))',
   ])('ignores substitution-like text inside an unquoted URL token: %s', async (fallback) => {
     expect(
       warnings(
@@ -1571,6 +1622,23 @@ describe('cinder/z-index-scale', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.text).toContain('Offending expression: `-1`');
     expect(result[0]?.column).toBe(source.lastIndexOf('-1') + 1);
+  });
+
+  test('resumes layer-token scanning after an unquoted URL token', async () => {
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: the later layer-token fallback is still forbidden. */
+          z-index: var(
+            --outer,
+            url(var(--cinder-z-popover, 1)) var(--cinder-z-undeclared)
+          );
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('`z-index` must be `auto`, `0`, `1`');
   });
 
   test.each(['calc(9999)', 'calc(10000 - 1)', 'calc(9998 + 1)'])(

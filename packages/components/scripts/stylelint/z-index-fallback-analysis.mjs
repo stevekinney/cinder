@@ -2,15 +2,14 @@ import {
   classifyStaticLayer,
   cssCommentMaskCharacter,
   isCssIdentifierCharacter,
-  isCssWhitespace,
   isCssWhitespaceOrComment,
   isStaticallyNegativeZero,
   isStaticallyZero,
   normalizeCssEscapesForInspection,
+  unquotedUrlTokenEnd,
 } from './z-index-value-analysis.mjs';
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
-const urlFunctionPattern = /url\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
 const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
@@ -60,27 +59,6 @@ function quotedStringEnd(value, start) {
       else if (value[index + 1] !== undefined) index += 1;
     } else if (value[index] === quote) return index;
     else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
-  }
-  return value.length - 1;
-}
-
-function unquotedUrlTokenEnd(value, start) {
-  urlFunctionPattern.lastIndex = start;
-  const match = urlFunctionPattern.exec(value);
-  const previousCharacter = value[start - 1];
-  if (
-    !match ||
-    isCssIdentifierCharacter(previousCharacter) ||
-    previousCharacter === '#' ||
-    previousCharacter === '@'
-  )
-    return undefined;
-
-  let index = start + match[0].length;
-  while (isCssWhitespace(value[index])) index += 1;
-  if (value[index] === '"' || value[index] === "'") return undefined;
-  for (; index < value.length; index += 1) {
-    if (value[index] === ')') return index;
   }
   return value.length - 1;
 }

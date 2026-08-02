@@ -26,6 +26,7 @@ import {
   isStaticallyMagicNumber,
   isStaticallyNegative,
   protectCssSyntaxEscapes,
+  unquotedUrlTokenEnd,
 } from './z-index-value-analysis.mjs';
 
 const ruleName = 'cinder/z-index-scale';
@@ -116,6 +117,11 @@ function findLayerTokenReferences(value) {
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] === '"' || value[index] === "'") {
       index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
       continue;
     }
     layerTokenFunctionPattern.lastIndex = index;
