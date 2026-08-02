@@ -225,10 +225,10 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999khz / 1000hz))',
     'var(--item-layer, calc(9999dppx / 96dpi))',
     'var(--item-layer, calc(9999x / 1dppx))',
+    'var(--item-layer, calc(9999fr / 1fr))',
     'attr(data-layer type(<integer>), 9999)',
     'var(--item-layer, mod(9999, 10000))',
     'var(--item-layer, rem(9999, 10000))',
-    'var(--item-layer, calc(1 / rem(-0, 1)))',
     'var(--item-layer, calc(1 / mod(0, -1)))',
     'var(--item-layer, mod(9999, infinity))',
     'var(--item-layer, rem(9999, infinity))',
@@ -236,12 +236,15 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, mod(-9999, -infinity))',
     'var(--item-layer, round(nearest, 9999.4, 1))',
     'var(--item-layer, round(9999.4))',
-    'var(--item-layer, calc(1 / round(nearest, -0, 1)))',
+    'var(--item-layer, round(nearest, 9998.5, -1))',
+    'var(--item-layer, round(up, 9998.5, -1))',
     'var(--item-layer, round(down, -9999, infinity))',
     'var(--item-layer, pow(9999, 1))',
     'var(--item-layer, sqrt(99980001))',
     'var(--item-layer, hypot(9999, 0))',
     'var(--item-layer, calc(9999 * sin(pi / 2)))',
+    'var(--item-layer, calc(1 / sin(-1 * 0)))',
+    'var(--item-layer, calc(1 / tan(-1 * 0)))',
     'var(--item-layer, calc(9999 + cos(90deg) * 1e16))',
     'var(--item-layer, tan(270deg))',
     'var(--item-layer, exp(log(9999)))',
@@ -383,6 +386,32 @@ describe('cinder/z-index-scale', () => {
       expect(warnings(result)).toEqual([]);
     },
   );
+
+  test('does not suppress a magic fallback with crossed clamp bounds', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the minimum wins when clamp bounds cross. */
+        z-index: clamp(9999, calc(var(--inner, 9999) + var(--runtime)), 1);
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test.each([
+    'clamp(none, calc(var(--inner, 9999) + var(--runtime)), 1)',
+    'clamp(10000, calc(var(--inner, 9999) + var(--runtime)), 1)',
+    'clamp(10000, calc(var(--inner, 9999) + var(--runtime)), 9999)',
+  ])('accepts a magic fallback when clamp still proves a safe final layer: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the final clamp result cannot expose the magic layer. */
+        z-index: ${value};
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
 
   test.each([
     'clamp(0, var(--inner, -1))',
@@ -656,19 +685,19 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
-  test('does not use a negative-zero max floor in a signed-zero-sensitive context', async () => {
+  test('distinguishes generated negative-zero max floors from literal zero', async () => {
     const unsafe = await lint(`
       .fixture {
-        /* cinder-z-index-local: a negative-zero floor can preserve the fallback sign. */
-        z-index: calc(1 / var(--outer, max(var(--inner, -1) * 0, -0)) + var(--dynamic));
+        /* cinder-z-index-local: a generated negative-zero floor preserves the fallback sign. */
+        z-index: calc(1 / var(--outer, max(var(--inner, -1) * 0, -1 * 0)) + var(--dynamic));
       }
     `);
     expect(warnings(unsafe)).toHaveLength(1);
 
     const safe = await lint(`
       .fixture {
-        /* cinder-z-index-local: a positive-zero floor removes the fallback sign. */
-        z-index: calc(1 / var(--outer, max(var(--inner, -1) * 0, 0)) + var(--dynamic));
+        /* cinder-z-index-local: a written negative sign still produces literal positive zero. */
+        z-index: calc(1 / var(--outer, max(var(--inner, -1) * 0, -0)) + var(--dynamic));
       }
     `);
     expect(warnings(safe)).toEqual([]);
@@ -1110,8 +1139,8 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(roundedNegative)).toHaveLength(1);
   });
 
-  test('cancels recognized relative units but not unknown dimensions', async () => {
-    for (const unit of ['rem', 'dvw', 'cqi']) {
+  test('cancels recognized relative and flex units but not unknown dimensions', async () => {
+    for (const unit of ['rem', 'dvw', 'cqi', 'fr']) {
       const result = await lint(`
         .fixture {
           /* cinder-z-index-local: matching CSS dimensions cancel to the magic number. */
@@ -1352,6 +1381,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, mod(-9999, infinity))',
     'var(--item-layer, round(nearest, 1.4, 1))',
     'var(--item-layer, round(1.4))',
+    'var(--item-layer, round(down, 9998.5, -1))',
+    'var(--item-layer, round(to-zero, 9998.5, -1))',
     'var(--item-layer, round(nearest, -9999, infinity))',
     'var(--item-layer, round(up, -9999, infinity))',
     'var(--item-layer, round(down, 9999, infinity))',
@@ -1365,6 +1396,10 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(1 * sin(pi / 2)))',
     'var(--item-layer, calc(1 / sin(-0)))',
     'var(--item-layer, calc(1 / tan(-0)))',
+    'var(--item-layer, calc(1 / sin(-0 * 1)))',
+    'var(--item-layer, calc(1 / tan(-0 / 1)))',
+    'var(--item-layer, calc(1 / rem(-0, 1)))',
+    'var(--item-layer, calc(1 / round(nearest, -0, 1)))',
     'var(--item-layer, exp(log(1)))',
     'var(--item-layer, calc(1 * progress(1, 0, 1)))',
     'var(--item-layer, calc(9999 * progress(-1, 0, 1)))',
@@ -1378,6 +1413,8 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, \\39 998)',
     'var(--item-layer, calc(asin(1) / 90deg))',
     'var(--item-layer, calc(atan2(0, 1) / 90deg))',
+    'var(--item-layer, calc(9999.))',
+    'var(--item-layer, calc(9999.e1))',
   ])('accepts a reasoned unresolved property with a safe fallback: %s', async (value) => {
     expect(
       warnings(

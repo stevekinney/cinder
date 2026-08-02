@@ -18,6 +18,7 @@ const canonicalUnitConversions = new Map([
   ['x', { dimension: 'resolution', factor: 1 }],
   ['dpi', { dimension: 'resolution', factor: 1 / 96 }],
   ['dpcm', { dimension: 'resolution', factor: 2.54 / 96 }],
+  ['fr', { dimension: 'flex', factor: 1 }],
 ]);
 const relativeLengthUnitNames = new Set([
   'em',
@@ -83,12 +84,14 @@ function quotedStringEnd(value, start) {
   return value.length - 1;
 }
 
-function scalar(value) {
-  return { value, units: new Map() };
+// CSS numeric tokens spell only positive zero; generated arithmetic can still
+// produce negative zero that nested functions must preserve.
+function scalar(value, isLiteralZero = false) {
+  return { value, units: new Map(), isLiteralZero };
 }
 
 function withValue(source, value) {
-  return { value, units: new Map(source.units) };
+  return { value, units: new Map(source.units), isLiteralZero: false };
 }
 
 function sameUnits(left, right) {
@@ -125,6 +128,9 @@ function exactCardinalTrigonometricValue(functionName, argument) {
   else throw new Error('expected a number or angle');
   if (!Number.isInteger(quarterTurns)) return undefined;
 
+  if ((functionName === 'sin' || functionName === 'tan') && Object.is(argument.value, -0))
+    return -0;
+
   const normalizedQuarterTurns = ((quarterTurns % 4) + 4) % 4;
   if (functionName === 'sin') return [0, 1, 0, -1][normalizedQuarterTurns];
   if (functionName === 'cos') return [1, 0, -1, 0][normalizedQuarterTurns];
@@ -155,9 +161,16 @@ function evaluateConstantArithmetic(expression) {
     const start = index;
     if (peek() === '-' || peek() === '+') index += 1;
     let sawDigit = false;
-    while (/[\d.]/.test(peek() ?? '')) {
+    while (/\d/.test(peek() ?? '')) {
       sawDigit = true;
       index += 1;
+    }
+    if (peek() === '.' && /\d/.test(expression[index + 1] ?? '')) {
+      index += 1;
+      while (/\d/.test(peek() ?? '')) {
+        sawDigit = true;
+        index += 1;
+      }
     }
     if (/e/i.test(peek() ?? '') && /[+\-\d]/.test(expression[index + 1] ?? '')) {
       index += 1;
@@ -171,13 +184,13 @@ function evaluateConstantArithmetic(expression) {
     const unitStart = index;
     while (/[a-z%]/i.test(peek() ?? '')) index += 1;
     const unit = expression.slice(unitStart, index).toLowerCase();
-    if (!unit) return scalar(value);
+    if (!unit) return scalar(value, value === 0);
     const conversion = canonicalUnitConversions.get(unit);
     if (conversion === undefined && unit !== '%' && !relativeLengthUnitNames.has(unit))
       throw new Error('unknown unit');
     const unitKey = conversion === undefined ? `unit:${unit}` : `dimension:${conversion.dimension}`;
     if (conversion !== undefined) value *= conversion.factor;
-    return { value, units: new Map([[unitKey, 1]]) };
+    return { value, units: new Map([[unitKey, 1]]), isLiteralZero: value === 0 };
   }
 
   function parsePrimary() {
@@ -293,7 +306,8 @@ function evaluateConstantArithmetic(expression) {
           return withValue(value, isNegative ? -0 : 0);
         }
         if (!Number.isFinite(value.value)) return withValue(value, value.value);
-        const ratio = value.value / interval.value;
+        const intervalMagnitude = Math.abs(interval.value);
+        const ratio = value.value / intervalMagnitude;
         // CSS returns an exact multiple unchanged, including its signed zero.
         if (Number.isInteger(ratio)) return withValue(value, value.value);
         const rounded =
@@ -304,7 +318,7 @@ function evaluateConstantArithmetic(expression) {
               : roundStrategy === 'to-zero'
                 ? Math.trunc(ratio)
                 : Math.floor(ratio + 0.5);
-        return withValue(value, rounded * interval.value);
+        return withValue(value, rounded * intervalMagnitude);
       }
       if (functionName === 'pow' && arguments_.length === 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
@@ -369,7 +383,8 @@ function evaluateConstantArithmetic(expression) {
       skipSpace();
     }
     const value = parsePrimary();
-    return isNegative ? withValue(value, -value.value) : value;
+    if (!isNegative) return value;
+    return withValue(value, value.isLiteralZero ? 0 : -value.value);
   }
 
   function parseTerm() {

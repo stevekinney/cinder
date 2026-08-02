@@ -301,10 +301,25 @@ function hasFallbackIndependentClampBound(frame, value, range, boundIndex, candi
   if (!['safe', 'negative', 'magic'].includes(classifyStaticLayer(centerExpression))) return false;
   const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
   if (!bound) return false;
-  return candidate === 'magic'
-    ? classifyStaticLayer(`min(9999, ${bound.value})`) === 'safe'
-    : classifyStaticLayer(bound.value) === 'safe' &&
-        !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(bound.value));
+  if (candidate === 'magic') {
+    const minimum = clampArguments.staticArguments.find((argument) => argument.index === 0);
+    if (
+      minimum !== undefined &&
+      !/^none$/i.test(minimum.value) &&
+      classifyStaticLayer(`max(9999, ${minimum.value})`) === 'safe'
+    )
+      return true;
+    if (classifyStaticLayer(`min(9999, ${bound.value})`) !== 'safe') return false;
+    return (
+      minimum !== undefined &&
+      (/^none$/i.test(minimum.value) ||
+        classifyStaticLayer(`max(${minimum.value}, ${bound.value})`) === 'safe')
+    );
+  }
+  return (
+    classifyStaticLayer(bound.value) === 'safe' &&
+    !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(bound.value))
+  );
 }
 
 function hasBareOperatorStream(value) {
