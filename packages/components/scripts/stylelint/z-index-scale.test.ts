@@ -1572,6 +1572,14 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(commutedSum)).toHaveLength(1);
 
+    const regroupedSum = await lint(`
+      .fixture {
+        /* cinder-z-index-local: associative regrouping still describes the same exact length sum. */
+        z-index: var(--outer, calc(9999 * (1px + (1em + 1rem)) / ((1px + 1em) + 1rem)));
+      }
+    `);
+    expect(warnings(regroupedSum)).toHaveLength(1);
+
     const differentSum = await lint(`
       .fixture {
         /* cinder-z-index-local: different mixed-unit sums have an unknown numeric ratio. */

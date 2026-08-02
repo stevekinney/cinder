@@ -273,9 +273,15 @@ function evaluateConstantArithmetic(expression) {
   let index = 0;
   const symbolicIdentities = new Map();
 
+  function additiveIdentityTerms(value) {
+    return value.associativeAddends ?? [valueIdentity(value)];
+  }
+
   function symbolicIdentity(operation, arguments_) {
-    const argumentIdentities = arguments_.map(valueIdentity);
-    if (operation === '+') argumentIdentities.sort();
+    const argumentIdentities =
+      operation === '+'
+        ? arguments_.flatMap(additiveIdentityTerms).sort()
+        : arguments_.map(valueIdentity);
     const key = `${operation}(${argumentIdentities.join(';')})`;
     let identity = symbolicIdentities.get(key);
     if (identity === undefined) {
@@ -286,12 +292,14 @@ function evaluateConstantArithmetic(expression) {
   }
 
   function opaqueValue(operation, arguments_, units = arguments_[0]?.units ?? new Map()) {
-    return {
+    const value = {
       value: 1,
       units: normalizedUnits(units),
       symbolicFactors: new Map([[symbolicIdentity(operation, arguments_), 1]]),
       isLiteralZero: false,
     };
+    if (operation === '+') value.associativeAddends = arguments_.flatMap(additiveIdentityTerms).sort();
+    return value;
   }
 
   function peek() {
