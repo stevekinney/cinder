@@ -67,6 +67,7 @@ const relativeLengthUnitNames = new Set([
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
 const urlFunctionPattern = /url\(/iy;
+const maximumStaticSymbolicIdentityWork = 131_072;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
@@ -271,17 +272,15 @@ function valueIdentity(value) {
 // but identical units can still cancel without needing layout context.
 function evaluateConstantArithmetic(expression) {
   let index = 0;
+  let remainingSymbolicIdentityWork = maximumStaticSymbolicIdentityWork;
   const symbolicIdentities = new Map();
 
   function additiveIdentityTerms(value) {
     return value.associativeAddends ?? [valueIdentity(value)];
   }
 
-  function symbolicIdentity(operation, arguments_) {
-    const argumentIdentities =
-      operation === '+'
-        ? arguments_.flatMap(additiveIdentityTerms).sort()
-        : arguments_.map(valueIdentity);
+  function symbolicIdentity(operation, arguments_, argumentIdentities) {
+    argumentIdentities ??= arguments_.map(valueIdentity);
     const key = `${operation}(${argumentIdentities.join(';')})`;
     let identity = symbolicIdentities.get(key);
     if (identity === undefined) {
@@ -292,13 +291,20 @@ function evaluateConstantArithmetic(expression) {
   }
 
   function opaqueValue(operation, arguments_, units = arguments_[0]?.units ?? new Map()) {
+    let associativeAddends;
+    if (operation === '+') {
+      associativeAddends = arguments_.flatMap(additiveIdentityTerms);
+      if (associativeAddends.length > remainingSymbolicIdentityWork) throw staticAnalysisTooComplex;
+      remainingSymbolicIdentityWork -= associativeAddends.length;
+      associativeAddends.sort();
+    }
     const value = {
       value: 1,
       units: normalizedUnits(units),
-      symbolicFactors: new Map([[symbolicIdentity(operation, arguments_), 1]]),
+      symbolicFactors: new Map([[symbolicIdentity(operation, arguments_, associativeAddends), 1]]),
       isLiteralZero: false,
     };
-    if (operation === '+') value.associativeAddends = arguments_.flatMap(additiveIdentityTerms).sort();
+    if (associativeAddends !== undefined) value.associativeAddends = associativeAddends;
     return value;
   }
 
@@ -631,8 +637,8 @@ function evaluateConstantArithmetic(expression) {
     const result = parseExpression();
     skipSpace();
     return index === expression.length && !Number.isNaN(result.value) ? result : null;
-  } catch {
-    return null;
+  } catch (error) {
+    return error === staticAnalysisTooComplex ? staticAnalysisTooComplex : null;
   }
 }
 

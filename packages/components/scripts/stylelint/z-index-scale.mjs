@@ -88,7 +88,7 @@ function quotedStringEnd(value, start) {
 // valid way to slip a forbidden fallback past a regex that only expects
 // whitespace between the token and the comma. Mask real comments with a
 // same-length non-whitespace sentinel while preserving quoted and URL-token
-// comment-like text, newlines, and diagnostic offsets. Callers that need
+// comment-like text and diagnostic offsets. Callers that need
 // comments to delimit layer-token syntax map the sentinel to spaces locally;
 // static math must not mistake comments for the whitespace required around
 // additive operators.
@@ -116,9 +116,7 @@ function maskComments(value) {
       maskedValue += value.slice(index);
       break;
     }
-    maskedValue += value
-      .slice(index, commentEnd + 2)
-      .replaceAll(/[^\n\r\f]/g, cssCommentMaskCharacter);
+    maskedValue += cssCommentMaskCharacter.repeat(commentEnd + 2 - index);
     index = commentEnd + 1;
   }
   return maskedValue;

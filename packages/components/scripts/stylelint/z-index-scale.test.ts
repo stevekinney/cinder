@@ -155,6 +155,20 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
+  test.each(['\n', '\r', '\f', '\r\n'])(
+    'does not treat a comment containing %j as operator whitespace',
+    async (lineBreak) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: comment contents cannot supply calculation whitespace. */
+          z-index: calc(10000/*${lineBreak}*/-/*${lineBreak}*/1);
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
+
   test('rejects a negative numeric layer even with a local reason', async () => {
     const result = await lint(`
       .fixture {
@@ -1179,6 +1193,20 @@ describe('cinder/z-index-scale', () => {
     `);
 
     expect(warnings(result)).toEqual([]);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test('bounds associative symbolic identity normalization', async () => {
+    const { analyzeStaticLayerValue } = await import(valueAnalysisPath);
+    const terms = Array.from({ length: 4_000 }, (_, index) =>
+      index % 2 === 0 ? '1em / 1rem' : '1ex / 1rem',
+    );
+    const startedAt = performance.now();
+
+    expect(analyzeStaticLayerValue(`calc(${terms.join(' + ')})`)).toEqual({
+      classification: 'too-complex',
+      resultType: 'too-complex',
+    });
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
