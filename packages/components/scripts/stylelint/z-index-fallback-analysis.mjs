@@ -228,21 +228,7 @@ function classifyResolvedFallback(resolvedFallback) {
     : 'unresolved';
 }
 
-function unwrapStaticContainer(value, range) {
-  const parenthesisPairs = new Map();
-  const openParentheses = [];
-  for (let index = range.start; index < range.end; index += 1) {
-    if (value[index] === '"' || value[index] === "'") {
-      index = quotedStringEnd(value, index);
-      continue;
-    }
-    if (value[index] === '(') openParentheses.push(index);
-    else if (value[index] === ')') {
-      const openIndex = openParentheses.pop();
-      if (openIndex !== undefined) parenthesisPairs.set(openIndex, index);
-    }
-  }
-
+function unwrapStaticContainer(value, range, parenthesisPairs) {
   let unwrappedRange = trimCssTriviaRange(value, range.start, range.end);
   for (;;) {
     let openIndex;
@@ -259,8 +245,8 @@ function unwrapStaticContainer(value, range) {
   }
 }
 
-function fallbackIndependentStaticArguments(frame, value, range, functionName) {
-  const trimmedRange = unwrapStaticContainer(value, range);
+function fallbackIndependentStaticArguments(frame, value, range, functionName, parenthesisPairs) {
+  const trimmedRange = unwrapStaticContainer(value, range, parenthesisPairs);
   if (
     value.slice(trimmedRange.start, trimmedRange.start + functionName.length + 1).toLowerCase() !==
       `${functionName}(` ||
@@ -270,19 +256,19 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
 
   const argumentRanges = [];
   let argumentStart = trimmedRange.start + functionName.length + 1;
-  let depth = 0;
   for (let index = argumentStart; index < trimmedRange.end - 1; index += 1) {
     if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
-    else if (value[index] === '(') depth += 1;
-    else if (value[index] === ')') {
-      if (depth === 0) return undefined;
-      depth -= 1;
-    } else if (value[index] === ',' && depth === 0) {
+    else if (value[index] === '(') {
+      const closeIndex = parenthesisPairs.get(index);
+      if (closeIndex === undefined || closeIndex >= trimmedRange.end) return undefined;
+      index = closeIndex;
+    } else if (value[index] === ')') {
+      return undefined;
+    } else if (value[index] === ',') {
       argumentRanges.push({ start: argumentStart, end: index });
       argumentStart = index + 1;
     }
   }
-  if (depth !== 0) return undefined;
   argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
   const arguments_ = argumentRanges.map((argumentRange) =>
     trimCssTriviaRange(value, argumentRange.start, argumentRange.end),
@@ -310,39 +296,60 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
   };
 }
 
-function argumentWithFallbackPlaceholders(frame, value, range) {
-  let expression = value.slice(range.start, range.end);
-  for (let childIndex = frame.children.length - 1; childIndex >= 0; childIndex -= 1) {
-    const child = frame.children[childIndex];
+function argumentWithFallbackPlaceholders(frame, value, range, budget) {
+  if (!consumeResolutionWork(budget, range.end - range.start)) return undefined;
+  const chunks = [];
+  let cursor = range.start;
+  for (const child of frame.children) {
     if (child.start < range.start || child.end > range.end) continue;
-    expression =
-      expression.slice(0, child.start - range.start) +
-      ' 0 ' +
-      expression.slice(child.end - range.start);
+    chunks.push(value.slice(cursor, child.start), ' 0 ');
+    cursor = child.end;
   }
-  return expression;
+  chunks.push(value.slice(cursor, range.end));
+  return chunks.join('');
 }
 
-function hasFallbackIndependentSafeBound(frame, value, range, functionName) {
+function hasFallbackIndependentSafeBound(frame, value, range, functionName, parenthesisPairs) {
   return (
-    fallbackIndependentStaticArguments(frame, value, range, functionName)?.staticArguments.some(
-      (argument) =>
-        functionName === 'min'
-          ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
-          : classifyStaticLayer(argument.value) === 'safe' &&
-            !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(argument.value)),
+    fallbackIndependentStaticArguments(
+      frame,
+      value,
+      range,
+      functionName,
+      parenthesisPairs,
+    )?.staticArguments.some((argument) =>
+      functionName === 'min'
+        ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
+        : classifyStaticLayer(argument.value) === 'safe' &&
+          !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(argument.value)),
     ) ?? false
   );
 }
 
-function hasFallbackIndependentClampBound(frame, value, range, boundIndex, candidate) {
-  const clampArguments = fallbackIndependentStaticArguments(frame, value, range, 'clamp');
+function hasFallbackIndependentClampBound(
+  frame,
+  value,
+  range,
+  boundIndex,
+  candidate,
+  budget,
+  parenthesisPairs,
+) {
+  const clampArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    range,
+    'clamp',
+    parenthesisPairs,
+  );
   if (clampArguments?.argumentCount !== 3) return false;
   const centerExpression = argumentWithFallbackPlaceholders(
     frame,
     value,
     clampArguments.argumentRanges[1],
+    budget,
   );
+  if (centerExpression === undefined) return false;
   if (!['safe', 'negative', 'magic'].includes(classifyStaticLayer(centerExpression))) return false;
   const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
   if (!bound) return false;
@@ -413,7 +420,7 @@ function negativeZeroIsSafeFinalLayer(frame, value, range, budget) {
   );
 }
 
-function unprovenCandidateForFrame(frame, value, range, candidate, budget) {
+function unprovenCandidateForFrame(frame, value, range, candidate, budget, parenthesisPairs) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
   // banned child unless its contribution is safe independently of that choice.
@@ -439,11 +446,11 @@ function unprovenCandidateForFrame(frame, value, range, candidate, budget) {
   if (!uneliminatedChild) return undefined;
 
   const hasNonnegativeFloor =
-    hasFallbackIndependentSafeBound(frame, value, range, 'max') ||
-    hasFallbackIndependentClampBound(frame, value, range, 0, 'negative');
+    hasFallbackIndependentSafeBound(frame, value, range, 'max', parenthesisPairs) ||
+    hasFallbackIndependentClampBound(frame, value, range, 0, 'negative', budget, parenthesisPairs);
   const hasMagicCeiling =
-    hasFallbackIndependentSafeBound(frame, value, range, 'min') ||
-    hasFallbackIndependentClampBound(frame, value, range, 2, 'magic');
+    hasFallbackIndependentSafeBound(frame, value, range, 'min', parenthesisPairs) ||
+    hasFallbackIndependentClampBound(frame, value, range, 2, 'magic', budget, parenthesisPairs);
   const contextuallyUnprovenChildren = uneliminatedChildren.filter((child) => {
     const classification = child.unprovenBannedCandidate.resolvedClassification;
     return !(
@@ -484,6 +491,7 @@ function unprovenCandidateForFrame(frame, value, range, candidate, budget) {
 function fallbackCandidates(value) {
   const candidates = [];
   const parentheses = [];
+  const parenthesisPairs = new Map();
   const fallbackFrames = [];
   const rootFrame = { type: 'root', children: [] };
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
@@ -538,6 +546,7 @@ function fallbackCandidates(value) {
       );
       parentheses.push({
         type: 'group',
+        openIndex: index,
         ...context,
       });
       continue;
@@ -552,6 +561,7 @@ function fallbackCandidates(value) {
     if (value[index] !== ')') continue;
 
     const frame = parentheses.pop();
+    if (frame !== undefined) parenthesisPairs.set(frame.openIndex, index);
     if (frame?.type !== 'fallback') continue;
     fallbackFrames.pop();
     frame.end = index + 1;
@@ -597,6 +607,7 @@ function fallbackCandidates(value) {
       fallbackRange,
       candidate,
       resolutionBudget,
+      parenthesisPairs,
     );
     if (frame.unprovenBannedCandidate && frame.children.length > 1)
       frame.unprovenBannedCandidate = {
@@ -644,6 +655,7 @@ function fallbackCandidates(value) {
       { start: 0, end: value.length },
       rootCandidate,
       resolutionBudget,
+      parenthesisPairs,
     );
     if (unprovenRootCandidate) candidates.push(unprovenRootCandidate);
   }

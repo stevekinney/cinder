@@ -718,19 +718,21 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toEqual([]);
   });
 
-  test.each(['#var(--inner, -1)', '@var(--inner, -1)'])(
-    'does not scan substitution-like text inside a CSS name token: %s',
-    async (fallback) => {
-      const result = await lint(`
+  test.each([
+    '#var(--inner, -1)',
+    '@var(--inner, -1)',
+    '#var(--cinder-z-popover, 1)',
+    '@var(--cinder-z-popover, 1)',
+  ])('does not scan substitution-like text inside a CSS name token: %s', async (fallback) => {
+    const result = await lint(`
         .fixture {
           /* cinder-z-index-local: the prefixed name cannot invoke var(). */
           z-index: var(--outer, ${fallback});
         }
       `);
 
-      expect(warnings(result)).toEqual([]);
-    },
-  );
+    expect(warnings(result)).toEqual([]);
+  });
 
   test('requires an exact algebraic zero before eliminating a banned fallback', async () => {
     const result = await lint(`
@@ -1104,6 +1106,42 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('builds wide clamp placeholders in linear time', async () => {
+    const siblings = Array.from(
+      { length: 64_000 },
+      (_, index) => `var(--item-layer-${index}, -1)`,
+    ).join(' + ');
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: static clamp bounds keep every generated fallback safe. */
+        z-index: clamp(0, calc(var(--runtime) + ${siblings}), 1);
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test('reuses parenthesis indexes across nested bound checks', async () => {
+    let nestedValue = 'var(--runtime)';
+    for (let depth = 0; depth < 2_400; depth += 1)
+      nestedValue =
+        `var(--outer-${depth}, ` +
+        `max(0, var(--bad-${depth}, -1), var(--runtime-${depth}), ${nestedValue}))`;
+
+    const startedAt = performance.now();
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: nested static floors keep each negative fallback safe. */
+        z-index: ${nestedValue};
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('unwraps deeply nested calc containers in linear time for safe-bound analysis', async () => {
     const depth = 16_000;
     const nestedValue = `${'calc('.repeat(depth)}max(var(--runtime), var(--inner, -1), 0)${')'.repeat(depth)}`;
@@ -1172,6 +1210,38 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(unknown)).toEqual([]);
   });
+
+  test.each([
+    'calc(9999\\70 x / 1px)',
+    'calc(9999\\70x / 1px)',
+    'calc(9999\\000070x / 1px)',
+    'calc(9999p\\78 / 1px)',
+    'calc(9999\\72 em / 1rem)',
+    'calc(9999\\63 m / 1cm)',
+  ])('decodes a recognized escaped dimension unit: %s', async (fallback) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: matching escaped dimensions cancel to the magic number. */
+        z-index: var(--outer, ${fallback});
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test.each(['calc(9999\\31 / 1px)', 'calc(9999q\\75ux / 1quux)', 'calc(9999\\65 0)'])(
+    'keeps an unknown escaped dimension unresolved: %s',
+    async (fallback) => {
+      const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the escaped dimension is not a recognized CSS unit. */
+        z-index: var(--outer, ${fallback});
+      }
+    `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
 
   test('does not inspect a similarly named non-var function', async () => {
     expect(

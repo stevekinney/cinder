@@ -520,6 +520,34 @@ function appendMappedSlice(output, sourceRanges, value, start, end, baseRanges) 
   for (let index = start; index < end; index += 1) sourceRanges.push(baseRanges[index]);
 }
 
+function appendMappedInspection(output, sourceRanges, inspection) {
+  output.push(inspection.value);
+  for (const sourceRange of inspection.sourceRanges) sourceRanges.push(sourceRange);
+}
+
+function escapedCssIdentifierEnd(value, start) {
+  let index = start;
+  while (index < value.length) {
+    if (isCssIdentifierCharacter(value[index])) {
+      index += 1;
+      continue;
+    }
+    if (value[index] !== '\\') break;
+    const nextCharacter = value[index + 1];
+    if (nextCharacter === undefined || /[\n\f\r]/.test(nextCharacter)) break;
+    if (!/[0-9a-f]/i.test(nextCharacter)) {
+      index += 2;
+      continue;
+    }
+    let hexEnd = index + 1;
+    while (hexEnd < value.length && hexEnd <= index + 6 && /[0-9a-f]/i.test(value[hexEnd]))
+      hexEnd += 1;
+    if (value[hexEnd] === '\r' && value[hexEnd + 1] === '\n') index = hexEnd + 2;
+    else index = hexEnd + (isCssWhitespace(value[hexEnd]) ? 1 : 0);
+  }
+  return index;
+}
+
 function literalSourceRanges(value) {
   return Array.from({ length: value.length }, (_, index) => ({ start: index, end: index + 1 }));
 }
@@ -583,6 +611,24 @@ export function normalizeCssEscapesForInspection(value) {
       continue;
     }
 
+    if (/[\d.]/.test(value[index - 1] ?? '') && !/[\n\f\r]/.test(nextCharacter)) {
+      const identifierEnd = escapedCssIdentifierEnd(value, index);
+      const decodedIdentifier = decodeCssEscapesForInspection(
+        value.slice(index, identifierEnd),
+        baseRanges.slice(index, identifierEnd),
+      );
+      const unitName = decodedIdentifier.value.toLowerCase();
+      if (canonicalUnitConversions.has(unitName) || relativeLengthUnitNames.has(unitName))
+        appendMappedInspection(output, sourceRanges, decodedIdentifier);
+      else
+        appendMappedCharacter(output, sourceRanges, '\uE000', {
+          start: baseRanges[index].start,
+          end: baseRanges[identifierEnd - 1].end,
+        });
+      index = identifierEnd - 1;
+      continue;
+    }
+
     if (/[0-9a-f]/i.test(nextCharacter)) {
       let hexEnd = index + 1;
       while (hexEnd < value.length && hexEnd <= index + 6 && /[0-9a-f]/i.test(value[hexEnd]))
@@ -599,13 +645,7 @@ export function normalizeCssEscapesForInspection(value) {
           end: baseRanges[escapeEnd - 1].end,
         });
       else if (isCssIdentifierCharacter(decodedCharacter)) {
-        const beginsDimensionUnit = /[\d.]/.test(value[index - 1] ?? '');
-        if (beginsDimensionUnit)
-          appendMappedCharacter(output, sourceRanges, '\uE000', {
-            start: baseRanges[index].start,
-            end: baseRanges[escapeEnd - 1].end,
-          });
-        else appendMappedSlice(output, sourceRanges, value, index, escapeEnd, baseRanges);
+        appendMappedSlice(output, sourceRanges, value, index, escapeEnd, baseRanges);
       } else
         appendMappedCharacter(output, sourceRanges, '\uE000', {
           start: baseRanges[index].start,

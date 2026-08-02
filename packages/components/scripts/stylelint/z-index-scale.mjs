@@ -120,7 +120,14 @@ function findLayerTokenReferences(value) {
     }
     layerTokenFunctionPattern.lastIndex = index;
     const match = layerTokenFunctionPattern.exec(value);
-    if (!match || isCssIdentifierCharacter(value[index - 1])) continue;
+    const previousCharacter = value[index - 1];
+    if (
+      !match ||
+      isCssIdentifierCharacter(previousCharacter) ||
+      previousCharacter === '#' ||
+      previousCharacter === '@'
+    )
+      continue;
     references.push({ token: match[1], hasFallback: match[2] === ',' });
   }
   return references;
