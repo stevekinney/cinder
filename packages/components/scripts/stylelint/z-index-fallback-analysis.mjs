@@ -3,6 +3,7 @@ import {
   cssCommentMaskCharacter,
   isCssIdentifierCharacter,
   isCssWhitespace,
+  isCssWhitespaceOrComment,
   isStaticallyNegativeZero,
   isStaticallyZero,
   normalizeCssEscapesForInspection,
@@ -39,9 +40,9 @@ const mathFunctionNames = new Set([
   'tan',
 ]);
 
-function trimCssWhitespaceRange(value, start, end) {
-  while (start < end && isCssWhitespace(value[start])) start += 1;
-  while (end > start && isCssWhitespace(value[end - 1])) end -= 1;
+function trimCssTriviaRange(value, start, end) {
+  while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
+  while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
   return { start, end };
 }
 
@@ -84,6 +85,27 @@ function unquotedUrlTokenEnd(value, start) {
   return value.length - 1;
 }
 
+function maskTokenizingComments(value) {
+  const maskedCharacters = value.split('');
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    if (value[index] !== '/' || value[index + 1] !== '*') continue;
+    const closingDelimiterIndex = value.indexOf('*/', index + 2);
+    const commentEnd = closingDelimiterIndex === -1 ? value.length : closingDelimiterIndex + 2;
+    maskedCharacters.fill(cssCommentMaskCharacter, index, commentEnd);
+    index = commentEnd - 1;
+  }
+  return maskedCharacters.join('');
+}
+
 function resolveFrameExpression(frame, value, range, budget) {
   if (frame.children.some((child) => child.resolvedFallback === fallbackResolutionTooComplex))
     return fallbackResolutionTooComplex;
@@ -118,11 +140,11 @@ function resolveFrameExpression(frame, value, range, budget) {
 
 function factorAfter(value, start, end, budget) {
   if (!consumeResolutionWork(budget, (end - start) * 4)) return undefined;
-  while (start < end && isCssWhitespace(value[start])) start += 1;
+  while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   const factorStart = start;
   while (start < end && /[+-]/.test(value[start])) {
     start += 1;
-    while (start < end && isCssWhitespace(value[start])) start += 1;
+    while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   }
   let depth = 0;
   for (; start < end; start += 1) {
@@ -138,7 +160,7 @@ function factorAfter(value, start, end, budget) {
 
 function factorBefore(value, start, end, budget) {
   if (!consumeResolutionWork(budget, (end - start) * 4)) return undefined;
-  while (end > start && isCssWhitespace(value[end - 1])) end -= 1;
+  while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
   const factorEnd = end;
   let depth = 0;
   for (end -= 1; end >= start; end -= 1) {
@@ -153,7 +175,7 @@ function factorBefore(value, start, end, budget) {
 }
 
 function isPrecededByDivision(value, operandStart) {
-  while (operandStart > 0 && isCssWhitespace(value[operandStart - 1])) operandStart -= 1;
+  while (operandStart > 0 && isCssWhitespaceOrComment(value[operandStart - 1])) operandStart -= 1;
   return value[operandStart - 1] === '/';
 }
 
@@ -179,7 +201,7 @@ function childIsEliminatedByZeroProduct(value, range, child, budget) {
   let afterChild = child.end;
   while (
     afterChild < range.end &&
-    (isCssWhitespace(value[afterChild]) || value[afterChild] === ')')
+    (isCssWhitespaceOrComment(value[afterChild]) || value[afterChild] === ')')
   )
     afterChild += 1;
   if (value[afterChild] === '*') {
@@ -191,7 +213,7 @@ function childIsEliminatedByZeroProduct(value, range, child, budget) {
   let beforeChild = child.start;
   while (
     beforeChild > range.start &&
-    (isCssWhitespace(value[beforeChild - 1]) || value[beforeChild - 1] === '(')
+    (isCssWhitespaceOrComment(value[beforeChild - 1]) || value[beforeChild - 1] === '(')
   )
     beforeChild -= 1;
   if (value[beforeChild - 1] !== '*') return false;
@@ -221,7 +243,7 @@ function unwrapStaticContainer(value, range) {
     }
   }
 
-  let unwrappedRange = trimCssWhitespaceRange(value, range.start, range.end);
+  let unwrappedRange = trimCssTriviaRange(value, range.start, range.end);
   for (;;) {
     let openIndex;
     if (value[unwrappedRange.start] === '(') openIndex = unwrappedRange.start;
@@ -233,7 +255,7 @@ function unwrapStaticContainer(value, range) {
       openIndex = unwrappedRange.start + calcMatch[0].length - 1;
     }
     if (parenthesisPairs.get(openIndex) !== unwrappedRange.end - 1) return unwrappedRange;
-    unwrappedRange = trimCssWhitespaceRange(value, openIndex + 1, unwrappedRange.end - 1);
+    unwrappedRange = trimCssTriviaRange(value, openIndex + 1, unwrappedRange.end - 1);
   }
 }
 
@@ -263,7 +285,7 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName) {
   if (depth !== 0) return undefined;
   argumentRanges.push({ start: argumentStart, end: trimmedRange.end - 1 });
   const arguments_ = argumentRanges.map((argumentRange) =>
-    trimCssWhitespaceRange(value, argumentRange.start, argumentRange.end),
+    trimCssTriviaRange(value, argumentRange.start, argumentRange.end),
   );
   if (arguments_.some((argument) => argument.start === argument.end)) return undefined;
 
@@ -367,9 +389,9 @@ function hasBareOperatorStream(value) {
         /[a-z_]/i.test(expression[index + 1] ?? '');
       const isUnary = !sawTopLevelOperand || previousNonWhitespace === 'e' || isIdentifierHyphen;
       if (!isUnary) return true;
-    } else if (depth === 0 && !isCssWhitespace(character) && character !== ',')
+    } else if (depth === 0 && !isCssWhitespaceOrComment(character) && character !== ',')
       sawTopLevelOperand = true;
-    if (!isCssWhitespace(character)) previousNonWhitespace = character.toLowerCase();
+    if (!isCssWhitespaceOrComment(character)) previousNonWhitespace = character.toLowerCase();
   }
   return false;
 }
@@ -535,7 +557,7 @@ function fallbackCandidates(value) {
     frame.end = index + 1;
     if (frame.commaIndex === -1) continue;
 
-    const fallbackRange = trimCssWhitespaceRange(value, frame.commaIndex + 1, index);
+    const fallbackRange = trimCssTriviaRange(value, frame.commaIndex + 1, index);
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange, resolutionBudget);
     const [onlyChild] = frame.children;
@@ -631,14 +653,8 @@ function fallbackCandidates(value) {
 
 export function bannedFallback(value) {
   const normalizedValue = normalizeCssEscapesForInspection(value);
-  const decodedCharacters = [];
-  const sourceRanges = [];
-  for (let index = 0; index < normalizedValue.value.length; index += 1) {
-    if (normalizedValue.value[index] === cssCommentMaskCharacter) continue;
-    decodedCharacters.push(normalizedValue.value[index]);
-    sourceRanges.push(normalizedValue.sourceRanges[index]);
-  }
-  const decodedValue = decodedCharacters.join('');
+  const decodedValue = maskTokenizingComments(normalizedValue.value);
+  const { sourceRanges } = normalizedValue;
   for (const { fallbackIndex, rawFallback, resolvedClassification } of fallbackCandidates(
     decodedValue,
   )) {

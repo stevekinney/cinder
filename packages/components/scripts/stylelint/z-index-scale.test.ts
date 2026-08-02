@@ -1482,6 +1482,17 @@ describe('cinder/z-index-scale', () => {
     expect(result[0]?.column).toBe(source.lastIndexOf('-1') + 1);
   });
 
+  test('lets a closing parenthesis in URL content terminate an unquoted URL token', async () => {
+    const source =
+      '.fixture { /* cinder-z-index-local: the later fallback is still banned. */ ' +
+      'z-index: var(--outer, url(foo/*)*/ var(--actual, -1)); }';
+    const result = warnings(await lint(source));
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('Offending expression: `-1`');
+    expect(result[0]?.column).toBe(source.lastIndexOf('-1') + 1);
+  });
+
   test.each(['calc(9999)', 'calc(10000 - 1)', 'calc(9998 + 1)'])(
     'rejects the calculated magic-number variant %s even with a local reason',
     async (value) => {

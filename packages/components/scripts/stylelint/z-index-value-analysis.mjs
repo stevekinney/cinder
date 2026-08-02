@@ -74,6 +74,10 @@ export function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
 }
 
+export function isCssWhitespaceOrComment(character) {
+  return isCssWhitespace(character) || character === cssCommentMaskCharacter;
+}
+
 function quotedStringEnd(value, start) {
   const quote = value[start];
   for (let index = start + 1; index < value.length; index += 1) {
@@ -155,7 +159,18 @@ function evaluateConstantArithmetic(expression) {
   }
 
   function skipSpace() {
-    while (index < expression.length && isCssWhitespace(expression[index])) index += 1;
+    while (index < expression.length && isCssWhitespaceOrComment(expression[index])) index += 1;
+  }
+
+  function adjacentTriviaContainsWhitespace(operatorIndex, direction) {
+    for (
+      let cursor = operatorIndex + direction;
+      isCssWhitespaceOrComment(expression[cursor]);
+      cursor += direction
+    ) {
+      if (isCssWhitespace(expression[cursor])) return true;
+    }
+    return false;
   }
 
   function parseNumber() {
@@ -238,7 +253,7 @@ function evaluateConstantArithmetic(expression) {
         const clampEndpointCanBeUnbounded =
           functionName === 'clamp' && (arguments_.length === 0 || arguments_.length === 2);
         const noneMatch = clampEndpointCanBeUnbounded
-          ? /^none(?=[\t\n\f\r ]*[,)])/i.exec(expression.slice(index))
+          ? /^none(?=[\t\n\f\r \uE001]*[,)])/i.exec(expression.slice(index))
           : null;
         if (noneMatch) {
           arguments_.push(unboundedClampEndpoint);
@@ -410,7 +425,10 @@ function evaluateConstantArithmetic(expression) {
       skipSpace();
       const operator = peek();
       if (operator !== '+' && operator !== '-') return value;
-      if (!isCssWhitespace(expression[index - 1]) || !isCssWhitespace(expression[index + 1]))
+      if (
+        !adjacentTriviaContainsWhitespace(index, -1) ||
+        !adjacentTriviaContainsWhitespace(index, 1)
+      )
         throw new Error('expected whitespace around additive operator');
       index += 1;
       const right = parseTerm();
