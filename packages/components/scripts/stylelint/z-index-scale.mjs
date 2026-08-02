@@ -157,7 +157,6 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
       const declarationValue = (declaration.raws.value?.raw ?? declaration.value).trim();
       const maskedDeclarationValue = maskComments(declarationValue);
-      const valueOffset = maskedDeclarationValue.length - maskedDeclarationValue.trimStart().length;
       const rawValue = maskedDeclarationValue.trim();
       const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
       const tokenMatch = layerTokenPattern.exec(value);
@@ -184,7 +183,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         const declarationText = declaration.toString();
         const declarationValueIndex = declarationText.indexOf(declarationValue);
         const fallbackValueIndex =
-          offendingFallback.index === undefined ? -1 : valueOffset + offendingFallback.index;
+          offendingFallback.index === undefined ? -1 : offendingFallback.index;
         const fallbackLength = offendingFallback.length ?? offendingFallback.value.length;
         const fallbackIndex =
           fallbackValueIndex === -1 || declarationValueIndex === -1

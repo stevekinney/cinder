@@ -856,6 +856,16 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.text).toContain('too complex to verify');
   });
 
+  test('anchors fallback warnings correctly when the declaration value starts with a leading comment', async () => {
+    const css =
+      '.fixture { /* cinder-z-index-local: test. */ z-index: /* leading comment */ var(--x, 9999); }';
+    const result = await lint(css);
+    const [warning] = warnings(result);
+    expect(warning?.column).toBe(css.lastIndexOf('9999') + 1);
+    expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
+    expect(warning?.text).toContain('Offending expression: `9999`');
+  });
+
   test('preserves warning anchoring when masked inline comments contain form-feed characters', async () => {
     const css =
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x/*\\f*/, 9999)); }'.replace(
