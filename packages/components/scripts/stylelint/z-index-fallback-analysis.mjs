@@ -393,10 +393,15 @@ function additiveNonNumberCandidateSuppression(frame, value, range, budget, pare
   termRanges.push(trimCssTriviaRange(value, termStart, expressionRange.end));
 
   const suppressedCandidateRanges = [];
+  let childIndex = 0;
   for (const termRange of termRanges) {
-    const children = frame.children.filter(
-      (child) => child.start >= termRange.start && child.end <= termRange.end,
-    );
+    while (frame.children[childIndex]?.end <= termRange.start) childIndex += 1;
+    const children = [];
+    while (frame.children[childIndex]?.start < termRange.end) {
+      const child = frame.children[childIndex];
+      if (child.start >= termRange.start && child.end <= termRange.end) children.push(child);
+      childIndex += 1;
+    }
     if (
       children.length > 1 ||
       children[0]?.unprovenBannedCandidates.some((candidate) => candidate.hasRuntimeSibling)
@@ -487,6 +492,70 @@ function isValidProgressRange(frame, value, range, parenthesisPairs) {
     firstArgument.slice(0, 8).toLowerCase() === 'no-clamp' &&
     !isCssIdentifierCharacter(firstArgument[8])
   );
+}
+
+function appendCanonicalWhitespace(output, nextCharacter) {
+  const previousChunk = output[output.length - 1];
+  const previousCharacter = previousChunk?.[previousChunk.length - 1];
+  if (
+    previousCharacter === undefined ||
+    '([{,'.includes(previousCharacter) ||
+    ')]},'.includes(nextCharacter)
+  )
+    return;
+  output.push(' ');
+}
+
+function canonicalProgressArgument(value, range) {
+  const output = [];
+  let hasPendingWhitespace = false;
+  for (let index = range.start; index < range.end; index += 1) {
+    const character = value[index];
+    if (character === cssCommentMaskCharacter) continue;
+    if (isCssWhitespace(character)) {
+      hasPendingWhitespace = true;
+      continue;
+    }
+    if (hasPendingWhitespace) appendCanonicalWhitespace(output, character);
+    hasPendingWhitespace = false;
+    if (character === '"' || character === "'") {
+      const stringEnd = quotedStringEnd(value, index);
+      output.push(value.slice(index, stringEnd + 1));
+      index = stringEnd;
+      continue;
+    }
+    const identifierEnd = cssIdentifierTokenEnd(value, index);
+    if (identifierEnd > index) {
+      const identifier = value.slice(index, identifierEnd);
+      let nextIndex = identifierEnd;
+      while (value[nextIndex] === cssCommentMaskCharacter) nextIndex += 1;
+      const lowerIdentifier = identifier.toLowerCase();
+      output.push(
+        value[nextIndex] === '(' &&
+          (mathFunctionNames.has(lowerIdentifier) || substitutionFunctionNames.has(lowerIdentifier))
+          ? lowerIdentifier
+          : identifier,
+      );
+      index = identifierEnd - 1;
+      continue;
+    }
+    output.push(character);
+  }
+  return output.join('');
+}
+
+function canonicalProgressRangeKey(frame, value, range, parenthesisPairs) {
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    range,
+    'progress',
+    parenthesisPairs,
+  );
+  if (parsedArguments?.argumentCount !== 3) return undefined;
+  return parsedArguments.argumentRanges
+    .map((argumentRange) => canonicalProgressArgument(value, argumentRange))
+    .join('\u0001');
 }
 
 function directBannedMathArgumentCandidates(
@@ -605,7 +674,9 @@ function progressRangeCandidates(frame, value, range, candidate, budget, parenth
   }
   const progressGroupIndexes = new Map();
   const progressRangeGroupIndexes = progressRanges.map((progressRange) => {
-    const key = value.slice(progressRange.start, progressRange.end);
+    const key =
+      canonicalProgressRangeKey(frame, value, progressRange, parenthesisPairs) ??
+      value.slice(progressRange.start, progressRange.end);
     const existingIndex = progressGroupIndexes.get(key);
     if (existingIndex !== undefined) return existingIndex;
     const groupIndex = progressGroupIndexes.size;
@@ -689,7 +760,14 @@ function argumentWithFallbackPlaceholders(frame, value, range, budget) {
   return chunks.join('');
 }
 
-function hasFallbackIndependentSafeBound(frame, value, range, functionName, parenthesisPairs) {
+function hasFallbackIndependentSafeBound(
+  frame,
+  value,
+  range,
+  functionName,
+  candidate,
+  parenthesisPairs,
+) {
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
     value,
@@ -707,7 +785,9 @@ function hasFallbackIndependentSafeBound(frame, value, range, functionName, pare
       return functionName === 'min'
         ? classifyStaticLayer(`min(9999, ${staticArgument})`) === 'safe' &&
             !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(staticArgument))
-        : classifyStaticLayer(staticArgument) === 'safe' &&
+        : candidate === 'magic'
+          ? classifyStaticLayer(`max(9999, ${staticArgument})`) === 'safe'
+          : classifyStaticLayer(staticArgument) === 'safe' &&
             isStaticallyNonnegative(staticArgument) &&
             !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(staticArgument));
     return isValidProgressRange(frame, value, argumentRange, parenthesisPairs);
@@ -739,10 +819,6 @@ function hasFallbackIndependentClampBound(
   );
   if (centerExpression === undefined) return false;
   if (!['safe', 'negative', 'magic'].includes(classifyStaticLayer(centerExpression))) return false;
-  const boundRange = clampArguments.argumentRanges[boundIndex];
-  const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
-  const progressBound = isValidProgressRange(frame, value, boundRange, parenthesisPairs);
-  if (!bound && !progressBound) return false;
   if (candidate === 'magic') {
     const minimum = clampArguments.staticArguments.find((argument) => argument.index === 0);
     if (
@@ -751,6 +827,13 @@ function hasFallbackIndependentClampBound(
       classifyStaticLayer(`max(9999, ${minimum.value})`) === 'safe'
     )
       return true;
+  }
+  const boundRange = clampArguments.argumentRanges[boundIndex];
+  const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
+  const progressBound = isValidProgressRange(frame, value, boundRange, parenthesisPairs);
+  if (!bound && !progressBound) return false;
+  if (candidate === 'magic') {
+    const minimum = clampArguments.staticArguments.find((argument) => argument.index === 0);
     if (!progressBound && classifyStaticLayer(`min(9999, ${bound.value})`) !== 'safe') return false;
     if (minimum === undefined) return false;
     if (/^none$/i.test(minimum.value)) return true;
@@ -917,7 +1000,7 @@ function hasAdjacentFallbackToken(frame, value, range, budget) {
     let beforeChild = child.start;
     while (beforeChild > range.start && isCssWhitespaceOrComment(value[beforeChild - 1]))
       beforeChild -= 1;
-    const previousCharacter = value[beforeChild - 1];
+    const previousCharacter = beforeChild <= range.start ? undefined : value[beforeChild - 1];
     const progressParent = child.parenthesisParent;
     const hasNoClampProgressPrefix =
       progressParent?.functionName === 'progress' &&
@@ -936,7 +1019,7 @@ function hasAdjacentFallbackToken(frame, value, range, budget) {
 
     let afterChild = child.end;
     while (afterChild < range.end && isCssWhitespaceOrComment(value[afterChild])) afterChild += 1;
-    const nextCharacter = value[afterChild];
+    const nextCharacter = afterChild >= range.end ? undefined : value[afterChild];
     if (
       nextCharacter !== undefined &&
       nextCharacter !== '\uE000' &&
@@ -983,6 +1066,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const resolvedNegativeZero = frame.type === 'fallback' && frame.resolvedNegativeZero === true;
   if (frame.resolvedClassification === 'too-complex') return [candidate];
   if (
+    frame.type === 'root' &&
     frame.children.length === 1 &&
     frame.resolvedResultType === 'non-number' &&
     !frame.children[0].unprovenBannedCandidates.some((childCandidate) =>
@@ -1106,16 +1190,17 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       : [...childCandidates, ...directArgumentCandidates, ...boundedProgressCandidates];
 
   const hasNonnegativeFloor =
-    hasFallbackIndependentSafeBound(frame, value, range, 'max', parenthesisPairs) ||
+    hasFallbackIndependentSafeBound(frame, value, range, 'max', 'negative', parenthesisPairs) ||
     hasFallbackIndependentClampBound(frame, value, range, 0, 'negative', budget, parenthesisPairs);
-  const hasMagicCeiling =
-    hasFallbackIndependentSafeBound(frame, value, range, 'min', parenthesisPairs) ||
+  const hasMagicBound =
+    hasFallbackIndependentSafeBound(frame, value, range, 'max', 'magic', parenthesisPairs) ||
+    hasFallbackIndependentSafeBound(frame, value, range, 'min', 'magic', parenthesisPairs) ||
     hasFallbackIndependentClampBound(frame, value, range, 2, 'magic', budget, parenthesisPairs);
   const contextuallyUnprovenCandidates = uneliminatedCandidates.filter((childCandidate) => {
     const classification = childCandidate.resolvedClassification;
     return !(
       (hasNonnegativeFloor && classification === 'negative') ||
-      (hasMagicCeiling && classification === 'magic')
+      (hasMagicBound && classification === 'magic')
     );
   });
   if (

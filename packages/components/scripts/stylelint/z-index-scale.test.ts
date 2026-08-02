@@ -1334,6 +1334,18 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('indexes wide additive terms without rescanning every fallback child', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const terms = [
+      'var(--item-layer, -1) * 1px',
+      ...Array.from({ length: 32_000 }, (_, index) => `var(--runtime-${index}) * 1px`),
+    ];
+    const startedAt = performance.now();
+
+    bannedFallback(`calc(${terms.join(' + ')})`);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('bounds static max-floor scans with an unresolved wide sibling set', async () => {
     const siblings = Array.from(
       { length: 64_000 },
@@ -1520,6 +1532,14 @@ describe('cinder/z-index-scale', () => {
     `);
     expect(warnings(enclosingCancellation)).toHaveLength(1);
 
+    const nestedEnclosingCancellation = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a nested typed fallback can become numeric in its parent. */
+        z-index: var(--outer, calc(var(--middle, var(--inner, -1) * 1px) / 1px + var(--runtime)));
+      }
+    `);
+    expect(warnings(nestedEnclosingCancellation)).toHaveLength(1);
+
     for (const value of [
       'var(--outer, calc(var(--length, 1px) + var(--inner, -1)))',
       'var(--outer, calc(var(--length, 1px) + var(--inner, 9999)))',
@@ -1533,6 +1553,32 @@ describe('cinder/z-index-scale', () => {
 
       expect(warnings(result)).toHaveLength(1);
     }
+  });
+
+  test('cancels an identical compatible-length sum without inventing conversion values', async () => {
+    const identicalSum = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the identical runtime-dependent length factors cancel exactly. */
+        z-index: var(--outer, calc(9999 * (1px + 1em) / (1px + 1em)));
+      }
+    `);
+    expect(warnings(identicalSum)).toHaveLength(1);
+
+    const commutedSum = await lint(`
+      .fixture {
+        /* cinder-z-index-local: compatible addition is commutative before exact cancellation. */
+        z-index: var(--outer, calc(9999 * (1px + 1em) / (1em + 1px)));
+      }
+    `);
+    expect(warnings(commutedSum)).toHaveLength(1);
+
+    const differentSum = await lint(`
+      .fixture {
+        /* cinder-z-index-local: different mixed-unit sums have an unknown numeric ratio. */
+        z-index: var(--outer, calc(9999 * (1px + 1em) / (1px + 2em)));
+      }
+    `);
+    expect(warnings(differentSum)).toEqual([]);
   });
 
   test.each([
@@ -1992,6 +2038,9 @@ describe('cinder/z-index-scale', () => {
   test.each([
     'var(--inner/**/, -1)',
     'env(viewport-segment-width 0 0, 9999)',
+    'attr(data-layer px, -1)',
+    'attr(data-layer number, 9999)',
+    'attr(data-layer unknown-unit, -1)',
     'attr(data-layer raw-string, -1)',
     'attr(data-layer type(<integer>), 9999)',
   ])('continues inspecting a fallback from a valid substitution header: %s', async (fallback) => {
@@ -2144,6 +2193,37 @@ describe('cinder/z-index-scale', () => {
     ).toEqual([]);
   });
 
+  test.each([
+    'calc(progress(var(--runtime), 0, 1) - progress(var(--runtime),0,1))',
+    'calc(PROGRESS(var(--runtime), 0, 1) - progress(var(--runtime), 0, 1))',
+    'calc(progress(VAR(--runtime), 0, 1) - progress(var(--runtime), 0, 1))',
+    'calc(progress(var(--runtime), 0, 1) - progress(var(--runtime),/**/0,1))',
+  ])('correlates equivalent progress token streams: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: equivalent progress values cancel to zero. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('keeps case-sensitive custom property progress ranges independent', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: custom property names are case-sensitive. */
+            z-index: var(--outer, calc(progress(var(--runtime), 0, 1) - progress(var(--RUNTIME), 0, 1)));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
   test('keeps distinct progress ranges independent', async () => {
     expect(
       warnings(
@@ -2207,6 +2287,19 @@ describe('cinder/z-index-scale', () => {
     ).toEqual([]);
   });
 
+  test('uses a dominant maximum floor to eliminate a magic fallback', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the independent floor keeps the result above magic. */
+            z-index: var(--outer, max(10000, var(--inner, 9999), var(--runtime)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
   test.each([
     'max(var(--inner, -1), 1, 9999, var(--runtime))',
     'min(var(--inner, 9999), 10000, -1, var(--runtime))',
@@ -2246,6 +2339,19 @@ describe('cinder/z-index-scale', () => {
           .fixture {
             /* cinder-z-index-local: the progress maximum keeps the final layer below magic. */
             z-index: var(--outer, clamp(none, var(--inner, 9999), progress(var(--runtime), 0, 1)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('applies a dominant clamp minimum before an unresolved maximum fallback', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: clamp precedence keeps the result above magic. */
+            z-index: var(--outer, clamp(10000, var(--runtime), var(--maximum, 9999)));
           }
         `),
       ),

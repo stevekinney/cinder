@@ -148,26 +148,68 @@ function hasActualSubstitutionFunction(value) {
 // CSS numeric tokens spell only positive zero; generated arithmetic can still
 // produce negative zero that nested functions must preserve.
 function scalar(value, isLiteralZero = false) {
-  return { value, units: new Map(), isLiteralZero };
+  return { value, units: new Map(), symbolicFactors: new Map(), isLiteralZero };
 }
 
 function withValue(source, value) {
-  return { value, units: new Map(source.units), isLiteralZero: false };
+  return {
+    value,
+    units: new Map(source.units),
+    symbolicFactors: new Map(source.symbolicFactors),
+    isLiteralZero: false,
+  };
+}
+
+function normalizedDimension(unit) {
+  const relativeUnitName = unit.startsWith('unit:') ? unit.slice(5) : undefined;
+  return unit === 'dimension:length' || relativeLengthUnitNames.has(relativeUnitName)
+    ? 'dimension:length'
+    : unit;
+}
+
+function normalizedUnits(source) {
+  const units = new Map();
+  for (const [unit, exponent] of source) {
+    const dimension = normalizedDimension(unit);
+    const combined = (units.get(dimension) ?? 0) + exponent;
+    if (combined === 0) units.delete(dimension);
+    else units.set(dimension, combined);
+  }
+  return units;
 }
 
 function sameUnits(left, right) {
-  if (left.units.size !== right.units.size) return false;
-  return [...left.units].every(([unit, exponent]) => right.units.get(unit) === exponent);
+  const leftUnits = normalizedUnits(left.units);
+  const rightUnits = normalizedUnits(right.units);
+  if (leftUnits.size !== rightUnits.size) return false;
+  return [...leftUnits].every(([unit, exponent]) => rightUnits.get(unit) === exponent);
 }
 
 function combineUnits(left, right, direction) {
-  const units = new Map(left.units);
-  for (const [unit, exponent] of right.units) {
+  const units = normalizedUnits(left.units);
+  for (const [unit, exponent] of normalizedUnits(right.units)) {
     const combined = (units.get(unit) ?? 0) + direction * exponent;
     if (combined === 0) units.delete(unit);
     else units.set(unit, combined);
   }
   return units;
+}
+
+function sameSymbolicFactors(left, right) {
+  if (left.symbolicFactors.size !== right.symbolicFactors.size) return false;
+  return [...left.symbolicFactors].every(
+    ([factor, exponent]) => right.symbolicFactors.get(factor) === exponent,
+  );
+}
+
+function combineSymbolicFactors(left, right, direction) {
+  const factors = new Map(left.symbolicFactors);
+  for (const [factor, exponent] of right.symbolicFactors) {
+    const combined = (factors.get(factor) ?? 0) + direction * exponent;
+    if (combined === 0) factors.delete(factor);
+    else factors.set(factor, combined);
+  }
+  return factors;
 }
 
 function angleInRadians(value) {
@@ -178,7 +220,12 @@ function angleInRadians(value) {
 }
 
 function angleInDegrees(value) {
-  return { value: (value * 180) / Math.PI, units: new Map([['dimension:angle', 1]]) };
+  return {
+    value: (value * 180) / Math.PI,
+    units: new Map([['dimension:angle', 1]]),
+    symbolicFactors: new Map(),
+    isLiteralZero: false,
+  };
 }
 
 function exactCardinalTrigonometricValue(functionName, argument) {
@@ -203,11 +250,49 @@ function hasNegativeSign(value) {
   return value < 0 || Object.is(value, -0);
 }
 
+function numericIdentity(value) {
+  if (Object.is(value, -0)) return '-0';
+  return String(value);
+}
+
+function mapIdentity(values) {
+  return [...values]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, exponent]) => `${key}:${exponent}`)
+    .join(',');
+}
+
+function valueIdentity(value) {
+  return `${numericIdentity(value.value)}|${mapIdentity(normalizedUnits(value.units))}|${mapIdentity(value.symbolicFactors)}`;
+}
+
 // Evaluate static CSS math while retaining enough type information for
 // compatible units to cancel during division. Unknown units remain distinct,
 // but identical units can still cancel without needing layout context.
 function evaluateConstantArithmetic(expression) {
   let index = 0;
+  const symbolicIdentities = new Map();
+
+  function symbolicIdentity(operation, arguments_) {
+    const argumentIdentities = arguments_.map(valueIdentity);
+    if (operation === '+') argumentIdentities.sort();
+    const key = `${operation}(${argumentIdentities.join(';')})`;
+    let identity = symbolicIdentities.get(key);
+    if (identity === undefined) {
+      identity = `expression:${symbolicIdentities.size}`;
+      symbolicIdentities.set(key, identity);
+    }
+    return identity;
+  }
+
+  function opaqueValue(operation, arguments_, units = arguments_[0]?.units ?? new Map()) {
+    return {
+      value: 1,
+      units: normalizedUnits(units),
+      symbolicFactors: new Map([[symbolicIdentity(operation, arguments_), 1]]),
+      isLiteralZero: false,
+    };
+  }
 
   function peek() {
     return expression[index];
@@ -261,9 +346,21 @@ function evaluateConstantArithmetic(expression) {
     const conversion = canonicalUnitConversions.get(unit);
     if (conversion === undefined && unit !== '%' && !relativeLengthUnitNames.has(unit))
       throw new Error('unknown unit');
-    const unitKey = conversion === undefined ? `unit:${unit}` : `dimension:${conversion.dimension}`;
+    const unitKey =
+      conversion === undefined && relativeLengthUnitNames.has(unit)
+        ? 'dimension:length'
+        : conversion === undefined
+          ? `unit:${unit}`
+          : `dimension:${conversion.dimension}`;
     if (conversion !== undefined) value *= conversion.factor;
-    return { value, units: new Map([[unitKey, 1]]), isLiteralZero: value === 0 };
+    return {
+      value,
+      units: new Map([[unitKey, 1]]),
+      symbolicFactors: new Map(
+        relativeLengthUnitNames.has(unit) ? [[`relative-length:${unit}`, 1]] : [],
+      ),
+      isLiteralZero: value === 0,
+    };
   }
 
   function parsePrimary() {
@@ -334,6 +431,32 @@ function evaluateConstantArithmetic(expression) {
       const boundedArguments = arguments_.filter((argument) => argument !== unboundedClampEndpoint);
       if (!boundedArguments.every((argument) => sameUnits(argument, boundedArguments[0])))
         throw new Error('incompatible units');
+      const hasUnknownConversion = boundedArguments.some(
+        (argument) => argument.symbolicFactors.size > 0,
+      );
+      if (hasUnknownConversion) {
+        if (functionName === 'sign' || functionName === 'progress')
+          return opaqueValue(functionName, boundedArguments, new Map());
+        if (
+          functionName === 'abs' ||
+          functionName === 'clamp' ||
+          functionName === 'hypot' ||
+          functionName === 'max' ||
+          functionName === 'min' ||
+          functionName === 'mod' ||
+          functionName === 'rem' ||
+          functionName === 'round'
+        )
+          return opaqueValue(
+            functionName === 'clamp'
+              ? `clamp:${arguments_
+                  .map((argument) => (argument === unboundedClampEndpoint ? 'none' : 'value'))
+                  .join(',')}`
+              : functionName,
+            boundedArguments,
+          );
+        throw new Error('unknown conversion value');
+      }
       if ((functionName === 'min' || functionName === 'max') && arguments_.length > 0) {
         let reducedValue = arguments_[0].value;
         for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1)
@@ -470,6 +593,8 @@ function evaluateConstantArithmetic(expression) {
       value = {
         value: operator === '*' ? value.value * right.value : value.value / right.value,
         units: combineUnits(value, right, operator === '*' ? 1 : -1),
+        symbolicFactors: combineSymbolicFactors(value, right, operator === '*' ? 1 : -1),
+        isLiteralZero: false,
       };
     }
   }
@@ -488,10 +613,9 @@ function evaluateConstantArithmetic(expression) {
       index += 1;
       const right = parseTerm();
       if (!sameUnits(value, right)) throw new Error('incompatible units');
-      value = withValue(
-        value,
-        operator === '+' ? value.value + right.value : value.value - right.value,
-      );
+      value = sameSymbolicFactors(value, right)
+        ? withValue(value, operator === '+' ? value.value + right.value : value.value - right.value)
+        : opaqueValue(operator, [value, right], value.units);
     }
   }
 
@@ -560,7 +684,7 @@ function resolveStaticArithmeticResult(value) {
 function resolveStaticValue(value) {
   const resolved = resolveStaticArithmeticResult(value);
   if (resolved === null || resolved === staticAnalysisTooComplex) return resolved;
-  return resolved.units.size === 0 ? resolved.value : null;
+  return resolved.units.size === 0 && resolved.symbolicFactors.size === 0 ? resolved.value : null;
 }
 
 function resolveStaticNumber(value) {
@@ -790,11 +914,7 @@ export function isCssIdentifierCharacter(character) {
 function hasNumericResultType(units) {
   const dimensionExponents = new Map();
   for (const [unit, exponent] of units) {
-    const relativeUnitName = unit.startsWith('unit:') ? unit.slice(5) : undefined;
-    const dimension =
-      unit === 'dimension:length' || relativeLengthUnitNames.has(relativeUnitName)
-        ? 'dimension:length'
-        : unit;
+    const dimension = normalizedDimension(unit);
     const combinedExponent = (dimensionExponents.get(dimension) ?? 0) + exponent;
     if (combinedExponent === 0) dimensionExponents.delete(dimension);
     else dimensionExponents.set(dimension, combinedExponent);
@@ -807,7 +927,7 @@ export function analyzeStaticLayerValue(value) {
   if (arithmeticResult === staticAnalysisTooComplex)
     return { classification: 'too-complex', resultType: 'too-complex' };
   if (arithmeticResult === null) return { classification: 'unresolved', resultType: 'unresolved' };
-  if (arithmeticResult.units.size > 0)
+  if (arithmeticResult.units.size > 0 || arithmeticResult.symbolicFactors.size > 0)
     return {
       classification: 'unresolved',
       resultType: hasNumericResultType(arithmeticResult.units) ? 'number' : 'non-number',
