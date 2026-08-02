@@ -802,6 +802,13 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.text).toContain(`Offending expression: \`${fallback}\``);
   });
 
+  test('reports the original fallback source in offending-expression diagnostics', async () => {
+    const expression = 'var(--x, calc(9999/*comment*/))';
+    const css = `.fixture { /* cinder-z-index-local: test. */ z-index: ${expression}; }`;
+    const [warning] = warnings(await lint(css));
+    expect(warning?.text).toContain('Offending expression: `calc(9999/*comment*/)`');
+  });
+
   test('maps a too-complex fallback range through escaped astral code points', async () => {
     const deepStaticMath = `${'min('.repeat(513)}1${')'.repeat(513)}`;
     const expression = `calc(\\1f600 + var(--x, ${deepStaticMath}))`;

@@ -158,7 +158,12 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       const declarationValue = declaration.value.trim();
       const maskedDeclarationValue = maskComments(declarationValue);
       const valueOffset = maskedDeclarationValue.length - maskedDeclarationValue.trimStart().length;
+      const trailingValueOffset = maskedDeclarationValue.length - maskedDeclarationValue.trimEnd().length;
       const rawValue = maskedDeclarationValue.trim();
+      const rawSourceValue = declarationValue.slice(
+        valueOffset,
+        declarationValue.length - trailingValueOffset,
+      );
       const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
       const tokenMatch = layerTokenPattern.exec(value);
       const layerTokenReferences = findLayerTokenReferences(value);
@@ -187,10 +192,21 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
           offendingFallback.index === undefined || declarationValueIndex === -1
             ? -1
             : declarationValueIndex + valueOffset + offendingFallback.index;
+        const rawSourceExpression =
+          offendingFallback.index === undefined || offendingFallback.length === undefined
+            ? undefined
+            : rawSourceValue.slice(
+                offendingFallback.index,
+                offendingFallback.index + offendingFallback.length,
+              );
+        const diagnosticExpressionSource =
+          rawSourceExpression && rawSourceExpression.length > 0
+            ? rawSourceExpression
+            : offendingFallback.value;
         const diagnosticExpression =
-          offendingFallback.value.length <= maximumDiagnosticExpressionLength
-            ? offendingFallback.value
-            : `${offendingFallback.value.slice(0, maximumDiagnosticExpressionLength - 1)}…`;
+          diagnosticExpressionSource.length <= maximumDiagnosticExpressionLength
+            ? diagnosticExpressionSource
+            : `${diagnosticExpressionSource.slice(0, maximumDiagnosticExpressionLength - 1)}…`;
         const diagnosticMessage =
           offendingFallback.reason === 'too-complex'
             ? messages.fallbackTooComplex
