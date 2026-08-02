@@ -55,6 +55,21 @@ describe('cinder/z-index-scale', () => {
     );
   });
 
+  test('charges frame-expression operator scans to the shared resolution budget', async () => {
+    const source = await Bun.file(fallbackAnalysisPath).text();
+
+    expect(source).toContain('function analyzeFrameExpression(frame, resolvedFallback, budget)');
+    expect(source).toMatch(/resolvedFallback\.length,\s+budget,\s+frame\.mathContext/);
+  });
+
+  test('uses constant-time progress-parent membership checks', async () => {
+    const source = await Bun.file(fallbackAnalysisPath).text();
+
+    expect(source).toContain('const progressParentSet = new Set();');
+    expect(source).toContain('progressParentSet.has(child.progressParent)');
+    expect(source).not.toContain('progressParents.includes(progressParent)');
+  });
+
   test('reduces wide CSS math functions without spreading call arguments', async () => {
     expect(await Bun.file(valueAnalysisPath).text()).not.toMatch(
       /Math\.(?:hypot|max|min)\s*(?:\?\.\s*)?\(\s*\.\.\./,
@@ -67,7 +82,9 @@ describe('cinder/z-index-scale', () => {
     'Auto',
     '0',
     '1',
+    '/**/0/**/',
     'var(--cinder-z-popover)',
+    '/**/var(--cinder-z-popover)/**/',
     'var(--cinder-z-drag-preview)',
     'var(--cinder-z-focused-affordance)',
   ])('accepts %s', async (value) => {
@@ -124,6 +141,17 @@ describe('cinder/z-index-scale', () => {
         z-index: 2;
       }
     `);
+    expect(warnings(result)).toEqual([]);
+  });
+
+  test('does not treat comments as operator whitespace in a reasoned local expression', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: an unused invalid expression is not the magic layer. */
+        z-index: calc(10000/**/-/**/1);
+      }
+    `);
+
     expect(warnings(result)).toEqual([]);
   });
 
@@ -230,6 +258,7 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999dppx / 96dpi))',
     'var(--item-layer, calc(9999x / 1dppx))',
     'var(--item-layer, calc(9999fr / 1fr))',
+    'var(--item-layer, calc(9999px * 1px / 1px / 1px))',
     'attr(data-layer type(<integer>), 9999)',
     'var(--item-layer, mod(9999, 10000))',
     'var(--item-layer, rem(9999, 10000))',
@@ -260,7 +289,9 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(atan2(1, 0) / 90deg * 9999))',
     'var(--item-layer, calc(-infinity))',
     'var(--item-layer, clamp(none, 9999, 10000))',
+    'var(--item-layer, clamp(none/**/, 9999, 9999))',
     'var(--item-layer, clamp(0, 9999, none))',
+    'var(--item-layer, clamp(9999, 9999, none/**/))',
     'max(var(--item-layer, 9999), var(--dynamic, 0), 0)',
     'calc(2 * var(--inner, 4997 + 5))',
   ])('rejects a banned value in a CSS substitution fallback: %s', async (value) => {
@@ -348,6 +379,21 @@ describe('cinder/z-index-scale', () => {
       .fixture {
         /* cinder-z-index-local: the magic fallback remains observable. */
         z-index: max(var(--negative, -1), var(--magic, 9999), 0);
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+    expect(result.results[0]?.warnings?.[0]?.text).toContain('`9999`');
+  });
+
+  test('preserves distinct banned classifications through nested fallback frames', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the outer floor cannot eliminate the nested magic fallback. */
+        z-index: var(
+          --outer,
+          max(var(--mid, calc(var(--negative, -1) + var(--magic, 9999) + var(--runtime))), 0)
+        );
       }
     `);
 
@@ -595,6 +641,32 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(result)).toHaveLength(1);
   });
 
+  test.each(['var(--inner, 9999)', 'env(cinder-missing, 9999)'])(
+    'treats a masked comment as trivia before a substitution function: %s',
+    async (fallback) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: a comment may separate adjacent fallback functions. */
+          z-index: var(--outer, /**/${fallback});
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
+  test('keeps a literal private-use code point identifier-adjacent', async () => {
+    const privateUseIdentifierCharacter = '\uE001';
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the private-use prefix makes this a different function name. */
+        z-index: var(--outer, ${privateUseIdentifierCharacter}var(--inner, 9999));
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test('does not treat an escaped slash as the start of a CSS comment', async () => {
     const result = await lint(`
       .fixture {
@@ -636,6 +708,65 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    'var(--outer, var(--inner, -1) + 0)',
+    'var(--outer, var(--inner, 9999) - 0)',
+    'var(--outer, var(--inner, -1) * 1)',
+    'var(--outer, var(--inner, 9999) / 1)',
+    'var(--outer, var(--inner, -1)/**/+/**/var(--runtime))',
+    'var(--outer, min(var(--inner, -1), 0) + 0)',
+    'var(--outer, var(--negative, -1) + max(var(--magic, 9999), 0))',
+    'var(--outer, max(var(--negative, -1), 0) + var(--magic, 9999))',
+    'var(--outer, max(var(--negative, -1), 0) + max(var(--magic, 9999), 0))',
+    'var(--outer, 1e + var(--inner, -1))',
+    'var(--outer, 1e+var(--inner, -1))',
+    'var(--outer, 1e - var(--inner, -1))',
+    'var(--outer, rgb(var(--inner, -1) + 0))',
+    'var(--outer, hsl(var(--inner, 9999) + 0 0% 0%))',
+    'var(--outer, blur(max(var(--inner, -1), 0) + 0))',
+  ])(
+    'discards nested candidates from a grammar-invalid bare operator stream: %s',
+    async (value) => {
+      const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: bare operators make the selected fallback invalid. */
+        z-index: ${value};
+      }
+    `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
+
+  test.each([
+    'var(--outer, calc(var(--inner, -1) + 0))',
+    'var(--outer, calc(var(--inner, 9999) * 1))',
+    'var(--outer, rgb(calc(var(--inner, -1) + 0) 0 0))',
+  ])('preserves nested candidates inside a valid CSS math context: %s', async (value) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: calc supplies grammar for the nested banned fallback. */
+        z-index: ${value};
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test.each(['#calc', '@calc'])(
+    'does not inherit math grammar from a CSS name token: %s',
+    async (functionName) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: a prefixed name is not a calc function token. */
+          z-index: var(--outer, ${functionName}(var(--inner, 10000 - 1)));
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    },
+  );
+
+  test.each([
     ['-pi', 0],
     ['-infinity', 1],
   ] as const)(
@@ -669,6 +800,28 @@ describe('cinder/z-index-scale', () => {
 
     expect(warnings(result)).toHaveLength(1);
   });
+
+  test.each([
+    ['down', '-0.4', 1],
+    ['nearest', '-0.6', 1],
+    ['up', '-0.4', 0],
+    ['nearest', '-0.4', 0],
+  ] as const)(
+    'preserves fractional fallback evidence through unresolved round(%s): %s',
+    async (strategy, fallback, warningCount) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: runtime zero leaves the fractional fallback unchanged. */
+          z-index: var(
+            --outer,
+            round(${strategy}, var(--inner, ${fallback}) + var(--runtime) * 0, 1)
+          );
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(warningCount);
+    },
+  );
 
   test('retains banned attr fallbacks regardless of the attribute result type', async () => {
     const result = await lint(`
@@ -708,6 +861,41 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(safe)).toEqual([]);
+  });
+
+  test.each([
+    ['-1 * 0', 1],
+    ['calc(-1 * 0)', 1],
+    ['0', 0],
+    ['-0', 0],
+  ] as const)(
+    'preserves signed-zero-sensitive magic candidates through a min ceiling: %s',
+    async (ceiling, warningCount) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: a generated negative zero remains observable by division. */
+          z-index: var(
+            --outer,
+            calc(
+              1 / var(--mid, min(var(--inner, 9999), ${ceiling})) + var(--runtime) * 0
+            )
+          );
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(warningCount);
+    },
+  );
+
+  test('does not treat a negative fractional max floor as nonnegative', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the fractional floor can still produce a negative layer. */
+        z-index: calc(1 / var(--outer, max(var(--inner, -1), -0.4)) + var(--dynamic));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test('does not retokenize an escaped dimension unit as exponent notation', async () => {
@@ -1084,6 +1272,18 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.text).not.toContain('must not contain a banned z-index');
   });
 
+  test('does not count parentheses inside an unquoted URL token as static expression depth', async () => {
+    const urlParentheses = `url(${'('.repeat(513)})`;
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: URL contents are opaque to static math analysis. */
+        z-index: var(--outer, ${urlParentheses});
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
+  });
+
   test.each([
     '#var(--runtime)',
     '@var(--runtime)',
@@ -1254,6 +1454,85 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(unknown)).toEqual([]);
+  });
+
+  test('does not propagate nested fallback candidates through statically non-number results', async () => {
+    for (const value of [
+      'calc(var(--inner, -1) * 1px)',
+      'var(--outer, calc(var(--inner, 9999) * 1deg))',
+      'var(--outer, calc(var(--inner, -1px) + 0px))',
+      'var(--outer, calc(var(--inner, -1) / 1px))',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: the selected fallback has a non-number result. */
+          z-index: ${value};
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    }
+
+    for (const value of [
+      'calc(var(--inner, -1) * 1px / 1px)',
+      'var(--outer, calc(var(--inner, 9999px) / 1px))',
+      'var(--outer, calc(var(--inner, -1) * 1rem / 1em))',
+      'var(--outer, calc(var(--inner, 9999) * 1px / 1rem))',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: matching dimensions cancel to a banned number. */
+          z-index: ${value};
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    }
+
+    const runtimeSibling = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a runtime sibling can still make the selected fallback numeric. */
+        z-index: var(--outer, calc(var(--inner, -1) * var(--unit, 1px)));
+      }
+    `);
+    expect(warnings(runtimeSibling)).toHaveLength(1);
+
+    for (const value of [
+      'var(--outer, calc(var(--inner, -1) * 1px + var(--runtime)))',
+      'var(--outer, calc(var(--inner, 9999) * 1px + var(--runtime)))',
+      'var(--outer, calc(1px + var(--inner, -1)))',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: a proven non-number additive term fixes the result type. */
+          z-index: ${value};
+        }
+      `);
+
+      expect(warnings(result)).toEqual([]);
+    }
+
+    const enclosingCancellation = await lint(`
+      .fixture {
+        /* cinder-z-index-local: enclosing division can still cancel the additive result type. */
+        z-index: var(--outer, calc((var(--inner, -1) * 1px + var(--runtime)) / 1px));
+      }
+    `);
+    expect(warnings(enclosingCancellation)).toHaveLength(1);
+
+    for (const value of [
+      'var(--outer, calc(var(--length, 1px) + var(--inner, -1)))',
+      'var(--outer, calc(var(--length, 1px) + var(--inner, 9999)))',
+    ]) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: another fallback term may be runtime-defined as scalar. */
+          z-index: ${value};
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    }
   });
 
   test.each([
@@ -1578,6 +1857,525 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    'var(--inner, -1) 0',
+    '0 var(--inner, -1)',
+    'var(--inner, 9999) safe',
+    'calc(var(--inner, -1) 0)',
+    'calc(var(--inner, 9999) 0)',
+  ])(
+    'does not propagate a candidate through an invalid adjacent token stream: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: an invalid fallback can remain unused. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  test.each(['calc(rgb(var(--inner, -1) + 0))', 'calc(hsl(var(--inner, 9999) + 0 0% 0%))'])(
+    'resets math grammar inside a nested non-math function: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: invalid non-math operators cannot produce a layer. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  test.each([
+    'calc(#rgb(var(--inner, -1) + 0))',
+    'calc(@rgb(var(--inner, 9999) + 0))',
+    'calc(#rgb(var(--inner, -1)))',
+    'calc(@rgb(var(--inner, 9999)))',
+    'calc(rgb(var(--inner, -1)))',
+  ])('does not inherit math grammar through a prefixed token block: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: a prefixed token block is not a math function. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'calc(var(--inner, -1), 0)',
+    'calc(0, var(--inner, 9999))',
+    'calc(0, var(--inner, -1), 1)',
+    'var(--inner, -1), 0',
+  ])(
+    'does not propagate a fallback through an invalid comma-separated expression: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: calc accepts one calculation, not an argument list. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  test('does not propagate a fallback through a direct top-level comma stream', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: a comma is invalid in the top-level z-index grammar. */
+            z-index: var(--inner, -1), 0;
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each(['calc(var(--inner, -1), 0)', 'calc((var(--inner, -1), 0))'])(
+    'does not propagate a fallback through a direct invalid math comma stream: %s',
+    async (value) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: calc and grouping accept one calculation. */
+              z-index: ${value};
+            }
+          `),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  test.each([
+    'var(1, -1)',
+    'var(foo, 9999)',
+    'var(--x extra, -1)',
+    'env(1 bad, 9999)',
+    'attr(1 bad, -1)',
+    'env(inherit, -1)',
+    'env(INITIAL, 9999)',
+    'env(unset, -1)',
+    'env(revert, 9999)',
+    'env(revert-layer, -1)',
+    'env(default, 9999)',
+    'attr(data-layer type(<integer), -1)',
+  ])('does not propagate a fallback from an invalid substitution header: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the malformed nested substitution can remain unused. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'var(--inner/**/, -1)',
+    'env(viewport-segment-width 0 0, 9999)',
+    'attr(data-layer raw-string, -1)',
+    'attr(data-layer type(<integer>), 9999)',
+  ])('continues inspecting a fallback from a valid substitution header: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: valid substitution fallbacks remain inspected. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
+    'progress(var(--inner, -1), var(--runtime), 10)',
+    'max(var(--inner, -1), progress(var(--runtime), 0, 1))',
+    'min(var(--inner, 9999), progress(var(--runtime), 0, 1))',
+  ])('applies the safe output range of a valid progress function: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: progress constrains the resulting layer to zero through one. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'progress(var(--inner, -1), 0)',
+    'progress(var(--inner, 9999), 0, 1, 2)',
+    'progress(no-clamp var(--inner, -1), 0, 1)',
+    'progress(/**/no-clamp var(--inner, -1), 0, 1)',
+    'calc(progress(var(--inner, -1), 0, 1) + var(--runtime))',
+  ])(
+    'does not apply a progress range proof outside a whole valid function: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: this expression has no independent safe output range. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  test.each([
+    'calc(-2 + progress(var(--runtime), 0, 1))',
+    'calc(progress(var(--runtime), 0, 1) + 9999)',
+    'calc(9999 + progress(var(--runtime), 0, 1))',
+    'calc(progress(var(--runtime), 0, 1) - 9999)',
+    'calc(progress(var(--runtime), 0, 1) * 9999)',
+    'calc(9999 * progress(var(--runtime), 0, 1))',
+  ])('propagates a valid progress range through enclosing arithmetic: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the progress range reaches a banned layer. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps a safely bounded progress expression accepted', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the full progress range stays within the local scale. */
+            z-index: var(--outer, calc(1 + progress(var(--runtime), 0, 1)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('propagates independent progress ranges through shared arithmetic', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the progress corner reaches the magic layer. */
+            z-index: var(--outer, calc(progress(var(--a), 0, 1) * progress(var(--b), 0, 1) * 9999));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('keeps multiple safely bounded progress ranges accepted', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: every progress corner stays within the local scale. */
+            z-index: var(--outer, calc(1 + progress(var(--a), 0, 1) * progress(var(--b), 0, 1)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('uses a resolved fallback path when proving a progress range safe', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the selected fallback path stays above the magic layer. */
+            z-index: var(--outer, calc(var(--inner, 9999) + 1 + progress(var(--runtime), 0, 1)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('preserves a progress-path candidate when a sibling may use its defined value', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the sibling runtime value can restore the magic layer. */
+            z-index: var(--outer, calc(var(--inner, 9999) + 1 + var(--sibling, 0) + progress(var(--runtime), 0, 1)));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('correlates structurally identical progress ranges', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: identical progress values cancel to zero. */
+            z-index: var(--outer, calc(progress(var(--runtime), 0, 1) - progress(var(--runtime), 0, 1)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('keeps distinct progress ranges independent', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: independent progress values can produce a negative layer. */
+            z-index: var(--outer, calc(progress(var(--left), 0, 1) - progress(var(--right), 0, 1)));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
+    'calc(pow(progress(var(--runtime), 0, 1), 2) * 9999)',
+    'calc(sin(progress(var(--runtime), 0, 1) * 2 * pi) * 9999)',
+    'calc(1 / progress(var(--runtime), 0, 1))',
+  ])('fails closed for a progress range inside unsupported arithmetic: %s', async (fallback) => {
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: unsupported range transforms cannot be assumed safe. */
+          z-index: var(--outer, ${fallback});
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('too complex to verify');
+  });
+
+  test.each([
+    'max(var(--inner, -1), 9999, var(--runtime))',
+    'calc(max(var(--inner, -1), 9999) * var(--runtime))',
+  ])(
+    'does not use the magic layer as an independently safe maximum floor: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: the bound itself must not introduce the magic layer. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  test('continues using a non-magic safe maximum floor', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the independent floor is nonnegative and non-magic. */
+            z-index: var(--outer, max(var(--inner, -1), 10000, var(--runtime)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'max(var(--inner, -1), 1, 9999, var(--runtime))',
+    'min(var(--inner, 9999), 10000, -1, var(--runtime))',
+  ])('preserves a direct banned bound sibling in unresolved math: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: one safe bound cannot erase another banned argument. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
+    'clamp(9999, var(--inner, 9999), progress(var(--runtime), 0, 1))',
+    'clamp(progress(var(--runtime), 0, 1), var(--inner, 9999), 9999)',
+  ])('preserves a magic candidate across a progress clamp endpoint: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: progress does not eliminate this reachable magic layer. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('uses a progress maximum as a safe ceiling when clamp bounds do not cross', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the progress maximum keeps the final layer below magic. */
+            z-index: var(--outer, clamp(none, var(--inner, 9999), progress(var(--runtime), 0, 1)));
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each(['clamp(-1, var(--runtime), 10)', 'clamp(0, var(--runtime), 9999)'])(
+    'preserves a reachable banned clamp endpoint: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: the runtime center can select the banned endpoint. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  test.each(['calc(10000 - 1 + var(--runtime) * 0)', 'calc(9999 + var(--runtime) * 0)'])(
+    'evaluates a math witness whose unresolved contribution is statically zero: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: a zeroed runtime term cannot hide the magic layer. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  test('fails closed when a zero-witness factor scan exhausts the shared budget', async () => {
+    const fallback = `calc(9999 + var(--runtime) * 0${' '.repeat(1_000_000)})`;
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: exhausted zero-witness work cannot hide the magic layer. */
+          z-index: var(--outer, ${fallback});
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('too complex to verify');
+  });
+
+  test('recognizes a zero product around multiple unresolved children', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the unresolved group contributes zero for finite values. */
+            z-index: var(--outer, calc(9999 + (var(--a) + var(--b)) * 0));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
+    'calc(1 + (var(--a, -1) + var(--b, 9999)) * 0)',
+    'calc((var(--a, -1) + var(--b, 9999)) * 0 + var(--runtime))',
+  ])('eliminates every banned child in a grouped zero product: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the grouped fallback contribution is statically zero. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each(['calc(10000 - 1 + var(--runtime))', 'calc(10000 - 1 + var(--runtime) * 1)'])(
+    'does not replace a live unresolved contribution with zero: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: the runtime term can change the final layer. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  test.each(['calc(var(--inner, -1) + 0)', 'rgb(calc(var(--inner, -1) + 0) 0 0)'])(
+    'preserves a candidate through a real math boundary: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: valid nested math remains inspected. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
+
+  test('bounds invalid-token scanning across nested unresolved fallback frames', async () => {
+    let fallback = 'var(--leaf, -1)';
+    for (let index = 0; index < 3_000; index += 1)
+      fallback = `var(--outer-${index}, rgb(var(--runtime-${index}) ${fallback} + 0))`;
+
+    const startedAt = performance.now();
+    await lint(`
+      .fixture {
+        /* cinder-z-index-local: generated fallbacks must remain bounded. */
+        z-index: ${fallback};
+      }
+    `);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
+  test.each([
     'url(var(--inner, -1))',
     'URL(var(--inner, -1))',
     'u\\72l(var(--inner, -1))',
@@ -1622,6 +2420,20 @@ describe('cinder/z-index-scale', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.text).toContain('Offending expression: `-1`');
     expect(result[0]?.column).toBe(source.lastIndexOf('-1') + 1);
+  });
+
+  test('does not mask comment-like bytes inside an unquoted URL token', async () => {
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: the later undeclared layer token remains visible. */
+          z-index: var(--outer, url(foo/*)*/ var(--cinder-z-undeclared));
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('`z-index` must be `auto`, `0`, `1`');
   });
 
   test('resumes layer-token scanning after an unquoted URL token', async () => {

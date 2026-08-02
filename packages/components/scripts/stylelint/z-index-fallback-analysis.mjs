@@ -1,9 +1,14 @@
 import {
+  analyzeStaticLayerValue,
   classifyStaticLayer,
   cssCommentMaskCharacter,
+  evaluateStaticLayerNumber,
   isCssIdentifierCharacter,
+  isCssWhitespace,
   isCssWhitespaceOrComment,
+  isStaticallyNegativeBeforeIntegerRounding,
   isStaticallyNegativeZero,
+  isStaticallyNonnegative,
   isStaticallyZero,
   normalizeCssEscapesForInspection,
   unquotedUrlTokenEnd,
@@ -12,7 +17,16 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
+const invalidCustomIdentKeywords = new Set([
+  'default',
+  'inherit',
+  'initial',
+  'revert',
+  'revert-layer',
+  'unset',
+]);
 const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
+const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
 const mathFunctionNames = new Set([
   '-webkit-calc',
   'abs',
@@ -84,10 +98,14 @@ function maskTokenizingComments(value) {
   return maskedCharacters.join('');
 }
 
-function resolveFrameExpression(frame, value, range, budget) {
+function resolveFrameExpression(frame, value, range, budget, unresolvedReplacement) {
   if (frame.children.some((child) => child.resolvedFallback === fallbackResolutionTooComplex))
     return fallbackResolutionTooComplex;
-  if (frame.children.some((child) => child.resolvedFallback === null)) return null;
+  if (
+    unresolvedReplacement === undefined &&
+    frame.children.some((child) => child.resolvedFallback === null)
+  )
+    return null;
 
   const [onlyChild] = frame.children;
   if (frame.children.length === 1 && onlyChild.start === range.start && onlyChild.end === range.end)
@@ -104,7 +122,7 @@ function resolveFrameExpression(frame, value, range, budget) {
     // Custom-property substitution splices a token stream directly into the
     // surrounding value; it neither adds grouping parentheses nor retokenizes
     // adjacent tokens. Separator whitespace preserves those token boundaries.
-    const replacement = ` ${child.resolvedFallback} `;
+    const replacement = ` ${child.resolvedFallback ?? unresolvedReplacement} `;
     const nextLength =
       resolvedExpression.length - (relativeEnd - relativeStart) + replacement.length;
     if (!consumeResolutionWork(budget, nextLength)) return fallbackResolutionTooComplex;
@@ -117,7 +135,7 @@ function resolveFrameExpression(frame, value, range, budget) {
 }
 
 function factorAfter(value, start, end, budget) {
-  if (!consumeResolutionWork(budget, (end - start) * 4)) return undefined;
+  if (!consumeResolutionWork(budget, (end - start) * 4)) return fallbackResolutionTooComplex;
   while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
   const factorStart = start;
   while (start < end && /[+-]/.test(value[start])) {
@@ -137,7 +155,7 @@ function factorAfter(value, start, end, budget) {
 }
 
 function factorBefore(value, start, end, budget) {
-  if (!consumeResolutionWork(budget, (end - start) * 4)) return undefined;
+  if (!consumeResolutionWork(budget, (end - start) * 4)) return fallbackResolutionTooComplex;
   while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
   const factorEnd = end;
   let depth = 0;
@@ -161,21 +179,109 @@ function contextForOpeningParenthesis(value, openIndex, inheritedContext, inheri
   let functionStart = openIndex;
   while (functionStart > 0 && isCssIdentifierCharacter(value[functionStart - 1]))
     functionStart -= 1;
-  const functionName = value.slice(functionStart, openIndex).toLowerCase();
-  const operandStart = functionName ? functionStart : openIndex;
+  const functionPrefix = value[functionStart - 1];
+  const isGroupingParenthesis = functionStart === openIndex;
+  const functionName =
+    functionPrefix === '#' || functionPrefix === '@'
+      ? ''
+      : value.slice(functionStart, openIndex).toLowerCase();
+  const operandStart = isGroupingParenthesis ? openIndex : functionStart;
   const parentRequiresSignedZero = inheritedContext || isPrecededByDivision(value, operandStart);
+  const inheritsParentGrammar =
+    isGroupingParenthesis || substitutionFunctionNames.has(functionName);
   return {
+    functionStart,
     functionName,
-    mathContext: inheritedMathContext || mathFunctionNames.has(functionName),
+    isGroupingParenthesis,
+    mathContext:
+      mathFunctionNames.has(functionName) || (inheritsParentGrammar && inheritedMathContext),
     parentRequiresSignedZero,
     signedZeroSensitiveContext:
       parentRequiresSignedZero || signedZeroSensitiveFunctionNames.has(functionName),
   };
 }
 
+function expressionRangeIsMultipliedByStaticZero(
+  value,
+  range,
+  expressionStart,
+  expressionEnd,
+  budget,
+) {
+  let afterChild = expressionEnd;
+  while (
+    afterChild < range.end &&
+    (isCssWhitespaceOrComment(value[afterChild]) || value[afterChild] === ')')
+  )
+    afterChild += 1;
+  if (value[afterChild] === '*') {
+    const factor = factorAfter(value, afterChild + 1, range.end, budget);
+    if (factor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+    if (factor !== undefined && isStaticallyZero(factor)) return true;
+  }
+
+  let beforeChild = expressionStart;
+  while (
+    beforeChild > range.start &&
+    (isCssWhitespaceOrComment(value[beforeChild - 1]) || value[beforeChild - 1] === '(')
+  )
+    beforeChild -= 1;
+  if (value[beforeChild - 1] !== '*') return false;
+  const factor = factorBefore(value, range.start, beforeChild - 1, budget);
+  if (factor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+  return factor !== undefined && isStaticallyZero(factor);
+}
+
+function childIsMultipliedByStaticZero(value, range, child, budget) {
+  if (child.signedZeroSensitiveContext) return false;
+  const directResult = expressionRangeIsMultipliedByStaticZero(
+    value,
+    range,
+    child.start,
+    child.end,
+    budget,
+  );
+  if (directResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+  if (directResult) return true;
+  const groupingParent = child.parenthesisParent;
+  if (
+    groupingParent?.type !== 'group' ||
+    groupingParent.end === undefined ||
+    groupingParent.openIndex < range.start ||
+    groupingParent.end > range.end ||
+    !groupingParent.mathContext
+  )
+    return false;
+  const expressionStart = groupingParent.isGroupingParenthesis
+    ? groupingParent.openIndex
+    : groupingParent.functionStart;
+  return expressionRangeIsMultipliedByStaticZero(
+    value,
+    range,
+    expressionStart,
+    groupingParent.end,
+    budget,
+  );
+}
+
 function childIsEliminatedByZeroProduct(value, range, child, budget) {
   if (child.signedZeroSensitiveContext) return false;
   if (typeof child.resolvedFallback !== 'string') return false;
+  const groupingParent = child.parenthesisParent;
+  const groupedZeroProduct =
+    groupingParent?.type === 'group' &&
+    groupingParent.isGroupingParenthesis &&
+    groupingParent.end !== undefined
+      ? expressionRangeIsMultipliedByStaticZero(
+          value,
+          range,
+          groupingParent.openIndex,
+          groupingParent.end,
+          budget,
+        )
+      : false;
+  if (groupedZeroProduct === fallbackResolutionTooComplex) return false;
+  if (groupedZeroProduct) return true;
   let afterChild = child.end;
   while (
     afterChild < range.end &&
@@ -184,6 +290,7 @@ function childIsEliminatedByZeroProduct(value, range, child, budget) {
     afterChild += 1;
   if (value[afterChild] === '*') {
     const factor = factorAfter(value, afterChild + 1, range.end, budget);
+    if (factor === fallbackResolutionTooComplex) return false;
     if (factor !== undefined && isStaticallyZero(`calc(${child.resolvedFallback} * ${factor})`))
       return true;
   }
@@ -196,14 +303,32 @@ function childIsEliminatedByZeroProduct(value, range, child, budget) {
     beforeChild -= 1;
   if (value[beforeChild - 1] !== '*') return false;
   const factor = factorBefore(value, range.start, beforeChild - 1, budget);
+  if (factor === fallbackResolutionTooComplex) return false;
   return factor !== undefined && isStaticallyZero(`calc(${factor} * ${child.resolvedFallback})`);
 }
 
-function classifyResolvedFallback(resolvedFallback) {
-  if (resolvedFallback === fallbackResolutionTooComplex) return 'too-complex';
+function analyzeResolvedFallback(resolvedFallback) {
+  if (resolvedFallback === fallbackResolutionTooComplex)
+    return { classification: 'too-complex', resultType: 'too-complex' };
   return typeof resolvedFallback === 'string'
-    ? classifyStaticLayer(resolvedFallback)
-    : 'unresolved';
+    ? analyzeStaticLayerValue(resolvedFallback)
+    : { classification: 'unresolved', resultType: 'unresolved' };
+}
+
+function analyzeFrameExpression(frame, resolvedFallback, budget) {
+  if (typeof resolvedFallback !== 'string') return analyzeResolvedFallback(resolvedFallback);
+  if (resolvedFallback.length > budget.remaining)
+    return { classification: 'too-complex', resultType: 'too-complex' };
+  return hasBareOperatorStream(
+    resolvedFallback,
+    0,
+    resolvedFallback.length,
+    budget,
+    frame.mathContext,
+  ) ||
+    (!frame.mathContext && isBareCalcOnlyConstant(resolvedFallback))
+    ? { classification: 'unresolved', resultType: 'unresolved' }
+    : analyzeResolvedFallback(resolvedFallback);
 }
 
 function unwrapStaticContainer(value, range, parenthesisPairs) {
@@ -221,6 +346,72 @@ function unwrapStaticContainer(value, range, parenthesisPairs) {
     if (parenthesisPairs.get(openIndex) !== unwrappedRange.end - 1) return unwrappedRange;
     unwrappedRange = trimCssTriviaRange(value, openIndex + 1, unwrappedRange.end - 1);
   }
+}
+
+function adjacentTriviaContainsWhitespace(value, index, direction, range) {
+  for (
+    let cursor = index + direction;
+    cursor >= range.start && cursor < range.end && isCssWhitespaceOrComment(value[cursor]);
+    cursor += direction
+  ) {
+    if (isCssWhitespace(value[cursor])) return true;
+  }
+  return false;
+}
+
+function additiveNonNumberCandidateSuppression(frame, value, range, budget, parenthesisPairs) {
+  const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  if (!consumeResolutionWork(budget, expressionRange.end - expressionRange.start)) return undefined;
+  const termRanges = [];
+  let termStart = expressionRange.start;
+  for (let index = expressionRange.start; index < expressionRange.end; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    if (value[index] === '(') {
+      const closingIndex = parenthesisPairs.get(index);
+      if (closingIndex === undefined || closingIndex >= expressionRange.end) return undefined;
+      index = closingIndex;
+      continue;
+    }
+    if (
+      !/[+-]/.test(value[index]) ||
+      !adjacentTriviaContainsWhitespace(value, index, -1, expressionRange) ||
+      !adjacentTriviaContainsWhitespace(value, index, 1, expressionRange)
+    )
+      continue;
+    termRanges.push(trimCssTriviaRange(value, termStart, index));
+    termStart = index + 1;
+  }
+  if (termRanges.length === 0) return undefined;
+  termRanges.push(trimCssTriviaRange(value, termStart, expressionRange.end));
+
+  const suppressedCandidateRanges = [];
+  for (const termRange of termRanges) {
+    const children = frame.children.filter(
+      (child) => child.start >= termRange.start && child.end <= termRange.end,
+    );
+    if (
+      children.length > 1 ||
+      children[0]?.unprovenBannedCandidates.some((candidate) => candidate.hasRuntimeSibling)
+    )
+      continue;
+    const resolvedTerm = resolveFrameExpression({ ...frame, children }, value, termRange, budget);
+    if (typeof resolvedTerm !== 'string' || !consumeResolutionWork(budget, resolvedTerm.length))
+      continue;
+    if (analyzeStaticLayerValue(resolvedTerm).resultType !== 'non-number') continue;
+    if (children.length === 0) return { suppressesAllCandidates: true, suppressedCandidateRanges };
+    suppressedCandidateRanges.push(termRange);
+  }
+  return suppressedCandidateRanges.length > 0
+    ? { suppressesAllCandidates: false, suppressedCandidateRanges }
+    : undefined;
 }
 
 function fallbackIndependentStaticArguments(frame, value, range, functionName, parenthesisPairs) {
@@ -265,12 +456,223 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName, p
       child !== undefined && child.start < argumentRange.end && child.end > argumentRange.start;
     if (containsFallback) return [];
     const argument = arguments_[argumentIndex];
-    return [{ index: argumentIndex, value: value.slice(argument.start, argument.end) }];
+    return [
+      {
+        index: argumentIndex,
+        range: argument,
+        value: value.slice(argument.start, argument.end),
+      },
+    ];
   });
   return {
     argumentCount: argumentRanges.length,
     argumentRanges: arguments_,
     staticArguments,
+  };
+}
+
+function isValidProgressRange(frame, value, range, parenthesisPairs) {
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    range,
+    'progress',
+    parenthesisPairs,
+  );
+  if (parsedArguments?.argumentCount !== 3) return false;
+  const firstArgument = value
+    .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
+    .trimStart();
+  return !(
+    firstArgument.slice(0, 8).toLowerCase() === 'no-clamp' &&
+    !isCssIdentifierCharacter(firstArgument[8])
+  );
+}
+
+function directBannedMathArgumentCandidates(
+  frame,
+  value,
+  range,
+  candidate,
+  budget,
+  parenthesisPairs,
+) {
+  for (const functionName of ['max', 'min', 'clamp']) {
+    const parsedArguments = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      range,
+      functionName,
+      parenthesisPairs,
+    );
+    if (!parsedArguments) continue;
+    if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return [];
+    const candidateArguments =
+      functionName === 'clamp'
+        ? parsedArguments.staticArguments.filter(
+            (argument) => argument.index === 0 || argument.index === 2,
+          )
+        : parsedArguments.staticArguments;
+    const classificationWork = candidateArguments.reduce(
+      (total, argument) => total + argument.value.length,
+      0,
+    );
+    if (!consumeResolutionWork(budget, classificationWork))
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+        },
+      ];
+    return candidateArguments.flatMap((argument) => {
+      const resolvedClassification = classifyStaticLayer(argument.value);
+      return resolvedClassification === 'negative' || resolvedClassification === 'magic'
+        ? [
+            {
+              fallbackIndex: argument.range.start,
+              rawFallback: argument.value,
+              resolvedFallback: argument.value,
+              resolvedClassification,
+              hasRuntimeSibling: true,
+            },
+          ]
+        : [];
+    });
+  }
+  return [];
+}
+
+function progressRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+  const unresolvedChildren = frame.children.filter((child) => child.resolvedFallback === null);
+  const emptyAnalysis = { candidates: [], suppressedChild: undefined };
+  if (unresolvedChildren.length === 0) return emptyAnalysis;
+  const progressParents = [];
+  const progressParentSet = new Set();
+  for (const child of unresolvedChildren) {
+    const progressParent = child.progressParent;
+    if (
+      progressParent?.end === undefined ||
+      progressParent.functionStart < range.start ||
+      progressParent.end > range.end
+    )
+      return emptyAnalysis;
+    if (!progressParentSet.has(progressParent)) {
+      progressParentSet.add(progressParent);
+      progressParents.push(progressParent);
+    }
+  }
+  const progressRanges = progressParents
+    .map((parenthesis) => ({
+      end: parenthesis.end,
+      parenthesis,
+      start: parenthesis.functionStart,
+    }))
+    .sort((left, right) => left.start - right.start);
+  const tooComplexAnalysis = () => ({
+    candidates: [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ],
+    suppressedChild: undefined,
+  });
+  if (
+    progressRanges.some(
+      (progressRange) => progressRange.start < range.start || progressRange.end > range.end,
+    ) ||
+    progressRanges.some(
+      (progressRange, index) => index > 0 && progressRanges[index - 1].end > progressRange.start,
+    )
+  )
+    return tooComplexAnalysis();
+  const childrenOutsideProgressRanges = frame.children.filter(
+    (child) => !progressParentSet.has(child.progressParent),
+  );
+  if (childrenOutsideProgressRanges.some((child) => child.resolvedFallback === null))
+    return emptyAnalysis;
+  for (const progressRange of progressRanges) {
+    if (!isValidProgressRange(frame, value, progressRange, parenthesisPairs)) return emptyAnalysis;
+    const unsupportedParent = progressRange.parenthesis.unsupportedProgressRangeParent;
+    if (
+      unsupportedParent?.end !== undefined &&
+      unsupportedParent.functionStart >= range.start &&
+      unsupportedParent.end <= range.end
+    )
+      return childrenOutsideProgressRanges.length > 0 ? emptyAnalysis : tooComplexAnalysis();
+  }
+  const progressGroupIndexes = new Map();
+  const progressRangeGroupIndexes = progressRanges.map((progressRange) => {
+    const key = value.slice(progressRange.start, progressRange.end);
+    const existingIndex = progressGroupIndexes.get(key);
+    if (existingIndex !== undefined) return existingIndex;
+    const groupIndex = progressGroupIndexes.size;
+    progressGroupIndexes.set(key, groupIndex);
+    return groupIndex;
+  });
+  const resolvedChildren = childrenOutsideProgressRanges;
+  if (resolvedChildren.some((child) => typeof child.resolvedFallback !== 'string'))
+    return emptyAnalysis;
+  const replacementRanges = [
+    ...progressRanges.map((progressRange, index) => ({
+      ...progressRange,
+      groupIndex: progressRangeGroupIndexes[index],
+      type: 'progress',
+    })),
+    ...resolvedChildren.map((child) => ({
+      end: child.end,
+      replacement: ` ${child.resolvedFallback} `,
+      start: child.start,
+      type: 'fallback',
+    })),
+  ].sort((left, right) => left.start - right.start);
+  const combinationCount = 2 ** progressGroupIndexes.size;
+  const replacementLength = resolvedChildren.reduce(
+    (total, child) => total + child.resolvedFallback.length + 2,
+    0,
+  );
+  const generatedLength = combinationCount * (range.end - range.start + replacementLength);
+  if (!Number.isSafeInteger(combinationCount) || !consumeResolutionWork(budget, generatedLength))
+    return tooComplexAnalysis();
+  let minimum = Infinity;
+  let maximum = -Infinity;
+  for (let combination = 0; combination < combinationCount; combination += 1) {
+    const chunks = [];
+    let cursor = range.start;
+    for (const replacementRange of replacementRanges) {
+      chunks.push(value.slice(cursor, replacementRange.start));
+      chunks.push(
+        replacementRange.type === 'progress'
+          ? String((combination >> replacementRange.groupIndex) & 1)
+          : replacementRange.replacement,
+      );
+      cursor = replacementRange.end;
+    }
+    chunks.push(value.slice(cursor, range.end));
+    const endpointValue = evaluateStaticLayerNumber(chunks.join(''));
+    if (endpointValue === undefined) return emptyAnalysis;
+    minimum = Math.min(minimum, endpointValue);
+    maximum = Math.max(maximum, endpointValue);
+  }
+  const classifications = [];
+  if (minimum < 0) classifications.push('negative');
+  if (minimum <= 9999 && maximum >= 9999) classifications.push('magic');
+  const candidateBearingResolvedChildren = resolvedChildren.filter(
+    (child) => child.unprovenBannedCandidates.length > 0,
+  );
+  return {
+    candidates: classifications.map((resolvedClassification) => ({
+      ...candidate,
+      resolvedClassification,
+    })),
+    suppressedChild:
+      classifications.length === 0 &&
+      resolvedChildren.length === 1 &&
+      candidateBearingResolvedChildren.length === 1
+        ? candidateBearingResolvedChildren[0]
+        : undefined,
   };
 }
 
@@ -288,20 +690,28 @@ function argumentWithFallbackPlaceholders(frame, value, range, budget) {
 }
 
 function hasFallbackIndependentSafeBound(frame, value, range, functionName, parenthesisPairs) {
-  return (
-    fallbackIndependentStaticArguments(
-      frame,
-      value,
-      range,
-      functionName,
-      parenthesisPairs,
-    )?.staticArguments.some((argument) =>
-      functionName === 'min'
-        ? classifyStaticLayer(`min(9999, ${argument.value})`) === 'safe'
-        : classifyStaticLayer(argument.value) === 'safe' &&
-          !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(argument.value)),
-    ) ?? false
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    range,
+    functionName,
+    parenthesisPairs,
   );
+  if (!parsedArguments) return false;
+  const staticArguments = new Map(
+    parsedArguments.staticArguments.map((argument) => [argument.index, argument.value]),
+  );
+  return parsedArguments.argumentRanges.some((argumentRange, argumentIndex) => {
+    const staticArgument = staticArguments.get(argumentIndex);
+    if (staticArgument !== undefined)
+      return functionName === 'min'
+        ? classifyStaticLayer(`min(9999, ${staticArgument})`) === 'safe' &&
+            !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(staticArgument))
+        : classifyStaticLayer(staticArgument) === 'safe' &&
+            isStaticallyNonnegative(staticArgument) &&
+            !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(staticArgument));
+    return isValidProgressRange(frame, value, argumentRange, parenthesisPairs);
+  });
 }
 
 function hasFallbackIndependentClampBound(
@@ -329,8 +739,10 @@ function hasFallbackIndependentClampBound(
   );
   if (centerExpression === undefined) return false;
   if (!['safe', 'negative', 'magic'].includes(classifyStaticLayer(centerExpression))) return false;
+  const boundRange = clampArguments.argumentRanges[boundIndex];
   const bound = clampArguments.staticArguments.find((argument) => argument.index === boundIndex);
-  if (!bound) return false;
+  const progressBound = isValidProgressRange(frame, value, boundRange, parenthesisPairs);
+  if (!bound && !progressBound) return false;
   if (candidate === 'magic') {
     const minimum = clampArguments.staticArguments.find((argument) => argument.index === 0);
     if (
@@ -339,44 +751,198 @@ function hasFallbackIndependentClampBound(
       classifyStaticLayer(`max(9999, ${minimum.value})`) === 'safe'
     )
       return true;
-    if (classifyStaticLayer(`min(9999, ${bound.value})`) !== 'safe') return false;
-    return (
-      minimum !== undefined &&
-      (/^none$/i.test(minimum.value) ||
-        classifyStaticLayer(`max(${minimum.value}, ${bound.value})`) === 'safe')
-    );
+    if (!progressBound && classifyStaticLayer(`min(9999, ${bound.value})`) !== 'safe') return false;
+    if (minimum === undefined) return false;
+    if (/^none$/i.test(minimum.value)) return true;
+    const maximumValue = progressBound ? '1' : bound.value;
+    return classifyStaticLayer(`max(${minimum.value}, ${maximumValue})`) === 'safe';
   }
   return (
-    classifyStaticLayer(bound.value) === 'safe' &&
-    !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(bound.value))
+    progressBound ||
+    (classifyStaticLayer(bound.value) === 'safe' &&
+      isStaticallyNonnegative(bound.value) &&
+      !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(bound.value)))
   );
 }
 
-function hasBareOperatorStream(value) {
-  const expression = value.trim();
-  if (expression.startsWith('(')) return true;
-  let depth = 0;
-  let sawTopLevelOperand = false;
-  let previousNonWhitespace;
-  for (let index = 0; index < expression.length; index += 1) {
-    const character = expression[index];
+function isPotentialBareOperandStart(value, start, end) {
+  while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
+  while (start < end && (value[start] === '+' || value[start] === '-')) {
+    start += 1;
+    while (start < end && isCssWhitespaceOrComment(value[start])) start += 1;
+  }
+  const character = value[start];
+  if (character === '\uE000' || character === undefined) return false;
+  return (
+    /[\d.#@(["']/.test(character) || (isCssIdentifierCharacter(character) && character !== '\uE000')
+  );
+}
+
+function isPotentialBareOperandEnd(value, start, end) {
+  while (end > start && isCssWhitespaceOrComment(value[end - 1])) end -= 1;
+  const character = value[end - 1];
+  if (character === '\uE000' || character === undefined) return false;
+  return /[\d%)\]"']/.test(character) || isCssIdentifierCharacter(character);
+}
+
+function isNumericExponentSign(value, index, rangeStart) {
+  if (!/[eE]/.test(value[index - 1] ?? '') || !/\d/.test(value[index + 1] ?? '')) return false;
+  let mantissaStart = index - 1;
+  while (mantissaStart > rangeStart && /[\d.]/.test(value[mantissaStart - 1])) mantissaStart -= 1;
+  const mantissa = value.slice(mantissaStart, index - 1);
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(mantissa)) return false;
+  if (/[+-]/.test(value[mantissaStart - 1] ?? '')) mantissaStart -= 1;
+  const precedingCharacter = value[mantissaStart - 1];
+  return precedingCharacter !== '.' && !isCssIdentifierCharacter(precedingCharacter);
+}
+
+function isCssIdentifierStartCharacter(character) {
+  return character !== undefined && /[A-Z_a-z\u0080-\uFFFF]/.test(character);
+}
+
+function cssIdentifierTokenEnd(value, start) {
+  const firstCharacter = value[start];
+  const startsIdentifier =
+    isCssIdentifierStartCharacter(firstCharacter) ||
+    (firstCharacter === '-' &&
+      (value[start + 1] === '-' || isCssIdentifierStartCharacter(value[start + 1])));
+  if (!startsIdentifier) return start;
+  let end = start + 1;
+  while (isCssIdentifierCharacter(value[end])) end += 1;
+  return end;
+}
+
+function validSubstitutionHeader(frame, value) {
+  const header = value
+    .slice(frame.openIndex + 1, frame.commaIndex)
+    .replaceAll(cssCommentMaskCharacter, ' ')
+    .trim();
+  const identifierEnd = cssIdentifierTokenEnd(header, 0);
+  if (identifierEnd === 0) return false;
+  if (frame.functionName === 'var')
+    return header.startsWith('--') && identifierEnd === header.length;
+  if (frame.functionName === 'env')
+    return (
+      !invalidCustomIdentKeywords.has(header.slice(0, identifierEnd).toLowerCase()) &&
+      /^(?:\s+\d+)*$/.test(header.slice(identifierEnd))
+    );
+  if (frame.functionName !== 'attr') return false;
+  const attrType = header.slice(identifierEnd).trim();
+  if (attrType === '' || attrType === '%') return true;
+  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) return true;
+  const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
+  if (!typeMatch) return false;
+  let hasOpenAngleBracket = false;
+  for (const character of typeMatch[1]) {
+    if (character === '<') {
+      if (hasOpenAngleBracket) return false;
+      hasOpenAngleBracket = true;
+    } else if (character === '>') {
+      if (!hasOpenAngleBracket) return false;
+      hasOpenAngleBracket = false;
+    }
+  }
+  return !hasOpenAngleBracket;
+}
+
+function hasBareOperatorStream(
+  value,
+  start = 0,
+  end = value.length,
+  budget,
+  initialMathContext = false,
+) {
+  if (budget && !consumeResolutionWork(budget, end - start)) return false;
+  const range = trimCssTriviaRange(value, start, end);
+  if (value[range.start] === '(' && !initialMathContext) return true;
+  const parenthesisContexts = [];
+  for (let index = range.start; index < range.end; index += 1) {
+    const character = value[index];
     if (character === '"' || character === "'") {
-      index = quotedStringEnd(expression, index);
+      index = quotedStringEnd(value, index);
       continue;
     }
-    if (character === '(') depth += 1;
-    else if (character === ')') depth -= 1;
-    else if (depth === 0 && (character === '*' || character === '/')) return true;
-    else if (depth === 0 && (character === '+' || character === '-')) {
-      const isIdentifierHyphen =
-        character === '-' &&
-        /[a-z_]/i.test(previousNonWhitespace ?? '') &&
-        /[a-z_]/i.test(expression[index + 1] ?? '');
-      const isUnary = !sawTopLevelOperand || previousNonWhitespace === 'e' || isIdentifierHyphen;
-      if (!isUnary) return true;
-    } else if (depth === 0 && !isCssWhitespaceOrComment(character) && character !== ',')
-      sawTopLevelOperand = true;
-    if (!isCssWhitespaceOrComment(character)) previousNonWhitespace = character.toLowerCase();
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    const identifierEnd = cssIdentifierTokenEnd(value, index);
+    if (identifierEnd > index) {
+      index = identifierEnd - 1;
+      continue;
+    }
+    if (character === '(') {
+      parenthesisContexts.push(
+        contextForOpeningParenthesis(
+          value,
+          index,
+          false,
+          parenthesisContexts.at(-1)?.mathContext ?? initialMathContext,
+        ),
+      );
+    } else if (character === ')') parenthesisContexts.pop();
+    else if (
+      character === ',' &&
+      (parenthesisContexts.length === 0 ||
+        parenthesisContexts.at(-1)?.isGroupingParenthesis ||
+        parenthesisContexts.at(-1)?.functionName === 'calc' ||
+        parenthesisContexts.at(-1)?.functionName === '-webkit-calc')
+    )
+      return true;
+    else if (
+      (parenthesisContexts.at(-1)?.mathContext ?? initialMathContext) !== true &&
+      /[+\-*/]/.test(character)
+    ) {
+      let previousIndex = index - 1;
+      while (previousIndex >= range.start && isCssWhitespaceOrComment(value[previousIndex]))
+        previousIndex -= 1;
+      const isExponentSign =
+        previousIndex === index - 1 && isNumericExponentSign(value, index, range.start);
+      if (
+        !isExponentSign &&
+        isPotentialBareOperandEnd(value, range.start, index) &&
+        isPotentialBareOperandStart(value, index + 1, range.end)
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
+function hasAdjacentFallbackToken(frame, value, range, budget) {
+  if (!consumeResolutionWork(budget, range.end - range.start)) return false;
+  for (const child of frame.children) {
+    if (child.start < range.start || child.end > range.end) continue;
+    let beforeChild = child.start;
+    while (beforeChild > range.start && isCssWhitespaceOrComment(value[beforeChild - 1]))
+      beforeChild -= 1;
+    const previousCharacter = value[beforeChild - 1];
+    const progressParent = child.parenthesisParent;
+    const hasNoClampProgressPrefix =
+      progressParent?.functionName === 'progress' &&
+      value
+        .slice(progressParent.openIndex + 1, beforeChild)
+        .replaceAll(cssCommentMaskCharacter, ' ')
+        .trim()
+        .toLowerCase() === 'no-clamp';
+    if (
+      previousCharacter !== undefined &&
+      previousCharacter !== '\uE000' &&
+      !hasNoClampProgressPrefix &&
+      !/[,+\-*/(]/.test(previousCharacter)
+    )
+      return true;
+
+    let afterChild = child.end;
+    while (afterChild < range.end && isCssWhitespaceOrComment(value[afterChild])) afterChild += 1;
+    const nextCharacter = value[afterChild];
+    if (
+      nextCharacter !== undefined &&
+      nextCharacter !== '\uE000' &&
+      !/[,+\-*/)]/.test(nextCharacter)
+    )
+      return true;
   }
   return false;
 }
@@ -387,7 +953,9 @@ function isBareCalcOnlyConstant(value) {
 
 function negativeZeroIsSafeFinalLayer(frame, value, range, budget) {
   if (!frame.resolvedNegativeZero) return false;
-  const candidateChildren = frame.children.filter((child) => child.unprovenBannedCandidate);
+  const candidateChildren = frame.children.filter(
+    (child) => child.unprovenBannedCandidates.length > 0,
+  );
   return (
     candidateChildren.length > 0 &&
     candidateChildren.every(
@@ -398,30 +966,144 @@ function negativeZeroIsSafeFinalLayer(frame, value, range, budget) {
   );
 }
 
-function unprovenCandidateForFrame(frame, value, range, candidate, budget, parenthesisPairs) {
+function uniqueCandidatesByClassification(candidates) {
+  const classifications = new Set();
+  return candidates.filter((candidate) => {
+    if (classifications.has(candidate.resolvedClassification)) return false;
+    classifications.add(candidate.resolvedClassification);
+    return true;
+  });
+}
+
+function unprovenCandidatesForFrame(frame, value, range, candidate, budget, parenthesisPairs) {
   // Resolving every sibling fallback at once represents only one runtime path:
   // any sibling may instead use its defined custom-property value. Preserve a
-  // banned child unless its contribution is safe independently of that choice.
+  // candidate for every banned classification unless its contribution is safe
+  // independently of that choice.
   const resolvedNegativeZero = frame.type === 'fallback' && frame.resolvedNegativeZero === true;
-  if (frame.resolvedClassification === 'too-complex') return candidate;
+  if (frame.resolvedClassification === 'too-complex') return [candidate];
+  if (
+    frame.children.length === 1 &&
+    frame.resolvedResultType === 'non-number' &&
+    !frame.children[0].unprovenBannedCandidates.some((childCandidate) =>
+      Boolean(childCandidate.hasRuntimeSibling),
+    )
+  )
+    return [];
+  const additiveNonNumberSuppression =
+    frame.resolvedClassification === 'unresolved'
+      ? additiveNonNumberCandidateSuppression(frame, value, range, budget, parenthesisPairs)
+      : undefined;
+  if (additiveNonNumberSuppression?.suppressesAllCandidates) return [];
+  if (isValidProgressRange(frame, value, range, parenthesisPairs)) return [];
+  const nestedCandidatesAreHiddenByBareOperatorStream =
+    frame.resolvedClassification === 'unresolved' &&
+    (frame.type === 'root'
+      ? frame.hasInvalidCommaStream === true
+      : hasBareOperatorStream(value, range.start, range.end, budget, frame.mathContext) ||
+        hasAdjacentFallbackToken(frame, value, range, budget));
   const uneliminatedChildren = frame.children.filter(
     (child) =>
-      child.unprovenBannedCandidate &&
+      child.unprovenBannedCandidates.length > 0 &&
+      !nestedCandidatesAreHiddenByBareOperatorStream &&
+      !(
+        child.invalidFunctionParent?.end !== undefined &&
+        child.invalidFunctionParent.functionStart >= range.start &&
+        child.invalidFunctionParent.end <= range.end
+      ) &&
       (resolvedNegativeZero || !childIsEliminatedByZeroProduct(value, range, child, budget)),
   );
-  const [uneliminatedChild] = uneliminatedChildren;
-  if (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic') {
-    const matchingChild = uneliminatedChildren.find(
-      (child) =>
-        child.unprovenBannedCandidate.resolvedClassification === frame.resolvedClassification,
-    );
-    return (
-      matchingChild?.unprovenBannedCandidate ??
-      uneliminatedChild?.unprovenBannedCandidate ??
-      candidate
-    );
+  const candidateIsSuppressedByNonNumberTerm = (childCandidate) =>
+    additiveNonNumberSuppression?.suppressedCandidateRanges.some(
+      (suppressedRange) =>
+        childCandidate.fallbackIndex >= suppressedRange.start &&
+        childCandidate.fallbackIndex < suppressedRange.end,
+    ) === true;
+  const progressAnalysis = progressRangeCandidates(
+    frame,
+    value,
+    range,
+    candidate,
+    budget,
+    parenthesisPairs,
+  );
+  const childCandidates = uneliminatedChildren
+    .filter((child) => child !== progressAnalysis.suppressedChild)
+    .flatMap((child) => child.unprovenBannedCandidates)
+    .filter((childCandidate) => !candidateIsSuppressedByNonNumberTerm(childCandidate));
+  const directArgumentCandidates =
+    frame.resolvedClassification === 'unresolved'
+      ? directBannedMathArgumentCandidates(
+          frame,
+          value,
+          range,
+          candidate,
+          budget,
+          parenthesisPairs,
+        ).filter((childCandidate) => !candidateIsSuppressedByNonNumberTerm(childCandidate))
+      : [];
+  let runtimeZeroFallback = null;
+  if (
+    frame.resolvedClassification === 'unresolved' &&
+    frame.children.some((child) => child.resolvedFallback === null)
+  ) {
+    const unresolvedChildren = frame.children.filter((child) => child.resolvedFallback === null);
+    const zeroProductRange = { ...range, frame };
+    let everyUnresolvedChildIsZeroed = true;
+    for (const child of unresolvedChildren) {
+      const zeroProductResult = childIsMultipliedByStaticZero(
+        value,
+        zeroProductRange,
+        child,
+        budget,
+      );
+      if (zeroProductResult === fallbackResolutionTooComplex)
+        return [
+          {
+            ...candidate,
+            resolvedFallback: fallbackResolutionTooComplex,
+            resolvedClassification: 'too-complex',
+          },
+        ];
+      if (!zeroProductResult) {
+        everyUnresolvedChildIsZeroed = false;
+        break;
+      }
+    }
+    const runtimeZeroRange = unwrapStaticContainer(value, range, parenthesisPairs);
+    const fallbackIsRoundFunction =
+      value.slice(runtimeZeroRange.start, runtimeZeroRange.start + 6).toLowerCase() === 'round(' &&
+      parenthesisPairs.get(runtimeZeroRange.start + 5) === runtimeZeroRange.end - 1;
+    if (everyUnresolvedChildIsZeroed || fallbackIsRoundFunction)
+      runtimeZeroFallback = resolveFrameExpression(frame, value, range, budget, '0');
   }
-  if (!uneliminatedChild) return undefined;
+  if (runtimeZeroFallback === fallbackResolutionTooComplex)
+    return [
+      {
+        ...candidate,
+        resolvedFallback: fallbackResolutionTooComplex,
+        resolvedClassification: 'too-complex',
+      },
+    ];
+  const runtimeZeroClassification = analyzeFrameExpression(
+    frame,
+    runtimeZeroFallback,
+    budget,
+  ).classification;
+  const boundedProgressCandidates = progressAnalysis.candidates;
+  const uneliminatedCandidates =
+    runtimeZeroClassification === 'negative' || runtimeZeroClassification === 'magic'
+      ? [
+          ...childCandidates,
+          ...directArgumentCandidates,
+          ...boundedProgressCandidates,
+          {
+            ...candidate,
+            resolvedFallback: runtimeZeroFallback,
+            resolvedClassification: runtimeZeroClassification,
+          },
+        ]
+      : [...childCandidates, ...directArgumentCandidates, ...boundedProgressCandidates];
 
   const hasNonnegativeFloor =
     hasFallbackIndependentSafeBound(frame, value, range, 'max', parenthesisPairs) ||
@@ -429,14 +1111,26 @@ function unprovenCandidateForFrame(frame, value, range, candidate, budget, paren
   const hasMagicCeiling =
     hasFallbackIndependentSafeBound(frame, value, range, 'min', parenthesisPairs) ||
     hasFallbackIndependentClampBound(frame, value, range, 2, 'magic', budget, parenthesisPairs);
-  const contextuallyUnprovenChildren = uneliminatedChildren.filter((child) => {
-    const classification = child.unprovenBannedCandidate.resolvedClassification;
+  const contextuallyUnprovenCandidates = uneliminatedCandidates.filter((childCandidate) => {
+    const classification = childCandidate.resolvedClassification;
     return !(
       (hasNonnegativeFloor && classification === 'negative') ||
       (hasMagicCeiling && classification === 'magic')
     );
   });
-  if (contextuallyUnprovenChildren.length === 0) return undefined;
+  if (
+    (frame.resolvedClassification === 'negative' || frame.resolvedClassification === 'magic') &&
+    !contextuallyUnprovenCandidates.some(
+      (childCandidate) => childCandidate.resolvedClassification === frame.resolvedClassification,
+    )
+  ) {
+    const matchingCandidate = uneliminatedCandidates.find(
+      (childCandidate) => childCandidate.resolvedClassification === frame.resolvedClassification,
+    );
+    contextuallyUnprovenCandidates.push(matchingCandidate ?? candidate);
+  }
+  const distinctCandidates = uniqueCandidatesByClassification(contextuallyUnprovenCandidates);
+  if (distinctCandidates.length === 0) return [];
 
   const [onlyChild] = frame.children;
   if (
@@ -444,22 +1138,24 @@ function unprovenCandidateForFrame(frame, value, range, candidate, budget, paren
     frame.resolvedClassification === 'safe' &&
     frame.negativeZeroIsSafeFinalLayer
   )
-    return undefined;
+    return [];
   // With exactly one fallback path, a concrete enclosing expression can prove
   // that path safe (for example, max(var(--layer, -1), 0)). An expression that
   // is only the child itself provides no such context.
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
-  if (frame.resolvedClassification !== 'safe')
-    return contextuallyUnprovenChildren[0].unprovenBannedCandidate;
-  const contextuallyUnprovenCandidate = contextuallyUnprovenChildren[0].unprovenBannedCandidate;
+  if (frame.resolvedClassification !== 'safe') return distinctCandidates;
+  const resolvedValueCanExposeNegativeSign =
+    frame.signedZeroSensitiveContext &&
+    typeof frame.resolvedFallback === 'string' &&
+    isStaticallyNegativeBeforeIntegerRounding(frame.resolvedFallback);
   if (
-    hasSingleChildWithEnclosingContext &&
-    !resolvedNegativeZero &&
-    !contextuallyUnprovenCandidate.hasRuntimeSibling
+    !hasSingleChildWithEnclosingContext ||
+    resolvedNegativeZero ||
+    resolvedValueCanExposeNegativeSign
   )
-    return undefined;
-  return contextuallyUnprovenCandidate;
+    return distinctCandidates;
+  return distinctCandidates.filter((childCandidate) => childCandidate.hasRuntimeSibling);
 }
 
 // Parse every var()/env()/attr() fallback in one pass with an explicit
@@ -471,7 +1167,7 @@ function fallbackCandidates(value) {
   const parentheses = [];
   const parenthesisPairs = new Map();
   const fallbackFrames = [];
-  const rootFrame = { type: 'root', children: [] };
+  const rootFrame = { type: 'root', children: [], hasInvalidCommaStream: false };
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
 
   for (let index = 0; index < value.length; index += 1) {
@@ -497,13 +1193,19 @@ function fallbackCandidates(value) {
       const inheritedContext = parentheses.at(-1)?.signedZeroSensitiveContext === true;
       const frame = {
         type: 'fallback',
+        functionName: functionMatch[0].slice(0, -1).toLowerCase(),
         start: index,
         openIndex: index + functionMatch[0].length - 1,
         commaIndex: -1,
         children: [],
+        unprovenBannedCandidates: [],
         resolvedFallback: null,
         resolvedClassification: 'unresolved',
         mathContext: parentheses.at(-1)?.mathContext === true,
+        invalidFunctionParent: parentheses.at(-1)?.invalidFunctionParent,
+        parenthesisParent: parentheses.at(-1),
+        progressParent: parentheses.at(-1)?.progressParent,
+        unsupportedProgressRangeParent: parentheses.at(-1)?.unsupportedProgressRangeParent,
         signedZeroSensitiveContext: inheritedContext || isPrecededByDivision(value, index),
       };
       if (nearestFunction && nearestFunction.commaIndex !== -1)
@@ -516,17 +1218,39 @@ function fallbackCandidates(value) {
     }
 
     if (value[index] === '(') {
+      const parenthesisParent = parentheses.at(-1);
       const context = contextForOpeningParenthesis(
         value,
         index,
-        parentheses.at(-1)?.signedZeroSensitiveContext === true,
-        parentheses.at(-1)?.mathContext === true,
+        parenthesisParent?.signedZeroSensitiveContext === true,
+        parenthesisParent?.mathContext === true,
       );
-      parentheses.push({
+      const group = {
         type: 'group',
         openIndex: index,
         ...context,
-      });
+      };
+      const isInvalidFunctionBlock =
+        !group.isGroupingParenthesis &&
+        !mathFunctionNames.has(group.functionName) &&
+        !substitutionFunctionNames.has(group.functionName);
+      group.invalidFunctionParent = isInvalidFunctionBlock
+        ? group
+        : mathFunctionNames.has(group.functionName)
+          ? undefined
+          : parenthesisParent?.invalidFunctionParent;
+      group.progressParent =
+        group.functionName === 'progress' ? group : parenthesisParent?.progressParent;
+      const progressRangeIsUnsupported =
+        group.signedZeroSensitiveContext ||
+        (!group.isGroupingParenthesis &&
+          group.functionName !== 'calc' &&
+          group.functionName !== '-webkit-calc' &&
+          group.functionName !== 'progress');
+      group.unsupportedProgressRangeParent = progressRangeIsUnsupported
+        ? group
+        : parenthesisParent?.unsupportedProgressRangeParent;
+      parentheses.push(group);
       continue;
     }
     if (value[index] === ',') {
@@ -534,32 +1258,51 @@ function fallbackCandidates(value) {
       if (frame?.type === 'fallback' && frame.commaIndex === -1) frame.commaIndex = index;
       else if (frame?.type === 'group' && frame.functionName === 'rem')
         frame.signedZeroSensitiveContext = false;
+      if (
+        frame === undefined ||
+        (frame?.type === 'group' &&
+          (frame.isGroupingParenthesis ||
+            frame.functionName === 'calc' ||
+            frame.functionName === '-webkit-calc'))
+      )
+        rootFrame.hasInvalidCommaStream = true;
       continue;
     }
     if (value[index] !== ')') continue;
 
     const frame = parentheses.pop();
-    if (frame !== undefined) parenthesisPairs.set(frame.openIndex, index);
+    if (frame !== undefined) {
+      frame.end = index + 1;
+      parenthesisPairs.set(frame.openIndex, index);
+    }
     if (frame?.type !== 'fallback') continue;
     fallbackFrames.pop();
     frame.end = index + 1;
     if (frame.commaIndex === -1) continue;
+    if (!validSubstitutionHeader(frame, value)) {
+      frame.resolvedFallback = null;
+      frame.resolvedClassification = 'unresolved';
+      frame.resolvedNegativeZero = false;
+      frame.negativeZeroIsSafeFinalLayer = false;
+      frame.unprovenBannedCandidates = [];
+      continue;
+    }
 
     const fallbackRange = trimCssTriviaRange(value, frame.commaIndex + 1, index);
     const rawFallback = value.slice(fallbackRange.start, fallbackRange.end);
     frame.resolvedFallback = resolveFrameExpression(frame, value, fallbackRange, resolutionBudget);
     const [onlyChild] = frame.children;
-    frame.resolvedClassification =
+    const frameAnalysis =
       frame.children.length === 1 &&
       onlyChild.start === fallbackRange.start &&
       onlyChild.end === fallbackRange.end
-        ? onlyChild.resolvedClassification
-        : !frame.mathContext &&
-            typeof frame.resolvedFallback === 'string' &&
-            (hasBareOperatorStream(frame.resolvedFallback) ||
-              isBareCalcOnlyConstant(frame.resolvedFallback))
-          ? 'unresolved'
-          : classifyResolvedFallback(frame.resolvedFallback);
+        ? {
+            classification: onlyChild.resolvedClassification,
+            resultType: onlyChild.resolvedResultType,
+          }
+        : analyzeFrameExpression(frame, frame.resolvedFallback, resolutionBudget);
+    frame.resolvedClassification = frameAnalysis.classification;
+    frame.resolvedResultType = frameAnalysis.resultType;
     frame.resolvedNegativeZero =
       frame.children.length === 1 &&
       onlyChild.start === fallbackRange.start &&
@@ -579,7 +1322,7 @@ function fallbackCandidates(value) {
       resolvedFallback: frame.resolvedFallback,
       resolvedClassification: frame.resolvedClassification,
     };
-    frame.unprovenBannedCandidate = unprovenCandidateForFrame(
+    frame.unprovenBannedCandidates = unprovenCandidatesForFrame(
       frame,
       value,
       fallbackRange,
@@ -587,11 +1330,11 @@ function fallbackCandidates(value) {
       resolutionBudget,
       parenthesisPairs,
     );
-    if (frame.unprovenBannedCandidate && frame.children.length > 1)
-      frame.unprovenBannedCandidate = {
-        ...frame.unprovenBannedCandidate,
+    if (frame.children.length > 1)
+      frame.unprovenBannedCandidates = frame.unprovenBannedCandidates.map((childCandidate) => ({
+        ...childCandidate,
         hasRuntimeSibling: true,
-      };
+      }));
   }
 
   if (rootFrame.children.length > 0) {
@@ -603,12 +1346,17 @@ function fallbackCandidates(value) {
     );
     rootFrame.resolvedFallback = resolvedValue;
     const [onlyRootChild] = rootFrame.children;
-    rootFrame.resolvedClassification =
+    const rootAnalysis =
       rootFrame.children.length === 1 &&
       onlyRootChild.start === 0 &&
       onlyRootChild.end === value.length
-        ? onlyRootChild.resolvedClassification
-        : classifyResolvedFallback(resolvedValue);
+        ? {
+            classification: onlyRootChild.resolvedClassification,
+            resultType: onlyRootChild.resolvedResultType,
+          }
+        : analyzeResolvedFallback(resolvedValue);
+    rootFrame.resolvedClassification = rootAnalysis.classification;
+    rootFrame.resolvedResultType = rootAnalysis.resultType;
     rootFrame.resolvedNegativeZero =
       rootFrame.children.length === 1 &&
       onlyRootChild.start === 0 &&
@@ -627,7 +1375,7 @@ function fallbackCandidates(value) {
       resolvedFallback: resolvedValue,
       resolvedClassification: rootFrame.resolvedClassification,
     };
-    const unprovenRootCandidate = unprovenCandidateForFrame(
+    const unprovenRootCandidates = unprovenCandidatesForFrame(
       rootFrame,
       value,
       { start: 0, end: value.length },
@@ -635,7 +1383,7 @@ function fallbackCandidates(value) {
       resolutionBudget,
       parenthesisPairs,
     );
-    if (unprovenRootCandidate) candidates.push(unprovenRootCandidate);
+    candidates.push(...unprovenRootCandidates);
   }
 
   return candidates;

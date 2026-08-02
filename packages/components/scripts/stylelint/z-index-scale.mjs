@@ -21,6 +21,7 @@ import stylelint from 'stylelint';
 
 import { bannedFallback } from './z-index-fallback-analysis.mjs';
 import {
+  cssCommentMaskCharacter,
   decodeCssEscapes,
   isCssIdentifierCharacter,
   isStaticallyMagicNumber,
@@ -82,12 +83,15 @@ function quotedStringEnd(value, start) {
   return value.length - 1;
 }
 
-// Postcss keeps `/* ... */` comments embedded inside a raw declaration value
+// Postcss keeps `/* ... */` comments embedded inside a declaration value
 // instead of tokenizing them out, so `var(--cinder-z-popover/**/, 1100)` is a
 // valid way to slip a forbidden fallback past a regex that only expects
-// whitespace between the token and the comma. Mask real comments with
-// same-length whitespace while preserving quoted comment-like text, newlines,
-// and diagnostic offsets.
+// whitespace between the token and the comma. Mask real comments with a
+// same-length non-whitespace sentinel while preserving quoted and URL-token
+// comment-like text, newlines, and diagnostic offsets. Callers that need
+// comments to delimit layer-token syntax map the sentinel to spaces locally;
+// static math must not mistake comments for the whitespace required around
+// additive operators.
 function maskComments(value) {
   let maskedValue = '';
   for (let index = 0; index < value.length; index += 1) {
@@ -95,6 +99,12 @@ function maskComments(value) {
       const stringEnd = quotedStringEnd(value, index);
       maskedValue += value.slice(index, stringEnd + 1);
       index = stringEnd;
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      maskedValue += value.slice(index, urlTokenEnd + 1);
+      index = urlTokenEnd;
       continue;
     }
     if (value[index] !== '/' || value[index + 1] !== '*' || isEscaped(value, index)) {
@@ -106,7 +116,9 @@ function maskComments(value) {
       maskedValue += value.slice(index);
       break;
     }
-    maskedValue += value.slice(index, commentEnd + 2).replaceAll(/[^\n\r\f]/g, ' ');
+    maskedValue += value
+      .slice(index, commentEnd + 2)
+      .replaceAll(/[^\n\r\f]/g, cssCommentMaskCharacter);
     index = commentEnd + 1;
   }
   return maskedValue;
@@ -169,12 +181,12 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
     root.walkDecls((declaration) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
       const declarationValue = (declaration.raws.value?.raw ?? declaration.value).trim();
-      const maskedDeclarationValue = maskComments(declarationValue);
-      const rawValue = maskedDeclarationValue.trim();
-      const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
-      const tokenMatch = layerTokenPattern.exec(value);
-      const layerTokenReferences = findLayerTokenReferences(value);
-      if (allowedLocalValues.has(value.toLowerCase())) return;
+      const decodedDeclarationValue = decodeCssEscapes(protectCssSyntaxEscapes(declarationValue));
+      const value = maskComments(decodedDeclarationValue).trim();
+      const layerTokenValue = value.replaceAll(cssCommentMaskCharacter, ' ').trim();
+      const tokenMatch = layerTokenPattern.exec(layerTokenValue);
+      const layerTokenReferences = findLayerTokenReferences(layerTokenValue);
+      if (allowedLocalValues.has(layerTokenValue.toLowerCase())) return;
       if (tokenMatch) {
         if (declaredLayerTokens.has(tokenMatch[1])) return;
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });

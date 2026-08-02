@@ -70,7 +70,9 @@ const urlFunctionPattern = /url\(/iy;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
-export const cssCommentMaskCharacter = '\uE001';
+// CSS preprocessing replaces literal U+0000 with U+FFFD before tokenization,
+// so U+0000 cannot collide with a source identifier after normalization.
+export const cssCommentMaskCharacter = '\u0000';
 
 export function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
@@ -311,9 +313,13 @@ function evaluateConstantArithmetic(expression) {
         const clampEndpointCanBeUnbounded =
           functionName === 'clamp' && (arguments_.length === 0 || arguments_.length === 2);
         const noneMatch = clampEndpointCanBeUnbounded
-          ? /^none(?=[\t\n\f\r \uE001]*[,)])/i.exec(expression.slice(index))
+          ? /^none/i.exec(expression.slice(index))
           : null;
-        if (noneMatch) {
+        let noneEnd = index + (noneMatch?.[0].length ?? 0);
+        while (isCssWhitespaceOrComment(expression[noneEnd])) noneEnd += 1;
+        const noneIsEndpoint =
+          noneMatch !== null && (expression[noneEnd] === ',' || expression[noneEnd] === ')');
+        if (noneIsEndpoint) {
           arguments_.push(unboundedClampEndpoint);
           index += noneMatch[0].length;
         } else arguments_.push(parseExpression());
@@ -492,9 +498,7 @@ function evaluateConstantArithmetic(expression) {
   try {
     const result = parseExpression();
     skipSpace();
-    return index === expression.length && result.units.size === 0 && !Number.isNaN(result.value)
-      ? result.value
-      : null;
+    return index === expression.length && !Number.isNaN(result.value) ? result : null;
   } catch {
     return null;
   }
@@ -535,6 +539,11 @@ function exceedsStaticAnalysisDepth(expression) {
       index = quotedStringEnd(expression, index);
       continue;
     }
+    const urlTokenEnd = unquotedUrlTokenEnd(expression, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
     if (character === '(') depth += 1;
     if (character === ')') depth -= 1;
     if (depth > 512) return true;
@@ -542,10 +551,16 @@ function exceedsStaticAnalysisDepth(expression) {
   return false;
 }
 
-function resolveStaticValue(value) {
+function resolveStaticArithmeticResult(value) {
   const expression = collapseSimpleParenthesisChain(flattenCalcFunctions(value));
   if (exceedsStaticAnalysisDepth(expression)) return staticAnalysisTooComplex;
   return evaluateConstantArithmetic(expression);
+}
+
+function resolveStaticValue(value) {
+  const resolved = resolveStaticArithmeticResult(value);
+  if (resolved === null || resolved === staticAnalysisTooComplex) return resolved;
+  return resolved.units.size === 0 ? resolved.value : null;
 }
 
 function resolveStaticNumber(value) {
@@ -606,7 +621,12 @@ function decodeCssEscapesForInspection(value, baseRanges = literalSourceRanges(v
   const sourceRanges = [];
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] !== '\\') {
-      appendMappedCharacter(output, sourceRanges, value[index], baseRanges[index]);
+      appendMappedCharacter(
+        output,
+        sourceRanges,
+        value[index] === '\u0000' ? '\ufffd' : value[index],
+        baseRanges[index],
+      );
       continue;
     }
 
@@ -650,7 +670,12 @@ export function normalizeCssEscapesForInspection(value) {
   const baseRanges = literalSourceRanges(value);
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] !== '\\') {
-      appendMappedCharacter(output, sourceRanges, value[index], baseRanges[index]);
+      appendMappedCharacter(
+        output,
+        sourceRanges,
+        value[index] === '\u0000' ? '\ufffd' : value[index],
+        baseRanges[index],
+      );
       continue;
     }
 
@@ -762,13 +787,44 @@ export function isCssIdentifierCharacter(character) {
   return character !== undefined && /[\w\u0080-\uFFFF-]/.test(character);
 }
 
+function hasNumericResultType(units) {
+  const dimensionExponents = new Map();
+  for (const [unit, exponent] of units) {
+    const relativeUnitName = unit.startsWith('unit:') ? unit.slice(5) : undefined;
+    const dimension =
+      unit === 'dimension:length' || relativeLengthUnitNames.has(relativeUnitName)
+        ? 'dimension:length'
+        : unit;
+    const combinedExponent = (dimensionExponents.get(dimension) ?? 0) + exponent;
+    if (combinedExponent === 0) dimensionExponents.delete(dimension);
+    else dimensionExponents.set(dimension, combinedExponent);
+  }
+  return dimensionExponents.size === 0;
+}
+
+export function analyzeStaticLayerValue(value) {
+  const arithmeticResult = resolveStaticArithmeticResult(value);
+  if (arithmeticResult === staticAnalysisTooComplex)
+    return { classification: 'too-complex', resultType: 'too-complex' };
+  if (arithmeticResult === null) return { classification: 'unresolved', resultType: 'unresolved' };
+  if (arithmeticResult.units.size > 0)
+    return {
+      classification: 'unresolved',
+      resultType: hasNumericResultType(arithmeticResult.units) ? 'number' : 'non-number',
+    };
+  const resolved = Math.floor(arithmeticResult.value + 0.5);
+  if (resolved < 0) return { classification: 'negative', resultType: 'number' };
+  if (resolved === 9999) return { classification: 'magic', resultType: 'number' };
+  return { classification: 'safe', resultType: 'number' };
+}
+
 export function classifyStaticLayer(value) {
+  return analyzeStaticLayerValue(value).classification;
+}
+
+export function evaluateStaticLayerNumber(value) {
   const resolved = resolveStaticNumber(value);
-  if (resolved === staticAnalysisTooComplex) return 'too-complex';
-  if (resolved === null) return 'unresolved';
-  if (resolved < 0) return 'negative';
-  if (resolved === 9999) return 'magic';
-  return 'safe';
+  return typeof resolved === 'number' && !Number.isNaN(resolved) ? resolved : undefined;
 }
 
 export function isStaticallyNegative(value) {
@@ -793,4 +849,14 @@ export function isStaticallyZero(value) {
 
 export function isStaticallyNegativeZero(value) {
   return Object.is(resolveStaticValue(value), -0);
+}
+
+export function isStaticallyNonnegative(value) {
+  const resolved = resolveStaticValue(value);
+  return typeof resolved === 'number' && resolved >= 0;
+}
+
+export function isStaticallyNegativeBeforeIntegerRounding(value) {
+  const resolved = resolveStaticValue(value);
+  return typeof resolved === 'number' && resolved < 0;
 }
