@@ -67,6 +67,7 @@ const relativeLengthUnitNames = new Set([
 const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
 const urlFunctionPattern = /url\(/iy;
+const commutativeSymbolicOperations = new Set(['+', 'hypot', 'max', 'min']);
 const maximumStaticSymbolicIdentityWork = 131_072;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
@@ -292,16 +293,22 @@ function evaluateConstantArithmetic(expression) {
 
   function opaqueValue(operation, arguments_, units = arguments_[0]?.units ?? new Map()) {
     let associativeAddends;
+    let argumentIdentities;
     if (operation === '+') {
       associativeAddends = arguments_.flatMap(additiveIdentityTerms);
-      if (associativeAddends.length > remainingSymbolicIdentityWork) throw staticAnalysisTooComplex;
-      remainingSymbolicIdentityWork -= associativeAddends.length;
-      associativeAddends.sort();
+      argumentIdentities = associativeAddends;
+    } else if (commutativeSymbolicOperations.has(operation)) {
+      argumentIdentities = arguments_.map(valueIdentity);
+    }
+    if (argumentIdentities !== undefined) {
+      if (argumentIdentities.length > remainingSymbolicIdentityWork) throw staticAnalysisTooComplex;
+      remainingSymbolicIdentityWork -= argumentIdentities.length;
+      argumentIdentities.sort();
     }
     const value = {
       value: 1,
       units: normalizedUnits(units),
-      symbolicFactors: new Map([[symbolicIdentity(operation, arguments_, associativeAddends), 1]]),
+      symbolicFactors: new Map([[symbolicIdentity(operation, arguments_, argumentIdentities), 1]]),
       isLiteralZero: false,
     };
     if (associativeAddends !== undefined) value.associativeAddends = associativeAddends;
@@ -466,7 +473,9 @@ function evaluateConstantArithmetic(expression) {
               ? `clamp:${arguments_
                   .map((argument) => (argument === unboundedClampEndpoint ? 'none' : 'value'))
                   .join(',')}`
-              : functionName,
+              : functionName === 'round'
+                ? `round:${roundStrategy}`
+                : functionName,
             boundedArguments,
           );
         throw new Error('unknown conversion value');
@@ -604,10 +613,15 @@ function evaluateConstantArithmetic(expression) {
       if (operator !== '*' && operator !== '/') return value;
       index += 1;
       const right = parseAtom();
+      const numericValue = operator === '*' ? value.value * right.value : value.value / right.value;
+      const symbolicFactors =
+        operator === '*' && numericValue === 0
+          ? new Map()
+          : combineSymbolicFactors(value, right, operator === '*' ? 1 : -1);
       value = {
-        value: operator === '*' ? value.value * right.value : value.value / right.value,
+        value: numericValue,
         units: combineUnits(value, right, operator === '*' ? 1 : -1),
-        symbolicFactors: combineSymbolicFactors(value, right, operator === '*' ? 1 : -1),
+        symbolicFactors,
         isLiteralZero: false,
       };
     }

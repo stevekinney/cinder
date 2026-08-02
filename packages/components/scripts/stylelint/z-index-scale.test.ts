@@ -1617,6 +1617,31 @@ describe('cinder/z-index-scale', () => {
     expect(warnings(differentSum)).toEqual([]);
   });
 
+  test.each(['max', 'min', 'hypot'])(
+    'cancels commuted mixed-unit %s arguments without inventing conversion values',
+    async (functionName) => {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: commutative functions preserve an exact symbolic identity. */
+          z-index: var(--outer, calc(9999 * ${functionName}(1em, 1px) / ${functionName}(1px, 1em)));
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(1);
+    },
+  );
+
+  test('keeps distinct round strategies symbolically independent', async () => {
+    const { analyzeStaticLayerValue } = await import(valueAnalysisPath);
+
+    expect(
+      analyzeStaticLayerValue('calc(1 - round(up, 1em, 1px) / round(down, 1em, 1px))'),
+    ).toEqual({ classification: 'unresolved', resultType: 'number' });
+    expect(analyzeStaticLayerValue('calc(1 - round(nearest, 1em, 1px) / round(1em, 1px))')).toEqual(
+      { classification: 'safe', resultType: 'number' },
+    );
+  });
+
   test.each([
     'calc(9999\\70 x / 1px)',
     'calc(9999\\70x / 1px)',
@@ -2234,6 +2259,8 @@ describe('cinder/z-index-scale', () => {
     'calc(PROGRESS(var(--runtime), 0, 1) - progress(var(--runtime), 0, 1))',
     'calc(progress(VAR(--runtime), 0, 1) - progress(var(--runtime), 0, 1))',
     'calc(progress(var(--runtime), 0, 1) - progress(var(--runtime),/**/0,1))',
+    'calc(progress(calc(var(--runtime)/1), 0, 1) - progress(calc(var(--runtime) / 1),0,1))',
+    'calc(progress(var(--runtime) * 1, 0, 1) - progress(var(--runtime)*1,0,1))',
   ])('correlates equivalent progress token streams: %s', async (fallback) => {
     expect(
       warnings(
@@ -2271,6 +2298,36 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(1);
+  });
+
+  test('fails closed when a correlated progress range is reused nonlinearly', async () => {
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: the repeated range has an interior magic maximum. */
+          z-index: var(--outer, calc(9998 + 4 * progress(var(--runtime), 0, 1) * (1 - progress(var(--runtime),0,1))));
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('too complex to verify');
+  });
+
+  test.each([
+    'calc(2 * progress(var(--runtime), 0, 1) + progress(var(--runtime),0,1))',
+    'calc(progress(var(--runtime), 0, 1) / 2 + progress(var(--runtime),0,1) / 2)',
+  ])('keeps repeated affine progress ranges endpoint-safe: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: static scaling preserves affine endpoint extrema. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
   });
 
   test.each([
@@ -2334,6 +2391,19 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toEqual([]);
+  });
+
+  test('does not use progress as a dominant maximum floor for a magic fallback', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: progress reaches at most one and cannot dominate magic. */
+            z-index: var(--outer, max(progress(var(--runtime), 0, 1), var(--inner, 9999), var(--sibling)));
+          }
+        `),
+      ),
+    ).toHaveLength(1);
   });
 
   test.each([
@@ -2425,6 +2495,24 @@ describe('cinder/z-index-scale', () => {
       ).toHaveLength(1);
     },
   );
+
+  test('annihilates symbolic conversion factors in an exact zero product', async () => {
+    const magicResult = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the relative-unit product contributes exact zero. */
+        z-index: var(--outer, calc(9999 + 0 * 1em / 1px));
+      }
+    `);
+    expect(warnings(magicResult)).toHaveLength(1);
+
+    const safeResult = await lint(`
+      .fixture {
+        /* cinder-z-index-local: the same zero product leaves a safe local layer. */
+        z-index: var(--outer, calc(1 + 0 * 1em / 1px));
+      }
+    `);
+    expect(warnings(safeResult)).toEqual([]);
+  });
 
   test('fails closed when a zero-witness factor scan exhausts the shared budget', async () => {
     const fallback = `calc(9999 + var(--runtime) * 0${' '.repeat(1_000_000)})`;

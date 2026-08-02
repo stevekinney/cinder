@@ -499,8 +499,8 @@ function appendCanonicalWhitespace(output, nextCharacter) {
   const previousCharacter = previousChunk?.[previousChunk.length - 1];
   if (
     previousCharacter === undefined ||
-    '([{,'.includes(previousCharacter) ||
-    ')]},'.includes(nextCharacter)
+    '([{,*/'.includes(previousCharacter) ||
+    ')]},*/'.includes(nextCharacter)
   )
     return;
   output.push(' ');
@@ -556,6 +556,147 @@ function canonicalProgressRangeKey(frame, value, range, parenthesisPairs) {
   return parsedArguments.argumentRanges
     .map((argumentRange) => canonicalProgressArgument(value, argumentRange))
     .join('\u0001');
+}
+
+function additiveProgressDegrees(left, right) {
+  const degrees = new Map(left);
+  for (const [groupIndex, degree] of right)
+    degrees.set(groupIndex, Math.max(degrees.get(groupIndex) ?? 0, degree));
+  return degrees;
+}
+
+function multipliedProgressDegrees(left, right) {
+  const degrees = new Map(left);
+  for (const [groupIndex, degree] of right) {
+    const combinedDegree = (degrees.get(groupIndex) ?? 0) + degree;
+    if (combinedDegree > 1) throw new Error('nonlinear progress range');
+    degrees.set(groupIndex, combinedDegree);
+  }
+  return degrees;
+}
+
+function progressExpressionIsMultilinear(
+  value,
+  range,
+  progressRanges,
+  progressRangeGroupIndexes,
+  resolvedChildren,
+  parenthesisPairs,
+) {
+  const progressAtoms = new Map(
+    progressRanges.map((progressRange, index) => [
+      progressRange.start,
+      { end: progressRange.end, groupIndex: progressRangeGroupIndexes[index] },
+    ]),
+  );
+  const constantAtoms = new Map(resolvedChildren.map((child) => [child.start, child.end]));
+  let index = range.start;
+  let depth = 0;
+
+  function skipTrivia() {
+    while (index < range.end && isCssWhitespaceOrComment(value[index])) index += 1;
+  }
+
+  function parseParenthesized(openIndex) {
+    const closeIndex = parenthesisPairs.get(openIndex);
+    if (closeIndex === undefined || closeIndex >= range.end || depth >= 512)
+      throw new Error('unsupported progress expression');
+    depth += 1;
+    index = openIndex + 1;
+    const degrees = parseExpression();
+    skipTrivia();
+    if (index !== closeIndex) throw new Error('invalid progress expression');
+    index += 1;
+    depth -= 1;
+    return degrees;
+  }
+
+  function parsePrimary() {
+    skipTrivia();
+    while (value[index] === '+' || value[index] === '-') {
+      index += 1;
+      skipTrivia();
+    }
+    const progressAtom = progressAtoms.get(index);
+    if (progressAtom) {
+      index = progressAtom.end;
+      return new Map([[progressAtom.groupIndex, 1]]);
+    }
+    const constantEnd = constantAtoms.get(index);
+    if (constantEnd !== undefined) {
+      index = constantEnd;
+      return new Map();
+    }
+    if (value[index] === '(') return parseParenthesized(index);
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index) + 1;
+      return new Map();
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd + 1;
+      return new Map();
+    }
+    const identifierStart = index;
+    const identifierEnd = cssIdentifierTokenEnd(value, index);
+    if (identifierEnd > index) {
+      const functionName = value.slice(index, identifierEnd).toLowerCase();
+      index = identifierEnd;
+      if (value[index] === '(') {
+        if (functionName === 'calc' || functionName === '-webkit-calc')
+          return parseParenthesized(index);
+        const closeIndex = parenthesisPairs.get(index);
+        if (closeIndex === undefined || closeIndex >= range.end)
+          throw new Error('invalid static function');
+        index = closeIndex + 1;
+      }
+      return new Map();
+    }
+    while (index < range.end) {
+      const character = value[index];
+      if (
+        isCssWhitespaceOrComment(character) ||
+        '()*/,'.includes(character) ||
+        ((character === '+' || character === '-') &&
+          !isNumericExponentSign(value, index, identifierStart))
+      )
+        break;
+      index += 1;
+    }
+    if (index === identifierStart) throw new Error('expected static value');
+    return new Map();
+  }
+
+  function parseTerm() {
+    let degrees = parsePrimary();
+    for (;;) {
+      skipTrivia();
+      const operator = value[index];
+      if (operator !== '*' && operator !== '/') return degrees;
+      index += 1;
+      const right = parsePrimary();
+      if (operator === '/' && right.size > 0) throw new Error('progress range in divisor');
+      if (operator === '*') degrees = multipliedProgressDegrees(degrees, right);
+    }
+  }
+
+  function parseExpression() {
+    let degrees = parseTerm();
+    for (;;) {
+      skipTrivia();
+      if (value[index] !== '+' && value[index] !== '-') return degrees;
+      index += 1;
+      degrees = additiveProgressDegrees(degrees, parseTerm());
+    }
+  }
+
+  try {
+    parseExpression();
+    skipTrivia();
+    return index === range.end;
+  } catch {
+    return false;
+  }
 }
 
 function directBannedMathArgumentCandidates(
@@ -673,19 +814,38 @@ function progressRangeCandidates(frame, value, range, candidate, budget, parenth
       return childrenOutsideProgressRanges.length > 0 ? emptyAnalysis : tooComplexAnalysis();
   }
   const progressGroupIndexes = new Map();
+  const progressGroupCounts = new Map();
   const progressRangeGroupIndexes = progressRanges.map((progressRange) => {
     const key =
       canonicalProgressRangeKey(frame, value, progressRange, parenthesisPairs) ??
       value.slice(progressRange.start, progressRange.end);
     const existingIndex = progressGroupIndexes.get(key);
-    if (existingIndex !== undefined) return existingIndex;
+    if (existingIndex !== undefined) {
+      progressGroupCounts.set(existingIndex, (progressGroupCounts.get(existingIndex) ?? 1) + 1);
+      return existingIndex;
+    }
     const groupIndex = progressGroupIndexes.size;
     progressGroupIndexes.set(key, groupIndex);
+    progressGroupCounts.set(groupIndex, 1);
     return groupIndex;
   });
   const resolvedChildren = childrenOutsideProgressRanges;
   if (resolvedChildren.some((child) => typeof child.resolvedFallback !== 'string'))
     return emptyAnalysis;
+  if ([...progressGroupCounts.values()].some((count) => count > 1)) {
+    if (!consumeResolutionWork(budget, range.end - range.start)) return tooComplexAnalysis();
+    if (
+      !progressExpressionIsMultilinear(
+        value,
+        range,
+        progressRanges,
+        progressRangeGroupIndexes,
+        resolvedChildren,
+        parenthesisPairs,
+      )
+    )
+      return tooComplexAnalysis();
+  }
   const replacementRanges = [
     ...progressRanges.map((progressRange, index) => ({
       ...progressRange,
@@ -790,7 +950,8 @@ function hasFallbackIndependentSafeBound(
           : classifyStaticLayer(staticArgument) === 'safe' &&
             isStaticallyNonnegative(staticArgument) &&
             !(frame.signedZeroSensitiveContext && isStaticallyNegativeZero(staticArgument));
-    return isValidProgressRange(frame, value, argumentRange, parenthesisPairs);
+    if (!isValidProgressRange(frame, value, argumentRange, parenthesisPairs)) return false;
+    return functionName === 'min' || candidate === 'negative';
   });
 }
 
