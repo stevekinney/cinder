@@ -835,6 +835,14 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.endColumn).toBe(css.lastIndexOf('9999') + 5);
   });
 
+  test('shows the original commented fallback in the diagnostic message', async () => {
+    const fallback = 'calc(10000 /* keep this context */ - 1)';
+    const css = `.fixture { /* cinder-z-index-local: test. */ z-index: var(--x, ${fallback}); }`;
+    const [warning] = warnings(await lint(css));
+
+    expect(warning?.text).toContain(`Offending expression: \`${fallback}\``);
+  });
+
   test('does not treat whitespace-separated identifiers as substitution functions', async () => {
     for (const functionName of ['var', 'env', 'attr']) {
       for (const whitespace of [' ', '\u00a0']) {
