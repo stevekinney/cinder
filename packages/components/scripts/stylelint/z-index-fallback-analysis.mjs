@@ -1,5 +1,6 @@
 import {
   classifyStaticLayer,
+  cssCommentMaskCharacter,
   isCssIdentifierCharacter,
   isCssWhitespace,
   isStaticallyNegativeZero,
@@ -8,6 +9,7 @@ import {
 } from './z-index-value-analysis.mjs';
 
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
+const urlFunctionPattern = /url\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
 const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
@@ -57,6 +59,27 @@ function quotedStringEnd(value, start) {
       else if (value[index + 1] !== undefined) index += 1;
     } else if (value[index] === quote) return index;
     else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
+  }
+  return value.length - 1;
+}
+
+function unquotedUrlTokenEnd(value, start) {
+  urlFunctionPattern.lastIndex = start;
+  const match = urlFunctionPattern.exec(value);
+  const previousCharacter = value[start - 1];
+  if (
+    !match ||
+    isCssIdentifierCharacter(previousCharacter) ||
+    previousCharacter === '#' ||
+    previousCharacter === '@'
+  )
+    return undefined;
+
+  let index = start + match[0].length;
+  while (isCssWhitespace(value[index])) index += 1;
+  if (value[index] === '"' || value[index] === "'") return undefined;
+  for (; index < value.length; index += 1) {
+    if (value[index] === ')') return index;
   }
   return value.length - 1;
 }
@@ -448,6 +471,11 @@ function fallbackCandidates(value) {
       index = quotedStringEnd(value, index);
       continue;
     }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
     fallbackFunctionPattern.lastIndex = index;
     const functionMatch = fallbackFunctionPattern.exec(value);
     const previousCharacter = value[index - 1];
@@ -602,7 +630,15 @@ function fallbackCandidates(value) {
 }
 
 export function bannedFallback(value) {
-  const { value: decodedValue, sourceRanges } = normalizeCssEscapesForInspection(value);
+  const normalizedValue = normalizeCssEscapesForInspection(value);
+  const decodedCharacters = [];
+  const sourceRanges = [];
+  for (let index = 0; index < normalizedValue.value.length; index += 1) {
+    if (normalizedValue.value[index] === cssCommentMaskCharacter) continue;
+    decodedCharacters.push(normalizedValue.value[index]);
+    sourceRanges.push(normalizedValue.sourceRanges[index]);
+  }
+  const decodedValue = decodedCharacters.join('');
   for (const { fallbackIndex, rawFallback, resolvedClassification } of fallbackCandidates(
     decodedValue,
   )) {

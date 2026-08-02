@@ -68,6 +68,8 @@ const calcFunctionPattern = /(?:-webkit-)?calc\(/iy;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
 
+export const cssCommentMaskCharacter = '\uE001';
+
 export function isCssWhitespace(character) {
   return character !== undefined && /[\t\n\f\r ]/.test(character);
 }
@@ -408,6 +410,8 @@ function evaluateConstantArithmetic(expression) {
       skipSpace();
       const operator = peek();
       if (operator !== '+' && operator !== '-') return value;
+      if (!isCssWhitespace(expression[index - 1]) || !isCssWhitespace(expression[index + 1]))
+        throw new Error('expected whitespace around additive operator');
       index += 1;
       const right = parseTerm();
       if (!sameUnits(value, right)) throw new Error('incompatible units');

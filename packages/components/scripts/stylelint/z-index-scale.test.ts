@@ -202,6 +202,10 @@ describe('cinder/z-index-scale', () => {
     'var(--item-layer, calc(9999))',
     'var(--item-layer, calc(+9999))',
     'var(--item-layer, calc(+1e4 - 1))',
+    'var(--item-layer, calc(10000 + -1))',
+    'var(--item-layer, calc(10000/**/ - /**/1))',
+    'var(--item-layer, calc(9999*1))',
+    'var(--item-layer, calc(9999/1))',
     'var(--item-layer, -webkit-calc(9999))',
     'var(--item-layer, calc(0 - 1))',
     'var(--item-layer, calc(calc(10000 - 1)))',
@@ -1426,6 +1430,56 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toEqual([]);
+  });
+
+  test.each([
+    'calc(10000-1)',
+    'calc(10000 -1)',
+    'calc(10000- 1)',
+    'calc(10000/**/-/**/1)',
+    'calc(9998+1)',
+    'min(10000-1, 10000)',
+  ])('does not evaluate an invalid unspaced additive expression: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the invalid fallback can remain unused. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test.each([
+    'url(var(--inner, -1))',
+    'URL(var(--inner, -1))',
+    'u\\72l(var(--inner, -1))',
+    'url(foo var(--inner, -1))',
+    'url(data:image/svg+xml,var(--inner,-1))',
+  ])('ignores substitution-like text inside an unquoted URL token: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the invalid fallback can remain unused. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('resumes fallback scanning after an unquoted URL token', async () => {
+    const source =
+      '.fixture { /* cinder-z-index-local: the later fallback is still banned. */ ' +
+      'z-index: var(--outer, url(var(--ignored, -1)) var(--actual, -1)); }';
+    const result = warnings(await lint(source));
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('Offending expression: `-1`');
+    expect(result[0]?.column).toBe(source.lastIndexOf('-1') + 1);
   });
 
   test.each(['calc(9999)', 'calc(10000 - 1)', 'calc(9998 + 1)'])(

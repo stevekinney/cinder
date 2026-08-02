@@ -21,6 +21,7 @@ import stylelint from 'stylelint';
 
 import { bannedFallback } from './z-index-fallback-analysis.mjs';
 import {
+  cssCommentMaskCharacter,
   decodeCssEscapes,
   isCssIdentifierCharacter,
   isStaticallyMagicNumber,
@@ -84,10 +85,11 @@ function quotedStringEnd(value, start) {
 // Postcss keeps `/* ... */` comments embedded inside a raw declaration value
 // instead of tokenizing them out, so `var(--cinder-z-popover/**/, 1100)` is a
 // valid way to slip a forbidden fallback past a regex that only expects
-// whitespace between the token and the comma. Mask real comments with
-// same-length whitespace while preserving quoted comment-like text, newlines,
-// and diagnostic offsets.
-function maskComments(value) {
+// whitespace between the token and the comma. The general scanner uses
+// same-length whitespace, while static evaluation uses a removable sentinel so
+// a comment cannot satisfy calc()'s additive whitespace grammar. Both forms
+// preserve quoted comment-like text and diagnostic offsets.
+function maskComments(value, maskCharacter = ' ') {
   let maskedValue = '';
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] === '"' || value[index] === "'") {
@@ -105,7 +107,11 @@ function maskComments(value) {
       maskedValue += value.slice(index);
       break;
     }
-    maskedValue += value.slice(index, commentEnd + 2).replaceAll(/[^\n\r\f]/g, ' ');
+    const comment = value.slice(index, commentEnd + 2);
+    maskedValue +=
+      maskCharacter === ' '
+        ? comment.replaceAll(/[^\n\r\f]/g, ' ')
+        : maskCharacter.repeat(comment.length);
     index = commentEnd + 1;
   }
   return maskedValue;
@@ -157,6 +163,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       if (declaration.prop.toLowerCase() !== 'z-index') return;
       const declarationValue = (declaration.raws.value?.raw ?? declaration.value).trim();
       const maskedDeclarationValue = maskComments(declarationValue);
+      const evaluationDeclarationValue = maskComments(declarationValue, cssCommentMaskCharacter);
       const valueOffset = maskedDeclarationValue.length - maskedDeclarationValue.trimStart().length;
       const rawValue = maskedDeclarationValue.trim();
       const value = decodeCssEscapes(protectCssSyntaxEscapes(rawValue));
@@ -179,7 +186,7 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         return;
       }
 
-      const offendingFallback = bannedFallback(rawValue);
+      const offendingFallback = bannedFallback(evaluationDeclarationValue.trim());
       if (offendingFallback) {
         const declarationText = declaration.toString();
         const declarationValueIndex = declarationText.indexOf(declarationValue);
