@@ -197,7 +197,9 @@ describe('CheckboxGroup', () => {
     // Fieldset is [disabled]
     expect(fieldset.matches('[disabled]')).toBe(true);
     // Every label element is a descendant of the disabled fieldset
-    const labels = Array.from(container.querySelectorAll('.cinder-form-field__label'));
+    const labels = Array.from(
+      container.querySelectorAll('.cinder-form-field__label, .cinder-checkbox-field__label'),
+    );
     expect(labels.length).toBeGreaterThan(0);
     labels.forEach((label) => {
       expect(fieldset.contains(label)).toBe(true);
