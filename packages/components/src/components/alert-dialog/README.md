@@ -2,6 +2,9 @@
 
 Sticky blocking acknowledgement dialog that cannot be dismissed by Escape or backdrop click. The user must click an explicit action button to proceed.
 
+See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md)
+for the preserved role, acknowledgement, and dismissal contract.
+
 ## Dialog model
 
 AlertDialog is one of three dialog-level components:
