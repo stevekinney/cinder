@@ -7,7 +7,7 @@
    * @tag overlay
    * @tag dialog
    * @useWhen Requiring acknowledgement of a blocking warning before the user can continue.
-   * @useWhen Presenting a destructive or high-risk message that needs an explicit OK action.
+   * @useWhen A system-initiated or out-of-band condition requires explicit acknowledgement before continuing.
    * @avoidWhen Asking a reversible yes/no question — use confirm-dialog.
    * @avoidWhen Collecting rich form input — compose modal instead.
    * @related modal, confirm-dialog, drawer
