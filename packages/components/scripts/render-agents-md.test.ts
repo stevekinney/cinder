@@ -3,13 +3,14 @@
  * generator.
  *
  * The unit tests exercise the pure rendering functions against inline
- * fixtures. The drift test parses the `| \`id\` | purpose | use when |` rows
- * out of the generated block in the real `AGENTS.md` and asserts each
- * overlap-family member's purpose and first `useWhen` match the real
- * `components.json` manifest — the invariant that matters, without
- * depending on Prettier's formatting (see `parseGeneratedRows` below). It is
- * what would have caught a manifest edit (a component's
- * `@purpose`/`@useWhen` JSDoc) that never made it into the generated table.
+ * fixtures. The drift test uses `findOverlapFamilyDrift` (see
+ * `render-agents-md.ts`) to compare the generated block in the real
+ * `AGENTS.md` against the real `components.json` manifest, per
+ * `(family, id)` pair rather than by id alone — the invariant that matters,
+ * without depending on Prettier's formatting. It is what would have caught a
+ * manifest edit (a component's `@purpose`/`@useWhen` JSDoc) that never made
+ * it into the generated table, including a dropped row for a component that
+ * belongs to more than one overlap family.
  */
 
 import { file } from 'bun';
@@ -21,10 +22,10 @@ import { readJsonFile } from './lib/read-json-file.ts';
 import {
   type ComponentEntry,
   type Manifest,
-  escapeCell,
+  findOverlapFamilyDrift,
+  parseGeneratedRows,
   renderOverlapBlock,
   replaceBlock,
-  shorten,
 } from './render-agents-md.ts';
 
 const PACKAGE_ROOT = resolve(import.meta.dir, '..');
@@ -32,38 +33,6 @@ const MANIFEST_PATH = resolve(PACKAGE_ROOT, 'components.json');
 const AGENTS_PATH = resolve(PACKAGE_ROOT, 'AGENTS.md');
 const START_MARKER = '<!-- generated:overlap-families:start -->';
 const END_MARKER = '<!-- generated:overlap-families:end -->';
-
-/**
- * Parse `| \`id\` | purpose | use when |` rows out of the generated block.
- *
- * This mirrors `renderFamilyTable`'s row shape without depending on
- * `prettier` for byte-for-byte comparison: `bun run test` resolves the
- * `browser` export condition, under which `prettier`'s browser build (
- * `standalone.mjs`) doesn't expose `resolveConfig`/`format` the way the CLI
- * script (run directly via `bun run scripts/render-agents-md.ts`) does. The
- * invariant this test protects — table text matches the manifest — doesn't
- * depend on Prettier's column padding, so we compare trimmed cell content
- * instead of reformatted output.
- */
-function parseGeneratedRows(agentsMd: string): Map<string, { purpose: string; useWhen: string }> {
-  const start = agentsMd.indexOf(START_MARKER);
-  const end = agentsMd.indexOf(END_MARKER);
-  if (start === -1 || end === -1) {
-    throw new Error(`Could not find generated markers in ${AGENTS_PATH}.`);
-  }
-  const block = agentsMd.slice(start, end);
-
-  const rows = new Map<string, { purpose: string; useWhen: string }>();
-  // Negative lookbehind on each `|` separator so an escaped pipe inside a
-  // cell (`escapeCell` emits `\|`) isn't mistaken for a column boundary.
-  const rowPattern = /^\|\s*`([a-z0-9-]+)`\s*(?<!\\)\|(.+?)(?<!\\)\|(.+?)(?<!\\)\|\s*$/gm;
-  for (const match of block.matchAll(rowPattern)) {
-    const [, id, purpose, useWhen] = match;
-    if (!id || purpose === undefined || useWhen === undefined) continue;
-    rows.set(id, { purpose: purpose.trim(), useWhen: useWhen.trim() });
-  }
-  return rows;
-}
 
 function makeEntry(overrides: Partial<ComponentEntry> & { id: string }): ComponentEntry {
   return {
@@ -189,41 +158,53 @@ describe('AGENTS.md overlap-family drift', () => {
       file(AGENTS_PATH).text(),
     ]);
 
-    const byId = new Map(manifest.components.map((component) => [component.id, component]));
-    const documentedIds = new Set(Object.values(manifest.overlapFamilies).flat());
-    const rows = parseGeneratedRows(existing);
+    // Sanity floor: a parser regression that silently returns no family
+    // sections would otherwise show up as a confusing "0 mismatches" false
+    // pass, since `findOverlapFamilyDrift` has nothing to compare against.
+    const start = existing.indexOf(START_MARKER);
+    const end = existing.indexOf(END_MARKER);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const families = parseGeneratedRows(existing.slice(start, end));
+    expect(new Set(families.keys())).toEqual(new Set(Object.keys(manifest.overlapFamilies)));
 
-    // Sanity floor: a parser regression that silently returns an empty map
-    // would otherwise show up as a confusing "0 mismatches" false pass.
-    expect(rows.size).toBeGreaterThan(0);
+    expect(findOverlapFamilyDrift(manifest, existing)).toEqual([]);
+  });
 
-    const mismatches: string[] = [];
-    for (const id of documentedIds) {
-      const entry = byId.get(id);
-      const row = rows.get(id);
-      if (!entry || !row) {
-        mismatches.push(`"${id}" is missing from ${entry ? 'AGENTS.md' : 'components.json'}`);
-        continue;
-      }
-      const expectedPurpose = escapeCell(shorten(entry.purpose));
-      const expectedUseWhen = escapeCell(shorten(entry.useWhen?.[0] ?? ''));
-      if (row.purpose !== expectedPurpose) {
-        mismatches.push(
-          `"${id}" purpose: AGENTS.md has "${row.purpose}", manifest has "${expectedPurpose}"`,
-        );
-      }
-      if (row.useWhen !== expectedUseWhen) {
-        mismatches.push(
-          `"${id}" useWhen: AGENTS.md has "${row.useWhen}", manifest has "${expectedUseWhen}"`,
-        );
-      }
-    }
-    for (const id of rows.keys()) {
-      if (!documentedIds.has(id)) {
-        mismatches.push(`"${id}" is a stale row in AGENTS.md — no longer in any overlap family`);
-      }
-    }
+  it('catches a row dropped from only one family when the component belongs to two', () => {
+    // Regression for a component appearing in more than one overlap family
+    // (real example: `segmented-control` is in both `selection` and `tabs`).
+    // A flat `id -> row` map would resolve the id via the surviving family's
+    // row and miss that the OTHER family's row is gone; this must not.
+    const manifest: Manifest = {
+      overlapFamilies: {
+        selection: ['segmented-control'],
+        tabs: ['segmented-control'],
+      },
+      components: [
+        makeEntry({
+          id: 'segmented-control',
+          purpose: 'Purpose.',
+          useWhen: ['Use it.'],
+        }),
+      ],
+    };
+    const wrap = (block: string) => [START_MARKER, block, END_MARKER].join('\n');
+    const completeBlock = renderOverlapBlock(manifest);
+    const droppedTabsRowBlock = [
+      '### selection (1 components)',
+      '',
+      '| id | purpose | use when |',
+      '| --- | --- | --- |',
+      '| `segmented-control` | Purpose. | Use it. |',
+      '',
+      '### tabs (1 components)',
+      '',
+      '| id | purpose | use when |',
+      '| --- | --- | --- |',
+    ].join('\n');
 
-    expect(mismatches).toEqual([]);
+    expect(findOverlapFamilyDrift(manifest, wrap(completeBlock))).toEqual([]);
+    expect(findOverlapFamilyDrift(manifest, wrap(droppedTabsRowBlock))).not.toEqual([]);
   });
 });

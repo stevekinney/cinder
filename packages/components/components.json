@@ -4021,9 +4021,12 @@
         },
         {
           "reason": "Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead."
+        },
+        {
+          "reason": "Showing a dense operational log without structured step state, such as raw CI or job output — use event-stream-viewer instead."
         }
       ],
-      "related": ["timeline", "event-timeline", "feed", "steps"],
+      "related": ["timeline", "event-timeline", "feed", "steps", "event-stream-viewer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

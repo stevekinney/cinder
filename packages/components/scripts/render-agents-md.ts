@@ -107,6 +107,110 @@ export function replaceBlock(source: string, body: string): string {
   return `${before}\n\n${body}\n\n${after}`;
 }
 
+export type OverlapRow = { purpose: string; useWhen: string };
+
+/**
+ * Parse `| \`id\` | purpose | use when |` rows out of a generated
+ * overlap-family block, grouped by the `### {family} (…)` header each
+ * table sits under.
+ *
+ * Family-scoped (rather than a flat `id -> row` map) because a component can
+ * belong to more than one overlap family — e.g. `segmented-control` is in
+ * both `selection` and `tabs` — so a row dropped from ONE family's table
+ * must not be masked by a same-id row still present in another family's
+ * table.
+ */
+export function parseGeneratedRows(block: string): Map<string, Map<string, OverlapRow>> {
+  const familyHeaderPattern = /^### ([a-z][a-z0-9-]*) \(\d+ components\)\s*$/gm;
+  // Negative lookbehind on each `|` separator so an escaped pipe inside a
+  // cell (`escapeCell` emits `\|`) isn't mistaken for a column boundary.
+  const rowPattern = /^\|\s*`([a-z0-9-]+)`\s*(?<!\\)\|(.+?)(?<!\\)\|(.+?)(?<!\\)\|\s*$/gm;
+
+  const headers = [...block.matchAll(familyHeaderPattern)].map((match) => ({
+    family: match[1]!,
+    start: match.index,
+  }));
+
+  const families = new Map<string, Map<string, OverlapRow>>();
+  for (const [index, header] of headers.entries()) {
+    const end = headers[index + 1]?.start ?? block.length;
+    const segment = block.slice(header.start, end);
+    const rows = new Map<string, OverlapRow>();
+    for (const match of segment.matchAll(rowPattern)) {
+      const [, id, purpose, useWhen] = match;
+      if (!id || purpose === undefined || useWhen === undefined) continue;
+      rows.set(id, { purpose: purpose.trim(), useWhen: useWhen.trim() });
+    }
+    families.set(header.family, rows);
+  }
+  return families;
+}
+
+/**
+ * Compare the AGENTS.md overlap-family block against the manifest and return
+ * a list of human-readable mismatches (empty when the block is up to date).
+ *
+ * Compared PER `(family, id)` pair, not per id, for the same reason
+ * {@link parseGeneratedRows} groups by family: a component in more than one
+ * overlap family must have a correct row in EVERY family's table.
+ *
+ * Deliberately independent of Prettier (unlike the full CLI `--check`): the
+ * `browser` export condition `bun test` resolves doesn't expose Prettier's
+ * `resolveConfig`/`format`, so this content comparison — not a byte-for-byte
+ * reformat diff — is what can run inside `bun:test` and, from there, inside
+ * `components:check` regardless of test scoping.
+ */
+export function findOverlapFamilyDrift(manifest: Manifest, agentsMd: string): string[] {
+  const start = agentsMd.indexOf(START_MARKER);
+  const end = agentsMd.indexOf(END_MARKER);
+  if (start === -1 || end === -1) {
+    return [`Could not find generated markers ("${START_MARKER}"/"${END_MARKER}") in AGENTS.md`];
+  }
+
+  const byId = new Map(manifest.components.map((component) => [component.id, component]));
+  const families = parseGeneratedRows(agentsMd.slice(start, end));
+
+  const mismatches: string[] = [];
+  for (const [family, memberIds] of Object.entries(manifest.overlapFamilies)) {
+    const rows = families.get(family);
+    for (const id of memberIds) {
+      const entry = byId.get(id);
+      const row = rows?.get(id);
+      if (!entry || !row) {
+        mismatches.push(
+          `"${family}/${id}" is missing from ${entry ? 'AGENTS.md' : 'components.json'}`,
+        );
+        continue;
+      }
+      const expectedPurpose = escapeCell(shorten(entry.purpose));
+      const expectedUseWhen = escapeCell(shorten(entry.useWhen?.[0] ?? ''));
+      if (row.purpose !== expectedPurpose) {
+        mismatches.push(
+          `"${family}/${id}" purpose: AGENTS.md has "${row.purpose}", manifest has "${expectedPurpose}"`,
+        );
+      }
+      if (row.useWhen !== expectedUseWhen) {
+        mismatches.push(
+          `"${family}/${id}" useWhen: AGENTS.md has "${row.useWhen}", manifest has "${expectedUseWhen}"`,
+        );
+      }
+    }
+  }
+
+  for (const [family, rows] of families) {
+    const expectedIds = new Set(manifest.overlapFamilies[family] ?? []);
+    for (const id of rows.keys()) {
+      if (!expectedIds.has(id)) {
+        mismatches.push(
+          `"${family}/${id}" is a stale row in AGENTS.md — no longer in overlap family "${family}"`,
+        );
+      }
+    }
+  }
+
+  return mismatches;
+}
+
 async function main(): Promise<void> {
   const check = process.argv.includes('--check');
 
