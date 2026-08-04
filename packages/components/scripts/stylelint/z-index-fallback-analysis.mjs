@@ -4883,8 +4883,6 @@ function definedSubstitutionPathCandidates(
       resolvedFallback: fallbackResolutionTooComplex,
       hasRuntimeSibling: true,
     };
-    if (endpointExpressions.length !== 2 || haveEqualStaticArithmeticValues(endpointExpressions))
-      continue;
     candidates.push(
       { ...definedPathCandidate, resolvedClassification: 'negative' },
       { ...definedPathCandidate, resolvedClassification: 'magic' },
