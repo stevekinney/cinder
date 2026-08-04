@@ -3994,12 +3994,11 @@
       "exportName": "RunStepTimeline",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Ordered execution rail for async run state: per-step status, durations, retries, plus parallel branch groups, rewound speculation, and saga compensation.",
+      "purpose": "Execution-state rail for async steps, durations, retries, branches, speculation, and compensation.",
       "tags": ["timeline", "progress", "execution"],
       "useWhen": [
-        "Displaying the live or completed state of a multi-step async operation: CI jobs, workflow runs, import pipelines, or deployments.",
-        "Showing a sequence where one step is currently active and prior steps have streamed in over time.",
-        "Visualizing speculative parallel work (race N lanes, keep the winner) or saga-style compensation of a forward step."
+        "Showing live or completed CI, workflow, import, or deployment steps.",
+        "Showing speculative parallel branches or saga compensation."
       ],
       "avoidWhen": [
         {
@@ -4012,17 +4011,7 @@
           "reason": "Showing a bounded horizontal schedule or activity stream — use event-timeline or feed instead."
         }
       ],
-      "related": [
-        "timeline",
-        "event-timeline",
-        "feed",
-        "event-stream-viewer",
-        "steps",
-        "status-dot",
-        "progress",
-        "badge",
-        "collapsible"
-      ],
+      "related": ["timeline", "event-timeline", "feed", "steps"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -5650,12 +5639,9 @@
       "exportName": "Timeline",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.",
+      "purpose": "Timestamp-first event rail with grouping, tone markers, and connector continuity.",
       "tags": ["timeline", "history", "events"],
-      "useWhen": [
-        "Visualizing an ordered sequence of dated events with a temporal rail, timestamp labels, grouping headers, and marker tones.",
-        "Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks."
-      ],
+      "useWhen": ["Showing dated workflow, audit, or run-history events on a temporal rail."],
       "avoidWhen": [
         {
           "reason": "Surfacing a real-time social or activity stream — feed is the higher-affordance composition."
@@ -5670,7 +5656,7 @@
           "reason": "Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer."
         }
       ],
-      "related": ["feed", "run-step-timeline", "event-timeline", "event-stream-viewer", "steps"],
+      "related": ["feed", "run-step-timeline", "event-timeline", "event-stream-viewer"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {

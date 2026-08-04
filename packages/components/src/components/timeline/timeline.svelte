@@ -3,17 +3,16 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Timestamp-first event rail that renders workflow, audit, or run-history entries with grouping, tone markers, and connector continuity.
+   * @purpose Timestamp-first event rail with grouping, tone markers, and connector continuity.
    * @tag timeline
    * @tag history
    * @tag events
-   * @useWhen Visualizing an ordered sequence of dated events with a temporal rail, timestamp labels, grouping headers, and marker tones.
-   * @useWhen Displaying workflow steps, audit logs, or run histories where each entry needs connector continuity or gap breaks.
+   * @useWhen Showing dated workflow, audit, or run-history events on a temporal rail.
    * @avoidWhen Surfacing a real-time social or activity stream — feed is the higher-affordance composition.
    * @avoidWhen Guiding users through a numbered procedural flow — steps conveys progress more clearly.
    * @avoidWhen Showing async execution state with retries, branches, or progress — use run-step-timeline.
    * @avoidWhen Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer.
-   * @related feed, run-step-timeline, event-timeline, event-stream-viewer, steps
+   * @related feed, run-step-timeline, event-timeline, event-stream-viewer
    */
   export type {
     TimelineEntry,
