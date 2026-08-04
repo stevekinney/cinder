@@ -1,11 +1,11 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Checkbox } = await import('./checkbox.svelte');
 const { default: CheckboxIndeterminateFormResetFixture } =
   await import('../../test/fixtures/checkbox-indeterminate-form-reset-fixture.svelte');
@@ -15,6 +15,11 @@ const { default: CheckboxExternalLabelFixture } =
   await import('../../test/fixtures/checkbox-external-label-fixture.svelte');
 const { default: FormFieldCheckboxFixture } =
   await import('../../test/fixtures/form-field-checkbox-fixture.svelte');
+
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 
 describe('Checkbox', () => {
   test('renders a native input[type=checkbox] with the given id', () => {
