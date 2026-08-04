@@ -559,7 +559,7 @@
     disabled={resolvedDisabled}
     required={resolvedRequired}
     class="cinder-number-input__input"
-    {...{ groupClassName: 'cinder-number-input' }}
+    groupClassName="cinder-number-input"
     {...inputRest}
     type="text"
     role="spinbutton"

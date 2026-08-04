@@ -594,7 +594,7 @@ describe('Input group (leading/trailing addons)', () => {
     expect(group).not.toBeNull();
     expect(container.querySelector('.cinder-input-group__leading')).not.toBeNull();
     expect(container.querySelector('.cinder-input-group__trailing')).not.toBeNull();
-    expect(container.querySelector('.cinder-input-group .cinder-input')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group > .cinder-input')).not.toBeNull();
   });
 
   test('decorative addon containers have aria-hidden="true" by default', () => {
