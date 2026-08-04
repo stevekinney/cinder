@@ -49,6 +49,7 @@ const sequentialFocusCandidateSelector = [
   'select',
   'textarea',
   'summary',
+  'frame',
   'iframe',
   'audio[controls]',
   'video[controls]',
@@ -98,8 +99,8 @@ export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[
   return candidates
     .filter((candidate) => !(groupedRadios.has(candidate) && !radioRepresentatives.has(candidate)))
     .sort((left, right) => {
-      const leftTabIndex = explicitTabIndex(left);
-      const rightTabIndex = explicitTabIndex(right);
+      const leftTabIndex = sequentialTabIndexValue(left);
+      const rightTabIndex = sequentialTabIndexValue(right);
       if (leftTabIndex === rightTabIndex) return 0;
       if (leftTabIndex === 0) return 1;
       if (rightTabIndex === 0) return -1;
@@ -108,18 +109,16 @@ export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[
 }
 
 function isSequentialCandidate(candidate: HTMLElement): boolean {
-  const rawTabIndex = candidate.getAttribute('tabindex');
+  const explicitTabIndexValue = getExplicitTabIndexValue(candidate);
   if (candidate.matches('input[type="hidden"]')) return false;
   if (
-    (rawTabIndex !== null && rawTabIndex.trim() !== '' && !Number.isFinite(Number(rawTabIndex))) ||
-    (candidate.tabIndex < 0 && (rawTabIndex !== null || !hasNativeSequentialDefault(candidate))) ||
+    getTabIndexValue(candidate) < 0 ||
     candidate.matches(':disabled') ||
     closestComposed(candidate, '[hidden], [inert]') !== null ||
     !isRendered(candidate)
   )
     return false;
-  if (candidate.getAttribute('contenteditable')?.toLowerCase() === 'false') return false;
-  if (candidate.matches('summary'))
+  if (candidate.matches('summary') && explicitTabIndexValue === null)
     return isFirstDetailsSummary(candidate) && !isInsideClosedDetails(candidate);
   if (isInsideClosedDetails(candidate)) return false;
   return true;
@@ -127,10 +126,9 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
 
 function hasNativeSequentialDefault(element: HTMLElement): boolean {
   return (
-    element.matches('button, a[href], area[href], select, textarea, summary, iframe') ||
+    element.matches('button, a[href], area[href], select, textarea, summary, frame, iframe') ||
     element.matches('audio[controls], video[controls], embed[src], object') ||
-    (element.hasAttribute('contenteditable') &&
-      element.getAttribute('contenteditable')?.toLowerCase() !== 'false')
+    isEditingHost(element)
   );
 }
 
@@ -138,8 +136,44 @@ function isRadio(element: HTMLElement): boolean {
   return element.localName === 'input' && element.getAttribute('type')?.toLowerCase() === 'radio';
 }
 
-function explicitTabIndex(element: HTMLElement): number {
-  return element.hasAttribute('tabindex') ? Math.max(0, element.tabIndex) : 0;
+function sequentialTabIndexValue(element: HTMLElement): number {
+  return Math.max(0, getTabIndexValue(element));
+}
+
+function getTabIndexValue(element: HTMLElement): number {
+  return getExplicitTabIndexValue(element) ?? (hasNativeSequentialDefault(element) ? 0 : -1);
+}
+
+function getExplicitTabIndexValue(element: HTMLElement): number | null {
+  const rawValue = element.getAttribute('tabindex');
+  if (rawValue !== null) {
+    // HTML integer parsing consumes the leading signed digit sequence. Mirror
+    // the reflected `long` range instead of relying on DOM-shim `tabIndex`
+    // defaults, which differ from browsers for native controls.
+    const match = /^[\t\n\f\r ]*([+-]?\d+)/.exec(rawValue);
+    if (match?.[1]) {
+      const parsedValue = Number(match[1]);
+      return Number.isInteger(parsedValue) &&
+        parsedValue >= -2_147_483_648 &&
+        parsedValue <= 2_147_483_647
+        ? parsedValue
+        : -1;
+    }
+  }
+  return null;
+}
+
+function isEditingHost(element: HTMLElement): boolean {
+  return hasContentEditableState(element) && !hasContentEditableState(element.parentElement);
+}
+
+function hasContentEditableState(element: HTMLElement | null): boolean {
+  for (let current = element; current; current = current.parentElement) {
+    const value = current.getAttribute('contenteditable')?.toLowerCase();
+    if (value === '' || value === 'true' || value === 'plaintext-only') return true;
+    if (value === 'false') return false;
+  }
+  return false;
 }
 
 function isFirstDetailsSummary(element: HTMLElement): boolean {
@@ -179,7 +213,12 @@ function isRendered(element: HTMLElement): boolean {
   let candidate: HTMLElement | null = element;
   while (candidate) {
     const style = getComputedStyle(candidate);
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    if (
+      style.display === 'none' ||
+      style.visibility === 'hidden' ||
+      style.visibility === 'collapse'
+    )
+      return false;
     const root = candidate.getRootNode();
     candidate = candidate.parentElement ?? shadowHost(root);
   }

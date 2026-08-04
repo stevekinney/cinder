@@ -116,7 +116,7 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
-  test('orders positive tabindex values before default controls and rejects invalid tabindex', () => {
+  test('orders positive tabindex values before default controls', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');
     defaultButton.setAttribute('tabindex', '0');
@@ -124,9 +124,7 @@ describe('getSequentialFocusTargets', () => {
     positiveTwo.setAttribute('tabindex', '2');
     const positiveOne = document.createElement('button');
     positiveOne.setAttribute('tabindex', '1');
-    const invalid = document.createElement('button');
-    invalid.setAttribute('tabindex', 'bogus');
-    region.append(defaultButton, positiveTwo, positiveOne, invalid);
+    region.append(defaultButton, positiveTwo, positiveOne);
     document.body.append(region);
 
     const targets = getSequentialFocusTargets(region);
@@ -135,6 +133,24 @@ describe('getSequentialFocusTargets', () => {
         target === positiveOne ? 'one' : target === positiveTwo ? 'two' : 'default',
       ),
     ).toEqual(['one', 'two', 'default']);
+    region.remove();
+  });
+
+  test('treats an invalid tabindex as omitted and parses a leading integer', () => {
+    const region = document.createElement('div');
+    const nativeInvalid = document.createElement('button');
+    nativeInvalid.setAttribute('tabindex', 'bogus');
+    const genericInvalid = document.createElement('div');
+    genericInvalid.setAttribute('tabindex', 'bogus');
+    const leadingInteger = document.createElement('div');
+    leadingInteger.setAttribute('tabindex', '3x');
+    region.append(nativeInvalid, genericInvalid, leadingInteger);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets[0]).toBe(leadingInteger);
+    expect(targets).toContain(nativeInvalid);
+    expect(targets).not.toContain(genericInvalid);
     region.remove();
   });
 
@@ -152,6 +168,41 @@ describe('getSequentialFocusTargets', () => {
     expect(getSequentialFocusTargets(region)).toContain(first);
     expect(getSequentialFocusTargets(region)).not.toContain(second);
     expect(getSequentialFocusTargets(region)).not.toContain(standalone);
+    region.remove();
+  });
+
+  test('includes a standalone summary when an explicit tabindex opts it in', () => {
+    const region = document.createElement('div');
+    const summary = document.createElement('summary');
+    summary.tabIndex = 0;
+    region.append(summary);
+    document.body.append(region);
+
+    expect(getSequentialFocusTargets(region)).toContain(summary);
+    region.remove();
+  });
+
+  test('includes only editing hosts unless a nested editable is explicitly opted in', () => {
+    const region = document.createElement('div');
+    const editingHost = document.createElement('div');
+    editingHost.setAttribute('contenteditable', 'true');
+    const nestedEditable = document.createElement('div');
+    nestedEditable.setAttribute('contenteditable', 'true');
+    const optedInNestedEditable = document.createElement('div');
+    optedInNestedEditable.setAttribute('contenteditable', 'true');
+    optedInNestedEditable.tabIndex = 0;
+    const optedInNonEditable = document.createElement('div');
+    optedInNonEditable.setAttribute('contenteditable', 'false');
+    optedInNonEditable.tabIndex = 0;
+    editingHost.append(nestedEditable, optedInNestedEditable, optedInNonEditable);
+    region.append(editingHost);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(editingHost);
+    expect(targets).not.toContain(nestedEditable);
+    expect(targets).toContain(optedInNestedEditable);
+    expect(targets).toContain(optedInNonEditable);
     region.remove();
   });
 
@@ -256,24 +307,27 @@ describe('getSequentialFocusTargets', () => {
     expect(getSequentialFocusTargets(foreignDocument)).toContain(foreignRadio);
   });
 
-  test('excludes hidden, inert, disabled, and negative-tabindex candidates', () => {
+  test('excludes hidden, collapsed, inert, disabled, and negative-tabindex candidates', () => {
     const region = document.createElement('div');
     const visible = document.createElement('button');
     visible.setAttribute('tabindex', '0');
     const hidden = document.createElement('button');
     hidden.hidden = true;
+    const collapsed = document.createElement('button');
+    collapsed.style.visibility = 'collapse';
     const inert = document.createElement('button');
     inert.setAttribute('inert', '');
     const disabled = document.createElement('button');
     disabled.disabled = true;
     const negative = document.createElement('button');
     negative.setAttribute('tabindex', '-1');
-    region.append(visible, hidden, inert, disabled, negative);
+    region.append(visible, hidden, collapsed, inert, disabled, negative);
     document.body.append(region);
 
     const targets = getSequentialFocusTargets(region);
     expect(targets).toContain(visible);
     expect(targets).not.toContain(hidden);
+    expect(targets).not.toContain(collapsed);
     expect(targets).not.toContain(inert);
     expect(targets).not.toContain(disabled);
     expect(targets).not.toContain(negative);
