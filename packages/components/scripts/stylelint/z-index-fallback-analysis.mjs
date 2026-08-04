@@ -4,6 +4,7 @@ import {
   cssCommentMaskCharacter,
   evaluateStaticLayerNumber,
   hasStaticallyZeroCoefficient,
+  haveCompatibleStaticProgressTypes,
   isCssIdentifierCharacter,
   isCssWhitespace,
   isCssWhitespaceOrComment,
@@ -44,7 +45,15 @@ const validAttrSyntaxTypeNames = new Set([
   'transform-function',
   'transform-list',
 ]);
-const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow', 'sign']);
+const signedZeroSensitiveFunctionNames = new Set([
+  'atan2',
+  'log',
+  'pow',
+  'sign',
+  'sin',
+  'sqrt',
+  'tan',
+]);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
 const signedCalcKeywordPattern = /[+-](?:e|infinity|nan|pi)(?![-_a-z\d])/iy;
 const mathFunctionNames = new Set([
@@ -152,12 +161,12 @@ function resolveFrameExpression(
     const relativeStart = child.start - range.start;
     const relativeEnd = child.end - range.start;
     // Custom-property substitution splices a token stream directly into the
-    // surrounding value; it neither adds grouping parentheses nor retokenizes
-    // adjacent tokens. Separator whitespace preserves those token boundaries.
+    // surrounding value. Comment-mask separators preserve token boundaries
+    // for analysis without inventing whitespace around additive operators.
     const replacementValue = replaceEveryChild
       ? unresolvedReplacement
       : (child.resolvedFallback ?? unresolvedReplacement);
-    const replacement = ` ${replacementValue} `;
+    const replacement = `${cssCommentMaskCharacter}${replacementValue}${cssCommentMaskCharacter}`;
     const nextLength =
       resolvedExpression.length - (relativeEnd - relativeStart) + replacement.length;
     if (!consumeResolutionWork(budget, nextLength)) return fallbackResolutionTooComplex;
@@ -972,9 +981,13 @@ function isValidProgressRange(frame, value, range, parenthesisPairs) {
   const firstArgument = value
     .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
     .trimStart();
-  return !(
+  if (
     firstArgument.slice(0, 8).toLowerCase() === 'no-clamp' &&
     !isCssIdentifierCharacter(firstArgument[8])
+  )
+    return false;
+  return haveCompatibleStaticProgressTypes(
+    parsedArguments.staticArguments.map((argument) => argument.value),
   );
 }
 
@@ -1191,7 +1204,7 @@ function directBannedMathArgumentCandidates(
   budget,
   parenthesisPairs,
 ) {
-  for (const functionName of ['max', 'min', 'clamp', 'round']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1201,6 +1214,13 @@ function directBannedMathArgumentCandidates(
     );
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return [];
+    if ((functionName === 'mod' || functionName === 'rem') && parsedArguments.argumentCount !== 2)
+      return [];
+    if (
+      (functionName === 'mod' || functionName === 'rem') &&
+      parsedArguments.staticArguments.length === parsedArguments.argumentCount
+    )
+      return [];
     if (functionName !== 'round') {
       const staticResultTypes = new Set(
         parsedArguments.staticArguments.map(
@@ -1265,7 +1285,7 @@ function directBannedMathArgumentCandidates(
 }
 
 function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenthesisPairs) {
-  for (const functionName of ['max', 'min', 'clamp', 'round']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1275,6 +1295,8 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
     );
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return new Set();
+    if ((functionName === 'mod' || functionName === 'rem') && parsedArguments.argumentCount !== 2)
+      return new Set();
     let staticArguments = parsedArguments.staticArguments;
     if (functionName === 'round') {
       const firstArgument = value

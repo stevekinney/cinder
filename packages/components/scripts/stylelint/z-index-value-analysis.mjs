@@ -1,24 +1,24 @@
 const canonicalUnitConversions = new Map([
-  ['px', { dimension: 'length', factor: 1 }],
-  ['in', { dimension: 'length', factor: 96 }],
-  ['cm', { dimension: 'length', factor: 96 / 2.54 }],
-  ['mm', { dimension: 'length', factor: 96 / 25.4 }],
-  ['q', { dimension: 'length', factor: 96 / 101.6 }],
-  ['pt', { dimension: 'length', factor: 96 / 72 }],
-  ['pc', { dimension: 'length', factor: 16 }],
-  ['deg', { dimension: 'angle', factor: 1 }],
-  ['grad', { dimension: 'angle', factor: 0.9 }],
+  ['px', { dimension: 'length', exactFactor: [1n, 1n], factor: 1 }],
+  ['in', { dimension: 'length', exactFactor: [96n, 1n], factor: 96 }],
+  ['cm', { dimension: 'length', exactFactor: [4800n, 127n], factor: 96 / 2.54 }],
+  ['mm', { dimension: 'length', exactFactor: [480n, 127n], factor: 96 / 25.4 }],
+  ['q', { dimension: 'length', exactFactor: [120n, 127n], factor: 96 / 101.6 }],
+  ['pt', { dimension: 'length', exactFactor: [4n, 3n], factor: 96 / 72 }],
+  ['pc', { dimension: 'length', exactFactor: [16n, 1n], factor: 16 }],
+  ['deg', { dimension: 'angle', exactFactor: [1n, 1n], factor: 1 }],
+  ['grad', { dimension: 'angle', exactFactor: [9n, 10n], factor: 0.9 }],
   ['rad', { dimension: 'angle', factor: 180 / Math.PI }],
-  ['turn', { dimension: 'angle', factor: 360 }],
-  ['s', { dimension: 'time', factor: 1 }],
-  ['ms', { dimension: 'time', factor: 0.001 }],
-  ['hz', { dimension: 'frequency', factor: 1 }],
-  ['khz', { dimension: 'frequency', factor: 1000 }],
-  ['dppx', { dimension: 'resolution', factor: 1 }],
-  ['x', { dimension: 'resolution', factor: 1 }],
-  ['dpi', { dimension: 'resolution', factor: 1 / 96 }],
-  ['dpcm', { dimension: 'resolution', factor: 2.54 / 96 }],
-  ['fr', { dimension: 'flex', factor: 1 }],
+  ['turn', { dimension: 'angle', exactFactor: [360n, 1n], factor: 360 }],
+  ['s', { dimension: 'time', exactFactor: [1n, 1n], factor: 1 }],
+  ['ms', { dimension: 'time', exactFactor: [1n, 1000n], factor: 0.001 }],
+  ['hz', { dimension: 'frequency', exactFactor: [1n, 1n], factor: 1 }],
+  ['khz', { dimension: 'frequency', exactFactor: [1000n, 1n], factor: 1000 }],
+  ['dppx', { dimension: 'resolution', exactFactor: [1n, 1n], factor: 1 }],
+  ['x', { dimension: 'resolution', exactFactor: [1n, 1n], factor: 1 }],
+  ['dpi', { dimension: 'resolution', exactFactor: [1n, 96n], factor: 1 / 96 }],
+  ['dpcm', { dimension: 'resolution', exactFactor: [127n, 4800n], factor: 2.54 / 96 }],
+  ['fr', { dimension: 'flex', exactFactor: [1n, 1n], factor: 1 }],
 ]);
 const relativeLengthUnitNames = new Set([
   'em',
@@ -161,8 +161,8 @@ function hasActualSubstitutionFunction(value) {
 
 // CSS numeric tokens spell only positive zero; generated arithmetic can still
 // produce negative zero that nested functions must preserve.
-function scalar(value, isLiteralZero = false) {
-  return { value, units: new Map(), symbolicFactors: new Map(), isLiteralZero };
+function scalar(value, isLiteralZero = false, exactValue) {
+  return { value, units: new Map(), symbolicFactors: new Map(), isLiteralZero, exactValue };
 }
 
 function withValue(source, value) {
@@ -172,6 +172,69 @@ function withValue(source, value) {
     symbolicFactors: new Map(source.symbolicFactors),
     isLiteralZero: false,
   };
+}
+
+function greatestCommonDivisor(left, right) {
+  left = left < 0n ? -left : left;
+  right = right < 0n ? -right : right;
+  while (right !== 0n) [left, right] = [right, left % right];
+  return left;
+}
+
+function normalizedRational(numerator, denominator) {
+  if (denominator === 0n) return undefined;
+  if (denominator < 0n) {
+    numerator = -numerator;
+    denominator = -denominator;
+  }
+  const divisor = greatestCommonDivisor(numerator, denominator);
+  return { numerator: numerator / divisor, denominator: denominator / divisor };
+}
+
+function decimalRational(token) {
+  if (token.length > 128) return undefined;
+  const match = /^([+-]?)(\d*)(?:\.(\d+))?(?:e([+-]?\d+))?$/i.exec(token);
+  if (!match) return undefined;
+  const exponent = Number(match[4] ?? 0);
+  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 128) return undefined;
+  const fractionDigits = match[3] ?? '';
+  const digits = `${match[2]}${fractionDigits}` || '0';
+  let numerator = BigInt(digits);
+  if (match[1] === '-') numerator = -numerator;
+  const decimalPlaces = fractionDigits.length - exponent;
+  return decimalPlaces >= 0
+    ? normalizedRational(numerator, 10n ** BigInt(decimalPlaces))
+    : normalizedRational(numerator * 10n ** BigInt(-decimalPlaces), 1n);
+}
+
+function multiplyRationals(left, right) {
+  if (left === undefined || right === undefined) return undefined;
+  return normalizedRational(left.numerator * right.numerator, left.denominator * right.denominator);
+}
+
+function divideRationals(left, right) {
+  if (left === undefined || right === undefined || right.numerator === 0n) return undefined;
+  return normalizedRational(left.numerator * right.denominator, left.denominator * right.numerator);
+}
+
+function addRationals(left, right, direction = 1n) {
+  if (left === undefined || right === undefined) return undefined;
+  return normalizedRational(
+    left.numerator * right.denominator + direction * right.numerator * left.denominator,
+    left.denominator * right.denominator,
+  );
+}
+
+function floorRational({ numerator, denominator }) {
+  const quotient = numerator / denominator;
+  return numerator < 0n && numerator % denominator !== 0n ? quotient - 1n : quotient;
+}
+
+function roundRational(value) {
+  return floorRational({
+    numerator: value.numerator * 2n + value.denominator,
+    denominator: value.denominator * 2n,
+  });
 }
 
 function normalizedDimension(unit) {
@@ -400,12 +463,14 @@ function evaluateConstantArithmetic(expression) {
       if (index === exponentStart) throw new Error('expected exponent');
     }
     if (!sawDigit) throw new Error('expected a number');
-    let value = Number(expression.slice(start, index));
+    const numericToken = expression.slice(start, index);
+    let value = Number(numericToken);
+    let exactValue = decimalRational(numericToken);
     if (value === 0) value = 0;
     const unitStart = index;
     while (/[a-z%]/i.test(peek() ?? '')) index += 1;
     const unit = expression.slice(unitStart, index).toLowerCase();
-    if (!unit) return scalar(value, value === 0);
+    if (!unit) return scalar(value, value === 0, exactValue);
     const conversion = canonicalUnitConversions.get(unit);
     if (conversion === undefined && unit !== '%' && !relativeLengthUnitNames.has(unit))
       throw new Error('unknown unit');
@@ -415,7 +480,16 @@ function evaluateConstantArithmetic(expression) {
         : conversion === undefined
           ? `unit:${unit}`
           : `dimension:${conversion.dimension}`;
-    if (conversion !== undefined) value *= conversion.factor;
+    if (conversion !== undefined) {
+      value *= conversion.factor;
+      exactValue = multiplyRationals(
+        exactValue,
+        conversion.exactFactor && {
+          numerator: conversion.exactFactor[0],
+          denominator: conversion.exactFactor[1],
+        },
+      );
+    }
     return {
       value,
       units: new Map([[unitKey, 1]]),
@@ -423,6 +497,7 @@ function evaluateConstantArithmetic(expression) {
         value !== 0 && relativeLengthUnitNames.has(unit) ? [[`relative-length:${unit}`, 1]] : [],
       ),
       isLiteralZero: value === 0,
+      exactValue,
     };
   }
 
@@ -508,6 +583,22 @@ function evaluateConstantArithmetic(expression) {
       );
       const [[sharedConversionFactor, sharedConversionExponent] = []] =
         boundedArguments[0]?.symbolicFactors ?? [];
+      const zeroArgument = boundedArguments.find(
+        (argument) => argument.isLiteralZero && argument.symbolicFactors.size === 0,
+      );
+      const hasZeroPinnedRelativeLengthExtremum =
+        zeroArgument !== undefined &&
+        functionName === 'max' &&
+        boundedArguments.every((argument) => {
+          const [[factor, exponent] = []] = argument.symbolicFactors;
+          const hasKnownPositiveConversion =
+            argument.symbolicFactors.size === 0 ||
+            (argument.symbolicFactors.size === 1 &&
+              factor?.startsWith('relative-length:') &&
+              exponent === 1);
+          return hasKnownPositiveConversion && argument.value <= 0;
+        });
+      if (hasZeroPinnedRelativeLengthExtremum) return withValue(zeroArgument, 0);
       if (
         (functionName === 'min' || functionName === 'max') &&
         boundedArguments.length > 0 &&
@@ -710,6 +801,10 @@ function evaluateConstantArithmetic(expression) {
         units: combineUnits(value, right, operator === '*' ? 1 : -1),
         symbolicFactors,
         isLiteralZero: false,
+        exactValue:
+          operator === '*'
+            ? multiplyRationals(value.exactValue, right.exactValue)
+            : divideRationals(value.exactValue, right.exactValue),
       };
     }
   }
@@ -732,6 +827,11 @@ function evaluateConstantArithmetic(expression) {
         const combinedValue = withValue(
           value,
           operator === '+' ? value.value + right.value : value.value - right.value,
+        );
+        combinedValue.exactValue = addRationals(
+          value.exactValue,
+          right.exactValue,
+          operator === '+' ? 1n : -1n,
         );
         if (operator === '+')
           combinedValue.associativeAddends = combinedAdditiveIdentityTerms([value, right]);
@@ -823,10 +923,18 @@ function resolveStaticValue(value) {
 }
 
 function resolveStaticNumber(value) {
-  const evaluated = resolveStaticValue(value);
-  return evaluated === null || evaluated === staticAnalysisTooComplex
-    ? evaluated
-    : Math.floor(evaluated + 0.5);
+  const resolved = resolveStaticArithmeticResult(value);
+  if (
+    resolved === null ||
+    resolved === staticAnalysisTooComplex ||
+    resolved === staticAnalysisInvalid ||
+    resolved.units.size > 0 ||
+    resolved.symbolicFactors.size > 0
+  )
+    return resolved === staticAnalysisInvalid ? null : resolved;
+  return resolved.exactValue === undefined
+    ? Math.floor(resolved.value + 0.5)
+    : Number(roundRational(resolved.exactValue));
 }
 
 function closingParenthesisIndex(value, argumentStart) {
@@ -1228,10 +1336,33 @@ export function analyzeStaticLayerValue(value) {
       resultType: hasNumericResultType(arithmeticResult.units) ? 'number' : 'non-number',
     };
   }
-  const resolved = Math.floor(arithmeticResult.value + 0.5);
+  const resolved =
+    arithmeticResult.exactValue === undefined
+      ? Math.floor(arithmeticResult.value + 0.5)
+      : roundRational(arithmeticResult.exactValue);
   if (resolved < 0) return { classification: 'negative', resultType: 'number' };
-  if (resolved === 9999) return { classification: 'magic', resultType: 'number' };
+  if (resolved === 9999 || resolved === 9999n)
+    return { classification: 'magic', resultType: 'number' };
   return { classification: 'safe', resultType: 'number' };
+}
+
+export function haveCompatibleStaticProgressTypes(values) {
+  const resolvedValues = values.map(resolveStaticArithmeticResult);
+  if (
+    resolvedValues.some(
+      (resolved) =>
+        resolved === null ||
+        resolved === staticAnalysisTooComplex ||
+        resolved === staticAnalysisInvalid,
+    )
+  )
+    return true;
+  return resolvedValues.every(
+    (resolved) =>
+      !resolved.units.has('unit:%') &&
+      !resolved.units.has('dimension:flex') &&
+      sameUnits(resolved, resolvedValues[0]),
+  );
 }
 
 export function classifyStaticLayer(value) {

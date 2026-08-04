@@ -2125,6 +2125,51 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    ['calc(1 +var(--inner, 9998))', 0],
+    ['calc(1 + var(--inner, 9998))', 1],
+    ['calc(var(--inner, 9998)+ 1)', 0],
+    ['calc(var(--inner, 9998) + 1)', 1],
+    ['calc(1/**/+/**/var(--inner, 9998))', 0],
+    ['calc(1 /**/+/**/ var(--inner, 9998))', 1],
+    ['calc(1 *var(--inner, 9999))', 1],
+  ] as const)(
+    'preserves original additive whitespace when substituting a fallback: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: substitution must not invent additive whitespace. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    ['calc(25396.18cm / 1in)', 0],
+    ['calc(25396.19cm / 1in)', 1],
+    ['calc(25396.20cm / 1in)', 1],
+    ['calc(25396.19cm / 2.54cm)', 1],
+  ] as const)(
+    'classifies exact absolute-unit rounding boundaries: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: exact unit ratios decide integer rounding. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
     'var(--inner, -1) 0',
     '0 var(--inner, -1)',
     'var(--inner, 9999) safe',
@@ -2653,6 +2698,8 @@ describe('cinder/z-index-scale', () => {
     'round(to-zero, 9999, var(--runtime))',
     'round(var(--runtime), 9999)',
     'round(to-zero, var(--runtime), -1)',
+    'mod(9999, var(--runtime))',
+    'rem(9999, var(--runtime))',
   ])('preserves a direct banned bound sibling in unresolved math: %s', async (fallback) => {
     expect(
       warnings(
@@ -2674,6 +2721,8 @@ describe('cinder/z-index-scale', () => {
     'round(9999, 1px)',
     'round(var(--inner, 9999), 1px)',
     'round(foo, 9999)',
+    'mod(9999, var(--runtime), 1)',
+    'rem(9999, var(--runtime), 1)',
   ])(
     'does not report candidates from a statically type-invalid math function: %s',
     async (fallback) => {
@@ -2687,6 +2736,27 @@ describe('cinder/z-index-scale', () => {
         `),
         ),
       ).toEqual([]);
+    },
+  );
+
+  test.each([
+    ['calc(9999 * progress(var(--runtime), 1px, 1deg))', 0],
+    ['calc(9999 * progress(var(--runtime), 1%, 2%))', 0],
+    ['calc(9999 * progress(var(--runtime), 1fr, 2fr))', 0],
+    ['calc(9999 * progress(var(--runtime), 1px, 2px))', 1],
+  ] as const)(
+    'validates the static progress range types before preserving its bound: %s',
+    async (fallback, warningCount) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: only a valid progress range can expose the bound. */
+              z-index: var(--outer, ${fallback});
+            }
+          `),
+        ),
+      ).toHaveLength(warningCount);
     },
   );
 
@@ -2848,6 +2918,8 @@ describe('cinder/z-index-scale', () => {
       ['calc((0deg / max(var(--divisor), 1deg)) / 0 * var(--inner, 9999) + var(--other, -1))', 1],
       ['calc(9999 + 0 / var(--first-divisor) * 0 / var(--second-divisor))', 1],
       ['calc(9999 * max(0em, 0px) / max(0px, 0em))', 0],
+      ['calc(9999 * max(-1em, 0px) / max(0px, -1em))', 0],
+      ['calc(9999 * max(-1em, -2em) / max(-2em, -1em))', 1],
     ] as const) {
       const result = await lint(`
         .fixture {
@@ -2859,6 +2931,22 @@ describe('cinder/z-index-scale', () => {
       expect(warnings(result)).toHaveLength(warningCount);
     }
   });
+
+  test.each(['sin', 'tan', 'sqrt'])(
+    'preserves a negative-zero quotient through a signed-zero wrapper: %s',
+    async (functionName) => {
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: the wrapper preserves negative zero for the reciprocal. */
+              z-index: var(--outer, calc(1 / ${functionName}((0 * -1) / var(--divisor))));
+            }
+          `),
+        ),
+      ).toHaveLength(1);
+    },
+  );
 
   test.each([
     'calc(var(--inner, 9999) * 0em / var(--divisor))',
