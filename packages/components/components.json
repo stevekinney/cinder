@@ -5650,7 +5650,8 @@
           "reason": "Guiding users through a numbered procedural flow — steps conveys progress more clearly."
         },
         {
-          "reason": "Showing async execution state with retries, branches, or progress — use run-step-timeline."
+          "reason": "Showing async execution state with retries, branches, or progress.",
+          "alternative": "run-step-timeline"
         },
         {
           "reason": "Showing a bounded horizontal schedule or dense operational stream — use event-timeline or event-stream-viewer."
