@@ -20,8 +20,8 @@ export type BentoGridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /** Column gap override. Wins over `gap` for columns. */
   columnGap?: string;
   /**
-   * Enables a narrow-screen fallback where BentoGrid becomes a single column
-   * and BentoCell placement resets to auto flow.
+   * Enables a single-column fallback when the BentoGrid element's border-box
+   * width is 48rem or less and resets BentoCell placement to auto flow.
    * @default true
    */
   collapse?: boolean;

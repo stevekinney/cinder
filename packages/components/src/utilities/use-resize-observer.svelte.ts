@@ -12,10 +12,6 @@ export function useResizeObserver(
   const { box, enabled = () => true } = options;
 
   return (node: HTMLElement) => {
-    if (typeof ResizeObserver === 'undefined') {
-      return () => {};
-    }
-
     let observer: ResizeObserver | null = null;
 
     const disconnectObserver = () => {
@@ -29,7 +25,16 @@ export function useResizeObserver(
         return;
       }
 
-      observer = new ResizeObserver((entries) => {
+      const ResizeObserverConstructor =
+        typeof document !== 'undefined' && node.ownerDocument === document
+          ? globalThis.ResizeObserver
+          : node.ownerDocument.defaultView?.ResizeObserver;
+      if (!ResizeObserverConstructor) {
+        disconnectObserver();
+        return;
+      }
+
+      observer = new ResizeObserverConstructor((entries) => {
         if (!enabled()) {
           return;
         }
