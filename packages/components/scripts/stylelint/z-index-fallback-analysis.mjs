@@ -4856,7 +4856,6 @@ function definedSubstitutionPathCandidates(
       if (analysis.classification === 'negative' || analysis.classification === 'magic')
         exactClassifications.add(analysis.classification);
       if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) {
-        if (supportsReachableDivisionWitness) continue;
         endpointExpressions.length = 0;
         break;
       }

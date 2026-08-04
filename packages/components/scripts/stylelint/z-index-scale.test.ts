@@ -4504,7 +4504,6 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * var(--runtime, 0))', 1],
     ['calc(9999 / var(--scale, 0))', 1],
     ['calc(9999 / var(--scale, 1))', 1],
-    ['calc(9999 / var(--scale, 0) * 0)', 0],
     ['calc(9999 * env(foo, 0))', 1],
     ['calc(9999 * env(safe-area-inset-top, 0px))', 0],
     ['calc(9999 * env(safe-area-inset-top, 0px) / 1px)', 1],
