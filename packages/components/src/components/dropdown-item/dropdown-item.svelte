@@ -50,6 +50,7 @@
   const sharedClass = $derived(
     classNames(
       'cinder-_option-row',
+      'cinder-_row-item',
       'cinder-dropdown-item',
       inset && 'cinder-dropdown-item--inset',
       customClassName,
