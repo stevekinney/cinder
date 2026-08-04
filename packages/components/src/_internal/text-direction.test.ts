@@ -648,6 +648,25 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('does not broaden an exact :scope scope-start beyond its stylesheet root', () => {
+    const section = document.createElement('section');
+    const styleElement = document.createElement('style');
+    const target = document.createElement('div');
+    target.className = 'shell';
+    section.append(styleElement);
+    document.body.append(section, target);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (:scope) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule], ownerNode: styleElement }], () =>
+        matchesDirectionStyleRule(target, (parent) => parent.parentElement),
+      ),
+    ).toBe(false);
+  });
+
   test('does not match descendants for a cloned :scope selector', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -842,6 +861,25 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('recognizes SVG style elements as implicit scope owners', () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const styleElement = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    const target = document.createElement('div');
+    target.className = 'shell';
+    svg.append(styleElement, target);
+    document.body.append(svg);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule], ownerNode: styleElement }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
   test('uses the enclosing shadow root as the implicit scope root', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -938,7 +976,7 @@ describe('resolveTextDirection', () => {
         withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
           resolveTextDirection(target, 'rtl'),
         ),
-      ).toBe('ltr');
+      ).toBe('rtl');
     } finally {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;
@@ -972,7 +1010,7 @@ describe('resolveTextDirection', () => {
         withDocumentStyleSheets([{ cssRules: [scopeRule], ownerNode: styleElement }], () =>
           resolveTextDirection(target, 'rtl'),
         ),
-      ).toBe('rtl');
+      ).toBe('ltr');
     } finally {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;

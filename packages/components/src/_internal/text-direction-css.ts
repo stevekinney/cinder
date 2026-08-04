@@ -10,21 +10,21 @@ export function matchesDirectionStyleRule(
   element: HTMLElement,
   getParentElement: ParentElementResolver,
 ): boolean {
-  const styleSheets = new Set<CSSStyleSheet>([
-    ...Array.from(element.ownerDocument.styleSheets),
-    ...Array.from(element.ownerDocument.adoptedStyleSheets ?? []),
-  ]);
+  const styleSheets = new Map<CSSStyleSheet, ScopeRoot | null>();
+  for (const sheet of Array.from(element.ownerDocument.styleSheets)) styleSheets.set(sheet, null);
+  for (const sheet of Array.from(element.ownerDocument.adoptedStyleSheets ?? []))
+    styleSheets.set(sheet, null);
   const root = element.getRootNode();
   if (typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot) {
-    for (const sheet of root.adoptedStyleSheets) styleSheets.add(sheet);
+    for (const sheet of root.adoptedStyleSheets) styleSheets.set(sheet, root);
     for (const styleElement of root.querySelectorAll('style')) {
-      if (styleElement.sheet) styleSheets.add(styleElement.sheet);
+      if (styleElement.sheet) styleSheets.set(styleElement.sheet, root);
     }
     for (const linkElement of root.querySelectorAll<HTMLLinkElement>('link[rel~="stylesheet"]')) {
-      if (linkElement.sheet) styleSheets.add(linkElement.sheet);
+      if (linkElement.sheet) styleSheets.set(linkElement.sheet, root);
     }
   }
-  for (const sheet of styleSheets) {
+  for (const [sheet, fallbackRoot] of styleSheets) {
     if (!isActiveStyleSheet(sheet)) continue;
     let rules: CSSRuleList;
     try {
@@ -38,7 +38,7 @@ export function matchesDirectionStyleRule(
         rules,
         getParentElement,
         [],
-        getImplicitScopeRoot(sheet, root),
+        getImplicitScopeRoot(sheet, fallbackRoot),
       )
     )
       return true;
@@ -59,9 +59,12 @@ function isActiveStyleSheet(sheet: CSSStyleSheet): boolean {
 
 type ScopeRoot = Element | ShadowRoot;
 
-function getImplicitScopeRoot(sheet: CSSStyleSheet, fallbackRoot: Node): ScopeRoot | null {
+function getImplicitScopeRoot(
+  sheet: CSSStyleSheet,
+  fallbackRoot: ScopeRoot | null,
+): ScopeRoot | null {
   const ownerNode = Reflect.get(sheet, 'ownerNode');
-  if (!(ownerNode instanceof Element) || ownerNode.tagName !== 'STYLE') {
+  if (!(ownerNode instanceof Element) || ownerNode.localName?.toLowerCase() !== 'style') {
     return typeof ShadowRoot !== 'undefined' && fallbackRoot instanceof ShadowRoot
       ? fallbackRoot
       : null;
@@ -266,10 +269,23 @@ function findActiveScopeRoots(
 ): ScopeRoot[] | null {
   if (!selectorsAreValid(element, prelude.rootSelectors)) return null;
   if (prelude.limitSelectors && !selectorsAreValid(element, prelude.limitSelectors)) return null;
+  if (prelude.rootSelectors.some(hasScopePseudoClass)) {
+    if (
+      !implicitScopeRoot ||
+      prelude.rootSelectors.some((selector) => selector.trim().toLowerCase() !== ':scope')
+    )
+      return null;
+  }
   const roots: ScopeRoot[] =
     prelude.rootSelectors.length === 0
       ? [implicitScopeRoot ?? element.ownerDocument.documentElement]
-      : findScopeMatches(element, prelude.rootSelectors);
+      : prelude.rootSelectors.some(hasScopePseudoClass)
+        ? implicitScopeRoot
+          ? [implicitScopeRoot]
+          : []
+        : findScopeMatches(element, prelude.rootSelectors);
+  if (prelude.rootSelectors.some(hasScopePseudoClass) && roots[0] && !roots[0].contains(element))
+    return null;
   if (prelude.rootSelectors.length === 0 && roots[0] && !roots[0].contains(element)) return null;
   const activeRoots: ScopeRoot[] = [];
   for (const root of roots) {
@@ -371,7 +387,7 @@ function matchesScopedSelector(
             root instanceof ShadowRoot &&
             current.getRootNode() === root
           )
-            break;
+            path.unshift(Array.prototype.indexOf.call(root.children, current));
           break;
         }
         path.unshift(Array.prototype.indexOf.call(parent.children, current));
