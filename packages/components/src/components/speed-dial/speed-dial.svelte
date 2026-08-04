@@ -257,8 +257,7 @@
 
     if (open && event.key === 'Tab' && event.shiftKey) {
       const sequentialButtons = getSequentiallyTabbableActionButtons();
-      if (!actionsElement || !anchoredActions.positionReady || actionsElement.hasAttribute('inert'))
-        return;
+      if (!actionsElement || !actionsPositionReady || actionsElement.hasAttribute('inert')) return;
       const lastButton = sequentialButtons.at(-1);
       if (!lastButton) return;
       event.preventDefault();

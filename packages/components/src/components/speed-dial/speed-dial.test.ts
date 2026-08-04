@@ -1014,6 +1014,30 @@ describe('SpeedDial', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Share' }));
   });
 
+  test('reverse Tab from the open trigger uses retained positioning while placement recomputes', async () => {
+    const { rerender } = render(SpeedDialFixture, { props: { direction: 'up' } });
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    const share = screen.getByRole('button', { name: 'Share' });
+
+    expect(toolbar.getAttribute('data-cinder-position-ready')).toBe('true');
+    await rerender({ direction: 'left' });
+    trigger.focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    trigger.dispatchEvent(event);
+
+    expect(document.activeElement).toBe(share);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   test('leaves reverse Tab native when every action is untabbable', async () => {
     const precedingButton = document.createElement('button');
     precedingButton.textContent = 'Before SpeedDial';
