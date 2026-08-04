@@ -694,6 +694,75 @@ describe('resolveTextDirection', () => {
     }
   });
 
+  test('uses the enclosing shadow root as the implicit scope root', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const styleElement = document.createElement('style');
+    const target = document.createElement('div');
+    target.className = 'shell';
+    shadowRoot.append(styleElement, target);
+    document.body.append(host);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    const sheet = { cssRules: [scopeRule], ownerNode: styleElement };
+    try {
+      expect(withDocumentStyleSheets([sheet], () => resolveTextDirection(target, 'rtl'))).toBe(
+        'ltr',
+      );
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
+  test('evaluates :scope limits relative to the active scope root', () => {
+    const originalWindowGetComputedStyle = window.getComputedStyle;
+    const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
+    const getComputedStyleOverride = ((target: Element) => {
+      const style = originalWindowGetComputedStyle(target);
+      Object.defineProperty(style, 'direction', { value: 'ltr', configurable: true });
+      return style;
+    }) as typeof window.getComputedStyle;
+    window.getComputedStyle = getComputedStyleOverride;
+    globalThis.getComputedStyle = getComputedStyleOverride;
+    const root = document.createElement('section');
+    root.className = 'theme';
+    const stop = document.createElement('div');
+    stop.className = 'stop';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    stop.append(target);
+    root.append(stop);
+    document.body.append(root);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) to (:scope > .stop) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+          resolveTextDirection(target, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      window.getComputedStyle = originalWindowGetComputedStyle;
+      globalThis.getComputedStyle = originalGlobalGetComputedStyle;
+    }
+  });
+
   test('requires nested scopes to intersect every enclosing scope', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;

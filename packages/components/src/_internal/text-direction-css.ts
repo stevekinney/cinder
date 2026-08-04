@@ -57,11 +57,14 @@ function isActiveStyleSheet(sheet: CSSStyleSheet): boolean {
   return matchMedia(mediaText).matches;
 }
 
-function getImplicitScopeRoot(sheet: CSSStyleSheet): Element | null {
+type ScopeRoot = Element | ShadowRoot;
+
+function getImplicitScopeRoot(sheet: CSSStyleSheet): ScopeRoot | null {
   const ownerNode = Reflect.get(sheet, 'ownerNode');
-  return ownerNode instanceof Element && ownerNode.tagName === 'STYLE'
-    ? ownerNode.parentElement
-    : null;
+  if (!(ownerNode instanceof Element) || ownerNode.tagName !== 'STYLE') return null;
+  if (ownerNode.parentElement) return ownerNode.parentElement;
+  const root = ownerNode.getRootNode();
+  return root instanceof ShadowRoot ? root : null;
 }
 
 export function matchesDirectionStyleRuleCached(
@@ -83,7 +86,7 @@ function matchesDirectionStyleRuleList(
   rules: CSSRuleList | Iterable<CSSRule>,
   getParentElement: ParentElementResolver,
   scopes: readonly ActiveScope[] = [],
-  implicitScopeRoot: Element | null = null,
+  implicitScopeRoot: ScopeRoot | null = null,
 ): boolean {
   for (const rule of Array.from(rules)) {
     if (Reflect.get(rule, 'type') === 3) {
@@ -230,14 +233,14 @@ interface ScopePrelude {
 }
 
 interface ActiveScope {
-  roots: Element[];
+  roots: ScopeRoot[];
 }
 
 function createActiveScope(
   rule: CSSRule,
   element: HTMLElement,
   parentScopes: readonly ActiveScope[],
-  implicitScopeRoot: Element | null,
+  implicitScopeRoot: ScopeRoot | null,
 ): ActiveScope | null {
   const cssText = Reflect.get(rule, 'cssText');
   if (typeof cssText !== 'string') return null;
@@ -251,16 +254,16 @@ function findActiveScopeRoots(
   element: HTMLElement,
   prelude: ScopePrelude,
   parentScopes: readonly ActiveScope[],
-  implicitScopeRoot: Element | null,
-): Element[] | null {
+  implicitScopeRoot: ScopeRoot | null,
+): ScopeRoot[] | null {
   if (!selectorsAreValid(element, prelude.rootSelectors)) return null;
   if (prelude.limitSelectors && !selectorsAreValid(element, prelude.limitSelectors)) return null;
-  const roots =
+  const roots: ScopeRoot[] =
     prelude.rootSelectors.length === 0
       ? [implicitScopeRoot ?? element.ownerDocument.documentElement]
       : findScopeMatches(element, prelude.rootSelectors);
   if (prelude.rootSelectors.length === 0 && roots[0] && !roots[0].contains(element)) return null;
-  const activeRoots: Element[] = [];
+  const activeRoots: ScopeRoot[] = [];
   for (const root of roots) {
     if (root && !isWithinParentScopes(root, parentScopes)) continue;
     if (
@@ -285,18 +288,25 @@ function selectorsAreValid(element: Element, selectors: readonly string[]): bool
   }
 }
 
-function isWithinParentScopes(root: Element, parentScopes: readonly ActiveScope[]): boolean {
+function isWithinParentScopes(root: ScopeRoot, parentScopes: readonly ActiveScope[]): boolean {
   return parentScopes.every((scope) => scope.roots.some((parentRoot) => parentRoot.contains(root)));
 }
 
 function isWithinScopeLimit(
   element: HTMLElement,
-  root: Element,
+  root: ScopeRoot,
   limitSelectors: string[],
 ): boolean {
   let current: Element | null = element;
   while (current) {
-    if (limitSelectors.some((selector) => matchesSelectorSafely(current!, selector))) return true;
+    if (
+      limitSelectors.some((selector) =>
+        hasScopePseudoClass(selector)
+          ? matchesScopedSelector(current!, selector, [{ roots: [root] }])
+          : matchesSelectorSafely(current!, selector),
+      )
+    )
+      return true;
     if (current === root) break;
     current = current.parentElement;
   }
@@ -312,7 +322,7 @@ function matchesSelectorSafely(element: Element, selector: string): boolean {
 }
 
 function matchesScopedSelector(
-  element: HTMLElement,
+  element: Element,
   selector: string,
   scopes: readonly ActiveScope[],
 ): boolean {
