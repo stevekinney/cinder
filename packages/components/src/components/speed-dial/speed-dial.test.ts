@@ -9,6 +9,7 @@ setupHappyDom();
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
+const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
@@ -35,6 +36,57 @@ describe('SpeedDial', () => {
     expect(container.querySelector('.cinder-speed-dial')?.hasAttribute('data-cinder-open')).toBe(
       false,
     );
+  });
+
+  test('closed toolbar keeps its exit surface mounted and inert', () => {
+    const { container } = render(SpeedDialFixture);
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions', hidden: true });
+
+    expect(container.querySelector('.cinder-speed-dial__actions')).toBe(toolbar);
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+    expect(toolbar.hasAttribute('inert')).toBe(true);
+  });
+
+  test('open and reduced-motion styles preserve the same closed resting reset', () => {
+    const closedActionsRule = speedDialStyles.match(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s*\{([^}]*)\}/s,
+    )?.[1];
+    expect(closedActionsRule).toBeDefined();
+    expect(closedActionsRule).toMatch(/background\s*:\s*transparent\s*;/);
+    expect(closedActionsRule).toMatch(/border-color\s*:\s*transparent\s*;/);
+    expect(closedActionsRule).toMatch(/box-shadow\s*:\s*none\s*;/);
+    expect(closedActionsRule).toMatch(/overflow-y\s*:\s*hidden\s*;/);
+
+    const openActionsRule = speedDialStyles.match(
+      /\.cinder-speed-dial__actions\[data-cinder-open\]\s*\{([^}]*)\}/s,
+    )?.[1];
+    expect(openActionsRule).toBeDefined();
+    expect(openActionsRule).toMatch(/pointer-events\s*:\s*auto\s*;/);
+    expect(speedDialStyles).toMatch(
+      /@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*?\.cinder-speed-dial-action\s*\{[^}]*transition:\s*none;/s,
+    );
+    expect(speedDialStyles).toMatch(/\.cinder-speed-dial-action\s*\{[^}]*opacity:\s*0;/s);
+    expect(speedDialStyles).toMatch(
+      /\.cinder-speed-dial__actions:not\(\[data-cinder-open\]\)\s+\.cinder-speed-dial-action\s*\{[^}]*pointer-events:\s*none;/s,
+    );
+  });
+
+  test('open and post-close settled states keep the surface mounted and unavailable when closed', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(true);
+    expect(toolbar.hasAttribute('inert')).toBe(false);
+    await waitFor(() => expect(toolbar.hasAttribute('aria-hidden')).toBe(false));
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    expect(screen.getByRole('toolbar', { name: 'Actions', hidden: true })).toBe(toolbar);
+    expect(toolbar.hasAttribute('data-cinder-open')).toBe(false);
+    expect(toolbar.hasAttribute('inert')).toBe(true);
   });
 
   test('empty aria-label falls back to the default accessible name', () => {
@@ -396,6 +448,122 @@ describe('SpeedDial', () => {
     share.focus();
     await fireEvent.keyDown(share, { key: 'Tab', shiftKey: true });
     expect(document.activeElement).toBe(precedingButton);
+  });
+
+  test('reverse Tab from an arrow-focused untabbable first action returns before the SpeedDial', async () => {
+    const precedingButton = document.createElement('button');
+    precedingButton.textContent = 'Before SpeedDial';
+    document.body.append(precedingButton);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    create.setAttribute('tabindex', '-1');
+    create.focus();
+    await fireEvent.keyDown(create, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(precedingButton);
+  });
+
+  test('forward Tab from an arrow-focused untabbable last action moves to the trigger', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const share = screen.getByRole('button', { name: 'Share' });
+    share.setAttribute('tabindex', '-1');
+    share.focus();
+    await fireEvent.keyDown(share, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  test('reverse Tab from the open trigger moves to the last sequential action', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    trigger.focus();
+    await fireEvent.keyDown(trigger, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Share' }));
+  });
+
+  test('leaves reverse Tab native when every action is untabbable', async () => {
+    const precedingButton = document.createElement('button');
+    precedingButton.textContent = 'Before SpeedDial';
+    document.body.append(precedingButton);
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    for (const action of screen.getAllByRole('button').filter((button) => button !== trigger)) {
+      action.setAttribute('tabindex', '-1');
+    }
+    trigger.focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    trigger.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  test('leaves reverse Tab native while the portaled toolbar is inert', async () => {
+    render(SpeedDialFixture, { props: { open: true } });
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+    const toolbar = document.querySelector<HTMLElement>('[role="toolbar"]')!;
+    trigger.focus();
+    const event = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    trigger.dispatchEvent(event);
+
+    expect(toolbar.hasAttribute('inert')).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  test('uses the toolbar DOM order after actions are reordered', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const toolbar = screen.getByRole('toolbar', { name: 'Actions' });
+    const create = screen.getByRole('button', { name: 'Create' });
+    toolbar.append(create.closest('.cinder-speed-dial-action')!);
+    trigger.focus();
+    await fireEvent.keyDown(trigger, { key: 'Tab', shiftKey: true });
+
+    expect(document.activeElement).toBe(create);
+  });
+
+  test('evaluates rendered action candidates once per keydown', async () => {
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+    const create = screen.getByRole('button', { name: 'Create' });
+    const getComputedStyleSpy = spyOn(globalThis, 'getComputedStyle');
+    getComputedStyleSpy.mockClear();
+    await fireEvent.keyDown(create, { key: 'ArrowDown' });
+
+    expect(getComputedStyleSpy).toHaveBeenCalledTimes(12);
+    getComputedStyleSpy.mockRestore();
   });
 
   test('skips CSS-hidden controls when reversing from the first action', async () => {

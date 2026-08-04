@@ -31,14 +31,14 @@ function unwrapTypeExpression(expression: unknown): unknown {
   return expression;
 }
 
-function staticStringFromExpression(
+function staticStringValuesFromExpression(
   rawExpression: unknown,
-  bindings: ReadonlyMap<string, string>,
-): string | undefined {
+  bindings: ReadonlyMap<string, readonly string[]>,
+): string[] {
   const expression = unwrapTypeExpression(rawExpression);
-  if (!isRecord(expression)) return undefined;
+  if (!isRecord(expression)) return [];
   if (expression['type'] === 'Literal' && typeof expression['value'] === 'string')
-    return expression['value'];
+    return [expression['value']];
   if (
     expression['type'] === 'TemplateLiteral' &&
     Array.isArray(expression['expressions']) &&
@@ -47,42 +47,834 @@ function staticStringFromExpression(
     isRecord(expression['quasis'][0])
   ) {
     const value = expression['quasis'][0]['value'];
-    return isRecord(value) && typeof value['cooked'] === 'string' ? value['cooked'] : undefined;
+    return isRecord(value) && typeof value['cooked'] === 'string' ? [value['cooked']] : [];
   }
   if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
-    return bindings.get(expression['name']);
-  return undefined;
+    return [...(bindings.get(expression['name']) ?? [])];
+  return [];
 }
 
-function staticStringBindings(source: string): Map<string, string> {
-  const root: unknown = parseSvelte(source, { modern: true });
-  const bindings = new Map<string, string>();
-  if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
-    return bindings;
-  const body = root['instance']['content']['body'];
-  if (!Array.isArray(body)) return bindings;
-  for (const statement of body) {
-    if (
-      !isRecord(statement) ||
-      statement['type'] !== 'VariableDeclaration' ||
-      statement['kind'] !== 'const'
-    )
-      continue;
-    const declarations = statement['declarations'];
-    if (!Array.isArray(declarations)) continue;
-    for (const declaration of declarations) {
-      if (
-        !isRecord(declaration) ||
-        !isRecord(declaration['id']) ||
-        declaration['id']['type'] !== 'Identifier' ||
-        typeof declaration['id']['name'] !== 'string'
-      )
-        continue;
-      const value = staticStringFromExpression(declaration['init'], bindings);
-      if (value !== undefined) bindings.set(declaration['id']['name'], value);
+function mergeStringValues(...values: (readonly string[])[]): string[] {
+  return [...new Set(values.flat())];
+}
+
+function staticTruthiness(
+  value: unknown,
+  bindings: ReadonlyMap<string, readonly string[]>,
+): boolean | undefined {
+  const result = expressionResult(value);
+  if (isRecord(result) && result['type'] === 'Literal') return Boolean(result['value']);
+  const values = staticStringValuesFromExpression(result, bindings);
+  if (values.length === 0) return undefined;
+  const truthiness = new Set(values.map(Boolean));
+  return truthiness.size === 1 ? truthiness.values().next().value : undefined;
+}
+
+function expressionResult(value: unknown): unknown {
+  const expression = unwrapTypeExpression(value);
+  if (
+    isRecord(expression) &&
+    expression['type'] === 'AssignmentExpression' &&
+    expression['operator'] === '='
+  )
+    return expressionResult(expression['right']);
+  return expression;
+}
+
+function unconditionallyAbruptStatement(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ContinueStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  if (statement['type'] === 'IfStatement')
+    return (
+      isRecord(statement['consequent']) &&
+      unconditionallyAbruptStatement(statement['consequent']) &&
+      isRecord(statement['alternate']) &&
+      unconditionallyAbruptStatement(statement['alternate'])
+    );
+  if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
+  const last = statement['body'].at(-1);
+  return unconditionallyAbruptStatement(last);
+}
+
+function unconditionallyExitsBeforeLoopUpdate(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  if (statement['type'] === 'IfStatement')
+    return (
+      isRecord(statement['consequent']) &&
+      unconditionallyExitsBeforeLoopUpdate(statement['consequent']) &&
+      isRecord(statement['alternate']) &&
+      unconditionallyExitsBeforeLoopUpdate(statement['alternate'])
+    );
+  return (
+    statement['type'] === 'BlockStatement' &&
+    Array.isArray(statement['body']) &&
+    statement['body'].length > 0 &&
+    unconditionallyExitsBeforeLoopUpdate(statement['body'][statement['body'].length - 1])
+  );
+}
+
+function staticallyGuaranteesNonEmptyArray(expression: unknown): boolean {
+  if (!isRecord(expression) || expression['type'] !== 'ArrayExpression') return false;
+  if (!Array.isArray(expression['elements'])) return false;
+  return expression['elements'].some((element) => {
+    if (element === null) return true;
+    if (!isRecord(element)) return false;
+    if (element['type'] !== 'SpreadElement') return true;
+    return staticallyGuaranteesNonEmptyArray(element['argument']);
+  });
+}
+
+function collectPatternNames(pattern: unknown, into: Set<string>): void {
+  if (!isRecord(pattern)) return;
+  if (pattern['type'] === 'Identifier' && typeof pattern['name'] === 'string') {
+    into.add(pattern['name']);
+    return;
+  }
+  if (pattern['type'] === 'VariableDeclarator') {
+    collectPatternNames(pattern['id'], into);
+    return;
+  }
+  if (pattern['type'] === 'RestElement') {
+    collectPatternNames(pattern['argument'], into);
+    return;
+  }
+  if (pattern['type'] === 'AssignmentPattern') {
+    collectPatternNames(pattern['left'], into);
+    return;
+  }
+  if (pattern['type'] === 'ArrayPattern' && Array.isArray(pattern['elements'])) {
+    for (const element of pattern['elements']) collectPatternNames(element, into);
+    return;
+  }
+  if (pattern['type'] === 'ObjectPattern' && Array.isArray(pattern['properties'])) {
+    for (const property of pattern['properties']) {
+      if (!isRecord(property)) continue;
+      collectPatternNames(
+        property['type'] === 'RestElement' ? property['argument'] : property['value'],
+        into,
+      );
     }
   }
+}
+
+function collectFunctionScopedNames(node: unknown, into: Set<string>): void {
+  if (!isRecord(node)) return;
+  if (
+    node['type'] === 'FunctionDeclaration' ||
+    node['type'] === 'FunctionExpression' ||
+    node['type'] === 'ArrowFunctionExpression'
+  )
+    return;
+  if (
+    node['type'] === 'VariableDeclaration' &&
+    node['kind'] === 'var' &&
+    Array.isArray(node['declarations'])
+  )
+    for (const declaration of node['declarations']) collectPatternNames(declaration, into);
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) for (const item of value) collectFunctionScopedNames(item, into);
+    else if (isRecord(value)) collectFunctionScopedNames(value, into);
+  }
+}
+
+function staticStringBindings(source: string): Map<string, string[]> {
+  const root: unknown = parseSvelte(source, { modern: true });
+  const bindings = new Map<string, string[]>();
+  const callbackBindings = new Map<string, string[]>();
+  const deferredFunctions: Array<{
+    node: UnknownRecord;
+    shadowed: ReadonlySet<string>;
+  }> = [];
+  const preservedAbruptStates: Array<Map<string, string[]>> = [];
+  const breakTargets: Array<{
+    kind: 'boundary' | 'for-update';
+    label: string | undefined;
+    states: Array<Map<string, string[]>>;
+  }> = [];
+  let currentPathCapturedBreak = false;
+  let deferFunctions = true;
+  if (!isRecord(root)) return bindings;
+  const walk = (
+    node: unknown,
+    shadowed: ReadonlySet<string> = new Set(),
+    controlLabel?: string,
+  ): void => {
+    if (!isRecord(node)) return;
+    if (node['type'] === 'LabeledStatement') {
+      const label =
+        isRecord(node['label']) && typeof node['label']['name'] === 'string'
+          ? node['label']['name']
+          : undefined;
+      const body = node['body'];
+      if (
+        isRecord(body) &&
+        (body['type'] === 'ForStatement' ||
+          body['type'] === 'ForInStatement' ||
+          body['type'] === 'ForOfStatement' ||
+          body['type'] === 'WhileStatement' ||
+          body['type'] === 'DoWhileStatement' ||
+          body['type'] === 'SwitchStatement')
+      )
+        walk(body, shadowed, label);
+      else {
+        breakTargets.push({ kind: 'boundary', label, states: [] });
+        if (isRecord(body)) walk(body, shadowed);
+        breakTargets.pop();
+      }
+      return;
+    }
+    if (node['type'] === 'BreakStatement') {
+      const label =
+        isRecord(node['label']) && typeof node['label']['name'] === 'string'
+          ? node['label']['name']
+          : undefined;
+      const target = label
+        ? breakTargets.findLast((candidate) => candidate.label === label)
+        : breakTargets.at(-1);
+      if (target?.kind === 'for-update') {
+        target.states.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+        currentPathCapturedBreak = true;
+      }
+      return;
+    }
+    if (
+      deferFunctions &&
+      (node['type'] === 'FunctionDeclaration' ||
+        node['type'] === 'FunctionExpression' ||
+        node['type'] === 'ArrowFunctionExpression')
+    ) {
+      deferredFunctions.push({ node, shadowed: new Set(shadowed) });
+      return;
+    }
+    let currentShadowed = shadowed;
+    if (
+      node['type'] === 'VariableDeclaration' &&
+      ['const', 'let', 'var'].includes(String(node['kind'])) &&
+      Array.isArray(node['declarations'])
+    ) {
+      for (const declaration of node['declarations']) {
+        if (
+          !isRecord(declaration) ||
+          !isRecord(declaration['id']) ||
+          declaration['id']['type'] !== 'Identifier' ||
+          typeof declaration['id']['name'] !== 'string'
+        )
+          continue;
+        const name = declaration['id']['name'];
+        const values = staticStringValuesFromExpression(declaration['init'], bindings);
+        const callbackValues = callbackBindings.get(name) ?? [];
+        if (values.length > 0) bindings.set(name, mergeStringValues(values, callbackValues));
+        else if (declaration['init'] === null || declaration['init'] === undefined) {
+          if (node['kind'] !== 'var' || !bindings.has(name)) bindings.set(name, []);
+        } else if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+        else bindings.delete(name);
+      }
+    }
+    if (node['type'] === 'IfStatement') {
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const knownTruthiness = staticTruthiness(node['test'], bindings);
+      if (knownTruthiness !== undefined) {
+        const branch = knownTruthiness ? node['consequent'] : node['alternate'];
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed);
+        return;
+      }
+      const branches = [node['consequent'], node['alternate']]
+        .map((branch) => {
+          bindings.clear();
+          for (const [name, values] of base) bindings.set(name, [...values]);
+          const outerCapturedBreak = currentPathCapturedBreak;
+          currentPathCapturedBreak = false;
+          if (isRecord(branch)) walk(branch, currentShadowed);
+          const branchCapturedBreak = currentPathCapturedBreak;
+          currentPathCapturedBreak = outerCapturedBreak;
+          if (branchCapturedBreak) return undefined;
+          if (isRecord(branch) && unconditionallyAbruptStatement(branch)) {
+            const preserved = preservedAbruptStates.at(-1);
+            if (preserved)
+              for (const [name, values] of bindings)
+                preserved.set(name, mergeStringValues(preserved.get(name) ?? [], values));
+          }
+          return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+        })
+        .filter((branch): branch is Map<string, string[]> => branch !== undefined);
+      bindings.clear();
+      const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
+      for (const name of names) {
+        bindings.set(name, [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))]);
+      }
+      currentPathCapturedBreak = branches.length === 0;
+      return;
+    }
+    if (node['type'] === 'ConditionalExpression') {
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const knownTruthiness = staticTruthiness(node['test'], bindings);
+      if (knownTruthiness !== undefined) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        const branch = knownTruthiness ? node['consequent'] : node['alternate'];
+        if (isRecord(branch)) walk(branch, currentShadowed);
+        return;
+      }
+      const branches = [node['consequent'], node['alternate']].map((branch) => {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        if (isRecord(branch)) walk(branch, currentShadowed);
+        return new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      });
+      bindings.clear();
+      const names = new Set([...base.keys(), ...branches.flatMap((branch) => [...branch.keys()])]);
+      for (const name of names)
+        bindings.set(name, [...new Set(branches.flatMap((branch) => branch.get(name) ?? []))]);
+      return;
+    }
+    if (node['type'] === 'LogicalExpression') {
+      if (isRecord(node['left'])) walk(node['left'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const truthiness = staticTruthiness(node['left'], bindings);
+      const operator = node['operator'];
+      const leftResult = expressionResult(node['left']);
+      const leftIsNullish =
+        (isRecord(leftResult) &&
+          leftResult['type'] === 'Literal' &&
+          leftResult['value'] === null) ||
+        (isRecord(leftResult) &&
+          leftResult['type'] === 'UnaryExpression' &&
+          leftResult['operator'] === 'void') ||
+        (isRecord(leftResult) &&
+          leftResult['type'] === 'Identifier' &&
+          leftResult['name'] === 'undefined' &&
+          !currentShadowed.has('undefined') &&
+          !bindings.has('undefined'));
+      const leftIsNonNullishLiteral =
+        isRecord(leftResult) && leftResult['type'] === 'Literal' && leftResult['value'] !== null;
+      const leftIsKnownString = staticStringValuesFromExpression(leftResult, bindings).length > 0;
+      const skipsRight =
+        (truthiness !== undefined &&
+          ((operator === '&&' && !truthiness) || (operator === '||' && truthiness))) ||
+        (operator === '??' && (leftIsNonNullishLiteral || leftIsKnownString));
+      if (skipsRight) return;
+      if (isRecord(node['right'])) walk(node['right'], currentShadowed);
+      const guaranteesRight =
+        (truthiness !== undefined &&
+          ((operator === '&&' && truthiness) || (operator === '||' && !truthiness))) ||
+        (operator === '??' && leftIsNullish);
+      if (!guaranteesRight) {
+        const names = new Set([...base.keys(), ...bindings.keys()]);
+        for (const name of names)
+          bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
+      }
+      return;
+    }
+    if (node['type'] === 'DoWhileStatement') {
+      breakTargets.push({ kind: 'boundary', label: controlLabel, states: [] });
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      breakTargets.pop();
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      return;
+    }
+    if (node['type'] === 'WhileStatement') {
+      if (isRecord(node['test'])) walk(node['test'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const truthiness = staticTruthiness(node['test'], bindings);
+      if (truthiness === false) return;
+      breakTargets.push({ kind: 'boundary', label: controlLabel, states: [] });
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      breakTargets.pop();
+      if (truthiness !== true) {
+        const names = new Set([...base.keys(), ...bindings.keys()]);
+        for (const name of names)
+          bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
+      }
+      return;
+    }
+    if (node['type'] === 'TryStatement') {
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const alternatives: Map<string, string[]>[] = [];
+      if (isRecord(node['block'])) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        walk(node['block'], currentShadowed);
+        alternatives.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+      }
+      if (isRecord(node['handler'])) {
+        bindings.clear();
+        for (const [name, values] of base) bindings.set(name, [...values]);
+        const catchShadowed = new Set(currentShadowed);
+        if (isRecord(node['handler']['param']))
+          collectPatternNames(node['handler']['param'], catchShadowed);
+        walk(node['handler']['body'], catchShadowed);
+        alternatives.push(
+          new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+        );
+      }
+      bindings.clear();
+      for (const name of new Set(alternatives.flatMap((branch) => [...branch.keys()])))
+        bindings.set(
+          name,
+          mergeStringValues(...alternatives.map((branch) => branch.get(name) ?? [])),
+        );
+      if (isRecord(node['finalizer'])) walk(node['finalizer'], currentShadowed);
+      return;
+    }
+    if (node['type'] === 'SwitchStatement' && Array.isArray(node['cases'])) {
+      if (isRecord(node['discriminant'])) walk(node['discriminant'], currentShadowed);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const cases = node['cases'].filter(isRecord);
+      const switchNames = new Set<string>();
+      for (const switchCase of cases)
+        if (Array.isArray(switchCase['consequent']))
+          for (const statement of switchCase['consequent'])
+            if (
+              isRecord(statement) &&
+              statement['type'] === 'VariableDeclaration' &&
+              (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+              Array.isArray(statement['declarations'])
+            )
+              for (const declaration of statement['declarations'])
+                if (isRecord(declaration)) collectPatternNames(declaration['id'], switchNames);
+      const switchShadowed = new Set([...currentShadowed, ...switchNames]);
+      const branches: Map<string, string[]>[] = [];
+      breakTargets.push({ kind: 'boundary', label: controlLabel, states: [] });
+      let hasDefault = false;
+      const discriminant = node['discriminant'];
+      const knownValue =
+        isRecord(discriminant) && discriminant['type'] === 'Literal'
+          ? discriminant['value']
+          : undefined;
+      const knownDiscriminant = isRecord(discriminant) && discriminant['type'] === 'Literal';
+      let knownStart: number | undefined;
+      if (knownDiscriminant) {
+        let defaultStart: number | undefined;
+        let unresolvedBeforeMatch = false;
+        let ambiguousMatch = false;
+        for (let index = 0; index < cases.length; index += 1) {
+          const test = cases[index]?.['test'];
+          if (test === null) {
+            defaultStart = index;
+            continue;
+          }
+          if (!isRecord(test) || test['type'] !== 'Literal') unresolvedBeforeMatch = true;
+          if (isRecord(test) && test['type'] === 'Literal' && test['value'] === knownValue) {
+            if (unresolvedBeforeMatch) ambiguousMatch = true;
+            else knownStart = index;
+            break;
+          }
+        }
+        if (!ambiguousMatch && knownStart === undefined) knownStart = defaultStart ?? -1;
+      }
+      const starts =
+        knownStart === undefined
+          ? cases.map((_, index) => index)
+          : knownStart < 0
+            ? [-1]
+            : [knownStart];
+      for (const start of starts) {
+        const branch = new Map([...base].map(([name, values]) => [name, [...values]] as const));
+        bindings.clear();
+        for (const [name, values] of branch) bindings.set(name, [...values]);
+        for (let index = 0; index <= (start < 0 ? cases.length - 1 : start); index += 1) {
+          const test = cases[index]?.['test'];
+          if (test === null) hasDefault = true;
+          else if (isRecord(test)) walk(test, switchShadowed);
+        }
+        if (start < 0) {
+          branches.push(
+            new Map([...bindings].map(([name, values]) => [name, [...values]] as const)),
+          );
+          continue;
+        }
+        let stopped = false;
+        for (let index = start; index < cases.length && !stopped; index += 1) {
+          const consequent = cases[index]?.['consequent'];
+          if (!Array.isArray(consequent)) continue;
+          for (const statement of consequent) {
+            walk(statement, switchShadowed);
+            if (unconditionallyAbruptStatement(statement)) {
+              stopped = true;
+              break;
+            }
+          }
+        }
+        branches.push(new Map([...bindings].map(([name, values]) => [name, [...values]] as const)));
+      }
+      if (!hasDefault)
+        branches.push(new Map([...base].map(([name, values]) => [name, [...values]] as const)));
+      bindings.clear();
+      const names = new Set(branches.flatMap((branch) => [...branch.keys()]));
+      for (const name of names)
+        bindings.set(name, mergeStringValues(...branches.map((branch) => branch.get(name) ?? [])));
+      breakTargets.pop();
+      return;
+    }
+    if (
+      node['type'] === 'ForStatement' ||
+      node['type'] === 'ForInStatement' ||
+      node['type'] === 'ForOfStatement'
+    ) {
+      const declaration = node['type'] === 'ForStatement' ? node['init'] : node['left'];
+      const localNames = new Set<string>();
+      if (
+        isRecord(declaration) &&
+        declaration['type'] === 'VariableDeclaration' &&
+        (declaration['kind'] === 'let' || declaration['kind'] === 'const') &&
+        Array.isArray(declaration['declarations'])
+      )
+        for (const declarator of declaration['declarations'])
+          if (isRecord(declarator)) collectPatternNames(declarator['id'], localNames);
+      const loopShadowed = new Set([...currentShadowed, ...localNames]);
+      if (node['type'] === 'ForStatement') {
+        if (isRecord(node['init'])) walk(node['init'], loopShadowed);
+        if (isRecord(node['test'])) walk(node['test'], loopShadowed);
+      } else {
+        if (isRecord(node['right'])) walk(node['right'], currentShadowed);
+        if (isRecord(node['left'])) walk(node['left'], loopShadowed);
+      }
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      const testTruthiness =
+        node['type'] === 'ForStatement'
+          ? node['test'] === null
+            ? true
+            : staticTruthiness(node['test'], bindings)
+          : undefined;
+      const emptyIterable =
+        (node['type'] === 'ForInStatement' || node['type'] === 'ForOfStatement') &&
+        isRecord(node['right']) &&
+        node['right']['type'] === 'ArrayExpression' &&
+        Array.isArray(node['right']['elements']) &&
+        node['right']['elements'].length === 0;
+      const guaranteedIterable =
+        node['type'] === 'ForOfStatement' && staticallyGuaranteesNonEmptyArray(node['right']);
+      if (testTruthiness === false || emptyIterable) return;
+      const breakTarget = {
+        kind: node['type'] === 'ForStatement' ? ('for-update' as const) : ('boundary' as const),
+        label: controlLabel,
+        states: [] as Array<Map<string, string[]>>,
+      };
+      const outerCapturedBreak = currentPathCapturedBreak;
+      currentPathCapturedBreak = false;
+      breakTargets.push(breakTarget);
+      if (isRecord(node['body'])) walk(node['body'], loopShadowed);
+      breakTargets.pop();
+      const bodyCapturedBreak = currentPathCapturedBreak;
+      currentPathCapturedBreak = outerCapturedBreak;
+      if (
+        node['type'] === 'ForStatement' &&
+        isRecord(node['update']) &&
+        !bodyCapturedBreak &&
+        !unconditionallyExitsBeforeLoopUpdate(node['body'])
+      )
+        walk(node['update'], loopShadowed);
+      for (const state of breakTarget.states)
+        for (const [name, values] of state)
+          bindings.set(name, mergeStringValues(bindings.get(name) ?? [], values));
+      if (testTruthiness !== true && !emptyIterable && !guaranteedIterable) {
+        const names = new Set([...base.keys(), ...bindings.keys()]);
+        for (const name of names)
+          bindings.set(name, mergeStringValues(base.get(name) ?? [], bindings.get(name) ?? []));
+      }
+      return;
+    }
+    if (
+      node['type'] === 'FunctionDeclaration' ||
+      node['type'] === 'FunctionExpression' ||
+      node['type'] === 'ArrowFunctionExpression'
+    ) {
+      const localNames = new Set<string>();
+      if (Array.isArray(node['params']))
+        for (const parameter of node['params']) collectPatternNames(parameter, localNames);
+      if (isRecord(node['body'])) {
+        collectFunctionScopedNames(node['body'], localNames);
+        if (node['body']['type'] === 'BlockStatement' && Array.isArray(node['body']['body']))
+          for (const statement of node['body']['body'])
+            if (
+              isRecord(statement) &&
+              statement['type'] === 'VariableDeclaration' &&
+              (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+              Array.isArray(statement['declarations'])
+            )
+              for (const declaration of statement['declarations'])
+                if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      }
+      currentShadowed = new Set([...shadowed, ...localNames]);
+      const base = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      if (isRecord(node['body'])) walk(node['body'], currentShadowed);
+      const terminal = new Map([...bindings].map(([name, values]) => [name, [...values]] as const));
+      bindings.clear();
+      const names = new Set([...base.keys(), ...terminal.keys()]);
+      for (const name of names) {
+        if (localNames.has(name)) {
+          if (base.has(name)) bindings.set(name, [...base.get(name)!]);
+          continue;
+        }
+        const baseValues = base.get(name) ?? [];
+        const callbackValues = (terminal.get(name) ?? []).filter(
+          (value) => !baseValues.includes(value),
+        );
+        if (callbackValues.length > 0)
+          callbackBindings.set(
+            name,
+            mergeStringValues(callbackBindings.get(name) ?? [], callbackValues),
+          );
+        bindings.set(name, mergeStringValues(baseValues, callbackBindings.get(name) ?? []));
+      }
+      return;
+    } else if (node['type'] === 'CatchClause') {
+      const catchShadowed = new Set(currentShadowed);
+      if (isRecord(node['param'])) collectPatternNames(node['param'], catchShadowed);
+      if (isRecord(node['body'])) walk(node['body'], catchShadowed);
+      return;
+    } else if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      const blockBase = new Map(
+        [...bindings].map(([name, values]) => [name, [...values]] as const),
+      );
+      const localNames = new Set<string>();
+      for (const statement of node['body'])
+        if (
+          isRecord(statement) &&
+          statement['type'] === 'VariableDeclaration' &&
+          (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+          Array.isArray(statement['declarations'])
+        )
+          for (const declaration of statement['declarations'])
+            if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      currentShadowed = new Set([...shadowed, ...localNames]);
+      preservedAbruptStates.push(new Map());
+      for (const statement of node['body']) {
+        if (isRecord(statement)) walk(statement, currentShadowed);
+        if (currentPathCapturedBreak) break;
+        if (
+          isRecord(statement) &&
+          statement['type'] === 'IfStatement' &&
+          isRecord(statement['test'])
+        ) {
+          const truthiness = staticTruthiness(statement['test'], bindings);
+          const branch =
+            truthiness === true
+              ? statement['consequent']
+              : truthiness === false
+                ? statement['alternate']
+                : undefined;
+          if (isRecord(branch) && unconditionallyAbruptStatement(branch)) break;
+        }
+        if (unconditionallyAbruptStatement(statement)) break;
+      }
+      const preserved = preservedAbruptStates.pop();
+      if (preserved) {
+        for (const [name, values] of preserved)
+          bindings.set(name, mergeStringValues(bindings.get(name) ?? [], values));
+        const parent = preservedAbruptStates.at(-1);
+        if (parent)
+          for (const [name, values] of preserved)
+            parent.set(name, mergeStringValues(parent.get(name) ?? [], values));
+      }
+      for (const name of localNames) {
+        const previous = blockBase.get(name);
+        if (previous === undefined) bindings.delete(name);
+        else bindings.set(name, [...previous]);
+      }
+      return;
+    }
+    if (
+      node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '+=' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      typeof node['left']['name'] === 'string' &&
+      !currentShadowed.has(node['left']['name'])
+    ) {
+      const name = node['left']['name'];
+      const rightValues = staticStringValuesFromExpression(node['right'], bindings);
+      const combined = (bindings.get(name) ?? []).flatMap((previous) =>
+        rightValues.map((right) => previous + right),
+      );
+      const callbackValues = callbackBindings.get(name) ?? [];
+      if (combined.length > 0) bindings.set(name, mergeStringValues(combined, callbackValues));
+      else if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+      else bindings.delete(name);
+    }
+    if (
+      node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '=' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      typeof node['left']['name'] === 'string' &&
+      !currentShadowed.has(node['left']['name'])
+    ) {
+      const name = node['left']['name'];
+      const values = staticStringValuesFromExpression(node['right'], bindings);
+      const callbackValues = callbackBindings.get(name) ?? [];
+      if (values.length > 0) bindings.set(name, mergeStringValues(values, callbackValues));
+      else if (callbackValues.length > 0) bindings.set(name, [...callbackValues]);
+      else bindings.delete(name);
+    }
+    for (const child of Object.values(node)) {
+      if (Array.isArray(child)) for (const item of child) walk(item, currentShadowed);
+      else if (isRecord(child)) walk(child, currentShadowed);
+    }
+  };
+  const body =
+    isRecord(root['instance']) && isRecord(root['instance']['content'])
+      ? root['instance']['content']['body']
+      : undefined;
+  if (Array.isArray(body)) for (const statement of body) walk(statement);
+  deferFunctions = false;
+  for (const deferred of deferredFunctions) walk(deferred.node, deferred.shadowed);
+  const walkTemplateExpressions = (node: unknown): void => {
+    if (!isRecord(node)) return;
+    if (node['type'] === 'ExpressionTag' && isRecord(node['expression'])) walk(node['expression']);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) for (const child of value) walkTemplateExpressions(child);
+      else if (isRecord(value)) walkTemplateExpressions(value);
+    }
+  };
+  walkTemplateExpressions(root['fragment']);
   return bindings;
+}
+
+function staticBooleanBindings(source: string): Map<string, boolean> {
+  const root: unknown = parseSvelte(source, { modern: true });
+  const result = new Map<string, boolean>();
+  const mutableNames = new Set<string>();
+  const assignedNames = new Set<string>();
+  const body =
+    isRecord(root) && isRecord(root['instance']) && isRecord(root['instance']['content'])
+      ? root['instance']['content']['body']
+      : undefined;
+  if (!Array.isArray(body)) return result;
+  for (const statement of body) {
+    if (!isRecord(statement) || statement['type'] !== 'VariableDeclaration') continue;
+    if (!Array.isArray(statement['declarations'])) continue;
+    for (const declaration of statement['declarations']) {
+      const id = isRecord(declaration) ? declaration['id'] : undefined;
+      const init = isRecord(declaration) ? declaration['init'] : undefined;
+      if (
+        isRecord(id) &&
+        id['type'] === 'Identifier' &&
+        typeof id['name'] === 'string' &&
+        isRecord(init) &&
+        init['type'] === 'Literal' &&
+        typeof init['value'] === 'boolean'
+      ) {
+        result.set(id['name'], init['value']);
+        if (statement['kind'] !== 'const') mutableNames.add(id['name']);
+      }
+    }
+  }
+  const collectAssignments = (node: unknown, shadowed: ReadonlySet<string> = new Set()): void => {
+    if (!isRecord(node)) return;
+    if (
+      node['type'] === 'FunctionDeclaration' ||
+      node['type'] === 'FunctionExpression' ||
+      node['type'] === 'ArrowFunctionExpression'
+    ) {
+      const localNames = new Set<string>(shadowed);
+      if (Array.isArray(node['params']))
+        for (const parameter of node['params']) collectPatternNames(parameter, localNames);
+      if (isRecord(node['body'])) collectFunctionScopedNames(node['body'], localNames);
+      if (isRecord(node['body'])) collectAssignments(node['body'], localNames);
+      return;
+    }
+    let currentShadowed = shadowed;
+    if (node['type'] === 'BlockStatement' && Array.isArray(node['body'])) {
+      const localNames = new Set<string>(shadowed);
+      for (const statement of node['body'])
+        if (
+          isRecord(statement) &&
+          statement['type'] === 'VariableDeclaration' &&
+          (statement['kind'] === 'let' || statement['kind'] === 'const')
+        )
+          if (Array.isArray(statement['declarations']))
+            for (const declaration of statement['declarations'])
+              if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      currentShadowed = localNames;
+    }
+    if (node['type'] === 'CatchClause') {
+      const localNames = new Set<string>(shadowed);
+      if (isRecord(node['param'])) collectPatternNames(node['param'], localNames);
+      currentShadowed = localNames;
+    }
+    if (
+      node['type'] === 'ForStatement' ||
+      node['type'] === 'ForInStatement' ||
+      node['type'] === 'ForOfStatement'
+    ) {
+      const header = node['type'] === 'ForStatement' ? node['init'] : node['left'];
+      if (
+        isRecord(header) &&
+        header['type'] === 'VariableDeclaration' &&
+        header['kind'] !== 'var'
+      ) {
+        const localNames = new Set<string>(shadowed);
+        if (Array.isArray(header['declarations']))
+          for (const declaration of header['declarations'])
+            if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+        currentShadowed = localNames;
+      }
+    }
+    if (node['type'] === 'SwitchStatement' && Array.isArray(node['cases'])) {
+      const localNames = new Set<string>(shadowed);
+      for (const switchCase of node['cases'])
+        if (isRecord(switchCase) && Array.isArray(switchCase['consequent']))
+          for (const statement of switchCase['consequent'])
+            if (
+              isRecord(statement) &&
+              statement['type'] === 'VariableDeclaration' &&
+              (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+              Array.isArray(statement['declarations'])
+            )
+              for (const declaration of statement['declarations'])
+                if (isRecord(declaration)) collectPatternNames(declaration['id'], localNames);
+      currentShadowed = localNames;
+    }
+    if (node['type'] === 'AssignmentExpression' && isRecord(node['left'])) {
+      const names = new Set<string>();
+      collectPatternNames(node['left'], names);
+      for (const name of names) if (!currentShadowed.has(name)) assignedNames.add(name);
+    }
+    if (
+      node['type'] === 'UpdateExpression' &&
+      isRecord(node['argument']) &&
+      node['argument']['type'] === 'Identifier' &&
+      typeof node['argument']['name'] === 'string'
+    )
+      if (!currentShadowed.has(node['argument']['name']))
+        assignedNames.add(node['argument']['name']);
+    if (
+      node['type'] === 'BindDirective' &&
+      isRecord(node['expression']) &&
+      node['expression']['type'] === 'Identifier' &&
+      typeof node['expression']['name'] === 'string'
+    )
+      if (!currentShadowed.has(node['expression']['name']))
+        assignedNames.add(node['expression']['name']);
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) value.forEach((item) => collectAssignments(item, currentShadowed));
+      else if (isRecord(value)) collectAssignments(value, currentShadowed);
+    }
+  };
+  collectAssignments(root);
+  for (const name of mutableNames) if (assignedNames.has(name)) result.delete(name);
+  return result;
 }
 
 function isCanonicalFieldComponent(node: UnknownRecord): boolean {
@@ -93,19 +885,18 @@ function isCanonicalFieldComponent(node: UnknownRecord): boolean {
 function localMarkupEvidence(
   node: unknown,
   source: string,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, readonly string[]>,
 ): { labelCount: number; terms: string } {
   if (!isRecord(node) || isCanonicalFieldComponent(node)) return { labelCount: 0, terms: '' };
-  const resolvedElementName =
+  const resolvedElementNames =
     node['type'] === 'RegularElement'
-      ? node['name']
+      ? typeof node['name'] === 'string'
+        ? [node['name']]
+        : []
       : node['type'] === 'SvelteElement'
-        ? staticStringFromExpression(node['tag'], bindings)
-        : undefined;
-  const labelCount =
-    typeof resolvedElementName === 'string' && resolvedElementName.toLowerCase() === 'label'
-      ? 1
-      : 0;
+        ? staticStringValuesFromExpression(node['tag'], bindings)
+        : [];
+  const labelCount = resolvedElementNames.filter((name) => name.toLowerCase() === 'label').length;
   const terms: string[] = [];
   if (node['type'] === 'Text' && typeof node['data'] === 'string') terms.push(node['data']);
   if (
@@ -129,53 +920,24 @@ function localMarkupEvidence(
   return { labelCount, terms: terms.join(' ') };
 }
 
-function qualifyingFieldLabels(
-  node: unknown,
-  source: string,
-  bindings: ReadonlyMap<string, string>,
+function emptyFieldEvidence(): FieldEvidence {
+  return {
+    count: 0,
+    isolatedMessages: false,
+    labelCount: 0,
+    rootLabelCount: 0,
+    terms: '',
+  };
+}
+
+function summarizeFieldEvidence(
+  localEvidence: { labelCount: number; terms: string },
+  childEvidence: readonly FieldEvidence[],
 ): FieldEvidence {
-  if (!isRecord(node))
-    return {
-      count: 0,
-      isolatedMessages: false,
-      labelCount: 0,
-      rootLabelCount: 0,
-      terms: '',
-    };
-  // A canonical `<FormField>`'s own props (label/description/error) aren't
-  // hand-rolled evidence — but its rendered children (a child snippet can
-  // still hand-roll a label/description/error wrapper) must keep being
-  // inspected below, via the general recursion's `attributes` key skip for
-  // Component nodes. Only its own local markup evidence is suppressed here.
-  if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
-    const html = staticStringFromExpression(node['expression'], bindings);
-    if (html !== undefined) {
-      const nested = parseSvelteFragment(html);
-      return nested === undefined
-        ? {
-            count: 0,
-            isolatedMessages: false,
-            labelCount: 0,
-            rootLabelCount: 0,
-            terms: '',
-          }
-        : qualifyingFieldLabels(nested, html, bindings);
-    }
-  }
-  const localEvidence = localMarkupEvidence(node, source, bindings);
   let count = 0;
   let labelCount = localEvidence.labelCount;
   const terms = [localEvidence.terms];
   const deferredMessageTerms: string[] = [];
-  const childEvidence: FieldEvidence[] = [];
-  for (const [key, value] of Object.entries(node)) {
-    if (node['type'] === 'Component' && key === 'attributes') continue;
-    const children = Array.isArray(value) ? value : [value];
-    for (const child of children) {
-      if (!isRecord(child)) continue;
-      childEvidence.push(qualifyingFieldLabels(child, source, bindings));
-    }
-  }
   const hasDirectLabel =
     localEvidence.labelCount > 0 || childEvidence.some((evidence) => evidence.rootLabelCount > 0);
   for (const evidence of childEvidence) {
@@ -188,7 +950,6 @@ function qualifyingFieldLabels(
     labelCount += evidence.labelCount;
     terms.push(evidence.terms);
   }
-
   let combinedTerms = terms.join(' ');
   if (labelCount === 0 && deferredMessageTerms.length > 0)
     combinedTerms = `${combinedTerms} ${deferredMessageTerms.join(' ')}`;
@@ -212,9 +973,173 @@ function qualifyingFieldLabels(
   };
 }
 
+function qualifyingFieldLabelBranches(
+  node: unknown,
+  source: string,
+  bindings: ReadonlyMap<string, readonly string[]>,
+  booleanBindings: ReadonlyMap<string, boolean> = new Map(),
+  templateShadowed: ReadonlySet<string> = new Set(),
+): FieldEvidence[] {
+  if (!isRecord(node)) return [emptyFieldEvidence()];
+  if (node['type'] === 'IfBlock') {
+    const test = node['test'];
+    const truthiness =
+      isRecord(test) &&
+      test['type'] === 'Identifier' &&
+      typeof test['name'] === 'string' &&
+      booleanBindings.has(test['name']) &&
+      !templateShadowed.has(test['name'])
+        ? booleanBindings.get(test['name'])
+        : staticTruthiness(test, bindings);
+    const branches =
+      truthiness === true
+        ? [node['consequent']]
+        : truthiness === false
+          ? [node['alternate']]
+          : [node['consequent'], node['alternate']];
+    const reachableBranches = branches.filter(isRecord);
+    return reachableBranches.length === 0
+      ? [emptyFieldEvidence()]
+      : reachableBranches.flatMap((branch) =>
+          qualifyingFieldLabelBranches(branch, source, bindings, booleanBindings, templateShadowed),
+        );
+  }
+  if (node['type'] === 'EachBlock' || node['type'] === 'SnippetBlock') {
+    const names = new Set(templateShadowed);
+    if (isRecord(node['context'])) collectPatternNames(node['context'], names);
+    if (isRecord(node['index'])) collectPatternNames(node['index'], names);
+    if (Array.isArray(node['parameters']))
+      for (const parameter of node['parameters']) collectPatternNames(parameter, names);
+    const body = node['body'] ?? node['fragment'];
+    const expression = node['expression'];
+    const arrayElements =
+      isRecord(expression) &&
+      expression['type'] === 'ArrayExpression' &&
+      Array.isArray(expression['elements'])
+        ? expression['elements']
+        : undefined;
+    const reachability =
+      arrayElements === undefined
+        ? 'unknown'
+        : arrayElements.length === 0
+          ? 'fallback'
+          : arrayElements.some(
+                (element) => !isRecord(element) || element['type'] !== 'SpreadElement',
+              )
+            ? 'body'
+            : 'unknown';
+    const evidence =
+      reachability === 'fallback'
+        ? []
+        : isRecord(body)
+          ? qualifyingFieldLabelBranches(body, source, bindings, booleanBindings, names)
+          : [];
+    if (reachability !== 'body')
+      if (isRecord(node['fallback']))
+        evidence.push(
+          ...qualifyingFieldLabelBranches(
+            node['fallback'],
+            source,
+            bindings,
+            booleanBindings,
+            templateShadowed,
+          ),
+        );
+    return evidence.length > 0 ? evidence : [emptyFieldEvidence()];
+  }
+  if (node['type'] === 'AwaitBlock') {
+    const evidence: FieldEvidence[] = [];
+    if (isRecord(node['pending']))
+      evidence.push(
+        ...qualifyingFieldLabelBranches(
+          node['pending'],
+          source,
+          bindings,
+          booleanBindings,
+          templateShadowed,
+        ),
+      );
+    if (isRecord(node['then'])) {
+      const names = new Set(templateShadowed);
+      if (isRecord(node['value'])) collectPatternNames(node['value'], names);
+      evidence.push(
+        ...qualifyingFieldLabelBranches(node['then'], source, bindings, booleanBindings, names),
+      );
+    }
+    if (isRecord(node['catch'])) {
+      const names = new Set(templateShadowed);
+      if (isRecord(node['error'])) collectPatternNames(node['error'], names);
+      evidence.push(
+        ...qualifyingFieldLabelBranches(node['catch'], source, bindings, booleanBindings, names),
+      );
+    }
+    return evidence.length > 0 ? evidence : [emptyFieldEvidence()];
+  }
+  // A canonical `<FormField>`'s own props (label/description/error) aren't
+  // hand-rolled evidence — but its rendered children (a child snippet can
+  // still hand-roll a label/description/error wrapper) must keep being
+  // inspected below, via the general recursion's `attributes` key skip for
+  // Component nodes. Only its own local markup evidence is suppressed here.
+  if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
+    const evidences = staticStringValuesFromExpression(node['expression'], bindings).flatMap(
+      (html) => {
+        const nested = parseSvelteFragment(html);
+        return nested === undefined
+          ? []
+          : qualifyingFieldLabelBranches(nested, html, bindings, booleanBindings, templateShadowed);
+      },
+    );
+    if (evidences.length > 0) return evidences;
+  }
+  const localEvidence = localMarkupEvidence(node, source, bindings);
+  let combinations: FieldEvidence[][] = [[]];
+  for (const [key, value] of Object.entries(node)) {
+    if (node['type'] === 'Component' && key === 'attributes') continue;
+    const children = Array.isArray(value) ? value : [value];
+    for (const child of children) {
+      if (!isRecord(child)) continue;
+      const branches = qualifyingFieldLabelBranches(
+        child,
+        source,
+        bindings,
+        booleanBindings,
+        templateShadowed,
+      );
+      combinations = combinations.flatMap((combination) =>
+        branches.map((branch) => [...combination, branch]),
+      );
+      if (combinations.length > 256) {
+        const unique = new Map<string, FieldEvidence[]>();
+        for (const combination of combinations) {
+          const aggregate = summarizeFieldEvidence(localEvidence, combination);
+          const signatureKey = [
+            aggregate.count,
+            aggregate.isolatedMessages,
+            aggregate.labelCount,
+            aggregate.rootLabelCount,
+            /description|help|hint|assist/i.test(aggregate.terms),
+            /error|validation|invalid|message/i.test(aggregate.terms),
+          ].join(',');
+          if (!unique.has(signatureKey)) unique.set(signatureKey, combination);
+        }
+        combinations = [...unique.values()];
+      }
+    }
+  }
+  return combinations.map((childEvidence) => summarizeFieldEvidence(localEvidence, childEvidence));
+}
+
 export function fieldWrapperCount(source: string): number {
   const fragment = parseSvelteFragment(source);
   return fragment === undefined
     ? 0
-    : qualifyingFieldLabels(fragment, source, staticStringBindings(source)).count;
+    : Math.max(
+        0,
+        ...qualifyingFieldLabelBranches(
+          fragment,
+          source,
+          staticStringBindings(source),
+          staticBooleanBindings(source),
+        ).map((evidence) => evidence.count),
+      );
 }

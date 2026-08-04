@@ -31,9 +31,9 @@ If you want the shortcut announced to assistive technology, put it in the `FormF
 
 That way AT users hear the shortcut as part of the field's description on focus, and sighted users get the visual hint—neither audience hears it twice.
 
-## Error styling on the wrapper
+## Error styling on the Input group
 
-The wrapper carries `data-invalid` (mirrored from the input's `aria-invalid`) so the entire composite field—border, ring, focus state—reads as invalid. The `aria-invalid` attribute on the inner `<input>` is the source of truth for assistive technology; the `data-invalid` on the wrapper exists only to drive CSS for the surrounding chrome.
+The shared `Input` group carries `data-invalid` (mirrored from the input's `aria-invalid`) so the entire composite field—border, ring, focus state—reads as invalid. The `aria-invalid` attribute on the inner `<input>` is the source of truth for assistive technology; the group's `data-invalid` exists only to drive CSS for the surrounding chrome.
 
 ## Form-field integration
 

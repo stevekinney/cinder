@@ -145,6 +145,45 @@ test.describe('table scroll recipe', () => {
 
 const allEntries = loadManifest();
 
+test.describe('number input resting geometry', () => {
+  test('desktop steppers fill the grouped control without dead spacing', async ({
+    componentPage,
+  }) => {
+    const entry = allEntries.find((candidate) => candidate.slug === 'number-input');
+    if (!entry) throw new Error('NumberInput is missing from the component manifest.');
+
+    const desktop = VIEWPORTS.find((viewport) => viewport.name === 'desktop');
+    if (!desktop) throw new Error('Desktop viewport fixture is missing.');
+
+    const page = await componentPage.open({ entry, theme: 'light', viewport: desktop });
+    const group = page.locator('.cinder-input-group.cinder-number-input').first();
+    const input = group.locator('.cinder-number-input__input');
+    const increment = group.locator('.cinder-number-input__stepper--increment');
+    const decrement = group.locator('.cinder-number-input__stepper--decrement');
+    await expect(increment).toHaveCount(1);
+    await expect(decrement).toHaveCount(1);
+
+    const groupBox = await group.boundingBox();
+    const inputBox = await input.boundingBox();
+    const incrementBox = await increment.boundingBox();
+    const decrementBox = await decrement.boundingBox();
+    expect(groupBox).not.toBeNull();
+    expect(inputBox).not.toBeNull();
+    expect(incrementBox).not.toBeNull();
+    expect(decrementBox).not.toBeNull();
+
+    expect(Math.abs(incrementBox!.height - groupBox!.height)).toBeLessThanOrEqual(2);
+    expect(Math.abs(decrementBox!.height - groupBox!.height)).toBeLessThanOrEqual(2);
+    expect(Math.abs(inputBox!.x + inputBox!.width - incrementBox!.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(incrementBox!.x + incrementBox!.width - decrementBox!.x)).toBeLessThanOrEqual(
+      1,
+    );
+    expect(
+      Math.abs(decrementBox!.x + decrementBox!.width - (groupBox!.x + groupBox!.width)),
+    ).toBeLessThanOrEqual(1);
+  });
+});
+
 test.describe('date picker surface ownership', () => {
   test('uses one custom calendar surface without native date controls', async ({
     componentPage,

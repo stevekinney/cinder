@@ -32,7 +32,7 @@ export type MegaMenuItemWithSubmenu = {
 /** A top-level mega-menu item must supply at least one content source: sections or submenu. */
 export type MegaMenuItem = MegaMenuItemWithSections | MegaMenuItemWithSubmenu;
 
-export type MegaMenuProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class'> & {
+export type MegaMenuProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'class' | 'dir'> & {
   /** Top-level trigger/content entries. */
   items: MegaMenuItem[];
   /** Hover opens top-level content instead of click-only mode. */
@@ -43,6 +43,8 @@ export type MegaMenuProps = Omit<HTMLAttributes<HTMLElement>, 'children' | 'clas
   indicatorVisible?: boolean;
   /** Accessible name for the navigation landmark. */
   label?: string;
+  /** Text direction used for layout and keyboard navigation. */
+  dir?: 'ltr' | 'rtl' | 'auto';
   /** Additional classes merged onto the root element. */
   class?: string;
 };

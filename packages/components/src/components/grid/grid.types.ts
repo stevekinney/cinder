@@ -11,13 +11,19 @@ export type GridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
    * Positive integer number of equal-width columns or a full CSS `grid-template-columns` value.
    * Numeric values render as `repeat(<columns>, 1fr)`.
    */
-  columns?: GridColumns;
+  columns?: GridColumns | undefined;
   /** Uniform row and column gap. */
-  gap?: string;
+  gap?: string | undefined;
   /** Row gap override. Wins over `gap` for rows. */
-  rowGap?: string;
+  rowGap?: string | undefined;
   /** Column gap override. Wins over `gap` for columns. */
-  columnGap?: string;
+  columnGap?: string | undefined;
+  /**
+   * Enables a single-column fallback when the Grid element's border-box width is 48rem or less
+   * and resets direct Grid.Item placement to auto flow.
+   * @default false
+   */
+  narrowCollapseEnabled?: boolean | undefined;
   /**
    * Minimum item width for an intrinsic auto-fill grid. When present, this takes
    * precedence over `columns`.

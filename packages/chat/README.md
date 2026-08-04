@@ -1,5 +1,10 @@
 # @lostgradient/chat
 
+`ChatMessage` owns streaming, adapter-provided message metadata, and tool-call
+presentation; `Chat` and `ChatAdapter` own conversation state and transport. See
+the [editor/chat/Cinder surface boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/editor-chat-cinder-surfaces.md)
+for the intentional distinction from Cinder's domain-neutral `Message`.
+
 `@lostgradient/chat` is Cinder's Svelte 5 conversation surface, packaged separately so applications that do not render Chat do not install or bundle its conversation-model dependencies.
 
 ## Install

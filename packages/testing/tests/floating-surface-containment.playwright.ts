@@ -16,6 +16,21 @@ async function clipComponent(page: import('@playwright/test').Page, selector: st
 }
 
 test.describe('floating surfaces escape component containment', () => {
+  test('SpeedDial closed surface has no floating chrome', async ({ page }) => {
+    await page.goto('/page/speed-dial?snapshot=1', { waitUntil: 'load' });
+    const actions = page.locator('.cinder-speed-dial__actions').first();
+    const action = actions.locator('.cinder-speed-dial-action').first();
+
+    await expect(actions).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(actions).toHaveCSS('border-top-color', 'rgba(0, 0, 0, 0)');
+    await expect(actions).toHaveCSS('box-shadow', 'none');
+    await expect(actions).toHaveCSS('overflow-y', 'hidden');
+    await expect(actions).toHaveCSS('opacity', '1');
+    await expect(actions).toHaveCSS('pointer-events', 'none');
+    await expect(action).toHaveCSS('opacity', '0');
+    await expect(action).toHaveCSS('pointer-events', 'none');
+  });
+
   test('SpeedDial actions portal outside a clipping ancestor', async ({ page }) => {
     await page.goto('/page/speed-dial?snapshot=1', { waitUntil: 'load' });
     const clippingBounds = await clipComponent(page, '.cinder-speed-dial');

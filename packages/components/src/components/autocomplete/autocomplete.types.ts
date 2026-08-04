@@ -1,4 +1,4 @@
-import type { HTMLInputAttributes } from 'svelte/elements';
+import type { InputProps } from '@lostgradient/cinder/input';
 
 export type AutocompleteSuggestion = {
   /** Text committed into the input when this suggestion is completed. */
@@ -56,9 +56,23 @@ export type AutocompleteSchemaProps = {
 };
 
 export type AutocompleteProps = Omit<
-  HTMLInputAttributes,
+  InputProps,
+  | 'id'
   | 'type'
   | 'value'
+  | 'onValueChangeRequest'
+  | 'onValueChange'
+  | 'label'
+  | 'hideLabel'
+  | 'description'
+  | 'error'
+  | 'inputAttachment'
+  | 'leading'
+  | 'leadingInteractive'
+  | 'trailing'
+  | 'trailingInteractive'
+  | 'placeholder'
+  | 'class'
   | 'oninput'
   | 'onchange'
   | 'onkeydown'

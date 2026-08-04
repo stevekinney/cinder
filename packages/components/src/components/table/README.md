@@ -2,6 +2,11 @@
 
 Full data table with header, body, and optional footer for structured tabular content.
 
+See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/main/docs/decisions/tabular-families.md)
+for when to choose Table versus DataTable or DataGrid. Table is the nearest
+choice when you need custom native-table markup; use DataTable for runtime
+columns/rows and DataGrid for interactive grid semantics.
+
 ## Usage
 
 `Table` is a compound component. Import the parent and compose its leaves via

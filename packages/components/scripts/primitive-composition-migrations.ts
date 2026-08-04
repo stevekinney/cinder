@@ -5,7 +5,6 @@
 export const allowedRawControlCounts = new Map<string, number>([
   ['_radio/radio.svelte', 1],
   ['approval-card/approval-card-actions.svelte', 2],
-  ['autocomplete/autocomplete.svelte', 1],
   ['checkbox/checkbox.svelte', 1],
   ['combobox/combobox.svelte', 1],
   ['command-palette/command-palette.svelte', 1],
@@ -16,9 +15,7 @@ export const allowedRawControlCounts = new Map<string, number>([
   ['invocation-rule-builder/invocation-rule-builder.svelte', 8],
   ['json-editor/json-editor.svelte', 1],
   ['multi-select/multi-select.svelte', 2],
-  ['number-input/number-input.svelte', 1],
   ['pin-input/pin-input.svelte', 1],
-  ['search-field/search-field.svelte', 1],
   ['select/select.svelte', 2],
   ['selection-popover/selection-popover.svelte', 1],
   ['table-row/table-row.svelte', 3],
@@ -47,7 +44,6 @@ export const allowedGridCounts = new Map<string, number>(
     'access-gate/access-gate.css',
     'action-row/action-row.css',
     'approval-card/approval-card.css',
-    'bento-grid/bento-grid.css',
     'blog-section/blog-section.css',
     'calendar/calendar.css',
     'choice-grid/choice-grid.css',
@@ -78,7 +74,6 @@ export const allowedGridCounts = new Map<string, number>(
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedGridCounts.set('action-row/action-row.css', 4);
-allowedGridCounts.set('bento-grid/bento-grid.css', 2);
 allowedGridCounts.set('blog-section/blog-section.css', 4);
 allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
@@ -86,16 +81,19 @@ allowedGridCounts.set('description-list/description-list.css', 4);
 allowedGridCounts.set('feature-section/feature-section.css', 8);
 allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
+allowedGridCounts.set('grid/grid.css', 2);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
 allowedGridCounts.set('logo-cloud/logo-cloud.css', 11);
-allowedGridCounts.set('mega-menu/mega-menu.css', 2);
+// The nested submenu's master/detail column split adds one tracked match
+// alongside the top-level section grid and the existing trigger/panel split.
+allowedGridCounts.set('mega-menu/mega-menu.css', 3);
 allowedGridCounts.set('phone-input/phone-input.css', 2);
 allowedGridCounts.set('pricing-section/pricing-section.css', 5);
 allowedGridCounts.set('run-step-timeline/run-step-timeline.css', 2);
 allowedGridCounts.set('selectable-row/selectable-row.css', 2);
-// The selector-aware analyzer counts only the line grid: the lines container's
-// display:grid has no grid-definition property and is not a hand-rolled layout.
-allowedGridCounts.set('source-diff-viewer/source-diff-viewer.css', 1);
+// The selector-aware analyzer counts the line grid's base and no-number column
+// definitions. The lines container has no grid-definition property.
+allowedGridCounts.set('source-diff-viewer/source-diff-viewer.css', 2);
 allowedGridCounts.set('stacked-list-item/stacked-list-item.css', 6);
 allowedGridCounts.set('statistic-group/statistic-group.css', 10);
 allowedGridCounts.set('statistic/statistic.css', 2);
@@ -147,7 +145,6 @@ allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);
 export const allowedFieldWrapperCounts = new Map<string, number>(
   [
     '_radio/radio.svelte',
-    'autocomplete/autocomplete.svelte',
     'checkbox/checkbox.svelte',
     'combobox/combobox.svelte',
     'date-picker/date-picker.svelte',
@@ -155,7 +152,6 @@ export const allowedFieldWrapperCounts = new Map<string, number>(
     'input/input.svelte',
     'json-editor/json-editor.svelte',
     'multi-select/multi-select.svelte',
-    'number-input/number-input.svelte',
     'select/select.svelte',
     'textarea/textarea.svelte',
     'time-field/time-field.svelte',
@@ -172,10 +168,7 @@ const migrationMaps: ReadonlyArray<ReadonlyMap<string, unknown>> = [
 ];
 
 export function missingMigrationRecordPaths(existingPaths: ReadonlySet<string>): string[] {
-  return (
-    [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
-      .filter((filePath) => !existingPaths.has(filePath))
-      // eslint-disable-next-line unicorn/no-array-sort -- toSorted() is ES2023; this package targets ES2022. Array is freshly created above, so the mutation is safe.
-      .sort()
-  );
+  return [...new Set(migrationMaps.flatMap((records) => [...records.keys()]))]
+    .filter((filePath) => !existingPaths.has(filePath))
+    .sort();
 }

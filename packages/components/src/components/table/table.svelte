@@ -10,7 +10,7 @@
    * @useWhen Coordinating column sort state across header cells via the sort prop.
    * @avoidWhen Rendering a responsive card grid — use grid-list instead.
    * @avoidWhen Listing key-value attributes of one entity — use description-list instead.
-   * @related table-header, table-body, table-row, table-cell, table-header-cell
+   * @related data-table, data-grid, table-header, table-body, table-row, table-cell, table-header-cell
    */
   export type {
     SortDirection,

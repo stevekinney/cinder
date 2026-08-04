@@ -5,6 +5,10 @@
 
 ## Summary
 
+The accepted boundaries for the Editor diff viewer versus Cinder's source diff
+viewer, and Cinder Message versus Chat's renderer, are recorded in the
+[surface boundary decision](./editor-chat-cinder-surfaces.md).
+
 `@lostgradient/chat` proved the sibling-package pattern. The same treatment is owed to the
 markdown/editing family. The recommendation is **two new published packages plus a lazy-import
 pass** — not eight. Everything else that looks like a candidate fails the bar.

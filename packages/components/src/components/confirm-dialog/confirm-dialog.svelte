@@ -10,7 +10,7 @@
    * @useWhen Asking the user to confirm a discrete decision with two clear outcomes.
    * @avoidWhen Collecting structured input or multiple fields — compose a modal with form controls instead.
    * @avoidWhen Announcing a non-blocking result — use toast-region or banner.
-   * @related modal, drawer, sheet
+   * @related modal, alert-dialog, drawer, sheet
    */
   export type { ConfirmDialogProps } from './confirm-dialog.types.ts';
 </script>

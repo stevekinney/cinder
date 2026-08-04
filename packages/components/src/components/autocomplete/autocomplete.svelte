@@ -20,6 +20,7 @@
 </script>
 
 <script lang="ts">
+  import Input, { type InputProps } from '@lostgradient/cinder/input';
   import type { AutocompleteProps, AutocompleteSuggestion } from './autocomplete.types.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
@@ -73,13 +74,12 @@
   const listboxId = $derived(`${resolvedId}-listbox`);
   const resolvedMinQueryLength = $derived(toNonNegativeInteger(minQueryLength, 1));
   const resolvedMaxVisibleSuggestions = $derived(toNonNegativeInteger(maxVisibleSuggestions, 50));
-
-  $effect(() => {
-    if (context && id && context.controlId !== id) {
-      devWarn(
-        `[cinder/Autocomplete] id mismatch: Autocomplete id="${id}" but wrapping FormField expects controlId="${context.controlId}". Set the same id on both.`,
-      );
-    }
+  const inputFieldProperties = $derived.by(() => {
+    const properties: Partial<Pick<InputProps, 'label' | 'description' | 'error'>> = {};
+    if (label !== undefined) properties.label = label;
+    if (description !== undefined) properties.description = description;
+    if (error !== undefined) properties.error = error;
+    return properties;
   });
 
   let inputElement = $state<HTMLInputElement | null>(null);
@@ -350,6 +350,13 @@
     oninput?.(target.value);
   }
 
+  function attachInput(node: HTMLInputElement): () => void {
+    inputElement = node;
+    return () => {
+      if (inputElement === node) inputElement = null;
+    };
+  }
+
   function handleFocus(): void {
     autocompleteDismissed = false;
     inputFocused = true;
@@ -431,27 +438,14 @@
   data-disabled={field.disabled ? '' : undefined}
   data-invalid={field.ariaInvalid === 'true' ? '' : undefined}
 >
-  {#if label}
-    <label
-      for={resolvedId}
-      class="cinder-autocomplete__label"
-      data-disabled={field.disabled || undefined}
-    >
-      {label}
-      {#if field.required}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
-  <input
-    bind:this={inputElement}
+  <Input
     {...rest}
     id={resolvedId}
     type="text"
-    class="cinder-autocomplete__input"
-    {value}
+    bind:value
+    {...inputFieldProperties}
     {placeholder}
+    inputAttachment={attachInput}
     disabled={field.disabled}
     required={field.required}
     {readonly}
@@ -462,8 +456,8 @@
     aria-haspopup="listbox"
     aria-controls={open ? listboxId : undefined}
     aria-activedescendant={activeDescendant}
-    aria-invalid={field.ariaInvalid}
-    aria-describedby={field.describedBy}
+    aria-invalid={consumerInvalid}
+    aria-describedby={consumerDescribedBy}
     oninput={handleInput}
     onfocus={handleFocus}
     onblur={handleBlur}
@@ -475,14 +469,6 @@
       composing = false;
     }}
   />
-
-  {#if description}
-    <p id={field.ownDescriptionId} class="cinder-autocomplete__description">{description}</p>
-  {/if}
-
-  {#if error}
-    <p id={field.ownErrorId} class="cinder-autocomplete__error" aria-live="polite">{error}</p>
-  {/if}
 
   <!-- Persistent status announcer (loading / no-results), outside the portaled
        popover so screen readers reliably hear it. -->

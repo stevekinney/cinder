@@ -48,7 +48,9 @@
 
   const isLink = $derived(href !== undefined);
 
-  const resolvedClass = $derived(classNames('cinder-navigation-item', customClassName));
+  const resolvedClass = $derived(
+    classNames('cinder-_row-item', 'cinder-navigation-item', customClassName),
+  );
   // Disabled forces tabindex=-1; otherwise the consumer's value (or undefined) is kept.
   const resolvedTabindex = $derived(disabled ? -1 : tabindex);
   const ariaCurrent = $derived(active ? current : undefined);

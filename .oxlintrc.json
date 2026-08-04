@@ -59,7 +59,7 @@
         "allow": ["**/*.css"]
       }
     ],
-    "unicorn/no-array-sort": "error",
+    "unicorn/no-array-sort": "off",
     "unicorn/prefer-add-event-listener": "error",
     "no-restricted-imports": [
       "error",

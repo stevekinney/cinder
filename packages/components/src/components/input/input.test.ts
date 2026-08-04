@@ -30,6 +30,51 @@ function idsIn(container: Element): string[] {
 }
 
 describe('Input rendering', () => {
+  test('attaches the native input and cleans up on unmount', () => {
+    let attachedInput: HTMLInputElement | undefined;
+    let cleanupCalls = 0;
+
+    const { unmount } = render(Input, {
+      props: {
+        id: 'attached-input',
+        value: '',
+        inputAttachment: (node: HTMLInputElement) => {
+          attachedInput = node;
+          return () => {
+            cleanupCalls += 1;
+          };
+        },
+      },
+    });
+
+    expect(attachedInput).toBeInstanceOf(HTMLInputElement);
+    expect(attachedInput?.id).toBe('attached-input');
+
+    unmount();
+
+    expect(cleanupCalls).toBe(1);
+  });
+
+  test('preserves native event and ARIA forwarding with an attachment', async () => {
+    let calls = 0;
+    const { container } = render(Input, {
+      props: {
+        id: 'attached-forwarding',
+        value: '',
+        inputAttachment: () => {},
+        'aria-label': 'Search records',
+        oninput: () => {
+          calls += 1;
+        },
+      },
+    });
+    const input = container.querySelector('#attached-forwarding') as HTMLInputElement;
+
+    expect(input.getAttribute('aria-label')).toBe('Search records');
+    await fireEvent.input(input, { target: { value: 'records' } });
+    expect(calls).toBe(1);
+  });
+
   test('marks its root as a full-width layout participant', () => {
     const { container } = render(Input, { props: { id: 'name', value: '' } });
 
@@ -196,7 +241,11 @@ describe('Input rendering', () => {
   });
 
   test('native form reset syncs the bindable value', async () => {
-    const { container, getByTestId } = render(InputFormResetFixture);
+    const { container, getByTestId } = render(InputFormResetFixture, {
+      props: {
+        inputAttachment: () => {},
+      },
+    });
     const input = container.querySelector('#name') as HTMLInputElement;
 
     await fireEvent.input(input, { target: { value: 'Bob' } });
@@ -535,6 +584,8 @@ describe('Input group (leading/trailing addons)', () => {
     const trailingSpan = container.querySelector('.cinder-input-group__trailing');
     expect(leadingSpan?.getAttribute('aria-hidden')).toBe('true');
     expect(trailingSpan?.getAttribute('aria-hidden')).toBe('true');
+    expect(leadingSpan?.classList.contains('cinder-_truncate')).toBe(true);
+    expect(trailingSpan?.classList.contains('cinder-_truncate')).toBe(true);
   });
 
   test('leadingInteractive=true omits aria-hidden on leading container', () => {
@@ -548,6 +599,7 @@ describe('Input group (leading/trailing addons)', () => {
     });
     const leadingSpan = container.querySelector('.cinder-input-group__leading');
     expect(leadingSpan?.hasAttribute('aria-hidden')).toBe(false);
+    expect(leadingSpan?.classList.contains('cinder-_truncate')).toBe(false);
   });
 
   test('trailingInteractive=true omits aria-hidden on trailing container', () => {
@@ -561,6 +613,21 @@ describe('Input group (leading/trailing addons)', () => {
     });
     const trailingSpan = container.querySelector('.cinder-input-group__trailing');
     expect(trailingSpan?.hasAttribute('aria-hidden')).toBe(false);
+    expect(trailingSpan?.classList.contains('cinder-_truncate')).toBe(false);
+  });
+
+  test('groupClassName applies to the grouped control frame', () => {
+    const { container } = render(Input, {
+      props: {
+        id: 'group-class',
+        value: '',
+        trailing: textSnippet('USD'),
+        groupClassName: 'custom-group',
+      },
+    });
+
+    expect(container.querySelector('.cinder-input-group.custom-group')).not.toBeNull();
+    expect(container.querySelector('input.custom-group')).toBeNull();
   });
 
   test('error prop sets data-invalid on group; inner input has aria-invalid="true"', () => {

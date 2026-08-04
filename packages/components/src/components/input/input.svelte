@@ -36,6 +36,8 @@
     disabled,
     required,
     type = 'text',
+    inputAttachment,
+    groupClassName,
     class: className,
     leading,
     trailing,
@@ -146,6 +148,7 @@
 {#snippet inputElement()}
   <input
     bind:this={inputNode}
+    {@attach inputAttachment}
     {id}
     {type}
     {...rest}
@@ -176,7 +179,7 @@
 
   {#if hasGroupWrapper}
     <div
-      class="cinder-input-group"
+      class={classNames('cinder-input-group', groupClassName)}
       data-leading={leading ? '' : undefined}
       data-trailing={hasTrailing ? '' : undefined}
       data-native-date={rendersNativeDateIcon ? '' : undefined}
@@ -185,7 +188,10 @@
     >
       {#if leading}
         <span
-          class="cinder-input-group__leading cinder-_truncate"
+          class={classNames(
+            'cinder-input-group__leading',
+            !leadingInteractive && 'cinder-_truncate',
+          )}
           aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
         >
       {/if}
@@ -194,7 +200,10 @@
 
       {#if trailing}
         <span
-          class="cinder-input-group__trailing cinder-_truncate"
+          class={classNames(
+            'cinder-input-group__trailing',
+            !trailingInteractive && 'cinder-_truncate',
+          )}
           aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
         >
       {:else if rendersNativeDateIcon}

@@ -10,7 +10,7 @@
    * @useWhen You want correct scope=col / scope=row semantics and aria-sort wiring without writing Table.Header / Table.Body manually.
    * @avoidWhen You need custom cell rendering, interactive cells, nested components, or column spanning — use the compositional Table family directly.
    * @avoidWhen You need fully custom cell or row composition — use Table directly.
-   * @related table, table-header, table-body, table-row, table-cell, table-header-cell
+   * @related table, data-grid, table-header, table-body, table-row, table-cell, table-header-cell
    */
   export type {
     DataTableColumn,

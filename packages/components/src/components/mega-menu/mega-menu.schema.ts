@@ -20,6 +20,10 @@ const schema = {
       type: 'string',
       description: 'Accessible name for the navigation landmark.',
     },
+    dir: {
+      enum: ['ltr', 'rtl', 'auto'],
+      description: 'Text direction used for layout and keyboard navigation.',
+    },
     class: {
       type: 'string',
       description: 'Additional classes merged onto the root element.',
