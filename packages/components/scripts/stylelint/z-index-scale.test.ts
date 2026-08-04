@@ -3911,6 +3911,8 @@ describe('cinder/z-index-scale', () => {
     ['min(1, calc(exp(var(--runtime)) - 2))', 1],
     ['min(1, calc(2 - exp(var(--runtime))))', 1],
     ['min(1, calc(exp(var(--runtime)) * -1))', 1],
+    ['min(1, calc(1e30 - exp(var(--runtime))))', 1],
+    ['calc(9999 * exp(calc(var(--runtime) + 1px)))', 0],
     ['min(-1, exp(var(--runtime)))', 1],
     ['min(9999, exp(var(--runtime)))', 1],
     ['clamp(0, exp(var(--runtime)), 1)', 0],
@@ -3982,6 +3984,10 @@ describe('cinder/z-index-scale', () => {
     ['if(unknown(display: grid): 9999; else: 1)', 0],
     ['if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2)', 1],
     ['if(style(--theme: dark): 1; else: if(style(--nested: yes): 9999; else: 2))', 1],
+    [
+      'if(style(--theme: dark): if(style(--first: yes): 9999; else: 1); else: if(style(--second: yes): 9999; else: 2))',
+      1,
+    ],
     ['calc(2 * if(style(--theme: dark): if(style(--nested: yes): 4999.5; else: 1); else: 2))', 1],
     ['if(style(--theme: dark): calc(if(style(--nested: yes): 10000; else: 1) - 1); else: 2)', 1],
     ['clamp(0, if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2), 1)', 0],
@@ -4066,6 +4072,21 @@ describe('cinder/z-index-scale', () => {
     const warning = result[0];
     const start = sourceLocation(css, css.lastIndexOf('9999'));
     const end = sourceLocation(css, css.lastIndexOf('9999') + 4);
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endColumn).toBe(end.column);
+  });
+
+  test('anchors a sibling conditional diagnostic to the branch that contributes the ban', async () => {
+    const css = `
+      .fixture {
+        z-index: var(--outer, calc(if(style(--a: x): 1; else: 2) * 0 + if(style(--b: x): 9999; else: 1)));
+      }
+    `;
+    const [warning] = warnings(await lint(css));
+    const bannedIndex = css.indexOf('9999');
+    const start = sourceLocation(css, bannedIndex);
+    const end = sourceLocation(css, bannedIndex + 4);
+
     expect(warning?.column).toBe(start.column);
     expect(warning?.endColumn).toBe(end.column);
   });

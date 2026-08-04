@@ -3054,6 +3054,16 @@ function unresolvedRuntimeRangeCandidates(
       continue;
     if (
       functionParent.functionName === 'exp' &&
+      unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+        frame,
+        value,
+        parsedArguments.argumentRanges[0],
+        parenthesisPairs,
+      )
+    )
+      continue;
+    if (
+      functionParent.functionName === 'exp' &&
       unresolvedExpIsSafelyCapped(
         frame,
         value,
@@ -3105,6 +3115,20 @@ function logStaticArgumentsCanReachValidResult(staticArguments) {
       return false;
   }
   return true;
+}
+
+function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, parenthesisPairs) {
+  const termRanges = topLevelAdditiveTermRanges(value, range, parenthesisPairs);
+  if (termRanges === undefined) return false;
+  let childIndex = firstChildEndingAfter(frame.children, termRanges[0].start);
+  for (const termRange of termRanges) {
+    while (frame.children[childIndex]?.end <= termRange.start) childIndex += 1;
+    const child = frame.children[childIndex];
+    if (child?.start < termRange.end && child.end > termRange.start) continue;
+    const term = value.slice(termRange.start, termRange.end);
+    if (analyzeStaticLayerValue(term).resultType === 'non-number') return true;
+  }
+  return false;
 }
 
 function unresolvedExpIsSafelyCapped(
@@ -3178,6 +3202,7 @@ function unresolvedExpIsSafelyCapped(
     )
   )
     return true;
+  const expEndpointExpressions = [];
   const expEndpoints = [];
   for (const endpoint of [0, 1]) {
     const endpointExpression = resolveFrameExpressionWithRangeReplacements(
@@ -3188,12 +3213,18 @@ function unresolvedExpIsSafelyCapped(
       [{ start: functionRange.start, end: functionRange.end, value: String(endpoint) }],
     );
     if (endpointExpression === fallbackResolutionTooComplex) return false;
+    expEndpointExpressions.push(endpointExpression);
     const endpointValue = evaluateStaticLayerNumber(endpointExpression);
     if (endpointValue === undefined || !Number.isFinite(endpointValue)) return false;
     expEndpoints.push(endpointValue);
   }
   const [zeroEndpoint, oneEndpoint] = expEndpoints;
-  if (zeroEndpoint < 0 || oneEndpoint < zeroEndpoint) return false;
+  if (
+    zeroEndpoint < 0 ||
+    oneEndpoint < zeroEndpoint ||
+    (oneEndpoint === zeroEndpoint && !haveEqualStaticArithmeticValues(expEndpointExpressions))
+  )
+    return false;
   return (
     minimumArguments.staticArguments.every(
       (argument) =>
@@ -3349,8 +3380,19 @@ function conditionalRangeCandidates(frame, value, range, candidate, budget, pare
       ];
     const analysis = analyzeFrameExpression(frame, expression, budget);
     if (analysis.classification !== 'negative' && analysis.classification !== 'magic') continue;
-    const anchorRange = combination.find(
+    const anchoredReplacements = combination.filter(
       (replacement) => replacement.anchorRange.start !== replacement.anchorRange.end,
+    );
+    const matchingAnchoredReplacements = anchoredReplacements.filter(
+      (replacement) =>
+        analyzeStaticLayerValue(replacement.value).classification === analysis.classification,
+    );
+    const anchorRange = (
+      anchoredReplacements.length === 1
+        ? anchoredReplacements[0]
+        : matchingAnchoredReplacements.length === 1
+          ? matchingAnchoredReplacements[0]
+          : undefined
     )?.anchorRange;
     candidates.push({
       ...candidate,
