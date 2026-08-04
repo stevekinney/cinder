@@ -373,7 +373,9 @@ function contextForOpeningParenthesis(
   const operandStart = isGroupingParenthesis ? openIndex : functionStart;
   const parentRequiresSignedZero = inheritedContext || isPrecededByDivision(value, operandStart);
   const inheritsParentGrammar =
-    isGroupingParenthesis || substitutionFunctionNames.has(functionName);
+    isGroupingParenthesis ||
+    substitutionFunctionNames.has(functionName) ||
+    functionName === 'random-item';
   return {
     consumerRequiresSignedZero:
       inheritedConsumerContext || signedZeroSensitiveFunctionNames.has(functionName),
@@ -1698,6 +1700,16 @@ function firstValidRuntimeFunctionStaticValidity(
     const contents = trimCssTriviaRange(value, group.openIndex + 1, group.end - 1);
     return contents.start === contents.end;
   }
+  if (functionName === 'random-item') {
+    const group = frame.randomGroups.find(
+      (candidate) =>
+        candidate.functionStart === branchRange.start && candidate.end === branchRange.end,
+    );
+    return (
+      group !== undefined &&
+      randomItemGroupOutputOptions(value, group, parenthesisPairs) !== undefined
+    );
+  }
   if (functionName !== 'random') return undefined;
 
   const parsedArguments = fallbackIndependentStaticArguments(
@@ -1732,6 +1744,7 @@ function firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, paren
   if (
     functionName !== 'progress' &&
     functionName !== 'random' &&
+    functionName !== 'random-item' &&
     !treeCountingFunctionNames.has(functionName)
   )
     return false;
@@ -3093,7 +3106,18 @@ function validSubstitutionHeader(frame, value) {
 }
 
 function substitutionDefinedPathCanBeNumber(frame, value) {
-  if (frame.functionName === 'var' || frame.functionName === 'env') return true;
+  if (frame.functionName === 'var') return true;
+  if (frame.functionName === 'env') {
+    const header = value
+      .slice(frame.openIndex + 1, frame.commaIndex)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim();
+    const scalarLengthEnvironmentVariable =
+      /^safe-area-(?:max-)?inset-(?:top|right|bottom|left)$/i.test(header);
+    const indexedLengthEnvironmentVariable =
+      /^viewport-segment-(?:width|height|top|right|bottom|left)(?:\s|$)/i.test(header);
+    return !scalarLengthEnvironmentVariable && !indexedLengthEnvironmentVariable;
+  }
   if (frame.functionName !== 'attr') return false;
   const header = value
     .slice(frame.openIndex + 1, frame.commaIndex)
@@ -3103,6 +3127,15 @@ function substitutionDefinedPathCanBeNumber(frame, value) {
   const attrType = header.slice(identifierEnd).trim();
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
   return typeMatch !== null && /(?:^|[<"'])(?:integer|number)(?:>|["']|$)/i.test(typeMatch[1]);
+}
+
+function substitutionDefinedPathIdentity(frame, value) {
+  if (frame.functionName !== 'var') return undefined;
+  const header = value
+    .slice(frame.openIndex + 1, frame.commaIndex)
+    .replaceAll(cssCommentMaskCharacter, ' ')
+    .trim();
+  return `var:${header}`;
 }
 
 function hasInvalidEdgeOperator(value, start, end, allowWebkitCalcPrefix = false) {
@@ -3189,6 +3222,7 @@ function hasBareOperatorStream(
         context?.mathContext === true &&
         (context.isGroupingParenthesis || mathFunctionNames.has(context.functionName)) &&
         context.functionName !== 'random' &&
+        context.functionName !== 'random-item' &&
         hasInvalidEdgeOperator(value, context.openIndex + 1, index)
       )
         return true;
@@ -3956,7 +3990,54 @@ function unresolvedRuntimeRangeCandidates(
   return [];
 }
 
+function randomItemArgumentRanges(value, group, parenthesisPairs) {
+  const argumentRanges = [];
+  let argumentStart = group.openIndex + 1;
+  let braceDepth = 0;
+  for (let index = argumentStart; index < group.end - 1; index += 1) {
+    if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
+    else {
+      const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+      if (urlTokenEnd !== undefined) index = urlTokenEnd;
+      else if (value[index] === '(') {
+        const closeIndex = parenthesisPairs.get(index);
+        if (closeIndex === undefined || closeIndex >= group.end) return undefined;
+        index = closeIndex;
+      } else if (value[index] === '{') braceDepth += 1;
+      else if (value[index] === '}') {
+        if (braceDepth === 0) return undefined;
+        braceDepth -= 1;
+      } else if (value[index] === ';') return undefined;
+      else if (value[index] === ',' && braceDepth === 0) {
+        argumentRanges.push(trimCssTriviaRange(value, argumentStart, index));
+        argumentStart = index + 1;
+      }
+    }
+  }
+  if (braceDepth !== 0) return undefined;
+  argumentRanges.push(trimCssTriviaRange(value, argumentStart, group.end - 1));
+  return argumentRanges;
+}
+
+function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
+  const argumentRanges = randomItemArgumentRanges(value, group, parenthesisPairs);
+  if (
+    argumentRanges === undefined ||
+    argumentRanges.length < 2 ||
+    !randomKeyIsStructurallyValid(value, argumentRanges[0])
+  )
+    return undefined;
+  const values = argumentRanges.slice(1).map((argumentRange) => {
+    if (value[argumentRange.start] === '{' && value[argumentRange.end - 1] === '}')
+      return value.slice(argumentRange.start + 1, argumentRange.end - 1);
+    return value.slice(argumentRange.start, argumentRange.end);
+  });
+  return { continuous: false, values };
+}
+
 function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs) {
+  if (group.functionName === 'random-item')
+    return randomItemGroupOutputOptions(value, group, parenthesisPairs);
   const functionRange = { start: group.functionStart, end: group.end };
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
@@ -3985,7 +4066,24 @@ function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs)
       staticNumericArguments.find((argument) => argument.range.start === argumentRange.start).value,
   );
   const fixedBaseValue = fixedRandomBaseValue(value, parsedArguments);
-  const numericValues = argumentValues.map((argument) => evaluateStaticLayerNumber(argument));
+  let numericValues = argumentValues.map((argument) => evaluateStaticLayerNumber(argument));
+  if (
+    numericValues.some((numericValue) => numericValue === undefined) &&
+    argumentValues.every(
+      (argumentValue) => analyzeStaticLayerValue(argumentValue).resultType === 'non-number',
+    )
+  ) {
+    const typedWitness = typedDivisorWitnessValues.find((witness) =>
+      argumentValues.every(
+        (argumentValue) =>
+          evaluateStaticLayerNumber(`calc((${argumentValue}) / (${witness}))`) !== undefined,
+      ),
+    );
+    if (typedWitness !== undefined)
+      numericValues = argumentValues.map((argumentValue) =>
+        evaluateStaticLayerNumber(`calc((${argumentValue}) / (${typedWitness}))`),
+      );
+  }
   if (numericValues.some((numericValue) => numericValue === undefined)) {
     if (
       argumentValues.length === 2 &&
@@ -4194,39 +4292,55 @@ function definedSubstitutionPathCandidates(
 ) {
   const candidates = [];
   const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  const childGroups = new Map();
   for (const child of frame.children) {
     if (!child.definedPathCanBeNumber || !selectableChildren.has(child)) continue;
-    if (child.start === expressionRange.start && child.end === expressionRange.end) continue;
-    let parent = child.parenthesisParent;
+    const key = substitutionDefinedPathIdentity(child, value) ?? `${child.start}:${child.end}`;
+    const group = childGroups.get(key);
+    if (group === undefined) childGroups.set(key, [child]);
+    else group.push(child);
+  }
+  for (const correlatedChildren of childGroups.values()) {
+    if (
+      correlatedChildren.length === 1 &&
+      correlatedChildren[0].start === expressionRange.start &&
+      correlatedChildren[0].end === expressionRange.end
+    )
+      continue;
     let usesOnlyCalculationContainers = true;
-    while (
-      parent?.type === 'group' &&
-      parent.end !== undefined &&
-      parent.functionStart >= range.start &&
-      parent.end <= range.end
-    ) {
-      if (
-        !parent.isGroupingParenthesis &&
-        parent.functionName !== 'calc' &&
-        parent.functionName !== '-webkit-calc'
+    for (const child of correlatedChildren) {
+      let parent = child.parenthesisParent;
+      while (
+        parent?.type === 'group' &&
+        parent.end !== undefined &&
+        parent.functionStart >= range.start &&
+        parent.end <= range.end
       ) {
-        usesOnlyCalculationContainers = false;
-        break;
+        if (
+          !parent.isGroupingParenthesis &&
+          parent.functionName !== 'calc' &&
+          parent.functionName !== '-webkit-calc'
+        ) {
+          usesOnlyCalculationContainers = false;
+          break;
+        }
+        parent = parent.parenthesisParent;
       }
-      parent = parent.parenthesisParent;
+      if (!usesOnlyCalculationContainers) break;
     }
     if (!usesOnlyCalculationContainers) continue;
+    const correlatedChildSet = new Set(correlatedChildren);
     const resolvedSiblings = frame.children.filter(
-      (sibling) => sibling !== child && typeof sibling.resolvedFallback === 'string',
+      (sibling) => !correlatedChildSet.has(sibling) && typeof sibling.resolvedFallback === 'string',
     );
-    if (resolvedSiblings.length !== frame.children.length - 1) continue;
-    const childRange = { start: child.start, end: child.end };
+    if (resolvedSiblings.length !== frame.children.length - correlatedChildren.length) continue;
+    const childRanges = correlatedChildren.map((child) => ({ start: child.start, end: child.end }));
     if (
       !progressExpressionIsMultilinear(
         value,
         range,
-        [childRange],
-        [0],
+        childRanges,
+        childRanges.map(() => 0),
         resolvedSiblings,
         parenthesisPairs,
       )
@@ -4234,9 +4348,17 @@ function definedSubstitutionPathCandidates(
       continue;
     const endpointExpressions = [];
     for (const witness of ['0', '1']) {
-      const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
-        { start: child.start, end: child.end, value: witness },
-      ]);
+      const expression = resolveFrameExpressionWithRangeReplacements(
+        frame,
+        value,
+        range,
+        budget,
+        correlatedChildren.map((child) => ({
+          start: child.start,
+          end: child.end,
+          value: witness,
+        })),
+      );
       if (expression === fallbackResolutionTooComplex)
         return [
           {
@@ -4254,6 +4376,7 @@ function definedSubstitutionPathCandidates(
     }
     if (endpointExpressions.length !== 2 || haveEqualStaticArithmeticValues(endpointExpressions))
       continue;
+    const [child] = correlatedChildren;
     const definedPathCandidate = {
       fallbackIndex: child.start,
       rawFallback: value.slice(child.start, child.end),
@@ -4266,6 +4389,23 @@ function definedSubstitutionPathCandidates(
     );
   }
   return candidates;
+}
+
+function correlatedVarChildren(frame, value, selectableChildren) {
+  const groups = new Map();
+  for (const child of frame.children) {
+    if (
+      child.functionName !== 'var' ||
+      !child.definedPathCanBeNumber ||
+      !selectableChildren.has(child)
+    )
+      continue;
+    const identity = substitutionDefinedPathIdentity(child, value);
+    const group = groups.get(identity);
+    if (group === undefined) groups.set(identity, [child]);
+    else group.push(child);
+  }
+  return new Set([...groups.values()].filter((group) => group.length > 1).flat());
 }
 
 function unresolvedRuntimeFunctionHasValidArity(functionName, argumentCount) {
@@ -5054,17 +5194,12 @@ function conditionalRangeCandidates(frame, value, range, candidate, budget, pare
   return candidates;
 }
 
-function selectedFirstValidRuntimeRanges(frame, value, range, parenthesisPairs) {
+function selectedConditionalRuntimeRanges(frame, value, range, parenthesisPairs) {
   const trimmedRange = trimCssTriviaRange(value, range.start, range.end);
   const selectedRanges = [];
   for (const group of frame.conditionalGroups) {
-    if (
-      group.functionName !== 'first-valid' ||
-      group.functionStart !== trimmedRange.start ||
-      group.end !== trimmedRange.end
-    )
-      continue;
-    const branchRanges = firstValidBranchValueRanges(value, group, parenthesisPairs);
+    if (group.functionStart !== trimmedRange.start || group.end !== trimmedRange.end) continue;
+    const branchRanges = conditionalBranchValueRanges(value, group, parenthesisPairs);
     if (!Array.isArray(branchRanges)) continue;
     for (const branchRange of branchRanges) {
       if (firstValidBranchIsKnownRuntimeFunction(value, frame, branchRange, parenthesisPairs))
@@ -5210,9 +5345,11 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
         childCandidate.fallbackIndex >= zeroRange.start &&
         childCandidate.fallbackIndex < zeroRange.end,
     ) === true;
+  const correlatedChildren = correlatedVarChildren(frame, value, selectableChildren);
   const uneliminatedChildren = frame.children.filter(
     (child) =>
       child.unprovenBannedCandidates.length > 0 &&
+      !correlatedChildren.has(child) &&
       !candidatesAreHiddenByInvalidTokenStream &&
       selectableChildren.has(child) &&
       !(
@@ -5230,7 +5367,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
         childCandidate.fallbackIndex >= suppressedRange.start &&
         childCandidate.fallbackIndex < suppressedRange.end,
     ) === true;
-  const selectedRuntimeRanges = selectedFirstValidRuntimeRanges(
+  const selectedRuntimeRanges = selectedConditionalRuntimeRanges(
     frame,
     value,
     range,
@@ -5240,9 +5377,8 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     (selectedRange) =>
       value.slice(selectedRange.start, selectedRange.start + 9).toLowerCase() === 'progress(',
   );
-  const selectedRandomRange = selectedRuntimeRanges.find(
-    (selectedRange) =>
-      value.slice(selectedRange.start, selectedRange.start + 7).toLowerCase() === 'random(',
+  const selectedRandomRanges = selectedRuntimeRanges.filter((selectedRange) =>
+    /^random(?:-item)?\(/i.test(value.slice(selectedRange.start, selectedRange.start + 12)),
   );
   const progressAnalysis = progressRangeCandidates(
     frame,
@@ -5403,14 +5539,18 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       parenthesisPairs,
       selectableChildren,
     ),
-    ...randomRangeCandidates(
-      frame,
-      value,
-      selectedRandomRange ?? range,
-      candidate,
-      budget,
-      parenthesisPairs,
-    ),
+    ...(selectedRandomRanges.length === 0
+      ? randomRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs)
+      : selectedRandomRanges.flatMap((selectedRandomRange) =>
+          randomRangeCandidates(
+            frame,
+            value,
+            selectedRandomRange,
+            candidate,
+            budget,
+            parenthesisPairs,
+          ),
+        )),
     ...treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
   ];
   const uneliminatedCandidates = (
@@ -5569,12 +5709,16 @@ function fallbackCandidates(value) {
         parenthesisParent?.randomOwner === randomOwner ? parenthesisParent.randomParent : undefined;
       group.randomOwner = randomOwner;
       group.enclosingRandomParent = enclosingRandomParent;
-      group.randomParent = group.functionName === 'random' ? group : enclosingRandomParent;
+      group.randomParent =
+        group.functionName === 'random' || group.functionName === 'random-item'
+          ? group
+          : enclosingRandomParent;
       const isInvalidFunctionBlock =
         !group.isGroupingParenthesis &&
         !mathFunctionNames.has(group.functionName) &&
         !conditionalFunctionNames.has(group.functionName) &&
-        !substitutionFunctionNames.has(group.functionName);
+        !substitutionFunctionNames.has(group.functionName) &&
+        group.functionName !== 'random-item';
       group.invalidFunctionParent = isInvalidFunctionBlock
         ? group
         : mathFunctionNames.has(group.functionName)
@@ -5611,7 +5755,7 @@ function fallbackCandidates(value) {
         const treeCountingOwner = fallbackFrames.at(-1) ?? rootFrame;
         treeCountingOwner.treeCountingGroups.push(group);
       }
-      if (group.functionName === 'random') {
+      if (group.functionName === 'random' || group.functionName === 'random-item') {
         randomOwner.randomGroups.push(group);
       }
       const progressRangeIsUnsupported =

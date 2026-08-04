@@ -603,6 +603,8 @@ describe('cinder/z-index-scale', () => {
     ['random(0, var(--inner, 9999))', 1],
     ['random(--shared, var(--inner, 9999), 10000)', 1],
     ['random(0, 10000, 9999)', 1],
+    ['calc(random(0px, 10000px, 9999px) / 1px)', 1],
+    ['calc(random(0px, 10000px, 5000px) / 1px)', 0],
     ['calc(random(0px, 9999px) / 1px)', 1],
     ['calc(0 * random(0, 10000))', 0],
     ['min(1, random(0, 10000))', 0],
@@ -639,6 +641,27 @@ describe('cinder/z-index-scale', () => {
         await lint(`
           .fixture {
             /* cinder-z-index-local: random() runtime regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
+    ['random-item(9999, 1)', 0],
+    ['random-item(auto, 9999, 1)', 1],
+    ['random-item(--shared, 1, 9999)', 1],
+    ['random-item(auto, {9999}, 1)', 1],
+    ['random-item(auto, , 9999)', 1],
+    ['random-item(auto, 1, 2)', 0],
+    ['random-item(fixed 2, 9999, 1)', 0],
+  ] as const)('tracks CSS random-item() choices: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: random-item() runtime regression coverage. */
             z-index: var(--outer, ${fallback});
           }
         `),
@@ -1705,6 +1728,19 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('correlates wide repeated custom-property reads in linear time', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const terms = Array.from(
+      { length: 4_000 },
+      () => 'var(--runtime, 9999) - var(--runtime, 9999)',
+    );
+    const startedAt = performance.now();
+    const result = bannedFallback(`var(--outer, calc(${terms.join(' + ')}))`);
+
+    expect(result === undefined || result.reason === 'too-complex').toBe(true);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('keeps sliced literal source ranges lazy for long escaped dimensions', async () => {
     const { normalizeCssEscapesForInspection } = await import(valueAnalysisPath);
     const value = `1\\g${'a'.repeat(500_000)}`;
@@ -2758,6 +2794,7 @@ describe('cinder/z-index-scale', () => {
     ['first-valid(first-valid(foo, 9999), 1)', 1],
     ['first-valid(random(0px, 1px), 9999)', 1],
     ['first-valid(random(0, 10000), 1)', 1],
+    ['first-valid(random-item(auto, 9999, 1), 1)', 1],
     ['first-valid(progress(var(--runtime), 0, 10000), 1)', 0],
     ['first-valid(sibling-index(1), 9999)', 1],
     ['first-valid(if(media(screen): foo; else: 2), 9999)', 1],
@@ -4207,8 +4244,19 @@ describe('cinder/z-index-scale', () => {
   test.each([
     ['calc(9999 * var(--runtime, 0))', 1],
     ['calc(9999 * env(foo, 0))', 1],
+    ['calc(9999 * env(safe-area-inset-top, 0px))', 0],
+    ['calc(9999 * env(safe-area-max-inset-left, 0px))', 0],
+    ['calc(9999 * env(viewport-segment-width 0 0, 0px))', 0],
+    ['calc(9999 * env(safe-area-inset-top, 0))', 0],
+    ['calc(9999 * env(viewport-segment-width, 0))', 0],
+    ['calc(9999 * env(preferred-text-scale, 0))', 1],
+    ['calc(9999 * env(foo, 0px))', 1],
     ['calc(9999 * attr(data-layer type(<number>), 0))', 1],
     ['calc(9999 * attr(data-layer type(<integer>), 0))', 1],
+    ['calc(var(--runtime, 0) - var(--runtime, 0))', 0],
+    ['calc(var(--runtime, 9999) - var(--runtime, 9999))', 0],
+    ['calc(var(--runtime, 0) - var(--runtime, 1))', 1],
+    ['calc(var(--runtime, 0) - var(--RUNTIME, 0))', 1],
     ['calc(0 * var(--runtime, 0))', 0],
     ['clamp(0, calc(9999 * var(--runtime, 0)), 1)', 0],
     ['calc(9999 * attr(data-layer type(<length>), 0px))', 0],
@@ -4304,6 +4352,12 @@ describe('cinder/z-index-scale', () => {
     ['if(media(foo) and style(--theme: dark): 9999; else: 1)', 0],
     ['if(media(foo) or style(--theme: dark): 9999; else: 1)', 1],
     ['if(media(all): 1; else: 9999)', 0],
+    ['if(media(all): random(9999, 10000); else: 1)', 1],
+    ['if(media(foo): random(9999, 10000); else: 1)', 0],
+    ['if(media(not all): 1; else: random(9999, 10000))', 1],
+    ['if(media(all): random(0, 1); else: 9999)', 0],
+    ['if(media(all): random-item(auto, 9999, 1); else: 1)', 1],
+    ['if(media(foo): random-item(auto, 9999, 1); else: 1)', 0],
     ['if(media(not all): 9999; else: 1)', 0],
     ['if(media(s\\63 reen): 9999; else: 1)', 1],
     ['if(media(screen and ((width > 10px) or (height > 20px))): 9999; else: 1)', 1],
