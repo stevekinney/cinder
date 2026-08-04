@@ -27,21 +27,24 @@ function dispatchTransitionBoundary(
   type: 'transitioncancel' | 'transitionend',
   propertyName: string,
 ): void {
-  dispatchTransitionBoundaryWithTarget(target, target, type, propertyName);
+  dispatchTransitionBoundaryFrom(target, type, propertyName);
 }
 
-function dispatchTransitionBoundaryWithTarget(
-  dispatchTarget: EventTarget,
+function createTransitionBoundaryEvent(
+  type: 'transitioncancel' | 'transitionend',
+  propertyName: string,
+): Event {
+  const event = new window.Event(type, { bubbles: true });
+  Object.defineProperty(event, 'propertyName', { value: propertyName });
+  return event;
+}
+
+function dispatchTransitionBoundaryFrom(
   eventTarget: EventTarget,
   type: 'transitioncancel' | 'transitionend',
   propertyName: string,
 ): void {
-  const event = new Event(type, { bubbles: true });
-  Object.defineProperties(event, {
-    propertyName: { value: propertyName },
-    target: { value: eventTarget },
-  });
-  dispatchTarget.dispatchEvent(event);
+  eventTarget.dispatchEvent(createTransitionBoundaryEvent(type, propertyName));
 }
 
 function mockComputedTransitionStyle(
@@ -231,7 +234,7 @@ describe('SpeedDial', () => {
     try {
       const cancel = waitForSpeedDialExit(action, complete);
 
-      dispatchTransitionBoundaryWithTarget(action, text, 'transitionend', 'opacity');
+      dispatchTransitionBoundaryFrom(text, 'transitionend', 'opacity');
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
       await flushQueuedFocus();
       expect(complete).not.toHaveBeenCalled();
