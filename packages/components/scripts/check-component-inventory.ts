@@ -41,7 +41,7 @@ function findCinderMetadataBlock(source: string): string {
     const moduleSource = moduleMatch[1] ?? '';
     for (const jsdocMatch of moduleSource.matchAll(/\/\*\*([\s\S]*?)\*\//g)) {
       const block = jsdocMatch[1] ?? '';
-      if (/^\s*(?:\*\s*)?@cinder\b/im.test(block)) return block;
+      if (/^\s*(?:\*\s*)?@cinder\b/m.test(block)) return block;
     }
   }
   return '';
@@ -54,7 +54,7 @@ function findExplicitRationale(source: string): string {
   let sawCinderMarker = false;
   for (const line of metadataBlock.split('\n')) {
     const content = line.replace(/^\s*\*\s?/, '').trim();
-    if (/^@cinder\b/i.test(content)) {
+    if (/^@cinder\b/.test(content)) {
       sawCinderMarker = true;
       continue;
     }

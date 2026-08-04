@@ -109,7 +109,7 @@ was replaced with the single-workflow, `if:`-gated pattern described above.
 
 ## The guardrails
 
-Seven mechanisms exist specifically to keep this topology honest — to stop
+Eight mechanisms exist specifically to keep this topology honest — to stop
 regression back into "the same expensive check running four times, hooks
 taking forever," and to catch the opposite failure, a gate silently missing
 from the layer it needs to run in.

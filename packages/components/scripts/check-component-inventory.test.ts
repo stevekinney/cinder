@@ -80,6 +80,21 @@ describe('findNeighbourRationaleViolations', () => {
     ).toHaveLength(1);
   });
 
+  it('uses only the canonical case-sensitive @cinder marker', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @Cinder\n * @rationale Nearest alternative: button\n */\n/**\n * @cinder\n * @purpose A component.\n */</script>',
+        },
+        knownComponentIds,
+      ),
+    ).toHaveLength(1);
+  });
+
   it('rejects a self-reference in @related metadata', () => {
     expect(
       findNeighbourRationaleViolations({
@@ -156,6 +171,21 @@ describe('findNeighbourRationaleViolations', () => {
           avoidWhen: [],
           source:
             '<script module>/**\n * @cinder\n * @rationale Nearest alternative: buton, which has a different contract.\n */</script>',
+        },
+        knownComponentIds,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('rejects the scaffold placeholder until an author names a known neighbour', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [{ reason: 'TODO: describe when a different component fits better.' }],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative: TODO — name the nearest component.\n */</script>',
         },
         knownComponentIds,
       ),
