@@ -23,11 +23,12 @@
   import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
+  import Input from '@lostgradient/cinder/input';
+
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { parseTimeString, serializeTimeParts } from '../../_internal/time-parts.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import Input from '../input/input.svelte';
   import type { TimeFieldProps } from './time-field.types.ts';
 
   let {

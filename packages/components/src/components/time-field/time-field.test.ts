@@ -1,10 +1,13 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { TimeFieldChange } from './time-field.types.ts';
 
 setupHappyDom();
+
+const inputModule = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => inputModule);
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
@@ -32,6 +35,13 @@ function textForLabelledBy(container: Element, labelledBy: string): string {
 }
 
 describe('TimeField', () => {
+  test('imports the composed Input API through its public subpath', async () => {
+    const componentSource = await Bun.file(new URL('./time-field.svelte', import.meta.url)).text();
+
+    expect(componentSource).toContain("from '@lostgradient/cinder/input';");
+    expect(componentSource).not.toContain("from '../input/");
+  });
+
   test('renders a labelled native time input', () => {
     const { container } = render(TimeField, {
       props: { id: 'reminder', label: 'Reminder time', value: '09:30' },
