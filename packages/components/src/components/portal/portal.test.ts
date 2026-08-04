@@ -146,7 +146,6 @@ describe('Portal', () => {
     expect(findNearestOpenTopLayer(source)).toBeNull();
   });
 
-
   test('finds an enclosing owner marker across nested shadow hosts', () => {
     const owner = document.createElement('div');
     owner.id = 'outer-shadow-owner';
@@ -163,6 +162,24 @@ describe('Portal', () => {
     document.body.append(outerHost);
 
     expect(findNearestOpenTopLayer(source)).toBe(owner);
+  });
+
+  test('skips a self-owned trigger marker across shadow boundaries', () => {
+    const trigger = document.createElement('div');
+    trigger.id = 'shadow-self-owner';
+    trigger.className = 'cinder-popover__trigger';
+    trigger.setAttribute('data-cinder-portal-owner', trigger.id);
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const innerHost = document.createElement('div');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const source = document.createElement('button');
+    innerShadow.append(source);
+    outerShadow.append(innerHost);
+    trigger.append(outerHost);
+    document.body.append(trigger);
+
+    expect(findNearestOpenTopLayer(source)).toBeNull();
   });
 
   test('prefers a nearer native modal over an outer portal owner marker', () => {

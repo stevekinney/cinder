@@ -99,7 +99,7 @@ export function findNearestOpenTopLayer(
   // (not-yet-existing) scope, not a genuinely enclosing owner. Continuing the search from its
   // parent finds the next marker up the tree, which — by construction — belongs to a different,
   // truly enclosing popover/top-layer instance (see the nested-popover-in-trigger follow-up).
-  const selfTrigger = source.closest('.cinder-popover__trigger');
+  const selfTrigger = closestAcrossShadow(source, '.cinder-popover__trigger');
   let candidate: HTMLElement | null = source;
   while (candidate) {
     try {
