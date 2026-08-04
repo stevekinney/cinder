@@ -96,7 +96,8 @@ function quotedStringEnd(value, start) {
 }
 
 function maskTokenizingComments(value) {
-  const maskedCharacters = value.split('');
+  const segments = [];
+  let copyFrom = 0;
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] === '"' || value[index] === "'") {
       index = quotedStringEnd(value, index);
@@ -110,10 +111,14 @@ function maskTokenizingComments(value) {
     if (value[index] !== '/' || value[index + 1] !== '*') continue;
     const closingDelimiterIndex = value.indexOf('*/', index + 2);
     const commentEnd = closingDelimiterIndex === -1 ? value.length : closingDelimiterIndex + 2;
-    maskedCharacters.fill(cssCommentMaskCharacter, index, commentEnd);
+    segments.push(value.slice(copyFrom, index));
+    segments.push(cssCommentMaskCharacter.repeat(commentEnd - index));
+    copyFrom = commentEnd;
     index = commentEnd - 1;
   }
-  return maskedCharacters.join('');
+  if (copyFrom === 0) return value;
+  segments.push(value.slice(copyFrom));
+  return segments.join('');
 }
 
 function resolveFrameExpression(
