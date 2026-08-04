@@ -187,10 +187,37 @@ type ShellServerRenderer = (props: { components: string[]; readmeHtml: string })
   body: string;
   head: string;
 };
-let shellServerRendererPromise: Promise<ShellServerRenderer> | null = null;
+type ShellServerRendererModule = { renderShellBody: ShellServerRenderer };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isShellServerRendererModule(value: unknown): value is ShellServerRendererModule {
+  return isRecord(value) && typeof value['renderShellBody'] === 'function';
+}
+
+type ShellServerRendererLoadResult = {
+  renderer: ShellServerRenderer;
+  usedFallback: boolean;
+};
+
+/** Resolve a renderer load failure against the current last-good renderer. */
+export async function resolveRendererLoad<T>(
+  loadRenderer: () => Promise<T>,
+  getLastGood: () => T | null,
+  onError?: (error: unknown) => void,
+): Promise<{ renderer: T; usedFallback: boolean }> {
+  try {
+    return { renderer: await loadRenderer(), usedFallback: false };
+  } catch (error) {
+    onError?.(error);
+    return { renderer: fallbackToLastGood(getLastGood(), error), usedFallback: true };
+  }
+}
+let shellServerRendererPromise: Promise<ShellServerRendererLoadResult> | null = null;
 let lastGoodShellServerRenderer: ShellServerRenderer | null = null;
 let preparedShellServerRenderer: ShellServerRenderer | null = null;
-let shellRendererUsedFallback = false;
 
 /**
  * Server renderer for the canonical documentation page (`src/page-server-entry.ts`).
@@ -215,6 +242,15 @@ type PageServerRenderers = {
   renderComponentPageBody: PageServerRenderer;
   renderLandingBody: LandingServerRenderer;
 };
+
+export function isPageServerRenderers(value: unknown): value is PageServerRenderers {
+  return (
+    isRecord(value) &&
+    typeof value['renderComponentPageBody'] === 'function' &&
+    typeof value['renderLandingBody'] === 'function'
+  );
+}
+
 let pageServerRendererPromise: Promise<PageServerRenderers> | null = null;
 let lastGoodPageServerRenderer: PageServerRenderers | null = null;
 const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
@@ -339,6 +375,8 @@ let rebuildGeneration = 0;
 
 /** Debounce timer for the watcher. */
 let rebuildDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let rebuildDebouncePromise: Promise<void> | null = null;
+let settleRebuildDebounce: (() => void) | null = null;
 /** Whether any change in the current debounce window touched shell sources. */
 let pendingShellChanged = false;
 /** Whether any change in the current debounce window touched components-package source. */
@@ -376,12 +414,15 @@ type ChangeScope =
  * (OR the booleans, union the example names) so the final invalidation
  * reflects everything touched during the window, not just the last call.
  */
-function scheduleRebuild(scope: ChangeScope): void {
+export function scheduleRebuild(scope: ChangeScope): void {
   if (scope.kind === 'shell') pendingShellChanged = true;
   else if (scope.kind === 'components') pendingComponentsChanged = true;
   else for (const name of scope.names) pendingExampleNames.add(name);
 
   if (rebuildDebounceTimer !== null) clearTimeout(rebuildDebounceTimer);
+  rebuildDebouncePromise ??= new Promise<void>((resolve) => {
+    settleRebuildDebounce = resolve;
+  });
   rebuildDebounceTimer = setTimeout(() => {
     rebuildDebounceTimer = null;
     const shellChanged = pendingShellChanged;
@@ -396,7 +437,21 @@ function scheduleRebuild(scope: ChangeScope): void {
     else if (exampleNames.size > 0) {
       invalidateCachesForChange({ kind: 'examples', names: exampleNames });
     }
+    settleRebuildDebounce?.();
+    settleRebuildDebounce = null;
+    rebuildDebouncePromise = null;
   }, 100);
+}
+
+/** Wait for pending invalidation, then return the settled rebuild generation. */
+export async function waitForPendingRebuild(): Promise<number> {
+  await rebuildDebouncePromise;
+  return rebuildGeneration;
+}
+
+/** Exposed for behavioral tests that verify debounce ordering. */
+export function getRebuildGeneration(): number {
+  return rebuildGeneration;
 }
 
 /**
@@ -1284,55 +1339,57 @@ export function shellBuildSucceeded(code: string | null, usedFallback: boolean):
   return code !== null && !usedFallback;
 }
 
-async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
+export function formatBuildLogs(logs: readonly { message: string }[]): string {
+  return logs.map(({ message }) => message).join('\n');
+}
+
+async function loadShellServerRenderer(): Promise<ShellServerRendererLoadResult> {
   if (shellServerRendererPromise !== null) return shellServerRendererPromise;
 
-  shellServerRendererPromise = (async () => {
-    try {
-      const generationAtStart = rebuildGeneration;
-      const result = await Bun.build({
-        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
-        plugins: [sveltePlugin({ generate: 'server' })],
-        target: 'bun',
-        format: 'esm',
-        conditions: ['bun', 'svelte'],
-        splitting: false,
-      });
-      if (!result.success || result.outputs[0] === undefined) {
-        throw new Error(`Shell server bundle failed:\n${result.logs.join('\n')}`);
-      }
+  const generationAtStart = rebuildGeneration;
+  const loadFreshRenderer = async (): Promise<ShellServerRenderer> => {
+    const result = await Bun.build({
+      entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
+      plugins: [sveltePlugin({ generate: 'server' })],
+      target: 'bun',
+      format: 'esm',
+      conditions: ['bun', 'svelte'],
+      splitting: false,
+    });
+    if (!result.success || result.outputs[0] === undefined) {
+      throw new Error(`Shell server bundle failed:\n${formatBuildLogs(result.logs)}`);
+    }
 
-      const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
-      const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
-      let loaded: unknown;
-      try {
-        await Bun.write(serverBundlePath, await result.outputs[0].text());
-        loaded = await import(pathToFileURL(serverBundlePath).href);
-      } finally {
-        rmSync(serverBundleDirectory, { recursive: true, force: true });
-      }
-      if (
-        typeof loaded !== 'object' ||
-        loaded === null ||
-        typeof Reflect.get(loaded, 'renderShellBody') !== 'function'
-      ) {
-        throw new Error('Shell server bundle did not export renderShellBody');
-      }
-      const renderer = Reflect.get(loaded, 'renderShellBody') as ShellServerRenderer;
-      shellRendererUsedFallback = false;
-      if (generationAtStart === rebuildGeneration) {
-        lastGoodShellServerRenderer = renderer;
-      }
-      return renderer;
-    } catch (error) {
+    const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
+    const serverBundlePath = join(serverBundleDirectory, 'shell-server.js');
+    let loaded: unknown;
+    try {
+      await Bun.write(serverBundlePath, await result.outputs[0].text());
+      loaded = await import(pathToFileURL(serverBundlePath).href);
+    } finally {
+      rmSync(serverBundleDirectory, { recursive: true, force: true });
+    }
+    if (!isShellServerRendererModule(loaded)) {
+      throw new Error('Shell server bundle did not export renderShellBody');
+    }
+    return loaded.renderShellBody;
+  };
+
+  shellServerRendererPromise = resolveRendererLoad(
+    loadFreshRenderer,
+    () => lastGoodShellServerRenderer,
+    (error) => {
       console.error(
         '[playground] shell server rebuild failed; serving the last-good renderer:',
         error,
       );
-      shellRendererUsedFallback = true;
-      return fallbackToLastGood(lastGoodShellServerRenderer, error);
+    },
+  ).then((result) => {
+    if (!result.usedFallback && generationAtStart === rebuildGeneration) {
+      lastGoodShellServerRenderer = result.renderer;
     }
-  })();
+    return result;
+  });
 
   return shellServerRendererPromise;
 }
@@ -1340,6 +1397,42 @@ async function loadShellServerRenderer(): Promise<ShellServerRenderer> {
 /** Inject the renderer prepared by server startup (or a deterministic test renderer). */
 export function setPreparedShellServerRenderer(renderer: ShellServerRenderer | null): void {
   preparedShellServerRenderer = renderer;
+}
+
+function resetShellRendererWarmupState(): void {
+  shellServerRendererPromise = null;
+  preparedShellServerRenderer = null;
+}
+
+export function rendererWarmupNeedsPrebuild(
+  generationChanged: boolean,
+  sourceChanged: boolean,
+  hasPendingRebuild: boolean,
+): boolean {
+  return generationChanged || sourceChanged || hasPendingRebuild;
+}
+
+export function rendererWarmupNeedsCacheInvalidation(
+  generationChanged: boolean,
+  sourceChanged: boolean,
+  hasPendingRebuild: boolean,
+): boolean {
+  return sourceChanged || (!generationChanged && hasPendingRebuild);
+}
+
+/** Decide whether a renderer attempt is acceptable and whether its bundles must be rebuilt. */
+export function rendererWarmupAttemptDecision(
+  usedFallback: boolean,
+  generationChanged: boolean,
+  sourceChanged: boolean,
+  hasPendingRebuild: boolean,
+): { accepted: boolean; needsPrebuild: boolean } {
+  const needsPrebuild = rendererWarmupNeedsPrebuild(
+    generationChanged,
+    sourceChanged,
+    hasPendingRebuild,
+  );
+  return { accepted: !usedFallback && !needsPrebuild, needsPrebuild };
 }
 
 /**
@@ -1366,7 +1459,7 @@ async function loadPageServerRenderer(): Promise<PageServerRenderers> {
         splitting: false,
       });
       if (!result.success || result.outputs[0] === undefined) {
-        throw new Error(`Page server bundle failed:\n${result.logs.join('\n')}`);
+        throw new Error(`Page server bundle failed:\n${formatBuildLogs(result.logs)}`);
       }
 
       const serverBundleDirectory = join(PLAYGROUND_TEMP_ROOT, randomUUID());
@@ -1378,26 +1471,12 @@ async function loadPageServerRenderer(): Promise<PageServerRenderers> {
       } finally {
         rmSync(serverBundleDirectory, { recursive: true, force: true });
       }
-      if (
-        typeof loaded !== 'object' ||
-        loaded === null ||
-        typeof Reflect.get(loaded, 'renderComponentPageBody') !== 'function' ||
-        typeof Reflect.get(loaded, 'renderLandingBody') !== 'function'
-      ) {
-        const missing = ['renderComponentPageBody', 'renderLandingBody'].filter(
-          (name) =>
-            typeof loaded !== 'object' ||
-            loaded === null ||
-            typeof Reflect.get(loaded, name) !== 'function',
-        );
-        throw new Error(`Page server bundle did not export ${missing.join(' and ')}`);
+      if (!isPageServerRenderers(loaded)) {
+        throw new Error('Page server bundle did not export both renderers');
       }
       const renderer: PageServerRenderers = {
-        renderComponentPageBody: Reflect.get(
-          loaded,
-          'renderComponentPageBody',
-        ) as PageServerRenderer,
-        renderLandingBody: Reflect.get(loaded, 'renderLandingBody') as LandingServerRenderer,
+        renderComponentPageBody: loaded.renderComponentPageBody,
+        renderLandingBody: loaded.renderLandingBody,
       };
       if (generationAtStart === rebuildGeneration) {
         lastGoodPageServerRenderer = renderer;
@@ -1531,10 +1610,38 @@ export async function readGeneratedComponentSchema(
 ): Promise<GeneratedComponentSchema | null> {
   try {
     if (!(await generatedSchemaFile.exists())) return null;
-    return (await generatedSchemaFile.json()) as GeneratedComponentSchema;
+    const schema: unknown = await generatedSchemaFile.json();
+    return isGeneratedComponentSchema(schema) ? schema : null;
   } catch {
     return null;
   }
+}
+
+function isGeneratedComponentSchema(value: unknown): value is GeneratedComponentSchema {
+  if (!isRecord(value)) return false;
+
+  if ('properties' in value && value['properties'] !== undefined) {
+    const properties = value['properties'];
+    if (!isRecord(properties)) return false;
+    if (Object.values(properties).some((property) => !isRecord(property))) return false;
+  }
+
+  if ('metadata' in value && value['metadata'] !== undefined) {
+    const metadata = value['metadata'];
+    if (!isRecord(metadata)) return false;
+    const unsupportedProps = metadata['unsupportedProps'];
+    if (unsupportedProps === undefined) return true;
+    if (!Array.isArray(unsupportedProps)) return false;
+    return unsupportedProps.every(
+      (prop) =>
+        isRecord(prop) &&
+        typeof prop['name'] === 'string' &&
+        (prop['required'] === undefined || typeof prop['required'] === 'boolean') &&
+        (prop['reason'] === undefined || typeof prop['reason'] === 'string'),
+    );
+  }
+
+  return true;
 }
 
 export function mergeGeneratedSchemaMetadata(
@@ -2468,7 +2575,11 @@ export async function handleRequest(request: Request): Promise<Response> {
       discoverSidebarComponents(),
       renderLandingReadmeHtml(),
     ]);
-    const renderShellBody = preparedShellServerRenderer ?? (await loadShellServerRenderer());
+    let renderShellBody = preparedShellServerRenderer;
+    if (renderShellBody === null) {
+      const loadedShellRenderer = await loadShellServerRenderer();
+      renderShellBody = loadedShellRenderer.renderer;
+    }
     const renderedShell = renderShellBody({
       components: sidebarComponents,
       readmeHtml,
@@ -2641,6 +2752,14 @@ async function eagerPrebuildAll(): Promise<{
   };
 }
 
+async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildAll> {
+  const prebuild = await eagerPrebuildAll();
+  await getManifests().catch((error: unknown) => {
+    console.error('[playground] manifest pre-warm failed:', error);
+  });
+  return prebuild;
+}
+
 export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
   let disposePromise: Promise<void> | null = null;
   return () => {
@@ -2657,10 +2776,53 @@ export function isWarmupStable(
   hasPendingRebuild = false,
 ): boolean {
   return (
-    generationAtStart === generationAtEnd &&
-    sourceMtimeAtStart === sourceMtimeAtEnd &&
-    !hasPendingRebuild
+    warmupInstabilityReasons(
+      generationAtStart,
+      generationAtEnd,
+      sourceMtimeAtStart,
+      sourceMtimeAtEnd,
+      hasPendingRebuild,
+    ).length === 0
   );
+}
+
+/** Explain why a warmup pass must be retried, for diagnostics in slow CI. */
+export function warmupInstabilityReasons(
+  generationAtStart: number,
+  generationAtEnd: number,
+  sourceMtimeAtStart: number | null,
+  sourceMtimeAtEnd: number | null,
+  hasPendingRebuild = false,
+): string[] {
+  const reasons: string[] = [];
+  if (generationAtStart !== generationAtEnd) {
+    reasons.push(`rebuild generation changed (${generationAtStart} -> ${generationAtEnd})`);
+  }
+  if (sourceMtimeAtStart !== sourceMtimeAtEnd) {
+    reasons.push(`newest source mtime changed (${sourceMtimeAtStart} -> ${sourceMtimeAtEnd})`);
+  }
+  if (hasPendingRebuild) reasons.push('rebuild debounce is pending');
+  return reasons;
+}
+
+/** Run warmup work after pending invalidation settles and validate its generation boundary. */
+export async function runGenerationCheckedWarmup<T>(
+  work: () => Promise<T>,
+): Promise<{ value: T; instabilityReasons: string[] }> {
+  const generationAtStart = await waitForPendingRebuild();
+  const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
+  const value = await work();
+  const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
+  return {
+    value,
+    instabilityReasons: warmupInstabilityReasons(
+      generationAtStart,
+      rebuildGeneration,
+      sourceMtimeAtStart,
+      sourceMtimeAtEnd,
+      rebuildDebounceTimer !== null,
+    ),
+  };
 }
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
@@ -2695,7 +2857,6 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   let prebuild;
   let stable = false;
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const generationAtStart = rebuildGeneration;
     // Register before the eager build so deletions and edits during warmup
     // advance the generation even when the removed file is no longer present
     // in the end-of-build mtime scan.
@@ -2707,14 +2868,16 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
-    prebuild = await eagerPrebuildAll();
-    await getManifests().catch((error: unknown) => {
-      console.error('[playground] manifest pre-warm failed:', error);
-    });
-    if (generationAtStart === rebuildGeneration && rebuildDebounceTimer === null) {
+    const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAndWarmManifests);
+    prebuild = prebuildAttempt.value;
+    const { instabilityReasons } = prebuildAttempt;
+    if (instabilityReasons.length === 0) {
       stable = true;
       break;
     }
+    console.warn(
+      `[playground] warmup pre-build invalidated on attempt ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
+    );
     invalidateCachesForChange({ kind: 'components' });
   }
   if (!stable || !prebuild) {
@@ -2733,35 +2896,82 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   // Prepare the SSR shell renderer before advertising readiness. Requests must
   // never pay the cold Svelte server compilation cost on the first navigation.
   let rendererPrepared = false;
+  let bundlesNeedPrebuild = false;
   for (let attempt = 0; attempt < 5 && !rendererPrepared; attempt += 1) {
-    const generationAtStart = rebuildGeneration;
-    const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
-    try {
-      preparedShellServerRenderer = await loadShellServerRenderer();
-      if (shellRendererUsedFallback) {
-        preparedShellServerRenderer = null;
+    if (bundlesNeedPrebuild) {
+      const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAndWarmManifests);
+      prebuild = prebuildAttempt.value;
+      if (!prebuild.shellSucceeded) {
+        await dispose();
+        throw new Error(
+          '[playground] shell bundle failed to build during renderer retry — see logs above',
+        );
+      }
+      if (prebuildAttempt.instabilityReasons.length > 0) {
+        console.warn(
+          `[playground] renderer retry pre-build invalidated on attempt ${attempt + 1}/5: ${prebuildAttempt.instabilityReasons.join('; ')}`,
+        );
+        invalidateCachesForChange({ kind: 'components' });
         continue;
       }
+      bundlesNeedPrebuild = false;
+    }
+
+    const generationAtStart = rebuildGeneration;
+    const sourceMtimeAtStart = newestSourceMtimeMs(REPO_ROOT);
+    let rendererResult: ShellServerRendererLoadResult;
+    try {
+      rendererResult = await loadShellServerRenderer();
+      preparedShellServerRenderer = rendererResult.renderer;
     } catch (error) {
       await dispose();
       throw new Error('[playground] shell server renderer failed to prepare', { cause: error });
     }
     const sourceMtimeAtEnd = newestSourceMtimeMs(REPO_ROOT);
-    if (
-      isWarmupStable(
-        generationAtStart,
-        rebuildGeneration,
-        sourceMtimeAtStart,
-        sourceMtimeAtEnd,
-        rebuildDebounceTimer !== null,
-      )
-    ) {
+    const generationChanged = generationAtStart !== rebuildGeneration;
+    const sourceChanged = sourceMtimeAtStart !== sourceMtimeAtEnd;
+    const hasPendingRebuild = rebuildDebounceTimer !== null;
+    const instabilityReasons = warmupInstabilityReasons(
+      generationAtStart,
+      rebuildGeneration,
+      sourceMtimeAtStart,
+      sourceMtimeAtEnd,
+      hasPendingRebuild,
+    );
+    const decision = rendererWarmupAttemptDecision(
+      rendererResult.usedFallback,
+      generationChanged,
+      sourceChanged,
+      hasPendingRebuild,
+    );
+    if (decision.accepted) {
       rendererPrepared = true;
     } else {
-      preparedShellServerRenderer = null;
-      invalidateCachesForChange({ kind: 'components' });
-      prebuild = await eagerPrebuildAll();
-      if (!prebuild.shellSucceeded) break;
+      if (rendererResult.usedFallback) {
+        instabilityReasons.unshift('renderer fallback was used');
+      }
+      console.warn(
+        `[playground] shell renderer warmup invalidated on attempt ${attempt + 1}/5: ${instabilityReasons.join('; ')}`,
+      );
+      resetShellRendererWarmupState();
+      if (decision.needsPrebuild) {
+        // Any source change can make the eager browser bundles stale. Restore
+        // the bundle guarantee before advertising readiness. The next attempt
+        // validates the generation around that prebuild before loading another
+        // renderer, so an edit during the build cannot leave a partially cold
+        // cache behind a stable renderer result.
+        await waitForPendingRebuild();
+        if (
+          rendererWarmupNeedsCacheInvalidation(
+            generationAtStart !== rebuildGeneration,
+            sourceChanged,
+            false,
+          )
+        ) {
+          invalidateCachesForChange({ kind: 'components' });
+        }
+        bundlesNeedPrebuild = true;
+      }
     }
   }
   if (!rendererPrepared) {

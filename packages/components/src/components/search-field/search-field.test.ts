@@ -1,10 +1,17 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { SearchFieldProps } from './search-field.types.ts';
 
 setupHappyDom();
+
+// Source-package tests do not resolve the package's self-reference through Bun's
+// export map. Keep the component on its public subpath while mapping that entry
+// to the source implementation for this focused test process.
+const { default: Input } = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => ({ default: Input }));
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 
@@ -19,6 +26,11 @@ const { default: FormFieldSearchFieldFixture } =
   await import('../../test/fixtures/form-field-search-field-fixture.svelte');
 
 describe('SearchField rendering', () => {
+  test('sidecar imports the composed Input styles', () => {
+    const styles = readFileSync(new URL('./search-field.css', import.meta.url), 'utf8');
+    expect(styles).toContain("@import '../input/input.css';");
+  });
+
   test('type surface excludes inherited defaultValue', () => {
     const excludesInheritedDefaultValue: 'defaultValue' extends keyof SearchFieldProps
       ? false
@@ -32,6 +44,13 @@ describe('SearchField rendering', () => {
     const input = container.querySelector('#search') as HTMLInputElement;
     expect(input).not.toBeNull();
     expect(input.getAttribute('type')).toBe('search');
+  });
+
+  test('composes the shared Input control and grouped adornments', () => {
+    const { container } = render(SearchField, { props: { id: 'search', value: 'cinder' } });
+    expect(container.querySelector('.cinder-input-field')).not.toBeNull();
+    expect(container.querySelector('.cinder-input-group')).not.toBeNull();
+    expect(container.querySelector('#search')?.classList.contains('cinder-input')).toBe(true);
   });
 
   test('forwards accessible input attributes while preserving the search role', () => {
@@ -84,6 +103,14 @@ describe('SearchField rendering', () => {
     const root = container.querySelector('.cinder-search-field');
     expect(root?.classList.contains('my-search')).toBe(true);
   });
+
+  test('forwards native style props to the shared input control', () => {
+    const { container } = render(SearchField, {
+      props: { id: 'search', style: 'letter-spacing: 0.05em;' },
+    });
+    const input = container.querySelector('#search') as HTMLInputElement;
+    expect(input.style.letterSpacing).toBe('0.05em');
+  });
 });
 
 describe('SearchField clear button', () => {
@@ -102,6 +129,9 @@ describe('SearchField clear button', () => {
     });
     const clear = container.querySelector('.cinder-search-field__clear') as HTMLButtonElement;
     expect(clear.hasAttribute('hidden')).toBe(false);
+    expect(
+      clear.closest('.cinder-input-group__trailing')?.classList.contains('cinder-_truncate'),
+    ).toBe(false);
   });
 
   test('clear button has aria-label="Clear search"', () => {

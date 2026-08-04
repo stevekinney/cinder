@@ -19,7 +19,7 @@
  */
 
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { rm, writeFile } from 'node:fs/promises';
+import { rm, utimes, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 import {
@@ -35,15 +35,27 @@ import {
   createHttpServerOnAvailablePort,
   createSharedDisposer,
   fallbackToLastGood,
+  formatBuildLogs,
+  getRebuildGeneration,
   handleRequest,
+  isPageServerRenderers,
+  isShellServerRendererModule,
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  rendererWarmupAttemptDecision,
+  rendererWarmupNeedsCacheInvalidation,
+  rendererWarmupNeedsPrebuild,
   resolvePreferredPort,
+  resolveRendererLoad,
   rewriteRepositoryRelativeReadmeLinks,
+  runGenerationCheckedWarmup,
+  scheduleRebuild,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
   triggerReload,
+  waitForPendingRebuild,
+  warmupInstabilityReasons,
 } from './playground-server.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import {
@@ -271,11 +283,116 @@ describe('shared disposer', () => {
 });
 
 describe('startup warmup stability', () => {
+  it('settles a pending rebuild before a retry can pre-build bundles', async () => {
+    const generationAtStart = getRebuildGeneration();
+    scheduleRebuild({ kind: 'components' });
+
+    expect(getRebuildGeneration()).toBe(generationAtStart);
+    const settledGeneration = await waitForPendingRebuild();
+
+    expect(settledGeneration).toBe(generationAtStart + 1);
+    expect(getRebuildGeneration()).toBe(settledGeneration);
+  });
+
+  it('captures the settled generation as a stable prebuild baseline', async () => {
+    const generationBeforeDebounce = getRebuildGeneration();
+    scheduleRebuild({ kind: 'components' });
+
+    const generationAtStart = await waitForPendingRebuild();
+
+    expect(generationAtStart).toBe(generationBeforeDebounce + 1);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(isWarmupStable(generationAtStart, getRebuildGeneration(), 100, 100)).toBe(true);
+  });
+
+  it('rejects retry work when a rebuild settles before the work completes', async () => {
+    const generationBeforeWork = getRebuildGeneration();
+    const attempt = await runGenerationCheckedWarmup(async () => {
+      scheduleRebuild({ kind: 'components' });
+      await waitForPendingRebuild();
+      return 'prebuilt';
+    });
+
+    expect(attempt.value).toBe('prebuilt');
+    expect(attempt.instabilityReasons).toEqual([
+      `rebuild generation changed (${generationBeforeWork} -> ${generationBeforeWork + 1})`,
+    ]);
+  });
+
+  it('rejects retry work while rebuild invalidation is still pending', async () => {
+    const attempt = await runGenerationCheckedWarmup(async () => {
+      scheduleRebuild({ kind: 'components' });
+      return 'prebuilt';
+    });
+
+    expect(attempt.value).toBe('prebuilt');
+    expect(attempt.instabilityReasons).toEqual(['rebuild debounce is pending']);
+    await waitForPendingRebuild();
+  });
+
+  it('rejects retry work when source changes before watcher invalidation starts', async () => {
+    const temporarySourcePath = join(import.meta.dirname, '.warmup-source-mtime.test-fixture.ts');
+    await rm(temporarySourcePath, { force: true });
+
+    try {
+      const attempt = await runGenerationCheckedWarmup(async () => {
+        await writeFile(temporarySourcePath, 'export {};\n');
+        const futureMtime = new Date(Date.now() + 5_000);
+        await utimes(temporarySourcePath, futureMtime, futureMtime);
+        return 'prebuilt';
+      });
+
+      expect(attempt.value).toBe('prebuilt');
+      expect(
+        attempt.instabilityReasons.some((reason) =>
+          reason.startsWith('newest source mtime changed'),
+        ),
+      ).toBe(true);
+    } finally {
+      await rm(temporarySourcePath, { force: true });
+    }
+  });
+
   it('rejects a warmup when source changes before watcher validation', () => {
     expect(isWarmupStable(4, 4, 100, 101)).toBe(false);
     expect(isWarmupStable(4, 5, 100, 100)).toBe(false);
     expect(isWarmupStable(4, 4, 100, 100, true)).toBe(false);
     expect(isWarmupStable(4, 4, 100, 100)).toBe(true);
+  });
+
+  it('reports every condition that invalidated a warmup pass', () => {
+    expect(warmupInstabilityReasons(4, 5, 100, 101, true)).toEqual([
+      'rebuild generation changed (4 -> 5)',
+      'newest source mtime changed (100 -> 101)',
+      'rebuild debounce is pending',
+    ]);
+    expect(warmupInstabilityReasons(4, 4, 100, 100)).toEqual([]);
+  });
+
+  it('only requires a full page pre-build after invalidation or a source change', () => {
+    expect(rendererWarmupNeedsPrebuild(false, false, false)).toBe(false);
+    expect(rendererWarmupNeedsPrebuild(true, false, false)).toBe(true);
+    expect(rendererWarmupNeedsPrebuild(false, true, false)).toBe(true);
+    expect(rendererWarmupNeedsPrebuild(false, false, true)).toBe(true);
+    expect(rendererWarmupNeedsCacheInvalidation(false, true, false)).toBe(true);
+    expect(rendererWarmupNeedsCacheInvalidation(true, true, false)).toBe(true);
+    expect(rendererWarmupNeedsCacheInvalidation(true, false, false)).toBe(false);
+    expect(rendererWarmupNeedsCacheInvalidation(false, false, true)).toBe(true);
+  });
+
+  it('carries cache instability through a renderer fallback', () => {
+    expect(rendererWarmupAttemptDecision(true, true, false, false)).toEqual({
+      accepted: false,
+      needsPrebuild: true,
+    });
+    expect(rendererWarmupAttemptDecision(true, false, false, false)).toEqual({
+      accepted: false,
+      needsPrebuild: false,
+    });
+    expect(rendererWarmupAttemptDecision(false, false, false, false)).toEqual({
+      accepted: true,
+      needsPrebuild: false,
+    });
   });
 });
 
@@ -1295,6 +1412,36 @@ describe('generated schema metadata', () => {
     ).toBeNull();
   });
 
+  it.each([null, 42, 'schema', []])(
+    'rejects a generated schema with the wrong root shape: %p',
+    async (value) => {
+      expect(
+        await readGeneratedComponentSchema({
+          exists: () => Promise.resolve(true),
+          json: () => Promise.resolve(value),
+        }),
+      ).toBeNull();
+    },
+  );
+
+  it.each([
+    { properties: null },
+    { properties: { value: null } },
+    { metadata: null },
+    { metadata: { unsupportedProps: {} } },
+    { metadata: { unsupportedProps: [null] } },
+    { metadata: { unsupportedProps: [{ name: 42 }] } },
+    { metadata: { unsupportedProps: [{ name: 'value', required: 'yes' }] } },
+    { metadata: { unsupportedProps: [{ name: 'value', reason: 42 }] } },
+  ])('rejects an invalid generated schema member shape: %p', async (value) => {
+    expect(
+      await readGeneratedComponentSchema({
+        exists: () => Promise.resolve(true),
+        json: () => Promise.resolve(value),
+      }),
+    ).toBeNull();
+  });
+
   it('overlays defaults without adding private props or losing analyzer-owned bindability', () => {
     const analyzedManifest: ComponentManifest = {
       name: 'Input',
@@ -1345,6 +1492,64 @@ describe('generated schema metadata', () => {
         },
       }).isCompound,
     ).toBe(true);
+  });
+});
+
+describe('playground build boundaries', () => {
+  it('formats structured Bun build logs without object stringification', () => {
+    expect(formatBuildLogs([{ message: 'missing export' }, { message: 'plain failure' }])).toBe(
+      'missing export\nplain failure',
+    );
+  });
+
+  it('narrows dynamically loaded renderer exports with runtime guards', () => {
+    expect(isShellServerRendererModule({ renderShellBody: () => ({ body: '', head: '' }) })).toBe(
+      true,
+    );
+    expect(isShellServerRendererModule({ renderShellBody: 'not a function' })).toBe(false);
+    expect(
+      isPageServerRenderers({
+        renderComponentPageBody: () => ({ body: '', head: '' }),
+        renderLandingBody: () => ({ body: '', head: '' }),
+      }),
+    ).toBe(true);
+    expect(isPageServerRenderers({ renderComponentPageBody: () => ({}) })).toBe(false);
+  });
+
+  it('resolves a stale failed load against the latest renderer result', async () => {
+    type Renderer = () => { body: string; head: string };
+
+    let rejectStale!: (error: Error) => void;
+    let resolveCurrent!: (renderer: Renderer) => void;
+    let lastGoodRenderer: Renderer | null = null;
+    const getLastGoodRenderer = (): Renderer | null => lastGoodRenderer;
+    const staleLoad = resolveRendererLoad<Renderer>(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectStale = reject;
+        }),
+      getLastGoodRenderer,
+    );
+    const currentLoad = resolveRendererLoad<Renderer>(
+      () =>
+        new Promise((resolve) => {
+          resolveCurrent = resolve;
+        }),
+      getLastGoodRenderer,
+    );
+
+    resolveCurrent(() => ({ body: 'current', head: '' }));
+    const currentResult = await currentLoad;
+    expect(currentResult.usedFallback).toBe(false);
+    expect(currentResult.renderer()).toEqual({ body: 'current', head: '' });
+    lastGoodRenderer = currentResult.renderer;
+
+    rejectStale(new Error('stale build failed'));
+    const staleResult = await staleLoad;
+    expect(staleResult.usedFallback).toBe(true);
+    expect(staleResult.renderer()).toEqual({ body: 'current', head: '' });
+    expect(currentResult.usedFallback).toBe(false);
+    expect(currentResult.renderer()).toEqual({ body: 'current', head: '' });
   });
 });
 

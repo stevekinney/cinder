@@ -81,6 +81,11 @@ const schema = {
           "Locale-aware formatting options passed to `Intl.NumberFormat`.\nSupports all `Intl.NumberFormatOptions` properties such as `style`\n(`'decimal'`, `'currency'`, `'percent'`, `'unit'`), `currency`,\n`minimumFractionDigits`, `maximumFractionDigits`, and `notation`.\nDefaults to locale-standard decimal formatting when omitted.",
       },
       {
+        name: 'inputAttachment',
+        reason: 'function-or-snippet',
+        description: 'Attachment for native input access and lifecycle-scoped listeners.',
+      },
+      {
         name: 'onchange',
         reason: 'function-or-snippet',
       },

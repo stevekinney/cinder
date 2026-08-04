@@ -34,6 +34,57 @@ function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null;
 }
 
+function isStaticallyTrueExpression(value: unknown): boolean {
+  return isRecord(value) && value['type'] === 'Literal' && value['value'] === true;
+}
+
+function literalTruthiness(value: unknown): boolean | undefined {
+  if (!isRecord(value) || value['type'] !== 'Literal') return undefined;
+  return Boolean(value['value']);
+}
+
+function unconditionallyAbruptStatement(statement: unknown): boolean {
+  if (!isRecord(statement)) return false;
+  if (
+    statement['type'] === 'BreakStatement' ||
+    statement['type'] === 'ContinueStatement' ||
+    statement['type'] === 'ReturnStatement' ||
+    statement['type'] === 'ThrowStatement'
+  )
+    return true;
+  if (statement['type'] === 'IfStatement')
+    return (
+      isRecord(statement['consequent']) &&
+      unconditionallyAbruptStatement(statement['consequent']) &&
+      isRecord(statement['alternate']) &&
+      unconditionallyAbruptStatement(statement['alternate'])
+    );
+  if (statement['type'] !== 'BlockStatement' || !Array.isArray(statement['body'])) return false;
+  return unconditionallyAbruptStatement(statement['body'].at(-1));
+}
+
+function isDefinitelyUndefinedExpression(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (value['type'] === 'Identifier') return value['name'] === 'undefined';
+  return value['type'] === 'UnaryExpression' && value['operator'] === 'void';
+}
+
+function isDefinitelyNonUndefinedExpression(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    [
+      'Literal',
+      'TemplateLiteral',
+      'ObjectExpression',
+      'ArrayExpression',
+      'FunctionExpression',
+      'ArrowFunctionExpression',
+      'ClassExpression',
+      'NewExpression',
+    ].includes(String(value['type']))
+  );
+}
+
 function walkAst(node: unknown, visit: (record: UnknownRecord) => void): void {
   if (!isRecord(node)) return;
   visit(node);
@@ -52,9 +103,11 @@ function parseSvelteFragment(source: string): UnknownRecord | undefined {
   return root['fragment'];
 }
 
+type StaticBinding = { kind: 'boolean'; value: boolean } | { kind: 'string'; value: string };
+
 function staticStringFromExpression(
   expression: unknown,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): string | undefined {
   if (!isRecord(expression)) return undefined;
   if (expression['type'] === 'Literal' && typeof expression['value'] === 'string')
@@ -69,8 +122,10 @@ function staticStringFromExpression(
     const value = expression['quasis'][0]['value'];
     return isRecord(value) && typeof value['cooked'] === 'string' ? value['cooked'] : undefined;
   }
-  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string')
-    return bindings.get(expression['name']);
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const binding = bindings.get(expression['name']);
+    return binding?.kind === 'string' ? binding.value : undefined;
+  }
   if (
     expression['type'] === 'TSAsExpression' ||
     expression['type'] === 'TSSatisfiesExpression' ||
@@ -80,18 +135,73 @@ function staticStringFromExpression(
   return undefined;
 }
 
+function staticTruthinessFromExpression(
+  expression: unknown,
+  bindings: ReadonlyMap<string, StaticBinding>,
+): boolean | undefined {
+  if (!isRecord(expression)) return undefined;
+  if (expression['type'] === 'Literal') return Boolean(expression['value']);
+  if (
+    expression['type'] === 'TemplateLiteral' &&
+    Array.isArray(expression['expressions']) &&
+    expression['expressions'].length === 0 &&
+    Array.isArray(expression['quasis']) &&
+    isRecord(expression['quasis'][0])
+  ) {
+    const value = expression['quasis'][0]['value'];
+    if (isRecord(value) && typeof value['cooked'] === 'string') return Boolean(value['cooked']);
+  }
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return staticTruthinessFromExpression(expression['expression'], bindings);
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const binding = bindings.get(expression['name']);
+    if (binding !== undefined) return Boolean(binding.value);
+  }
+  return undefined;
+}
+
+function staticBooleanFromExpression(
+  expression: unknown,
+  bindings: ReadonlyMap<string, StaticBinding>,
+): boolean | undefined {
+  if (!isRecord(expression)) return undefined;
+  if (expression['type'] === 'Literal' && typeof expression['value'] === 'boolean')
+    return expression['value'];
+  if (
+    expression['type'] === 'TSAsExpression' ||
+    expression['type'] === 'TSSatisfiesExpression' ||
+    expression['type'] === 'TSNonNullExpression'
+  )
+    return staticBooleanFromExpression(expression['expression'], bindings);
+  if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
+    const binding = bindings.get(expression['name']);
+    return binding?.kind === 'boolean' ? binding.value : undefined;
+  }
+  return undefined;
+}
+
 function possibleStaticStringsFromExpression(
   expression: unknown,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): Set<string> {
   const directValue = staticStringFromExpression(expression, bindings);
   if (directValue !== undefined) return new Set([directValue]);
   if (!isRecord(expression)) return new Set();
-  if (expression['type'] === 'ConditionalExpression')
+  if (expression['type'] === 'ConditionalExpression') {
+    const truthiness = staticTruthinessFromExpression(expression['test'], bindings);
+    if (truthiness === true)
+      return possibleStaticStringsFromExpression(expression['consequent'], bindings);
+    if (truthiness === false)
+      return possibleStaticStringsFromExpression(expression['alternate'], bindings);
     return new Set([
       ...possibleStaticStringsFromExpression(expression['consequent'], bindings),
       ...possibleStaticStringsFromExpression(expression['alternate'], bindings),
     ]);
+  }
   if (expression['type'] === 'LogicalExpression')
     return new Set([
       ...possibleStaticStringsFromExpression(expression['left'], bindings),
@@ -100,9 +210,9 @@ function possibleStaticStringsFromExpression(
   return new Set();
 }
 
-function staticStringBindings(source: string): Map<string, string> {
+function staticStringBindings(source: string): Map<string, StaticBinding> {
   const root: unknown = parseSvelte(source, { modern: true });
-  const bindings = new Map<string, string>();
+  const bindings = new Map<string, StaticBinding>();
   if (!isRecord(root) || !isRecord(root['instance']) || !isRecord(root['instance']['content']))
     return bindings;
   const body = root['instance']['content']['body'];
@@ -125,13 +235,15 @@ function staticStringBindings(source: string): Map<string, string> {
       )
         continue;
       const value = staticStringFromExpression(declaration['init'], bindings);
-      if (value !== undefined) bindings.set(declaration['id']['name'], value);
-      else if (
-        isRecord(declaration['init']) &&
-        declaration['init']['type'] === 'Literal' &&
-        typeof declaration['init']['value'] === 'boolean'
-      )
-        bindings.set(declaration['id']['name'], String(declaration['init']['value']));
+      if (value !== undefined) bindings.set(declaration['id']['name'], { kind: 'string', value });
+      else {
+        const booleanValue = staticBooleanFromExpression(declaration['init'], bindings);
+        if (booleanValue === undefined) continue;
+        bindings.set(declaration['id']['name'], {
+          kind: 'boolean',
+          value: booleanValue,
+        });
+      }
     }
   }
   return bindings;
@@ -217,7 +329,11 @@ function declaresLexicalBindingDirectlyInBlock(block: UnknownRecord, bindingName
   );
 }
 
-function possibleMutableControlNames(source: string, expression: unknown): Set<string> {
+function possibleMutableControlNames(
+  source: string,
+  expression: unknown,
+  onReachableValues?: (values: ReadonlySet<string>) => void,
+): Set<string> {
   if (
     !isRecord(expression) ||
     expression['type'] !== 'Identifier' ||
@@ -234,44 +350,18 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
   if (instanceContent === undefined && !isRecord(root['fragment'])) return new Set();
   const possibleControls = new Set<string>();
   const bindings = staticStringBindings(source);
-  const walkTopLevel = (current: unknown, shadowed = false): void => {
-    if (!isRecord(current)) return;
-    const type = current['type'];
-    let currentShadowed = shadowed;
-    if (
-      type === 'FunctionDeclaration' ||
-      type === 'FunctionExpression' ||
-      type === 'ArrowFunctionExpression'
-    ) {
-      const declaresBinding =
-        (Array.isArray(current['params']) &&
-          current['params'].some((parameter) =>
-            bindingPatternIncludesName(parameter, bindingName),
-          )) ||
-        declaresVarBindingWithinFunctionScope(current['body'], bindingName);
-      currentShadowed ||= declaresBinding;
-    } else if (type === 'BlockStatement') {
-      currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
-    }
-    const node = current;
-    let candidate: unknown;
-    if (
-      !currentShadowed &&
-      node['type'] === 'VariableDeclarator' &&
-      isRecord(node['id']) &&
-      node['id']['type'] === 'Identifier' &&
-      node['id']['name'] === bindingName
-    )
-      candidate = node['init'];
-    if (
-      !currentShadowed &&
-      node['type'] === 'AssignmentExpression' &&
-      isRecord(node['left']) &&
-      node['left']['type'] === 'Identifier' &&
-      node['left']['name'] === bindingName
-    )
-      candidate = node['right'];
-    for (const candidateValue of possibleStaticStringsFromExpression(candidate, bindings)) {
+  const isDefinitelyUnshadowedUndefined = (value: unknown, shadowed = false): boolean =>
+    isDefinitelyUndefinedExpression(value) &&
+    !(
+      isRecord(value) &&
+      value['type'] === 'Identifier' &&
+      value['name'] === 'undefined' &&
+      shadowed
+    );
+  const mutableValues = new Set<string>();
+  const recordControls = (values: Iterable<string>): void => {
+    onReachableValues?.(new Set(values));
+    for (const candidateValue of values) {
       const normalizedValue = candidateValue.toLowerCase();
       if (
         normalizedValue === 'input' ||
@@ -279,6 +369,698 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
         normalizedValue === 'textarea'
       )
         possibleControls.add(normalizedValue);
+    }
+  };
+  const snapshotMutableValues = (): Set<string> => new Set(mutableValues);
+  const restoreMutableValues = (values: Iterable<string>): void => {
+    mutableValues.clear();
+    for (const value of values) mutableValues.add(value);
+  };
+  const breakTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
+  const continueTargets: Array<{ label: string | undefined; states: Set<string>[] }> = [];
+  const returnTargets: Set<string>[][] = [];
+  const tryPrefixTargets: Set<string>[][] = [];
+  let finallyDepth = 0;
+  const explicitWrites: boolean[] = [];
+  const localAliasFrames: Map<string, ReadonlySet<string>>[] = [];
+  const undefinedShadowFrames: boolean[] = [];
+  const undefinedIsShadowed = (): boolean => undefinedShadowFrames.some(Boolean);
+  let suppressPublication = false;
+  const possibleVisibleStrings = (valueExpression: unknown): Set<string> => {
+    if (!isRecord(valueExpression)) return new Set();
+    if (valueExpression['type'] === 'Identifier' && typeof valueExpression['name'] === 'string') {
+      for (let index = localAliasFrames.length - 1; index >= 0; index -= 1) {
+        const values = localAliasFrames[index]?.get(valueExpression['name']);
+        if (values !== undefined) return new Set(values);
+      }
+    }
+    if (
+      valueExpression['type'] === 'TSAsExpression' ||
+      valueExpression['type'] === 'TSSatisfiesExpression' ||
+      valueExpression['type'] === 'TSNonNullExpression'
+    )
+      return possibleVisibleStrings(valueExpression['expression']);
+    if (valueExpression['type'] === 'ConditionalExpression')
+      return new Set([
+        ...possibleVisibleStrings(valueExpression['consequent']),
+        ...possibleVisibleStrings(valueExpression['alternate']),
+      ]);
+    if (valueExpression['type'] === 'LogicalExpression')
+      return new Set([
+        ...possibleVisibleStrings(valueExpression['left']),
+        ...possibleVisibleStrings(valueExpression['right']),
+      ]);
+    return possibleStaticStringsFromExpression(valueExpression, bindings);
+  };
+  const captureTryPrefix = (): void => {
+    for (const states of tryPrefixTargets) states.push(snapshotMutableValues());
+  };
+  const shadowsBindingInsideParameters = (node: UnknownRecord, shadowed: boolean): boolean =>
+    shadowed ||
+    (Array.isArray(node['params']) &&
+      node['params'].some((parameter) => bindingPatternIncludesName(parameter, bindingName)));
+  const shadowsBindingInsideFunction = (node: UnknownRecord, shadowed: boolean): boolean =>
+    shadowsBindingInsideParameters(node, shadowed) ||
+    declaresVarBindingWithinFunctionScope(node['body'], bindingName);
+  const shadowsUndefinedInsideFunction = (node: UnknownRecord): boolean =>
+    (Array.isArray(node['params']) &&
+      node['params'].some((parameter) => bindingPatternIncludesName(parameter, 'undefined'))) ||
+    declaresVarBindingWithinFunctionScope(node['body'], 'undefined');
+  const walkTopLevel = (current: unknown, shadowed = false, controlLabel?: string): void => {
+    if (!isRecord(current)) return;
+    const type = current['type'];
+    let currentShadowed = shadowed;
+    if (type === 'BreakStatement') {
+      const label =
+        isRecord(current['label']) && typeof current['label']['name'] === 'string'
+          ? current['label']['name']
+          : undefined;
+      const target = label
+        ? breakTargets.findLast((candidate) => candidate.label === label)
+        : breakTargets.at(-1);
+      target?.states.push(snapshotMutableValues());
+      return;
+    }
+    if (type === 'ContinueStatement') {
+      const label =
+        isRecord(current['label']) && typeof current['label']['name'] === 'string'
+          ? current['label']['name']
+          : undefined;
+      const target = label
+        ? continueTargets.findLast((candidate) => candidate.label === label)
+        : continueTargets.at(-1);
+      target?.states.push(snapshotMutableValues());
+      return;
+    }
+    if (type === 'LabeledStatement') {
+      const label =
+        isRecord(current['label']) && typeof current['label']['name'] === 'string'
+          ? current['label']['name']
+          : undefined;
+      if (isRecord(current['body'])) {
+        const states: Set<string>[] = [];
+        breakTargets.push({ label, states });
+        walkTopLevel(current['body'], currentShadowed, label);
+        breakTargets.pop();
+        restoreMutableValues([...mutableValues, ...states.flatMap((state) => [...state])]);
+      }
+      return;
+    }
+    if (type === 'BlockStatement') {
+      currentShadowed ||= declaresLexicalBindingDirectlyInBlock(current, bindingName);
+      undefinedShadowFrames.push(declaresLexicalBindingDirectlyInBlock(current, 'undefined'));
+    }
+    if (type === 'IfStatement') {
+      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      const base = snapshotMutableValues();
+      const truthiness = literalTruthiness(current['test']);
+      if (truthiness !== undefined) {
+        restoreMutableValues(base);
+        const branch = truthiness ? current['consequent'] : current['alternate'];
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return;
+      }
+      const branches = [current['consequent'], current['alternate']].map((branch) => {
+        restoreMutableValues(base);
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return snapshotMutableValues();
+      });
+      restoreMutableValues(branches.flatMap((branch) => [...branch]));
+      return;
+    }
+    if (type === 'ConditionalExpression') {
+      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      const base = snapshotMutableValues();
+      const truthiness = literalTruthiness(current['test']);
+      if (truthiness !== undefined) {
+        restoreMutableValues(base);
+        const branch = truthiness ? current['consequent'] : current['alternate'];
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return;
+      }
+      const branches = [current['consequent'], current['alternate']].map((branch) => {
+        restoreMutableValues(base);
+        if (isRecord(branch)) walkTopLevel(branch, currentShadowed);
+        return snapshotMutableValues();
+      });
+      restoreMutableValues(branches.flatMap((branch) => [...branch]));
+      return;
+    }
+    if (type === 'LogicalExpression') {
+      const left = current['left'];
+      if (isRecord(left)) walkTopLevel(left, currentShadowed);
+      const base = snapshotMutableValues();
+      const operator = current['operator'];
+      const leftTruthiness = literalTruthiness(left);
+      const leftIsNullish =
+        (isRecord(left) && left['type'] === 'Literal' && left['value'] === null) ||
+        (isRecord(left) &&
+          left['type'] === 'Identifier' &&
+          left['name'] === 'undefined' &&
+          !undefinedIsShadowed()) ||
+        isDefinitelyUnshadowedUndefined(left, undefinedIsShadowed());
+      const leftIsNonNullishLiteral =
+        isRecord(left) && left['type'] === 'Literal' && left['value'] !== null;
+      const skipsRight =
+        (leftTruthiness !== undefined &&
+          ((operator === '&&' && !leftTruthiness) || (operator === '||' && leftTruthiness))) ||
+        (operator === '??' && leftIsNonNullishLiteral);
+      if (skipsRight) return;
+      if (isRecord(current['right'])) walkTopLevel(current['right'], currentShadowed);
+      const guaranteesRight =
+        (leftTruthiness !== undefined &&
+          ((operator === '&&' && leftTruthiness) || (operator === '||' && !leftTruthiness))) ||
+        (operator === '??' && leftIsNullish);
+      if (!guaranteesRight) restoreMutableValues([...base, ...mutableValues]);
+      return;
+    }
+    if (type === 'SwitchStatement' && Array.isArray(current['cases'])) {
+      if (isRecord(current['discriminant'])) walkTopLevel(current['discriminant'], currentShadowed);
+      undefinedShadowFrames.push(
+        current['cases'].some(
+          (switchCase) =>
+            Array.isArray(switchCase['consequent']) &&
+            switchCase['consequent'].some(
+              (statement) =>
+                isRecord(statement) &&
+                statement['type'] === 'VariableDeclaration' &&
+                (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+                Array.isArray(statement['declarations']) &&
+                statement['declarations'].some(
+                  (declaration) =>
+                    isRecord(declaration) &&
+                    bindingPatternIncludesName(declaration['id'], 'undefined'),
+                ),
+            ),
+        ),
+      );
+      const base = snapshotMutableValues();
+      const cases = current['cases'].filter(isRecord);
+      const discriminant = current['discriminant'];
+      const knownDiscriminant =
+        isRecord(discriminant) && discriminant['type'] === 'Literal'
+          ? discriminant['value']
+          : undefined;
+      const hasKnownDiscriminant = isRecord(discriminant) && discriminant['type'] === 'Literal';
+      let knownStartIndex: number | undefined;
+      if (hasKnownDiscriminant) {
+        let defaultIndex: number | undefined;
+        let hasUnresolvedCaseTest = false;
+        for (let index = 0; index < cases.length; index += 1) {
+          const test = cases[index]?.['test'];
+          if (test === null) {
+            defaultIndex = index;
+            continue;
+          }
+          if (isRecord(test) && test['type'] === 'Literal' && test['value'] === knownDiscriminant) {
+            if (!hasUnresolvedCaseTest) knownStartIndex = index;
+            break;
+          }
+          if (!isRecord(test) || test['type'] !== 'Literal') hasUnresolvedCaseTest = true;
+        }
+        if (knownStartIndex === undefined && !hasUnresolvedCaseTest)
+          knownStartIndex = defaultIndex ?? -1;
+      }
+      const switchShadowed =
+        currentShadowed ||
+        cases.some(
+          (switchCase) =>
+            Array.isArray(switchCase['consequent']) &&
+            switchCase['consequent'].some(
+              (statement) =>
+                isRecord(statement) &&
+                statement['type'] === 'VariableDeclaration' &&
+                (statement['kind'] === 'let' || statement['kind'] === 'const') &&
+                Array.isArray(statement['declarations']) &&
+                statement['declarations'].some(
+                  (declaration) =>
+                    isRecord(declaration) &&
+                    bindingPatternIncludesName(declaration['id'], bindingName),
+                ),
+            ),
+        );
+      const branches: Set<string>[] = [];
+      const defaultIndex = cases.findIndex((switchCase) => switchCase['test'] === null);
+      const startIndices =
+        knownStartIndex === undefined
+          ? [
+              ...cases
+                .map((switchCase, index) => ({ switchCase, index }))
+                .filter(({ switchCase }) => {
+                  const test = switchCase['test'];
+                  return !(
+                    hasKnownDiscriminant &&
+                    isRecord(test) &&
+                    test['type'] === 'Literal' &&
+                    test['value'] !== knownDiscriminant
+                  );
+                })
+                .map(({ index }) => index),
+              ...(defaultIndex < 0 ? [-1] : []),
+            ]
+          : knownStartIndex < 0
+            ? [-1]
+            : [knownStartIndex];
+      for (const startIndex of startIndices) {
+        restoreMutableValues(base);
+        const lastTestIndex =
+          startIndex < 0 || startIndex === defaultIndex ? cases.length - 1 : startIndex;
+        for (let caseIndex = 0; caseIndex <= lastTestIndex; caseIndex += 1) {
+          const test = cases[caseIndex]?.['test'];
+          if (isRecord(test)) walkTopLevel(test, switchShadowed);
+        }
+        if (startIndex < 0) {
+          branches.push(snapshotMutableValues());
+          continue;
+        }
+        let stopped = false;
+        const interruptedStates: Set<string>[] = [];
+        breakTargets.push({ label: controlLabel, states: interruptedStates });
+        for (let caseIndex = startIndex; caseIndex < cases.length && !stopped; caseIndex++) {
+          const consequent = cases[caseIndex]?.['consequent'];
+          if (!Array.isArray(consequent)) continue;
+          for (const statement of consequent) {
+            walkTopLevel(statement, switchShadowed);
+            if (unconditionallyAbruptStatement(statement)) {
+              stopped = true;
+              break;
+            }
+          }
+        }
+        breakTargets.pop();
+        branches.push(
+          new Set([...mutableValues, ...interruptedStates.flatMap((state) => [...state])]),
+        );
+      }
+      restoreMutableValues(branches.flatMap((branch) => [...branch]));
+      undefinedShadowFrames.pop();
+      return;
+    }
+    if (type === 'TryStatement') {
+      const base = snapshotMutableValues();
+      const returnFrame = returnTargets.at(-1);
+      const returnStart = returnFrame?.length ?? 0;
+      const hasFinalizer = isRecord(current['finalizer']);
+      if (hasFinalizer) finallyDepth += 1;
+      const alternatives: Set<string>[] = [];
+      const tryBlock = current['block'];
+      restoreMutableValues(base);
+      tryPrefixTargets.push([]);
+      if (isRecord(tryBlock)) walkTopLevel(tryBlock, currentShadowed);
+      const tryPrefixes = tryPrefixTargets.pop() ?? [];
+      alternatives.push(snapshotMutableValues());
+      const handler = current['handler'];
+      if (isRecord(handler)) {
+        restoreMutableValues([...base, ...tryPrefixes.flatMap((state) => [...state])]);
+        const catchShadowed =
+          currentShadowed || bindingPatternIncludesName(handler['param'], bindingName);
+        undefinedShadowFrames.push(bindingPatternIncludesName(handler['param'], 'undefined'));
+        walkTopLevel(handler, catchShadowed);
+        undefinedShadowFrames.pop();
+        alternatives.push(snapshotMutableValues());
+      }
+      restoreMutableValues(alternatives.flatMap((state) => [...state]));
+      const finalizer = current['finalizer'];
+      if (isRecord(finalizer)) {
+        walkTopLevel(finalizer, currentShadowed);
+        if (returnFrame) {
+          const captured = returnFrame.slice(returnStart);
+          for (const [index, capturedState] of captured.entries()) {
+            restoreMutableValues(capturedState);
+            walkTopLevel(finalizer, currentShadowed);
+            const finalizedState = snapshotMutableValues();
+            captured[index] = finalizedState;
+            recordControls(finalizedState);
+          }
+          returnFrame.splice(returnStart, captured.length, ...captured);
+        }
+        finallyDepth -= 1;
+      }
+      return;
+    }
+    if (type === 'ForStatement') {
+      const initializer = current['init'];
+      const loopShadowed =
+        currentShadowed ||
+        (isRecord(initializer) &&
+          initializer['type'] === 'VariableDeclaration' &&
+          (initializer['kind'] === 'let' || initializer['kind'] === 'const') &&
+          Array.isArray(initializer['declarations']) &&
+          initializer['declarations'].some(
+            (declaration) =>
+              isRecord(declaration) && bindingPatternIncludesName(declaration['id'], bindingName),
+          ));
+      const loopUndefinedShadowed =
+        isRecord(initializer) &&
+        initializer['type'] === 'VariableDeclaration' &&
+        (initializer['kind'] === 'let' || initializer['kind'] === 'const') &&
+        Array.isArray(initializer['declarations']) &&
+        initializer['declarations'].some(
+          (declaration) =>
+            isRecord(declaration) && bindingPatternIncludesName(declaration['id'], 'undefined'),
+        );
+      undefinedShadowFrames.push(loopUndefinedShadowed);
+      if (isRecord(initializer)) walkTopLevel(initializer, loopShadowed);
+      if (isRecord(current['test'])) walkTopLevel(current['test'], loopShadowed);
+      const base = snapshotMutableValues();
+      if (literalTruthiness(current['test']) === false) {
+        restoreMutableValues(base);
+        undefinedShadowFrames.pop();
+        return;
+      }
+      const interruptedStates: Set<string>[] = [];
+      const continuedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
+      continueTargets.push({ label: controlLabel, states: continuedStates });
+      if (isRecord(current['body'])) walkTopLevel(current['body'], loopShadowed);
+      continueTargets.pop();
+      breakTargets.pop();
+      const fallthroughState = snapshotMutableValues();
+      if (isRecord(current['update'])) {
+        const updateStates: Set<string>[] = [];
+        const paths = unconditionallyAbruptStatement(current['body'])
+          ? continuedStates
+          : [...continuedStates, fallthroughState];
+        for (const path of paths) {
+          restoreMutableValues(path);
+          walkTopLevel(current['update'], loopShadowed);
+          updateStates.push(snapshotMutableValues());
+        }
+        restoreMutableValues([
+          ...interruptedStates.flatMap((state) => [...state]),
+          ...updateStates.flatMap((state) => [...state]),
+        ]);
+      } else {
+        restoreMutableValues([
+          ...interruptedStates.flatMap((state) => [...state]),
+          ...continuedStates.flatMap((state) => [...state]),
+          ...mutableValues,
+        ]);
+      }
+      if (current['test'] !== null && !isStaticallyTrueExpression(current['test']))
+        restoreMutableValues([...base, ...mutableValues]);
+      undefinedShadowFrames.pop();
+      return;
+    }
+    if (type === 'ForInStatement' || type === 'ForOfStatement') {
+      if (isRecord(current['right'])) walkTopLevel(current['right'], currentShadowed);
+      const base = snapshotMutableValues();
+      if (
+        isRecord(current['right']) &&
+        current['right']['type'] === 'ArrayExpression' &&
+        Array.isArray(current['right']['elements']) &&
+        current['right']['elements'].length === 0
+      ) {
+        restoreMutableValues(base);
+        return;
+      }
+      const left = current['left'];
+      const loopUndefinedShadowed =
+        isRecord(left) &&
+        left['type'] === 'VariableDeclaration' &&
+        (left['kind'] === 'let' || left['kind'] === 'const') &&
+        Array.isArray(left['declarations']) &&
+        left['declarations'].some(
+          (declaration) =>
+            isRecord(declaration) && bindingPatternIncludesName(declaration['id'], 'undefined'),
+        );
+      const loopShadowed =
+        currentShadowed ||
+        (isRecord(left) &&
+          left['type'] === 'VariableDeclaration' &&
+          (left['kind'] === 'let' || left['kind'] === 'const') &&
+          Array.isArray(left['declarations']) &&
+          left['declarations'].some(
+            (declaration) =>
+              isRecord(declaration) && bindingPatternIncludesName(declaration['id'], bindingName),
+          ));
+      undefinedShadowFrames.push(loopUndefinedShadowed);
+      if (isRecord(left)) walkTopLevel(left, loopShadowed);
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
+      const continuedStates: Set<string>[] = [];
+      continueTargets.push({ label: controlLabel, states: continuedStates });
+      if (isRecord(current['body'])) walkTopLevel(current['body'], loopShadowed);
+      continueTargets.pop();
+      breakTargets.pop();
+      restoreMutableValues([
+        ...base,
+        ...interruptedStates.flatMap((state) => [...state]),
+        ...continuedStates.flatMap((state) => [...state]),
+        ...mutableValues,
+      ]);
+      undefinedShadowFrames.pop();
+      return;
+    }
+    if (type === 'WhileStatement') {
+      if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+      const base = snapshotMutableValues();
+      if (literalTruthiness(current['test']) === false) {
+        restoreMutableValues(base);
+        return;
+      }
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
+      const continuedStates: Set<string>[] = [];
+      continueTargets.push({ label: controlLabel, states: continuedStates });
+      if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      continueTargets.pop();
+      breakTargets.pop();
+      restoreMutableValues([
+        ...interruptedStates.flatMap((state) => [...state]),
+        ...continuedStates.flatMap((state) => [...state]),
+        ...mutableValues,
+      ]);
+      if (!isStaticallyTrueExpression(current['test']))
+        restoreMutableValues([...base, ...mutableValues]);
+      return;
+    }
+    if (type === 'DoWhileStatement') {
+      const testCanExit = literalTruthiness(current['test']) !== true;
+      const interruptedStates: Set<string>[] = [];
+      breakTargets.push({ label: controlLabel, states: interruptedStates });
+      const continuedStates: Set<string>[] = [];
+      continueTargets.push({ label: controlLabel, states: continuedStates });
+      if (isRecord(current['body'])) walkTopLevel(current['body'], currentShadowed);
+      continueTargets.pop();
+      breakTargets.pop();
+      const continuedAfterTest: Set<string>[] = [];
+      if (testCanExit)
+        for (const state of continuedStates) {
+          restoreMutableValues(state);
+          if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+          continuedAfterTest.push(snapshotMutableValues());
+        }
+      const fallthroughAfterTest: Set<string>[] = [];
+      if (testCanExit && !unconditionallyAbruptStatement(current['body'])) {
+        if (isRecord(current['test'])) walkTopLevel(current['test'], currentShadowed);
+        fallthroughAfterTest.push(snapshotMutableValues());
+      }
+      restoreMutableValues([
+        ...interruptedStates.flatMap((state) => [...state]),
+        ...continuedAfterTest.flatMap((state) => [...state]),
+        ...fallthroughAfterTest.flatMap((state) => [...state]),
+      ]);
+      return;
+    }
+    if (
+      type === 'CallExpression' &&
+      isRecord(current['callee']) &&
+      (current['callee']['type'] === 'FunctionExpression' ||
+        current['callee']['type'] === 'ArrowFunctionExpression')
+    ) {
+      if (Array.isArray(current['arguments']))
+        for (const argument of current['arguments']) walkTopLevel(argument, currentShadowed);
+      const callee = current['callee'];
+      const parameterShadowed = shadowsBindingInsideParameters(callee, currentShadowed);
+      const bodyShadowed = shadowsBindingInsideFunction(callee, currentShadowed);
+      if (Array.isArray(callee['params'])) {
+        const argumentsList = Array.isArray(current['arguments']) ? current['arguments'] : [];
+        for (let index = 0; index < callee['params'].length; index += 1) {
+          const parameter = callee['params'][index];
+          if (!isRecord(parameter)) continue;
+          const argument = argumentsList[index];
+          if (parameter['type'] === 'AssignmentPattern') {
+            if (
+              argument !== undefined &&
+              isDefinitelyNonUndefinedExpression(argument) &&
+              !isDefinitelyUndefinedExpression(argument)
+            )
+              continue;
+            if (
+              argument === undefined ||
+              isDefinitelyUnshadowedUndefined(argument, undefinedIsShadowed())
+            )
+              walkTopLevel(parameter['right'], parameterShadowed);
+            else {
+              const base = snapshotMutableValues();
+              walkTopLevel(parameter['right'], parameterShadowed);
+              restoreMutableValues([...base, ...mutableValues]);
+            }
+          } else walkTopLevel(parameter, parameterShadowed);
+        }
+      }
+      if (isRecord(callee['body'])) {
+        const previousSuppression = suppressPublication;
+        returnTargets.push([]);
+        suppressPublication = true;
+        undefinedShadowFrames.push(shadowsUndefinedInsideFunction(callee));
+        walkTopLevel(callee['body'], bodyShadowed);
+        undefinedShadowFrames.pop();
+        suppressPublication = previousSuppression;
+        const returned = returnTargets.pop() ?? [];
+        restoreMutableValues([...mutableValues, ...returned.flatMap((state) => [...state])]);
+      }
+      return;
+    }
+    if (type === 'ReturnStatement' || type === 'ThrowStatement') {
+      if (isRecord(current['argument'])) walkTopLevel(current['argument'], currentShadowed);
+      returnTargets.at(-1)?.push(snapshotMutableValues());
+      if (!suppressPublication && finallyDepth === 0) recordControls(mutableValues);
+      return;
+    }
+    if (type === 'AwaitExpression') {
+      if (isRecord(current['argument'])) walkTopLevel(current['argument'], currentShadowed);
+      recordControls(mutableValues);
+      return;
+    }
+    if (type === 'BlockStatement' && Array.isArray(current['body'])) {
+      localAliasFrames.push(new Map());
+      for (const statement of current['body']) {
+        walkTopLevel(statement, currentShadowed);
+        if (
+          isRecord(statement) &&
+          (statement['type'] === 'ReturnStatement' ||
+            statement['type'] === 'ThrowStatement' ||
+            statement['type'] === 'BreakStatement' ||
+            statement['type'] === 'ContinueStatement')
+        )
+          break;
+      }
+      localAliasFrames.pop();
+      undefinedShadowFrames.pop();
+      return;
+    }
+    if (
+      type === 'FunctionDeclaration' ||
+      type === 'FunctionExpression' ||
+      type === 'ArrowFunctionExpression'
+    ) {
+      const base = snapshotMutableValues();
+      const previousBindings = new Map(bindings);
+      localAliasFrames.push(new Map());
+      returnTargets.push([]);
+      explicitWrites.push(false);
+      const parameterShadowed = shadowsBindingInsideParameters(current, currentShadowed);
+      const bodyShadowed = shadowsBindingInsideFunction(current, currentShadowed);
+      undefinedShadowFrames.push(
+        Array.isArray(current['params']) &&
+          current['params'].some((parameter) => bindingPatternIncludesName(parameter, 'undefined')),
+      );
+      if (Array.isArray(current['params']))
+        for (const parameter of current['params']) {
+          if (isRecord(parameter) && parameter['type'] === 'AssignmentPattern')
+            walkTopLevel(parameter['right'], parameterShadowed);
+          else walkTopLevel(parameter, parameterShadowed);
+        }
+      undefinedShadowFrames.pop();
+      undefinedShadowFrames.push(shadowsUndefinedInsideFunction(current));
+      if (isRecord(current['body'])) walkTopLevel(current['body'], bodyShadowed);
+      const terminalValues = snapshotMutableValues();
+      const returnedValues = returnTargets.at(-1) ?? [];
+      returnTargets.pop();
+      const hadExplicitWrite = explicitWrites.pop() ?? false;
+      restoreMutableValues([...terminalValues, ...returnedValues.flatMap((state) => [...state])]);
+      const reachableValues = snapshotMutableValues();
+      const changed =
+        reachableValues.size !== base.size ||
+        [...reachableValues].some((value) => !base.has(value));
+      if (!suppressPublication && (changed || (hadExplicitWrite && returnedValues.length === 0)))
+        recordControls(reachableValues);
+      restoreMutableValues([...base, ...reachableValues]);
+      localAliasFrames.pop();
+      undefinedShadowFrames.pop();
+      bindings.clear();
+      for (const [name, value] of previousBindings) bindings.set(name, value);
+      return;
+    }
+    const node = current;
+    if (
+      !currentShadowed &&
+      node['type'] === 'VariableDeclarator' &&
+      isRecord(node['id']) &&
+      node['id']['type'] === 'Identifier' &&
+      node['id']['name'] === bindingName
+    ) {
+      if (node['init'] !== null && node['init'] !== undefined) {
+        mutableValues.clear();
+        for (const value of possibleStaticStringsFromExpression(node['init'], bindings))
+          mutableValues.add(value);
+        captureTryPrefix();
+      }
+    }
+    if (
+      !currentShadowed &&
+      node['type'] === 'VariableDeclarator' &&
+      isRecord(node['id']) &&
+      node['id']['type'] === 'Identifier' &&
+      typeof node['id']['name'] === 'string' &&
+      localAliasFrames.length > 0
+    ) {
+      const resolved = possibleVisibleStrings(node['init']);
+      if (resolved.size > 0) localAliasFrames.at(-1)?.set(node['id']['name'], resolved);
+    }
+    if (
+      !currentShadowed &&
+      node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '+=' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      node['left']['name'] === bindingName
+    ) {
+      const rightValues = possibleVisibleStrings(node['right']);
+      const combined = new Set<string>();
+      for (const previous of mutableValues)
+        for (const right of rightValues) combined.add(previous + right);
+      restoreMutableValues(combined);
+      captureTryPrefix();
+      if (explicitWrites.length > 0) explicitWrites[explicitWrites.length - 1] = true;
+    }
+    if (
+      !currentShadowed &&
+      node['type'] === 'AssignmentExpression' &&
+      node['operator'] === '=' &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      node['left']['name'] === bindingName
+    ) {
+      const values = possibleVisibleStrings(node['right']);
+      restoreMutableValues(values);
+      captureTryPrefix();
+      if (explicitWrites.length > 0) explicitWrites[explicitWrites.length - 1] = true;
+    }
+    if (
+      !currentShadowed &&
+      node['type'] === 'AssignmentExpression' &&
+      (node['operator'] === '||=' || node['operator'] === '&&=' || node['operator'] === '??=') &&
+      isRecord(node['left']) &&
+      node['left']['type'] === 'Identifier' &&
+      node['left']['name'] === bindingName
+    ) {
+      const rightValues = possibleVisibleStrings(node['right']);
+      const previousValues = [...mutableValues];
+      const result = new Set<string>();
+      for (const previous of previousValues) {
+        const truthy = Boolean(previous);
+        if (node['operator'] === '??=') result.add(previous);
+        else if (node['operator'] === '||=' ? !truthy : truthy) {
+          for (const right of rightValues) result.add(right);
+        } else result.add(previous);
+      }
+      if (previousValues.length === 0) for (const right of rightValues) result.add(right);
+      restoreMutableValues(result);
+      captureTryPrefix();
+      if (explicitWrites.length > 0) explicitWrites[explicitWrites.length - 1] = true;
     }
     for (const child of Object.values(current)) {
       if (Array.isArray(child)) child.forEach((item) => walkTopLevel(item, currentShadowed));
@@ -295,6 +1077,7 @@ function possibleMutableControlNames(source: string, expression: unknown): Set<s
       if (node['type'] === 'ExpressionTag' && isRecord(node['expression']))
         walkTopLevel(node['expression']);
     });
+  recordControls(mutableValues);
   return possibleControls;
 }
 
@@ -308,7 +1091,7 @@ function staticAttributeValue(attribute: UnknownRecord): string | undefined {
 
 function attributeValueWithDynamics(
   attribute: UnknownRecord,
-  bindings: ReadonlyMap<string, string> = new Map(),
+  bindings: ReadonlyMap<string, StaticBinding> = new Map(),
 ): string | undefined {
   const value = attribute['value'];
   if (value === true) return undefined;
@@ -344,13 +1127,41 @@ function staticPropertyName(property: UnknownRecord): string | undefined {
 function hasStaticHiddenAttribute(
   element: UnknownRecord,
   elementNames: ReadonlySet<string>,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): boolean {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return false;
   const soloInput = elementNames.size === 1 && elementNames.has('input');
   let hiddenState: boolean | undefined;
   let typeIsHidden: boolean | undefined;
+  const applyObjectProperties = (properties: unknown[]): void => {
+    for (const property of properties) {
+      if (!isRecord(property)) continue;
+      if (property['type'] === 'SpreadElement') {
+        const nested = property['argument'];
+        if (
+          isRecord(nested) &&
+          nested['type'] === 'ObjectExpression' &&
+          Array.isArray(nested['properties'])
+        )
+          applyObjectProperties(nested['properties']);
+        else {
+          hiddenState = undefined;
+          typeIsHidden = undefined;
+        }
+        continue;
+      }
+      const name = staticPropertyName(property);
+      if (name === 'hidden')
+        hiddenState =
+          isRecord(property['value']) &&
+          property['value']['type'] === 'Literal' &&
+          Boolean(property['value']['value']);
+      else if (soloInput && name === 'type')
+        typeIsHidden =
+          staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
+    }
+  };
 
   for (const attribute of attributes) {
     if (!isRecord(attribute)) continue;
@@ -365,18 +1176,7 @@ function hasStaticHiddenAttribute(
         typeIsHidden = undefined;
         continue;
       }
-      for (const property of expression['properties']) {
-        if (!isRecord(property)) continue;
-        const name = staticPropertyName(property);
-        if (name === 'hidden')
-          hiddenState =
-            isRecord(property['value']) &&
-            property['value']['type'] === 'Literal' &&
-            property['value']['value'] === true;
-        else if (soloInput && name === 'type')
-          typeIsHidden =
-            staticStringFromExpression(property['value'], bindings)?.toLowerCase() === 'hidden';
-      }
+      applyObjectProperties(expression['properties']);
       continue;
     }
     if (attribute['type'] !== 'Attribute') continue;
@@ -399,7 +1199,7 @@ function hasStaticHiddenAttribute(
       }
       if (expression['type'] === 'Identifier' && typeof expression['name'] === 'string') {
         const bound = bindings.get(expression['name']);
-        if (bound === 'true' || bound === 'false') hiddenState = bound === 'true';
+        if (bound?.kind === 'boolean') hiddenState = bound.value;
       }
       continue;
     }
@@ -422,8 +1222,13 @@ export function visibleControlSignatures(source: string): string[] {
   const signatures: string[] = [];
   walkAst(fragment, (node) => {
     if (node['type'] === 'HtmlTag' && isRecord(node['expression'])) {
-      const html = staticStringFromExpression(node['expression'], bindings);
-      if (html !== undefined) signatures.push(...visibleControlSignatures(html));
+      const candidates = new Set<string>();
+      for (const html of possibleStaticStringsFromExpression(node['expression'], bindings))
+        candidates.add(html);
+      possibleMutableControlNames(source, node['expression'], (values) => {
+        for (const value of values) candidates.add(value);
+      });
+      for (const candidate of candidates) signatures.push(...visibleControlSignatures(candidate));
       return;
     }
     const elementNames = new Set<string>();
@@ -462,7 +1267,7 @@ export function visibleControlSignatures(source: string): string[] {
 
 function elementClassSet(
   element: UnknownRecord,
-  bindings: ReadonlyMap<string, string>,
+  bindings: ReadonlyMap<string, StaticBinding>,
 ): Set<string> {
   const attributes = element['attributes'];
   if (!Array.isArray(attributes)) return new Set();
@@ -477,7 +1282,8 @@ function elementClassSet(
         attribute['expression']['value'] === true) ||
         (attribute['expression']['type'] === 'Identifier' &&
           typeof attribute['expression']['name'] === 'string' &&
-          bindings.get(attribute['expression']['name']) === 'true'))
+          bindings.get(attribute['expression']['name'])?.kind === 'boolean' &&
+          bindings.get(attribute['expression']['name'])?.value === true))
     )
       classes.add(attribute['name']);
     if (attribute['type'] !== 'Attribute' || attribute['name'] !== 'class') continue;

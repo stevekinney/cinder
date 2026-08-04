@@ -22,9 +22,9 @@
   import X from 'lucide-svelte/icons/x';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import type { SearchFieldProps } from './search-field.types.ts';
-  import { ariaInvalid, composeDescribedBy } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import Input from '@lostgradient/cinder/input';
 
   let {
     id,
@@ -33,7 +33,6 @@
     shortcut,
     disabled,
     readonly,
-    name,
     class: customClassName,
     oninput,
     onsearch,
@@ -43,7 +42,8 @@
   }: SearchFieldProps = $props();
 
   const context = getFormFieldContext();
-  const resolvedId = $derived(id ?? context?.controlId);
+  const generatedId = $props.id();
+  const resolvedId = $derived(id ?? context?.controlId ?? generatedId);
 
   let inputElement = $state<HTMLInputElement | null>(null);
   const resetTarget = untrack(() => value);
@@ -51,13 +51,8 @@
   const currentValue = $derived(value);
   const hasValue = $derived(currentValue.length > 0);
 
-  const describedBy = $derived(
-    composeDescribedBy(context?.descriptionId, context?.errorId, rest['aria-describedby']),
-  );
   const consumerAriaInvalid = $derived(rest['aria-invalid']);
-  const resolvedAriaInvalid = $derived(
-    context?.invalid ?? consumerAriaInvalid ?? ariaInvalid(false),
-  );
+  const resolvedAriaInvalid = $derived(context?.invalid ?? consumerAriaInvalid ?? undefined);
   const isInvalid = $derived(resolvedAriaInvalid === 'true' || resolvedAriaInvalid === true);
   const resolvedRequired = $derived(rest.required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
@@ -73,19 +68,31 @@
 
   function handleInput(event: Event) {
     const target = event.currentTarget as HTMLInputElement;
-    const next = target.value;
-    value = next;
-    oninput?.(next);
+    oninput?.(target.value);
   }
 
   function handleKeyDown(event: KeyboardEvent) {
     consumerKeyDown?.(event as KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement });
   }
 
-  const searchEventListener: Attachment<HTMLInputElement> = (element) => {
+  const inputAttachment: Attachment<HTMLInputElement> = (element) => {
+    inputElement = element;
     const handler = () => onsearch?.(element.value);
+    const resetHandler = (event: Event) => {
+      queueMicrotask(() => {
+        if (event.defaultPrevented) return;
+        value = resetTarget;
+        element.value = resetTarget;
+      });
+    };
+    const form = element.form;
     element.addEventListener('search', handler);
-    return () => element.removeEventListener('search', handler);
+    form?.addEventListener('reset', resetHandler);
+    return () => {
+      element.removeEventListener('search', handler);
+      form?.removeEventListener('reset', resetHandler);
+      if (inputElement === element) inputElement = null;
+    };
   };
 
   function handleClear() {
@@ -98,52 +105,15 @@
     oninput?.('');
     onClear?.();
   }
-
-  $effect(() => {
-    const form = inputElement?.form;
-    if (!form) return;
-
-    const handleReset = (event: Event) => {
-      queueMicrotask(() => {
-        if (event.defaultPrevented) return;
-        value = resetTarget;
-        if (inputElement) inputElement.value = resetTarget;
-      });
-    };
-
-    form.addEventListener('reset', handleReset);
-    return () => form.removeEventListener('reset', handleReset);
-  });
 </script>
 
-<div
-  class={classNames('cinder-search-field', customClassName)}
-  data-disabled={resolvedDisabled ? '' : undefined}
-  data-invalid={isInvalid ? '' : undefined}
->
+{#snippet leadingIcon()}
   <span class="cinder-search-field__leading" aria-hidden="true">
     <Search class="cinder-search-field__icon" aria-hidden="true" />
   </span>
+{/snippet}
 
-  <input
-    bind:this={inputElement}
-    {...rest}
-    id={resolvedId}
-    {name}
-    type="search"
-    class="cinder-search-field__input"
-    value={currentValue}
-    {placeholder}
-    {readonly}
-    disabled={resolvedDisabled}
-    required={resolvedRequired}
-    aria-invalid={resolvedAriaInvalid}
-    aria-describedby={describedBy}
-    oninput={handleInput}
-    onkeydown={handleKeyDown}
-    {@attach searchEventListener}
-  />
-
+{#snippet trailingContent()}
   <button
     type="button"
     class="cinder-search-field__clear"
@@ -159,4 +129,29 @@
   {#if shortcut}
     <kbd class="cinder-search-field__shortcut" aria-hidden="true">{shortcut}</kbd>
   {/if}
+{/snippet}
+
+<div
+  class={classNames('cinder-search-field', customClassName)}
+  data-disabled={resolvedDisabled ? '' : undefined}
+  data-invalid={isInvalid ? '' : undefined}
+>
+  <Input
+    {...rest}
+    id={resolvedId}
+    bind:value
+    {placeholder}
+    {readonly}
+    type="search"
+    class="cinder-search-field__input"
+    disabled={resolvedDisabled}
+    required={resolvedRequired}
+    aria-invalid={resolvedAriaInvalid}
+    oninput={handleInput}
+    onkeydown={handleKeyDown}
+    {inputAttachment}
+    leading={leadingIcon}
+    trailing={trailingContent}
+    trailingInteractive
+  />
 </div>

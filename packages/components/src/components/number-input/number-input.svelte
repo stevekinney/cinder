@@ -16,12 +16,12 @@
 </script>
 
 <script lang="ts">
+  import Input from '@lostgradient/cinder/input';
   import Minus from 'lucide-svelte/icons/minus';
   import Plus from 'lucide-svelte/icons/plus';
   import type { NumberInputProps } from './number-input.types.ts';
   import { untrack } from 'svelte';
 
-  import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -42,6 +42,7 @@
     label,
     description,
     error,
+    inputAttachment,
     class: className,
     onchange,
     onblur: consumerBlur,
@@ -51,6 +52,7 @@
 
   const context = getFormFieldContext();
   const localeContext = getLocaleContext();
+  const inputRest = $derived(rest as Record<string, unknown>);
 
   let editorBuffer = $state('');
   let isFocused = $state(false);
@@ -492,25 +494,9 @@
   // sets aria-invalid without fabricating an error-element id that points at
   // nothing. The internal message is wired into describedBy via its own id.
   const internalInvalid = $derived(malformedError || requiredEmptyError ? 'true' : undefined);
-  const field = $derived(
-    resolveFieldControl({
-      id,
-      generatedId: id,
-      context,
-      hasDescription: !!description,
-      hasError: !!error,
-      localIdNamespace: 'number-input',
-      consumerDescribedBy,
-      consumerInvalid: internalInvalid ?? (rest['aria-invalid'] as 'true' | 'false' | undefined),
-      additionalDescribedBy: [internalErrorId],
-      required,
-      disabled,
-    }),
+  const resolvedAriaInvalid = $derived(
+    internalInvalid ?? (inputRest['aria-invalid'] as 'true' | 'false' | undefined),
   );
-  const ownDescriptionId = $derived(field.ownDescriptionId);
-  const ownErrorId = $derived(field.ownErrorId);
-  const describedBy = $derived(field.describedBy);
-  const resolvedAriaInvalid = $derived(field.ariaInvalid);
 
   const incrementDisabled = $derived(
     resolvedDisabled || (value !== null && value !== undefined && value >= resolvedMax),
@@ -529,61 +515,68 @@
   const stepperLabelSuffix = $derived(
     label ? ` ${label} by ${incrementStep}` : ` by ${incrementStep}`,
   );
+
+  function attachInput(node: HTMLInputElement): void | (() => void) {
+    inputElement = node;
+    const cleanup = inputAttachment?.(node);
+    return () => {
+      cleanup?.();
+      if (inputElement === node) inputElement = undefined;
+    };
+  }
 </script>
 
-<div class={classNames('cinder-input-field', className)}>
-  {#if label}
-    <label for={id} class="cinder-input-field__label" data-disabled={resolvedDisabled || undefined}>
-      {label}
-      {#if resolvedRequired}
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
+{#snippet steppers()}
+  <button
+    type="button"
+    class="cinder-number-input__stepper cinder-number-input__stepper--increment"
+    aria-label={`Increment${stepperLabelSuffix}`}
+    disabled={incrementDisabled}
+    tabindex="-1"
+    onclick={() => stepBy('increment')}
+  >
+    <Plus class="cinder-icon-sm" aria-hidden="true" />
+  </button>
+  <button
+    type="button"
+    class="cinder-number-input__stepper cinder-number-input__stepper--decrement"
+    aria-label={`Decrement${stepperLabelSuffix}`}
+    disabled={decrementDisabled}
+    tabindex="-1"
+    onclick={() => stepBy('decrement')}
+  >
+    <Minus class="cinder-icon-sm" aria-hidden="true" />
+  </button>
+{/snippet}
 
-  <div class="cinder-number-input" data-disabled={resolvedDisabled ? '' : undefined}>
-    <input
-      bind:this={inputElement}
-      {id}
-      type="text"
-      role="spinbutton"
-      inputmode="decimal"
-      value={displayValue}
-      disabled={resolvedDisabled}
-      required={resolvedRequired}
-      class="cinder-input cinder-number-input__input"
-      {...rest}
-      aria-invalid={resolvedAriaInvalid}
-      aria-describedby={describedBy}
-      aria-valuenow={resolvedAriaValueNow}
-      aria-valuemin={resolvedAriaValueMin}
-      aria-valuemax={resolvedAriaValueMax}
-      oninput={onInput}
-      onfocus={onFocus}
-      onblur={onBlur}
-      onkeydown={onKeyDown}
-    />
-    <button
-      type="button"
-      class="cinder-number-input__stepper cinder-number-input__stepper--increment"
-      aria-label={`Increment${stepperLabelSuffix}`}
-      disabled={incrementDisabled}
-      tabindex="-1"
-      onclick={() => stepBy('increment')}
-    >
-      <Plus class="cinder-icon-sm" aria-hidden="true" />
-    </button>
-    <button
-      type="button"
-      class="cinder-number-input__stepper cinder-number-input__stepper--decrement"
-      aria-label={`Decrement${stepperLabelSuffix}`}
-      disabled={decrementDisabled}
-      tabindex="-1"
-      onclick={() => stepBy('decrement')}
-    >
-      <Minus class="cinder-icon-sm" aria-hidden="true" />
-    </button>
-  </div>
+<div class={classNames('cinder-input-field', className)} data-cinder-full-width>
+  <Input
+    {id}
+    value={displayValue}
+    {...label === undefined ? {} : { label }}
+    {...description === undefined ? {} : { description }}
+    {...error === undefined ? {} : { error }}
+    disabled={resolvedDisabled}
+    required={resolvedRequired}
+    class="cinder-number-input__input"
+    groupClassName="cinder-number-input"
+    {...inputRest}
+    type="text"
+    role="spinbutton"
+    inputmode="decimal"
+    inputAttachment={attachInput}
+    trailing={steppers}
+    trailingInteractive
+    aria-invalid={resolvedAriaInvalid}
+    aria-describedby={[consumerDescribedBy, internalErrorId].filter(Boolean).join(' ') || undefined}
+    aria-valuenow={resolvedAriaValueNow}
+    aria-valuemin={resolvedAriaValueMin}
+    aria-valuemax={resolvedAriaValueMax}
+    oninput={onInput}
+    onfocus={onFocus}
+    onblur={onBlur}
+    onkeydown={onKeyDown}
+  />
 
   {#if showHiddenInput}
     <input
@@ -593,13 +586,7 @@
     />
   {/if}
 
-  {#if description}
-    <p id={ownDescriptionId} class="cinder-input-field__description">{description}</p>
-  {/if}
-
-  {#if error}
-    <p id={ownErrorId} class="cinder-input-field__error" aria-live="polite">{error}</p>
-  {:else if internalErrorMessage}
+  {#if internalErrorMessage}
     <p id={internalErrorId} class="cinder-input-field__error" aria-live="polite">
       {internalErrorMessage}
     </p>

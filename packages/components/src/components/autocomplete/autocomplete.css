@@ -1,56 +1,9 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
 @layer cinder.components {
   .cinder-autocomplete {
     display: grid;
     gap: var(--cinder-space-2);
-  }
-
-  .cinder-autocomplete__label {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--cinder-space-1);
-    color: var(--cinder-text);
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-  }
-
-  .cinder-autocomplete__input {
-    width: 100%;
-    min-height: 2.5rem;
-    padding: 0.625rem 0.75rem;
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-md);
-    background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
-    font: inherit;
-  }
-
-  .cinder-autocomplete__input:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
-  }
-
-  @media (forced-colors: active) {
-    .cinder-autocomplete__input:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: 3px;
-      box-shadow: none;
-    }
-  }
-
-  .cinder-autocomplete__description,
-  .cinder-autocomplete__error {
-    margin: 0;
-    font-size: var(--cinder-text-sm);
-    line-height: var(--cinder-leading-normal);
-  }
-
-  .cinder-autocomplete__description {
-    color: var(--cinder-text-muted);
-  }
-
-  .cinder-autocomplete__error {
-    color: var(--cinder-danger);
   }
 
   .cinder-autocomplete__panel {
@@ -72,7 +25,7 @@
   /*
    * The active/keyboard-highlighted row treatment is owned by the shared
    * `.cinder-_option-row[data-cinder-active]` rules in
-   * `styles/components/_floating-surface.css`: a `--cinder-surface-hover`
+   * `styles/components/_row-item.css`: a `--cinder-surface-raised-hover`
    * background plus an inset `--cinder-ring-color` ring (and a forced-colors
    * `outline: Highlight` fallback). A component-local override here previously
    * pinned the background to `--cinder-surface-raised` — identical to the

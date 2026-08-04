@@ -1,13 +1,70 @@
 import type { TextDirection } from './locale-context.ts';
+import { matchesDirectionStyleRuleCached } from './text-direction-css.ts';
+export { isContainerRule, observeTextDirectionMediaQueries } from './text-direction-css.ts';
+
+// Returns the direction implied by an inline style or CSS rule targeting
+// this exact element — ignoring the element's own `dir` attribute and any
+// ancestor entirely (no inheritance walk). For a component that renders its
+// own resolved direction as a generated `dir` attribute but takes an
+// explicit `direction` prop, this is the right check for "did the consumer
+// deliberately override it with CSS on this element" — unlike
+// `resolveTextDirection(el, fallback, { ignoreElementDirectionAttribute: true })`,
+// which also walks ancestors and would let an ancestor's `dir` attribute
+// incorrectly outrank the explicit prop.
+export function elementDirectionStyleOverride(
+  element: HTMLElement | null | undefined,
+): TextDirection | undefined {
+  if (!element) return undefined;
+  if (element.style.direction) return readComputedTextDirection(element);
+  if (!matchesDirectionStyleRuleCached(element, undefined, composedParentElement)) return undefined;
+  return readComputedTextDirection(element);
+}
 
 export function resolveTextDirection(
   element: HTMLElement | null | undefined,
   fallback?: TextDirection,
+  options?: { ignoreElementDirectionAttribute?: boolean },
 ): TextDirection | undefined {
-  let currentElement: HTMLElement | null = element ?? null;
+  const ignoreElementDirectionAttribute = options?.ignoreElementDirectionAttribute ?? false;
+  const directionStyleRuleCache = new WeakMap<HTMLElement, boolean>();
+  if (ignoreElementDirectionAttribute && element) {
+    const styledDirection = readComputedTextDirection(element);
+    const rootComputedDirection = readComputedTextDirection(element.ownerDocument.documentElement);
+    // A computed direction that differs from the root is only trustworthy here when
+    // something other than the element's own `dir` attribute could be causing it — in
+    // browsers where getComputedStyle() reflects `dir` (which this option exists to
+    // ignore), a bare divergence-from-root check would let that attribute leak back in.
+    const elementDirectionAttribute = element.getAttribute('dir')?.toLowerCase();
+    const differsFromRootViaStyling =
+      styledDirection !== rootComputedDirection && styledDirection !== elementDirectionAttribute;
+    if (
+      styledDirection &&
+      (hasElementDirectionStylingHint(element, directionStyleRuleCache) ||
+        differsFromRootViaStyling)
+    )
+      return styledDirection;
+  }
+
+  let currentElement: HTMLElement | null = ignoreElementDirectionAttribute
+    ? element
+      ? composedParentElement(element)
+      : null
+    : (element ?? null);
   let documentDirection: TextDirection | undefined;
   let styledDirectionElement: HTMLElement | null = null;
   while (currentElement) {
+    if (
+      !styledDirectionElement &&
+      currentElement !== currentElement.ownerDocument.documentElement &&
+      (Boolean(currentElement.style.direction) ||
+        matchesDirectionStyleRuleCached(
+          currentElement,
+          directionStyleRuleCache,
+          composedParentElement,
+        ))
+    ) {
+      styledDirectionElement = currentElement;
+    }
     const direction = currentElement.getAttribute('dir')?.toLowerCase();
     if (direction === 'rtl' || direction === 'ltr') {
       if (typeof getComputedStyle === 'function' && styledDirectionElement) {
@@ -28,7 +85,7 @@ export function resolveTextDirection(
     if (!styledDirectionElement && (styledDirection === 'rtl' || styledDirection === 'ltr')) {
       styledDirectionElement = currentElement;
     }
-    currentElement = currentElement.parentElement;
+    currentElement = composedParentElement(currentElement);
   }
 
   if (typeof getComputedStyle === 'function' && styledDirectionElement) {
@@ -38,12 +95,17 @@ export function resolveTextDirection(
 
   const computedDirection = readComputedTextDirection(element);
   const rootComputedDirection = readComputedTextDirection(element?.ownerDocument.documentElement);
-  if (computedDirection && computedDirection !== rootComputedDirection) return computedDirection;
+  if (
+    !ignoreElementDirectionAttribute &&
+    computedDirection &&
+    computedDirection !== rootComputedDirection
+  )
+    return computedDirection;
   if (
     computedDirection &&
     fallback &&
     computedDirection !== fallback &&
-    hasDirectionStylingHint(element)
+    hasDirectionStylingHint(element, false, directionStyleRuleCache)
   ) {
     return computedDirection;
   }
@@ -55,6 +117,16 @@ export function resolveTextDirection(
   return undefined;
 }
 
+function hasElementDirectionStylingHint(
+  element: HTMLElement,
+  cache: WeakMap<HTMLElement, boolean>,
+): boolean {
+  return (
+    Boolean(element.style.direction) ||
+    matchesDirectionStyleRuleCached(element, cache, composedParentElement)
+  );
+}
+
 function readComputedTextDirection(
   element: HTMLElement | null | undefined,
 ): TextDirection | undefined {
@@ -63,111 +135,29 @@ function readComputedTextDirection(
   return direction === 'rtl' || direction === 'ltr' ? direction : undefined;
 }
 
-function hasDirectionStylingHint(element: HTMLElement | null | undefined): boolean {
-  let currentElement = element?.parentElement;
+function hasDirectionStylingHint(
+  element: HTMLElement | null | undefined,
+  includeElement = false,
+  cache?: WeakMap<HTMLElement, boolean>,
+): boolean {
+  let currentElement = includeElement ? element : element ? composedParentElement(element) : null;
   while (currentElement && currentElement !== currentElement.ownerDocument.documentElement) {
     if (currentElement.style.direction) return true;
-    if (matchesDirectionStyleRule(currentElement)) return true;
-    currentElement = currentElement.parentElement;
+    if (matchesDirectionStyleRuleCached(currentElement, cache, composedParentElement)) return true;
+    currentElement = composedParentElement(currentElement);
   }
   return false;
 }
 
-function matchesDirectionStyleRule(element: HTMLElement): boolean {
-  for (const sheet of Array.from(element.ownerDocument.styleSheets)) {
-    let rules: CSSRuleList;
-    try {
-      rules = sheet.cssRules;
-    } catch {
-      continue;
-    }
-    if (matchesDirectionStyleRuleList(element, rules)) return true;
-  }
-  return false;
-}
-
-function matchesDirectionStyleRuleList(
-  element: HTMLElement,
-  rules: CSSRuleList | Iterable<CSSRule>,
-): boolean {
-  for (const rule of Array.from(rules)) {
-    if (isCssStyleRule(rule)) {
-      if (!rule.style.direction) {
-        const nestedRules = readNestedCssRules(rule);
-        if (nestedRules && matchesDirectionStyleRuleList(element, nestedRules)) return true;
-        continue;
-      }
-      try {
-        if (element.matches(rule.selectorText)) return true;
-      } catch {
-        continue;
-      }
-    }
-
-    const nestedRules = readNestedCssRules(rule);
-    if (
-      nestedRules &&
-      isConditionalRuleActive(rule) &&
-      matchesDirectionStyleRuleList(element, nestedRules)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function readNestedCssRules(rule: CSSRule): CSSRuleList | Iterable<CSSRule> | undefined {
-  if (!('cssRules' in rule)) return undefined;
-  try {
-    const nestedRules: unknown = Reflect.get(rule, 'cssRules');
-    return isCssRuleCollection(nestedRules) ? nestedRules : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function isCssRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRule> {
-  if (typeof CSSRuleList !== 'undefined' && value instanceof CSSRuleList) return true;
-  return Array.isArray(value) && value.every(isCssRule);
-}
-
-function isCssRule(value: unknown): value is CSSRule {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof Reflect.get(value, 'cssText') === 'string' &&
-    typeof Reflect.get(value, 'type') === 'number'
-  );
-}
-
-function isCssStyleRule(rule: CSSRule): rule is CSSStyleRule {
-  return (
-    typeof Reflect.get(rule, 'selectorText') === 'string' &&
-    typeof Reflect.get(rule, 'style') === 'object' &&
-    Reflect.get(rule, 'style') !== null
-  );
-}
-
-function isConditionalRuleActive(rule: CSSRule): boolean {
-  const conditionText = Reflect.get(rule, 'conditionText');
-  if (typeof conditionText !== 'string' || !conditionText.trim()) return true;
-
-  if (isMediaRule(rule) && typeof matchMedia === 'function') {
-    return matchMedia(conditionText).matches;
-  }
-
-  if (isSupportsRule(rule) && typeof CSS !== 'undefined' && typeof CSS.supports === 'function')
-    return CSS.supports(conditionText);
-
-  return true;
-}
-
-function isMediaRule(rule: CSSRule): boolean {
-  return typeof Reflect.get(rule, 'media') === 'object' && Reflect.get(rule, 'media') !== null;
-}
-
-function isSupportsRule(rule: CSSRule): boolean {
-  return rule.constructor.name === 'CSSSupportsRule' || Reflect.get(rule, 'type') === 12;
+export function composedParentElement(element: HTMLElement): HTMLElement | null {
+  if (element.parentElement) return element.parentElement;
+  const root = element.getRootNode();
+  return typeof ShadowRoot !== 'undefined' &&
+    typeof HTMLElement !== 'undefined' &&
+    root instanceof ShadowRoot &&
+    root.host instanceof HTMLElement
+    ? root.host
+    : null;
 }
 
 export function isRightToLeftElement(element: HTMLElement | null | undefined): boolean {
@@ -183,7 +173,9 @@ export function observeTextDirection(
   const observer = new MutationObserver((mutations) => {
     if (
       mutations.some(
-        (mutation) => mutation.type === 'attributes' && mutation.attributeName === 'dir',
+        (mutation) =>
+          (mutation.type === 'attributes' && mutation.attributeName === 'dir') ||
+          mutation.type === 'childList',
       )
     ) {
       observeDirectionChain();
@@ -196,14 +188,17 @@ export function observeTextDirection(
     let currentElement: HTMLElement | null = observedElement;
     while (currentElement) {
       const isAutoDirection = currentElement.getAttribute('dir')?.toLowerCase() === 'auto';
+      // No `attributeFilter`: a selector can key its `direction` styling off
+      // any ancestor attribute (e.g. `[data-flow='rtl']`), not just `dir`,
+      // `class`, or `style`, so every attribute mutation must be observed to
+      // catch a direction change driven by one of those selectors.
       observer.observe(currentElement, {
         attributes: true,
-        attributeFilter: ['dir', 'style', 'class'],
-        childList: isAutoDirection,
+        childList: true,
         characterData: isAutoDirection,
         subtree: isAutoDirection,
       });
-      currentElement = currentElement.parentElement;
+      currentElement = composedParentElement(currentElement);
     }
   }
 

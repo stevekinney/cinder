@@ -28,8 +28,17 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
+  import {
+    elementDirectionStyleOverride,
+    composedParentElement,
+    observeTextDirectionMediaQueries,
+    observeTextDirection,
+    resolveTextDirection,
+  } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import type { MegaMenuItem, MegaMenuProps } from './mega-menu.types.ts';
+  import type { MegaMenuProps } from './mega-menu.types.ts';
+  import MegaMenuContent from './mega-menu-content.svelte';
 
   let {
     id: providedId,
@@ -38,34 +47,87 @@
     viewportVisible = true,
     indicatorVisible = true,
     label = 'Main navigation',
+    dir: providedDirection,
     class: className,
     ...rest
   }: MegaMenuProps = $props();
 
   let navElement = $state<HTMLElement | null>(null);
+  let directionRevision = $state(0);
+  let directionChainRevision = $state(0);
+  const localeContext = getLocaleContext();
   const generatedId = $props.id();
   let openItemId = $state<string | null>(null);
   let previousOpenIndex = $state<number | null>(null);
-  let openSubmenuId = $state<string | null>(null);
   let indicatorStyle = $state('');
   // Tracks the id of the item that hover-opened; cleared once the click path runs,
   // preventing the immediately-following synthesised click from closing what hover opened.
   let hoverOpenedId = $state<string | null>(null);
+  const directionElement = $derived(
+    providedDirection === 'auto' ? navElement : (navElement?.parentElement ?? navElement),
+  );
+  const resolvedDirection = $derived.by(() => {
+    directionRevision;
+    if (providedDirection === 'rtl' || providedDirection === 'ltr') {
+      // An explicit direction prop takes precedence over ANY ancestor —
+      // resolveTextDirection()'s ignoreElementDirectionAttribute mode still
+      // walks ancestors when this element has no styling hint of its own,
+      // which would let an ancestor's `dir` attribute incorrectly outrank
+      // an explicit prop. Only a genuine CSS override on this exact element
+      // (inline style or a matching rule) should be able to override it.
+      return elementDirectionStyleOverride(navElement) ?? providedDirection;
+    }
+    if (providedDirection === 'auto') {
+      return resolveTextDirection(navElement, localeContext?.direction);
+    }
+    return navElement
+      ? resolveTextDirection(navElement, localeContext?.direction, {
+          // The rendered provider fallback is written as `dir` on the nav.
+          // Ignore that generated attribute so an explicit CSS direction on
+          // the menu itself still controls keyboard traversal.
+          ignoreElementDirectionAttribute: true,
+        })
+      : resolveTextDirection(directionElement, localeContext?.direction);
+  });
+  const renderedDirection = $derived.by(() => {
+    directionRevision;
+    if (
+      providedDirection === 'auto' ||
+      providedDirection === 'rtl' ||
+      providedDirection === 'ltr'
+    ) {
+      return providedDirection;
+    }
+    return navElement
+      ? (resolveTextDirection(navElement, localeContext?.direction, {
+          ignoreElementDirectionAttribute: true,
+        }) ?? null)
+      : (localeContext?.direction ?? null);
+  });
+
+  $effect(() => {
+    return observeTextDirection(navElement, () => {
+      directionRevision += 1;
+      directionChainRevision += 1;
+    });
+  });
+
+  $effect(() =>
+    observeTextDirectionMediaQueries(navElement, () => {
+      directionRevision += 1;
+      updateIndicator();
+    }),
+  );
 
   const openItem = $derived(items.find((item) => item.id === openItemId) ?? null);
   const openIndex = $derived(openItemId ? items.findIndex((item) => item.id === openItemId) : -1);
   const motionDirection = $derived.by(() => {
     if (openIndex < 0 || previousOpenIndex === null || previousOpenIndex === openIndex)
       return 'none';
-    return openIndex > previousOpenIndex ? 'from-end' : 'from-start';
+    const movingTowardEnd =
+      resolvedDirection === 'rtl' ? openIndex < previousOpenIndex : openIndex > previousOpenIndex;
+    return movingTowardEnd ? 'from-end' : 'from-start';
   });
-  const openSubmenu = $derived.by(() => {
-    if (!openItem?.submenu?.length || !openSubmenuId) return openItem?.submenu?.[0] ?? null;
-    return (
-      openItem.submenu.find((entry) => entry.id === openSubmenuId) ?? openItem.submenu[0] ?? null
-    );
-  });
-
   $effect(() => {
     if (!openItemId) return;
     if (items.some((item) => item.id === openItemId)) return;
@@ -80,11 +142,9 @@
   }
 
   function stableHash(value: string): string {
-    let hash = 0;
-    for (const character of value) {
-      hash = (hash * 31 + character.charCodeAt(0)) | 0;
-    }
-    return Math.abs(hash).toString(36);
+    return Array.from(value)
+      .map((character) => (character.codePointAt(0) ?? 0).toString(16).padStart(5, '0'))
+      .join('-');
   }
 
   const instanceId = $derived(
@@ -99,6 +159,18 @@
   function contentId(itemId: string): string {
     const normalized = safeDomId(itemId) || 'item';
     return `cinder-mega-menu-${instanceId}-content-${normalized}-${stableHash(itemId)}`;
+  }
+
+  function submenuTriggerId(itemId: string, submenuId: string): string {
+    const normalizedItem = safeDomId(itemId) || 'item';
+    const normalizedSubmenu = safeDomId(submenuId) || 'submenu';
+    return `cinder-mega-menu-${instanceId}-submenu-trigger-${normalizedItem}-${normalizedSubmenu}-${stableHash(`${itemId}:${submenuId}`)}`;
+  }
+
+  function submenuPanelId(itemId: string, submenuId: string): string {
+    const normalizedItem = safeDomId(itemId) || 'item';
+    const normalizedSubmenu = safeDomId(submenuId) || 'submenu';
+    return `cinder-mega-menu-${instanceId}-submenu-panel-${normalizedItem}-${normalizedSubmenu}-${stableHash(`${itemId}:${submenuId}`)}`;
   }
 
   function updateIndicator() {
@@ -125,7 +197,6 @@
     if (!next) return;
     if (openIndex >= 0) previousOpenIndex = openIndex;
     openItemId = next.id;
-    openSubmenuId = next.submenu?.[0]?.id ?? null;
   }
 
   function closeMenu(restoreFocus = false) {
@@ -137,7 +208,6 @@
       navElement?.contains(document.activeElement);
 
     openItemId = null;
-    openSubmenuId = null;
     previousOpenIndex = null;
 
     if (shouldRestoreFocus && currentItemId) {
@@ -195,16 +265,17 @@
   }
 
   function onTriggerKeydown(event: KeyboardEvent, index: number) {
+    const forwardIndexDelta = resolvedDirection === 'rtl' ? -1 : 1;
     switch (event.key) {
       case 'ArrowRight':
         event.preventDefault();
-        focusTriggerAt(index + 1);
-        if (openItemId) openItemByIndex(index + 1);
+        focusTriggerAt(index + forwardIndexDelta);
+        if (openItemId) openItemByIndex(index + forwardIndexDelta);
         break;
       case 'ArrowLeft':
         event.preventDefault();
-        focusTriggerAt(index - 1);
-        if (openItemId) openItemByIndex(index - 1);
+        focusTriggerAt(index - forwardIndexDelta);
+        if (openItemId) openItemByIndex(index - forwardIndexDelta);
         break;
       case 'Home':
         event.preventDefault();
@@ -234,12 +305,6 @@
     }
   }
 
-  function onContentKeydown(event: KeyboardEvent) {
-    if (event.key !== 'Escape') return;
-    event.preventDefault();
-    closeMenu(true);
-  }
-
   function onRootFocusOut(event: FocusEvent) {
     if (!navElement) return;
     if (event.relatedTarget instanceof Node && navElement.contains(event.relatedTarget)) return;
@@ -247,14 +312,48 @@
   }
 
   $effect(() => {
+    resolvedDirection;
     updateIndicator();
   });
 
   $effect(() => {
     if (typeof window === 'undefined') return;
-    const handler = () => updateIndicator();
+    const handler = () => {
+      directionRevision += 1;
+      updateIndicator();
+    };
     window.addEventListener('resize', handler);
     return () => window.removeEventListener('resize', handler);
+  });
+
+  $effect(() => {
+    if (!navElement) return;
+    const element = navElement;
+    const refresh = () => {
+      directionRevision += 1;
+      updateIndicator();
+    };
+    element.addEventListener('focusin', refresh);
+    element.addEventListener('focusout', refresh);
+    return () => {
+      element.removeEventListener('focusin', refresh);
+      element.removeEventListener('focusout', refresh);
+    };
+  });
+
+  $effect(() => {
+    directionChainRevision;
+    if (!navElement || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      directionRevision += 1;
+      updateIndicator();
+    });
+    let current: HTMLElement | null = navElement;
+    while (current) {
+      observer.observe(current);
+      current = composedParentElement(current);
+    }
+    return () => observer.disconnect();
   });
 
   $effect(() => {
@@ -292,15 +391,12 @@
       document.removeEventListener('touchstart', closeOnOutsidePointer as EventListener, true);
     };
   });
-
-  function sections(item: MegaMenuItem | null) {
-    return item?.sections ?? [];
-  }
 </script>
 
 <nav
   id={providedId}
   {...rest}
+  dir={renderedDirection}
   bind:this={navElement}
   class={classNames('cinder-mega-menu', className)}
   aria-label={label}
@@ -333,83 +429,18 @@
 
   {#if openItem}
     <div class={viewportVisible ? 'cinder-mega-menu__viewport' : undefined}>
-      <section
-        id={contentId(openItem.id)}
-        class="cinder-mega-menu__content"
-        role="group"
-        aria-labelledby={triggerId(openItem.id)}
-        tabindex="-1"
-        data-motion={motionDirection}
-        onkeydown={onContentKeydown}
-      >
-        <div class="cinder-mega-menu__sections">
-          {#each sections(openItem) as section (section.id)}
-            <section>
-              {#if section.title}
-                <h3 class="cinder-mega-menu__section-title">{section.title}</h3>
-              {/if}
-              <ul class="cinder-mega-menu__links">
-                {#each section.links as link (link.id)}
-                  <li>
-                    <a class="cinder-mega-menu__link" href={link.href}>
-                      <span>{link.label}</span>
-                      {#if link.description}
-                        <span class="cinder-mega-menu__link-description">{link.description}</span>
-                      {/if}
-                    </a>
-                  </li>
-                {/each}
-              </ul>
-            </section>
-          {/each}
-        </div>
-
-        {#if openItem.submenu && openItem.submenu.length > 0}
-          <section class="cinder-mega-menu__sub" aria-label={`${openItem.label} submenu`}>
-            <ul class="cinder-mega-menu__submenu-list">
-              {#each openItem.submenu as sub (sub.id)}
-                <li>
-                  <button
-                    type="button"
-                    class="cinder-mega-menu__submenu-trigger"
-                    data-active={openSubmenu?.id === sub.id ? 'true' : 'false'}
-                    onmouseenter={() => (openSubmenuId = sub.id)}
-                    onclick={() => (openSubmenuId = sub.id)}
-                  >
-                    {sub.label}
-                  </button>
-                </li>
-              {/each}
-            </ul>
-
-            {#if openSubmenu}
-              <div class="cinder-mega-menu__sections">
-                {#each sections(openSubmenu) as section (section.id)}
-                  <section>
-                    {#if section.title}
-                      <h4 class="cinder-mega-menu__section-title">{section.title}</h4>
-                    {/if}
-                    <ul class="cinder-mega-menu__links">
-                      {#each section.links as link (link.id)}
-                        <li>
-                          <a class="cinder-mega-menu__link" href={link.href}>
-                            <span>{link.label}</span>
-                            {#if link.description}
-                              <span class="cinder-mega-menu__link-description"
-                                >{link.description}</span
-                              >
-                            {/if}
-                          </a>
-                        </li>
-                      {/each}
-                    </ul>
-                  </section>
-                {/each}
-              </div>
-            {/if}
-          </section>
-        {/if}
-      </section>
+      {#key openItem.id}
+        <MegaMenuContent
+          item={openItem}
+          {motionDirection}
+          {resolvedDirection}
+          {contentId}
+          {triggerId}
+          {submenuTriggerId}
+          {submenuPanelId}
+          {closeMenu}
+        />
+      {/key}
     </div>
   {/if}
 </nav>

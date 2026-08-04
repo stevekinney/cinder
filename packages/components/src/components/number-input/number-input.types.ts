@@ -1,3 +1,4 @@
+import type { Attachment } from 'svelte/attachments';
 import type { HTMLInputAttributes } from 'svelte/elements';
 export type NumberInputProps = Omit<
   HTMLInputAttributes,
@@ -49,6 +50,8 @@ export type NumberInputProps = Omit<
   description?: string;
   /** Error message rendered below the input; also sets `aria-invalid` on the input. */
   error?: string;
+  /** Attachment for native input access and lifecycle-scoped listeners. */
+  inputAttachment?: Attachment<HTMLInputElement>;
   class?: string;
   onchange?: (value: number | null) => void;
 };

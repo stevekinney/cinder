@@ -41,6 +41,10 @@
     "error": {
       "type": "string",
       "description": "Error message rendered below the input; also sets `aria-invalid` on the input."
+    },
+    "groupClassName": {
+      "type": "string",
+      "description": "Additional class names applied to the grouped control frame when leading or trailing content is present."
     }
   },
   "additionalProperties": false,
@@ -50,6 +54,11 @@
       {
         "name": "class",
         "reason": "unknown-shape"
+      },
+      {
+        "name": "inputAttachment",
+        "reason": "function-or-snippet",
+        "description": "Attachment for native input access and lifecycle-scoped listeners."
       },
       {
         "name": "leading",

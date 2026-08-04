@@ -6,6 +6,12 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
+// Source-package tests do not resolve the package's self-reference through Bun's
+// export map. Keep the component on its public subpath while mapping that entry
+// to the source implementation for this focused test process.
+const inputModule = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/input', () => inputModule);
+
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Autocomplete } = await import('./autocomplete.svelte');
 const { default: FormFieldAutocompleteFixture } =
@@ -57,6 +63,23 @@ afterEach(() => {
 });
 
 describe('Autocomplete — rendering and ARIA', () => {
+  test('sidecar imports the composed Input styles', async () => {
+    const css = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
+    expect(css).toContain("@import '../input/input.css';");
+  });
+
+  test('imports the composed Input API through its public subpath', async () => {
+    const [componentSource, typesSource] = await Promise.all([
+      Bun.file(new URL('./autocomplete.svelte', import.meta.url)).text(),
+      Bun.file(new URL('./autocomplete.types.ts', import.meta.url)).text(),
+    ]);
+
+    expect(componentSource).toContain("from '@lostgradient/cinder/input';");
+    expect(typesSource).toContain("from '@lostgradient/cinder/input';");
+    expect(componentSource).not.toContain("from '../input/");
+    expect(typesSource).not.toContain("from '../input/");
+  });
+
   test('renders a combobox input with autocomplete=list semantics', () => {
     const { container } = render(Autocomplete, {
       props: {
@@ -72,6 +95,54 @@ describe('Autocomplete — rendering and ARIA', () => {
     expect(input.getAttribute('aria-haspopup')).toBe('listbox');
     expect(input.getAttribute('aria-expanded')).toBe('false');
     expect(input.getAttribute('autocomplete')).toBe('off');
+    expect(input.classList.contains('cinder-input')).toBe(true);
+  });
+
+  test('delegates label, description, and error wiring to Input', () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'owned-field',
+        label: 'Search records',
+        description: 'Type at least one character',
+        error: 'Choose a valid record',
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(container);
+    const describedBy = input.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
+
+    expect(container.querySelector('.cinder-input-field__label')?.getAttribute('for')).toBe(
+      'owned-field',
+    );
+    expect(container.querySelector('.cinder-input-field__description')?.textContent).toBe(
+      'Type at least one character',
+    );
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toBe(
+      'Choose a valid record',
+    );
+    expect(container.querySelector('.cinder-autocomplete__label')).toBeNull();
+    expect(container.querySelector('.cinder-autocomplete__description')).toBeNull();
+    expect(container.querySelector('.cinder-autocomplete__error')).toBeNull();
+    expect(describedBy).toContain('owned-field-description');
+    expect(describedBy).toContain('owned-field-error');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+  });
+
+  test('forwards consumer native class and style while keeping the Input primitive class', () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'styled-search',
+        class: 'custom-autocomplete',
+        style: 'accent-color: rebeccapurple',
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(container);
+    expect(container.firstElementChild?.classList.contains('custom-autocomplete')).toBe(true);
+    expect(input.classList.contains('cinder-input')).toBe(true);
+    expect(input.getAttribute('style')).toContain('accent-color: rebeccapurple');
   });
 
   test('consumer autocomplete attribute wins over the default off value', () => {
@@ -84,6 +155,60 @@ describe('Autocomplete — rendering and ARIA', () => {
     });
 
     expect(getInput(container).getAttribute('autocomplete')).toBe('street-address');
+  });
+
+  test('forwards native name, autofocus, and readonly semantics', () => {
+    const { container } = render(Autocomplete, {
+      props: {
+        id: 'native-search',
+        name: 'query',
+        autofocus: true,
+        readonly: true,
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(container);
+    expect(input.getAttribute('name')).toBe('query');
+    expect(input.hasAttribute('autofocus')).toBe(true);
+    expect(input.readOnly).toBe(true);
+  });
+
+  test('participates in form serialization and restores the native value on reset', async () => {
+    const form = document.createElement('form');
+    document.body.append(form);
+    const rendered = render(Autocomplete, {
+      target: form,
+      props: {
+        id: 'form-search',
+        name: 'query',
+        suggestionSource: () => [],
+      },
+    });
+
+    const input = getInput(rendered.container);
+    expect(input.form).toBe(form);
+    expect(input.name).toBe('query');
+    expect(input.value).toBe('');
+    // happy-dom does not collect the nested Input control through
+    // `new FormData(form)`, so take a fresh snapshot from the exact native
+    // properties that browsers serialize for each assertion.
+    const serializeInput = () => {
+      const snapshot = new FormData();
+      snapshot.set(input.name, input.value);
+      return snapshot;
+    };
+    expect(serializeInput().get('query')).toBe('');
+
+    await fireEvent.input(input, { target: { value: 'changed' } });
+    expect(input.value).toBe('changed');
+    expect(serializeInput().get('query')).toBe('changed');
+
+    form.reset();
+    await waitFor(() => {
+      expect(input.value).toBe('');
+    });
+    expect(serializeInput().get('query')).toBe('');
   });
 });
 
@@ -351,7 +476,7 @@ describe('Autocomplete — keyboard completion', () => {
       (option) => option.getAttribute('data-cinder-active') !== null,
     );
     expect(activeOption).toBeDefined();
-    // The shared `_floating-surface.css` rules key off this class, so carrying
+    // The shared `_row-item.css` rules key off this class, so carrying
     // it is what gives the active row its background + keyboard-cursor ring.
     expect(activeOption?.classList.contains('cinder-_option-row')).toBe(true);
 
@@ -371,7 +496,7 @@ describe('Autocomplete — keyboard completion', () => {
     // must inset a `--cinder-ring-color` ring (the system focus-ring token,
     // tuned to clear 3:1 against near-white surfaces).
     const sharedCss = await Bun.file(
-      new URL('../../styles/components/_floating-surface.css', import.meta.url),
+      new URL('../../styles/components/_row-item.css', import.meta.url),
     ).text();
     const sharedCssWithoutComments = sharedCss.replace(/\/\*[\s\S]*?\*\//g, '');
     expect(sharedCssWithoutComments).toMatch(
@@ -623,12 +748,12 @@ describe('Autocomplete — FormField context', () => {
     });
 
     const input = getInput(container);
-    // resolveFieldControl composes both the control-level and context-level error ids;
+    // Input composes both the control-level and context-level error ids;
     // the deduplication pass removes the context description that also appears in
-    // context.describedBy, so the final order is: description, control-error, field-error.
+    // context.describedBy, so the final order is: description, input-error, field-error.
     const describedBy = input.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('fruit-search-description');
-    expect(describedBy).toContain('fruit-search-control-error');
+    expect(describedBy).toContain('fruit-search-input-error');
     // The FormField's own (field-level) error id must also be composed in — assert it
     // explicitly so a future regression that drops it can't pass silently.
     expect(describedBy).toContain('fruit-search-error');
