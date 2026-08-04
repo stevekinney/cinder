@@ -129,21 +129,23 @@ describe('Checkbox', () => {
   });
 
   test('native form reset syncs the bindable checked state', async () => {
-    const { container, getByTestId } = render(CheckboxFormResetFixture);
+    const { container } = render(CheckboxFormResetFixture);
     const input = container.querySelector('#accepted') as HTMLInputElement;
+    const getByTestId = (id: string) => container.querySelector(`[data-testid="${id}"]`);
 
     await fireEvent.click(input);
-    expect(getByTestId('checked').textContent).toBe('true');
+    expect(getByTestId('checked')?.textContent).toBe('true');
 
     (getByTestId('form') as HTMLFormElement).reset();
 
-    await waitFor(() => expect(getByTestId('checked').textContent).toBe('false'));
+    await waitFor(() => expect(getByTestId('checked')?.textContent).toBe('false'));
     expect(input.checked).toBe(false);
   });
 
   test('native form reset reapplies bindable indeterminate state', async () => {
-    const { container, getByTestId } = render(CheckboxIndeterminateFormResetFixture);
+    const { container } = render(CheckboxIndeterminateFormResetFixture);
     const input = container.querySelector('#mixed') as HTMLInputElement;
+    const getByTestId = (id: string) => container.querySelector(`[data-testid="${id}"]`);
 
     expect(input.indeterminate).toBe(true);
 
@@ -153,8 +155,8 @@ describe('Checkbox', () => {
     (getByTestId('form') as HTMLFormElement).reset();
 
     await waitFor(() => expect(input.indeterminate).toBe(true));
-    expect(getByTestId('checked').textContent).toBe('false');
-    expect(getByTestId('indeterminate').textContent).toBe('true');
+    expect(getByTestId('checked')?.textContent).toBe('false');
+    expect(getByTestId('indeterminate')?.textContent).toBe('true');
   });
 
   test('indeterminate prop applies as a DOM property', () => {
