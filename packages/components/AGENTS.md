@@ -362,7 +362,7 @@ the matching entry in `@lostgradient/cinder/manifest`.
 | `timeline`            | Timestamp-first event rail with grouping, tone markers, and connector continuity.                             | Showing dated workflow, audit, or run-history events on a temporal rail.                                       |
 | `run-step-timeline`   | Execution-state rail for async steps, durations, retries, branches, speculation, and compensation.            | Showing live or completed CI, workflow, import, or deployment steps.                                           |
 | `event-timeline`      | Horizontal time-axis strip for scheduled events with proportional dots, a now marker, and collision-nudged…   | Showing several fired and upcoming events across a bounded time window, such as a next-24-hour schedule strip. |
-| `feed`                | Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region. | Rendering an activity log, audit trail, or notification timeline.                                              |
+| `feed`                | Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region. | Rendering a user-facing activity stream or notification timeline.                                              |
 | `event-stream-viewer` | Dense append-only log of timestamped events with follow-latest scrolling, severity tones, expandable JSON…    | Displaying real-time or historical operational events such as workflow steps, job logs, or webhook traces.     |
 
 ### hover (3 components)

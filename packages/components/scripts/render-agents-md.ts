@@ -28,7 +28,7 @@ const AGENTS_PATH = resolve(PACKAGE_ROOT, 'AGENTS.md');
 const START_MARKER = '<!-- generated:overlap-families:start -->';
 const END_MARKER = '<!-- generated:overlap-families:end -->';
 
-type ComponentEntry = {
+export type ComponentEntry = {
   id: string;
   name: string;
   purpose: string;
@@ -36,18 +36,18 @@ type ComponentEntry = {
   avoidWhen?: readonly { reason: string; alternative?: string }[];
 };
 
-type Manifest = {
+export type Manifest = {
   overlapFamilies: Record<string, readonly string[]>;
   components: readonly ComponentEntry[];
 };
 
 /** Escape pipe characters that would otherwise break a Markdown table cell. */
-function escapeCell(text: string): string {
+export function escapeCell(text: string): string {
   return text.replace(/\|/g, '\\|').replace(/\n+/g, ' ');
 }
 
 /** Truncate at a sentence boundary or hard cap so the table stays readable. */
-function shorten(text: string, max = 110): string {
+export function shorten(text: string, max = 110): string {
   if (text.length <= max) return text;
   const slice = text.slice(0, max);
   const lastSpace = slice.lastIndexOf(' ');
@@ -80,7 +80,7 @@ function renderFamilyTable(
   return rows.join('\n');
 }
 
-function renderOverlapBlock(manifest: Manifest): string {
+export function renderOverlapBlock(manifest: Manifest): string {
   const byId = new Map(manifest.components.map((component) => [component.id, component]));
   const familyNames = Object.keys(manifest.overlapFamilies).toSorted();
   const sections = familyNames.map((family) => {
@@ -93,7 +93,7 @@ function renderOverlapBlock(manifest: Manifest): string {
   return sections.join('\n\n');
 }
 
-function replaceBlock(source: string, body: string): string {
+export function replaceBlock(source: string, body: string): string {
   const startIndex = source.indexOf(START_MARKER);
   const endIndex = source.indexOf(END_MARKER);
   if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
@@ -139,4 +139,6 @@ async function main(): Promise<void> {
   console.log(`Wrote overlap-family block to ${AGENTS_PATH}.`);
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}
