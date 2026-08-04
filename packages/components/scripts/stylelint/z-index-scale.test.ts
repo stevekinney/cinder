@@ -2612,6 +2612,13 @@ describe('cinder/z-index-scale', () => {
   test.each([
     'max(var(--inner, -1), 1, 9999, var(--runtime))',
     'min(var(--inner, 9999), 10000, -1, var(--runtime))',
+    'round(9999, var(--runtime))',
+    'round(nearest, 9999, var(--runtime))',
+    'round(up, 9999, var(--runtime))',
+    'round(down, 9999, var(--runtime))',
+    'round(to-zero, 9999, var(--runtime))',
+    'round(var(--runtime), 9999)',
+    'round(to-zero, var(--runtime), -1)',
   ])('preserves a direct banned bound sibling in unresolved math: %s', async (fallback) => {
     expect(
       warnings(
@@ -2619,6 +2626,40 @@ describe('cinder/z-index-scale', () => {
           .fixture {
             /* cinder-z-index-local: one safe bound cannot erase another banned argument. */
             z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
+    'max(var(--runtime), 9999, 1px)',
+    'max(var(--inner, 9999), 1px)',
+    'min(var(--inner, -1), 1px)',
+    'clamp(0, var(--inner, 9999), 1px)',
+  ])(
+    'does not report candidates from a statically type-invalid math function: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: fixed number and length arguments cannot be combined. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  test('keeps a candidate when a runtime sibling can still have a compatible type', async () => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: the runtime sibling can resolve to a number. */
+            z-index: var(--outer, max(var(--inner, 9999), var(--other, 1px)));
           }
         `),
       ),
@@ -2747,6 +2788,20 @@ describe('cinder/z-index-scale', () => {
       ['calc(9999 + 0 / clamp(1, var(--divisor), 2))', 1],
       ['calc(9999 + 0 / max(var(--divisor), 1px))', 0],
       ['calc(9999 + 0em / max(var(--divisor), 1px))', 1],
+      ['calc(9999 + 0deg / max(var(--divisor), 1deg))', 1],
+      ['calc(9999 + 0s / min(var(--divisor), 1s))', 1],
+      ['calc(9999 + 0Hz / calc(var(--divisor) + 1Hz))', 1],
+      ['calc(9999 + 0dppx / clamp(1dppx, var(--divisor), 2dppx))', 1],
+      ['calc(0 / max(var(--divisor), 1deg) * var(--inner, -1))', 0],
+      ['calc(0em / max(var(--divisor), 1deg) * var(--inner, -1))', 0],
+      ['calc(9999 + 0 / max(var(--divisor), 1deg) * var(--inner, -1) + var(--other, -1))', 1],
+      ['calc(0 / max(var(--divisor), 1deg) * var(--inner, -1) + var(--other, 9999))', 1],
+      ['calc((0 / max(var(--divisor), 1deg) * var(--inner, -1)) * var(--other, 9999))', 0],
+      ['calc((0deg / max(var(--divisor), 1deg) * var(--inner, -1)) * var(--other, 9999))', 0],
+      ['calc((0deg / max(var(--divisor), 1deg)) / 0 * var(--inner, 9999))', 0],
+      ['calc(sign((0 * -1) / var(--divisor)) / 0 * var(--inner, 9999))', 0],
+      ['calc(sign((0 * -1) / var(--divisor)) / 1 * var(--inner, 9999))', 0],
+      ['calc((0deg / max(var(--divisor), 1deg)) / 0 * var(--inner, 9999) + var(--other, -1))', 1],
       ['calc(9999 + 0 / var(--first-divisor) * 0 / var(--second-divisor))', 1],
       ['calc(9999 * max(0em, 0px) / max(0px, 0em))', 0],
     ] as const) {
@@ -2810,6 +2865,17 @@ describe('cinder/z-index-scale', () => {
       .fixture {
         /* cinder-z-index-local: a positive runtime divisor preserves the negative angle zero. */
         z-index: var(--outer, calc(atan2((0deg * -1) / var(--divisor), -1deg) / 1deg));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
+  });
+
+  test('preserves a negative-zero quotient consumed by sign inside a divisor', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: sign preserves negative zero before reciprocal division. */
+        z-index: var(--outer, calc(1 / sign((0 * -1) / var(--divisor))));
       }
     `);
 

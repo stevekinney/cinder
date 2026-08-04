@@ -19,6 +19,7 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
+const divisorWitnessValues = ['1', '1px', '1deg', '1s', '1hz', '1dppx'];
 const invalidCustomIdentKeywords = new Set([
   'default',
   'inherit',
@@ -43,7 +44,7 @@ const validAttrSyntaxTypeNames = new Set([
   'transform-function',
   'transform-list',
 ]);
-const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow']);
+const signedZeroSensitiveFunctionNames = new Set(['atan2', 'log', 'pow', 'sign']);
 const substitutionFunctionNames = new Set(['attr', 'env', 'var']);
 const mathFunctionNames = new Set([
   '-webkit-calc',
@@ -511,17 +512,27 @@ function expandedSubstitutionDivisorRange(
     .sort((left, right) => left.start - right.start);
   const witnesses = [];
   const distinctPossibleDivisors = new Set();
+  const witnessAssignmentCount =
+    divisorWitnessValues.length + (divisorWitnessValues.length - 1) * containedChildren.length;
   for (
     let witnessAssignmentIndex = 0;
-    witnessAssignmentIndex < containedChildren.length + 2;
+    witnessAssignmentIndex < witnessAssignmentCount;
     witnessAssignmentIndex += 1
   ) {
     const possibleDivisorParts = [];
     let sourceIndex = factorRange.start;
     for (let childIndex = 0; childIndex < containedChildren.length; childIndex += 1) {
       const candidate = containedChildren[childIndex];
+      const typedAssignmentIndex = witnessAssignmentIndex - divisorWitnessValues.length;
+      const witnessValueIndex =
+        witnessAssignmentIndex < divisorWitnessValues.length
+          ? witnessAssignmentIndex
+          : Math.floor(typedAssignmentIndex / containedChildren.length) + 1;
+      const typedChildIndex = typedAssignmentIndex % containedChildren.length;
       const witness =
-        witnessAssignmentIndex === 1 || witnessAssignmentIndex === childIndex + 2 ? '1px' : '1';
+        witnessAssignmentIndex < divisorWitnessValues.length || childIndex === typedChildIndex
+          ? divisorWitnessValues[witnessValueIndex]
+          : '1';
       possibleDivisorParts.push(value.slice(sourceIndex, candidate.start), ` ${witness} `);
       sourceIndex = candidate.end;
     }
@@ -626,7 +637,15 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
           break;
         }
       }
-      if (!hasCompatibleWitness) continue;
+      if (!hasCompatibleWitness) {
+        zeroQuotientRanges.push({
+          start: numeratorRange.start,
+          end: divisorRange.end,
+          signedZeroSensitive: false,
+          staticallyInvalid: true,
+        });
+        continue;
+      }
     }
     if (hasStaticallyZeroCoefficient(numerator)) {
       zeroQuotientRanges = zeroQuotientRanges.filter(
@@ -652,75 +671,95 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
       let containerStart = openIndex - 1;
       while (containerStart > range.start && isCssIdentifierCharacter(value[containerStart - 1]))
         containerStart -= 1;
+      const containerFunctionName = value.slice(containerStart, openIndex - 1).toLowerCase();
       if (
         containerStart !== openIndex - 1 &&
-        value.slice(containerStart, openIndex - 1).toLowerCase() !== 'calc'
+        containerFunctionName !== 'calc' &&
+        containerFunctionName !== 'sign'
       )
         break;
       zeroRange.start = containerStart;
       zeroRange.end = closeIndex + 1;
+      if (containerFunctionName === 'sign') zeroRange.signedZeroSensitive = false;
     }
   }
 
   for (const zeroRange of zeroQuotientRanges) {
-    if (zeroRange.signedZeroSensitive || isPrecededByDivision(value, zeroRange.start)) continue;
     for (;;) {
-      let operatorIndex = zeroRange.end;
-      while (operatorIndex < range.end && isCssWhitespaceOrComment(value[operatorIndex]))
-        operatorIndex += 1;
-      const operator = value[operatorIndex];
-      if (operator !== '*' && operator !== '/') break;
-      const factorRange = factorRangeAfter(value, operatorIndex + 1, range.end, budget);
-      if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
-      if (factorRange.start === factorRange.end) break;
+      const previousStart = zeroRange.start;
+      const previousEnd = zeroRange.end;
       if (
-        operator === '/' &&
-        hasStaticallyZeroCoefficient(value.slice(factorRange.start, factorRange.end))
+        zeroRange.staticallyInvalid ||
+        (!zeroRange.signedZeroSensitive && !isPrecededByDivision(value, zeroRange.start))
       ) {
-        zeroRange.invalid = true;
-        break;
+        for (;;) {
+          let operatorIndex = zeroRange.end;
+          while (operatorIndex < range.end && isCssWhitespaceOrComment(value[operatorIndex]))
+            operatorIndex += 1;
+          const operator = value[operatorIndex];
+          if (operator !== '*' && operator !== '/') break;
+          const factorRange = factorRangeAfter(value, operatorIndex + 1, range.end, budget);
+          if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+          if (factorRange.start === factorRange.end) break;
+          if (
+            !zeroRange.staticallyInvalid &&
+            operator === '/' &&
+            hasStaticallyZeroCoefficient(value.slice(factorRange.start, factorRange.end))
+          ) {
+            zeroRange.staticallyInvalid = true;
+            zeroRange.signedZeroSensitive = false;
+            zeroRange.end = factorRange.end;
+            continue;
+          }
+          zeroRange.end = factorRange.end;
+        }
+        for (;;) {
+          let operatorIndex = zeroRange.start;
+          while (operatorIndex > range.start && isCssWhitespaceOrComment(value[operatorIndex - 1]))
+            operatorIndex -= 1;
+          const operator = value[operatorIndex - 1];
+          if (operator !== '*' && !(zeroRange.staticallyInvalid && operator === '/')) break;
+          const factorRange = factorRangeBefore(value, range.start, operatorIndex - 1, budget);
+          if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+          if (factorRange.start === factorRange.end) break;
+          zeroRange.start = factorRange.start;
+        }
       }
-      zeroRange.end = factorRange.end;
+      for (;;) {
+        let openIndex = zeroRange.start;
+        while (openIndex > range.start && isCssWhitespaceOrComment(value[openIndex - 1]))
+          openIndex -= 1;
+        let closeIndex = zeroRange.end;
+        while (closeIndex < range.end && isCssWhitespaceOrComment(value[closeIndex]))
+          closeIndex += 1;
+        if (value[openIndex - 1] !== '(' || parenthesisPairs.get(openIndex - 1) !== closeIndex)
+          break;
+        zeroRange.start = openIndex - 1;
+        zeroRange.end = closeIndex + 1;
+      }
+      if (zeroRange.start === previousStart && zeroRange.end === previousEnd) break;
     }
-    for (;;) {
-      let operatorIndex = zeroRange.start;
-      while (operatorIndex > range.start && isCssWhitespaceOrComment(value[operatorIndex - 1]))
-        operatorIndex -= 1;
-      if (value[operatorIndex - 1] !== '*') break;
-      const factorRange = factorRangeBefore(value, range.start, operatorIndex - 1, budget);
-      if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
-      if (factorRange.start === factorRange.end) break;
-      zeroRange.start = factorRange.start;
-    }
-    for (;;) {
-      let openIndex = zeroRange.start;
-      while (openIndex > range.start && isCssWhitespaceOrComment(value[openIndex - 1]))
-        openIndex -= 1;
-      let closeIndex = zeroRange.end;
-      while (closeIndex < range.end && isCssWhitespaceOrComment(value[closeIndex])) closeIndex += 1;
-      if (value[openIndex - 1] !== '(' || parenthesisPairs.get(openIndex - 1) !== closeIndex) break;
-      zeroRange.start = openIndex - 1;
-      zeroRange.end = closeIndex + 1;
-    }
-    if (isPrecededByDivision(value, zeroRange.start)) zeroRange.signedZeroSensitive = true;
+    if (!zeroRange.staticallyInvalid && isPrecededByDivision(value, zeroRange.start))
+      zeroRange.signedZeroSensitive = true;
   }
-  zeroQuotientRanges = zeroQuotientRanges
-    .filter((zeroRange) => !zeroRange.invalid)
-    .sort((left, right) => left.start - right.start);
+  zeroQuotientRanges.sort((left, right) => left.start - right.start);
   const mergedZeroQuotientRanges = [];
   for (const zeroRange of zeroQuotientRanges) {
     const previousRange = mergedZeroQuotientRanges.at(-1);
     if (previousRange && zeroRange.start <= previousRange.end) {
       previousRange.end = Math.max(previousRange.end, zeroRange.end);
       previousRange.signedZeroSensitive ||= zeroRange.signedZeroSensitive;
+      previousRange.staticallyInvalid ||= zeroRange.staticallyInvalid;
     } else mergedZeroQuotientRanges.push(zeroRange);
   }
   zeroQuotientRanges = mergedZeroQuotientRanges;
   if (zeroQuotientRanges.length === 0) return null;
 
   const suppressingZeroRanges = zeroQuotientRanges.filter(
-    (zeroRange) => !zeroRange.signedZeroSensitive,
+    (zeroRange) => zeroRange.staticallyInvalid || !zeroRange.signedZeroSensitive,
   );
+  if (zeroQuotientRanges.some((zeroRange) => zeroRange.staticallyInvalid))
+    return { expression: null, ranges: suppressingZeroRanges, staticallyInvalid: true };
   const replacements = suppressingZeroRanges.map((zeroQuotientRange) => ({
     ...zeroQuotientRange,
     value: ' 0 ',
@@ -1151,7 +1190,7 @@ function directBannedMathArgumentCandidates(
   budget,
   parenthesisPairs,
 ) {
-  for (const functionName of ['max', 'min', 'clamp']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1161,12 +1200,34 @@ function directBannedMathArgumentCandidates(
     );
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return [];
-    const candidateArguments =
-      functionName === 'clamp'
-        ? parsedArguments.staticArguments.filter(
-            (argument) => argument.index === 0 || argument.index === 2,
-          )
-        : parsedArguments.staticArguments;
+    if (functionName !== 'round') {
+      const staticResultTypes = new Set(
+        parsedArguments.staticArguments.map(
+          (argument) => analyzeStaticLayerValue(argument.value).resultType,
+        ),
+      );
+      if (staticResultTypes.has('number') && staticResultTypes.has('non-number')) return [];
+    }
+    let candidateArguments;
+    if (functionName === 'clamp')
+      candidateArguments = parsedArguments.staticArguments.filter(
+        (argument) => argument.index === 0 || argument.index === 2,
+      );
+    else if (functionName === 'round') {
+      const firstArgument = value
+        .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
+        .replaceAll(cssCommentMaskCharacter, ' ')
+        .trim()
+        .toLowerCase();
+      const hasStrategy = ['nearest', 'up', 'down', 'to-zero'].includes(firstArgument);
+      const validArgumentCount = hasStrategy
+        ? parsedArguments.argumentCount === 2 || parsedArguments.argumentCount === 3
+        : parsedArguments.argumentCount === 1 || parsedArguments.argumentCount === 2;
+      if (!validArgumentCount) return [];
+      candidateArguments = parsedArguments.staticArguments.filter(
+        (argument) => !hasStrategy || argument.index !== 0,
+      );
+    } else candidateArguments = parsedArguments.staticArguments;
     const classificationWork = candidateArguments.reduce(
       (total, argument) => total + argument.value.length,
       0,
@@ -1195,6 +1256,26 @@ function directBannedMathArgumentCandidates(
     });
   }
   return [];
+}
+
+function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenthesisPairs) {
+  for (const functionName of ['max', 'min', 'clamp']) {
+    const parsedArguments = fallbackIndependentStaticArguments(
+      frame,
+      value,
+      range,
+      functionName,
+      parenthesisPairs,
+    );
+    if (!parsedArguments) continue;
+    if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return new Set();
+    return new Set(
+      parsedArguments.staticArguments
+        .map((argument) => analyzeStaticLayerValue(argument.value).resultType)
+        .filter((resultType) => resultType === 'number' || resultType === 'non-number'),
+    );
+  }
+  return new Set();
 }
 
 function progressRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
@@ -1850,8 +1931,26 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
             !candidateIsSuppressedByZeroQuotient(childCandidate),
         )
       : [];
+  const fallbackIndependentMathArgumentTypes = fallbackIndependentMathArgumentResultTypes(
+    frame,
+    value,
+    range,
+    parenthesisPairs,
+  );
+  const candidateConflictsWithStaticMathArgument = (candidateToCheck) => {
+    if (typeof candidateToCheck.resolvedFallback !== 'string') return false;
+    const resultType = analyzeStaticLayerValue(candidateToCheck.resolvedFallback).resultType;
+    return (
+      (resultType === 'number' && fallbackIndependentMathArgumentTypes.has('non-number')) ||
+      (resultType === 'non-number' && fallbackIndependentMathArgumentTypes.has('number'))
+    );
+  };
   let runtimeZeroFallback = zeroQuotientEndpoint?.expression ?? null;
-  if (frame.resolvedClassification === 'unresolved' && runtimeZeroFallback === null) {
+  if (
+    frame.resolvedClassification === 'unresolved' &&
+    runtimeZeroFallback === null &&
+    zeroQuotientEndpoint?.staticallyInvalid !== true
+  ) {
     if (frame.children.some((child) => child.resolvedFallback === null)) {
       const unresolvedChildren = frame.children.filter((child) => child.resolvedFallback === null);
       const zeroProductRange = { ...range, frame };
@@ -1898,7 +1997,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     budget,
   ).classification;
   const boundedProgressCandidates = progressAnalysis.candidates;
-  const uneliminatedCandidates =
+  const uneliminatedCandidates = (
     runtimeZeroClassification === 'negative' || runtimeZeroClassification === 'magic'
       ? [
           ...childCandidates,
@@ -1910,7 +2009,8 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
             resolvedClassification: runtimeZeroClassification,
           },
         ]
-      : [...childCandidates, ...directArgumentCandidates, ...boundedProgressCandidates];
+      : [...childCandidates, ...directArgumentCandidates, ...boundedProgressCandidates]
+  ).filter((childCandidate) => !candidateConflictsWithStaticMathArgument(childCandidate));
 
   const hasNonnegativeFloor =
     hasFallbackIndependentSafeBound(frame, value, range, 'max', 'negative', parenthesisPairs) ||
