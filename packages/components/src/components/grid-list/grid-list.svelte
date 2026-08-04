@@ -16,15 +16,14 @@
 </script>
 
 <script lang="ts">
-  import type { GridProps } from '../grid/grid.types.ts';
+  import Grid, { type GridProps } from '@lostgradient/cinder/grid';
   import type { GridListProps } from './grid-list.types.ts';
-  import Grid from '../grid/grid.svelte';
   import { classNames } from '../../utilities/class-names.ts';
 
   let { minColumnWidth, class: className, children, ...rest }: GridListProps = $props();
 
   const minWidth = $derived(minColumnWidth && minColumnWidth.length > 0 ? minColumnWidth : '16rem');
-  const gridRest = rest as unknown as Omit<GridProps, 'children'>;
+  const gridRest = $derived(rest as unknown as Omit<GridProps, 'children'>);
 </script>
 
 <Grid
