@@ -1,5 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
-@import '../checkbox/checkbox.css';
+@import '../_internal/checkbox-indicator-shell.css';
 
 @layer cinder.components {
   .cinder-multi-select {

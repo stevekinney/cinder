@@ -35,6 +35,13 @@ async function openMenu(container: HTMLElement): Promise<void> {
 }
 
 describe('MultiSelect', () => {
+  test('uses the shared indicator stylesheet without importing Checkbox CSS', async () => {
+    const css = await Bun.file(new URL('./multi-select.css', import.meta.url)).text();
+
+    expect(css).toContain("@import '../_internal/checkbox-indicator-shell.css';");
+    expect(css).not.toContain("@import '../checkbox/checkbox.css';");
+  });
+
   test('renders trigger, placeholder, and listbox semantics', async () => {
     const { container } = render(MultiSelect, { id: 'fruits', items });
     expect(container.querySelector('#fruits')?.textContent).toContain('Select options');
@@ -537,6 +544,27 @@ describe('MultiSelect', () => {
     await fireEvent.keyDown(filter, { key: 'ArrowDown' });
     expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-1');
     expect(listbox.getAttribute('aria-activedescendant')).toBeNull();
+  });
+
+  test('filtering resets the active option before filtered items are synchronized', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+    await openMenu(container);
+
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    await fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-2');
+
+    await fireEvent.input(filter, { target: { value: 'ba' } });
+    await waitFor(() => {
+      expect(filter.getAttribute('aria-activedescendant')).toBe('fruits-option-0');
+    });
+    expect(container.querySelector('#fruits-option-0')?.textContent).toContain('Banana');
   });
 
   test('readonly exposes aria-readonly on picker roles', async () => {

@@ -261,6 +261,7 @@
   }
 
   function handleFilterInput(event: Event): void {
+    commandList.resetActiveItem();
     query = (event.currentTarget as HTMLInputElement).value;
   }
 
