@@ -29,7 +29,7 @@ const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
 const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
-const conditionalFunctionNames = new Set(['if']);
+const conditionalFunctionNames = new Set(['first-valid', 'if']);
 const unresolvedRuntimeFunctionArities = new Map([
   ['abs', 1],
   ['acos', 1],
@@ -50,6 +50,14 @@ const unresolvedRuntimeFunctionArities = new Map([
 ]);
 const invalidCustomIdentKeywords = new Set([
   'default',
+  'inherit',
+  'initial',
+  'revert',
+  'revert-layer',
+  'unset',
+]);
+const validZIndexWholeValueKeywords = new Set([
+  'auto',
   'inherit',
   'initial',
   'revert',
@@ -1593,8 +1601,75 @@ function mediaFeatureFunctionContentsAreStructurallyValid(
   return finalArgument.start < finalArgument.end;
 }
 
+function firstValidBranchStaticValidity(value, group, branchRange, parenthesisPairs) {
+  const branchValue = value.slice(branchRange.start, branchRange.end);
+  if (validZIndexWholeValueKeywords.has(branchValue.trim().toLowerCase())) return true;
+  if (
+    group.conditionalOwner.children.some(
+      (child) => child.start >= branchRange.start && child.end <= branchRange.end,
+    )
+  )
+    return undefined;
+
+  const analysis = analyzeStaticLayerValue(branchValue);
+  if (analysis.resultType === 'number' && !isStaticallyInvalidArithmetic(branchValue)) return true;
+  if (analysis.resultType === 'non-number') return false;
+  if (analysis.resultType === 'too-complex') return undefined;
+
+  const identifierEnd = cssIdentifierTokenEnd(value, branchRange.start);
+  if (identifierEnd === branchRange.end) return false;
+  if (value[identifierEnd] !== '(') return false;
+  const closeIndex = parenthesisPairs.get(identifierEnd);
+  if (closeIndex !== branchRange.end - 1) return false;
+  const functionName = value.slice(branchRange.start, identifierEnd).toLowerCase();
+  return mathFunctionNames.has(functionName) || conditionalFunctionNames.has(functionName)
+    ? undefined
+    : false;
+}
+
+function firstValidBranchValueRanges(value, group, parenthesisPairs) {
+  const branchRanges = [];
+  let branchStart = group.openIndex + 1;
+  const appendBranch = (branchEnd) => {
+    const branchRange = trimCssTriviaRange(value, branchStart, branchEnd);
+    if (branchRange.start === branchRange.end) return false;
+    branchRanges.push(branchRange);
+    return true;
+  };
+
+  for (let index = branchStart; index < group.end - 1; index += 1) {
+    if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
+    else {
+      const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+      if (urlTokenEnd !== undefined) index = urlTokenEnd;
+      else if (value[index] === '(') {
+        const closeIndex = parenthesisPairs.get(index);
+        if (closeIndex === undefined || closeIndex >= group.end) return undefined;
+        index = closeIndex;
+      } else if (value[index] === ')') return undefined;
+      else if (value[index] === ',') {
+        if (!appendBranch(index)) return undefined;
+        branchStart = index + 1;
+      }
+    }
+  }
+  if (!appendBranch(group.end - 1)) return undefined;
+
+  const selectableBranches = [];
+  for (const branchRange of branchRanges) {
+    const validity = firstValidBranchStaticValidity(value, group, branchRange, parenthesisPairs);
+    if (validity === false) continue;
+    selectableBranches.push(branchRange);
+    if (validity === true) break;
+  }
+  return selectableBranches;
+}
+
 function conditionalBranchValueRanges(value, group, parenthesisPairs) {
-  if (group.functionName !== 'if' || group.end === undefined) return undefined;
+  if (group.end === undefined) return undefined;
+  if (group.functionName === 'first-valid')
+    return firstValidBranchValueRanges(value, group, parenthesisPairs);
+  if (group.functionName !== 'if') return undefined;
 
   const branches = [];
   let hasUnconditionalBranch = false;
@@ -2801,7 +2876,7 @@ function validSubstitutionHeader(frame, value) {
   if (frame.functionName === 'env')
     return (
       !invalidCustomIdentKeywords.has(header.slice(0, identifierEnd).toLowerCase()) &&
-      /^(?:\s+\+?\d+)*$/.test(header.slice(identifierEnd))
+      /^(?:\s+(?:\+?\d+|-0+))*$/.test(header.slice(identifierEnd))
     );
   if (frame.functionName !== 'attr') return false;
   const attrType = header.slice(identifierEnd).trim();
@@ -3778,13 +3853,7 @@ function randomRangeCandidates(frame, value, range, candidate, budget, parenthes
       group.end !== undefined &&
       group.functionStart >= range.start &&
       group.end <= range.end &&
-      !frame.randomGroups.some(
-        (possibleParent) =>
-          possibleParent !== group &&
-          possibleParent.end !== undefined &&
-          possibleParent.functionStart <= group.functionStart &&
-          possibleParent.end >= group.end,
-      ),
+      group.enclosingRandomParent === undefined,
   );
   if (groups.length === 0) return [];
 
@@ -4645,10 +4714,13 @@ function conditionalGroupReplacements(
 }
 
 function conditionalRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+  const trimmedRange = trimCssTriviaRange(value, range.start, range.end);
   const topLevelGroups = frame.conditionalGroups.filter(
     (group) =>
       group.functionStart >= range.start &&
       group.end <= range.end &&
+      (group.functionName !== 'first-valid' ||
+        (group.functionStart === trimmedRange.start && group.end === trimmedRange.end)) &&
       group.enclosingConditionalParent === undefined,
   );
   if (topLevelGroups.length === 0) return [];
@@ -5227,6 +5299,12 @@ function fallbackCandidates(value) {
         parenthesisParent,
         ...context,
       };
+      const randomOwner = fallbackFrames.at(-1) ?? rootFrame;
+      const enclosingRandomParent =
+        parenthesisParent?.randomOwner === randomOwner ? parenthesisParent.randomParent : undefined;
+      group.randomOwner = randomOwner;
+      group.enclosingRandomParent = enclosingRandomParent;
+      group.randomParent = group.functionName === 'random' ? group : enclosingRandomParent;
       const isInvalidFunctionBlock =
         !group.isGroupingParenthesis &&
         !mathFunctionNames.has(group.functionName) &&
@@ -5269,7 +5347,6 @@ function fallbackCandidates(value) {
         treeCountingOwner.treeCountingGroups.push(group);
       }
       if (group.functionName === 'random') {
-        const randomOwner = fallbackFrames.at(-1) ?? rootFrame;
         randomOwner.randomGroups.push(group);
       }
       const progressRangeIsUnsupported =
@@ -5370,7 +5447,12 @@ function fallbackCandidates(value) {
       }));
   }
 
-  if (rootFrame.children.length > 0) {
+  if (
+    rootFrame.children.length > 0 ||
+    rootFrame.conditionalGroups.length > 0 ||
+    rootFrame.randomGroups.length > 0 ||
+    rootFrame.treeCountingGroups.length > 0
+  ) {
     const resolvedValue = resolveFrameExpression(
       rootFrame,
       value,

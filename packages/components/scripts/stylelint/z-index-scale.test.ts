@@ -1693,6 +1693,16 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('indexes wide sibling random() groups in linear time', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const terms = Array.from({ length: 40_000 }, () => 'random(0, 1)');
+    const startedAt = performance.now();
+    const result = bannedFallback(`var(--outer, calc(${terms.join(' + ')}))`);
+
+    expect(result?.reason).toBe('too-complex');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('keeps sliced literal source ranges lazy for long escaped dimensions', async () => {
     const { normalizeCssEscapesForInspection } = await import(valueAnalysisPath);
     const value = `1\\g${'a'.repeat(500_000)}`;
@@ -2608,6 +2618,11 @@ describe('cinder/z-index-scale', () => {
     'env(revert-layer, -1)',
     'env(default, 9999)',
     'env(foo + 1, -1)',
+    'env(foo -1, 9999)',
+    'env(foo -01, 9999)',
+    'env(foo 1 -1, 9999)',
+    'env(foo -0.0, 9999)',
+    'env(foo - 0, 9999)',
     'attr(data-layer inherit, -1)',
     'attr(data-layer INITIAL, 9999)',
     'attr(data-layer unset, -1)',
@@ -2703,6 +2718,10 @@ describe('cinder/z-index-scale', () => {
     'var(--inner/**/, -1)',
     'env(viewport-segment-width 0 0, 9999)',
     'env(foo +1, -1)',
+    'env(foo -0, 9999)',
+    'env(foo -00, -1)',
+    'env(foo -0 -0, 9999)',
+    'env(foo +1 -0, 9999)',
     'attr(data-layer px, -1)',
     'attr(data-layer number, 9999)',
     'attr(data-layer unknown-unit, -1)',
@@ -2726,6 +2745,37 @@ describe('cinder/z-index-scale', () => {
         `),
       ),
     ).toHaveLength(1);
+  });
+
+  test.each([
+    ['first-valid(9999, 1)', 1],
+    ['first-valid(-1, 9999)', 1],
+    ['first-valid(foo, 9999, 1)', 1],
+    ['first-valid(var(--runtime), 9999)', 1],
+    ['first-valid(var(--runtime, -1), 1)', 1],
+    ['first-valid(first-valid(foo, 9999), 1)', 1],
+    ['first-valid(1, 9999)', 0],
+    ['first-valid(auto, 9999)', 0],
+    ['first-valid(inherit, 9999)', 0],
+    ['first-valid(foo, 1, 9999)', 0],
+    ['first-valid(var(--inner, -1) foo, 1)', 0],
+    ['first-valid()', 0],
+    ['first-valid(, 9999)', 0],
+    ['first-valid(9999,)', 0],
+    ['first-valid(9999,, 1)', 0],
+    ['calc(first-valid(9999, 1))', 0],
+    ['calc(first-valid(var(--inner, 9999), 1))', 0],
+  ] as const)('inspects the first supported first-valid() value: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: first-valid() whole-value regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
   });
 
   test.each([
