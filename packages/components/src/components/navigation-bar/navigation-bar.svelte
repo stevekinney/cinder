@@ -365,13 +365,11 @@
     const enabledItems = getSequentialNavigationItems();
     const logicalEnabledItems = getNavigationItems().filter(isEnabledNavigationItem);
     const isSequentialTarget = sequentialItems.includes(navigationItem);
-    const hasSequentialTargetBefore = sequentialItems.some(
-      (target) =>
-        Boolean(target.compareDocumentPosition(navigationItem) & Node.DOCUMENT_POSITION_FOLLOWING),
+    const hasSequentialTargetBefore = sequentialItems.some((target) =>
+      Boolean(target.compareDocumentPosition(navigationItem) & Node.DOCUMENT_POSITION_FOLLOWING),
     );
-    const hasSequentialTargetAfter = sequentialItems.some(
-      (target) =>
-        Boolean(navigationItem.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING),
+    const hasSequentialTargetAfter = sequentialItems.some((target) =>
+      Boolean(navigationItem.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING),
     );
     if (enabledItems.length === 0 && logicalEnabledItems.length === 0) return false;
 
