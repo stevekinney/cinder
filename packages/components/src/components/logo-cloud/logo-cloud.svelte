@@ -18,6 +18,7 @@
 
 <script lang="ts">
   import Container from '../container/container.svelte';
+  import Grid from '@lostgradient/cinder/grid';
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { LogoCloudProps } from './logo-cloud.types.ts';
@@ -53,7 +54,7 @@
         </header>
       {/if}
 
-      <ul class="cinder-logo-cloud__list">
+      <Grid as="ul" gap="var(--cinder-space-5)" class="cinder-logo-cloud__list">
         {#each logos as logo, index (`${logo.name}-${index}`)}
           <li class="cinder-logo-cloud__item">
             {#if logo.href}
@@ -70,7 +71,7 @@
             {/if}
           </li>
         {/each}
-      </ul>
+      </Grid>
     </div>
   </Container>
 </svelte:element>
