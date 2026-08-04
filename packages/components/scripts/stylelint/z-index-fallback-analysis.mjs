@@ -1153,6 +1153,110 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
   return true;
 }
 
+function mediaQueryStaticTruth(value, range) {
+  const expressionRange = trimCssTriviaRange(value, range.start, range.end);
+  const skipTrivia = (start) => {
+    while (start < expressionRange.end && isCssWhitespaceOrComment(value[start])) start += 1;
+    return start;
+  };
+  let cursor = expressionRange.start;
+  let identifierEnd = cssIdentifierTokenEnd(value, cursor);
+  const modifier = normalizeCssEscapesForInspection(
+    value.slice(cursor, identifierEnd),
+  ).value.toLowerCase();
+  if (modifier === 'not' || modifier === 'only') {
+    cursor = skipTrivia(identifierEnd);
+    if (value[cursor] === '(') return undefined;
+    identifierEnd = cssIdentifierTokenEnd(value, cursor);
+  }
+  if (identifierEnd === cursor) return undefined;
+  const mediaType = normalizeCssEscapesForInspection(
+    value.slice(cursor, identifierEnd),
+  ).value.toLowerCase();
+  cursor = skipTrivia(identifierEnd);
+  const hasCondition = cursor < expressionRange.end;
+  if (cursor < expressionRange.end) {
+    const operatorEnd = cssIdentifierTokenEnd(value, cursor);
+    if (value.slice(cursor, operatorEnd).toLowerCase() !== 'and') return undefined;
+  }
+  if (mediaType === 'all' && !hasCondition) return modifier !== 'not';
+  if (['all', 'print', 'screen'].includes(mediaType)) return undefined;
+  return modifier === 'not';
+}
+
+function conditionalBooleanStaticTruth(value, range, parenthesisPairs, depth = 0) {
+  if (depth > conditionalNestingLimit) return undefined;
+  const expressionRange = trimCssTriviaRange(value, range.start, range.end);
+  const skipTrivia = (start) => {
+    while (start < expressionRange.end && isCssWhitespaceOrComment(value[start])) start += 1;
+    return start;
+  };
+  const consumeGroup = (start) => {
+    start = skipTrivia(start);
+    if (value[start] === '(') {
+      const closeIndex = parenthesisPairs.get(start);
+      if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
+      return {
+        end: closeIndex + 1,
+        truth: conditionalBooleanStaticTruth(
+          value,
+          { start: start + 1, end: closeIndex },
+          parenthesisPairs,
+          depth + 1,
+        ),
+      };
+    }
+    const identifierEnd = cssIdentifierTokenEnd(value, start);
+    if (identifierEnd === start || value[identifierEnd] !== '(') return undefined;
+    const closeIndex = parenthesisPairs.get(identifierEnd);
+    if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
+    const functionName = value.slice(start, identifierEnd).toLowerCase();
+    return {
+      end: closeIndex + 1,
+      truth:
+        functionName === 'media'
+          ? mediaQueryStaticTruth(value, { start: identifierEnd + 1, end: closeIndex })
+          : undefined,
+    };
+  };
+
+  let cursor = expressionRange.start;
+  const firstIdentifierEnd = cssIdentifierTokenEnd(value, cursor);
+  const firstIdentifier = value.slice(cursor, firstIdentifierEnd).toLowerCase();
+  const hasLeadingNot = firstIdentifier === 'not' && value[firstIdentifierEnd] !== '(';
+  if (hasLeadingNot) cursor = skipTrivia(firstIdentifierEnd);
+  const firstGroup = consumeGroup(cursor);
+  if (firstGroup === undefined) return undefined;
+  cursor = skipTrivia(firstGroup.end);
+  if (hasLeadingNot)
+    return cursor === expressionRange.end && firstGroup.truth !== undefined
+      ? !firstGroup.truth
+      : undefined;
+
+  const truths = [firstGroup.truth];
+  let operator;
+  while (cursor < expressionRange.end) {
+    const operatorEnd = cssIdentifierTokenEnd(value, cursor);
+    const nextOperator = value.slice(cursor, operatorEnd).toLowerCase();
+    if (nextOperator !== 'and' && nextOperator !== 'or') return undefined;
+    operator ??= nextOperator;
+    if (operator !== nextOperator) return undefined;
+    const nextGroup = consumeGroup(skipTrivia(operatorEnd));
+    if (nextGroup === undefined) return undefined;
+    truths.push(nextGroup.truth);
+    cursor = skipTrivia(nextGroup.end);
+  }
+  if (operator === 'and') {
+    if (truths.includes(false)) return false;
+    return truths.every((truth) => truth === true) ? true : undefined;
+  }
+  if (operator === 'or') {
+    if (truths.includes(true)) return true;
+    return truths.every((truth) => truth === false) ? false : undefined;
+  }
+  return truths[0];
+}
+
 function conditionalTestContentsAreStructurallyValid(value, range, parenthesisPairs, functionName) {
   if (functionName === 'media')
     return mediaQueryIsStructurallyValid(value, range, parenthesisPairs);
@@ -1528,6 +1632,7 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
       .trim()
       .toLowerCase();
     const isUnconditionalBranch = condition === 'else';
+    let conditionTruth;
     if (!isUnconditionalBranch) {
       const conditionResult = isValidConditionalBooleanExpression(
         value,
@@ -1536,9 +1641,11 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
       );
       if (conditionResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
       if (!conditionResult) return true;
+      conditionTruth = conditionalBooleanStaticTruth(value, conditionRange, parenthesisPairs);
+      if (conditionTruth === false) return true;
     }
     if (!hasUnconditionalBranch) branches.push(branchValueRange);
-    hasUnconditionalBranch ||= isUnconditionalBranch;
+    hasUnconditionalBranch ||= isUnconditionalBranch || conditionTruth === true;
     return true;
   };
 
@@ -3478,18 +3585,29 @@ function unresolvedRuntimeRangeCandidates(
       )
     )
       continue;
-    if (
-      functionParent.functionName !== 'random' &&
-      numberOnlyArgumentRanges.some((argumentRange) =>
-        unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+    const hasUnavoidablyNonNumberArgument = numberOnlyArgumentRanges.some((argumentRange) =>
+      unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+        frame,
+        value,
+        argumentRange,
+        parenthesisPairs,
+      ),
+    );
+    if (hasUnavoidablyNonNumberArgument && functionParent.functionName !== 'random') {
+      if (
+        !steppedValueFunctionNames.has(functionParent.functionName) ||
+        !steppedValueFunctionHasValidTypedOuterWitness(
           frame,
           value,
-          argumentRange,
-          parenthesisPairs,
-        ),
+          range,
+          functionRange,
+          parsedArguments,
+          numberOnlyArgumentRanges,
+          budget,
+        )
       )
-    )
-      continue;
+        continue;
+    }
     const logValueArgument = parsedArguments.argumentRanges[0];
     const definedPathCanChangeLogValue =
       functionParent.functionName === 'log' &&
@@ -3523,7 +3641,7 @@ function unresolvedRuntimeRangeCandidates(
       functionParent.functionName === 'exp' ||
       functionParent.functionName === 'sqrt' ||
       (staticModulusDivisor !== undefined &&
-        evaluateStaticLayerNumber(staticModulusDivisor.value) > 0);
+        staticValueHasPositiveScalarOrTypedMagnitude(staticModulusDivisor.value));
     if (
       functionIsKnownNonnegative &&
       unresolvedNonnegativeFunctionIsSafelyCapped(
@@ -3993,14 +4111,22 @@ function steppedValueStaticIntervalIsValid(functionName, parsedArguments, number
   const staticInterval = parsedArguments.staticArguments.find(
     (argument) => argument.range.start === intervalRange.start,
   );
-  return staticInterval === undefined || evaluateStaticLayerNumber(staticInterval.value) !== 0;
+  if (staticInterval === undefined) return true;
+  const scalarValue = evaluateStaticLayerNumber(staticInterval.value);
+  if (scalarValue !== undefined) return scalarValue !== 0;
+  return !typedDivisorWitnessValues.some(
+    (witness) => evaluateStaticLayerNumber(`calc((${staticInterval.value}) / (${witness}))`) === 0,
+  );
 }
 
 function modOrRemStaticDividendIsValid(functionName, parsedArguments) {
   if (functionName !== 'mod' && functionName !== 'rem') return true;
   const staticDividend = parsedArguments.staticArguments.find((argument) => argument.index === 0);
-  return (
-    staticDividend === undefined || Number.isFinite(evaluateStaticLayerNumber(staticDividend.value))
+  if (staticDividend === undefined) return true;
+  const scalarValue = evaluateStaticLayerNumber(staticDividend.value);
+  if (scalarValue !== undefined) return Number.isFinite(scalarValue);
+  return typedDivisorWitnessValues.some((witness) =>
+    Number.isFinite(evaluateStaticLayerNumber(`calc((${staticDividend.value}) / (${witness}))`)),
   );
 }
 
@@ -4037,6 +4163,21 @@ function runtimeFunctionStaticArgumentsAreValid(
       (staticValues.length < 2 || haveCompatibleStaticProgressTypes(staticValues))
     );
   }
+  if (steppedValueFunctionNames.has(functionName)) {
+    const staticValues = staticArgumentsToValidate.map((argument) => argument.value);
+    return (
+      modOrRemStaticDividendIsValid(functionName, parsedArguments) &&
+      staticValues.every((argument) => {
+        const analysis = analyzeStaticLayerValue(argument);
+        return (
+          !isStaticallyInvalidArithmetic(argument) &&
+          (analysis.resultType === 'number' || analysis.resultType === 'non-number')
+        );
+      }) &&
+      (staticValues.length < 2 || haveCompatibleStaticProgressTypes(staticValues)) &&
+      steppedValueStaticIntervalIsValid(functionName, parsedArguments, numberArgumentRanges)
+    );
+  }
   return (
     (functionName !== 'log' ||
       logStaticArgumentsCanReachValidResult(parsedArguments.staticArguments)) &&
@@ -4046,8 +4187,7 @@ function runtimeFunctionStaticArgumentsAreValid(
         !isStaticallyInvalidArithmetic(argument.value) &&
         (!['log', 'pow'].includes(functionName) ||
           analyzeStaticLayerValue(argument.value).resultType !== 'non-number') &&
-        (!steppedValueFunctionNames.has(functionName) ||
-          analyzeStaticLayerValue(argument.value).resultType === 'number'),
+        analyzeStaticLayerValue(argument.value).resultType === 'number',
     ) &&
     steppedValueStaticIntervalIsValid(functionName, parsedArguments, numberArgumentRanges)
   );
@@ -4060,6 +4200,8 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
   range,
   parenthesisPairs,
   invalidFunctionCache,
+  budget,
+  invalidTypedSteppedParents,
 ) {
   let parent = child.parenthesisParent;
   while (
@@ -4093,6 +4235,29 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
       unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount)
         ? numberOnlyRuntimeArgumentRanges(parent.functionName, parsedArguments, value)
         : undefined;
+    const hasUnavoidablyNonNumberArgument =
+      numberArgumentRanges !== undefined &&
+      numberArgumentRanges.some((argumentRange) =>
+        unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+          frame,
+          value,
+          argumentRange,
+          parenthesisPairs,
+        ),
+      );
+    const typedSteppedFunctionIsInvalid =
+      steppedValueFunctionNames.has(parent.functionName) &&
+      hasUnavoidablyNonNumberArgument &&
+      !steppedValueFunctionHasValidTypedOuterWitness(
+        frame,
+        value,
+        range,
+        { start: parent.functionStart, end: parent.end },
+        parsedArguments,
+        numberArgumentRanges,
+        budget,
+      );
+    if (typedSteppedFunctionIsInvalid) invalidTypedSteppedParents.add(parent);
     const isInvalidNumberOnlyFunction =
       parsedArguments !== undefined &&
       unresolvedRuntimeFunctionHasValidArity(parent.functionName, parsedArguments.argumentCount) &&
@@ -4104,19 +4269,125 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
           numberArgumentRanges,
         ) ||
         (parent.functionName !== 'random' &&
-          numberArgumentRanges.some((argumentRange) =>
-            unresolvedFunctionArgumentIsUnavoidablyNonNumber(
-              frame,
-              value,
-              argumentRange,
-              parenthesisPairs,
-            ),
-          )));
+          !steppedValueFunctionNames.has(parent.functionName) &&
+          hasUnavoidablyNonNumberArgument) ||
+        typedSteppedFunctionIsInvalid);
     invalidFunctionCache.set(parent, isInvalidNumberOnlyFunction);
     if (isInvalidNumberOnlyFunction) return true;
     parent = parent.parenthesisParent;
   }
   return false;
+}
+
+function staticValueHasPositiveScalarOrTypedMagnitude(value) {
+  const scalarValue = evaluateStaticLayerNumber(value);
+  if (scalarValue !== undefined) return scalarValue > 0;
+  return typedDivisorWitnessValues.some(
+    (witness) => evaluateStaticLayerNumber(`calc((${value}) / (${witness}))`) > 0,
+  );
+}
+
+function steppedValueFunctionHasValidTypedOuterWitness(
+  frame,
+  value,
+  range,
+  functionRange,
+  parsedArguments,
+  numberArgumentRanges,
+  budget,
+) {
+  const numberArgumentStarts = new Set(
+    numberArgumentRanges.map((argumentRange) => argumentRange.start),
+  );
+  const staticNumericValues = parsedArguments.staticArguments
+    .filter((argument) => numberArgumentStarts.has(argument.range.start))
+    .map((argument) => argument.value);
+  return typedDivisorWitnessValues.some((witness) => {
+    if (!haveCompatibleStaticProgressTypes([...staticNumericValues, witness])) return false;
+    const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
+      { start: functionRange.start, end: functionRange.end, value: witness },
+    ]);
+    return (
+      expression !== fallbackResolutionTooComplex &&
+      !isStaticallyInvalidArithmetic(expression) &&
+      analyzeStaticLayerValue(expression).resultType === 'number'
+    );
+  });
+}
+
+function childHasKnownNonnegativeTypedModPath(
+  child,
+  frame,
+  value,
+  range,
+  parenthesisPairs,
+  budget,
+) {
+  const functionParent = childFunctionParent(child, 'runtimeRangeParent', range);
+  if (functionParent?.functionName !== 'mod') return false;
+  const functionRange = { start: functionParent.functionStart, end: functionParent.end };
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    functionRange,
+    'mod',
+    parenthesisPairs,
+  );
+  if (parsedArguments?.argumentCount !== 2) return false;
+  const numberArgumentRanges = numberOnlyRuntimeArgumentRanges('mod', parsedArguments, value);
+  const staticDivisor = parsedArguments.staticArguments.find((argument) => argument.index === 1);
+  return (
+    numberArgumentRanges !== undefined &&
+    staticDivisor !== undefined &&
+    staticValueHasPositiveScalarOrTypedMagnitude(staticDivisor.value) &&
+    steppedValueFunctionHasValidTypedOuterWitness(
+      frame,
+      value,
+      range,
+      functionRange,
+      parsedArguments,
+      numberArgumentRanges,
+      budget,
+    )
+  );
+}
+
+function childHasValidTypedSteppedOuterPath(child, frame, value, range, parenthesisPairs, budget) {
+  const functionParent = childFunctionParent(child, 'runtimeRangeParent', range);
+  if (!steppedValueFunctionNames.has(functionParent?.functionName)) return false;
+  const functionRange = { start: functionParent.functionStart, end: functionParent.end };
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    functionRange,
+    functionParent.functionName,
+    parenthesisPairs,
+  );
+  if (
+    parsedArguments === undefined ||
+    !unresolvedRuntimeFunctionHasValidArity(
+      functionParent.functionName,
+      parsedArguments.argumentCount,
+    )
+  )
+    return false;
+  const numberArgumentRanges = numberOnlyRuntimeArgumentRanges(
+    functionParent.functionName,
+    parsedArguments,
+    value,
+  );
+  return (
+    numberArgumentRanges !== undefined &&
+    steppedValueFunctionHasValidTypedOuterWitness(
+      frame,
+      value,
+      range,
+      functionRange,
+      parsedArguments,
+      numberArgumentRanges,
+      budget,
+    )
+  );
 }
 
 function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, parenthesisPairs) {
@@ -4126,6 +4397,18 @@ function unresolvedFunctionArgumentIsUnavoidablyNonNumber(frame, value, range, p
     if (inspectedRangeCount >= conditionalNestingLimit) return false;
     inspectedRangeCount += 1;
     const currentRange = pendingRanges.pop();
+    const firstContainedChild =
+      frame.children[firstChildEndingAfter(frame.children, currentRange.start)];
+    const containsFallback =
+      firstContainedChild !== undefined &&
+      firstContainedChild.start < currentRange.end &&
+      firstContainedChild.end > currentRange.start;
+    if (
+      !containsFallback &&
+      analyzeStaticLayerValue(value.slice(currentRange.start, currentRange.end)).resultType ===
+        'non-number'
+    )
+      return true;
     const termRanges = topLevelAdditiveTermRanges(value, currentRange, parenthesisPairs);
     if (termRanges !== undefined) {
       let childIndex = firstChildEndingAfter(frame.children, termRanges[0].start);
@@ -4485,8 +4768,8 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
   const [onlyChild] = frame.children;
   const hasSingleChildWithEnclosingContext =
     frame.children.length === 1 && (onlyChild.start !== range.start || onlyChild.end !== range.end);
-  if (frame.resolvedClassification === 'too-complex') return [candidate];
   const invalidNumberOnlyFunctionCache = new Map();
+  const invalidTypedSteppedParents = new Set();
   const selectableChildren = new Set(
     frame.children.filter(
       (child) =>
@@ -4498,6 +4781,8 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
           range,
           parenthesisPairs,
           invalidNumberOnlyFunctionCache,
+          budget,
+          invalidTypedSteppedParents,
         ),
     ),
   );
@@ -4525,17 +4810,51 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     )
   )
     return [];
+  const allSelectableChildrenHaveValidTypedSteppedOuterPaths =
+    selectableChildren.size > 0 &&
+    [...selectableChildren].every((child) =>
+      childHasValidTypedSteppedOuterPath(child, frame, value, range, parenthesisPairs, budget),
+    );
   const hasNonnegativeFloor =
     hasFallbackIndependentSafeBound(frame, value, range, 'max', 'negative', parenthesisPairs) ||
-    hasFallbackIndependentClampBound(frame, value, range, 0, 'negative', budget, parenthesisPairs);
+    hasFallbackIndependentClampBound(
+      frame,
+      value,
+      range,
+      0,
+      'negative',
+      budget,
+      parenthesisPairs,
+      allSelectableChildrenHaveValidTypedSteppedOuterPaths,
+    );
   const hasMagicBound =
     hasFallbackIndependentSafeBound(frame, value, range, 'max', 'magic', parenthesisPairs) ||
     hasFallbackIndependentSafeBound(frame, value, range, 'min', 'magic', parenthesisPairs) ||
-    hasFallbackIndependentClampBound(frame, value, range, 2, 'magic', budget, parenthesisPairs);
+    hasFallbackIndependentClampBound(
+      frame,
+      value,
+      range,
+      2,
+      'magic',
+      budget,
+      parenthesisPairs,
+      allSelectableChildrenHaveValidTypedSteppedOuterPaths,
+    );
+  const allSelectableChildrenHaveKnownNonnegativeTypedModPaths =
+    selectableChildren.size > 0 &&
+    [...selectableChildren].every((child) =>
+      childHasKnownNonnegativeTypedModPath(child, frame, value, range, parenthesisPairs, budget),
+    );
   // Every banned classification is eliminated once both independent bounds
   // are proven. Avoid the remaining whole-expression analyses for wide safe
   // clamps because they cannot change that result.
-  if (hasNonnegativeFloor && hasMagicBound) return [];
+  if (
+    (hasNonnegativeFloor || allSelectableChildrenHaveKnownNonnegativeTypedModPaths) &&
+    hasMagicBound
+  )
+    return [];
+  if (frame.resolvedClassification === 'too-complex')
+    return invalidTypedSteppedParents.size > 0 && selectableChildren.size === 0 ? [] : [candidate];
   const additiveNonNumberSuppression =
     frame.resolvedClassification === 'unresolved'
       ? additiveNonNumberCandidateSuppression(frame, value, range, budget, parenthesisPairs)
