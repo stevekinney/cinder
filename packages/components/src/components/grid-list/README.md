@@ -30,11 +30,11 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:props:start -->
 
-| Prop             | Type       | Required | Default | Description                                                                                                                                                                                                                                                     |
-| ---------------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `minColumnWidth` | `string`   | no       | —       | Minimum width of each grid cell, expressed as a CSS `<length>` value (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first argument to `minmax()` inside a `repeat(auto-fill, ...)` track. Default: `"16rem"`. Empty string is treated as unset. |
-| `children`       | `(opaque)` | yes      | —       | Items — typically `GridListItem` instances. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                          |
-| `class`          | `(opaque)` | no       | —       | Extra class names merged with `cinder-grid-list`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                    |
+| Prop             | Type       | Required | Default | Description                                                                                                                                                                                                                       |
+| ---------------- | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minColumnWidth` | `string`   | no       | —       | Minimum width of each grid cell, expressed as a CSS `<length>` value (e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Forwarded to Grid's `minItemWidth` sizing contract. Default: `"16rem"`. Empty string is treated as unset. |
+| `children`       | `(opaque)` | yes      | —       | Items — typically `GridListItem` instances. Not expressible in JSON Schema; see the component types for the signature.                                                                                                            |
+| `class`          | `(opaque)` | no       | —       | Extra class names merged with `cinder-grid-list`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                      |
 
 <!-- generated:props:end -->
 

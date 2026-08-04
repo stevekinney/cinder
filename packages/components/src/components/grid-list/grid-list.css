@@ -1,23 +1,17 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../grid/grid.css';
 @layer cinder.components {
   /* ========================================
  * GRID LIST
  * ======================================== */
 
   .cinder-grid-list {
-    /* Default min-cell-width if `minColumnWidth` prop is omitted. */
     --cinder-grid-list-min-width: 16rem;
 
     list-style: none;
     margin: 0;
     padding: 0;
     inline-size: 100%;
-
-    display: grid;
-    grid-template-columns: repeat(
-      auto-fill,
-      minmax(min(var(--cinder-grid-list-min-width), 100%), 1fr)
-    );
     gap: var(--cinder-space-4);
   }
 

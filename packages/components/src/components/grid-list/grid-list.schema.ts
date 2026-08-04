@@ -7,7 +7,7 @@ const schema = {
     minColumnWidth: {
       type: 'string',
       description:
-        'Minimum width of each grid cell, expressed as a CSS `<length>` value\n(e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Used as the first\nargument to `minmax()` inside a `repeat(auto-fill, ...)` track.\nDefault: `"16rem"`. Empty string is treated as unset.',
+        'Minimum width of each grid cell, expressed as a CSS `<length>` value\n(e.g. `"16rem"`, `"240px"`, `"min(20rem, 100%)"`). Forwarded to Grid\'s\n`minItemWidth` sizing contract.\nDefault: `"16rem"`. Empty string is treated as unset.',
     },
   },
   additionalProperties: false,

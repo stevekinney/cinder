@@ -40,27 +40,37 @@ describe('GridList', () => {
     expect(list?.getAttribute('role')).toBe('list');
   });
 
-  test('minColumnWidth prop drives the CSS custom property', () => {
+  test('minColumnWidth prop drives Grid minItemWidth', () => {
     const { container } = render(GridList, {
       props: { minColumnWidth: '20rem', children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
-    expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('20rem');
+    expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('20rem');
+    expect(list?.style.getPropertyValue('--cinder-grid-columns')).toBe(
+      'repeat(auto-fill, minmax(min(var(--cinder-grid-min-item-width), 100%), 1fr))',
+    );
+    expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');
   });
 
-  test('no minColumnWidth → no inline custom property', () => {
+  test('no minColumnWidth uses the GridList CSS variable through Grid minItemWidth', () => {
     const { container } = render(GridList, {
       props: { children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
+    expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe(
+      'var(--cinder-grid-list-min-width)',
+    );
     expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');
   });
 
-  test('empty-string minColumnWidth is treated as unset', () => {
+  test('empty-string minColumnWidth uses the GridList CSS variable through Grid minItemWidth', () => {
     const { container } = render(GridList, {
       props: { minColumnWidth: '', children: textSnippet('') },
     });
     const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
+    expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe(
+      'var(--cinder-grid-list-min-width)',
+    );
     expect(list?.style.getPropertyValue('--cinder-grid-list-min-width')).toBe('');
   });
 
@@ -97,5 +107,21 @@ describe('GridList', () => {
     expect(css).toMatch(
       /\.cinder-grid-list__item:has\(\.cinder-grid-list__link:hover\)\s*\{[\s\S]*?border-color:\s*var\(--cinder-border\)/,
     );
+  });
+
+  test('sidecar imports composed Grid styles', async () => {
+    const css = await Bun.file(new URL('./grid-list.css', import.meta.url)).text();
+    expect(css).toContain("@import '../grid/grid.css';");
+  });
+
+  test('CSS preserves the public GridList minimum width variable', async () => {
+    const css = await Bun.file(new URL('./grid-list.css', import.meta.url)).text();
+    expect(css).toMatch(/--cinder-grid-list-min-width:\s*16rem/);
+  });
+
+  test('component imports composed Grid through the public subpath', async () => {
+    const source = await Bun.file(new URL('./grid-list.svelte', import.meta.url)).text();
+    expect(source).toContain("from '@lostgradient/cinder/grid'");
+    expect(source).not.toContain("from '../grid/");
   });
 });
