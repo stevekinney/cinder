@@ -4248,6 +4248,15 @@ function randomItemGroupOutputOptions(value, group, parenthesisPairs) {
       return value.slice(argumentRange.start + 1, argumentRange.end - 1);
     return value.slice(argumentRange.start, argumentRange.end);
   });
+  const key = value.slice(argumentRanges[0].start, argumentRanges[0].end).trim();
+  const fixedMatch = /^fixed\s+([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)$/i.exec(key);
+  if (fixedMatch !== null) {
+    const fixedBase = Number(fixedMatch[1]);
+    if (Number.isFinite(fixedBase) && fixedBase >= 0 && fixedBase <= 1) {
+      const normalizedBase = fixedBase === 1 ? 1 - Number.EPSILON / 2 : fixedBase;
+      return { continuous: false, values: [values[Math.floor(normalizedBase * values.length)]] };
+    }
+  }
   return { continuous: false, values };
 }
 

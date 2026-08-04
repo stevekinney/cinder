@@ -668,6 +668,8 @@ describe('cinder/z-index-scale', () => {
     ['random-item(auto, {9999}, 1)', 1],
     ['random-item(auto, , 9999)', 1],
     ['random-item(auto, 1, 2)', 0],
+    ['random-item(fixed 0, 1, 9999)', 0],
+    ['random-item(fixed 0.5, 1, 9999)', 1],
     ['random-item(fixed 2, 9999, 1)', 0],
   ] as const)('tracks CSS random-item() choices: %s', async (fallback, count) => {
     expect(
