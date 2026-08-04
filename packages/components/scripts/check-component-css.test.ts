@@ -221,6 +221,49 @@ describe('checkComponentCssSource', () => {
     }
   });
 
+  it('rejects a private stylesheet that imports itself', () => {
+    const root = mkdtempSync(join(tmpdir(), 'component-css-private-cycle-'));
+    try {
+      const componentDirectory = join(root, 'src/components/example');
+      const internalDirectory = join(root, 'src/components/_internal');
+      mkdirSync(componentDirectory, { recursive: true });
+      mkdirSync(internalDirectory, { recursive: true });
+      const privatePath = join(internalDirectory, 'self.css');
+      writeFileSync(
+        privatePath,
+        `${LAYER_ORDER_PRELUDE}\n@import '../_internal/self.css';\n@layer cinder.components { .cinder-example-private {} }`,
+      );
+      const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/self.css';\n@layer cinder.components { .cinder-example {} }`;
+      const violations = checkComponentCssSource(source, join(componentDirectory, 'example.css'));
+      expect(violations.some((violation) => violation.message.includes('cycle'))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects private stylesheets that import each other', () => {
+    const root = mkdtempSync(join(tmpdir(), 'component-css-private-cycle-'));
+    try {
+      const componentDirectory = join(root, 'src/components/example');
+      const internalDirectory = join(root, 'src/components/_internal');
+      mkdirSync(componentDirectory, { recursive: true });
+      mkdirSync(internalDirectory, { recursive: true });
+      writeFileSync(
+        join(internalDirectory, 'first.css'),
+        `${LAYER_ORDER_PRELUDE}\n@import '../_internal/second.css';\n@layer cinder.components { .cinder-example-first {} }`,
+      );
+      writeFileSync(
+        join(internalDirectory, 'second.css'),
+        `${LAYER_ORDER_PRELUDE}\n@import '../_internal/first.css';\n@layer cinder.components { .cinder-example-second {} }`,
+      );
+      const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/first.css';\n@layer cinder.components { .cinder-example {} }`;
+      const violations = checkComponentCssSource(source, join(componentDirectory, 'example.css'));
+      expect(violations.some((violation) => violation.message.includes('cycle'))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a private import that cannot resolve from an experimental sidecar', () => {
     const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-experimental-section {} }`;
     const violations = checkComponentCssSource(

@@ -272,7 +272,11 @@ export async function checkComponentCss(file: string): Promise<CssViolation[]> {
   return checkComponentCssSource(source, file);
 }
 
-export function checkComponentCssSource(source: string, file: string): CssViolation[] {
+export function checkComponentCssSource(
+  source: string,
+  file: string,
+  importStack: readonly string[] = [resolve(file)],
+): CssViolation[] {
   const violations: CssViolation[] = [];
 
   let root: Root;
@@ -307,8 +311,20 @@ export function checkComponentCssSource(source: string, file: string): CssViolat
             column: atRule.source?.start?.column ?? 1,
             message: `Private component stylesheet import does not resolve: ${params}.`,
           });
+        } else if (importStack.includes(target)) {
+          violations.push({
+            file,
+            line: atRule.source?.start?.line ?? 1,
+            column: atRule.source?.start?.column ?? 1,
+            message: `Private component stylesheet import cycle detected: ${[...importStack, target].join(' -> ')}.`,
+          });
         } else {
-          violations.push(...checkComponentCssSource(readFileSync(target, 'utf8'), target));
+          violations.push(
+            ...checkComponentCssSource(readFileSync(target, 'utf8'), target, [
+              ...importStack,
+              target,
+            ]),
+          );
         }
       }
       return;
