@@ -41,6 +41,7 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['log', [1, 2]],
   ['mod', 2],
   ['pow', 2],
+  ['random', [2, 3, 4]],
   ['rem', 2],
   ['round', [1, 2, 3]],
   ['sin', 1],
@@ -105,6 +106,7 @@ const mathFunctionNames = new Set([
   'mod',
   'pow',
   'progress',
+  'random',
   'rem',
   'round',
   'sign',
@@ -2697,7 +2699,8 @@ function validSubstitutionHeader(frame, value) {
   if (frame.functionName !== 'attr') return false;
   const attrType = header.slice(identifierEnd).trim();
   if (attrType === '' || attrType === '%') return true;
-  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length) return true;
+  if (cssIdentifierTokenEnd(attrType, 0) === attrType.length)
+    return !invalidCustomIdentKeywords.has(attrType.toLowerCase());
   const typeMatch = /^type\(([^()]+)\)$/i.exec(attrType);
   if (!typeMatch) return false;
   return validAttrTypeSyntax(typeMatch[1]);
@@ -2799,6 +2802,7 @@ function hasBareOperatorStream(
         detectEdgeOperators &&
         context?.mathContext === true &&
         (context.isGroupingParenthesis || mathFunctionNames.has(context.functionName)) &&
+        context.functionName !== 'random' &&
         hasInvalidEdgeOperator(value, context.openIndex + 1, index)
       )
         return true;
@@ -3475,6 +3479,7 @@ function unresolvedRuntimeRangeCandidates(
     )
       continue;
     if (
+      functionParent.functionName !== 'random' &&
       numberOnlyArgumentRanges.some((argumentRange) =>
         unresolvedFunctionArgumentIsUnavoidablyNonNumber(
           frame,
@@ -3552,6 +3557,199 @@ function unresolvedRuntimeRangeCandidates(
     ];
   }
   return [];
+}
+
+function randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs) {
+  const functionRange = { start: group.functionStart, end: group.end };
+  const parsedArguments = fallbackIndependentStaticArguments(
+    frame,
+    value,
+    functionRange,
+    'random',
+    parenthesisPairs,
+  );
+  if (parsedArguments === undefined) return undefined;
+  const numericArgumentRanges = randomNumericArgumentRanges(value, parsedArguments);
+  if (
+    numericArgumentRanges === undefined ||
+    !runtimeFunctionStaticArgumentsAreValid('random', parsedArguments, numericArgumentRanges)
+  )
+    return undefined;
+
+  const numericArgumentStarts = new Set(
+    numericArgumentRanges.map((argumentRange) => argumentRange.start),
+  );
+  const staticNumericArguments = parsedArguments.staticArguments.filter((argument) =>
+    numericArgumentStarts.has(argument.range.start),
+  );
+  if (staticNumericArguments.length !== numericArgumentRanges.length) return { runtime: true };
+  const argumentValues = numericArgumentRanges.map(
+    (argumentRange) =>
+      staticNumericArguments.find((argument) => argument.range.start === argumentRange.start).value,
+  );
+  const fixedBaseValue = fixedRandomBaseValue(value, parsedArguments);
+  const numericValues = argumentValues.map((argument) => evaluateStaticLayerNumber(argument));
+  if (numericValues.some((numericValue) => numericValue === undefined)) {
+    if (
+      argumentValues.length === 2 &&
+      argumentValues.every(
+        (argumentValue) => analyzeStaticLayerValue(argumentValue).resultType === 'non-number',
+      )
+    ) {
+      if (fixedBaseValue === 0) return { continuous: false, values: [argumentValues[0]] };
+      if (fixedBaseValue !== undefined)
+        return {
+          continuous: false,
+          values: [
+            `calc((${argumentValues[0]}) + ${fixedBaseValue} * (max((${argumentValues[0]}), (${argumentValues[1]})) - (${argumentValues[0]})))`,
+          ],
+        };
+      return { continuous: true, values: argumentValues };
+    }
+    return undefined;
+  }
+  if (numericValues.some((numericValue) => Number.isNaN(numericValue))) return undefined;
+
+  const [minimumValue, writtenMaximumValue, stepValue] = numericValues;
+  const [minimumExpression, writtenMaximumExpression, stepExpression] = argumentValues;
+  if (!Number.isFinite(minimumValue)) return { continuous: false, values: [minimumExpression] };
+  if (!Number.isFinite(writtenMaximumValue - minimumValue)) return undefined;
+  const maximumValue = Math.max(minimumValue, writtenMaximumValue);
+  const maximumExpression =
+    maximumValue === minimumValue ? minimumExpression : writtenMaximumExpression;
+  if (maximumValue === minimumValue) return { continuous: false, values: [minimumExpression] };
+  if (stepValue === undefined || stepValue <= 0) {
+    if (fixedBaseValue === 0) return { continuous: false, values: [minimumExpression] };
+    if (fixedBaseValue !== undefined)
+      return {
+        continuous: false,
+        values: [
+          `calc((${minimumExpression}) + ${fixedBaseValue} * ((${maximumExpression}) - (${minimumExpression})))`,
+        ],
+      };
+    return { continuous: true, values: [minimumExpression, maximumExpression] };
+  }
+  if (!Number.isFinite(stepValue)) return { continuous: false, values: [minimumExpression] };
+
+  const stepCount = Math.floor((maximumValue - minimumValue) / stepValue);
+  if (!Number.isSafeInteger(stepCount) || stepCount > 128) return fallbackResolutionTooComplex;
+  if (fixedBaseValue !== undefined) {
+    const stepIndex = Math.floor(fixedBaseValue * (stepCount + 1));
+    const expression =
+      stepIndex === 0
+        ? minimumExpression
+        : `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+    if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
+    return { continuous: false, values: [expression] };
+  }
+  const values = [];
+  for (let stepIndex = 0; stepIndex <= stepCount; stepIndex += 1) {
+    const expression =
+      stepIndex === 0
+        ? minimumExpression
+        : `calc((${minimumExpression}) + (${stepExpression}) * ${stepIndex})`;
+    if (!consumeResolutionWork(budget, expression.length)) return fallbackResolutionTooComplex;
+    values.push(expression);
+  }
+  return { continuous: false, values };
+}
+
+function randomRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+  const groups = frame.randomGroups.filter(
+    (group) =>
+      group.end !== undefined &&
+      group.functionStart >= range.start &&
+      group.end <= range.end &&
+      !frame.randomGroups.some(
+        (possibleParent) =>
+          possibleParent !== group &&
+          possibleParent.end !== undefined &&
+          possibleParent.functionStart <= group.functionStart &&
+          possibleParent.end >= group.end,
+      ),
+  );
+  if (groups.length === 0) return [];
+
+  const analyzedGroups = [];
+  let combinationCount = 1;
+  let hasContinuousRange = false;
+  for (const group of groups) {
+    const options = randomGroupOutputOptions(frame, value, group, budget, parenthesisPairs);
+    if (options === undefined || options.runtime === true) continue;
+    if (options === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+    hasContinuousRange ||= options.continuous;
+    combinationCount *= options.values.length;
+    if (!Number.isSafeInteger(combinationCount) || combinationCount > 256)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+    analyzedGroups.push({ group, options });
+  }
+  if (analyzedGroups.length === 0) return [];
+
+  const classifications = new Set();
+  let minimum = Infinity;
+  let maximum = -Infinity;
+  let numericResultCount = 0;
+  for (let combination = 0; combination < combinationCount; combination += 1) {
+    let optionStride = 1;
+    const replacements = analyzedGroups.map(({ group, options }) => {
+      const optionIndex = Math.floor(combination / optionStride) % options.values.length;
+      optionStride *= options.values.length;
+      return {
+        start: group.functionStart,
+        end: group.end,
+        value: options.values[optionIndex],
+      };
+    });
+    const expression = resolveFrameExpressionWithRangeReplacements(
+      frame,
+      value,
+      range,
+      budget,
+      replacements,
+    );
+    if (expression === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+    const analysis = analyzeFrameExpression(frame, expression, budget);
+    if (analysis.classification === 'negative' || analysis.classification === 'magic')
+      classifications.add(analysis.classification);
+    if (analysis.resultType !== 'number' || isStaticallyInvalidArithmetic(expression)) continue;
+    const numericValue = evaluateStaticLayerNumber(expression);
+    if (numericValue === undefined || Number.isNaN(numericValue)) continue;
+    numericResultCount += 1;
+    minimum = Math.min(minimum, numericValue);
+    maximum = Math.max(maximum, numericValue);
+  }
+  if (hasContinuousRange && numericResultCount > 0) {
+    if (minimum < 0) classifications.add('negative');
+    if (minimum <= 9999 && maximum >= 9999) classifications.add('magic');
+  }
+  return [...classifications].map((resolvedClassification) => ({
+    ...candidate,
+    resolvedClassification,
+    hasRuntimeSibling: true,
+  }));
 }
 
 function treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
@@ -3704,10 +3902,70 @@ function logHasFixedZeroResult(staticArguments) {
   return valueArgument !== undefined && evaluateStaticLayerNumber(valueArgument.value) === 1;
 }
 
+function randomKeyIsStructurallyValid(value, range) {
+  const key = value
+    .slice(range.start, range.end)
+    .replaceAll(cssCommentMaskCharacter, ' ')
+    .trim()
+    .toLowerCase();
+  if (key === 'auto') return true;
+  const fixedMatch = /^fixed\s+([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)$/i.exec(key);
+  if (fixedMatch) {
+    const fixedValue = Number(fixedMatch[1]);
+    return Number.isFinite(fixedValue) && fixedValue >= 0 && fixedValue <= 1;
+  }
+
+  const tokens = key.split(/\s+/);
+  let dashedIdentifierCount = 0;
+  let elementScopeCount = 0;
+  let propertyScopeCount = 0;
+  for (const token of tokens) {
+    if (token.startsWith('--') && cssIdentifierTokenEnd(token, 0) === token.length)
+      dashedIdentifierCount += 1;
+    else if (token === 'element-scoped') elementScopeCount += 1;
+    else if (
+      token === 'property-scoped' ||
+      token === 'property-index-scoped' ||
+      (token.startsWith('ua-') && cssIdentifierTokenEnd(token, 0) === token.length)
+    )
+      propertyScopeCount += 1;
+    else return false;
+  }
+  return (
+    tokens.length > 0 &&
+    dashedIdentifierCount <= 1 &&
+    elementScopeCount <= 1 &&
+    propertyScopeCount <= 1
+  );
+}
+
+function fixedRandomBaseValue(value, parsedArguments) {
+  if (parsedArguments.argumentCount < 3) return undefined;
+  const key = value
+    .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
+    .replaceAll(cssCommentMaskCharacter, ' ')
+    .trim();
+  const fixedMatch = /^fixed\s+([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?)$/i.exec(key);
+  if (!fixedMatch) return undefined;
+  const fixedValue = Number(fixedMatch[1]);
+  if (!Number.isFinite(fixedValue) || fixedValue < 0 || fixedValue > 1) return undefined;
+  return fixedValue === 1 ? 1 - Number.EPSILON / 2 : fixedValue;
+}
+
+function randomNumericArgumentRanges(value, parsedArguments) {
+  if (parsedArguments.argumentCount === 2) return parsedArguments.argumentRanges;
+  const hasKey = randomKeyIsStructurallyValid(value, parsedArguments.argumentRanges[0]);
+  if (parsedArguments.argumentCount === 3)
+    return hasKey ? parsedArguments.argumentRanges.slice(1) : parsedArguments.argumentRanges;
+  if (parsedArguments.argumentCount === 4 && hasKey) return parsedArguments.argumentRanges.slice(1);
+  return undefined;
+}
+
 function numberOnlyRuntimeArgumentRanges(functionName, parsedArguments, value) {
   if (functionName === 'exp' || functionName === 'sqrt')
     return parsedArguments.argumentRanges.slice(0, 1);
   if (['log', 'mod', 'pow', 'rem'].includes(functionName)) return parsedArguments.argumentRanges;
+  if (functionName === 'random') return randomNumericArgumentRanges(value, parsedArguments);
   if (functionName === 'round') {
     const firstArgument = value
       .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
@@ -3760,6 +4018,25 @@ function runtimeFunctionStaticArgumentsAreValid(
           numberArgumentStarts.has(argument.range.start),
         )
       : parsedArguments.staticArguments;
+  if (functionName === 'random') {
+    const numericArgumentStarts = new Set(
+      numberArgumentRanges.map((argumentRange) => argumentRange.start),
+    );
+    const staticNumericArguments = parsedArguments.staticArguments.filter((argument) =>
+      numericArgumentStarts.has(argument.range.start),
+    );
+    const staticValues = staticNumericArguments.map((argument) => argument.value);
+    return (
+      staticNumericArguments.every((argument) => {
+        const analysis = analyzeStaticLayerValue(argument.value);
+        return (
+          !isStaticallyInvalidArithmetic(argument.value) &&
+          (analysis.resultType === 'number' || analysis.resultType === 'non-number')
+        );
+      }) &&
+      (staticValues.length < 2 || haveCompatibleStaticProgressTypes(staticValues))
+    );
+  }
   return (
     (functionName !== 'log' ||
       logStaticArgumentsCanReachValidResult(parsedArguments.staticArguments)) &&
@@ -3792,7 +4069,7 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
     parent.end <= range.end
   ) {
     if (
-      !['exp', 'log', 'pow', 'sqrt'].includes(parent.functionName) &&
+      !['exp', 'log', 'pow', 'random', 'sqrt'].includes(parent.functionName) &&
       !steppedValueFunctionNames.has(parent.functionName)
     ) {
       parent = parent.parenthesisParent;
@@ -3826,14 +4103,15 @@ function childIsInsideProvablyInvalidNumberOnlyFunction(
           parsedArguments,
           numberArgumentRanges,
         ) ||
-        numberArgumentRanges.some((argumentRange) =>
-          unresolvedFunctionArgumentIsUnavoidablyNonNumber(
-            frame,
-            value,
-            argumentRange,
-            parenthesisPairs,
-          ),
-        ));
+        (parent.functionName !== 'random' &&
+          numberArgumentRanges.some((argumentRange) =>
+            unresolvedFunctionArgumentIsUnavoidablyNonNumber(
+              frame,
+              value,
+              argumentRange,
+              parenthesisPairs,
+            ),
+          )));
     invalidFunctionCache.set(parent, isInvalidNumberOnlyFunction);
     if (isInvalidNumberOnlyFunction) return true;
     parent = parent.parenthesisParent;
@@ -4476,6 +4754,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
       parenthesisPairs,
       selectableChildren,
     ),
+    ...randomRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
     ...treeCountingRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
   ];
   const uneliminatedCandidates = (
@@ -4551,6 +4830,7 @@ function fallbackCandidates(value) {
     children: [],
     conditionalGroups: [],
     hasInvalidCommaStream: false,
+    randomGroups: [],
     treeCountingGroups: [],
   };
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
@@ -4590,6 +4870,7 @@ function fallbackCandidates(value) {
         unprovenBannedCandidates: [],
         resolvedFallback: null,
         resolvedClassification: 'unresolved',
+        randomGroups: [],
         mathContext: parentheses.at(-1)?.mathContext === true,
         invalidFunctionParent: parentheses.at(-1)?.invalidFunctionParent,
         parenthesisParent: parentheses.at(-1),
@@ -4667,6 +4948,10 @@ function fallbackCandidates(value) {
       if (treeCountingFunctionNames.has(group.functionName)) {
         const treeCountingOwner = fallbackFrames.at(-1) ?? rootFrame;
         treeCountingOwner.treeCountingGroups.push(group);
+      }
+      if (group.functionName === 'random') {
+        const randomOwner = fallbackFrames.at(-1) ?? rootFrame;
+        randomOwner.randomGroups.push(group);
       }
       const progressRangeIsUnsupported =
         group.signedZeroSensitiveContext ||

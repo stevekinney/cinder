@@ -576,6 +576,63 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    ['random(9999, 10000)', 1],
+    ['random(-1, 1)', 1],
+    ['calc(9999 * random(0, 1))', 1],
+    ['calc(9999 * random(auto, 0, 1))', 1],
+    ['calc(9999 * random(--shared, 0, 1))', 1],
+    ['calc(9999 * random(--shared element-scoped, 0, 1))', 1],
+    ['calc(9999 * random(fixed 0, 0, 1))', 0],
+    ['calc(9999 * random(fixed .5, 0, 1))', 0],
+    ['calc(9999 * random(fixed 1, 0, 1))', 1],
+    ['random(var(--inner, 9999), 10000)', 1],
+    ['random(0, var(--inner, 9999))', 1],
+    ['random(--shared, var(--inner, 9999), 10000)', 1],
+    ['random(0, 10000, 9999)', 1],
+    ['calc(random(0px, 9999px) / 1px)', 1],
+    ['calc(0 * random(0, 10000))', 0],
+    ['min(1, random(0, 10000))', 0],
+    ['clamp(0, random(0, 10000), 1)', 0],
+    ['random(0, 1)', 0],
+    ['random(10000, 9999)', 0],
+    ['random(0, 9998)', 0],
+    ['random(0, 10000, 10000)', 0],
+    ['random(0, 10000, 10001)', 0],
+    ['random(fixed 0, 0, 10000, 9999)', 0],
+    ['random(fixed .5, 0, 10000, 9999)', 1],
+    ['random(fixed 1, 0, 10000, 9999)', 1],
+    ['random(0, 10000, infinity)', 0],
+    ['random(0, 10000, 0)', 1],
+    ['random(0, 10000, -1)', 1],
+    ['random(infinity, 10000)', 0],
+    ['random(0, infinity)', 0],
+    ['random(0px, 1px)', 0],
+    ['calc(random(fixed 0, 0px, 9999px) / 1px)', 0],
+    ['calc(random(fixed 1, 0px, 9999px) / 1px)', 1],
+    ['random(fixed .5, 10000, 9999)', 0],
+    ['random()', 0],
+    ['random(0)', 0],
+    ['random(0, 1, 2, 3)', 0],
+    ['random(0, 10000, by 1)', 0],
+    ['random(50px, 180deg)', 0],
+    ['random(0, 1px)', 0],
+    ['random(foo, 0, 1)', 0],
+    ['random(fixed 2, 0, 1)', 0],
+    ['random(--shared, 0, 1, 2, 3)', 0],
+  ] as const)('tracks CSS random() ranges: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: random() runtime regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
     'var(--outer, calc(var(--inner, -1) * 0))',
     'var(--outer, calc(0 * var(--inner, -1)))',
     'var(--outer, calc(var(--inner, -1) * 0 + 0))',
@@ -2539,6 +2596,12 @@ describe('cinder/z-index-scale', () => {
     'env(revert-layer, -1)',
     'env(default, 9999)',
     'env(foo + 1, -1)',
+    'attr(data-layer inherit, -1)',
+    'attr(data-layer INITIAL, 9999)',
+    'attr(data-layer unset, -1)',
+    'attr(data-layer revert, 9999)',
+    'attr(data-layer revert-layer, -1)',
+    'attr(data-layer default, 9999)',
     'attr(data-layer type(<integer), -1)',
     'attr(data-layer type(!!!), -1)',
     'attr(data-layer type(<integer> <number>), -1)',
@@ -2639,6 +2702,7 @@ describe('cinder/z-index-scale', () => {
     'attr(data-layer type(<integer>#), -1)',
     'attr(data-layer type(<integer>+), 9999)',
     'attr(data-layer type(<transform-list>), -1)',
+    'attr(data-layer type(default), 9999)',
   ])('continues inspecting a fallback from a valid substitution header: %s', async (fallback) => {
     expect(
       warnings(
