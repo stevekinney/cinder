@@ -249,12 +249,19 @@
 
   // ARIA role: radiogroup for single-select, group for multi-select.
   const role = $derived(multiple ? 'group' : 'radiogroup');
+
+  // Grid renders a configurable HTMLElement tag, while ChoiceGrid preserves
+  // the div-specific attributes from its public API. The forwarded attributes
+  // are otherwise identical at runtime.
+  const gridRest = rest as Record<string, unknown>;
+  const gridLayout = $derived(
+    columns === 'responsive' ? { minItemWidth: minColumnWidth } : { columns },
+  );
 </script>
 
 <Grid
-  {...rest}
-  minItemWidth={columns === 'responsive' ? minColumnWidth : undefined}
-  columns={columns === 'responsive' ? undefined : columns}
+  {...gridRest}
+  {...gridLayout}
   gap="var(--cinder-space-3)"
   class={classNames('cinder-choice-grid', className)}
   {role}

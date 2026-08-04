@@ -403,7 +403,7 @@ describe('ChoiceGrid feedback states', () => {
 
 describe('ChoiceGrid column layout', () => {
   test('composes the shared Grid root', async () => {
-    const { container } = render(Wrapper, { ariaLabel: 'Choices', items: [items[0]] });
+    const { container } = render(Wrapper, { ariaLabel: 'Choices', items: [items[0]!] });
 
     expect(container.querySelector('.cinder-choice-grid.cinder-grid')).not.toBeNull();
   });
