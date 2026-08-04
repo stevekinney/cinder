@@ -32,7 +32,7 @@ const schema = {
     collapse: {
       type: 'boolean',
       description:
-        'Enables a narrow-screen fallback where BentoGrid becomes a single column\nand BentoCell placement resets to auto flow.',
+        "Enables a single-column fallback when the BentoGrid element's border-box\nwidth is 48rem or less and resets BentoCell placement to auto flow.",
       default: true,
     },
     as: {

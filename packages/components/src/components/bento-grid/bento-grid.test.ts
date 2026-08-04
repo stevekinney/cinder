@@ -33,16 +33,24 @@ class CapturingResizeObserver implements ResizeObserver {
   disconnect(): void {}
 
   trigger(width: number): void {
-    this.callback(
-      [
-        {
-          borderBoxSize: [{ inlineSize: width }],
-          contentRect: { width },
-          target: this.observed,
-        } as unknown as ResizeObserverEntry,
-      ],
-      this as unknown as ResizeObserver,
-    );
+    if (!this.observed) return;
+
+    const originalGetBoundingClientRect = this.observed.getBoundingClientRect;
+    this.observed.getBoundingClientRect = () => ({ width }) as DOMRect;
+    try {
+      this.callback(
+        [
+          {
+            borderBoxSize: [{ inlineSize: width }],
+            contentRect: { width },
+            target: this.observed,
+          } as unknown as ResizeObserverEntry,
+        ],
+        this as unknown as ResizeObserver,
+      );
+    } finally {
+      this.observed.getBoundingClientRect = originalGetBoundingClientRect;
+    }
   }
 }
 
@@ -81,6 +89,7 @@ describe('BentoGrid', () => {
     });
     const root = container.querySelector('div.cinder-bento-grid');
     expect(root).not.toBeNull();
+    expect(root?.classList.contains('cinder-grid')).toBe(true);
     expect(root?.textContent).toContain('content');
   });
 
@@ -128,7 +137,9 @@ describe('BentoGrid', () => {
     await tick();
 
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    const observer = CapturingResizeObserver.instances[0];
+    const observer = CapturingResizeObserver.instances.find(
+      (instance) => instance.observed === root,
+    );
     expect(observer?.observed).toBe(root);
     expect(root.hasAttribute('data-cinder-wide')).toBe(false);
 
@@ -172,14 +183,14 @@ describe('BentoGrid', () => {
     }
   });
 
-  test('omits inline custom properties when layout props are absent', () => {
+  test('uses default columns and omits optional layout properties', () => {
     const { container } = render(BentoGrid, {
       props: { children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-row-gap')).toBe('');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-column-gap')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(4, minmax(0, 1fr))');
+    expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('');
+    expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('');
     expect(root.hasAttribute('data-cinder-collapse')).toBe(true);
   });
 
@@ -188,9 +199,7 @@ describe('BentoGrid', () => {
       props: { columns: 4, children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe(
-      'repeat(4, minmax(0, 1fr))',
-    );
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(4, minmax(0, 1fr))');
   });
 
   test('threads string columns verbatim', () => {
@@ -198,24 +207,29 @@ describe('BentoGrid', () => {
       props: { columns: '18rem minmax(0, 1fr)', children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('18rem minmax(0, 1fr)');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('18rem minmax(0, 1fr)');
   });
 
-  test('ignores invalid numeric column counts', () => {
-    const { container } = render(BentoGrid, {
-      props: { columns: 0, children: textSnippet('content') },
-    });
-    const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-columns')).toBe('');
-  });
+  test.each([0, 1.5, Number.NaN])(
+    'falls back to four columns for invalid numeric column count %s',
+    (columns) => {
+      const { container } = render(BentoGrid, {
+        props: { columns, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
+      expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe(
+        'repeat(4, minmax(0, 1fr))',
+      );
+    },
+  );
 
   test('threads gap to both row and column gap', () => {
     const { container } = render(BentoGrid, {
       props: { gap: '1rem', children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-row-gap')).toBe('1rem');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-column-gap')).toBe('1rem');
+    expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('1rem');
+    expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('1rem');
   });
 
   test('rowGap and columnGap override the uniform gap independently', () => {
@@ -228,8 +242,8 @@ describe('BentoGrid', () => {
       },
     });
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-bento-grid-row-gap')).toBe('1.5rem');
-    expect(root.style.getPropertyValue('--cinder-bento-grid-column-gap')).toBe('2rem');
+    expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('1.5rem');
+    expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('2rem');
   });
 
   test('collapse can be disabled', () => {
@@ -256,7 +270,9 @@ describe('BentoGrid', () => {
 
   test('collapse CSS uses measured narrow state without a viewport media query', () => {
     const css = readFileSync(new URL('./bento-grid.css', import.meta.url), 'utf8');
+    expect(css).toContain("@import '../grid/grid.css';");
     expect(css).toContain('[data-cinder-collapse][data-cinder-narrow]');
+    expect(css).not.toContain('display: grid');
     expect(css).toContain('> .cinder-bento-cell');
     expect(css).not.toMatch(/@media[^{]*(?:min-width|max-width)/);
   });
