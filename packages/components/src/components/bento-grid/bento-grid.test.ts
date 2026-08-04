@@ -200,13 +200,18 @@ describe('BentoGrid', () => {
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('18rem minmax(0, 1fr)');
   });
 
-  test('ignores invalid numeric column counts', () => {
-    const { container } = render(BentoGrid, {
-      props: { columns: 0, children: textSnippet('content') },
-    });
-    const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
-  });
+  test.each([0, 1.5, Number.NaN])(
+    'falls back to four columns for invalid numeric column count %s',
+    (columns) => {
+      const { container } = render(BentoGrid, {
+        props: { columns, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
+      expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe(
+        'repeat(4, minmax(0, 1fr))',
+      );
+    },
+  );
 
   test('threads gap to both row and column gap', () => {
     const { container } = render(BentoGrid, {
