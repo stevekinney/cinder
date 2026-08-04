@@ -21,6 +21,11 @@ name: changeset-guard
 
 on:
   pull_request: {}
+
+  # Required checks must also report on the merge queue's candidate ref, or the
+  # queue can never merge. The guard reads the tree directly and uses no pull
+  # request context, so it behaves identically here.
+  merge_group: {}
   workflow_dispatch: {}
 
 permissions:
