@@ -1428,6 +1428,16 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('bounds exact rational growth in a long decimal product', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const product = Array.from({ length: 5_000 }, () => '1.001').join(' * ');
+    const startedAt = performance.now();
+    const result = bannedFallback(`var(--outer, calc(${product}))`);
+
+    expect(result?.reason).toBe('too-complex');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('indexes wide additive terms without rescanning every fallback child', async () => {
     const { bannedFallback } = await import(fallbackAnalysisPath);
     const terms = [
@@ -2165,6 +2175,11 @@ describe('cinder/z-index-scale', () => {
     ['calc(hypot(25396.19cm, 0cm) / 1in)', 1],
     ['calc(hypot(0cm, 25396.19cm) / 1in)', 1],
     ['calc(max(9998.499999999999999999in, 25396.19cm) / 1in)', 1],
+    ['calc(clamp(9998.499999999999999999in, 25396.19cm, 999999in) / 1in)', 1],
+    ['calc(clamp(0in, 9998.499999999999999999in, 25396.19cm) / 1in)', 0],
+    ['calc(clamp(none, 9998.499999999999999999in, 25396.19cm) / 1in)', 0],
+    ['calc(clamp(9998.499999999999999999in, 25396.19cm, none) / 1in)', 1],
+    ['calc(clamp(none, 25396.19cm, none) / 1in)', 1],
     ['calc(mod(25396.19cm, 999999cm) / 1in)', 1],
     ['calc(rem(25396.19cm, 999999cm) / 1in)', 1],
   ] as const)(
@@ -2611,6 +2626,54 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    'calc(0 * progress(no-clamp var(--runtime), 0, 1))',
+    'calc(progress(no-clamp var(--runtime), 0, 1) * 0)',
+    'calc(progress(no-clamp var(--runtime), 0, 1) - progress(no-clamp var(--runtime),0,1))',
+  ])('accepts an exactly eliminated no-clamp progress range: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: exact algebra removes every unclamped runtime value. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toEqual([]);
+  });
+
+  test('retains an eliminated no-clamp range when division can expose its sign', async () => {
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: reciprocal division can observe the generated zero sign. */
+          z-index: var(--outer, calc(1 / (0 * progress(no-clamp var(--runtime), 0, 1))));
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('too complex to verify');
+  });
+
+  test.each([
+    'calc(progress(no-clamp var(--left, 10000), 1, 2) - progress(no-clamp var(--right, 0), 0, 1))',
+    'calc(progress(no-clamp var(--left, 10000), 1, 2) + progress(no-clamp var(--right, 0), 0, 1))',
+    'calc(progress(no-clamp var(--left, 0), 1, 2) - progress(no-clamp var(--right, 10000), 0, 1))',
+  ])('keeps distinct no-clamp fallback ranges independent: %s', async (fallback) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: distinct runtime ranges cannot share endpoint identity. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test.each([
     'calc(2 * progress(var(--runtime), 0, 1) + progress(var(--runtime),0,1))',
     'calc(progress(var(--runtime), 0, 1) / 2 + progress(var(--runtime),0,1) / 2)',
   ])('keeps repeated affine progress ranges endpoint-safe: %s', async (fallback) => {
@@ -2715,6 +2778,8 @@ describe('cinder/z-index-scale', () => {
     'mod(9999, var(--runtime))',
     'rem(9999, var(--runtime))',
     'pow(9999, var(--runtime))',
+    'log(9999, var(--runtime))',
+    'log(var(--runtime), 9999)',
     'hypot(9999, var(--runtime))',
   ])('preserves a direct banned bound sibling in unresolved math: %s', async (fallback) => {
     expect(
@@ -2741,6 +2806,12 @@ describe('cinder/z-index-scale', () => {
     'rem(9999, var(--runtime), 1)',
     'pow(9999, var(--runtime), 1)',
     'pow(9999px, var(--runtime))',
+    'log(9999)',
+    'log(9999, var(--runtime), 1)',
+    'log(9999px, var(--runtime))',
+    'log(-1, var(--runtime))',
+    'log(1, var(--runtime))',
+    'log(var(--runtime), 1)',
     'hypot(9999, var(--runtime), 1px)',
   ])(
     'does not report candidates from a statically type-invalid math function: %s',
@@ -2778,6 +2849,46 @@ describe('cinder/z-index-scale', () => {
           `),
         ),
       ).toHaveLength(warningCount);
+    },
+  );
+
+  test.each([
+    'calc(9999 * progress(no-clamp var(--runtime), 0, 1))',
+    'calc(-1 * progress(no-clamp var(--runtime), 0, 1))',
+    'calc(0.1 + 0.1 * progress(no-clamp var(--runtime), 0, 1))',
+    'calc(progress(no-clamp var(--runtime), 1, 1))',
+    'calc(9999 * progress(/**/no-clamp/**/var(--runtime), 0, 1))',
+  ])('fails closed for an unresolved no-clamp progress range: %s', async (fallback) => {
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: an unclamped runtime ratio can reach a banned layer. */
+          z-index: var(--outer, ${fallback});
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('too complex to verify');
+  });
+
+  test.each([
+    'calc(9999 * progress(no-clamp var(--runtime), 0))',
+    'calc(9999 * progress(no-clamp var(--runtime), 0, 1, 2))',
+    'calc(9999 * progress(no-clamp var(--runtime), 1px, 1deg))',
+  ])(
+    'does not infer reachability from an invalid no-clamp progress range: %s',
+    async (fallback) => {
+      expect(
+        warnings(
+          await lint(`
+          .fixture {
+            /* cinder-z-index-local: invalid progress syntax cannot establish a runtime range. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+        ),
+      ).toEqual([]);
     },
   );
 

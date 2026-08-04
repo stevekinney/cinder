@@ -70,6 +70,7 @@ const substitutionFunctionPattern = /(?:var|env|attr)\(/iy;
 const urlFunctionPattern = /url\(/iy;
 const commutativeSymbolicOperations = new Set(['+', 'hypot', 'max', 'min']);
 const maximumStaticSymbolicIdentityWork = 131_072;
+const maximumExactRationalBitLength = 1_024;
 const staticAnalysisTooComplex = Symbol('static-analysis-too-complex');
 const staticAnalysisInvalid = Symbol('static-analysis-invalid');
 const unboundedClampEndpoint = Symbol('unbounded-clamp-endpoint');
@@ -189,7 +190,14 @@ function normalizedRational(numerator, denominator) {
     denominator = -denominator;
   }
   const divisor = greatestCommonDivisor(numerator, denominator);
-  return { numerator: numerator / divisor, denominator: denominator / divisor };
+  const normalizedNumerator = numerator / divisor;
+  const normalizedDenominator = denominator / divisor;
+  if (
+    normalizedNumerator.toString(2).replace('-', '').length > maximumExactRationalBitLength ||
+    normalizedDenominator.toString(2).length > maximumExactRationalBitLength
+  )
+    throw staticAnalysisTooComplex;
+  return { numerator: normalizedNumerator, denominator: normalizedDenominator };
 }
 
 function decimalRational(token) {
@@ -235,6 +243,23 @@ function compareArithmeticValues(left, right) {
   if (left.exactValue !== undefined && right.exactValue !== undefined)
     return compareRationals(left.exactValue, right.exactValue);
   return left.value < right.value ? -1 : left.value > right.value ? 1 : 0;
+}
+
+function selectArithmeticExtremum(functionName, arguments_) {
+  let selectedArgument = arguments_[0];
+  for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1) {
+    const argument = arguments_[argumentIndex];
+    const comparison = compareArithmeticValues(argument, selectedArgument);
+    if (
+      (functionName === 'min' && comparison < 0) ||
+      (functionName === 'max' && comparison > 0) ||
+      (comparison === 0 &&
+        Object.is(Math[functionName](selectedArgument.value, argument.value), argument.value) &&
+        !Object.is(selectedArgument.value, argument.value))
+    )
+      selectedArgument = argument;
+  }
+  return selectedArgument;
 }
 
 function floorRational({ numerator, denominator }) {
@@ -693,37 +718,21 @@ function evaluateConstantArithmetic(expression) {
         throw new Error('unknown conversion value');
       }
       if ((functionName === 'min' || functionName === 'max') && arguments_.length > 0) {
-        let selectedArgument = arguments_[0];
-        for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1) {
-          const argument = arguments_[argumentIndex];
-          const comparison = compareArithmeticValues(argument, selectedArgument);
-          if (
-            (functionName === 'min' && comparison < 0) ||
-            (functionName === 'max' && comparison > 0) ||
-            (comparison === 0 &&
-              Object.is(
-                Math[functionName](selectedArgument.value, argument.value),
-                argument.value,
-              ) &&
-              !Object.is(selectedArgument.value, argument.value))
-          )
-            selectedArgument = argument;
-        }
+        const selectedArgument = selectArithmeticExtremum(functionName, arguments_);
         return withValue(selectedArgument, selectedArgument.value, selectedArgument.exactValue);
       }
       if (functionName === 'clamp' && arguments_.length === 3) {
         const [minimum, value, maximum] = arguments_;
         if (value === unboundedClampEndpoint) throw new Error('expected a central value');
-        const minimumValue = minimum === unboundedClampEndpoint ? -Infinity : minimum.value;
-        const maximumValue = maximum === unboundedClampEndpoint ? Infinity : maximum.value;
-        const clampedValue = Math.max(minimumValue, Math.min(value.value, maximumValue));
+        const upperBoundedValue =
+          maximum === unboundedClampEndpoint
+            ? value
+            : selectArithmeticExtremum('min', [value, maximum]);
         const selectedArgument =
-          minimum !== unboundedClampEndpoint && Object.is(minimum.value, clampedValue)
-            ? minimum
-            : maximum !== unboundedClampEndpoint && Object.is(maximum.value, clampedValue)
-              ? maximum
-              : value;
-        return withValue(selectedArgument, clampedValue, selectedArgument.exactValue);
+          minimum === unboundedClampEndpoint
+            ? upperBoundedValue
+            : selectArithmeticExtremum('max', [minimum, upperBoundedValue]);
+        return withValue(selectedArgument, selectedArgument.value, selectedArgument.exactValue);
       }
       if (functionName === 'abs' && arguments_.length === 1)
         return withValue(
@@ -1460,6 +1469,32 @@ export function haveCompatibleStaticDivisionTypes(numerator, divisor) {
   )
     return true;
   return hasNumericResultType(combineUnits(numeratorValue, divisorValue, -1));
+}
+
+export function haveEqualStaticArithmeticValues(values) {
+  const resolvedValues = values.map(resolveStaticArithmeticResult);
+  const [firstValue] = resolvedValues;
+  if (
+    firstValue === undefined ||
+    firstValue === null ||
+    firstValue === staticAnalysisTooComplex ||
+    firstValue === staticAnalysisInvalid ||
+    firstValue.exactValue === undefined ||
+    firstValue.symbolicFactors.size > 0
+  )
+    return false;
+  return resolvedValues
+    .slice(1)
+    .every(
+      (resolved) =>
+        resolved !== null &&
+        resolved !== staticAnalysisTooComplex &&
+        resolved !== staticAnalysisInvalid &&
+        resolved.exactValue !== undefined &&
+        resolved.symbolicFactors.size === 0 &&
+        sameUnits(firstValue, resolved) &&
+        compareRationals(firstValue.exactValue, resolved.exactValue) === 0,
+    );
 }
 
 export function classifyStaticLayer(value) {

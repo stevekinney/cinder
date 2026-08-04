@@ -6,6 +6,7 @@ import {
   hasStaticallyZeroCoefficient,
   haveCompatibleStaticDivisionTypes,
   haveCompatibleStaticProgressTypes,
+  haveEqualStaticArithmeticValues,
   isCssIdentifierCharacter,
   isCssWhitespace,
   isCssWhitespaceOrComment,
@@ -998,7 +999,7 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName, p
   };
 }
 
-function isValidProgressRange(frame, value, range, parenthesisPairs) {
+function progressRangeMode(frame, value, range, parenthesisPairs) {
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
     value,
@@ -1006,18 +1007,28 @@ function isValidProgressRange(frame, value, range, parenthesisPairs) {
     'progress',
     parenthesisPairs,
   );
-  if (parsedArguments?.argumentCount !== 3) return false;
-  const firstArgument = value
-    .slice(parsedArguments.argumentRanges[0].start, parsedArguments.argumentRanges[0].end)
-    .trimStart();
+  if (parsedArguments?.argumentCount !== 3) return 'invalid';
+  const firstArgumentRange = parsedArguments.argumentRanges[0];
+  const firstArgumentStart = trimCssTriviaRange(
+    value,
+    firstArgumentRange.start,
+    firstArgumentRange.end,
+  ).start;
+  const firstArgumentPrefix = value.slice(firstArgumentStart, firstArgumentStart + 8);
+  const noClampEnd = firstArgumentStart + firstArgumentPrefix.length;
+  const hasNoClampPrefix =
+    firstArgumentPrefix.toLowerCase() === 'no-clamp' && isCssWhitespaceOrComment(value[noClampEnd]);
   if (
-    firstArgument.slice(0, 8).toLowerCase() === 'no-clamp' &&
-    !isCssIdentifierCharacter(firstArgument[8])
+    !haveCompatibleStaticProgressTypes(
+      parsedArguments.staticArguments.map((argument) => argument.value),
+    )
   )
-    return false;
-  return haveCompatibleStaticProgressTypes(
-    parsedArguments.staticArguments.map((argument) => argument.value),
-  );
+    return 'invalid';
+  return hasNoClampPrefix ? 'unclamped' : 'clamped';
+}
+
+function isValidProgressRange(frame, value, range, parenthesisPairs) {
+  return progressRangeMode(frame, value, range, parenthesisPairs) === 'clamped';
 }
 
 function appendCanonicalWhitespace(output, nextCharacter) {
@@ -1233,7 +1244,17 @@ function directBannedMathArgumentCandidates(
   budget,
   parenthesisPairs,
 ) {
-  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow', 'hypot']) {
+  for (const functionName of [
+    'max',
+    'min',
+    'clamp',
+    'round',
+    'mod',
+    'rem',
+    'pow',
+    'log',
+    'hypot',
+  ]) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1244,12 +1265,18 @@ function directBannedMathArgumentCandidates(
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return [];
     if (
-      (functionName === 'mod' || functionName === 'rem' || functionName === 'pow') &&
+      (functionName === 'mod' ||
+        functionName === 'rem' ||
+        functionName === 'pow' ||
+        functionName === 'log') &&
       parsedArguments.argumentCount !== 2
     )
       return [];
     if (
-      (functionName === 'mod' || functionName === 'rem' || functionName === 'pow') &&
+      (functionName === 'mod' ||
+        functionName === 'rem' ||
+        functionName === 'pow' ||
+        functionName === 'log') &&
       parsedArguments.staticArguments.length === parsedArguments.argumentCount
     )
       return [];
@@ -1260,7 +1287,8 @@ function directBannedMathArgumentCandidates(
         ),
       );
       if (staticResultTypes.has('number') && staticResultTypes.has('non-number')) return [];
-      if (functionName === 'pow' && staticResultTypes.has('non-number')) return [];
+      if ((functionName === 'pow' || functionName === 'log') && staticResultTypes.has('non-number'))
+        return [];
     }
     let candidateArguments;
     if (functionName === 'clamp')
@@ -1286,7 +1314,17 @@ function directBannedMathArgumentCandidates(
       );
       if (staticResultTypes.has('unresolved')) return [];
       if (staticResultTypes.has('number') && staticResultTypes.has('non-number')) return [];
-    } else candidateArguments = parsedArguments.staticArguments;
+    } else if (functionName === 'log')
+      candidateArguments = parsedArguments.staticArguments.filter((argument) => {
+        const numericValue = evaluateStaticLayerNumber(argument.value);
+        return (
+          numericValue !== undefined &&
+          Number.isFinite(numericValue) &&
+          numericValue > 0 &&
+          numericValue !== 1
+        );
+      });
+    else candidateArguments = parsedArguments.staticArguments;
     const classificationWork = candidateArguments.reduce(
       (total, argument) => total + argument.value.length,
       0,
@@ -1318,7 +1356,17 @@ function directBannedMathArgumentCandidates(
 }
 
 function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenthesisPairs) {
-  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow', 'hypot']) {
+  for (const functionName of [
+    'max',
+    'min',
+    'clamp',
+    'round',
+    'mod',
+    'rem',
+    'pow',
+    'log',
+    'hypot',
+  ]) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1329,7 +1377,10 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return new Set();
     if (
-      (functionName === 'mod' || functionName === 'rem' || functionName === 'pow') &&
+      (functionName === 'mod' ||
+        functionName === 'rem' ||
+        functionName === 'pow' ||
+        functionName === 'log') &&
       parsedArguments.argumentCount !== 2
     )
       return new Set();
@@ -1354,7 +1405,9 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
         .map((argument) => analyzeStaticLayerValue(argument.value).resultType)
         .filter((resultType) => resultType === 'number' || resultType === 'non-number'),
     );
-    return functionName === 'pow' && resultTypes.has('non-number') ? new Set() : resultTypes;
+    return (functionName === 'pow' || functionName === 'log') && resultTypes.has('non-number')
+      ? new Set()
+      : resultTypes;
   }
   return new Set();
 }
@@ -1409,8 +1462,11 @@ function progressRangeCandidates(frame, value, range, candidate, budget, parenth
   );
   if (childrenOutsideProgressRanges.some((child) => child.resolvedFallback === null))
     return emptyAnalysis;
+  let hasUnclampedProgressRange = false;
   for (const progressRange of progressRanges) {
-    if (!isValidProgressRange(frame, value, progressRange, parenthesisPairs)) return emptyAnalysis;
+    const mode = progressRangeMode(frame, value, progressRange, parenthesisPairs);
+    if (mode === 'invalid') return emptyAnalysis;
+    if (mode === 'unclamped') hasUnclampedProgressRange = true;
     const unsupportedParent = progressRange.parenthesis.unsupportedProgressRangeParent;
     if (
       unsupportedParent?.end !== undefined &&
@@ -1473,6 +1529,7 @@ function progressRangeCandidates(frame, value, range, candidate, budget, parenth
   const generatedLength = combinationCount * (range.end - range.start + replacementLength);
   if (!Number.isSafeInteger(combinationCount) || !consumeResolutionWork(budget, generatedLength))
     return tooComplexAnalysis();
+  const endpointExpressions = [];
   let minimum = Infinity;
   let maximum = -Infinity;
   for (let combination = 0; combination < combinationCount; combination += 1) {
@@ -1488,11 +1545,15 @@ function progressRangeCandidates(frame, value, range, candidate, budget, parenth
       cursor = replacementRange.end;
     }
     chunks.push(value.slice(cursor, range.end));
-    const endpointValue = evaluateStaticLayerNumber(chunks.join(''));
+    const endpointExpression = chunks.join('');
+    endpointExpressions.push(endpointExpression);
+    const endpointValue = evaluateStaticLayerNumber(endpointExpression);
     if (endpointValue === undefined) return emptyAnalysis;
     minimum = Math.min(minimum, endpointValue);
     maximum = Math.max(maximum, endpointValue);
   }
+  if (hasUnclampedProgressRange && !haveEqualStaticArithmeticValues(endpointExpressions))
+    return tooComplexAnalysis();
   const classifications = [];
   if (minimum < 0) classifications.push('negative');
   if (minimum <= 9999 && maximum >= 9999) classifications.push('magic');
