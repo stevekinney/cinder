@@ -363,6 +363,12 @@ export function redispatchPortaledEvent(
 ): boolean {
   if (!sourceTarget) return false;
 
+  const pointerMousePair = getPointerMousePair(event, sourceTarget);
+  if (pointerMousePair === 'suppress') {
+    event.stopPropagation();
+    return true;
+  }
+
   // Pointer and mouse events are distinct native families. Bridge each native
   // event once; dropping the browser's corresponding mousedown/mouseup would
   // break consumers that listen to only that family. Synthetic events remain
@@ -383,6 +389,9 @@ export function redispatchPortaledEvent(
     'isComposing',
     'button',
     'buttons',
+    'movementX',
+    'movementY',
+    'which',
     'clientX',
     'clientY',
     'screenX',
@@ -404,10 +413,27 @@ export function redispatchPortaledEvent(
     'tiltY',
     'twist',
     'tangentialPressure',
+    'width',
+    'height',
   ]) {
     if (property in event) eventInit[property] = Reflect.get(event, property);
   }
-  const bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  let bridgedEvent: Event;
+  try {
+    bridgedEvent = Reflect.construct(event.constructor, [event.type, eventInit]);
+  } catch {
+    bridgedEvent = new Event(event.type, eventInit);
+  }
+  for (const property of ['movementX', 'movementY', 'which', 'width', 'height']) {
+    if (!(property in event)) continue;
+    const value = Reflect.get(event, property);
+    if (Reflect.get(bridgedEvent, property) === value) continue;
+    try {
+      Object.defineProperty(bridgedEvent, property, { configurable: true, value });
+    } catch {
+      // Some native event implementations expose non-configurable accessors.
+    }
+  }
   redispatchedPortalEvents.add(bridgedEvent);
   Object.defineProperty(bridgedEvent, 'target', { configurable: true, value: originalTarget });
   // Dispatching at the authored root necessarily changes currentTarget and the
@@ -437,6 +463,70 @@ export function redispatchPortaledEvent(
 }
 
 const redispatchedPortalEvents = new WeakSet<Event>();
+
+type PointerMousePhase = 'down' | 'up';
+type PointerMousePair = {
+  target: EventTarget | null;
+  phase: PointerMousePhase;
+  button: number;
+  clientX: number;
+  clientY: number;
+  expiresAt: number;
+};
+
+const pointerMousePairs = new WeakMap<HTMLElement, PointerMousePair[]>();
+const pointerMousePairLifetime = 500;
+
+function getPointerMousePair(
+  event: Event,
+  sourceTarget: HTMLElement,
+): 'record' | 'suppress' | undefined {
+  const phase =
+    event.type === 'pointerdown' || event.type === 'mousedown'
+      ? 'down'
+      : event.type === 'pointerup' || event.type === 'mouseup'
+        ? 'up'
+        : undefined;
+  if (!phase) return;
+
+  const pointerType = 'pointerType' in event ? Reflect.get(event, 'pointerType') : undefined;
+  const target = event.target;
+  const button =
+    typeof Reflect.get(event, 'button') === 'number' ? Reflect.get(event, 'button') : 0;
+  const clientX =
+    typeof Reflect.get(event, 'clientX') === 'number' ? Reflect.get(event, 'clientX') : 0;
+  const clientY =
+    typeof Reflect.get(event, 'clientY') === 'number' ? Reflect.get(event, 'clientY') : 0;
+  const now = Date.now();
+  const pairs = pointerMousePairs.get(sourceTarget) ?? [];
+  const livePairs = pairs.filter((pair) => pair.expiresAt > now);
+  pointerMousePairs.set(sourceTarget, livePairs);
+
+  if (event.type.startsWith('pointer')) {
+    if (pointerType !== 'mouse') return;
+    livePairs.push({
+      target,
+      phase,
+      button,
+      clientX,
+      clientY,
+      expiresAt: now + pointerMousePairLifetime,
+    });
+    return 'record';
+  }
+
+  const pairIndex = livePairs.findIndex(
+    (pair) =>
+      pair.phase === phase &&
+      pair.target === target &&
+      pair.button === button &&
+      pair.clientX === clientX &&
+      pair.clientY === clientY,
+  );
+  if (pairIndex < 0) return;
+  livePairs.splice(pairIndex, 1);
+  return 'suppress';
+}
 
 /** Returns the host element of `element`'s enclosing shadow root, or `null` if it is not in one. */
 export function getShadowHost(element: HTMLElement): HTMLElement | null {

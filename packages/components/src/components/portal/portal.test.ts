@@ -245,6 +245,98 @@ describe('Portal', () => {
     expect(received).toBe(1);
   });
 
+  test('deduplicates browser mouse follow-ups for one mouse pointer action', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    const received: string[] = [];
+    authoredRoot.addEventListener('pointerdown', () => received.push('pointerdown'));
+    authoredRoot.addEventListener('mousedown', () => received.push('mousedown'));
+    authoredRoot.addEventListener('pointerup', () => received.push('pointerup'));
+    authoredRoot.addEventListener('mouseup', () => received.push('mouseup'));
+
+    const pointerEvent = (type: string) =>
+      new (globalThis.PointerEvent ?? Event)(type, {
+        bubbles: true,
+        composed: true,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: 24,
+        clientY: 36,
+      });
+    const pointerdown = pointerEvent('pointerdown');
+    Object.defineProperty(pointerdown, 'target', { configurable: true, value: control });
+    const mousedown = new MouseEvent('mousedown', {
+      bubbles: true,
+      composed: true,
+      button: 0,
+      clientX: 24,
+      clientY: 36,
+    });
+    Object.defineProperty(mousedown, 'target', { configurable: true, value: control });
+    const pointerup = pointerEvent('pointerup');
+    Object.defineProperty(pointerup, 'target', { configurable: true, value: control });
+    const mouseup = new MouseEvent('mouseup', {
+      bubbles: true,
+      composed: true,
+      button: 0,
+      clientX: 24,
+      clientY: 36,
+    });
+    Object.defineProperty(mouseup, 'target', { configurable: true, value: control });
+
+    redispatchPortaledEvent(pointerdown, authoredRoot);
+    redispatchPortaledEvent(mousedown, authoredRoot);
+    redispatchPortaledEvent(pointerup, authoredRoot);
+    redispatchPortaledEvent(mouseup, authoredRoot);
+
+    expect(received).toEqual(['pointerdown', 'pointerup']);
+  });
+
+  test('preserves pointer and mouse event class details when constructible', () => {
+    const authoredRoot = document.createElement('div');
+    const control = document.createElement('button');
+    document.body.append(authoredRoot, control);
+    let receivedMouse: MouseEvent | undefined;
+    let receivedPointer: Event | undefined;
+    authoredRoot.addEventListener('mousedown', (event) => (receivedMouse = event));
+    authoredRoot.addEventListener('pointerdown', (event) => (receivedPointer = event));
+
+    const mouse = new MouseEvent('mousedown', {
+      bubbles: true,
+      clientX: 10,
+      clientY: 20,
+      button: 1,
+    });
+    Object.defineProperty(mouse, 'movementX', { configurable: true, value: 3 });
+    Object.defineProperty(mouse, 'movementY', { configurable: true, value: -2 });
+    Object.defineProperty(mouse, 'which', { configurable: true, value: 2 });
+    Object.defineProperty(mouse, 'target', { configurable: true, value: control });
+    redispatchPortaledEvent(mouse, authoredRoot);
+
+    const PointerConstructor = globalThis.PointerEvent;
+    if (PointerConstructor) {
+      const pointer = new PointerConstructor('pointerdown', {
+        bubbles: true,
+        pointerType: 'mouse',
+        width: 8,
+        height: 9,
+      });
+      Object.defineProperty(pointer, 'target', { configurable: true, value: control });
+      redispatchPortaledEvent(pointer, authoredRoot);
+    }
+
+    expect(receivedMouse).toBeInstanceOf(MouseEvent);
+    expect(receivedMouse?.movementX).toBe(3);
+    expect(receivedMouse?.movementY).toBe(-2);
+    expect(receivedMouse?.which).toBe(2);
+    if (PointerConstructor) {
+      expect(receivedPointer).toBeInstanceOf(PointerConstructor);
+      expect((receivedPointer as PointerEvent).width).toBe(8);
+      expect((receivedPointer as PointerEvent).height).toBe(9);
+    }
+  });
+
   test('propagates cancellation from the authored root back to the portaled event', () => {
     const authoredRoot = document.createElement('div');
     const control = document.createElement('button');
