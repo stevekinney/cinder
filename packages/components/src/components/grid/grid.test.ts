@@ -227,6 +227,23 @@ describe('Grid', () => {
     }
   });
 
+  test('does not require MutationObserver for narrow collapse', async () => {
+    const originalMutationObserver = globalThis.MutationObserver;
+    globalThis.MutationObserver = undefined as unknown as typeof MutationObserver;
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+
+      expect(container.querySelector('.cinder-grid')).not.toBeNull();
+      unmount();
+    } finally {
+      globalThis.MutationObserver = originalMutationObserver;
+    }
+  });
+
   test('resets direct Grid.Item placement in the narrow state', () => {
     const stylesheet = readFileSync(new URL('./grid.css', import.meta.url), 'utf8');
     expect(stylesheet).toContain(

@@ -114,15 +114,16 @@
     const recomputeNarrowState = () => {
       updateNarrowState(measuredWidth);
     };
-    const observer = new MutationObserver(recomputeNarrowState);
-    observer.observe(document.documentElement, {
+    const observer =
+      typeof MutationObserver === 'undefined' ? null : new MutationObserver(recomputeNarrowState);
+    observer?.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'style'],
     });
     window.addEventListener('resize', recomputeNarrowState);
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       window.removeEventListener('resize', recomputeNarrowState);
     };
   });
