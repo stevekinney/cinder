@@ -207,11 +207,20 @@ function splitSelectorList(selectorText: string): string[] {
   const selectors: string[] = [];
   let parenthesesDepth = 0;
   let bracketDepth = 0;
+  let quote: '"' | "'" | undefined;
   let start = 0;
   for (let index = 0; index < selectorText.length; index += 1) {
     const character = selectorText[index];
     if (character === '\\') {
       index += 1;
+      continue;
+    }
+    if (quote !== undefined) {
+      if (character === quote) quote = undefined;
+      continue;
+    }
+    if (character === '"' || character === "'") {
+      quote = character;
       continue;
     }
     if (character === '(') parenthesesDepth += 1;
