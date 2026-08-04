@@ -91,16 +91,20 @@
 {/snippet}
 
 {#if context}
-  {@render control()}
   {#if label && !context.labelId}
-    <span
-      id={ownLabelId}
-      class="cinder-toggle-field__label"
-      role="presentation"
-      data-hidden={hideLabel || undefined}
-      data-disabled={resolvedDisabled || undefined}
-      onclick={toggle}>{label}</span
-    >
+    <span class="cinder-toggle-field">
+      {@render control()}
+      <span
+        id={ownLabelId}
+        class="cinder-toggle-field__label"
+        role="presentation"
+        data-hidden={hideLabel || undefined}
+        data-disabled={resolvedDisabled || undefined}
+        onclick={toggle}>{label}</span
+      >
+    </span>
+  {:else}
+    {@render control()}
   {/if}
 {:else}
   <span class="cinder-toggle-field">

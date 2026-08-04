@@ -181,14 +181,14 @@
 
   /* When an addon is present on a given side, the input trims its padding on
    that side; the addon container owns the visual inset. */
-  .cinder-input-group[data-leading] > .cinder-input {
+  .cinder-input-group[data-leading] .cinder-input {
     padding-inline-start: var(--cinder-space-2);
   }
-  .cinder-input-group[data-trailing] > .cinder-input {
+  .cinder-input-group[data-trailing] .cinder-input {
     padding-inline-end: var(--cinder-space-2);
   }
 
-  .cinder-input-group[data-native-date] > .cinder-input {
+  .cinder-input-group[data-native-date] .cinder-input {
     padding-inline-end: var(--cinder-space-10);
   }
 

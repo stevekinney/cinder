@@ -301,31 +301,33 @@
     {/if}
   </div>
 {:else}
-  <FormField
-    {id}
-    {label}
-    {hideLabel}
-    required={required ?? false}
-    disabled={disabled ?? false}
-    class="cinder-input-field"
-  >
-    {@render control()}
-  </FormField>
-  {#if description}
-    <p
-      id={field.ownDescriptionId}
-      class="cinder-input-field__description cinder-form-field__description"
+  <div class="cinder-input-field">
+    <FormField
+      {id}
+      {label}
+      {hideLabel}
+      required={required ?? false}
+      disabled={disabled ?? false}
+      class="cinder-input-field__field"
     >
-      {description}
-    </p>
-  {/if}
-  {#if error}
-    <p
-      id={field.ownErrorId}
-      class="cinder-input-field__error cinder-form-field__error"
-      aria-live="polite"
-    >
-      {error}
-    </p>
-  {/if}
+      {@render control()}
+    </FormField>
+    {#if description}
+      <p
+        id={field.ownDescriptionId}
+        class="cinder-input-field__description cinder-form-field__description"
+      >
+        {description}
+      </p>
+    {/if}
+    {#if error}
+      <p
+        id={field.ownErrorId}
+        class="cinder-input-field__error cinder-form-field__error"
+        aria-live="polite"
+      >
+        {error}
+      </p>
+    {/if}
+  </div>
 {/if}
