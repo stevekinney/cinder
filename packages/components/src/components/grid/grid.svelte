@@ -58,15 +58,46 @@
   let measuredWidth = $state(0);
   let observedNode = $state<HTMLElement | null>(null);
 
+  function getDocumentWindow(ownerDocument: Document): Window | null {
+    if (
+      typeof document !== 'undefined' &&
+      ownerDocument === document &&
+      typeof window !== 'undefined'
+    ) {
+      return window;
+    }
+    return ownerDocument.defaultView;
+  }
+
+  function getDocumentComputedStyle(element: Element): CSSStyleDeclaration | undefined {
+    if (typeof document !== 'undefined' && element.ownerDocument === document) {
+      return typeof getComputedStyle === 'undefined' ? undefined : getComputedStyle(element);
+    }
+    return element.ownerDocument.defaultView?.getComputedStyle(element);
+  }
+
+  function getDocumentResizeObserver(ownerDocument: Document): typeof ResizeObserver | undefined {
+    return typeof document !== 'undefined' && ownerDocument === document
+      ? globalThis.ResizeObserver
+      : ownerDocument.defaultView?.ResizeObserver;
+  }
+
+  function getDocumentMutationObserver(
+    ownerDocument: Document,
+  ): typeof MutationObserver | undefined {
+    return typeof document !== 'undefined' && ownerDocument === document
+      ? globalThis.MutationObserver
+      : ownerDocument.defaultView?.MutationObserver;
+  }
+
   function getCollapseMaxWidthPx(): number {
     const ownerDocument = observedNode?.ownerDocument;
-    const ownerWindow = ownerDocument?.defaultView;
-    if (!ownerDocument || !ownerWindow) {
+    if (!ownerDocument) {
       return COLLAPSE_MAX_WIDTH_REM * FALLBACK_ROOT_FONT_SIZE_PX;
     }
 
     const rootFontSize = Number.parseFloat(
-      ownerWindow.getComputedStyle(ownerDocument.documentElement).fontSize,
+      getDocumentComputedStyle(ownerDocument.documentElement)?.fontSize ?? '',
     );
     const baseFontSize =
       Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : FALLBACK_ROOT_FONT_SIZE_PX;
@@ -92,8 +123,7 @@
       : entry.borderBoxSize;
 
     if (borderBoxSize) {
-      const writingMode =
-        entry.target.ownerDocument.defaultView?.getComputedStyle(entry.target).writingMode ?? '';
+      const writingMode = getDocumentComputedStyle(entry.target)?.writingMode ?? '';
       const usesVerticalInlineAxis = /^(?:vertical|sideways)-/i.test(writingMode);
       return usesVerticalInlineAxis ? borderBoxSize.blockSize : borderBoxSize.inlineSize;
     }
@@ -129,14 +159,16 @@
     if (!narrowCollapseEnabled || !observedNode) return;
     const node = observedNode;
     const ownerDocument = node.ownerDocument;
-    const ownerWindow = ownerDocument.defaultView;
+    const ownerWindow = getDocumentWindow(ownerDocument);
     if (!ownerWindow) return;
+    const ResizeObserverConstructor = getDocumentResizeObserver(ownerDocument);
+    const MutationObserverConstructor = getDocumentMutationObserver(ownerDocument);
 
     const remeasureWidth = () => {
       updateNarrowState(getElementBorderBoxWidth(node));
     };
     const stylesheetLinks = new Set<HTMLLinkElement>();
-    const usesStylesheetFallback = typeof ResizeObserver === 'undefined';
+    const usesStylesheetFallback = typeof ResizeObserverConstructor === 'undefined';
     const observeStylesheetLinks = () => {
       for (const link of stylesheetLinks) {
         if (!link.isConnected || !link.relList.contains('stylesheet')) {
@@ -155,9 +187,9 @@
       }
     };
     const observer =
-      typeof MutationObserver === 'undefined' || !usesStylesheetFallback
+      typeof MutationObserverConstructor === 'undefined' || !usesStylesheetFallback
         ? null
-        : new MutationObserver(() => {
+        : new MutationObserverConstructor(() => {
             remeasureWidth();
             observeStylesheetLinks();
           });
@@ -191,15 +223,11 @@
   });
 
   $effect(() => {
-    if (
-      !narrowCollapseEnabled ||
-      !observedNode ||
-      typeof ResizeObserver === 'undefined' ||
-      !observedNode.ownerDocument.body
-    )
-      return;
+    if (!narrowCollapseEnabled || !observedNode || !observedNode.ownerDocument.body) return;
 
     const ownerDocument = observedNode.ownerDocument;
+    const ResizeObserverConstructor = getDocumentResizeObserver(ownerDocument);
+    if (!ResizeObserverConstructor) return;
 
     const probe = ownerDocument.createElement('span');
     probe.setAttribute('aria-hidden', 'true');
@@ -216,7 +244,7 @@
     });
     ownerDocument.body.append(probe);
 
-    const observer = new ResizeObserver(() => {
+    const observer = new ResizeObserverConstructor(() => {
       updateNarrowState(measuredWidth, getElementBorderBoxWidth(probe));
     });
     observer.observe(probe, { box: 'border-box' });

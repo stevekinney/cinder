@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { Window } from 'happy-dom';
 import { readFileSync } from 'node:fs';
 
@@ -7,9 +7,11 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { createRawSnippet, tick } = await import('svelte');
 const { default: Grid } = await import('./grid.svelte');
+
+afterEach(cleanup);
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -487,6 +489,10 @@ describe('Grid', () => {
     let width = 800;
 
     secondaryWindow.document.documentElement.style.fontSize = '20px';
+    Object.defineProperty(secondaryWindow, 'ResizeObserver', {
+      configurable: true,
+      value: undefined,
+    });
     HTMLElement.prototype.getBoundingClientRect = () => ({ width, height: 320 }) as DOMRect;
     globalThis.MutationObserver = undefined as unknown as typeof MutationObserver;
     globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
@@ -525,6 +531,67 @@ describe('Grid', () => {
       secondaryAddEventListener.mockRestore();
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       globalThis.MutationObserver = originalMutationObserver;
+      globalThis.ResizeObserver = originalResizeObserver;
+      await secondaryWindow.happyDOM.close();
+    }
+  });
+
+  test("uses the Grid element's document for resize observers and the rem probe", async () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const secondaryWindow = new Window();
+    const secondaryDocument = secondaryWindow.document as unknown as Document;
+    const observedTargets: Element[] = [];
+    const hostProbeCount = document.body.querySelectorAll(
+      '[data-cinder-grid-threshold-probe]',
+    ).length;
+
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor() {
+        throw new Error('host ResizeObserver must not observe a secondary-document Grid');
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    Object.defineProperty(secondaryWindow, 'ResizeObserver', {
+      configurable: true,
+      value: class implements ResizeObserver {
+        observe(target: Element) {
+          observedTargets.push(target);
+        }
+
+        unobserve() {}
+        disconnect() {}
+      },
+    });
+
+    try {
+      const { container, rerender, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: false, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      Object.defineProperty(root, 'ownerDocument', {
+        configurable: true,
+        value: secondaryDocument,
+      });
+
+      await rerender({ narrowCollapseEnabled: true, children: textSnippet('content') });
+      await tick();
+
+      const probe = secondaryWindow.document.body.querySelector(
+        '[data-cinder-grid-threshold-probe]',
+      );
+      expect(probe).not.toBeNull();
+      expect(observedTargets).toContain(root);
+      expect(observedTargets).toContain(probe as unknown as Element);
+      expect(document.body.querySelectorAll('[data-cinder-grid-threshold-probe]')).toHaveLength(
+        hostProbeCount,
+      );
+
+      unmount();
+      expect(probe?.isConnected).toBe(false);
+    } finally {
       globalThis.ResizeObserver = originalResizeObserver;
       await secondaryWindow.happyDOM.close();
     }
