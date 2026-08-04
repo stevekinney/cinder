@@ -667,6 +667,41 @@ describe('resolveTextDirection', () => {
     ).toBe(false);
   });
 
+  test('retains ordinary roots in mixed :scope root lists', () => {
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (:scope, .theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('uses the document root for exact :scope scopes in document stylesheets', () => {
+    const target = document.createElement('div');
+    target.className = 'shell';
+    document.body.append(target);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (:scope) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
   test('does not match descendants for a cloned :scope selector', () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;
     const originalGlobalGetComputedStyle = globalThis.getComputedStyle;
@@ -1015,6 +1050,25 @@ describe('resolveTextDirection', () => {
       window.getComputedStyle = originalWindowGetComputedStyle;
       globalThis.getComputedStyle = originalGlobalGetComputedStyle;
     }
+  });
+
+  test('does not let a shadow clone wrapper satisfy root qualifiers', () => {
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const target = document.createElement('div');
+    target.className = 'shell';
+    shadowRoot.append(target);
+    document.body.append(host);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope {}',
+      cssRules: [createStyleRule({ selectorText: ':scope:is(div) > .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
   });
 
   test('evaluates :scope limits relative to the active scope root', () => {

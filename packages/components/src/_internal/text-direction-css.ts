@@ -38,7 +38,7 @@ export function matchesDirectionStyleRule(
         rules,
         getParentElement,
         [],
-        getImplicitScopeRoot(sheet, fallbackRoot),
+        getImplicitScopeRoot(sheet, fallbackRoot, element.ownerDocument.documentElement),
       )
     )
       return true;
@@ -62,12 +62,13 @@ type ScopeRoot = Element | ShadowRoot;
 function getImplicitScopeRoot(
   sheet: CSSStyleSheet,
   fallbackRoot: ScopeRoot | null,
+  documentRoot: Element,
 ): ScopeRoot | null {
   const ownerNode = Reflect.get(sheet, 'ownerNode');
   if (!(ownerNode instanceof Element) || ownerNode.localName?.toLowerCase() !== 'style') {
     return typeof ShadowRoot !== 'undefined' && fallbackRoot instanceof ShadowRoot
       ? fallbackRoot
-      : null;
+      : documentRoot;
   }
   if (ownerNode.parentElement) return ownerNode.parentElement;
   const root = ownerNode.getRootNode();
@@ -269,23 +270,23 @@ function findActiveScopeRoots(
 ): ScopeRoot[] | null {
   if (!selectorsAreValid(element, prelude.rootSelectors)) return null;
   if (prelude.limitSelectors && !selectorsAreValid(element, prelude.limitSelectors)) return null;
-  if (prelude.rootSelectors.some(hasScopePseudoClass)) {
-    if (
-      !implicitScopeRoot ||
-      prelude.rootSelectors.some((selector) => selector.trim().toLowerCase() !== ':scope')
-    )
-      return null;
-  }
+  const scopeRootSelectors = prelude.rootSelectors.filter(hasScopePseudoClass);
+  const ordinaryRootSelectors = prelude.rootSelectors.filter(
+    (selector) => !hasScopePseudoClass(selector),
+  );
+  const unsupportedScopeRoot = scopeRootSelectors.some(
+    (selector) => selector.trim().toLowerCase() !== ':scope',
+  );
+  if (unsupportedScopeRoot && ordinaryRootSelectors.length === 0) return null;
   const roots: ScopeRoot[] =
     prelude.rootSelectors.length === 0
       ? [implicitScopeRoot ?? element.ownerDocument.documentElement]
-      : prelude.rootSelectors.some(hasScopePseudoClass)
-        ? implicitScopeRoot
-          ? [implicitScopeRoot]
-          : []
-        : findScopeMatches(element, prelude.rootSelectors);
-  if (prelude.rootSelectors.some(hasScopePseudoClass) && roots[0] && !roots[0].contains(element))
-    return null;
+      : [
+          ...(scopeRootSelectors.length > 0 && implicitScopeRoot ? [implicitScopeRoot] : []),
+          ...findScopeMatches(element, ordinaryRootSelectors),
+        ];
+  if (scopeRootSelectors.length > 0 && implicitScopeRoot && !implicitScopeRoot.contains(element))
+    roots.splice(roots.indexOf(implicitScopeRoot), 1);
   if (prelude.rootSelectors.length === 0 && roots[0] && !roots[0].contains(element)) return null;
   const activeRoots: ScopeRoot[] = [];
   for (const root of roots) {
@@ -376,6 +377,13 @@ function matchesScopedSelector(
             : null;
       if (!cloneElement) continue;
       const marker = 'data-cinder-scope-root';
+      const replacedSelector = replaceScopePseudoClass(selector, `[${marker}]`);
+      if (
+        typeof ShadowRoot !== 'undefined' &&
+        root instanceof ShadowRoot &&
+        /^\[[^\]]+\][^\s>+~]/.test(replacedSelector)
+      )
+        continue;
       cloneElement.setAttribute(marker, 'true');
       const path: number[] = [];
       let current: Element | null = element;
@@ -409,11 +417,8 @@ function matchesScopedSelector(
         matchedCloneElement = child;
       }
       if (
-        (matchedCloneElement === cloneElement &&
-          cloneElement.matches(replaceScopePseudoClass(selector, `[${marker}]`))) ||
-        Array.from(
-          cloneElement.querySelectorAll(replaceScopePseudoClass(selector, `[${marker}]`)),
-        ).includes(matchedCloneElement)
+        (matchedCloneElement === cloneElement && cloneElement.matches(replacedSelector)) ||
+        Array.from(cloneElement.querySelectorAll(replacedSelector)).includes(matchedCloneElement)
       )
         return true;
     } catch {
