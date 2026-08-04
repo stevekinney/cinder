@@ -38,7 +38,7 @@ export function matchesDirectionStyleRule(
         rules,
         getParentElement,
         [],
-        getImplicitScopeRoot(sheet),
+        getImplicitScopeRoot(sheet, root),
       )
     )
       return true;
@@ -59,12 +59,20 @@ function isActiveStyleSheet(sheet: CSSStyleSheet): boolean {
 
 type ScopeRoot = Element | ShadowRoot;
 
-function getImplicitScopeRoot(sheet: CSSStyleSheet): ScopeRoot | null {
+function getImplicitScopeRoot(sheet: CSSStyleSheet, fallbackRoot: Node): ScopeRoot | null {
   const ownerNode = Reflect.get(sheet, 'ownerNode');
-  if (!(ownerNode instanceof Element) || ownerNode.tagName !== 'STYLE') return null;
+  if (!(ownerNode instanceof Element) || ownerNode.tagName !== 'STYLE') {
+    return typeof ShadowRoot !== 'undefined' && fallbackRoot instanceof ShadowRoot
+      ? fallbackRoot
+      : null;
+  }
   if (ownerNode.parentElement) return ownerNode.parentElement;
   const root = ownerNode.getRootNode();
-  return root instanceof ShadowRoot ? root : null;
+  return typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot
+    ? root
+    : typeof ShadowRoot !== 'undefined' && fallbackRoot instanceof ShadowRoot
+      ? fallbackRoot
+      : null;
 }
 
 export function matchesDirectionStyleRuleCached(
@@ -275,7 +283,7 @@ function findActiveScopeRoots(
     }
     if (root) activeRoots.push(root);
   }
-  if (prelude.rootSelectors.length > 0 && activeRoots.length === 0) return null;
+  if (activeRoots.length === 0) return null;
   return activeRoots;
 }
 
@@ -336,29 +344,59 @@ function matchesScopedSelector(
         if (Array.from(root.querySelectorAll(selector)).includes(element)) return true;
         continue;
       }
-      const clone = root.cloneNode(true);
-      if (!(clone instanceof Element)) continue;
+      const clone =
+        typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot
+          ? null
+          : root.cloneNode(true);
+      const cloneElement =
+        clone instanceof Element
+          ? clone
+          : typeof ShadowRoot !== 'undefined' && root instanceof ShadowRoot
+            ? (() => {
+                const wrapper = root.ownerDocument.createElement('div');
+                wrapper.append(...Array.from(root.children, (child) => child.cloneNode(true)));
+                return wrapper;
+              })()
+            : null;
+      if (!cloneElement) continue;
       const marker = 'data-cinder-scope-root';
-      clone.setAttribute(marker, 'true');
+      cloneElement.setAttribute(marker, 'true');
       const path: number[] = [];
       let current: Element | null = element;
       while (current && current !== root) {
         const parent: Element | null = current.parentElement;
-        if (!parent) break;
+        if (!parent) {
+          if (
+            typeof ShadowRoot !== 'undefined' &&
+            root instanceof ShadowRoot &&
+            current.getRootNode() === root
+          )
+            break;
+          break;
+        }
         path.unshift(Array.prototype.indexOf.call(parent.children, current));
         current = parent;
       }
-      if (current !== root) continue;
-      let cloneElement: Element = clone;
+      if (
+        current !== root &&
+        !(
+          typeof ShadowRoot !== 'undefined' &&
+          root instanceof ShadowRoot &&
+          current?.getRootNode() === root
+        )
+      )
+        continue;
+      let matchedCloneElement: Element = cloneElement;
       for (const index of path) {
-        const child = cloneElement.children[index];
+        const child = matchedCloneElement.children[index];
         if (!child) break;
-        cloneElement = child;
+        matchedCloneElement = child;
       }
       if (
-        Array.from(clone.querySelectorAll(selector.replace(/:scope\b/gi, `[${marker}]`))).includes(
-          cloneElement,
-        )
+        cloneElement.matches(selector.replace(/:scope\b/gi, `[${marker}]`)) ||
+        Array.from(
+          cloneElement.querySelectorAll(selector.replace(/:scope\b/gi, `[${marker}]`)),
+        ).includes(matchedCloneElement)
       )
         return true;
     } catch {
