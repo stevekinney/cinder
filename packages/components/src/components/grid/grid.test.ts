@@ -177,13 +177,12 @@ describe('Grid', () => {
     }
   });
 
-  test('recomputes collapse when the root font size changes', async () => {
+  test('uses the element border box when resize entries omit borderBoxSize', async () => {
     const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const originalResizeObserver = globalThis.ResizeObserver;
-    const originalRootFontSize = document.documentElement.style.fontSize;
     let resizeCallback: ResizeObserverCallback | undefined;
 
-    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 320 }) as DOMRect;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 675, height: 240 }) as DOMRect;
     globalThis.ResizeObserver = class implements ResizeObserver {
       constructor(callback: ResizeObserverCallback) {
         resizeCallback = callback;
@@ -193,7 +192,68 @@ describe('Grid', () => {
       unobserve() {}
       disconnect() {}
     };
-    document.documentElement.style.fontSize = '16px';
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      Object.defineProperty(root, 'offsetWidth', { configurable: true, value: 900 });
+
+      resizeCallback?.(
+        [
+          {
+            target: root,
+            borderBoxSize: [],
+            contentBoxSize: [{ inlineSize: 675, blockSize: 240 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 675, height: 240 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(false);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+      unmount();
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('recomputes collapse when an inserted stylesheet changes the root font size', async () => {
+    const originalGetComputedStyle = globalThis.getComputedStyle;
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let resizeCallback: ResizeObserverCallback | undefined;
+    let rootFontSize = 16;
+    let stylesheet: HTMLStyleElement | undefined;
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 320 }) as DOMRect;
+    globalThis.getComputedStyle = ((element: Element, pseudoElement?: string | null) => {
+      const style = originalGetComputedStyle(element, pseudoElement);
+      if (element !== document.documentElement) return style;
+
+      return new Proxy(style, {
+        get(target, property, receiver) {
+          if (property === 'fontSize') return `${rootFontSize}px`;
+          const value = Reflect.get(target, property, receiver);
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+    }) as typeof getComputedStyle;
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
 
     try {
       const { container, unmount } = render(Grid, {
@@ -217,11 +277,15 @@ describe('Grid', () => {
       await tick();
       expect(root.hasAttribute('data-cinder-wide')).toBe(true);
 
-      document.documentElement.style.fontSize = '18px';
+      rootFontSize = 18;
+      stylesheet = document.createElement('style');
+      stylesheet.textContent = ':root { font-size: 18px; }';
+      document.head.append(stylesheet);
       await waitFor(() => expect(root.hasAttribute('data-cinder-narrow')).toBe(true));
       unmount();
     } finally {
-      document.documentElement.style.fontSize = originalRootFontSize;
+      stylesheet?.remove();
+      globalThis.getComputedStyle = originalGetComputedStyle;
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       globalThis.ResizeObserver = originalResizeObserver;
     }

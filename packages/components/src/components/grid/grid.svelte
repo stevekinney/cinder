@@ -90,6 +90,10 @@
       return usesVerticalInlineAxis ? borderBoxSize.blockSize : borderBoxSize.inlineSize;
     }
 
+    if (entry.target instanceof HTMLElement) {
+      return getElementBorderBoxWidth(entry.target);
+    }
+
     return entry.contentRect.width;
   }
 
@@ -128,6 +132,15 @@
       attributes: true,
       attributeFilter: ['class', 'style'],
     });
+    if (document.head) {
+      observer?.observe(document.head, {
+        attributes: true,
+        attributeFilter: ['disabled', 'href', 'media'],
+        characterData: true,
+        childList: true,
+        subtree: true,
+      });
+    }
     window.addEventListener('resize', remeasureWidth);
 
     return () => {
