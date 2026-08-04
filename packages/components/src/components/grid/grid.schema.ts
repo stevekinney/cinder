@@ -31,7 +31,8 @@ const schema = {
     },
     narrowCollapseEnabled: {
       type: 'boolean',
-      description: 'Enables a narrow-screen fallback where the grid becomes a single column.',
+      description:
+        "Enables a single-column fallback when the Grid element's border-box width is 48rem or less.",
       default: false,
     },
     minItemWidth: {
