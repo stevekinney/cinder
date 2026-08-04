@@ -2236,7 +2236,7 @@
       "purpose": "Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.",
       "tags": ["timeline", "activity"],
       "useWhen": [
-        "Rendering an activity log, audit trail, or notification timeline.",
+        "Rendering a user-facing activity stream, audit feed, or notification timeline.",
         "Announcing newly appended entries to assistive technology via the live prop."
       ],
       "avoidWhen": [

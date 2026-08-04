@@ -6,7 +6,7 @@
    * @purpose Ordered list container for a chronological stream of feed-event entries, optionally exposed as a live region.
    * @tag timeline
    * @tag activity
-   * @useWhen Rendering an activity log, audit trail, or notification timeline.
+   * @useWhen Rendering a user-facing activity stream, audit feed, or notification timeline.
    * @useWhen Announcing newly appended entries to assistive technology via the live prop.
    * @avoidWhen Displaying a one-off transient notice — use toast-region or banner instead.
    * @avoidWhen Displaying static temporal history or execution state — use timeline or run-step-timeline.
