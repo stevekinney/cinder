@@ -146,6 +146,25 @@ describe('Portal', () => {
     expect(findNearestOpenTopLayer(source)).toBeNull();
   });
 
+
+  test('finds an enclosing owner marker across nested shadow hosts', () => {
+    const owner = document.createElement('div');
+    owner.id = 'outer-shadow-owner';
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const outerMarker = document.createElement('div');
+    outerMarker.setAttribute('data-cinder-portal-owner', owner.id);
+    const innerHost = document.createElement('div');
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const source = document.createElement('button');
+    innerShadow.append(source);
+    outerMarker.append(innerHost);
+    outerShadow.append(owner, outerMarker);
+    document.body.append(outerHost);
+
+    expect(findNearestOpenTopLayer(source)).toBe(owner);
+  });
+
   test('prefers a nearer native modal over an outer portal owner marker', () => {
     const outer = document.createElement('div');
     const owner = document.createElement('div');
