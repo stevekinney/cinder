@@ -59,16 +59,22 @@
   let observedNode = $state<HTMLElement | null>(null);
 
   function getCollapseMaxWidthPx(): number {
-    if (typeof window === 'undefined') return COLLAPSE_MAX_WIDTH_REM * FALLBACK_ROOT_FONT_SIZE_PX;
+    const ownerDocument = observedNode?.ownerDocument;
+    const ownerWindow = ownerDocument?.defaultView;
+    if (!ownerDocument || !ownerWindow) {
+      return COLLAPSE_MAX_WIDTH_REM * FALLBACK_ROOT_FONT_SIZE_PX;
+    }
 
-    const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const rootFontSize = Number.parseFloat(
+      ownerWindow.getComputedStyle(ownerDocument.documentElement).fontSize,
+    );
     const baseFontSize =
       Number.isFinite(rootFontSize) && rootFontSize > 0 ? rootFontSize : FALLBACK_ROOT_FONT_SIZE_PX;
     return COLLAPSE_MAX_WIDTH_REM * baseFontSize;
   }
 
   function updateNarrowState(width: number, collapseMaxWidthPx = getCollapseMaxWidthPx()): void {
-    if (!Number.isFinite(width) || width <= 0) return;
+    if (!Number.isFinite(width) || width < 0) return;
     if (!Number.isFinite(collapseMaxWidthPx) || collapseMaxWidthPx <= 0) return;
 
     measuredWidth = width;
@@ -86,12 +92,14 @@
       : entry.borderBoxSize;
 
     if (borderBoxSize) {
-      const writingMode = getComputedStyle(entry.target).writingMode;
+      const writingMode =
+        entry.target.ownerDocument.defaultView?.getComputedStyle(entry.target).writingMode ?? '';
       const usesVerticalInlineAxis = /^(?:vertical|sideways)-/i.test(writingMode);
       return usesVerticalInlineAxis ? borderBoxSize.blockSize : borderBoxSize.inlineSize;
     }
 
-    if (entry.target instanceof HTMLElement) {
+    const targetWindow = entry.target.ownerDocument.defaultView;
+    if (targetWindow && entry.target instanceof targetWindow.HTMLElement) {
       return getElementBorderBoxWidth(entry.target);
     }
 
@@ -118,12 +126,12 @@
   });
 
   $effect(() => {
-    if (!narrowCollapseEnabled || !observedNode || typeof window === 'undefined') return;
+    if (!narrowCollapseEnabled || !observedNode) return;
     const node = observedNode;
+    const ownerDocument = node.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView;
+    if (!ownerWindow) return;
 
-    const recomputeNarrowState = () => {
-      updateNarrowState(measuredWidth);
-    };
     const remeasureWidth = () => {
       updateNarrowState(getElementBorderBoxWidth(node));
     };
@@ -132,17 +140,17 @@
     const observeStylesheetLinks = () => {
       for (const link of stylesheetLinks) {
         if (!link.isConnected || !link.relList.contains('stylesheet')) {
-          link.removeEventListener('load', recomputeNarrowState);
+          link.removeEventListener('load', remeasureWidth);
           stylesheetLinks.delete(link);
         }
       }
 
-      for (const link of document.head?.querySelectorAll<HTMLLinkElement>(
+      for (const link of ownerDocument.head?.querySelectorAll<HTMLLinkElement>(
         'link[rel~="stylesheet"]',
       ) ?? []) {
         if (!stylesheetLinks.has(link)) {
           stylesheetLinks.add(link);
-          link.addEventListener('load', recomputeNarrowState);
+          link.addEventListener('load', remeasureWidth);
         }
       }
     };
@@ -150,15 +158,15 @@
       typeof MutationObserver === 'undefined' || !usesStylesheetFallback
         ? null
         : new MutationObserver(() => {
-            recomputeNarrowState();
+            remeasureWidth();
             observeStylesheetLinks();
           });
-    observer?.observe(document.documentElement, {
+    observer?.observe(ownerDocument.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'style'],
     });
-    if (document.head && usesStylesheetFallback) {
-      observer?.observe(document.head, {
+    if (ownerDocument.head && usesStylesheetFallback) {
+      observer?.observe(ownerDocument.head, {
         attributes: true,
         attributeFilter: ['disabled', 'href', 'media', 'rel'],
         characterData: true,
@@ -168,16 +176,16 @@
       observeStylesheetLinks();
     }
     if (usesStylesheetFallback) {
-      window.addEventListener('resize', remeasureWidth);
+      ownerWindow.addEventListener('resize', remeasureWidth);
     }
 
     return () => {
       observer?.disconnect();
       for (const link of stylesheetLinks) {
-        link.removeEventListener('load', recomputeNarrowState);
+        link.removeEventListener('load', remeasureWidth);
       }
       if (usesStylesheetFallback) {
-        window.removeEventListener('resize', remeasureWidth);
+        ownerWindow.removeEventListener('resize', remeasureWidth);
       }
     };
   });
@@ -185,13 +193,15 @@
   $effect(() => {
     if (
       !narrowCollapseEnabled ||
-      typeof window === 'undefined' ||
+      !observedNode ||
       typeof ResizeObserver === 'undefined' ||
-      !document.body
+      !observedNode.ownerDocument.body
     )
       return;
 
-    const probe = document.createElement('span');
+    const ownerDocument = observedNode.ownerDocument;
+
+    const probe = ownerDocument.createElement('span');
     probe.setAttribute('aria-hidden', 'true');
     probe.setAttribute('data-cinder-grid-threshold-probe', '');
     Object.assign(probe.style, {
@@ -204,7 +214,7 @@
       visibility: 'hidden',
       width: `${COLLAPSE_MAX_WIDTH_REM}rem`,
     });
-    document.body.append(probe);
+    ownerDocument.body.append(probe);
 
     const observer = new ResizeObserver(() => {
       updateNarrowState(measuredWidth, getElementBorderBoxWidth(probe));

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, spyOn, test } from 'bun:test';
+import { Window } from 'happy-dom';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -224,6 +225,53 @@ describe('Grid', () => {
     }
   });
 
+  test('treats a zero-width resize observation as narrow', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let resizeCallback: ResizeObserverCallback | undefined;
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 900, height: 240 }) as DOMRect;
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+
+      resizeCallback?.(
+        [
+          {
+            target: root,
+            borderBoxSize: [{ inlineSize: 0, blockSize: 240 }],
+            contentBoxSize: [{ inlineSize: 0, blockSize: 240 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 0, height: 240 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(false);
+      unmount();
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   test('observes inserted stylesheets when ResizeObserver is unavailable', async () => {
     const originalGetComputedStyle = globalThis.getComputedStyle;
     const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
@@ -269,25 +317,12 @@ describe('Grid', () => {
   });
 
   test('recomputes after an external stylesheet loads when ResizeObserver is unavailable', async () => {
-    const originalGetComputedStyle = globalThis.getComputedStyle;
     const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const originalResizeObserver = globalThis.ResizeObserver;
-    let rootFontSize = 16;
+    let width = 900;
     let stylesheet: HTMLLinkElement | undefined;
 
-    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 320 }) as DOMRect;
-    globalThis.getComputedStyle = ((element: Element, pseudoElement?: string | null) => {
-      const style = originalGetComputedStyle(element, pseudoElement);
-      if (element !== document.documentElement) return style;
-
-      return new Proxy(style, {
-        get(target, property, receiver) {
-          if (property === 'fontSize') return `${rootFontSize}px`;
-          const value = Reflect.get(target, property, receiver);
-          return typeof value === 'function' ? value.bind(target) : value;
-        },
-      });
-    }) as typeof getComputedStyle;
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width, height: 320 }) as DOMRect;
     globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
 
     try {
@@ -305,7 +340,7 @@ describe('Grid', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(root.hasAttribute('data-cinder-wide')).toBe(true);
 
-      rootFontSize = 18;
+      width = 600;
       stylesheet.dispatchEvent(new Event('load'));
       await waitFor(() => expect(root.hasAttribute('data-cinder-narrow')).toBe(true));
 
@@ -316,7 +351,6 @@ describe('Grid', () => {
       unmount();
     } finally {
       stylesheet?.remove();
-      globalThis.getComputedStyle = originalGetComputedStyle;
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       globalThis.ResizeObserver = originalResizeObserver;
     }
@@ -439,6 +473,60 @@ describe('Grid', () => {
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
       globalThis.MutationObserver = originalMutationObserver;
       globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test("uses the Grid element's document for thresholds and resize fallback", async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalMutationObserver = globalThis.MutationObserver;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const secondaryWindow = new Window();
+    const secondaryDocument = secondaryWindow.document as unknown as Document;
+    const hostAddEventListener = spyOn(window, 'addEventListener');
+    const secondaryAddEventListener = spyOn(secondaryWindow, 'addEventListener');
+    let width = 800;
+
+    secondaryWindow.document.documentElement.style.fontSize = '20px';
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width, height: 320 }) as DOMRect;
+    globalThis.MutationObserver = undefined as unknown as typeof MutationObserver;
+    globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
+
+    try {
+      const { container, rerender, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: false, children: textSnippet('content') },
+      });
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      Object.defineProperty(root, 'ownerDocument', {
+        configurable: true,
+        value: secondaryDocument,
+      });
+
+      await rerender({ narrowCollapseEnabled: true, children: textSnippet('content') });
+      await tick();
+
+      expect(root.ownerDocument).toBe(secondaryDocument);
+      expect(
+        secondaryWindow.getComputedStyle(secondaryWindow.document.documentElement).fontSize,
+      ).toBe('20px');
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      expect(hostAddEventListener.mock.calls.filter(([type]) => type === 'resize')).toHaveLength(0);
+      expect(
+        secondaryAddEventListener.mock.calls.filter(([type]) => type === 'resize'),
+      ).toHaveLength(1);
+
+      width = 1_000;
+      secondaryWindow.dispatchEvent(new secondaryWindow.Event('resize'));
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+      unmount();
+    } finally {
+      hostAddEventListener.mockRestore();
+      secondaryAddEventListener.mockRestore();
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.MutationObserver = originalMutationObserver;
+      globalThis.ResizeObserver = originalResizeObserver;
+      await secondaryWindow.happyDOM.close();
     }
   });
 
