@@ -250,7 +250,7 @@
       "tags": ["overlay", "dialog"],
       "useWhen": [
         "Requiring acknowledgement of a blocking warning before the user can continue.",
-        "Presenting a destructive or high-risk message that needs an explicit OK action."
+        "A system-initiated or out-of-band condition requires explicit acknowledgement before continuing."
       ],
       "avoidWhen": [
         {
@@ -1392,7 +1392,7 @@
           "reason": "Announcing a non-blocking result — use toast-region or banner."
         }
       ],
-      "related": ["modal", "drawer", "sheet"],
+      "related": ["modal", "alert-dialog", "drawer", "sheet"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
