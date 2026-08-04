@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'bun:test';
 
-import { findNeighbourRationaleViolations } from './check-component-inventory.ts';
+import {
+  findNeighbourRationaleViolations,
+  isCanonicalInventoryComponent,
+} from './check-component-inventory.ts';
+
+describe('isCanonicalInventoryComponent', () => {
+  it('checks canonical components and excludes experimental components', () => {
+    expect(isCanonicalInventoryComponent({ isExperimental: false })).toBe(true);
+    expect(isCanonicalInventoryComponent({ isExperimental: true })).toBe(false);
+  });
+});
 
 describe('findNeighbourRationaleViolations', () => {
   const knownComponentIds = new Set(['button', 'new-component']);

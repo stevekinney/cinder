@@ -26,6 +26,13 @@ export type InventoryViolation = {
   reason: string;
 };
 
+/** Whether the inventory rationale guard owns this discovered component. */
+export function isCanonicalInventoryComponent(
+  component: Pick<DiscoveredComponent, 'isExperimental'>,
+): boolean {
+  return !component.isExperimental;
+}
+
 const MODULE_SCRIPT_REGEX =
   /<script\b(?:[^>]*\bmodule\b[^>]*|[^>]*\bcontext\s*=\s*["']module["'][^>]*)>([\s\S]*?)<\/script>/gi;
 
@@ -120,6 +127,7 @@ export async function checkComponentInventory(): Promise<InventoryViolation[]> {
   const components = await discoverComponentDirectories();
   const knownComponentIds = new Set(components.map((component) => component.name));
   for (const component of components) {
+    if (!isCanonicalInventoryComponent(component)) continue;
     const entry = await readInventoryEntry(component);
     if ('reason' in entry) {
       violations.push(entry);
