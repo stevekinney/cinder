@@ -53,9 +53,11 @@
 >
   <Container {maxWidth}>
     <div class="cinder-_section-skeleton__inner cinder-team-section__inner">
-      {#if title}
+      {#if title || description}
         <header class="cinder-_section-skeleton__header cinder-team-section__header">
-          <h2 class="cinder-_section-skeleton__title cinder-team-section__title">{title}</h2>
+          {#if title}
+            <h2 class="cinder-_section-skeleton__title cinder-team-section__title">{title}</h2>
+          {/if}
           {#if description}
             <p class="cinder-_section-skeleton__description cinder-team-section__description">
               {description}
