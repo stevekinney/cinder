@@ -69,6 +69,32 @@ describe('restoreFocusTo', () => {
 });
 
 describe('getSequentialFocusTargets', () => {
+  test('includes text, checkbox, and radio inputs while excluding hidden and disabled inputs', () => {
+    const region = document.createElement('div');
+    const text = document.createElement('input');
+    text.type = 'text';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'choice';
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    const disabled = document.createElement('input');
+    disabled.type = 'checkbox';
+    disabled.disabled = true;
+    region.append(text, checkbox, radio, hidden, disabled);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).toContain(text);
+    expect(targets).toContain(checkbox);
+    expect(targets).toContain(radio);
+    expect(targets).not.toContain(hidden);
+    expect(targets).not.toContain(disabled);
+    region.remove();
+  });
+
   test('includes native sequential controls omitted by the old selector', () => {
     const region = document.createElement('div');
     const input = document.createElement('input');
