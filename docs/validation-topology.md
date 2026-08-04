@@ -105,16 +105,34 @@ organization.
 Until then, **`strict: true` is the steady state**, and its serialization
 cost is the accepted price of validating merged results. For bulk merge waves
 where that cost is prohibitive (N PRs × a full CI round each), the recorded
-protocol from the 2026-08-04 drain is: octopus-merge every candidate branch
-onto `main` in a scratch worktree, run the full validation suite (build,
-tests, typecheck, lint including `lint:invariants`, `components:check`)
-against that combined tree, and only then lift `strict` for the duration of
-the drain — restoring it immediately after. That reproduces the queue's
-merged-result guarantee out-of-band; per-PR CI plus pairwise
-`git merge-tree` checks alone do not cover repo-wide-guard interactions,
-which is exactly the class that broke `main` on 2026-07-28. Playwright is
-the one gap in the local suite — per-PR CI and the post-drain `main-green`
-run remain the browser-suite gate.
+protocol from the 2026-08-04 drain is:
+
+1. **Freeze merges for the duration.** Lifting `strict` lets ANY green PR
+   self-merge unvalidated (no human review is required here), so the drain
+   window must cover every open PR: anything not in the validated candidate
+   set must be closed, converted to draft, or explicitly queued behind the
+   drain before `strict` is lifted.
+2. Octopus-merge every candidate branch onto a **scratch branch cut from
+   `main` in a scratch worktree** — never the real `main` — and run the
+   full validation suite against that combined tree: build, tests, typecheck,
+   lint (including `lint:invariants`), `components:check`, and
+   `aggregator:check`, plus the `main-green`-only audits that no PR-level
+   check runs (`platform:audit`, `colors:audit`, `tokens:audit`,
+   `validate:consumer` and friends — read
+   `.github/workflows/main-green.yaml` for the current list) when any
+   candidate touches the surfaces they audit.
+3. Only then lift `strict`, drain the validated set, and restore
+   `strict: true` immediately after.
+4. **Run the full Playwright suite against the merged result** (locally or
+   via a manual dispatch) after the drain. `main-green` is NOT a browser
+   gate — it runs only a Chromium hydration smoke
+   (`validate:consumer:hydration-smoke`); the full Playwright suite runs
+   only in per-PR / merge-group CI, so cross-PR browser-behavior
+   interactions on the combined tree are otherwise never exercised.
+
+That reproduces the queue's merged-result guarantee out-of-band; per-PR CI
+plus pairwise `git merge-tree` checks alone do not cover repo-wide-guard
+interactions, which is exactly the class that broke `main` on 2026-07-28.
 
 `release.yaml` still waits for a same-SHA `main-green` run before publishing, so
 nothing ships un-caught even if something slips past the queue.
