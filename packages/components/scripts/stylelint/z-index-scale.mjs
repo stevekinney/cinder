@@ -19,10 +19,21 @@
 
 import stylelint from 'stylelint';
 
+import { bannedFallback } from './z-index-fallback-analysis.mjs';
+import {
+  cssCommentMaskCharacter,
+  decodeCssEscapes,
+  isCssIdentifierCharacter,
+  isStaticallyMagicNumber,
+  isStaticallyNegative,
+  protectCssSyntaxEscapes,
+  unquotedUrlTokenEnd,
+} from './z-index-value-analysis.mjs';
+
 const ruleName = 'cinder/z-index-scale';
 const localReasonPrefix = 'cinder-z-index-local:';
-const layerTokenPattern = /^var\(\s*(--cinder-z-[a-z0-9-]+)\s*\)$/i;
-const layerTokenReferencePattern = /var\(\s*--cinder-z-[a-z0-9-]+\s*,/i;
+const layerTokenPattern = /^var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)[\t\n\f\r ]*\)$/i;
+const layerTokenReferencePattern = /var\([\t\n\f\r ]*(--cinder-z-[\w\u0080-\uFFFF-]+)/iy;
 const declaredLayerTokens = new Set([
   '--cinder-z-backdrop',
   '--cinder-z-dropdown',
@@ -35,10 +46,29 @@ const declaredLayerTokens = new Set([
   '--cinder-z-tooltip',
 ]);
 const allowedLocalValues = new Set(['auto', '0', '1']);
+const maximumDiagnosticExpressionLength = 240;
+
+export function markdownCodeSpan(value) {
+  let longestBacktickRunLength = 0;
+  let currentBacktickRunLength = 0;
+  for (const character of value) {
+    if (character === '`') {
+      currentBacktickRunLength += 1;
+      longestBacktickRunLength = Math.max(longestBacktickRunLength, currentBacktickRunLength);
+    } else currentBacktickRunLength = 0;
+  }
+  const delimiter = '`'.repeat(longestBacktickRunLength + 1);
+  const padding = value.startsWith('`') || value.endsWith('`') ? ' ' : '';
+  return `${delimiter}${padding}${value}${padding}${delimiter}`;
+}
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
   fallback:
     'A `--cinder-z-*` token must not have a fallback; define the token once in tokens-base.css.',
+  bannedFallback:
+    'A `var()`, `env()`, or `attr()` fallback must not contain a banned z-index escape hatch.',
+  fallbackTooComplex:
+    'A `var()`, `env()`, or `attr()` fallback was too complex to verify safely; simplify the expression.',
   invalid:
     '`z-index` must be `auto`, `0`, `1`, or a `--cinder-z-*` token without a fallback. ' +
     'Higher component-local values require an adjacent `cinder-z-index-local:` reason.',
@@ -48,13 +78,99 @@ const meta = {
   url: 'https://github.com/stevekinney/cinder/blob/main/docs/tokens.md#z-index-layers',
 };
 
-// Postcss keeps `/* ... */` comments embedded inside a raw declaration value
+function isEscaped(value, index) {
+  let backslashCount = 0;
+  for (index -= 1; index >= 0 && value[index] === '\\'; index -= 1) backslashCount += 1;
+  return backslashCount % 2 === 1;
+}
+
+function quotedStringEnd(value, start) {
+  const quote = value[start];
+  for (let index = start + 1; index < value.length; index += 1) {
+    if (value[index] === '\\') {
+      if (value[index + 1] === '\r' && value[index + 2] === '\n') index += 2;
+      else if (value[index + 1] !== undefined) index += 1;
+    } else if (value[index] === quote) return index;
+    else if (value[index] === '\n' || value[index] === '\r' || value[index] === '\f') return index;
+  }
+  return value.length - 1;
+}
+
+// Postcss keeps `/* ... */` comments embedded inside a declaration value
 // instead of tokenizing them out, so `var(--cinder-z-popover/**/, 1100)` is a
 // valid way to slip a forbidden fallback past a regex that only expects
-// whitespace between the token and the comma. Strip comments before any
-// pattern match runs so a CSS comment can never mask a fallback value.
-function stripComments(value) {
-  return value.replaceAll(/\/\*[\s\S]*?\*\//g, ' ');
+// whitespace between the token and the comma. Mask real comments with a
+// same-length non-whitespace sentinel while preserving quoted and URL-token
+// comment-like text and diagnostic offsets. Callers that need
+// comments to delimit layer-token syntax map the sentinel to spaces locally;
+// static math must not mistake comments for the whitespace required around
+// additive operators.
+function maskComments(value) {
+  const segments = [];
+  let copyFrom = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      const stringEnd = quotedStringEnd(value, index);
+      index = stringEnd;
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    if (value[index] !== '/' || value[index + 1] !== '*' || isEscaped(value, index)) {
+      continue;
+    }
+    segments.push(value.slice(copyFrom, index));
+    const commentEnd = value.indexOf('*/', index + 2);
+    if (commentEnd === -1) {
+      segments.push(cssCommentMaskCharacter.repeat(value.length - index));
+      copyFrom = value.length;
+      break;
+    }
+    segments.push(cssCommentMaskCharacter.repeat(commentEnd + 2 - index));
+    index = commentEnd + 1;
+    copyFrom = commentEnd + 2;
+  }
+  if (segments.length === 0) return value;
+  segments.push(value.slice(copyFrom));
+  return segments.join('');
+}
+
+function findLayerTokenReferences(value) {
+  const references = [];
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '"' || value[index] === "'") {
+      index = quotedStringEnd(value, index);
+      continue;
+    }
+    const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+    if (urlTokenEnd !== undefined) {
+      index = urlTokenEnd;
+      continue;
+    }
+    layerTokenReferencePattern.lastIndex = index;
+    const match = layerTokenReferencePattern.exec(value);
+    const previousCharacter = value[index - 1];
+    if (
+      !match ||
+      isCssIdentifierCharacter(previousCharacter) ||
+      previousCharacter === '#' ||
+      previousCharacter === '@'
+    )
+      continue;
+    let terminatorIndex = layerTokenReferencePattern.lastIndex;
+    while (/[\t\n\f\r ]/.test(value[terminatorIndex] ?? '')) terminatorIndex += 1;
+    const terminator = value[terminatorIndex];
+    references.push({
+      token: match[1],
+      hasFallback: terminator === ',',
+      isMalformed: terminator !== ',' && terminator !== ')',
+    });
+    index = layerTokenReferencePattern.lastIndex - 1;
+  }
+  return references;
 }
 
 function hasAdjacentLocalReason(declaration) {
@@ -64,117 +180,6 @@ function hasAdjacentLocalReason(declaration) {
   const text = previous.text.trim();
   if (!text.startsWith(localReasonPrefix)) return false;
   return text.slice(localReasonPrefix.length).trim().length > 0;
-}
-
-// A tiny recursive-descent evaluator for +, -, *, /, unary minus, and
-// parens over numeric literals — just enough to statically evaluate a
-// `calc()` expression that contains no `var()` references (e.g. `0 - 1`,
-// `-1 * 1`). Returns `null` if the expression isn't purely this grammar
-// (in particular, anything referencing a custom property, which can't be
-// evaluated without knowing its runtime value).
-function evaluateConstantArithmetic(expression) {
-  let index = 0;
-
-  function peek() {
-    return expression[index];
-  }
-
-  function skipSpace() {
-    while (index < expression.length && /\s/.test(expression[index])) index += 1;
-  }
-
-  function parseNumber() {
-    skipSpace();
-    const start = index;
-    if (peek() === '-') index += 1;
-    let sawDigit = false;
-    while (/[\d.]/.test(peek() ?? '')) {
-      sawDigit = true;
-      index += 1;
-    }
-    if (!sawDigit) throw new Error('expected a number');
-    return Number(expression.slice(start, index));
-  }
-
-  function parseAtom() {
-    skipSpace();
-    if (peek() === '(') {
-      index += 1;
-      const value = parseExpression();
-      skipSpace();
-      if (peek() !== ')') throw new Error('expected )');
-      index += 1;
-      return value;
-    }
-    if (peek() === '-') {
-      index += 1;
-      return -parseAtom();
-    }
-    return parseNumber();
-  }
-
-  function parseTerm() {
-    let value = parseAtom();
-    for (;;) {
-      skipSpace();
-      const operator = peek();
-      if (operator !== '*' && operator !== '/') return value;
-      index += 1;
-      const rhs = parseAtom();
-      value = operator === '*' ? value * rhs : value / rhs;
-    }
-  }
-
-  function parseExpression() {
-    let value = parseTerm();
-    for (;;) {
-      skipSpace();
-      const operator = peek();
-      if (operator !== '+' && operator !== '-') return value;
-      index += 1;
-      const rhs = parseTerm();
-      value = operator === '+' ? value + rhs : value - rhs;
-    }
-  }
-
-  try {
-    const result = parseExpression();
-    skipSpace();
-    return index === expression.length && Number.isFinite(result) ? result : null;
-  } catch {
-    return null;
-  }
-}
-
-// `Number('calc(-1)')` is `NaN`, not `-1` — a plain `Number(value) < 0` check
-// never sees a negative value wrapped in `calc()`, and arithmetic like
-// `calc(0 - 1)` is statically negative without being a bare numeric literal
-// either. A declaration with a `cinder-z-index-local:` reason and either
-// shape would otherwise slip past the rule's prohibition on negative local
-// stacking levels. Unwrap a single `calc(...)` layer, then fall back to a
-// constant-arithmetic evaluator for expressions `Number()` can't parse.
-// Returns `null` when the value can't be statically resolved to a number at
-// all (e.g. it references a custom property).
-function resolveStaticNumber(value) {
-  const calcMatch = /^calc\(\s*([\s\S]+?)\s*\)$/.exec(value);
-  const expression = calcMatch ? calcMatch[1] : value;
-  const direct = Number(expression);
-  if (Number.isFinite(direct)) return direct;
-  return evaluateConstantArithmetic(expression);
-}
-
-function isStaticallyNegative(value) {
-  const resolved = resolveStaticNumber(value);
-  return resolved !== null && resolved < 0;
-}
-
-// The historical `9999` escape hatch must stay banned even when wrapped in
-// arithmetic that evaluates to the same number (`calc(9999)`,
-// `calc(10000 - 1)`) — a plain string comparison against `'9999'` only
-// catches the literal, not a calculated equivalent.
-function isStaticallyMagicNumber(value) {
-  const resolved = resolveStaticNumber(value);
-  return resolved !== null && resolved === 9999;
 }
 
 const plugin = stylelint.createPlugin(ruleName, (primary) => {
@@ -196,17 +201,23 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
       return;
 
     root.walkDecls((declaration) => {
-      if (declaration.prop.toLowerCase() !== 'z-index') return;
-      const value = stripComments(declaration.value.trim()).trim();
-      const tokenMatch = layerTokenPattern.exec(value);
-      if (allowedLocalValues.has(value)) return;
+      const decodedProperty = decodeCssEscapes(protectCssSyntaxEscapes(declaration.prop));
+      if (decodedProperty.toLowerCase() !== 'z-index') return;
+      const rawDeclarationValue = declaration.raws.value?.raw ?? declaration.value;
+      const declarationValue = rawDeclarationValue.trim();
+      const decodedDeclarationValue = decodeCssEscapes(protectCssSyntaxEscapes(declarationValue));
+      const value = maskComments(decodedDeclarationValue).trim();
+      const layerTokenValue = value.replaceAll(cssCommentMaskCharacter, ' ').trim();
+      const tokenMatch = layerTokenPattern.exec(layerTokenValue);
+      const layerTokenReferences = findLayerTokenReferences(layerTokenValue);
+      if (allowedLocalValues.has(layerTokenValue.toLowerCase())) return;
       if (tokenMatch) {
         if (declaredLayerTokens.has(tokenMatch[1])) return;
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }
 
-      if (layerTokenReferencePattern.test(value)) {
+      if (layerTokenReferences.some(({ hasFallback }) => hasFallback)) {
         stylelint.utils.report({
           ruleName,
           result,
@@ -216,13 +227,50 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
         return;
       }
 
+      const offendingFallback = bannedFallback(rawDeclarationValue);
+      if (offendingFallback) {
+        const declarationValueIndex =
+          declaration.prop.length + (declaration.raws.between?.length ?? 0);
+        const fallbackValueIndex =
+          offendingFallback.index === undefined ? -1 : offendingFallback.index;
+        const fallbackLength = offendingFallback.length ?? offendingFallback.value.length;
+        const fallbackIndex =
+          fallbackValueIndex === -1 ? -1 : declarationValueIndex + fallbackValueIndex;
+        const originalFallback =
+          fallbackValueIndex === -1
+            ? offendingFallback.value
+            : rawDeclarationValue.slice(fallbackValueIndex, fallbackValueIndex + fallbackLength);
+        const diagnosticExpression =
+          originalFallback.length <= maximumDiagnosticExpressionLength
+            ? originalFallback
+            : `${originalFallback.slice(0, maximumDiagnosticExpressionLength - 1)}…`;
+        const diagnosticMessage =
+          offendingFallback.reason === 'too-complex'
+            ? messages.fallbackTooComplex
+            : messages.bannedFallback;
+        stylelint.utils.report({
+          ruleName,
+          result,
+          node: declaration,
+          ...(fallbackIndex >= 0
+            ? {
+                index: fallbackIndex,
+                endIndex: fallbackIndex + fallbackLength,
+              }
+            : {}),
+          message: `${diagnosticMessage} Offending expression: ${markdownCodeSpan(diagnosticExpression)}.`,
+        });
+        return;
+      }
+
       // The adjacent reason is the explicit, refactor-safe allow-list for
       // component-local relationships above the universal 0/1 threshold.
       // Never allow the historical magic escape hatch back, even with a note.
-      const referencedTokens = [...value.matchAll(/var\(\s*(--cinder-z-[\w-]+)/g)].map(
-        (match) => match[1],
-      );
-      if (referencedTokens.some((token) => !declaredLayerTokens.has(token))) {
+      if (
+        layerTokenReferences.some(
+          ({ token, isMalformed }) => isMalformed || !declaredLayerTokens.has(token),
+        )
+      ) {
         stylelint.utils.report({ ruleName, result, node: declaration, message: messages.invalid });
         return;
       }
