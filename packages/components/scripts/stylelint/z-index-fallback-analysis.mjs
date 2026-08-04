@@ -3564,6 +3564,7 @@ function typedHypotRangeCandidates(
       {
         ...candidate,
         resolvedFallback: fallbackResolutionTooComplex,
+        hasRuntimeSibling: true,
         resolvedClassification: 'too-complex',
       },
     ];
@@ -3814,6 +3815,7 @@ function typedHypotRangeCandidates(
             ...candidate,
             resolvedFallback: fallbackResolutionTooComplex,
             resolvedClassification: 'too-complex',
+            hasRuntimeSibling: true,
           },
         ];
       if (isStaticallyInvalidArithmetic(expression)) continue;

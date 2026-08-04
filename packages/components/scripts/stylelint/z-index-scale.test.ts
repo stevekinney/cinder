@@ -1743,6 +1743,25 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('keeps oversize typed hypot workloads as too-complex warnings', async () => {
+    const startedAt = performance.now();
+    const terms = Array.from(
+      { length: 8_000 },
+      (_, index) => `hypot(1px, var(--runtime-${index})) / 1px`,
+    );
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: typed hypot fallback cap stays visible. */
+        z-index: var(--outer, calc(${terms.join(' + ')}));
+      }
+    `);
+    const [warning] = warnings(result);
+
+    expect(warning).toBeDefined();
+    expect(warning?.text).toContain('too complex to verify safely');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('indexes wide sibling CSS if() groups in linear time', async () => {
     const { bannedFallback } = await import(fallbackAnalysisPath);
     const terms = Array.from(
