@@ -38,6 +38,7 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['atan2', 2],
   ['cos', 1],
   ['exp', 1],
+  ['log', [1, 2]],
   ['pow', 2],
   ['sin', 1],
   ['tan', 1],
@@ -1075,7 +1076,7 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName, p
 }
 
 function isValidConditionalBooleanExpression(value, range, parenthesisPairs, depth = 0) {
-  if (depth > conditionalNestingLimit) return false;
+  if (depth > conditionalNestingLimit) return fallbackResolutionTooComplex;
   const expressionRange = trimCssTriviaRange(value, range.start, range.end);
   if (expressionRange.start === expressionRange.end) return false;
 
@@ -1088,23 +1089,28 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
     if (value[start] === '(') {
       const closeIndex = parenthesisPairs.get(start);
       if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
-      if (
-        !isValidConditionalBooleanExpression(
-          value,
-          { start: start + 1, end: closeIndex },
-          parenthesisPairs,
-          depth + 1,
-        )
-      )
-        return undefined;
+      const nestedResult = isValidConditionalBooleanExpression(
+        value,
+        { start: start + 1, end: closeIndex },
+        parenthesisPairs,
+        depth + 1,
+      );
+      if (nestedResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+      if (!nestedResult) return undefined;
       return closeIndex + 1;
     }
     const identifierEnd = cssIdentifierTokenEnd(value, start);
     if (identifierEnd === start || value[identifierEnd] !== '(') return undefined;
     const closeIndex = parenthesisPairs.get(identifierEnd);
-    return closeIndex === undefined || closeIndex >= expressionRange.end
-      ? undefined
-      : closeIndex + 1;
+    if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
+    const functionName = value.slice(start, identifierEnd).toLowerCase();
+    const functionContents = trimCssTriviaRange(value, identifierEnd + 1, closeIndex);
+    if (
+      !['media', 'style', 'supports'].includes(functionName) ||
+      functionContents.start === functionContents.end
+    )
+      return undefined;
+    return closeIndex + 1;
   };
 
   let cursor = expressionRange.start;
@@ -1113,6 +1119,7 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
   const hasLeadingNot = firstIdentifier === 'not' && value[firstIdentifierEnd] !== '(';
   if (hasLeadingNot) cursor = skipTrivia(firstIdentifierEnd);
   cursor = consumeGroup(cursor);
+  if (cursor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
   if (cursor === undefined) return false;
   cursor = skipTrivia(cursor);
   if (hasLeadingNot) return cursor === expressionRange.end;
@@ -1125,6 +1132,7 @@ function isValidConditionalBooleanExpression(value, range, parenthesisPairs, dep
     if (operator !== undefined && operator !== nextOperator) return false;
     operator = nextOperator;
     cursor = consumeGroup(skipTrivia(operatorEnd));
+    if (cursor === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
     if (cursor === undefined) return false;
     cursor = skipTrivia(cursor);
   }
@@ -1170,11 +1178,15 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
       .trim()
       .toLowerCase();
     const isUnconditionalBranch = condition === 'else';
-    if (
-      !isUnconditionalBranch &&
-      !isValidConditionalBooleanExpression(value, conditionRange, parenthesisPairs)
-    )
-      return false;
+    if (!isUnconditionalBranch) {
+      const conditionResult = isValidConditionalBooleanExpression(
+        value,
+        conditionRange,
+        parenthesisPairs,
+      );
+      if (conditionResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+      if (!conditionResult) return true;
+    }
     if (!hasUnconditionalBranch) branches.push(branchValueRange);
     hasUnconditionalBranch ||= isUnconditionalBranch;
     return true;
@@ -1191,12 +1203,16 @@ function conditionalBranchValueRanges(value, group, parenthesisPairs) {
         index = closeIndex;
       } else if (value[index] === ')') return undefined;
       else if (value[index] === ';') {
-        if (!appendBranch(index)) return undefined;
+        const appendResult = appendBranch(index);
+        if (appendResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+        if (!appendResult) return undefined;
         branchStart = index + 1;
       }
     }
   }
-  if (!appendBranch(group.end - 1)) return undefined;
+  const finalAppendResult = appendBranch(group.end - 1);
+  if (finalAppendResult === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+  if (!finalAppendResult) return undefined;
   return branches;
 }
 
@@ -1206,7 +1222,7 @@ function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs
     (group) =>
       group.functionStart === expressionRange.start &&
       group.end === expressionRange.end &&
-      conditionalBranchValueRanges(value, group, parenthesisPairs) !== undefined,
+      Array.isArray(conditionalBranchValueRanges(value, group, parenthesisPairs)),
   );
 }
 
@@ -1215,6 +1231,7 @@ function childIsInSelectableConditionalBranch(child, value, parenthesisPairs) {
   let selectableRange = { start: child.start, end: child.end };
   while (conditionalParent !== undefined) {
     const branchRanges = conditionalBranchValueRanges(value, conditionalParent, parenthesisPairs);
+    if (branchRanges === fallbackResolutionTooComplex) return true;
     if (
       branchRanges === undefined ||
       !branchRanges.some(
@@ -3021,12 +3038,16 @@ function unresolvedRuntimeRangeCandidates(
       parenthesisPairs,
     );
     if (
-      parsedArguments?.argumentCount !==
-        unresolvedRuntimeFunctionArities.get(functionParent.functionName) ||
+      !unresolvedRuntimeFunctionHasValidArity(
+        functionParent.functionName,
+        parsedArguments?.argumentCount,
+      ) ||
+      (functionParent.functionName === 'log' &&
+        !logStaticArgumentsCanReachValidResult(parsedArguments.staticArguments)) ||
       parsedArguments.staticArguments.some(
         (argument) =>
           isStaticallyInvalidArithmetic(argument.value) ||
-          (functionParent.functionName === 'pow' &&
+          ((functionParent.functionName === 'log' || functionParent.functionName === 'pow') &&
             analyzeStaticLayerValue(argument.value).resultType === 'non-number'),
       )
     )
@@ -3063,6 +3084,27 @@ function unresolvedRuntimeRangeCandidates(
     ];
   }
   return [];
+}
+
+function unresolvedRuntimeFunctionHasValidArity(functionName, argumentCount) {
+  const validArities = unresolvedRuntimeFunctionArities.get(functionName);
+  return Array.isArray(validArities)
+    ? validArities.includes(argumentCount)
+    : validArities === argumentCount;
+}
+
+function logStaticArgumentsCanReachValidResult(staticArguments) {
+  for (const argument of staticArguments) {
+    const value = evaluateStaticLayerNumber(argument.value);
+    if (value === undefined) continue;
+    if (
+      Number.isNaN(value) ||
+      (argument.index === 0 && (value < 0 || value === 1)) ||
+      (argument.index === 1 && (value < 0 || value === 1))
+    )
+      return false;
+  }
+  return true;
 }
 
 function unresolvedExpIsSafelyCapped(
@@ -3189,6 +3231,7 @@ function conditionalGroupReplacements(
 ) {
   if (nestingDepth > conditionalNestingLimit) return fallbackResolutionTooComplex;
   const branchRanges = conditionalBranchValueRanges(value, group, parenthesisPairs);
+  if (branchRanges === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
   if (branchRanges === undefined) return undefined;
 
   const replacements = [];
@@ -3747,7 +3790,8 @@ function fallbackCandidates(value) {
             : undefined;
         group.enclosingConditionalParent?.conditionalChildren.push(group);
         group.conditionalParent = group;
-        if (conditionalOwner?.commaIndex !== -1) conditionalOwner.conditionalGroups.push(group);
+        if (conditionalOwner !== undefined && conditionalOwner.commaIndex !== -1)
+          conditionalOwner.conditionalGroups.push(group);
         else if (conditionalOwner === undefined) rootFrame.conditionalGroups.push(group);
       } else group.conditionalParent = parenthesisParent?.conditionalParent;
       const progressRangeIsUnsupported =

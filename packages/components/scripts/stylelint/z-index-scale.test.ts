@@ -3929,6 +3929,29 @@ describe('cinder/z-index-scale', () => {
   });
 
   test.each([
+    ['calc(9999 * log(var(--runtime)))', 1],
+    ['calc(0 * log(var(--runtime)))', 0],
+    ['calc(9999 * log(var(--runtime), 10))', 1],
+    ['calc(9999 * log(var(--runtime), 1px))', 0],
+    ['calc(9999 * log(var(--runtime), 1))', 0],
+    ['calc(9999 * log(var(--runtime), -1))', 0],
+    ['calc(9999 * log(-1, var(--runtime)))', 0],
+    ['calc(9999 * log(1, var(--runtime)))', 0],
+    ['calc(9999 * log(var(--runtime), 1, 2))', 0],
+  ] as const)('tracks unresolved log arity and zero elimination: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: log regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
     ['if(style(--theme: dark): 9999; else: 1)', 1],
     ['if(style(--theme: dark): -1; else: 1)', 1],
     ['if(style(--theme: dark): 1; else: 9999)', 1],
@@ -3954,6 +3977,9 @@ describe('cinder/z-index-scale', () => {
     ['clamp(0, if(style(--theme: dark): 9999; else: 1), 1)', 0],
     ['if(media(width > 10px): 9999; else: 1)', 1],
     ['if(supports(display: grid): 9999; else: 1)', 1],
+    ['if(style(--theme: dark): 9999; unknown(display: grid): 1; else: 1)', 1],
+    ['if(unknown(display: grid): 1; else: 9999)', 1],
+    ['if(unknown(display: grid): 9999; else: 1)', 0],
     ['if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2)', 1],
     ['if(style(--theme: dark): 1; else: if(style(--nested: yes): 9999; else: 2))', 1],
     ['calc(2 * if(style(--theme: dark): if(style(--nested: yes): 4999.5; else: 1); else: 2))', 1],
@@ -3976,6 +4002,11 @@ describe('cinder/z-index-scale', () => {
   test('does not report nested candidates from malformed CSS if() syntax', async () => {
     for (const conditional of [
       'if(not: var(--inner, 9999); else: 1)',
+      'if(style(): 9999; else: 1)',
+      'if(media(): 9999; else: 1)',
+      'if(supports(): 9999; else: 1)',
+      'if(unknown(display: grid): 9999; else: 1)',
+      'if(style(--theme), 9999, 1)',
       'if(foo style(--theme: dark): 9999; else: 1)',
       'if(style(--theme: dark) foo: 9999; else: 1)',
       'if(style(--theme: dark) andfoo media(width > 1px): 9999; else: 1)',
@@ -3991,6 +4022,26 @@ describe('cinder/z-index-scale', () => {
         ),
       ).toEqual([]);
   });
+
+  test.each([
+    [128, 'Offending expression: `9999`'],
+    [129, 'too complex to verify safely'],
+  ] as const)(
+    'fails closed at the CSS if() boolean condition depth boundary: %i',
+    async (depth, text) => {
+      const condition = `${'('.repeat(depth)}style(--mode: elevated)${')'.repeat(depth)}`;
+      const [warning] = warnings(
+        await lint(`
+        .fixture {
+          /* cinder-z-index-local: conditional depth must fail closed. */
+          z-index: var(--outer, if(${condition}: 9999; else: 1));
+        }
+      `),
+      );
+
+      expect(warning?.text).toContain(text);
+    },
+  );
 
   test('bounds deeply nested CSS if() branch analysis', async () => {
     const nestedConditional = `${Array.from(
