@@ -34,7 +34,7 @@ function findCinderMetadataBlock(source: string): string {
     const moduleSource = moduleMatch[1] ?? '';
     for (const jsdocMatch of moduleSource.matchAll(/\/\*\*([\s\S]*?)\*\//g)) {
       const block = jsdocMatch[1] ?? '';
-      if (/^\s*\*\s*@cinder\b/im.test(block)) return block;
+      if (/^\s*(?:\*\s*)?@cinder\b/im.test(block)) return block;
     }
   }
   return '';
@@ -64,21 +64,31 @@ function findExplicitRationale(source: string): string {
   return rationaleLines.join(' ').trim();
 }
 
+function findNamedAlternative(rationale: string): string | null {
+  const patterns = [
+    /\b(?:nearest|closest)\s+alternative\s*:\s*[*_`]*([a-z][a-z0-9-]*)\b/i,
+    /\b(?:nearest|closest)\s+alternative\s+(?:is|would be)\s+[*_`]*([a-z][a-z0-9-]*)\b/i,
+    /\|\s*[*_`]*([a-z][a-z0-9-]*)\b/i,
+  ];
+  for (const pattern of patterns) {
+    const alternative = rationale.match(pattern)?.[1]?.toLowerCase();
+    if (alternative) return alternative;
+  }
+  return null;
+}
+
 /** Return violations for one authored component metadata block. */
-export function findNeighbourRationaleViolations(entry: InventoryEntry): InventoryViolation[] {
+export function findNeighbourRationaleViolations(
+  entry: InventoryEntry,
+  knownComponentIds: ReadonlySet<string> = new Set(),
+): InventoryViolation[] {
   const hasRelatedAndAvoidWhen =
     entry.related.some((relatedId) => relatedId !== entry.id) && entry.avoidWhen.length > 0;
-  const rationale = findExplicitRationale(entry.source);
-  const namedMarker = rationale
-    .match(/\b(?:nearest|closest)\s+alternative\s*:\s*(.+)$/i)?.[1]
-    ?.trim();
-  const namedProseAlternative = rationale.match(
-    /\b(?:nearest|closest)\s+alternative\s+(?:is|would be)\s+([a-z][a-z0-9-]*)\b/i,
-  )?.[1];
-  const namedPipeAlternative = rationale.match(/\|\s*([a-z][a-z0-9-]*)\b/)?.[1];
-  const hasExplicitRationale = Boolean(
-    (namedMarker && namedMarker !== '') || namedProseAlternative || namedPipeAlternative,
-  );
+  const namedAlternative = findNamedAlternative(findExplicitRationale(entry.source));
+  const hasExplicitRationale =
+    namedAlternative !== null &&
+    namedAlternative !== entry.id &&
+    knownComponentIds.has(namedAlternative);
 
   if (hasRelatedAndAvoidWhen || hasExplicitRationale) return [];
   return [
@@ -107,13 +117,15 @@ async function readInventoryEntry(
 
 export async function checkComponentInventory(): Promise<InventoryViolation[]> {
   const violations: InventoryViolation[] = [];
-  for (const component of await discoverComponentDirectories()) {
+  const components = await discoverComponentDirectories();
+  const knownComponentIds = new Set(components.map((component) => component.name));
+  for (const component of components) {
     const entry = await readInventoryEntry(component);
     if ('reason' in entry) {
       violations.push(entry);
       continue;
     }
-    violations.push(...findNeighbourRationaleViolations(entry));
+    violations.push(...findNeighbourRationaleViolations(entry, knownComponentIds));
   }
   return violations;
 }

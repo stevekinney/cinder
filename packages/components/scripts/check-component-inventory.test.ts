@@ -3,6 +3,8 @@ import { describe, expect, it } from 'bun:test';
 import { findNeighbourRationaleViolations } from './check-component-inventory.ts';
 
 describe('findNeighbourRationaleViolations', () => {
+  const knownComponentIds = new Set(['button', 'new-component']);
+
   it('rejects a component with no neighbour rationale', () => {
     expect(
       findNeighbourRationaleViolations({
@@ -32,13 +34,16 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('accepts an explicit rationale naming the nearest alternative', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source:
-          '<script module>/**\n * @cinder\n * @rationale Nearest alternative: button, which has a different interaction contract.\n */</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative: button, which has a different interaction contract.\n */</script>',
+        },
+        knownComponentIds,
+      ),
     ).toEqual([]);
   });
 
@@ -78,13 +83,16 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('preserves punctuation and emphasis in a metadata rationale', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source:
-          '<script module>/**\n * @cinder\n * @rationale Nearest alternative: **button** — use it for emphasis.\n */</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative: **button** — use it for emphasis.\n */</script>',
+        },
+        knownComponentIds,
+      ),
     ).toEqual([]);
   });
 
@@ -101,25 +109,76 @@ describe('findNeighbourRationaleViolations', () => {
 
   it('accepts a rationale whose named alternative wraps onto a continuation line', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source:
-          '<script module>/**\n * @cinder\n * @rationale Nearest alternative:\n * button has a different interaction contract.\n */</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative:\n * button has a different interaction contract.\n */</script>',
+        },
+        knownComponentIds,
+      ),
     ).toEqual([]);
   });
 
   it('accepts natural prose that names the nearest alternative', () => {
     expect(
-      findNeighbourRationaleViolations({
-        id: 'new-component',
-        related: [],
-        avoidWhen: [],
-        source:
-          '<script module>/**\n * @cinder\n * @rationale The nearest alternative is button, but it has a different contract.\n */</script>',
-      }),
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale The nearest alternative is button, but it has a different contract.\n */</script>',
+        },
+        knownComponentIds,
+      ),
+    ).toEqual([]);
+  });
+
+  it('rejects a rationale whose named alternative is not a known component', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative: buton, which has a different contract.\n */</script>',
+        },
+        knownComponentIds,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('rejects a rationale that names the component itself', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/**\n * @cinder\n * @rationale Nearest alternative: new-component.\n */</script>',
+        },
+        knownComponentIds,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('accepts an inline @cinder header with a valid rationale', () => {
+    expect(
+      findNeighbourRationaleViolations(
+        {
+          id: 'new-component',
+          related: [],
+          avoidWhen: [],
+          source:
+            '<script module>/** @cinder\n * @rationale Nearest alternative: button.\n */</script>',
+        },
+        knownComponentIds,
+      ),
     ).toEqual([]);
   });
 });
