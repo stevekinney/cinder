@@ -2654,6 +2654,18 @@ describe('cinder/z-index-scale', () => {
       ['calc(9999 + 0em / var(--divisor) * var(--other))', 1],
       ['calc(9999 + var(--other) * (0em / var(--divisor)))', 1],
       ['calc(9999 + 0em / var(--divisor) / 0)', 0],
+      ['calc(9999 + 0em / var(--divisor) / 1em)', 1],
+      ['calc(1 + 0em / var(--divisor) / 1em)', 0],
+      ['calc(9999 + 0em / var(--divisor) / 0em)', 0],
+      ['calc(9999 + var(--zero, 0) / var(--divisor))', 1],
+      ['calc(1 + var(--zero, 0) / var(--divisor))', 0],
+      ['calc(9999 + var(--zero, 0) / 0)', 0],
+      ['calc(9999 + 0 / max(var(--divisor), 1))', 1],
+      ['calc(9999 + 0 / min(var(--divisor), 1))', 1],
+      ['calc(9999 + 0 / clamp(1, var(--divisor), 2))', 1],
+      ['calc(9999 + 0 / max(var(--divisor), 1px))', 0],
+      ['calc(9999 + 0em / max(var(--divisor), 1px))', 1],
+      ['calc(9999 + 0 / var(--first-divisor) * 0 / var(--second-divisor))', 1],
       ['calc(9999 * max(0em, 0px) / max(0px, 0em))', 0],
     ] as const) {
       const result = await lint(`
@@ -2682,6 +2694,13 @@ describe('cinder/z-index-scale', () => {
     'calc(0em / calc(var(--divisor) + 1px) * var(--inner, -1))',
     'calc(0em / calc(var(--divisor) / 1) * var(--inner, -1))',
     'calc(0em / calc(var(--first-divisor) + var(--second-divisor)) * var(--inner, -1))',
+    'calc(0 / var(--first-divisor) * var(--inner, 9999) / var(--second-divisor))',
+    'calc(1 + (0em / var(--divisor)) * calc(var(--inner, 9999) + 1) / 1em)',
+    'calc(1 + (0em / var(--divisor)) * (var(--inner, 9999) + 1) / 1em)',
+    'calc(1 + (0em / var(--divisor)) * calc(var(--magic, 9999) + var(--negative, -1)) / 1em)',
+    'calc(0em / max(var(--divisor), 1em) * var(--inner, -1))',
+    'calc(0em / min(var(--divisor), 1em) * var(--inner, -1))',
+    'calc(0em / (var(--first-divisor) / var(--second-divisor)) * var(--inner, -1))',
   ])('eliminates a banned child from a dimensioned zero numerator: %s', async (fallback) => {
     const result = await lint(`
       .fixture {
@@ -2702,6 +2721,17 @@ describe('cinder/z-index-scale', () => {
     `);
 
     expect(warnings(result)).toEqual([]);
+  });
+
+  test('preserves a typed negative-zero quotient inside a sign-sensitive function', async () => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: a positive runtime divisor preserves the negative angle zero. */
+        z-index: var(--outer, calc(atan2((0deg * -1) / var(--divisor), -1deg) / 1deg));
+      }
+    `);
+
+    expect(warnings(result)).toHaveLength(1);
   });
 
   test.each([
@@ -2730,6 +2760,21 @@ describe('cinder/z-index-scale', () => {
         .fixture {
           /* cinder-z-index-local: exhausted zero-witness work cannot hide the magic layer. */
           z-index: var(--outer, ${fallback});
+        }
+      `),
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.text).toContain('too complex to verify');
+  });
+
+  test('bounds typed divisor witnesses across a wide substitution expression', async () => {
+    const divisorTerms = Array.from({ length: 3_000 }, (_, index) => `var(--divisor-${index})`);
+    const result = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: witness enumeration must consume the shared work budget. */
+          z-index: var(--outer, calc(9999 + 0em / calc(${divisorTerms.join(' + ')})));
         }
       `),
     );

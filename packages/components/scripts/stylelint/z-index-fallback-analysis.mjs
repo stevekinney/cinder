@@ -230,7 +230,13 @@ function isPrecededByDivision(value, operandStart) {
   return value[operandStart - 1] === '/';
 }
 
-function contextForOpeningParenthesis(value, openIndex, inheritedContext, inheritedMathContext) {
+function contextForOpeningParenthesis(
+  value,
+  openIndex,
+  inheritedContext,
+  inheritedMathContext,
+  inheritedConsumerContext = inheritedContext,
+) {
   let functionStart = openIndex;
   while (functionStart > 0 && isCssIdentifierCharacter(value[functionStart - 1]))
     functionStart -= 1;
@@ -245,6 +251,8 @@ function contextForOpeningParenthesis(value, openIndex, inheritedContext, inheri
   const inheritsParentGrammar =
     isGroupingParenthesis || substitutionFunctionNames.has(functionName);
   return {
+    consumerRequiresSignedZero:
+      inheritedConsumerContext || signedZeroSensitiveFunctionNames.has(functionName),
     functionStart,
     functionName,
     isGroupingParenthesis,
@@ -448,7 +456,7 @@ function expandedSubstitutionDivisorRange(
   if (
     groupingParent?.type !== 'group' ||
     groupingParent.end === undefined ||
-    (!groupingParent.isGroupingParenthesis && groupingParent.functionName !== 'calc')
+    (!groupingParent.isGroupingParenthesis && !mathFunctionNames.has(groupingParent.functionName))
   )
     return directRange;
   let containerStart = groupingParent.isGroupingParenthesis
@@ -477,37 +485,44 @@ function expandedSubstitutionDivisorRange(
   if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
   if (factorRange.start > child.start || factorRange.end < child.end) return directRange;
 
-  let possibleDivisor = value.slice(factorRange.start, factorRange.end);
-  const containedChildren = frame.children.filter(
-    (candidate) => candidate.start >= factorRange.start && candidate.end <= factorRange.end,
-  );
-  for (let childIndex = containedChildren.length - 1; childIndex >= 0; childIndex -= 1) {
-    const candidate = containedChildren[childIndex];
-    const replacementStart = candidate.start - factorRange.start;
-    const replacementEnd = candidate.end - factorRange.start;
-    possibleDivisor =
-      possibleDivisor.slice(0, replacementStart) + ' 1px ' + possibleDivisor.slice(replacementEnd);
+  const containedChildren = frame.children
+    .filter((candidate) => candidate.start >= factorRange.start && candidate.end <= factorRange.end)
+    .sort((left, right) => left.start - right.start);
+  const witnesses = [];
+  const distinctPossibleDivisors = new Set();
+  for (
+    let witnessAssignmentIndex = 0;
+    witnessAssignmentIndex < containedChildren.length + 2;
+    witnessAssignmentIndex += 1
+  ) {
+    const possibleDivisorParts = [];
+    let sourceIndex = factorRange.start;
+    for (let childIndex = 0; childIndex < containedChildren.length; childIndex += 1) {
+      const candidate = containedChildren[childIndex];
+      const witness =
+        witnessAssignmentIndex === 1 || witnessAssignmentIndex === childIndex + 2 ? '1px' : '1';
+      possibleDivisorParts.push(value.slice(sourceIndex, candidate.start), ` ${witness} `);
+      sourceIndex = candidate.end;
+    }
+    possibleDivisorParts.push(value.slice(sourceIndex, factorRange.end));
+    const possibleDivisor = possibleDivisorParts.join('');
+    if (distinctPossibleDivisors.has(possibleDivisor)) continue;
+    distinctPossibleDivisors.add(possibleDivisor);
+    if (!consumeResolutionWork(budget, possibleDivisor.length)) return fallbackResolutionTooComplex;
+    if (analyzeStaticLayerValue(possibleDivisor).resultType !== 'unresolved')
+      witnesses.push(possibleDivisor);
   }
-  if (!consumeResolutionWork(budget, possibleDivisor.length)) return fallbackResolutionTooComplex;
-  if (analyzeStaticLayerValue(possibleDivisor).resultType === 'non-number') {
-    expandedRangeCache.set(containerKey, factorRange);
-    return factorRange;
+  if (witnesses.length > 0) {
+    const expandedRange = { ...factorRange, witnesses };
+    expandedRangeCache.set(containerKey, expandedRange);
+    return expandedRange;
   }
   expandedRangeCache.set(containerKey, null);
   return directRange;
 }
 
-function rangesAreSeparatedByOperator(value, leftEnd, rightStart, operator) {
-  while (leftEnd < rightStart && isCssWhitespaceOrComment(value[leftEnd])) leftEnd += 1;
-  if (value[leftEnd] !== operator) return false;
-  leftEnd += 1;
-  while (leftEnd < rightStart && isCssWhitespaceOrComment(value[leftEnd])) leftEnd += 1;
-  return leftEnd === rightStart;
-}
-
 function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, parenthesisPairs) {
   let zeroQuotientRanges = [];
-  const operands = new Map();
   const analyzedDivisorRanges = new Set();
   const expandedDivisorRangeCache = new Map();
   for (const divisor of frame.children) {
@@ -522,7 +537,6 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
     );
     if (divisorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
     if (divisorRange === undefined) continue;
-    operands.set(divisor, divisorRange);
     const divisorRangeKey = `${divisorRange.start}:${divisorRange.end}`;
     if (analyzedDivisorRanges.has(divisorRangeKey)) continue;
     analyzedDivisorRanges.add(divisorRangeKey);
@@ -538,6 +552,8 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
     );
     if (precedingZeroQuotient) {
       precedingZeroQuotient.end = divisorRange.end;
+      precedingZeroQuotient.signedZeroSensitive ||=
+        divisor.parenthesisParent?.consumerRequiresSignedZero === true;
       continue;
     }
     const nestedZeroQuotients = zeroQuotientRanges.filter(
@@ -545,21 +561,61 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
         zeroQuotientRange.start >= numeratorRange.start &&
         zeroQuotientRange.end <= numeratorRange.end,
     );
+    const numeratorReplacements = nestedZeroQuotients.map((zeroQuotientRange) => ({
+      start: zeroQuotientRange.start,
+      end: zeroQuotientRange.end,
+      value: ' 0 ',
+    }));
+    for (const numeratorChild of frame.children) {
+      if (
+        numeratorChild.start < numeratorRange.start ||
+        numeratorChild.end > numeratorRange.end ||
+        numeratorReplacements.some(
+          (replacement) =>
+            numeratorChild.start >= replacement.start && numeratorChild.end <= replacement.end,
+        ) ||
+        typeof numeratorChild.resolvedFallback !== 'string'
+      )
+        continue;
+      numeratorReplacements.push({
+        start: numeratorChild.start,
+        end: numeratorChild.end,
+        value: ` ${numeratorChild.resolvedFallback} `,
+      });
+    }
     let numerator = value.slice(numeratorRange.start, numeratorRange.end);
-    for (const zeroQuotientRange of nestedZeroQuotients.sort(
+    for (const replacement of numeratorReplacements.sort(
       (left, right) => right.start - left.start,
     )) {
-      const replacementStart = zeroQuotientRange.start - numeratorRange.start;
-      const replacementEnd = zeroQuotientRange.end - numeratorRange.start;
-      numerator = `${numerator.slice(0, replacementStart)} 0 ${numerator.slice(replacementEnd)}`;
+      const replacementStart = replacement.start - numeratorRange.start;
+      const replacementEnd = replacement.end - numeratorRange.start;
+      numerator =
+        numerator.slice(0, replacementStart) + replacement.value + numerator.slice(replacementEnd);
     }
-    if (nestedZeroQuotients.length > 0 && !consumeResolutionWork(budget, numerator.length))
+    if (numeratorReplacements.length > 0 && !consumeResolutionWork(budget, numerator.length))
       return fallbackResolutionTooComplex;
+    if (divisorRange.witnesses !== undefined) {
+      let hasCompatibleWitness = false;
+      for (const witness of divisorRange.witnesses) {
+        const quotientWitness = `calc(${numerator} / ${witness})`;
+        if (!consumeResolutionWork(budget, quotientWitness.length))
+          return fallbackResolutionTooComplex;
+        if (analyzeStaticLayerValue(quotientWitness).resultType === 'number') {
+          hasCompatibleWitness = true;
+          break;
+        }
+      }
+      if (!hasCompatibleWitness) continue;
+    }
     if (hasStaticallyZeroCoefficient(numerator)) {
       zeroQuotientRanges = zeroQuotientRanges.filter(
         (zeroQuotientRange) => !nestedZeroQuotients.includes(zeroQuotientRange),
       );
-      zeroQuotientRanges.push({ start: numeratorRange.start, end: divisorRange.end });
+      zeroQuotientRanges.push({
+        start: numeratorRange.start,
+        end: divisorRange.end,
+        signedZeroSensitive: divisor.parenthesisParent?.consumerRequiresSignedZero === true,
+      });
     }
   }
   if (zeroQuotientRanges.length === 0) return null;
@@ -585,38 +641,73 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
     }
   }
 
-  for (const child of frame.children) {
-    const operand = operands.get(child);
-    if (operand === undefined) continue;
-    const precedingZeroRange = zeroQuotientRanges.find((zeroRange) =>
-      rangesAreSeparatedByOperator(value, zeroRange.end, operand.start, '*'),
-    );
-    if (
-      precedingZeroRange &&
-      !isPrecededByDivision(value, precedingZeroRange.start) &&
-      !child.signedZeroSensitiveContext
-    )
-      precedingZeroRange.end = operand.end;
+  for (const zeroRange of zeroQuotientRanges) {
+    if (zeroRange.signedZeroSensitive || isPrecededByDivision(value, zeroRange.start)) continue;
+    for (;;) {
+      let operatorIndex = zeroRange.end;
+      while (operatorIndex < range.end && isCssWhitespaceOrComment(value[operatorIndex]))
+        operatorIndex += 1;
+      const operator = value[operatorIndex];
+      if (operator !== '*' && operator !== '/') break;
+      const factorRange = factorRangeAfter(value, operatorIndex + 1, range.end, budget);
+      if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+      if (factorRange.start === factorRange.end) break;
+      if (
+        operator === '/' &&
+        hasStaticallyZeroCoefficient(value.slice(factorRange.start, factorRange.end))
+      ) {
+        zeroRange.invalid = true;
+        break;
+      }
+      zeroRange.end = factorRange.end;
+    }
+    for (;;) {
+      let operatorIndex = zeroRange.start;
+      while (operatorIndex > range.start && isCssWhitespaceOrComment(value[operatorIndex - 1]))
+        operatorIndex -= 1;
+      if (value[operatorIndex - 1] !== '*') break;
+      const factorRange = factorRangeBefore(value, range.start, operatorIndex - 1, budget);
+      if (factorRange === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+      if (factorRange.start === factorRange.end) break;
+      zeroRange.start = factorRange.start;
+    }
+    for (;;) {
+      let openIndex = zeroRange.start;
+      while (openIndex > range.start && isCssWhitespaceOrComment(value[openIndex - 1]))
+        openIndex -= 1;
+      let closeIndex = zeroRange.end;
+      while (closeIndex < range.end && isCssWhitespaceOrComment(value[closeIndex])) closeIndex += 1;
+      if (value[openIndex - 1] !== '(' || parenthesisPairs.get(openIndex - 1) !== closeIndex) break;
+      zeroRange.start = openIndex - 1;
+      zeroRange.end = closeIndex + 1;
+    }
+    if (isPrecededByDivision(value, zeroRange.start)) zeroRange.signedZeroSensitive = true;
   }
-  for (let childIndex = frame.children.length - 1; childIndex >= 0; childIndex -= 1) {
-    const child = frame.children[childIndex];
-    const operand = operands.get(child);
-    if (operand === undefined) continue;
-    const followingZeroRange = zeroQuotientRanges.find((zeroRange) =>
-      rangesAreSeparatedByOperator(value, operand.end, zeroRange.start, '*'),
-    );
-    if (followingZeroRange && !child.signedZeroSensitiveContext)
-      followingZeroRange.start = operand.start;
+  zeroQuotientRanges = zeroQuotientRanges
+    .filter((zeroRange) => !zeroRange.invalid)
+    .sort((left, right) => left.start - right.start);
+  const mergedZeroQuotientRanges = [];
+  for (const zeroRange of zeroQuotientRanges) {
+    const previousRange = mergedZeroQuotientRanges.at(-1);
+    if (previousRange && zeroRange.start <= previousRange.end) {
+      previousRange.end = Math.max(previousRange.end, zeroRange.end);
+      previousRange.signedZeroSensitive ||= zeroRange.signedZeroSensitive;
+    } else mergedZeroQuotientRanges.push(zeroRange);
   }
+  zeroQuotientRanges = mergedZeroQuotientRanges;
+  if (zeroQuotientRanges.length === 0) return null;
 
-  const replacements = zeroQuotientRanges.map((zeroQuotientRange) => ({
+  const suppressingZeroRanges = zeroQuotientRanges.filter(
+    (zeroRange) => !zeroRange.signedZeroSensitive,
+  );
+  const replacements = suppressingZeroRanges.map((zeroQuotientRange) => ({
     ...zeroQuotientRange,
     value: ' 0 ',
   }));
   const zeroProductRange = { ...range, frame };
   for (const child of frame.children) {
     if (
-      zeroQuotientRanges.some(
+      suppressingZeroRanges.some(
         (zeroQuotientRange) =>
           child.start >= zeroQuotientRange.start && child.end <= zeroQuotientRange.end,
       )
@@ -630,6 +721,17 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
         end: child.end,
         value: ` ${child.resolvedFallback} `,
       });
+      continue;
+    }
+    if (
+      zeroQuotientRanges.some(
+        (zeroQuotientRange) =>
+          zeroQuotientRange.signedZeroSensitive &&
+          child.start >= zeroQuotientRange.start &&
+          child.end <= zeroQuotientRange.end,
+      )
+    ) {
+      replacements.push({ start: child.start, end: child.end, value: ' 1 ' });
       continue;
     }
     const zeroProductResult = childIsMultipliedByStaticZero(value, zeroProductRange, child, budget);
@@ -648,7 +750,7 @@ function zeroNumeratorQuotientEndpointAnalysis(frame, value, range, budget, pare
       endpointExpression.slice(replacementEnd);
   }
   return consumeResolutionWork(budget, endpointExpression.length)
-    ? { expression: endpointExpression, ranges: zeroQuotientRanges }
+    ? { expression: endpointExpression, ranges: suppressingZeroRanges }
     : fallbackResolutionTooComplex;
 }
 
@@ -1572,7 +1674,6 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     frame.resolvedClassification === 'unresolved'
       ? additiveNonNumberCandidateSuppression(frame, value, range, budget, parenthesisPairs)
       : undefined;
-  if (additiveNonNumberSuppression?.suppressesAllCandidates) return [];
   if (isValidProgressRange(frame, value, range, parenthesisPairs)) return [];
   const nestedCandidatesAreHiddenByBareOperatorStream =
     frame.resolvedClassification === 'unresolved' &&
@@ -1592,6 +1693,8 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
         resolvedClassification: 'too-complex',
       },
     ];
+  if (additiveNonNumberSuppression?.suppressesAllCandidates && zeroQuotientEndpoint === null)
+    return [];
   const candidateIsSuppressedByZeroQuotient = (childCandidate) =>
     !resolvedNegativeZero &&
     zeroQuotientEndpoint?.ranges.some(
@@ -1795,6 +1898,7 @@ function fallbackCandidates(value) {
     ) {
       const nearestFunction = fallbackFrames.at(-1);
       const inheritedContext = parentheses.at(-1)?.signedZeroSensitiveContext === true;
+      const inheritedConsumerContext = parentheses.at(-1)?.consumerRequiresSignedZero === true;
       const frame = {
         type: 'fallback',
         functionName: functionMatch[0].slice(0, -1).toLowerCase(),
@@ -1802,6 +1906,7 @@ function fallbackCandidates(value) {
         openIndex: index + functionMatch[0].length - 1,
         commaIndex: -1,
         children: [],
+        consumerRequiresSignedZero: inheritedConsumerContext,
         unprovenBannedCandidates: [],
         resolvedFallback: null,
         resolvedClassification: 'unresolved',
@@ -1828,6 +1933,7 @@ function fallbackCandidates(value) {
         index,
         parenthesisParent?.signedZeroSensitiveContext === true,
         parenthesisParent?.mathContext === true,
+        parenthesisParent?.consumerRequiresSignedZero === true,
       );
       const group = {
         type: 'group',
