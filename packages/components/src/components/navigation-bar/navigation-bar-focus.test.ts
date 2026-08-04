@@ -33,6 +33,18 @@ describe('findFocusTargetAfterNavigationItems', () => {
     expect(findFocusTargetAfterNavigationItems(navigationBar, null)).toBe(following);
   });
 
+  test('finds a following target inside a sibling shadow host', () => {
+    const wrapper = document.createElement('div');
+    const navigationBar = document.createElement('nav');
+    const followingHost = document.createElement('div');
+    const following = document.createElement('button');
+    followingHost.attachShadow({ mode: 'open' }).append(following);
+    wrapper.append(navigationBar, followingHost);
+    attachScratch(wrapper);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, null)).toBe(following);
+  });
+
   test('finds a native summary without an explicit tabindex', () => {
     const wrapper = document.createElement('div');
     const navigationBar = document.createElement('nav');

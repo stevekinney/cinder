@@ -183,12 +183,13 @@
     // lives in that same shadow root.
     for (const { root, anchor } of composedFocusScopes(speedDialRoot)) {
       const preceding =
-        getSequentialFocusTargets(root)
+        getSequentialFocusTargets(root, {
+          relativeTo: anchor,
+          direction: 'before',
+        })
           .filter(
             (candidate) =>
-              !speedDialRoot.contains(candidate) &&
-              !actionsElement?.contains(candidate) &&
-              Boolean(candidate.compareDocumentPosition(anchor) & Node.DOCUMENT_POSITION_FOLLOWING),
+              !speedDialRoot.contains(candidate) && !actionsElement?.contains(candidate),
           )
           .at(-1) ?? null;
       if (preceding) return preceding;

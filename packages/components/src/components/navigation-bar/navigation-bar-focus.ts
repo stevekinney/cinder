@@ -45,11 +45,11 @@ export function findFocusTargetAfterNavigationItems(
   // rendered inside one with no `actions` target would otherwise skip every
   // sibling that lives in that same shadow root.
   for (const { root, anchor } of composedFocusScopes(navigationBar)) {
-    const followingCandidates = getSequentialFocusTargets(root).filter(
-      (candidate) =>
-        !navigationBar.contains(candidate) &&
-        !itemsRegion?.contains(candidate) &&
-        Boolean(anchor.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING),
+    const followingCandidates = getSequentialFocusTargets(root, {
+      relativeTo: anchor,
+      direction: 'after',
+    }).filter(
+      (candidate) => !navigationBar.contains(candidate) && !itemsRegion?.contains(candidate),
     );
     if (followingCandidates.length > 0) return followingCandidates[0] ?? null;
   }

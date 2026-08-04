@@ -464,7 +464,7 @@ describe('SpeedDial', () => {
     await fireEvent.click(trigger);
     await flushQueuedFocus();
     const create = screen.getByRole('button', { name: 'Create' });
-    create.setAttribute('tabindex', '-1');
+    create.setAttribute('tabindex', '-1x');
     const share = screen.getByRole('button', { name: 'Share' });
 
     share.focus();

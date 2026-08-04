@@ -59,10 +59,25 @@ const sequentialFocusCandidateSelector = [
   '[tabindex]',
 ].join(', ');
 
+export type SequentialFocusRange = {
+  relativeTo: Element;
+  direction: 'before' | 'after';
+};
+
 /** Return elements that participate in the document's sequential tab order. */
-export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
+export function getSequentialFocusTargets(
+  root: ParentNode | null,
+  range?: SequentialFocusRange,
+): HTMLElement[] {
   if (!root) return [];
-  const candidates = collectComposedElements(root)
+  const composedElements = collectComposedElements(root);
+  const relativeIndex = range ? composedElements.indexOf(range.relativeTo) : -1;
+  if (range && relativeIndex === -1) return [];
+  const candidates = composedElements
+    .filter(
+      (_, index) =>
+        !range || (range.direction === 'before' ? index < relativeIndex : index > relativeIndex),
+    )
     .filter((element): element is HTMLElement => element.matches(sequentialFocusCandidateSelector))
     .filter(isSequentialCandidate);
   const radios: {
@@ -117,7 +132,7 @@ function collectComposedElements(root: ParentNode): Element[] {
     if (!fromSlot && element.assignedSlot) return;
     visited.add(element);
     elements.push(element);
-    if (typeof HTMLSlotElement !== 'undefined' && element instanceof HTMLSlotElement) {
+    if (isSlotElement(element)) {
       const assigned = element.assignedElements({ flatten: true });
       if (assigned.length > 0) {
         for (const child of assigned) visit(child, true);
@@ -130,6 +145,16 @@ function collectComposedElements(root: ParentNode): Element[] {
 
   for (const child of Array.from(root.children)) visit(child);
   return elements;
+}
+
+type SlotElement = Element & {
+  assignedElements(options?: { flatten?: boolean }): Element[];
+};
+
+function isSlotElement(element: Element): element is SlotElement {
+  return (
+    element.localName === 'slot' && typeof Reflect.get(element, 'assignedElements') === 'function'
+  );
 }
 
 function isSequentialCandidate(candidate: HTMLElement): boolean {
@@ -212,7 +237,7 @@ function isFirstDetailsSummary(element: HTMLElement): boolean {
 }
 
 function isInsideClosedDetails(element: HTMLElement): boolean {
-  let current: HTMLElement | null = element.parentElement;
+  let current: HTMLElement | null = composedParentElement(element);
   while (current) {
     if (
       current.tagName === 'DETAILS' &&
@@ -220,7 +245,7 @@ function isInsideClosedDetails(element: HTMLElement): boolean {
       Array.from(current.children).find((child) => child.tagName === 'SUMMARY') !== element
     )
       return true;
-    current = current.parentElement ?? shadowHost(current.getRootNode());
+    current = composedParentElement(current);
   }
   return false;
 }
@@ -229,8 +254,7 @@ function closestComposed(element: HTMLElement, selector: string): HTMLElement | 
   let candidate: HTMLElement | null = element;
   while (candidate) {
     if (candidate.matches(selector)) return candidate;
-    const root = candidate.getRootNode();
-    candidate = candidate.parentElement ?? shadowHost(root);
+    candidate = composedParentElement(candidate);
   }
   return null;
 }
@@ -246,10 +270,25 @@ function isRendered(element: HTMLElement): boolean {
       style.visibility === 'collapse'
     )
       return false;
-    const root = candidate.getRootNode();
-    candidate = candidate.parentElement ?? shadowHost(root);
+    candidate = composedParentElement(candidate);
   }
   return true;
+}
+
+function composedParentElement(element: HTMLElement): HTMLElement | null {
+  return assignedSlotFor(element) ?? element.parentElement ?? shadowHost(element.getRootNode());
+}
+
+function assignedSlotFor(element: HTMLElement): HTMLElement | null {
+  if (isElementNode(element.assignedSlot)) return element.assignedSlot;
+  const shadowRoot = element.parentElement?.shadowRoot;
+  if (!shadowRoot) return null;
+  for (const slot of shadowRoot.querySelectorAll('slot')) {
+    if (isSlotElement(slot) && slot.assignedElements({ flatten: true }).includes(element)) {
+      return slot;
+    }
+  }
+  return null;
 }
 
 function shadowHost(root: Node): HTMLElement | null {

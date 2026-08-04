@@ -150,6 +150,39 @@ describe('getSequentialFocusTargets', () => {
     host.remove();
   });
 
+  test('excludes a slotted control hidden by an ancestor inside the shadow tree', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<div hidden><slot></slot></div>';
+    const slotted = document.createElement('button');
+    host.append(slotted);
+    document.body.append(host);
+
+    expect(getSequentialFocusTargets(shadow)).not.toContain(slotted);
+    host.remove();
+  });
+
+  test('filters before and after a reference in flattened composed-tree order', () => {
+    const region = document.createElement('div');
+    const beforeHost = document.createElement('div');
+    const before = document.createElement('button');
+    beforeHost.attachShadow({ mode: 'open' }).append(before);
+    const reference = document.createElement('span');
+    const afterHost = document.createElement('div');
+    const after = document.createElement('button');
+    afterHost.attachShadow({ mode: 'open' }).append(after);
+    region.append(beforeHost, reference, afterHost);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'before' }),
+    ).toEqual([before]);
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([after]);
+    region.remove();
+  });
+
   test('orders positive tabindex values before default controls', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');
