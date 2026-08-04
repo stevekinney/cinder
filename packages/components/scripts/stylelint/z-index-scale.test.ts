@@ -1222,6 +1222,19 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('merges wide progress degree maps without quadratic cloning', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const progressTerms = Array.from(
+      { length: 20_000 },
+      (_, index) => `progress(var(--runtime-${index}), 0, 1)`,
+    );
+    const startedAt = performance.now();
+    const result = bannedFallback(`calc(${progressTerms.join(' + ')} + ${progressTerms[0]})`);
+
+    expect(result === undefined || result.reason === 'too-complex').toBe(true);
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test.each([
     '--9999',
     '++++9999',
@@ -2584,6 +2597,55 @@ describe('cinder/z-index-scale', () => {
       }
     `);
     expect(warnings(safeResult)).toEqual([]);
+  });
+
+  test('resolves dimensioned zero numerators only across static nonzero divisors', async () => {
+    for (const [fallback, warningCount] of [
+      ['calc(9999 + 0em / 1px)', 1],
+      ['calc(1 + 0em / 1px)', 0],
+      ['calc(9999 + 0em / 0px)', 0],
+      ['calc(9999 + 1em / 0px)', 0],
+      ['calc(9999 + 0em / 1rem)', 1],
+      ['calc(9999 + 0em / var(--divisor))', 1],
+      ['calc(9999 + 0em / (var(--divisor)))', 1],
+      ['calc(9999 + 0em / ((var(--divisor))))', 1],
+      ['calc(9999 + 0em / calc(var(--divisor)))', 1],
+      ['calc(9999 + 0em / var(--divisor, 0px))', 1],
+      ['calc(9999 + 0em / var(invalid))', 0],
+      ['calc(9999 + 0em / var(--divisor) + var(--other) * 0)', 1],
+      ['calc(9999 + 0em / var(--first) / var(--second))', 1],
+      ['calc(9999 + (0em / var(--first)) / var(--second))', 1],
+      ['calc(9999 + 0em / var(--divisor) * var(--other))', 1],
+      ['calc(9999 + var(--other) * (0em / var(--divisor)))', 1],
+      ['calc(9999 + 0em / var(--divisor) / 0)', 0],
+      ['calc(9999 * max(0em, 0px) / max(0px, 0em))', 0],
+    ] as const) {
+      const result = await lint(`
+        .fixture {
+          /* cinder-z-index-local: zero division must retain CSS zero-divisor semantics. */
+          z-index: var(--outer, ${fallback});
+        }
+      `);
+
+      expect(warnings(result)).toHaveLength(warningCount);
+    }
+  });
+
+  test.each([
+    'calc(var(--inner, 9999) * 0em / var(--divisor))',
+    'calc(var(--inner, -1) * 0em / 1em)',
+    'calc((0em / var(--divisor)) * var(--inner, 9999))',
+    'calc(var(--inner, 9999) * (0em / var(--divisor)))',
+    'calc(0em / var(--divisor) * var(--inner, 9999))',
+  ])('eliminates a banned child from a dimensioned zero numerator: %s', async (fallback) => {
+    const result = await lint(`
+      .fixture {
+        /* cinder-z-index-local: valid quotients are zero and zero divisors are invalid. */
+        z-index: var(--outer, ${fallback});
+      }
+    `);
+
+    expect(warnings(result)).toEqual([]);
   });
 
   test('fails closed when a zero-witness factor scan exhausts the shared budget', async () => {

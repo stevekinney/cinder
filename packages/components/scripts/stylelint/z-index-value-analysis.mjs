@@ -401,7 +401,7 @@ function evaluateConstantArithmetic(expression) {
       value,
       units: new Map([[unitKey, 1]]),
       symbolicFactors: new Map(
-        relativeLengthUnitNames.has(unit) ? [[`relative-length:${unit}`, 1]] : [],
+        value !== 0 && relativeLengthUnitNames.has(unit) ? [[`relative-length:${unit}`, 1]] : [],
       ),
       isLiteralZero: value === 0,
     };
@@ -644,7 +644,7 @@ function evaluateConstantArithmetic(expression) {
       const right = parseAtom();
       const numericValue = operator === '*' ? value.value * right.value : value.value / right.value;
       const symbolicFactors =
-        operator === '*' && numericValue === 0
+        numericValue === 0 && (operator === '*' || right.value !== 0)
           ? new Map()
           : combineSymbolicFactors(value, right, operator === '*' ? 1 : -1);
       value = {
@@ -1148,6 +1148,11 @@ export function isStaticallyMagicNumber(value) {
 
 export function isStaticallyZero(value) {
   return resolveStaticValue(value) === 0;
+}
+
+export function hasStaticallyZeroCoefficient(value) {
+  const resolved = resolveStaticArithmeticResult(value);
+  return resolved !== null && resolved !== staticAnalysisTooComplex && resolved.value === 0;
 }
 
 export function isStaticallyNegativeZero(value) {
