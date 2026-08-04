@@ -23,7 +23,11 @@
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { composedFocusScopes, getSequentialFocusTargets } from '../../utilities/focus.ts';
+  import {
+    composedFocusScopes,
+    getSequentialFocusTargets,
+    getTabIndexValue,
+  } from '../../utilities/focus.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import FloatingAction from '../floating-action/floating-action.svelte';
   import { createPortalAttachment } from '../portal/index.ts';
@@ -206,8 +210,7 @@
   }
 
   function hasNegativeTabIndex(element: HTMLElement): boolean {
-    const tabIndex = element.getAttribute('tabindex');
-    return tabIndex !== null && Number(tabIndex) < 0;
+    return getTabIndexValue(element) < 0;
   }
 
   function focusTrigger(): void {

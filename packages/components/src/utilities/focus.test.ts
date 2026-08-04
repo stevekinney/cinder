@@ -116,6 +116,38 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('matches native object tab order only when data is nonempty', () => {
+    const region = document.createElement('div');
+    const missing = document.createElement('object');
+    const empty = document.createElement('object');
+    empty.setAttribute('data', '   ');
+    const nonempty = document.createElement('object');
+    nonempty.setAttribute('data', 'movie.swf');
+    region.append(missing, empty, nonempty);
+    document.body.append(region);
+
+    const targets = getSequentialFocusTargets(region);
+    expect(targets).not.toContain(missing);
+    expect(targets).not.toContain(empty);
+    expect(targets).toContain(nonempty);
+    region.remove();
+  });
+
+  test('traverses slotted controls in composed-tree order without duplicates', () => {
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<slot></slot>';
+    const slotted = document.createElement('button');
+    slotted.slot = '';
+    host.append(slotted);
+    document.body.append(host);
+
+    const targets = getSequentialFocusTargets(shadow);
+    expect(targets.filter((target) => target === slotted)).toHaveLength(1);
+    expect(targets).toContain(slotted);
+    host.remove();
+  });
+
   test('orders positive tabindex values before default controls', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');

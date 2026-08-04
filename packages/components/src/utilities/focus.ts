@@ -62,9 +62,9 @@ const sequentialFocusCandidateSelector = [
 /** Return elements that participate in the document's sequential tab order. */
 export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[] {
   if (!root) return [];
-  const candidates = Array.from(
-    root.querySelectorAll<HTMLElement>(sequentialFocusCandidateSelector),
-  ).filter(isSequentialCandidate);
+  const candidates = collectComposedElements(root)
+    .filter((element): element is HTMLElement => element.matches(sequentialFocusCandidateSelector))
+    .filter(isSequentialCandidate);
   const radios: {
     root: Node;
     form: HTMLElement | null;
@@ -108,6 +108,30 @@ export function getSequentialFocusTargets(root: ParentNode | null): HTMLElement[
     });
 }
 
+function collectComposedElements(root: ParentNode): Element[] {
+  const elements: Element[] = [];
+  const visited = new Set<Element>();
+
+  const visit = (element: Element, fromSlot = false): void => {
+    if (visited.has(element)) return;
+    if (!fromSlot && element.assignedSlot) return;
+    visited.add(element);
+    elements.push(element);
+    if (typeof HTMLSlotElement !== 'undefined' && element instanceof HTMLSlotElement) {
+      const assigned = element.assignedElements({ flatten: true });
+      if (assigned.length > 0) {
+        for (const child of assigned) visit(child, true);
+        return;
+      }
+    }
+    const childRoot = element.shadowRoot ?? element;
+    for (const child of Array.from(childRoot.children)) visit(child);
+  };
+
+  for (const child of Array.from(root.children)) visit(child);
+  return elements;
+}
+
 function isSequentialCandidate(candidate: HTMLElement): boolean {
   const explicitTabIndexValue = getExplicitTabIndexValue(candidate);
   if (candidate.matches('input[type="hidden"]')) return false;
@@ -127,7 +151,8 @@ function isSequentialCandidate(candidate: HTMLElement): boolean {
 function hasNativeSequentialDefault(element: HTMLElement): boolean {
   return (
     element.matches('button, a[href], area[href], select, textarea, summary, frame, iframe') ||
-    element.matches('audio[controls], video[controls], embed[src], object') ||
+    element.matches('audio[controls], video[controls], embed[src]') ||
+    (element.matches('object') && (element.getAttribute('data')?.trim().length ?? 0) > 0) ||
     isEditingHost(element)
   );
 }
@@ -140,7 +165,7 @@ function sequentialTabIndexValue(element: HTMLElement): number {
   return Math.max(0, getTabIndexValue(element));
 }
 
-function getTabIndexValue(element: HTMLElement): number {
+export function getTabIndexValue(element: HTMLElement): number {
   return getExplicitTabIndexValue(element) ?? (hasNativeSequentialDefault(element) ? 0 : -1);
 }
 
