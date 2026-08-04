@@ -84,6 +84,52 @@ describe('Grid', () => {
     }
   });
 
+  test('uses physical width when resize entries report logical dimensions', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let resizeCallback: ResizeObserverCallback | undefined;
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 900, height: 320 }) as DOMRect;
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+
+      resizeCallback?.(
+        [
+          {
+            target: root,
+            borderBoxSize: [{ inlineSize: 320, blockSize: 900 }],
+            contentBoxSize: [{ inlineSize: 320, blockSize: 900 }],
+            devicePixelContentBoxSize: [],
+            contentRect: { width: 900, height: 320 } as DOMRectReadOnly,
+          },
+        ],
+        {} as ResizeObserver,
+      );
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(false);
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+      unmount();
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
   test('resets direct Grid.Item placement in the narrow state', () => {
     const stylesheet = readFileSync(new URL('./grid.css', import.meta.url), 'utf8');
     expect(stylesheet).toContain(

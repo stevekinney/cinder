@@ -74,11 +74,7 @@
   }
 
   function getObservedWidth(entry: ResizeObserverEntry): number {
-    const borderBoxSize = Array.isArray(entry.borderBoxSize)
-      ? entry.borderBoxSize[0]
-      : entry.borderBoxSize;
-
-    return borderBoxSize?.inlineSize ?? entry.contentRect.width;
+    return entry.target.getBoundingClientRect().width;
   }
 
   const observeResize = useResizeObserver(
