@@ -399,6 +399,12 @@
 
     if (!untrack(() => actionsScopeActive)) return;
 
+    if (retainedPositionStyle.length === 0) {
+      actionsScopeActive = false;
+      retainedDirection = null;
+      return;
+    }
+
     if (reducedMotion.current) {
       actionsScopeActive = false;
       retainedPositionStyle = '';

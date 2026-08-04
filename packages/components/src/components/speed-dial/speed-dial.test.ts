@@ -1111,6 +1111,12 @@ describe('SpeedDial', () => {
     );
   });
 
+  test('unpositioned close settles the retained exit scope immediately', () => {
+    expect(speedDialSource).toMatch(
+      /if \(retainedPositionStyle\.length === 0\) \{\s+actionsScopeActive = false;\s+retainedDirection = null;\s+return;\s+\}/,
+    );
+  });
+
   test('Escape closes the dial and restores focus to the trigger', async () => {
     render(SpeedDialFixture);
     const trigger = screen.getByRole('button', { name: 'Quick actions' });
