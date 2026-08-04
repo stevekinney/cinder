@@ -224,11 +224,10 @@ describe('Grid', () => {
     }
   });
 
-  test('recomputes collapse when an inserted stylesheet changes the root font size', async () => {
+  test('observes inserted stylesheets when ResizeObserver is unavailable', async () => {
     const originalGetComputedStyle = globalThis.getComputedStyle;
     const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
     const originalResizeObserver = globalThis.ResizeObserver;
-    let resizeCallback: ResizeObserverCallback | undefined;
     let rootFontSize = 16;
     let stylesheet: HTMLStyleElement | undefined;
 
@@ -245,15 +244,7 @@ describe('Grid', () => {
         },
       });
     }) as typeof getComputedStyle;
-    globalThis.ResizeObserver = class implements ResizeObserver {
-      constructor(callback: ResizeObserverCallback) {
-        resizeCallback = callback;
-      }
-
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    };
+    globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
 
     try {
       const { container, unmount } = render(Grid, {
@@ -261,20 +252,6 @@ describe('Grid', () => {
       });
       await tick();
       const root = container.querySelector('.cinder-grid') as HTMLElement;
-
-      resizeCallback?.(
-        [
-          {
-            target: root,
-            borderBoxSize: [{ inlineSize: 800, blockSize: 320 }],
-            contentBoxSize: [{ inlineSize: 800, blockSize: 320 }],
-            devicePixelContentBoxSize: [],
-            contentRect: { width: 800, height: 320 } as DOMRectReadOnly,
-          },
-        ],
-        {} as ResizeObserver,
-      );
-      await tick();
       expect(root.hasAttribute('data-cinder-wide')).toBe(true);
 
       rootFontSize = 18;
@@ -287,6 +264,72 @@ describe('Grid', () => {
       stylesheet?.remove();
       globalThis.getComputedStyle = originalGetComputedStyle;
       HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('observes a rem-sized probe for stylesheet-driven root font changes', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'offsetWidth',
+    );
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const observers: Array<{ callback: ResizeObserverCallback; targets: Element[] }> = [];
+    let rootFontSize = 16;
+
+    HTMLElement.prototype.getBoundingClientRect = () => ({ width: 800, height: 0 }) as DOMRect;
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get() {
+        return this.hasAttribute('data-cinder-grid-threshold-probe') ? 48 * rootFontSize : 800;
+      },
+    });
+    globalThis.ResizeObserver = class implements ResizeObserver {
+      private readonly record: { callback: ResizeObserverCallback; targets: Element[] };
+
+      constructor(callback: ResizeObserverCallback) {
+        this.record = { callback, targets: [] };
+        observers.push(this.record);
+      }
+
+      observe(target: Element) {
+        this.record.targets.push(target);
+      }
+
+      unobserve() {}
+      disconnect() {}
+    };
+
+    try {
+      const { container, unmount } = render(Grid, {
+        props: { narrowCollapseEnabled: true, children: textSnippet('content') },
+      });
+      await tick();
+      const root = container.querySelector('.cinder-grid') as HTMLElement;
+      const probeObserver = observers.find((observer) =>
+        observer.targets.some((target) => target.hasAttribute('data-cinder-grid-threshold-probe')),
+      );
+      const probe = probeObserver?.targets.find((target) =>
+        target.hasAttribute('data-cinder-grid-threshold-probe'),
+      ) as HTMLElement;
+      expect(probe).toBeDefined();
+      expect(root.hasAttribute('data-cinder-wide')).toBe(true);
+
+      rootFontSize = 18;
+      probeObserver?.callback([], {} as ResizeObserver);
+      await tick();
+
+      expect(root.hasAttribute('data-cinder-narrow')).toBe(true);
+      unmount();
+      expect(probe.isConnected).toBe(false);
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+      if (originalOffsetWidth) {
+        Object.defineProperty(HTMLElement.prototype, 'offsetWidth', originalOffsetWidth);
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, 'offsetWidth');
+      }
       globalThis.ResizeObserver = originalResizeObserver;
     }
   });

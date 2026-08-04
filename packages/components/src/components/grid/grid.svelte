@@ -67,12 +67,13 @@
     return COLLAPSE_MAX_WIDTH_REM * baseFontSize;
   }
 
-  function updateNarrowState(width: number): void {
+  function updateNarrowState(width: number, collapseMaxWidthPx = getCollapseMaxWidthPx()): void {
     if (!Number.isFinite(width) || width <= 0) return;
+    if (!Number.isFinite(collapseMaxWidthPx) || collapseMaxWidthPx <= 0) return;
 
     measuredWidth = width;
     hasMeasuredWidth = true;
-    isNarrow = width <= getCollapseMaxWidthPx();
+    isNarrow = width <= collapseMaxWidthPx;
   }
 
   function getElementBorderBoxWidth(node: HTMLElement): number {
@@ -127,7 +128,9 @@
       updateNarrowState(getElementBorderBoxWidth(node));
     };
     const observer =
-      typeof MutationObserver === 'undefined' ? null : new MutationObserver(recomputeNarrowState);
+      typeof MutationObserver === 'undefined' || typeof ResizeObserver !== 'undefined'
+        ? null
+        : new MutationObserver(recomputeNarrowState);
     observer?.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class', 'style'],
@@ -146,6 +149,41 @@
     return () => {
       observer?.disconnect();
       window.removeEventListener('resize', remeasureWidth);
+    };
+  });
+
+  $effect(() => {
+    if (
+      !narrowCollapseEnabled ||
+      typeof window === 'undefined' ||
+      typeof ResizeObserver === 'undefined' ||
+      !document.body
+    )
+      return;
+
+    const probe = document.createElement('span');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.setAttribute('data-cinder-grid-threshold-probe', '');
+    Object.assign(probe.style, {
+      all: 'initial',
+      contain: 'strict',
+      display: 'block',
+      height: '0',
+      pointerEvents: 'none',
+      position: 'fixed',
+      visibility: 'hidden',
+      width: `${COLLAPSE_MAX_WIDTH_REM}rem`,
+    });
+    document.body.append(probe);
+
+    const observer = new ResizeObserver(() => {
+      updateNarrowState(measuredWidth, getElementBorderBoxWidth(probe));
+    });
+    observer.observe(probe, { box: 'border-box' });
+
+    return () => {
+      observer.disconnect();
+      probe.remove();
     };
   });
 </script>

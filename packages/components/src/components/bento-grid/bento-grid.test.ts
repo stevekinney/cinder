@@ -137,7 +137,9 @@ describe('BentoGrid', () => {
     await tick();
 
     const root = container.querySelector('.cinder-bento-grid') as HTMLElement;
-    const observer = CapturingResizeObserver.instances[0];
+    const observer = CapturingResizeObserver.instances.find(
+      (instance) => instance.observed === root,
+    );
     expect(observer?.observed).toBe(root);
     expect(root.hasAttribute('data-cinder-wide')).toBe(false);
 
