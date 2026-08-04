@@ -55,7 +55,6 @@ export const allowedGridCounts = new Map<string, number>(
     'grid-list/grid-list.css',
     'grid/grid.css',
     'hero-section/hero-section.css',
-    'logo-cloud/logo-cloud.css',
     'newsletter-section/newsletter-section.css',
     'phone-input/phone-input.css',
     'pricing-section/pricing-section.css',
@@ -83,7 +82,6 @@ allowedGridCounts.set('footer/footer.css', 2);
 allowedGridCounts.set('form-section/form-section.css', 7);
 allowedGridCounts.set('grid/grid.css', 2);
 allowedGridCounts.set('kanban-board/kanban-board.css', 5);
-allowedGridCounts.set('logo-cloud/logo-cloud.css', 11);
 // The nested submenu's master/detail column split adds one tracked match
 // alongside the top-level section grid and the existing trigger/panel split.
 allowedGridCounts.set('mega-menu/mega-menu.css', 3);
