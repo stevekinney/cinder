@@ -1760,7 +1760,7 @@ describe('Portal', () => {
     const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
     expect(wrapper?.getAttribute('dir')).toBe('rtl');
 
-    await rerender({ target: mountPoint, dir: undefined, children: childSnippet });
+    await rerender({ dir: undefined, children: childSnippet });
     await tick();
 
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
@@ -1783,7 +1783,7 @@ describe('Portal', () => {
     const wrapper = document.body.querySelector('[data-testid="portal-child"]')?.parentElement;
     expect(wrapper?.getAttribute('dir')).toBe('rtl');
 
-    await rerender({ target: mountPoint, dir: undefined, children: childSnippet });
+    await rerender({ dir: undefined, children: childSnippet });
     await tick();
 
     expect(wrapper?.getAttribute('dir')).toBe('ltr');
