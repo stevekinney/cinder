@@ -263,14 +263,23 @@
       menuTogglePlacement !== 'before-brand' ||
       !isMobileLayout ||
       !mobileMenuOpen ||
-      !anchoredItems.positionReady ||
-      !(event.target instanceof HTMLElement || event.target instanceof SVGElement)
+      !anchoredItems.positionReady
     ) {
       return false;
     }
 
+    // A keydown listener on the outer `<nav>` observes `event.target`
+    // retargeted to the shadow host when the real origin lives inside an
+    // open shadow root (for example, a brand logo that exposes its last
+    // tabbable control from its own shadow DOM). `composedPath()[0]` is the
+    // actual originating node regardless of shadow retargeting.
+    const composedTarget = event.composedPath()[0];
+    if (!(composedTarget instanceof HTMLElement || composedTarget instanceof SVGElement)) {
+      return false;
+    }
+
     const brandTargets = getNavigationBarBrandFocusTargets(navigationBarElement);
-    if (event.target !== brandTargets.at(-1)) return false;
+    if (composedTarget !== brandTargets.at(-1)) return false;
 
     const firstItem = getSequentialNavigationItems()[0];
     if (!firstItem) return false;

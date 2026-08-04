@@ -82,10 +82,17 @@ export function findFocusTargetAfterNavigationItems(
   // querySelectorAll` cannot see into shadow roots, so a NavigationBar
   // rendered inside one with no `actions` target would otherwise skip every
   // sibling that lives in that same shadow root.
+  //
+  // The DOM-position anchor at each scope is the navigation bar (or its
+  // enclosing shadow host), which is rarely itself a positive-tabindex tab
+  // stop. Tier filtering must key off `navigationItem`'s own tab index
+  // instead, or a positive-tabindex last item would incorrectly drop every
+  // positive-tabindex candidate that native Tab order still owes it.
   for (const { root, anchor } of composedFocusScopes(navigationBar)) {
     const followingCandidates = getSequentialFocusTargets(root, {
       relativeTo: anchor,
       direction: 'after',
+      tierReference: navigationItem ?? anchor,
     }).filter(
       (candidate) =>
         !composedContains(navigationBar, candidate) &&

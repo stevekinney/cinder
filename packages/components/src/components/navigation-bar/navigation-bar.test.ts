@@ -225,6 +225,21 @@ function svgBrandSnippet() {
   }));
 }
 
+/** A brand whose only focus target is a button inside its own open shadow root. */
+function shadowBrandSnippet() {
+  return createRawSnippet(() => ({
+    render: () => '<div id="brand-shadow-host"></div>',
+    setup(element: Element) {
+      const shadow = element.attachShadow({ mode: 'open' });
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = 'brand-shadow-button';
+      button.textContent = 'Shadow Brand';
+      shadow.append(button);
+    },
+  }));
+}
+
 function positiveThenNormalBrandSnippet() {
   return createRawSnippet(() => ({
     render: () =>
@@ -1222,6 +1237,44 @@ describe('NavigationBar', () => {
       // exercises `event.target`, which is what the bridge guard checks,
       // independent of whether the DOM harness supports focusing SVG.
       await fireEvent.keyDown(brandSvg, { key: 'Tab' });
+      expect(document.activeElement).toBe(home);
+    });
+  });
+
+  test('bridges brand Tab into the portaled panel when the outer nav observes a shadow-retargeted target', async () => {
+    // A keydown listener on the outer `<nav>` observes `event.target`
+    // retargeted to the shadow host when the real Tab origin lives inside an
+    // open shadow root (e.g. a brand logo that exposes its last tabbable
+    // control from its own shadow DOM). happy-dom does not implement that
+    // spec retargeting natively, so this test overrides `event.target`
+    // directly -- the same pattern portal.test.ts uses -- to reproduce what
+    // a real browser delivers, while `composedPath()` (driven by the actual
+    // dispatch target) still reports the true originating shadow element.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        brand: shadowBrandSnippet(),
+        items: keyboardNavigationSnippet({}),
+        menuToggle: toggleSnippet(),
+        menuTogglePlacement: 'before-brand',
+      });
+
+      await openCollapsedMobileMenu(container);
+      const itemsRegion = await waitForMobilePanelPosition(container);
+      const home = itemsRegion.querySelector('[data-key="home"]');
+      const brandHost = container.querySelector('#brand-shadow-host') as HTMLElement;
+      const shadowButton = brandHost.shadowRoot?.querySelector(
+        '#brand-shadow-button',
+      ) as HTMLElement;
+
+      const event = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        bubbles: true,
+        composed: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, 'target', { configurable: true, value: brandHost });
+      shadowButton.dispatchEvent(event);
+
       expect(document.activeElement).toBe(home);
     });
   });

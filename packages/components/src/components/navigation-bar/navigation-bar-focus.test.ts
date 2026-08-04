@@ -79,6 +79,31 @@ describe('findFocusTargetAfterNavigationItems', () => {
     expect(findFocusTargetAfterNavigationItems(navigationBar, items, navigationItem)).toBe(normal);
   });
 
+  test('continues to a positive-tabindex following control when there is no actions region', () => {
+    // With no `actions` region, the fallback search anchors DOM position on
+    // the `<nav>` element itself, which is not a tab stop. Tier filtering
+    // must still key off the navigation item's own positive tabindex, or
+    // this would incorrectly skip the page control at tabindex="3" in favor
+    // of the zero-tier button that follows it.
+    const wrapper = document.createElement('div');
+    const navigationBar = document.createElement('nav');
+    const items = document.createElement('div');
+    const navigationItem = document.createElement('button');
+    navigationItem.setAttribute('data-cinder-navigation-item', '');
+    navigationItem.tabIndex = 2;
+    items.append(navigationItem);
+    navigationBar.append(items);
+    const pageControl = document.createElement('button');
+    pageControl.tabIndex = 3;
+    const normal = document.createElement('button');
+    wrapper.append(navigationBar, pageControl, normal);
+    attachScratch(wrapper);
+
+    expect(findFocusTargetAfterNavigationItems(navigationBar, items, navigationItem)).toBe(
+      pageControl,
+    );
+  });
+
   test('continues through a same-value positive tabindex action in composed order', () => {
     const wrapper = document.createElement('div');
     const navigationBar = document.createElement('nav');

@@ -62,6 +62,17 @@ const sequentialFocusCandidateSelector = [
 export type SequentialFocusRange = {
   relativeTo: Element;
   direction: 'before' | 'after';
+  /**
+   * The element whose tab-index tier candidates are compared against.
+   * Defaults to `relativeTo`. Pass this separately when `relativeTo` is a
+   * DOM-position anchor (for example, a container element used only to
+   * locate the correct composed-tree boundary) that does not itself
+   * participate in sequential tab order, so tier filtering would otherwise
+   * fall back to `relativeTo`'s own (non-positive) tab index and drop every
+   * positive-tabindex candidate regardless of the tier the caller actually
+   * left off at.
+   */
+  tierReference?: Element;
 };
 
 export type SequentialFocusTarget = HTMLElement | SVGElement;
@@ -75,6 +86,7 @@ export function getSequentialFocusTargets(
   const composedElements = collectComposedElements(root);
   const relativeIndex = range ? composedElements.indexOf(range.relativeTo) : -1;
   if (range && relativeIndex === -1) return [];
+  const tierReference = range?.tierReference ?? range?.relativeTo;
   const candidates = composedElements
     .filter(
       (_, index) =>
@@ -84,8 +96,8 @@ export function getSequentialFocusTargets(
     .filter(
       (element) =>
         !range ||
-        (isSequentialFocusTarget(range.relativeTo) &&
-          isSequentiallyAfterReference(element, range.relativeTo, range.direction)),
+        (isSequentialFocusTarget(tierReference) &&
+          isSequentiallyAfterReference(element, tierReference, range.direction)),
     )
     .filter((element) => element.matches(sequentialFocusCandidateSelector))
     .filter(isSequentialCandidate);
