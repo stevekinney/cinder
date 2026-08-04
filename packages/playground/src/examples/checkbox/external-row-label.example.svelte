@@ -12,7 +12,7 @@
 <div
   style="display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.75rem; max-width: 26rem;"
 >
-  <Checkbox id="repository-main" fieldClassName="repository-checkbox" bind:checked={selected} />
+  <Checkbox id="repository-main" class="repository-checkbox" bind:checked={selected} />
   <label
     for="repository-main"
     style="display: flex; justify-content: space-between; gap: 1rem; cursor: pointer;"

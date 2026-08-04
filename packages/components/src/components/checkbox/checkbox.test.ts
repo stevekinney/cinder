@@ -1,11 +1,12 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Checkbox } = await import('./checkbox.svelte');
 const { default: CheckboxIndeterminateFormResetFixture } =
   await import('../../test/fixtures/checkbox-indeterminate-form-reset-fixture.svelte');
@@ -16,7 +17,24 @@ const { default: CheckboxExternalLabelFixture } =
 const { default: FormFieldCheckboxFixture } =
   await import('../../test/fixtures/form-field-checkbox-fixture.svelte');
 
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
+
 describe('Checkbox', () => {
+  test('keeps intrinsic layout when all component styles load FormField later', () => {
+    const checkboxStyles = readFileSync(new URL('./checkbox.css', import.meta.url), 'utf8');
+    const allStyles = readFileSync(new URL('../../styles/components.css', import.meta.url), 'utf8');
+    expect(allStyles.indexOf('../components/checkbox/checkbox.css')).toBeLessThan(
+      allStyles.indexOf('../components/form-field/form-field.css'),
+    );
+    expect(checkboxStyles).toContain('.cinder-checkbox-field.cinder-form-field');
+    expect(checkboxStyles).toMatch(
+      /\.cinder-checkbox-field\.cinder-form-field\s*\{[\s\S]*flex-direction:\s*row;/,
+    );
+  });
+
   test('renders a native input[type=checkbox] with the given id', () => {
     const { container } = render(Checkbox, { id: 'agree' });
     const input = container.querySelector('#agree');
@@ -43,6 +61,13 @@ describe('Checkbox', () => {
     const label = container.querySelector('label');
     expect(label?.getAttribute('for')).toBe('tos');
     expect(label?.textContent?.trim()).toBe('I agree to the terms');
+  });
+
+  test('label remains inline inside an unlabeled FormField', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: { fieldId: 'agreement', checkboxLabel: 'Agree' },
+    });
+    expect(container.querySelector('.cinder-form-field__label')?.textContent).toContain('Agree');
   });
 
   test('checked prop is reflected on the input', () => {
@@ -200,13 +225,13 @@ describe('Checkbox', () => {
     expect(input.classList.contains('extra')).toBe(true);
   });
 
-  test('fieldClassName prop merges with the outer checkbox field wrapper', () => {
+  test('class prop merges with the native checkbox control', () => {
     const { container } = render(Checkbox, {
       id: 'c',
-      fieldClassName: 'align-start',
+      class: 'align-start',
     });
-    const field = container.querySelector('.cinder-checkbox-field');
-    expect(field?.classList.contains('align-start')).toBe(true);
+    const input = container.querySelector('input');
+    expect(input?.classList.contains('align-start')).toBe(true);
   });
 
   test('supports a control-only checkbox with an external rich label', async () => {
@@ -271,6 +296,46 @@ describe('Checkbox — FormField context wiring', () => {
     const input = container.querySelector('#agree') as HTMLInputElement;
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.getAttribute('aria-describedby')).toBe('agree-error');
+  });
+
+  test('styles local description and error overrides inside FormField context', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        checkboxDescription: 'Checkbox-specific help',
+        checkboxError: 'Checkbox-specific error',
+      },
+    });
+    const wrapper = container.querySelector('.cinder-checkbox-field');
+    expect(container.querySelector('input[type="checkbox"]')?.getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    expect(wrapper).not.toBeNull();
+    expect(wrapper?.querySelector('.cinder-form-field__description')?.id).toBe('agree-description');
+    expect(wrapper?.querySelector('.cinder-form-field__error')?.id).toBe('agree-error');
+    expect(wrapper?.querySelector('.cinder-checkbox-field__description')).toBeNull();
+  });
+
+  test('keeps distinct support ids when local and FormField messages share a field', () => {
+    const { container } = render(FormFieldCheckboxFixture, {
+      props: {
+        fieldId: 'agree',
+        fieldLabel: 'Agreement',
+        fieldDescription: 'Shared help',
+        fieldError: 'Shared error',
+        checkboxDescription: 'Local help',
+        checkboxError: 'Local error',
+      },
+    });
+    const input = container.querySelector('#agree') as HTMLInputElement;
+    expect(input.getAttribute('aria-describedby')).toBe(
+      'agree-checkbox-description agree-checkbox-error agree-description agree-error',
+    );
+    expect(container.querySelector('#agree-checkbox-description')?.textContent).toContain(
+      'Local help',
+    );
+    expect(container.querySelector('#agree-checkbox-error')?.textContent).toContain('Local error');
   });
 
   test('inherits disabled state from FormField context', () => {
