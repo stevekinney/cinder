@@ -1320,6 +1320,17 @@ describe('cinder/z-index-scale', () => {
     expect(warning?.text).toContain('Offending expression: `9999`');
   });
 
+  test('anchors fallback warnings after leading declaration-value whitespace', async () => {
+    const css = '.fixture { /* cinder-z-index-local: test. */ z-index:\t  var(--x, 9999); }';
+    const [warning] = warnings(await lint(css));
+    const fallbackIndex = css.lastIndexOf('9999');
+    const start = sourceLocation(css, fallbackIndex);
+    const end = sourceLocation(css, fallbackIndex + 4);
+
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endColumn).toBe(end.column);
+  });
+
   test('preserves warning anchoring when masked inline comments contain form-feed characters', async () => {
     const css =
       '.fixture { /* cinder-z-index-local: test. */ z-index: calc(0 + var(--x/*\\f*/, 9999)); }'.replace(
