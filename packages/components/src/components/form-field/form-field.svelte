@@ -16,14 +16,7 @@
 
 <script lang="ts">
   import type { FormFieldProps } from './form-field.types.ts';
-  import {
-    ariaInvalid,
-    composeDescribedBy,
-    describeId,
-    errorId as buildErrorId,
-  } from '../../_internal/field-control.ts';
-  import { setFormFieldContext } from '../../_internal/form-field-context.ts';
-  import { classNames } from '../../utilities/class-names.ts';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {
     id,
@@ -36,66 +29,16 @@
     class: className,
     children,
   }: FormFieldProps = $props();
-
-  const labelId = $derived(label ? `${id}-label` : undefined);
-  const descriptionId = $derived(describeId(id, !!description));
-  const errorId = $derived(buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errorId));
-  const invalid = $derived(ariaInvalid(!!error));
-
-  setFormFieldContext({
-    get controlId() {
-      return id;
-    },
-    get labelId() {
-      return labelId;
-    },
-    get describedBy() {
-      return describedBy;
-    },
-    get descriptionId() {
-      return descriptionId;
-    },
-    get errorId() {
-      return errorId;
-    },
-    get invalid() {
-      return invalid;
-    },
-    get required() {
-      return required;
-    },
-    get disabled() {
-      return disabled;
-    },
-  });
 </script>
 
-<div class={classNames('cinder-form-field', className)} data-cinder-full-width>
-  {#if label}
-    <label
-      id={labelId}
-      for={id}
-      class={classNames('cinder-form-field__label', hideLabel && 'cinder-sr-only')}
-      data-disabled={disabled || undefined}
-    >
-      {label}
-      {#if required}
-        <!-- Visible asterisk conveys "required" by shape, not color alone (WCAG
-             1.4.1). aria-hidden so the accessible name stays clean — the field's
-             own `required`/`aria-required` attribute is the single AT signal. -->
-        <span class="cinder-_required-marker" aria-hidden="true">*</span>
-      {/if}
-    </label>
-  {/if}
-
-  {@render children()}
-
-  {#if description}
-    <p id={descriptionId} class="cinder-form-field__description">{description}</p>
-  {/if}
-
-  {#if error}
-    <p id={errorId} class="cinder-form-field__error" aria-live="polite">{error}</p>
-  {/if}
-</div>
+<FormFieldFrame
+  {id}
+  {label}
+  {hideLabel}
+  {description}
+  {error}
+  {required}
+  {disabled}
+  class={className}
+  control={children}
+/>
