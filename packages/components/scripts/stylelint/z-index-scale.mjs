@@ -113,7 +113,7 @@ function maskComments(value) {
     }
     const commentEnd = value.indexOf('*/', index + 2);
     if (commentEnd === -1) {
-      maskedValue += value.slice(index);
+      maskedValue += cssCommentMaskCharacter.repeat(value.length - index);
       break;
     }
     maskedValue += cssCommentMaskCharacter.repeat(commentEnd + 2 - index);
