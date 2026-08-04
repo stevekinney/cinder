@@ -35,10 +35,11 @@ async function openMenu(container: HTMLElement): Promise<void> {
 }
 
 describe('MultiSelect', () => {
-  test('uses the shared indicator stylesheet without importing Checkbox CSS', async () => {
+  test('owns indicator styles without importing private or Checkbox CSS', async () => {
     const css = await Bun.file(new URL('./multi-select.css', import.meta.url)).text();
 
-    expect(css).toContain("@import '../_internal/checkbox-indicator-shell.css';");
+    expect(css).toContain('.cinder-checkbox-field__indicator');
+    expect(css).not.toContain("@import '../_internal/checkbox-indicator-shell.css';");
     expect(css).not.toContain("@import '../checkbox/checkbox.css';");
   });
 
