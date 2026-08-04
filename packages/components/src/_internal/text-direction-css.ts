@@ -278,15 +278,23 @@ function findActiveScopeRoots(
     (selector) => selector.trim().toLowerCase() !== ':scope',
   );
   if (unsupportedScopeRoot && ordinaryRootSelectors.length === 0) return null;
+  // Only an exact `:scope` root selector resolves to the implicit scope
+  // root — a compound or combinator form attached to `:scope` (e.g.
+  // `:scope > .foo`) is never evaluated against anything, so it must not
+  // silently contribute the implicit root as if it had matched.
+  const usesImplicitScopeRoot =
+    scopeRootSelectors.length > 0 && !unsupportedScopeRoot && implicitScopeRoot !== null;
   const roots: ScopeRoot[] =
     prelude.rootSelectors.length === 0
       ? [implicitScopeRoot ?? element.ownerDocument.documentElement]
       : [
-          ...(scopeRootSelectors.length > 0 && implicitScopeRoot ? [implicitScopeRoot] : []),
+          ...(usesImplicitScopeRoot ? [implicitScopeRoot] : []),
           ...findScopeMatches(element, ordinaryRootSelectors),
         ];
-  if (scopeRootSelectors.length > 0 && implicitScopeRoot && !implicitScopeRoot.contains(element))
-    roots.splice(roots.indexOf(implicitScopeRoot), 1);
+  if (usesImplicitScopeRoot && implicitScopeRoot && !implicitScopeRoot.contains(element)) {
+    const implicitRootIndex = roots.indexOf(implicitScopeRoot);
+    if (implicitRootIndex >= 0) roots.splice(implicitRootIndex, 1);
+  }
   if (prelude.rootSelectors.length === 0 && roots[0] && !roots[0].contains(element)) return null;
   const activeRoots: ScopeRoot[] = [];
   for (const root of roots) {

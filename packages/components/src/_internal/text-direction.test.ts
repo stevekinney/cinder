@@ -686,6 +686,22 @@ describe('resolveTextDirection', () => {
     ).toBe('ltr');
   });
 
+  test('does not activate the implicit root for an unsupported scope-pseudo selector', () => {
+    const target = document.createElement('div');
+    target.className = 'shell';
+    document.body.append(target);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (:scope > .foo, .theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+  });
+
   test('uses the document root for exact :scope scopes in document stylesheets', () => {
     const target = document.createElement('div');
     target.className = 'shell';
