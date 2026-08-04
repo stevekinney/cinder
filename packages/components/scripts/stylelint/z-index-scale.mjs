@@ -93,33 +93,36 @@ function quotedStringEnd(value, start) {
 // static math must not mistake comments for the whitespace required around
 // additive operators.
 function maskComments(value) {
-  let maskedValue = '';
+  const segments = [];
+  let copyFrom = 0;
   for (let index = 0; index < value.length; index += 1) {
     if (value[index] === '"' || value[index] === "'") {
       const stringEnd = quotedStringEnd(value, index);
-      maskedValue += value.slice(index, stringEnd + 1);
       index = stringEnd;
       continue;
     }
     const urlTokenEnd = unquotedUrlTokenEnd(value, index);
     if (urlTokenEnd !== undefined) {
-      maskedValue += value.slice(index, urlTokenEnd + 1);
       index = urlTokenEnd;
       continue;
     }
     if (value[index] !== '/' || value[index + 1] !== '*' || isEscaped(value, index)) {
-      maskedValue += value[index];
       continue;
     }
+    segments.push(value.slice(copyFrom, index));
     const commentEnd = value.indexOf('*/', index + 2);
     if (commentEnd === -1) {
-      maskedValue += cssCommentMaskCharacter.repeat(value.length - index);
+      segments.push(cssCommentMaskCharacter.repeat(value.length - index));
+      copyFrom = value.length;
       break;
     }
-    maskedValue += cssCommentMaskCharacter.repeat(commentEnd + 2 - index);
+    segments.push(cssCommentMaskCharacter.repeat(commentEnd + 2 - index));
     index = commentEnd + 1;
+    copyFrom = commentEnd + 2;
   }
-  return maskedValue;
+  if (segments.length === 0) return value;
+  segments.push(value.slice(copyFrom));
+  return segments.join('');
 }
 
 function findLayerTokenReferences(value) {
