@@ -120,15 +120,18 @@ protocol from the 2026-08-04 drain is:
    check runs (`platform:audit`, `colors:audit`, `tokens:audit`,
    `validate:consumer` and friends — read
    `.github/workflows/main-green.yaml` for the current list) when any
-   candidate touches the surfaces they audit.
+   candidate touches the surfaces they audit, **and the full Playwright suite
+   run against this same combined tree** (locally via `test:browser`; kill
+   any stale server on :5555/:5556 first). Browser coverage must precede the
+   drain — `main-green` is NOT a browser gate (it runs only the Chromium
+   hydration smoke `validate:consumer:hydration-smoke`), so a cross-PR
+   browser interaction detected only after draining has already landed on
+   `main`.
 3. Only then lift `strict`, drain the validated set, and restore
    `strict: true` immediately after.
-4. **Run the full Playwright suite against the merged result** (locally or
-   via a manual dispatch) after the drain. `main-green` is NOT a browser
-   gate — it runs only a Chromium hydration smoke
-   (`validate:consumer:hydration-smoke`); the full Playwright suite runs
-   only in per-PR / merge-group CI, so cross-PR browser-behavior
-   interactions on the combined tree are otherwise never exercised.
+4. If any candidate branch moved after the combined-tree run (fix pushes,
+   rebases), re-run the affected slice — or the full suite — against the
+   refreshed combined tree before its PRs merge.
 
 That reproduces the queue's merged-result guarantee out-of-band; per-PR CI
 plus pairwise `git merge-tree` checks alone do not cover repo-wide-guard
