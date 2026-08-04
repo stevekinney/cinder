@@ -111,7 +111,7 @@
   {@attach registerWithPalette}
   id={itemId ?? undefined}
   role="option"
-  class={classNames('cinder-command-item', className)}
+  class={classNames('cinder-_row-item', 'cinder-command-item', className)}
   aria-selected={isActive}
   aria-disabled={disabled || undefined}
   aria-label={normalizedAccessibleLabel}
