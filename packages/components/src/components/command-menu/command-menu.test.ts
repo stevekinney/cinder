@@ -1,5 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
+import { parse } from 'postcss';
+import selectorParser from 'postcss-selector-parser';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -45,14 +47,30 @@ function queryListbox() {
 }
 
 function commandMenuRootDeclarationsFromCss(css: string) {
-  const declarationBlocks = Array.from(
-    css.matchAll(/\.cinder-command-menu\s*\{(?<body>[^}]*)\}/g),
-    (match) => match.groups?.['body'],
-  ).filter((body): body is string => body !== undefined);
+  const declarations: string[] = [];
 
-  expect(declarationBlocks.length).toBeGreaterThan(0);
+  parse(css).walkRules((rule) => {
+    let targetsCommandMenuRoot = false;
+    selectorParser((selectors) => {
+      selectors.each((selector) => {
+        const lastCombinatorIndex = selector.nodes.findLastIndex(
+          (node) => node.type === 'combinator',
+        );
+        targetsCommandMenuRoot ||= selector.nodes
+          .slice(lastCombinatorIndex + 1)
+          .some((node) => node.type === 'class' && node.value === 'cinder-command-menu');
+      });
+    }).processSync(rule.selector);
 
-  return declarationBlocks.join('\n');
+    if (!targetsCommandMenuRoot) return;
+    rule.each((node) => {
+      if (node.type === 'decl') declarations.push(`${node.prop}: ${node.value}`);
+    });
+  });
+
+  expect(declarations.length).toBeGreaterThan(0);
+
+  return declarations.join('\n');
 }
 
 async function commandMenuRootDeclarations() {
@@ -82,10 +100,14 @@ describe('CommandMenu', () => {
   test('the CSS declaration guard inspects every root selector block', () => {
     const declarations = commandMenuRootDeclarationsFromCss(`
       .cinder-command-menu { padding: 0; }
-      .cinder-command-menu { position: fixed; }
+      .cinder-command-menu[data-cinder-position-ready='false'] { position: fixed; }
+      .cinder-command-menu.cinder-_floating-surface { box-shadow: none; }
+      .cinder-command-menu .cinder-command-menu__empty { color: red; }
     `);
 
     expect(declarations).toContain('position: fixed');
+    expect(declarations).toContain('box-shadow: none');
+    expect(declarations).not.toContain('color: red');
   });
 
   test('composes shared floating-surface chrome instead of redeclaring it', async () => {
