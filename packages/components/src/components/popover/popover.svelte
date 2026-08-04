@@ -55,6 +55,7 @@
     wireTriggerAria = true,
     closeOnEscape = true,
     widthMode = 'content',
+    portalScopeClass,
     class: className,
   }: PopoverProps = $props();
 
@@ -329,7 +330,7 @@
     bind:this={portalScopeElement}
     {@attach portalScopeAttachment}
     id={`${panelId}-scope`}
-    class="cinder-popover__portal-scope"
+    class={classNames('cinder-popover__portal-scope', portalScopeClass)}
     style={`display: contents;${inheritedPortalStyle.style}`}
   ></div>
   <div

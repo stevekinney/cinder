@@ -573,7 +573,12 @@ describe('Combobox filtering', () => {
     const input = container.querySelector('#fruit') as HTMLInputElement;
     await fireEvent.focus(input);
     const option = await findOption('Apple');
+    const scopedPanel = document.body.querySelector(
+      '.cinder-combobox.compact .cinder-combobox__panel',
+    );
 
+    expect(scopedPanel).not.toBeNull();
+    expect(scopedPanel?.contains(option)).toBe(true);
     expect(option.closest('.cinder-combobox.compact')).not.toBeNull();
   });
 

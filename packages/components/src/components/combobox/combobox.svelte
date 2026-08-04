@@ -430,47 +430,46 @@
       wireTriggerAria={false}
       closeOnEscape={false}
       widthMode="match-anchor"
+      portalScopeClass={classNames('cinder-combobox', className)}
       class="cinder-combobox__panel"
     >
-      <div class={classNames('cinder-combobox', className)}>
-        <ul bind:this={listboxElement} role="presentation" class="cinder-combobox__listbox">
-          {#each filteredOptions as option, index (option.value)}
-            <li
-              id="{id}-option-{index}"
-              role="option"
-              class="cinder-_option-row cinder-combobox__option"
-              aria-selected={value === option.value}
-              aria-disabled={option.disabled || undefined}
-              aria-label={option.description ? `${option.label}, ${option.description}` : undefined}
-              data-cinder-active={index === activeIndex || undefined}
-              onmousedown={(event) => {
-                // mousedown rather than click so the option fires before the
-                // input's blur cancels the popover.
-                event.preventDefault();
-                selectOption(option);
-              }}
-              onmouseenter={() => {
-                activeIndex = index;
-              }}
-            >
-              {#if option.avatar?.trim()}
-                <img
-                  class="cinder-combobox__option-avatar"
-                  src={option.avatar}
-                  alt=""
-                  loading="lazy"
-                />
+      <ul bind:this={listboxElement} role="presentation" class="cinder-combobox__listbox">
+        {#each filteredOptions as option, index (option.value)}
+          <li
+            id="{id}-option-{index}"
+            role="option"
+            class="cinder-_option-row cinder-combobox__option"
+            aria-selected={value === option.value}
+            aria-disabled={option.disabled || undefined}
+            aria-label={option.description ? `${option.label}, ${option.description}` : undefined}
+            data-cinder-active={index === activeIndex || undefined}
+            onmousedown={(event) => {
+              // mousedown rather than click so the option fires before the
+              // input's blur cancels the popover.
+              event.preventDefault();
+              selectOption(option);
+            }}
+            onmouseenter={() => {
+              activeIndex = index;
+            }}
+          >
+            {#if option.avatar?.trim()}
+              <img
+                class="cinder-combobox__option-avatar"
+                src={option.avatar}
+                alt=""
+                loading="lazy"
+              />
+            {/if}
+            <span class="cinder-combobox__option-text">
+              <span class="cinder-combobox__option-label">{option.label}</span>
+              {#if option.description}
+                <span class="cinder-combobox__option-description">{option.description}</span>
               {/if}
-              <span class="cinder-combobox__option-text">
-                <span class="cinder-combobox__option-label">{option.label}</span>
-                {#if option.description}
-                  <span class="cinder-combobox__option-description">{option.description}</span>
-                {/if}
-              </span>
-            </li>
-          {/each}
-        </ul>
-      </div>
+            </span>
+          </li>
+        {/each}
+      </ul>
     </Popover>
   {/if}
 

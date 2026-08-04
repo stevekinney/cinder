@@ -59,6 +59,8 @@ export type PopoverProps = {
   closeOnEscape?: boolean;
   /** Floating panel width strategy. Default `'content'`. */
   widthMode?: PopoverWidthMode;
+  /** Extra class merged onto the portaled scope wrapper. */
+  portalScopeClass?: string;
   /** Extra class merged onto `.cinder-popover`. */
   class?: string;
 };
