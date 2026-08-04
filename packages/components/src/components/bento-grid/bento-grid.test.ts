@@ -33,16 +33,24 @@ class CapturingResizeObserver implements ResizeObserver {
   disconnect(): void {}
 
   trigger(width: number): void {
-    this.callback(
-      [
-        {
-          borderBoxSize: [{ inlineSize: width }],
-          contentRect: { width },
-          target: this.observed,
-        } as unknown as ResizeObserverEntry,
-      ],
-      this as unknown as ResizeObserver,
-    );
+    if (!this.observed) return;
+
+    const originalGetBoundingClientRect = this.observed.getBoundingClientRect;
+    this.observed.getBoundingClientRect = () => ({ width }) as DOMRect;
+    try {
+      this.callback(
+        [
+          {
+            borderBoxSize: [{ inlineSize: width }],
+            contentRect: { width },
+            target: this.observed,
+          } as unknown as ResizeObserverEntry,
+        ],
+        this as unknown as ResizeObserver,
+      );
+    } finally {
+      this.observed.getBoundingClientRect = originalGetBoundingClientRect;
+    }
   }
 }
 
