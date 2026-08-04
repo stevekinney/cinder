@@ -20,7 +20,8 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
-const divisorWitnessValues = ['1', '1px', '1deg', '1s', '1hz', '1dppx'];
+const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
+const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const invalidCustomIdentKeywords = new Set([
   'default',
   'inherit',
@@ -523,7 +524,8 @@ function expandedSubstitutionDivisorRange(
   const witnesses = [];
   const distinctPossibleDivisors = new Set();
   const witnessAssignmentCount =
-    divisorWitnessValues.length + (divisorWitnessValues.length - 1) * containedChildren.length;
+    uniformDivisorWitnessValues.length +
+    typedDivisorWitnessValues.length * containedChildren.length;
   for (
     let witnessAssignmentIndex = 0;
     witnessAssignmentIndex < witnessAssignmentCount;
@@ -533,16 +535,15 @@ function expandedSubstitutionDivisorRange(
     let sourceIndex = factorRange.start;
     for (let childIndex = 0; childIndex < containedChildren.length; childIndex += 1) {
       const candidate = containedChildren[childIndex];
-      const typedAssignmentIndex = witnessAssignmentIndex - divisorWitnessValues.length;
-      const witnessValueIndex =
-        witnessAssignmentIndex < divisorWitnessValues.length
-          ? witnessAssignmentIndex
-          : Math.floor(typedAssignmentIndex / containedChildren.length) + 1;
+      const typedAssignmentIndex = witnessAssignmentIndex - uniformDivisorWitnessValues.length;
+      const witnessValueIndex = Math.floor(typedAssignmentIndex / containedChildren.length);
       const typedChildIndex = typedAssignmentIndex % containedChildren.length;
       const witness =
-        witnessAssignmentIndex < divisorWitnessValues.length || childIndex === typedChildIndex
-          ? divisorWitnessValues[witnessValueIndex]
-          : '1';
+        witnessAssignmentIndex < uniformDivisorWitnessValues.length
+          ? uniformDivisorWitnessValues[witnessAssignmentIndex]
+          : childIndex === typedChildIndex
+            ? typedDivisorWitnessValues[witnessValueIndex]
+            : '1';
       possibleDivisorParts.push(value.slice(sourceIndex, candidate.start), ` ${witness} `);
       sourceIndex = candidate.end;
     }
@@ -1204,7 +1205,7 @@ function directBannedMathArgumentCandidates(
   budget,
   parenthesisPairs,
 ) {
-  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1214,10 +1215,13 @@ function directBannedMathArgumentCandidates(
     );
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return [];
-    if ((functionName === 'mod' || functionName === 'rem') && parsedArguments.argumentCount !== 2)
+    if (
+      (functionName === 'mod' || functionName === 'rem' || functionName === 'pow') &&
+      parsedArguments.argumentCount !== 2
+    )
       return [];
     if (
-      (functionName === 'mod' || functionName === 'rem') &&
+      (functionName === 'mod' || functionName === 'rem' || functionName === 'pow') &&
       parsedArguments.staticArguments.length === parsedArguments.argumentCount
     )
       return [];
@@ -1228,6 +1232,7 @@ function directBannedMathArgumentCandidates(
         ),
       );
       if (staticResultTypes.has('number') && staticResultTypes.has('non-number')) return [];
+      if (functionName === 'pow' && staticResultTypes.has('non-number')) return [];
     }
     let candidateArguments;
     if (functionName === 'clamp')
@@ -1285,7 +1290,7 @@ function directBannedMathArgumentCandidates(
 }
 
 function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenthesisPairs) {
-  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem']) {
+  for (const functionName of ['max', 'min', 'clamp', 'round', 'mod', 'rem', 'pow']) {
     const parsedArguments = fallbackIndependentStaticArguments(
       frame,
       value,
@@ -1295,7 +1300,10 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
     );
     if (!parsedArguments) continue;
     if (functionName === 'clamp' && parsedArguments.argumentCount !== 3) return new Set();
-    if ((functionName === 'mod' || functionName === 'rem') && parsedArguments.argumentCount !== 2)
+    if (
+      (functionName === 'mod' || functionName === 'rem' || functionName === 'pow') &&
+      parsedArguments.argumentCount !== 2
+    )
       return new Set();
     let staticArguments = parsedArguments.staticArguments;
     if (functionName === 'round') {
@@ -1313,11 +1321,12 @@ function fallbackIndependentMathArgumentResultTypes(frame, value, range, parenth
         (argument) => !hasStrategy || argument.index !== 0,
       );
     }
-    return new Set(
+    const resultTypes = new Set(
       staticArguments
         .map((argument) => analyzeStaticLayerValue(argument.value).resultType)
         .filter((resultType) => resultType === 'number' || resultType === 'non-number'),
     );
+    return functionName === 'pow' && resultTypes.has('non-number') ? new Set() : resultTypes;
   }
   return new Set();
 }

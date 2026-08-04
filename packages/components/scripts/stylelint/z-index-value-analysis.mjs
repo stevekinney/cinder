@@ -165,12 +165,13 @@ function scalar(value, isLiteralZero = false, exactValue) {
   return { value, units: new Map(), symbolicFactors: new Map(), isLiteralZero, exactValue };
 }
 
-function withValue(source, value) {
+function withValue(source, value, exactValue) {
   return {
     value,
     units: new Map(source.units),
     symbolicFactors: new Map(source.symbolicFactors),
     isLiteralZero: false,
+    exactValue,
   };
 }
 
@@ -235,6 +236,14 @@ function roundRational(value) {
     numerator: value.numerator * 2n + value.denominator,
     denominator: value.denominator * 2n,
   });
+}
+
+function absoluteRational(value) {
+  if (value === undefined) return undefined;
+  return {
+    numerator: value.numerator < 0n ? -value.numerator : value.numerator,
+    denominator: value.denominator,
+  };
 }
 
 function normalizedDimension(unit) {
@@ -588,7 +597,8 @@ function evaluateConstantArithmetic(expression) {
       );
       const hasZeroPinnedRelativeLengthExtremum =
         zeroArgument !== undefined &&
-        functionName === 'max' &&
+        zeroArgument.units.has('dimension:length') &&
+        (functionName === 'min' || functionName === 'max') &&
         boundedArguments.every((argument) => {
           const [[factor, exponent] = []] = argument.symbolicFactors;
           const hasKnownPositiveConversion =
@@ -596,9 +606,25 @@ function evaluateConstantArithmetic(expression) {
             (argument.symbolicFactors.size === 1 &&
               factor?.startsWith('relative-length:') &&
               exponent === 1);
-          return hasKnownPositiveConversion && argument.value <= 0;
+          return (
+            hasKnownPositiveConversion &&
+            (functionName === 'max' ? argument.value <= 0 : argument.value >= 0)
+          );
         });
       if (hasZeroPinnedRelativeLengthExtremum) return withValue(zeroArgument, 0);
+      if (
+        functionName === 'hypot' &&
+        boundedArguments.length > 0 &&
+        boundedArguments[0].symbolicFactors.size === 1 &&
+        sharedConversionFactor?.startsWith('relative-length:') &&
+        sharedConversionExponent === 1 &&
+        boundedArguments.every((argument) => sameSymbolicFactors(argument, boundedArguments[0]))
+      ) {
+        let hypotenuse = 0;
+        for (const argument of boundedArguments)
+          hypotenuse = Math.hypot(hypotenuse, argument.value);
+        return withValue(boundedArguments[0], hypotenuse);
+      }
       if (
         (functionName === 'min' || functionName === 'max') &&
         boundedArguments.length > 0 &&
@@ -659,17 +685,35 @@ function evaluateConstantArithmetic(expression) {
         let reducedValue = arguments_[0].value;
         for (let argumentIndex = 1; argumentIndex < arguments_.length; argumentIndex += 1)
           reducedValue = Math[functionName](reducedValue, arguments_[argumentIndex].value);
-        return withValue(arguments_[0], reducedValue);
+        const selectedArgument = arguments_.find((argument) =>
+          Object.is(argument.value, reducedValue),
+        );
+        return withValue(
+          selectedArgument ?? arguments_[0],
+          reducedValue,
+          selectedArgument?.exactValue,
+        );
       }
       if (functionName === 'clamp' && arguments_.length === 3) {
         const [minimum, value, maximum] = arguments_;
         if (value === unboundedClampEndpoint) throw new Error('expected a central value');
         const minimumValue = minimum === unboundedClampEndpoint ? -Infinity : minimum.value;
         const maximumValue = maximum === unboundedClampEndpoint ? Infinity : maximum.value;
-        return withValue(value, Math.max(minimumValue, Math.min(value.value, maximumValue)));
+        const clampedValue = Math.max(minimumValue, Math.min(value.value, maximumValue));
+        const selectedArgument =
+          minimum !== unboundedClampEndpoint && Object.is(minimum.value, clampedValue)
+            ? minimum
+            : maximum !== unboundedClampEndpoint && Object.is(maximum.value, clampedValue)
+              ? maximum
+              : value;
+        return withValue(selectedArgument, clampedValue, selectedArgument.exactValue);
       }
       if (functionName === 'abs' && arguments_.length === 1)
-        return withValue(arguments_[0], Math.abs(arguments_[0].value));
+        return withValue(
+          arguments_[0],
+          Math.abs(arguments_[0].value),
+          absoluteRational(arguments_[0].exactValue),
+        );
       if (functionName === 'sign' && arguments_.length === 1)
         return scalar(Math.sign(arguments_[0].value));
       if ((functionName === 'mod' || functionName === 'rem') && arguments_.length === 2) {
@@ -733,7 +777,15 @@ function evaluateConstantArithmetic(expression) {
       if (functionName === 'hypot' && arguments_.length > 0) {
         let hypotenuse = 0;
         for (const argument of arguments_) hypotenuse = Math.hypot(hypotenuse, argument.value);
-        return withValue(arguments_[0], hypotenuse);
+        const exactNonzeroArguments = arguments_.filter(
+          (argument) => argument.exactValue?.numerator !== 0n,
+        );
+        const exactValue =
+          arguments_.every((argument) => argument.exactValue !== undefined) &&
+          exactNonzeroArguments.length <= 1
+            ? absoluteRational((exactNonzeroArguments[0] ?? arguments_[0]).exactValue)
+            : undefined;
+        return withValue(arguments_[0], hypotenuse, exactValue);
       }
       if (functionName === 'log' && arguments_.length >= 1 && arguments_.length <= 2) {
         if (arguments_.some(({ units }) => units.size !== 0)) throw new Error('expected numbers');
@@ -1348,14 +1400,8 @@ export function analyzeStaticLayerValue(value) {
 
 export function haveCompatibleStaticProgressTypes(values) {
   const resolvedValues = values.map(resolveStaticArithmeticResult);
-  if (
-    resolvedValues.some(
-      (resolved) =>
-        resolved === null ||
-        resolved === staticAnalysisTooComplex ||
-        resolved === staticAnalysisInvalid,
-    )
-  )
+  if (resolvedValues.some((resolved) => resolved === staticAnalysisInvalid)) return false;
+  if (resolvedValues.some((resolved) => resolved === null || resolved === staticAnalysisTooComplex))
     return true;
   return resolvedValues.every(
     (resolved) =>

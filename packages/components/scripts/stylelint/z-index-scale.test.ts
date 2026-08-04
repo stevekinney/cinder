@@ -2153,6 +2153,13 @@ describe('cinder/z-index-scale', () => {
     ['calc(25396.19cm / 1in)', 1],
     ['calc(25396.20cm / 1in)', 1],
     ['calc(25396.19cm / 2.54cm)', 1],
+    ['calc(min(25396.19cm, 999999in) / 1in)', 1],
+    ['calc(min(999999in, 25396.19cm) / 1in)', 1],
+    ['calc(max(0cm, 25396.19cm) / 1in)', 1],
+    ['calc(abs(-25396.19cm) / 1in)', 1],
+    ['calc(clamp(0cm, 25396.19cm, 999999in) / 1in)', 1],
+    ['calc(hypot(25396.19cm, 0cm) / 1in)', 1],
+    ['calc(hypot(0cm, 25396.19cm) / 1in)', 1],
   ] as const)(
     'classifies exact absolute-unit rounding boundaries: %s',
     async (fallback, warningCount) => {
@@ -2700,6 +2707,7 @@ describe('cinder/z-index-scale', () => {
     'round(to-zero, var(--runtime), -1)',
     'mod(9999, var(--runtime))',
     'rem(9999, var(--runtime))',
+    'pow(9999, var(--runtime))',
   ])('preserves a direct banned bound sibling in unresolved math: %s', async (fallback) => {
     expect(
       warnings(
@@ -2723,6 +2731,8 @@ describe('cinder/z-index-scale', () => {
     'round(foo, 9999)',
     'mod(9999, var(--runtime), 1)',
     'rem(9999, var(--runtime), 1)',
+    'pow(9999, var(--runtime), 1)',
+    'pow(9999px, var(--runtime))',
   ])(
     'does not report candidates from a statically type-invalid math function: %s',
     async (fallback) => {
@@ -2743,6 +2753,8 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * progress(var(--runtime), 1px, 1deg))', 0],
     ['calc(9999 * progress(var(--runtime), 1%, 2%))', 0],
     ['calc(9999 * progress(var(--runtime), 1fr, 2fr))', 0],
+    ['calc(9999 * progress(var(--runtime), sqrt(-1), 1))', 0],
+    ['calc(9999 * progress(var(--runtime), 0, 1))', 1],
     ['calc(9999 * progress(var(--runtime), 1px, 2px))', 1],
   ] as const)(
     'validates the static progress range types before preserving its bound: %s',
@@ -2896,6 +2908,7 @@ describe('cinder/z-index-scale', () => {
       ['calc(1 + var(--zero, 0) / var(--divisor))', 0],
       ['calc(9999 + var(--zero, 0) / 0)', 0],
       ['calc(9999 + 0 / max(var(--divisor), 1))', 1],
+      ['calc(9999 + 0 / calc(var(--divisor) - 1))', 1],
       ['calc(9999 + 0 / min(var(--divisor), 1))', 1],
       ['calc(9999 + 0 / clamp(1, var(--divisor), 2))', 1],
       ['calc(9999 + 0 / max(var(--divisor), 1px))', 0],
@@ -2920,6 +2933,10 @@ describe('cinder/z-index-scale', () => {
       ['calc(9999 * max(0em, 0px) / max(0px, 0em))', 0],
       ['calc(9999 * max(-1em, 0px) / max(0px, -1em))', 0],
       ['calc(9999 * max(-1em, -2em) / max(-2em, -1em))', 1],
+      ['calc(9999 * min(1em, 0px) / min(0px, 1em))', 0],
+      ['calc(9999 * min(-1em, 0px) / min(0px, -1em))', 1],
+      ['calc(9999 * hypot(-1em, 2em) / hypot(1em, -2em))', 1],
+      ['calc(9999 * hypot(-1em, 2em) / hypot(1em, -3em))', 0],
     ] as const) {
       const result = await lint(`
         .fixture {
