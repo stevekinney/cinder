@@ -3749,6 +3749,29 @@ function typedHypotRangeCandidates(
       },
     ];
   if (isStaticallyInvalidArithmetic(validOuterExpression)) return [];
+  if (
+    hasFallbackIndependentClampBound(
+      frame,
+      value,
+      range,
+      0,
+      'negative',
+      budget,
+      parenthesisPairs,
+      true,
+    ) &&
+    hasFallbackIndependentClampBound(
+      frame,
+      value,
+      range,
+      2,
+      'magic',
+      budget,
+      parenthesisPairs,
+      true,
+    )
+  )
+    return [];
   if (liveHypotParents.length > 1) {
     const additiveTermRanges = topLevelAdditiveTermRanges(value, range, parenthesisPairs);
     if (additiveTermRanges !== undefined) {
@@ -3804,23 +3827,59 @@ function typedHypotRangeCandidates(
     ];
 
   const [liveHypotParent] = liveHypotParents;
+  let liveHypotRange = range;
+  const conditionalParent = liveHypotParent.children[0]?.conditionalParent;
+  if (conditionalParent?.functionStart >= range.start && conditionalParent.end <= range.end) {
+    const conditionalBranchRanges = conditionalBranchValueRanges(
+      value,
+      conditionalParent,
+      parenthesisPairs,
+    );
+    const containingBranch = Array.isArray(conditionalBranchRanges)
+      ? conditionalBranchRanges.find(
+          (branchRange) =>
+            liveHypotParent.functionRange.start >= branchRange.start &&
+            liveHypotParent.functionRange.end <= branchRange.end,
+        )
+      : undefined;
+    if (containingBranch !== undefined) liveHypotRange = containingBranch;
+  }
+  const analyzedHypotChildren = new Set(analyzedHypotParents.flatMap((parent) => parent.children));
+  const hasIndependentSelectableChild = [...selectableChildren].some(
+    (child) =>
+      child.start >= liveHypotRange.start &&
+      child.end <= liveHypotRange.end &&
+      !analyzedHypotChildren.has(child),
+  );
 
   const classifications = new Set();
   let hasValidOuterWitness = false;
   for (const witness of liveHypotParent.compatibleWitnesses) {
     for (const endpointWitness of [witness, `calc(infinity * 1${witness.slice(1)})`]) {
-      const expression = resolveFrameExpressionWithRangeReplacements(frame, value, range, budget, [
-        ...eliminatedHypotParents.map((parent) => ({
-          end: parent.functionRange.end,
-          start: parent.functionRange.start,
-          value: parent.compatibleWitnesses[0],
-        })),
-        ...liveHypotParent.children.map((child) => ({
-          end: child.end,
-          start: child.start,
-          value: endpointWitness,
-        })),
-      ]);
+      const expression = resolveFrameExpressionWithRangeReplacements(
+        frame,
+        value,
+        liveHypotRange,
+        budget,
+        [
+          ...eliminatedHypotParents
+            .filter(
+              (parent) =>
+                parent.functionRange.start >= liveHypotRange.start &&
+                parent.functionRange.end <= liveHypotRange.end,
+            )
+            .map((parent) => ({
+              end: parent.functionRange.end,
+              start: parent.functionRange.start,
+              value: parent.compatibleWitnesses[0],
+            })),
+          ...liveHypotParent.children.map((child) => ({
+            end: child.end,
+            start: child.start,
+            value: endpointWitness,
+          })),
+        ],
+      );
       if (expression === fallbackResolutionTooComplex)
         return [
           {
@@ -3832,8 +3891,7 @@ function typedHypotRangeCandidates(
         ];
       if (isStaticallyInvalidArithmetic(expression)) continue;
       const analysis = analyzeFrameExpression(frame, expression, budget);
-      if (analysis.resultType === 'non-number') continue;
-      hasValidOuterWitness = true;
+      if (analysis.resultType === 'non-number' && !hasIndependentSelectableChild) continue;
       if (analysis.classification === 'too-complex')
         return [
           {
@@ -3842,10 +3900,14 @@ function typedHypotRangeCandidates(
             resolvedClassification: 'too-complex',
           },
         ];
-      if (analysis.classification === 'negative' || analysis.classification === 'magic')
+      if (analysis.classification === 'negative' || analysis.classification === 'magic') {
+        hasValidOuterWitness = true;
         classifications.add(analysis.classification);
-      else if (analysis.classification === 'unresolved') classifications.add('too-complex');
-      else if (analysis.resultType === 'number') {
+      } else if (analysis.classification === 'unresolved') {
+        hasValidOuterWitness = true;
+        classifications.add('too-complex');
+      } else if (analysis.resultType === 'number') {
+        hasValidOuterWitness = true;
         const minimumValue = evaluateStaticLayerNumber(expression);
         if (
           endpointWitness === witness &&
@@ -3854,7 +3916,7 @@ function typedHypotRangeCandidates(
           minimumValue < 9999.5
         )
           classifications.add('too-complex');
-      } else classifications.add('too-complex');
+      }
     }
   }
   if (!hasValidOuterWitness) return [];
