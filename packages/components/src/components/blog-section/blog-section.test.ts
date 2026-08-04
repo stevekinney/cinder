@@ -50,11 +50,13 @@ describe('BlogSection', () => {
         'utf8',
       );
       expect(stylesheet).toContain("@import '../_internal/section-skeleton.css';");
+      expect(stylesheet).toContain("@import '../_internal/person-byline.css';");
       expect(stylesheet).not.toContain('container-type: inline-size');
       expect(stylesheet).not.toContain('padding-block: var(--cinder-space-10)');
       expect(stylesheet).not.toContain('grid-template-columns: repeat(1, minmax(0, 1fr))');
     }
     expect(skeleton).toContain('.cinder-_section-skeleton__list');
+    expect(skeleton).toContain('grid-template-columns: minmax(0, 1fr) !important;');
     expect(skeleton.match(/\.cinder-_section-skeleton__list/g)?.length).toBeGreaterThan(0);
   });
 

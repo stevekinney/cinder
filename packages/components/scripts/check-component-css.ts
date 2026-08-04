@@ -300,6 +300,16 @@ export function checkComponentCssSource(
   // layout mirrors. Reject every other `@import` upfront.
   root.walkAtRules('import', (atRule) => {
     if (isAllowedComponentImport(atRule)) {
+      if (atRule.parent !== root) {
+        violations.push({
+          file,
+          line: atRule.source?.start?.line ?? 1,
+          column: atRule.source?.start?.column ?? 1,
+          message:
+            'Allowed component stylesheet imports must appear at the root level before the component layer block.',
+        });
+        return;
+      }
       const params = atRule.params.trim();
       if (PRIVATE_COMPONENT_IMPORT_PARAMS.test(params)) {
         const importPath = params.slice(1, -1);

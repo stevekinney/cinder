@@ -274,6 +274,25 @@ describe('checkComponentCssSource', () => {
     expect(violations.some((violation) => violation.message.includes('@import'))).toBe(true);
   });
 
+  it('rejects private imports nested inside the component layer', () => {
+    const root = mkdtempSync(join(tmpdir(), 'component-css-private-nested-'));
+    try {
+      const componentDirectory = join(root, 'src/components/example');
+      const internalDirectory = join(root, 'src/components/_internal');
+      mkdirSync(componentDirectory, { recursive: true });
+      mkdirSync(internalDirectory, { recursive: true });
+      writeFileSync(
+        join(internalDirectory, 'nested.css'),
+        `${LAYER_ORDER_PRELUDE}\n@layer cinder.components { .cinder-example-nested {} }`,
+      );
+      const source = `${LAYER_ORDER_PRELUDE}\n@layer cinder.components { @import '../_internal/nested.css'; .cinder-example {} }`;
+      const violations = checkComponentCssSource(source, join(componentDirectory, 'example.css'));
+      expect(violations.some((violation) => violation.message.includes('root level'))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a nested components directory that cannot resolve a private import', () => {
     const source = `${LAYER_ORDER_PRELUDE}\n@import '../_internal/section-skeleton.css';\n@layer cinder.components { .cinder-experimental-section {} }`;
     const violations = checkComponentCssSource(

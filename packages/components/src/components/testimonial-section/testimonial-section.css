@@ -1,5 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../_internal/section-skeleton.css';
+@import '../_internal/person-byline.css';
 @layer cinder.components {
   .cinder-testimonial-section {
     container-name: cinder-testimonial-section;
