@@ -2907,18 +2907,6 @@ describe('cinder/z-index-scale', () => {
     ['first-valid(random(0, 1), 9999)', 0],
     ['first-valid(progress(var(--runtime), 0, 1), 9999)', 0],
     ['first-valid(media-progress(width, 0px, 1000px), 9999)', 1],
-    ['first-valid(container-progress(width of --sidebar, 0px, 1000px), 9999)', 1],
-    ['first-valid(media-progress(aspect-ratio, 1/1, 16/9), 9999)', 1],
-    ['first-valid(container-progress(aspect-ratio, 1/1, 16/9), 9999)', 1],
-    ['first-valid(media-progress(foo, 0px, 1000px), 9999)', 1],
-    ['first-valid(media-progress(width, 0px), 9999)', 1],
-    ['first-valid(media-progress(width, 0px, 1deg), 9999)', 1],
-    ['first-valid(media-progress(orientation, 0, 1), 9999)', 1],
-    ['first-valid(container-progress(width of, 0px, 1000px), 9999)', 1],
-    ['first-valid(container-progress(orientation, 0, 1), 9999)', 1],
-    ['first-valid(media-progress(color, 1.5, 2.5), 1)', 0],
-    ['first-valid(media-progress(monochrome, 1.5, 2.5), 1)', 0],
-    ['first-valid(media-progress(horizontal-viewport-segments, 1.5, 2.5), 1)', 0],
     ['first-valid(sibling-index(), 9999)', 1],
     ['first-valid(first-valid(var(--runtime), 1), 9999)', 0],
     ['first-valid(if(media(foo): 1; else: 2), 9999)', 0],
@@ -2980,16 +2968,6 @@ describe('cinder/z-index-scale', () => {
     'progress(no-clamp var(--inner, -1), 0, 1)',
     'progress(/**/no-clamp var(--inner, -1), 0, 1)',
     'calc(progress(var(--inner, -1), 0, 1) + var(--runtime))',
-    'media-progress(width, 0px, 1000px)',
-    'container-progress(width, 0px, 1000px)',
-    'calc(1 + media-progress(width, 0px, 1000px))',
-    'calc(1 + container-progress(width of --sidebar, 0px, 1000px))',
-    'media-progress(width, 1000px, 0px)',
-    'container-progress(width, 1000px, 0px)',
-    'media-progress(aspect-ratio, 1/1, 16/9)',
-    'container-progress(aspect-ratio, 1/1, 16/9)',
-    'media-progress(color, 1, 2)',
-    'media-progress(color, calc(1.5), calc(2.5))',
   ])(
     'does not apply a progress range proof outside a whole valid function: %s',
     async (fallback) => {
@@ -3013,9 +2991,6 @@ describe('cinder/z-index-scale', () => {
     'calc(progress(var(--runtime), 0, 1) - 9999)',
     'calc(progress(var(--runtime), 0, 1) * 9999)',
     'calc(9999 * progress(var(--runtime), 0, 1))',
-    'calc(9999 * media-progress(width, 0px, 1000px))',
-    'calc(9999 * container-progress(width, 0px, 1000px))',
-    'calc(9999 * container-progress(width of --sidebar, 0px, 1000px))',
   ])('propagates a valid progress range through enclosing arithmetic: %s', async (fallback) => {
     expect(
       warnings(
@@ -3042,44 +3017,19 @@ describe('cinder/z-index-scale', () => {
     ).toEqual([]);
   });
 
-  test.each([
-    ['if(media(all): calc(9999 * media-progress(width, 0px, 1000px)); else: 1)', 1],
-    ['if(media(foo): calc(9999 * media-progress(width, 0px, 1000px)); else: 1)', 0],
-  ] as const)(
-    'tracks contextual progress in selected conditional branches: %s',
-    async (fallback, count) => {
+  test.each(['media-progress(width, 0px, 1000px)', 'container-progress(width, 0px, 1000px)'])(
+    'does not warn for a fallback invalidated by a removed contextual progress function: %s',
+    async (removedProgressFunction) => {
       expect(
         warnings(
           await lint(`
           .fixture {
-            /* cinder-z-index-local: selected contextual progress remains range-analyzed. */
-            z-index: var(--outer, ${fallback});
+            /* cinder-z-index-local: removed functions invalidate the fallback before z-index use. */
+            z-index: var(--outer, calc(2 * ${removedProgressFunction}));
           }
         `),
         ),
-      ).toHaveLength(count);
-    },
-  );
-
-  test.each([
-    ['calc(media-progress(width, 0px, 1000px) - media-progress(width, 0px, 1000px))', 0],
-    [
-      'calc(9999 * (media-progress(width, 0px, 1000px) - container-progress(width, 0px, 1000px)))',
-      1,
-    ],
-  ] as const)(
-    'correlates contextual progress functions by identity: %s',
-    async (fallback, count) => {
-      expect(
-        warnings(
-          await lint(`
-          .fixture {
-            /* cinder-z-index-local: identical contextual progress values share endpoints. */
-            z-index: var(--outer, ${fallback});
-          }
-        `),
-        ),
-      ).toHaveLength(count);
+      ).toEqual([]);
     },
   );
 
@@ -3601,6 +3551,9 @@ describe('cinder/z-index-scale', () => {
     ['calc(9998 + abs(var(--runtime)))', 1],
     ['calc(-1 + abs(var(--runtime)))', 1],
     ['abs(var(--runtime))', 1],
+    ['min(1, abs(var(--runtime)))', 0],
+    ['min(9999, abs(var(--runtime)))', 1],
+    ['max(0, abs(var(--runtime)))', 1],
     ['calc(0 * abs(var(--runtime)))', 0],
     ['calc(9999 * abs(var(--runtime), 1))', 0],
   ] as const)(
@@ -4405,6 +4358,11 @@ describe('cinder/z-index-scale', () => {
     ['calc(9999 * sibling-count() / sibling-count())', 1],
     ['calc(9999 * sibling-index() / sibling-count())', 1],
     ['calc(9999 * sibling-index())', 1],
+    ['min(1, sibling-index())', 0],
+    ['min(1, sibling-count())', 0],
+    ['min(-1, sibling-count())', 1],
+    ['min(9999, sibling-index())', 1],
+    ['min(sibling-index(), sibling-count())', 1],
     ['calc(0 * sibling-index())', 0],
     ['calc(9999 * sibling-index(1))', 0],
     ['calc(9999 * sibling-count(1))', 0],
