@@ -1764,6 +1764,11 @@ describe('Portal', () => {
     await tick();
 
     expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    source.setAttribute('dir', 'ltr');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
   });
 
   test('falls back to a computed source direction after removing an explicit direction', async () => {
@@ -1787,11 +1792,16 @@ describe('Portal', () => {
     await tick();
 
     expect(wrapper?.getAttribute('dir')).toBe('rtl');
+
+    source.style.direction = 'ltr';
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(wrapper?.getAttribute('dir')).toBe('ltr');
   });
 
   test('reapplies a different explicit direction after removing one', async () => {
     const { rerender } = render(Portal, {
-      props: { dir: 'rtl', children: childSnippet },
+      props: { dir: 'auto', children: childSnippet },
     });
 
     await tick();
