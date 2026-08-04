@@ -228,15 +228,13 @@ const plugin = stylelint.createPlugin(ruleName, (primary) => {
 
       const offendingFallback = bannedFallback(declarationValue);
       if (offendingFallback) {
-        const declarationText = declaration.toString();
-        const declarationValueIndex = declarationText.indexOf(declarationValue);
+        const declarationValueIndex =
+          declaration.prop.length + (declaration.raws.between?.length ?? 0);
         const fallbackValueIndex =
           offendingFallback.index === undefined ? -1 : offendingFallback.index;
         const fallbackLength = offendingFallback.length ?? offendingFallback.value.length;
         const fallbackIndex =
-          fallbackValueIndex === -1 || declarationValueIndex === -1
-            ? -1
-            : declarationValueIndex + fallbackValueIndex;
+          fallbackValueIndex === -1 ? -1 : declarationValueIndex + fallbackValueIndex;
         const originalFallback =
           fallbackValueIndex === -1
             ? offendingFallback.value

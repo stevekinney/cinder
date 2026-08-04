@@ -1572,6 +1572,19 @@ describe('cinder/z-index-scale', () => {
     expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
+  test('indexes wide sibling CSS if() groups in linear time', async () => {
+    const { bannedFallback } = await import(fallbackAnalysisPath);
+    const terms = Array.from(
+      { length: 16_000 },
+      (_, index) => `if(style(--condition-${index}: yes): var(--runtime-${index}); else: 1)`,
+    );
+    const startedAt = performance.now();
+    const result = bannedFallback(`var(--outer, calc(${terms.join(' + ')}))`);
+
+    expect(result?.reason).toBe('too-complex');
+    expect(performance.now() - startedAt).toBeLessThan(2_000);
+  });
+
   test('keeps sliced literal source ranges lazy for long escaped dimensions', async () => {
     const { normalizeCssEscapesForInspection } = await import(valueAnalysisPath);
     const value = `1\\g${'a'.repeat(500_000)}`;
@@ -3860,5 +3873,115 @@ describe('cinder/z-index-scale', () => {
       config: { plugins: [pluginPath], rules: { [ruleName]: true } },
     });
     expect(warnings(result)).toHaveLength(1);
+  });
+
+  test.each([
+    ['calc(9999 * pow(var(--runtime), 0))', 1],
+    ['calc(0 * pow(var(--runtime), 0))', 0],
+    ['calc(9999 * pow(var(--runtime)))', 0],
+    ['calc(9999 * pow(var(--runtime), 0, 1))', 0],
+    ['calc(9999 * pow(1px, var(--runtime)))', 0],
+  ] as const)('tracks unresolved pow arity and zero elimination: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: pow regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test.each([
+    ['if(style(--theme: dark): 9999; else: 1)', 1],
+    ['if(style(--theme: dark): -1; else: 1)', 1],
+    ['if(style(--theme: dark): 1; else: 9999)', 1],
+    ['if(style(--theme: dark): var(--inner, 9999); else: 1)', 1],
+    ['if(style(--theme: dark): 1; else: 2)', 0],
+    ['if(style(--theme: dark): ; else: 9999)', 1],
+    ['if(not style(--theme: dark): 9999; else: 1)', 1],
+    ['if(not (style(--theme: dark)): 9999; else: 1)', 1],
+    ['if(not (media(width > 10px)): 9999; else: 1)', 1],
+    ['if(not (supports(display: grid)): 9999; else: 1)', 1],
+    ['if(not ((style(--theme: dark) or supports(display: grid))): 9999; else: 1)', 1],
+    ['if(style(--theme: dark) and media(width > 10px): 9999; else: 1)', 1],
+    ['if((style(--theme: dark) or supports(display: grid)): 9999; else: 1)', 1],
+    ['if(else: 1; style(--theme: dark): 9999)', 0],
+    ['if(else: 1; else: 9999)', 0],
+    ['if(style(--theme: dark): 1; else: 2; style(--other: yes): 9999)', 0],
+    ['if(else: 1; style(--theme: dark): var(--inner, 9999))', 0],
+    ['calc(2 * if(style(--theme: dark): 4999.5; else: 1))', 1],
+    ['calc(if(style(--theme: dark): 10000; else: 1) - 1)', 1],
+    ['calc(0 * if(style(--theme: dark): 9999; else: 1))', 0],
+    ['min(1, if(style(--theme: dark): 9999; else: 1))', 0],
+    ['max(10000, if(style(--theme: dark): 9999; else: 1))', 0],
+    ['clamp(0, if(style(--theme: dark): 9999; else: 1), 1)', 0],
+    ['if(media(width > 10px): 9999; else: 1)', 1],
+    ['if(supports(display: grid): 9999; else: 1)', 1],
+    ['if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2)', 1],
+    ['if(style(--theme: dark): 1; else: if(style(--nested: yes): 9999; else: 2))', 1],
+    ['calc(2 * if(style(--theme: dark): if(style(--nested: yes): 4999.5; else: 1); else: 2))', 1],
+    ['if(style(--theme: dark): calc(if(style(--nested: yes): 10000; else: 1) - 1); else: 2)', 1],
+    ['clamp(0, if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2), 1)', 0],
+    ['max(10000, if(style(--theme: dark): if(style(--nested: yes): 9999; else: 1); else: 2))', 0],
+  ] as const)('tracks CSS if() branches: %s', async (fallback, count) => {
+    expect(
+      warnings(
+        await lint(`
+          .fixture {
+            /* cinder-z-index-local: if() branch regression coverage. */
+            z-index: var(--outer, ${fallback});
+          }
+        `),
+      ),
+    ).toHaveLength(count);
+  });
+
+  test('does not report nested candidates from malformed CSS if() syntax', async () => {
+    for (const conditional of [
+      'if(not: var(--inner, 9999); else: 1)',
+      'if(foo style(--theme: dark): 9999; else: 1)',
+      'if(style(--theme: dark) foo: 9999; else: 1)',
+      'if(style(--theme: dark) andfoo media(width > 1px): 9999; else: 1)',
+    ])
+      expect(
+        warnings(
+          await lint(`
+            .fixture {
+              /* cinder-z-index-local: malformed condition is not a selectable branch. */
+              z-index: var(--outer, ${conditional});
+            }
+          `),
+        ),
+      ).toEqual([]);
+  });
+
+  test('bounds deeply nested CSS if() branch analysis', async () => {
+    const nestedConditional = `${Array.from(
+      { length: 130 },
+      (_, index) => `if(style(--condition-${index}: yes): `,
+    ).join('')}9999${'; else: 1)'.repeat(130)}`;
+    const [warning] = warnings(
+      await lint(`
+        .fixture {
+          /* cinder-z-index-local: conditional nesting must stay within the shared budget. */
+          z-index: var(--outer, ${nestedConditional});
+        }
+      `),
+    );
+
+    expect(warning?.text).toContain('too complex to verify safely');
+  });
+
+  test('anchors a diagnostic after property-value separator comments', async () => {
+    const css = '.x { z-index/*var(--x,9999)*/: var(--x,9999); }';
+    const result = warnings(await lint(css));
+    const warning = result[0];
+    const start = sourceLocation(css, css.lastIndexOf('9999'));
+    const end = sourceLocation(css, css.lastIndexOf('9999') + 4);
+    expect(warning?.column).toBe(start.column);
+    expect(warning?.endColumn).toBe(end.column);
   });
 });

@@ -22,12 +22,14 @@ import {
 const fallbackFunctionPattern = /(?:var|env|attr)\(/iy;
 const fallbackResolutionTooComplex = Symbol('fallback-resolution-too-complex');
 const fallbackResolutionWorkLimit = 8_000_000;
+const conditionalNestingLimit = 128;
 const uniformDivisorWitnessValues = ['1', '2', '1px', '1deg', '1s', '1hz', '1dppx'];
 const typedDivisorWitnessValues = ['1px', '1deg', '1s', '1hz', '1dppx'];
 const typedZeroWitnessValues = ['0px', '0deg', '0s', '0hz', '0dppx'];
 const hypotRuntimeWitnessValues = ['1', ...typedDivisorWitnessValues];
 const extremaFunctionNames = new Set(['clamp', 'max', 'min']);
 const hypotFunctionNames = new Set(['hypot']);
+const conditionalFunctionNames = new Set(['if']);
 const unresolvedRuntimeFunctionArities = new Map([
   ['abs', 1],
   ['acos', 1],
@@ -35,6 +37,7 @@ const unresolvedRuntimeFunctionArities = new Map([
   ['atan', 1],
   ['atan2', 2],
   ['cos', 1],
+  ['pow', 2],
   ['sin', 1],
   ['tan', 1],
 ]);
@@ -1070,6 +1073,161 @@ function fallbackIndependentStaticArguments(frame, value, range, functionName, p
   };
 }
 
+function isValidConditionalBooleanExpression(value, range, parenthesisPairs, depth = 0) {
+  if (depth > conditionalNestingLimit) return false;
+  const expressionRange = trimCssTriviaRange(value, range.start, range.end);
+  if (expressionRange.start === expressionRange.end) return false;
+
+  const skipTrivia = (start) => {
+    while (start < expressionRange.end && isCssWhitespaceOrComment(value[start])) start += 1;
+    return start;
+  };
+  const consumeGroup = (start) => {
+    start = skipTrivia(start);
+    if (value[start] === '(') {
+      const closeIndex = parenthesisPairs.get(start);
+      if (closeIndex === undefined || closeIndex >= expressionRange.end) return undefined;
+      if (
+        !isValidConditionalBooleanExpression(
+          value,
+          { start: start + 1, end: closeIndex },
+          parenthesisPairs,
+          depth + 1,
+        )
+      )
+        return undefined;
+      return closeIndex + 1;
+    }
+    const identifierEnd = cssIdentifierTokenEnd(value, start);
+    if (identifierEnd === start || value[identifierEnd] !== '(') return undefined;
+    const closeIndex = parenthesisPairs.get(identifierEnd);
+    return closeIndex === undefined || closeIndex >= expressionRange.end
+      ? undefined
+      : closeIndex + 1;
+  };
+
+  let cursor = expressionRange.start;
+  const firstIdentifierEnd = cssIdentifierTokenEnd(value, cursor);
+  const firstIdentifier = value.slice(cursor, firstIdentifierEnd).toLowerCase();
+  const hasLeadingNot = firstIdentifier === 'not' && value[firstIdentifierEnd] !== '(';
+  if (hasLeadingNot) cursor = skipTrivia(firstIdentifierEnd);
+  cursor = consumeGroup(cursor);
+  if (cursor === undefined) return false;
+  cursor = skipTrivia(cursor);
+  if (hasLeadingNot) return cursor === expressionRange.end;
+
+  let operator;
+  while (cursor < expressionRange.end) {
+    const operatorEnd = cssIdentifierTokenEnd(value, cursor);
+    const nextOperator = value.slice(cursor, operatorEnd).toLowerCase();
+    if (nextOperator !== 'and' && nextOperator !== 'or') return false;
+    if (operator !== undefined && operator !== nextOperator) return false;
+    operator = nextOperator;
+    cursor = consumeGroup(skipTrivia(operatorEnd));
+    if (cursor === undefined) return false;
+    cursor = skipTrivia(cursor);
+  }
+  return true;
+}
+
+function conditionalBranchValueRanges(value, group, parenthesisPairs) {
+  if (group.functionName !== 'if' || group.end === undefined) return undefined;
+
+  const branches = [];
+  let hasUnconditionalBranch = false;
+  let branchStart = group.openIndex + 1;
+  const appendBranch = (branchEnd) => {
+    const branchRange = trimCssTriviaRange(value, branchStart, branchEnd);
+    if (branchRange.start === branchRange.end)
+      return branchEnd === group.end - 1 && branches.length > 0;
+
+    let separatorIndex = -1;
+    for (let index = branchRange.start; index < branchRange.end; index += 1) {
+      if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
+      else {
+        const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+        if (urlTokenEnd !== undefined) index = urlTokenEnd;
+        else if (value[index] === '(') {
+          const closeIndex = parenthesisPairs.get(index);
+          if (closeIndex === undefined || closeIndex >= branchRange.end) return false;
+          index = closeIndex;
+        } else if (value[index] === ')') return false;
+        else if (value[index] === ':') {
+          separatorIndex = index;
+          break;
+        }
+      }
+    }
+    if (separatorIndex === -1) return false;
+
+    const conditionRange = trimCssTriviaRange(value, branchRange.start, separatorIndex);
+    const branchValueRange = trimCssTriviaRange(value, separatorIndex + 1, branchRange.end);
+    if (conditionRange.start === conditionRange.end) return false;
+    const condition = value
+      .slice(conditionRange.start, conditionRange.end)
+      .replaceAll(cssCommentMaskCharacter, ' ')
+      .trim()
+      .toLowerCase();
+    const isUnconditionalBranch = condition === 'else';
+    if (
+      !isUnconditionalBranch &&
+      !isValidConditionalBooleanExpression(value, conditionRange, parenthesisPairs)
+    )
+      return false;
+    if (!hasUnconditionalBranch) branches.push(branchValueRange);
+    hasUnconditionalBranch ||= isUnconditionalBranch;
+    return true;
+  };
+
+  for (let index = branchStart; index < group.end - 1; index += 1) {
+    if (value[index] === '"' || value[index] === "'") index = quotedStringEnd(value, index);
+    else {
+      const urlTokenEnd = unquotedUrlTokenEnd(value, index);
+      if (urlTokenEnd !== undefined) index = urlTokenEnd;
+      else if (value[index] === '(') {
+        const closeIndex = parenthesisPairs.get(index);
+        if (closeIndex === undefined || closeIndex >= group.end) return undefined;
+        index = closeIndex;
+      } else if (value[index] === ')') return undefined;
+      else if (value[index] === ';') {
+        if (!appendBranch(index)) return undefined;
+        branchStart = index + 1;
+      }
+    }
+  }
+  if (!appendBranch(group.end - 1)) return undefined;
+  return branches;
+}
+
+function rangeIsValidConditionalExpression(frame, value, range, parenthesisPairs) {
+  const expressionRange = unwrapStaticContainer(value, range, parenthesisPairs);
+  return frame.conditionalGroups.some(
+    (group) =>
+      group.functionStart === expressionRange.start &&
+      group.end === expressionRange.end &&
+      conditionalBranchValueRanges(value, group, parenthesisPairs) !== undefined,
+  );
+}
+
+function childIsInSelectableConditionalBranch(child, value, parenthesisPairs) {
+  let conditionalParent = child.conditionalParent;
+  let selectableRange = { start: child.start, end: child.end };
+  while (conditionalParent !== undefined) {
+    const branchRanges = conditionalBranchValueRanges(value, conditionalParent, parenthesisPairs);
+    if (
+      branchRanges === undefined ||
+      !branchRanges.some(
+        (branchRange) =>
+          selectableRange.start >= branchRange.start && selectableRange.end <= branchRange.end,
+      )
+    )
+      return false;
+    selectableRange = { start: conditionalParent.functionStart, end: conditionalParent.end };
+    conditionalParent = conditionalParent.enclosingConditionalParent;
+  }
+  return true;
+}
+
 function progressRangeMode(frame, value, range, parenthesisPairs) {
   const parsedArguments = fallbackIndependentStaticArguments(
     frame,
@@ -2008,7 +2166,15 @@ function hasFallbackIndependentClampBound(
     parenthesisPairs,
   );
   if (clampArguments?.argumentCount !== 3) return false;
-  if (!centerExpressionIsKnownValid) {
+  const centerIsKnownValid =
+    centerExpressionIsKnownValid ||
+    rangeIsValidConditionalExpression(
+      frame,
+      value,
+      clampArguments.argumentRanges[1],
+      parenthesisPairs,
+    );
+  if (!centerIsKnownValid) {
     const centerExpression = argumentWithFallbackPlaceholders(
       frame,
       value,
@@ -2856,8 +3022,11 @@ function unresolvedRuntimeRangeCandidates(
     if (
       parsedArguments?.argumentCount !==
         unresolvedRuntimeFunctionArities.get(functionParent.functionName) ||
-      parsedArguments.staticArguments.some((argument) =>
-        isStaticallyInvalidArithmetic(argument.value),
+      parsedArguments.staticArguments.some(
+        (argument) =>
+          isStaticallyInvalidArithmetic(argument.value) ||
+          (functionParent.functionName === 'pow' &&
+            analyzeStaticLayerValue(argument.value).resultType === 'non-number'),
       )
     )
       continue;
@@ -2880,6 +3049,171 @@ function unresolvedRuntimeRangeCandidates(
     ];
   }
   return [];
+}
+
+function conditionalReplacementCombinations(replacementGroups, budget, initialCombinations = [[]]) {
+  let combinations = initialCombinations;
+  for (const replacements of replacementGroups) {
+    const combinationCount = combinations.length * replacements.length;
+    const combinationWork = combinationCount * ((combinations[0]?.length ?? 0) + 1);
+    if (
+      !Number.isSafeInteger(combinationCount) ||
+      !Number.isSafeInteger(combinationWork) ||
+      !consumeResolutionWork(budget, combinationWork)
+    )
+      return fallbackResolutionTooComplex;
+    const nextCombinations = [];
+    for (const combination of combinations)
+      for (const replacement of replacements) nextCombinations.push([...combination, replacement]);
+    combinations = nextCombinations;
+  }
+  return combinations;
+}
+
+function conditionalGroupReplacements(
+  frame,
+  value,
+  group,
+  budget,
+  parenthesisPairs,
+  nestingDepth = 0,
+) {
+  if (nestingDepth > conditionalNestingLimit) return fallbackResolutionTooComplex;
+  const branchRanges = conditionalBranchValueRanges(value, group, parenthesisPairs);
+  if (branchRanges === undefined) return undefined;
+
+  const replacements = [];
+  let nestedGroupIndex = 0;
+  for (const branchRange of branchRanges) {
+    while (group.conditionalChildren[nestedGroupIndex]?.end <= branchRange.start)
+      nestedGroupIndex += 1;
+    const nestedGroups = [];
+    while (group.conditionalChildren[nestedGroupIndex]?.functionStart < branchRange.end) {
+      nestedGroups.push(group.conditionalChildren[nestedGroupIndex]);
+      nestedGroupIndex += 1;
+    }
+    const nestedReplacementGroups = [];
+    for (const nestedGroup of nestedGroups) {
+      const nestedReplacements = conditionalGroupReplacements(
+        frame,
+        value,
+        nestedGroup,
+        budget,
+        parenthesisPairs,
+        nestingDepth + 1,
+      );
+      if (nestedReplacements === undefined) return undefined;
+      if (nestedReplacements === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+      nestedReplacementGroups.push(nestedReplacements);
+    }
+    const nestedCombinations = conditionalReplacementCombinations(nestedReplacementGroups, budget);
+    if (nestedCombinations === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+    const branchFrame = {
+      ...frame,
+      children: frame.children.filter(
+        (child) => child.start >= branchRange.start && child.end <= branchRange.end,
+      ),
+    };
+    for (const nestedCombination of nestedCombinations) {
+      const resolvedBranch = resolveFrameExpressionWithRangeReplacements(
+        branchFrame,
+        value,
+        branchRange,
+        budget,
+        nestedCombination,
+      );
+      if (resolvedBranch === fallbackResolutionTooComplex) return fallbackResolutionTooComplex;
+      const nestedAnchor = nestedCombination.find(
+        (replacement) => replacement.anchorRange.start !== replacement.anchorRange.end,
+      )?.anchorRange;
+      replacements.push({
+        start: group.functionStart,
+        end: group.end,
+        value: resolvedBranch,
+        anchorRange: nestedAnchor ?? branchRange,
+      });
+    }
+  }
+  return replacements;
+}
+
+function conditionalRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs) {
+  const topLevelGroups = frame.conditionalGroups.filter(
+    (group) =>
+      group.functionStart >= range.start &&
+      group.end <= range.end &&
+      group.enclosingConditionalParent === undefined,
+  );
+  if (topLevelGroups.length === 0) return [];
+
+  let combinations = [[]];
+  for (const group of topLevelGroups) {
+    const replacements = conditionalGroupReplacements(
+      frame,
+      value,
+      group,
+      budget,
+      parenthesisPairs,
+    );
+    if (replacements === undefined) return [];
+    if (replacements === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+    combinations = conditionalReplacementCombinations([replacements], budget, combinations);
+    if (combinations === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+  }
+
+  const candidates = [];
+  for (const combination of combinations) {
+    const expression = resolveFrameExpressionWithRangeReplacements(
+      frame,
+      value,
+      range,
+      budget,
+      combination,
+    );
+    if (expression === fallbackResolutionTooComplex)
+      return [
+        {
+          ...candidate,
+          resolvedFallback: fallbackResolutionTooComplex,
+          resolvedClassification: 'too-complex',
+          hasRuntimeSibling: true,
+        },
+      ];
+    const analysis = analyzeFrameExpression(frame, expression, budget);
+    if (analysis.classification !== 'negative' && analysis.classification !== 'magic') continue;
+    const anchorRange = combination.find(
+      (replacement) => replacement.anchorRange.start !== replacement.anchorRange.end,
+    )?.anchorRange;
+    candidates.push({
+      ...candidate,
+      ...(anchorRange === undefined
+        ? {}
+        : {
+            fallbackIndex: anchorRange.start,
+            rawFallback: value.slice(anchorRange.start, anchorRange.end),
+          }),
+      resolvedFallback: expression,
+      resolvedClassification: analysis.classification,
+      hasRuntimeSibling: true,
+    });
+  }
+  return candidates;
 }
 
 function unprovenCandidatesForFrame(frame, value, range, candidate, budget, parenthesisPairs) {
@@ -2971,6 +3305,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     (child) =>
       child.unprovenBannedCandidates.length > 0 &&
       !candidatesAreHiddenByInvalidTokenStream &&
+      childIsInSelectableConditionalBranch(child, value, parenthesisPairs) &&
       !(
         child.invalidFunctionParent?.end !== undefined &&
         child.invalidFunctionParent.functionStart >= range.start &&
@@ -3099,6 +3434,7 @@ function unprovenCandidatesForFrame(frame, value, range, candidate, budget, pare
     ...signAnalysis.analyzedRanges,
   ];
   const boundedRuntimeCandidates = [
+    ...conditionalRangeCandidates(frame, value, range, candidate, budget, parenthesisPairs),
     ...progressAnalysis.candidates,
     ...signAnalysis.candidates.filter(
       (signCandidate) => !candidateIsSuppressedByZeroQuotient(signCandidate),
@@ -3191,7 +3527,12 @@ function fallbackCandidates(value) {
   const parentheses = [];
   const parenthesisPairs = new Map();
   const fallbackFrames = [];
-  const rootFrame = { type: 'root', children: [], hasInvalidCommaStream: false };
+  const rootFrame = {
+    type: 'root',
+    children: [],
+    conditionalGroups: [],
+    hasInvalidCommaStream: false,
+  };
   const resolutionBudget = { remaining: fallbackResolutionWorkLimit };
 
   for (let index = 0; index < value.length; index += 1) {
@@ -3223,6 +3564,7 @@ function fallbackCandidates(value) {
         openIndex: index + functionMatch[0].length - 1,
         commaIndex: -1,
         children: [],
+        conditionalGroups: [],
         consumerRequiresSignedZero: inheritedConsumerContext,
         unprovenBannedCandidates: [],
         resolvedFallback: null,
@@ -3234,6 +3576,7 @@ function fallbackCandidates(value) {
         hypotParent: parentheses.at(-1)?.hypotParent,
         progressParent: parentheses.at(-1)?.progressParent,
         signParent: parentheses.at(-1)?.signParent,
+        conditionalParent: parentheses.at(-1)?.conditionalParent,
         runtimeRangeParent: parentheses.at(-1)?.runtimeRangeParent,
         unsupportedProgressRangeParent: parentheses.at(-1)?.unsupportedProgressRangeParent,
         signedZeroSensitiveContext: inheritedContext || isPrecededByDivision(value, index),
@@ -3265,6 +3608,7 @@ function fallbackCandidates(value) {
       const isInvalidFunctionBlock =
         !group.isGroupingParenthesis &&
         !mathFunctionNames.has(group.functionName) &&
+        !conditionalFunctionNames.has(group.functionName) &&
         !substitutionFunctionNames.has(group.functionName);
       group.invalidFunctionParent = isInvalidFunctionBlock
         ? group
@@ -3283,6 +3627,20 @@ function fallbackCandidates(value) {
       group.runtimeRangeParent = unresolvedRuntimeFunctionArities.has(group.functionName)
         ? group
         : parenthesisParent?.runtimeRangeParent;
+      if (conditionalFunctionNames.has(group.functionName)) {
+        const conditionalOwner = fallbackFrames.at(-1);
+        group.conditionalChildren = [];
+        group.conditionalOwner = conditionalOwner ?? rootFrame;
+        const inheritedConditionalParent = parenthesisParent?.conditionalParent;
+        group.enclosingConditionalParent =
+          inheritedConditionalParent?.conditionalOwner === group.conditionalOwner
+            ? inheritedConditionalParent
+            : undefined;
+        group.enclosingConditionalParent?.conditionalChildren.push(group);
+        group.conditionalParent = group;
+        if (conditionalOwner?.commaIndex !== -1) conditionalOwner.conditionalGroups.push(group);
+        else if (conditionalOwner === undefined) rootFrame.conditionalGroups.push(group);
+      } else group.conditionalParent = parenthesisParent?.conditionalParent;
       const progressRangeIsUnsupported =
         group.signedZeroSensitiveContext ||
         (!group.isGroupingParenthesis &&
