@@ -230,8 +230,19 @@ test.describe('logo cloud responsive columns', () => {
           }
         }, width);
 
-        const actual = await logoList.evaluate(gridTrackCount);
-        expect(actual, `columns=${columns} at ${width}px`).toBe(expected[columns]);
+        // A second programmatic resize of this size-contained element
+        // (container-type: inline-size) doesn't settle within the same
+        // task: getComputedStyle().width can still report the previous
+        // width immediately after element.style.inlineSize is written,
+        // which leaves the container query — and this grid's column
+        // count — reading stale. It takes ~2 rendering frames to settle
+        // (confirmed empirically), so poll instead of reading once.
+        await expect
+          .poll(() => logoList.evaluate(gridTrackCount), {
+            message: `columns=${columns} at ${width}px`,
+            timeout: 2_000,
+          })
+          .toBe(expected[columns]);
       }
     }
   });
