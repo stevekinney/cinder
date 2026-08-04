@@ -7,7 +7,6 @@ out/
 packages/components/fixtures/examples-consumer/src/generated/
 packages/components/fixtures/examples-consumer/src/routes/+page.svelte
 packages/components/fixtures/typescript-consumer/src/generated/
-packages/components/src/components/selection-popover/selection-popover.svelte
 
 # Package management
 node_modules/
