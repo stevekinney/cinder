@@ -243,8 +243,15 @@
   }
 
   function getSequentialNavigationItems(): HTMLElement[] {
+    // Navigation items are always rendered as HTML elements (never SVG), but
+    // `getSequentialFocusTargets` returns the wider `SequentialFocusTarget`
+    // union since brand targets can be SVG. Narrow with `instanceof` so the
+    // return type matches every downstream consumer of navigation items.
     return getSequentialFocusTargets(itemsRegionElement).filter(
-      (item) => item.matches(navigationItemSelector) && isEnabledNavigationItem(item),
+      (item): item is HTMLElement =>
+        item instanceof HTMLElement &&
+        item.matches(navigationItemSelector) &&
+        isEnabledNavigationItem(item),
     );
   }
 
