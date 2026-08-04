@@ -88,17 +88,33 @@ stylelint rule, a `check-*.ts` script, `component-conventions.ts` — applies to
 files its own pull request never touches, so no amount of per-PR file-scoping
 can see the conflict.** Only validating the merged result can.
 
-The fix is the **merge queue**, which builds each candidate on top of the real
-`main` and runs the required checks against that. All four required checks
-therefore carry a `merge_group:` trigger, and every scoping job in them fails
-safe on non-`pull_request` events — a queue run is fully unscoped by design.
-This gets the correctness of strict-mode without its serialization: the queue
-batches and tests entries together rather than forcing each PR to be manually
-updated in turn.
+The intended fix was the **merge queue**, which builds each candidate on top
+of the real `main` and runs the required checks against that. All four
+required checks carry a `merge_group:` trigger for it, and every scoping job
+in them fails safe on non-`pull_request` events — a queue run is fully
+unscoped by design.
 
-`strict: true` is set as an interim stopgap while the queue is being validated,
-and should be dropped once the queue is confirmed working — leaving both on
-imposes the serialization cost the queue exists to avoid.
+**The merge queue cannot be enabled on this repository.** GitHub only offers
+merge queues on organization-owned repositories; this repo is owned by a user
+account, and the rulesets API rejects a `merge_queue` rule here (verified
+empirically 2026-08-04 — schema-valid payloads fail semantic validation). The
+`merge_group:` triggers are therefore inert. They are deliberately kept: they
+cost nothing, and they make the queue turn-key if the repo ever moves to an
+organization.
+
+Until then, **`strict: true` is the steady state**, and its serialization
+cost is the accepted price of validating merged results. For bulk merge waves
+where that cost is prohibitive (N PRs × a full CI round each), the recorded
+protocol from the 2026-08-04 drain is: octopus-merge every candidate branch
+onto `main` in a scratch worktree, run the full validation suite (build,
+tests, typecheck, lint including `lint:invariants`, `components:check`)
+against that combined tree, and only then lift `strict` for the duration of
+the drain — restoring it immediately after. That reproduces the queue's
+merged-result guarantee out-of-band; per-PR CI plus pairwise
+`git merge-tree` checks alone do not cover repo-wide-guard interactions,
+which is exactly the class that broke `main` on 2026-07-28. Playwright is
+the one gap in the local suite — per-PR CI and the post-drain `main-green`
+run remain the browser-suite gate.
 
 `release.yaml` still waits for a same-SHA `main-green` run before publishing, so
 nothing ships un-caught even if something slips past the queue.
