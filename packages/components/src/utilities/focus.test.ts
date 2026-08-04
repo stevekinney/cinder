@@ -235,6 +235,47 @@ describe('getSequentialFocusTargets', () => {
     region.remove();
   });
 
+  test('skips a lower positive tabindex target after a higher positive reference', () => {
+    // Native Tab order visits positive tabindex values ascending, so a
+    // tabindex="1" target has already been visited by the time a
+    // tabindex="2" reference has focus, regardless of where it sits in the
+    // DOM relative to the reference.
+    const region = document.createElement('div');
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    const following = document.createElement('button');
+    region.append(reference, lower, following);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'after' }),
+    ).toEqual([following]);
+    region.remove();
+  });
+
+  test('skips a higher positive tabindex target before a lower positive reference', () => {
+    // The mirror of the case above: a tabindex="5" target has not been
+    // visited yet when a tabindex="2" reference has focus, so it cannot be
+    // "before" that reference in reverse Tab order even when it sits
+    // earlier in the DOM.
+    const region = document.createElement('div');
+    const higher = document.createElement('button');
+    higher.tabIndex = 5;
+    const lower = document.createElement('button');
+    lower.tabIndex = 1;
+    const reference = document.createElement('button');
+    reference.tabIndex = 2;
+    region.append(higher, lower, reference);
+    document.body.append(region);
+
+    expect(
+      getSequentialFocusTargets(region, { relativeTo: reference, direction: 'before' }),
+    ).toEqual([lower]);
+    region.remove();
+  });
+
   test('orders positive tabindex values before default controls', () => {
     const region = document.createElement('div');
     const defaultButton = document.createElement('button');

@@ -231,9 +231,27 @@ function isSequentiallyAfterReference(
 ): boolean {
   const referenceTabIndex = getTabIndexValue(reference);
   const elementTabIndex = getTabIndexValue(element);
-  if (direction === 'after' && referenceTabIndex <= 0 && elementTabIndex > 0) return false;
-  if (direction === 'before' && referenceTabIndex > 0 && elementTabIndex <= 0) return false;
-  return true;
+  const referenceIsPositive = referenceTabIndex > 0;
+  const elementIsPositive = elementTabIndex > 0;
+
+  // Native sequential focus order visits every positive-tabindex element
+  // first (ascending, ties broken by composed-tree position), then every
+  // zero/default-tabindex element (composed-tree position). A candidate's
+  // relationship to a reference must respect that tier, not just whether
+  // the reference itself is positive:
+  //  - a positive reference has already passed any lower-or-equal positive
+  //    value, so those are "before" it and never "after" it again;
+  //  - a positive value is always "before" a zero/default reference and
+  //    never "after" one, regardless of composed-tree position.
+  if (direction === 'after') {
+    if (!referenceIsPositive) return !elementIsPositive;
+    if (!elementIsPositive) return true;
+    return elementTabIndex >= referenceTabIndex;
+  }
+
+  if (!referenceIsPositive) return true;
+  if (!elementIsPositive) return false;
+  return elementTabIndex <= referenceTabIndex;
 }
 
 export function getTabIndexValue(element: SequentialFocusTarget): number {
@@ -295,7 +313,14 @@ function isInsideClosedDetails(element: SequentialFocusTarget): boolean {
   return false;
 }
 
-function composedContains(ancestor: Element, descendant: SequentialFocusTarget): boolean {
+/**
+ * Composed-tree `contains()`: true when `descendant` is nested inside
+ * `ancestor` even across an open shadow boundary. `Element.contains()`
+ * only walks the light tree, so it reports `false` for a shadow-root
+ * descendant of a light-DOM child of `ancestor` even though that
+ * descendant still belongs to `ancestor`'s composed subtree.
+ */
+export function composedContains(ancestor: Element, descendant: SequentialFocusTarget): boolean {
   for (
     let current: Element | null = descendant;
     current;

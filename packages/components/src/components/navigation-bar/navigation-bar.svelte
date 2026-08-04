@@ -41,6 +41,7 @@
     redispatchPortaledEvent,
   } from '../portal/portal.utilities.svelte.ts';
   import {
+    findFirstBrandFocusTargetAfterToggle,
     findFocusTargetAfterNavigationItems,
     findFocusTargetBeforeNavigationItems,
     getNavigationBarBrandFocusTargets,
@@ -216,7 +217,10 @@
     }
     const brandTarget =
       menuTogglePlacement === 'before-brand'
-        ? getNavigationBarBrandFocusTargets(navigationBarElement)[0]
+        ? findFirstBrandFocusTargetAfterToggle(
+            navigationBarElement,
+            event.currentTarget as HTMLElement | null,
+          )
         : null;
     if (brandTarget) {
       event.preventDefault();
@@ -243,7 +247,7 @@
       !isMobileLayout ||
       !mobileMenuOpen ||
       !anchoredItems.positionReady ||
-      !(event.target instanceof HTMLElement)
+      !(event.target instanceof HTMLElement || event.target instanceof SVGElement)
     ) {
       return false;
     }

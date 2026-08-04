@@ -1,4 +1,5 @@
 import {
+  composedContains,
   composedFocusScopes,
   getSequentialFocusTargets,
   getTabIndexValue,
@@ -10,6 +11,32 @@ export function getNavigationBarBrandFocusTargets(
 ): SequentialFocusTarget[] {
   return getSequentialFocusTargets(
     navigationBar?.querySelector('.cinder-navigation-bar__brand') ?? null,
+  );
+}
+
+/**
+ * The first brand focus target that native sequential order would reach
+ * after `toggle`. The brand's own focus-target list is sorted globally
+ * (every positive-tabindex target first, then zero/default targets), so
+ * its `[0]` is only "the first stop after the toggle" when the toggle
+ * itself is the very start of the sequence. When the toggle is a
+ * zero/default-tabindex control, any positive-tabindex brand target has
+ * already been visited earlier in the page's native tab sequence (before
+ * the toggle), so it must be skipped in favor of the first zero/default
+ * brand target instead.
+ */
+export function findFirstBrandFocusTargetAfterToggle(
+  navigationBar: HTMLElement | null,
+  toggle: HTMLElement | null,
+): SequentialFocusTarget | null {
+  if (!navigationBar || !toggle) return null;
+  const brand = navigationBar.querySelector('.cinder-navigation-bar__brand');
+  if (!brand) return null;
+
+  return (
+    getSequentialFocusTargets(navigationBar, { relativeTo: toggle, direction: 'after' }).find(
+      (candidate) => composedContains(brand, candidate),
+    ) ?? null
   );
 }
 
@@ -60,7 +87,9 @@ export function findFocusTargetAfterNavigationItems(
       relativeTo: anchor,
       direction: 'after',
     }).filter(
-      (candidate) => !navigationBar.contains(candidate) && !itemsRegion?.contains(candidate),
+      (candidate) =>
+        !composedContains(navigationBar, candidate) &&
+        (!itemsRegion || !composedContains(itemsRegion, candidate)),
     );
     if (followingCandidates.length > 0) return followingCandidates[0] ?? null;
   }
